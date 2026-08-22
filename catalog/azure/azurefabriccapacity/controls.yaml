@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefabriccapacity
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All data stored in OneLake -- every Fabric data store the capacity's workloads write -- is encrypted at rest by default with Microsoft-managed keys; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The capacity API carries no key surface. Fabric's customer-managed-key layer (workspace customer managed keys with Azure Key Vault) is configured on Fabric workspaces from the Fabric side, outside this spec.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every interaction with Fabric is encrypted in transit by default and authenticated with Microsoft Entra ID; traffic between Fabric experiences travels the Microsoft backbone.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The capacity is a compute-and-billing anchor with no endpoint of its own. Network exposure of the Fabric experiences (tenant private links, conditional access) is governed at the Fabric tenant and workspace level, outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No endpoint of its own means no ingress to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The capacity terminates no requests; there is no WAF attachment point on it.
+    - control_id: rbac
+      status: configurable
+      field_path: administration_members
+      evidence:
+        type: spec_default
+        reference: The declared Microsoft Entra principals (user UPNs or service-principal object IDs) become the capacity's administrators -- at least one is required, and every entry is a directory identity, never a shared secret. Management-plane access is always Azure RBAC; workspace-level access is assigned per workspace on the Fabric side.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The capacity holds no credential surface -- everything Fabric-side authenticates through Microsoft Entra ID, and workload identities for data access are a Fabric workspace concern outside this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The capacity has no authentication path of its own to weaken -- access is Entra-authenticated end to end, with no key- or password-based alternative to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the capacity (create, scale, suspend, resume, delete) land in the Azure Activity Log unconditionally.
+      notes: User-activity audit inside the Fabric experiences is tenant-level Fabric/Purview auditing outside this spec's fields.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every capacity's CU consumption, throttling, and workload breakdown is observable through the Microsoft Fabric Capacity Metrics app without configuration on the resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The capacity holds no data of its own -- durability of workspace data lives in OneLake and the Fabric platform, managed Fabric-side. Deleting or suspending a capacity does not delete the workspaces' data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists on the capacity (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The capacity API exposes no zone placement -- Microsoft manages the placement and resilience of the SaaS platform's infrastructure; no spec field influences it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Fabric capacity API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fabric is a SaaS platform -- Microsoft operates, patches, and updates every layer beneath the capacity; no customer patch surface exists.

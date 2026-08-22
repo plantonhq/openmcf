@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the channel is created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **IAM**: the deploying identity needs `roles/monitoring.notificationChannelEditor` or broader.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 
 ### External Service (authenticated types)
 

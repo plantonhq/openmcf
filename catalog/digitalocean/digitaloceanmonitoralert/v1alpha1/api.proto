@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanmonitoralert.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/digitaloceanmonitoralert/v1alpha1/outputs.proto";
+import "catalog/digitalocean/digitaloceanmonitoralert/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// digital-ocean-monitor-alert
+message DigitalOceanMonitorAlert {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'digital-ocean.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanMonitorAlert'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  DigitalOceanMonitorAlertSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  DigitalOceanMonitorAlertStatus status = 5;
+}
+
+// digital-ocean-monitor-alert status
+message DigitalOceanMonitorAlertStatus {
+  //stack-outputs
+  //  digital-ocean-monitor-alert stack-outputs
+  DigitalOceanMonitorAlertStackOutputs outputs = 1;
+}

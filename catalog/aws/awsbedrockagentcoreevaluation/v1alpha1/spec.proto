@@ -177,7 +177,9 @@ message AwsBedrockAgentCoreJudgeInference {
   // Sequences that stop generation (max 2500).
   repeated string stop_sequences = 2 [(buf.validate.field).repeated = {
     max_items: 2500
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // Sampling temperature (0-1). Omitted = the model default. Judges
@@ -616,7 +618,9 @@ message AwsBedrockAgentCoreHarnessGatewayOAuth {
   // OAuth scopes requested for the token.
   repeated string scopes = 2 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // Extra token-request parameters the provider requires.
@@ -912,14 +916,18 @@ message AwsBedrockAgentCoreAllowedWorkloads {
   repeated string workload_identities = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // Hosting environment ARNs allowed to call (1-10).
   repeated string hosting_environment_arns = 2 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }
 
@@ -1105,14 +1113,14 @@ message AwsBedrockAgentCoreOnlineEvaluationConfig {
   // names of evaluators defined in this bundle. AWS treats the list as
   // a SET - duplicates would silently collapse and the 1-10 bound
   // would measure the wrong count, so uniqueness is enforced here.
-  repeated string evaluator_ids = 6 [
-    (buf.validate.field).repeated = {
-      min_items: 1
-      max_items: 10
-      items: {string: {min_len: 1}}
-      unique: true
+  repeated string evaluator_ids = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {
+      string: {min_len: 1}
     }
-  ];
+    unique: true
+  }];
 
   // What to sample and score.
   AwsBedrockAgentCoreOnlineEvaluationRule rule = 7 [(buf.validate.field).required = true];
@@ -1136,7 +1144,9 @@ message AwsBedrockAgentCoreOnlineEvaluationDataSource {
   // traces are evaluated (at least one).
   repeated string service_names = 2 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }
 

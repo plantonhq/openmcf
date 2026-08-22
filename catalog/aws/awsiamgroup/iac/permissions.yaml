@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsiamgroup
+spec:
+  aws:
+    statements:
+      - sid: ManageGroup
+        actions:
+          - iam:CreateGroup
+          - iam:GetGroup
+          - iam:UpdateGroup
+          - iam:DeleteGroup
+        resources:
+          - arn:aws:iam::*:group/*
+        provenance: derived
+        notes: Covers aws_iam_group / iam.Group -- creation with name and path, the in-place rename/re-path through UpdateGroup (the ARN recomputes but members and policies persist), GetGroup on every plan/refresh, and deletion. IAM ARNs carry no region, and group/* spans custom paths because '*' matches path separators. Groups are untaggable at AWS, so no tagging actions exist for this kind.
+      - sid: ManageGroupMembership
+        actions:
+          - iam:AddUserToGroup
+          - iam:RemoveUserFromGroup
+        resources:
+          - arn:aws:iam::*:group/*
+        provenance: derived
+        notes: "Covers aws_iam_group_membership / iam.GroupMembership -- one resource owning the WHOLE users list in its authoritative form: reconciliation adds missing members, removes out-of-band ones, and destroy removes every membership. The membership read rides GetGroup (granted in ManageGroup -- it returns the member list). Both actions authorize on the GROUP ARN per the service reference, not the user ARN, so no iam:user grant is needed here; the users must already exist at IAM."
+      - sid: ManageGroupPolicyWiring
+        actions:
+          - iam:AttachGroupPolicy
+          - iam:DetachGroupPolicy
+          - iam:ListAttachedGroupPolicies
+          - iam:PutGroupPolicy
+          - iam:GetGroupPolicy
+          - iam:DeleteGroupPolicy
+          - iam:ListGroupPolicies
+        resources:
+          - arn:aws:iam::*:group/*
+        provenance: derived
+        notes: Covers aws_iam_group_policy_attachment / iam.GroupPolicyAttachment (managed-policy attach and detach, reconciled per entry so out-of-band attachments are left alone) and aws_iam_group_policy / iam.GroupPolicy (inline policies that live and die with the group). The List actions are the read side during plan/refresh. Every action here authorizes on the GROUP ARN per the service reference, not the policy ARN -- attaching an AWS-managed or foreign policy needs no grant on the policy itself.

@@ -122,6 +122,7 @@ go_library(
         "network_interface.go",
         "network_security_group.go",
         "network_watcher_flow_log.go",
+        "planton_runner.go",
         "point_to_site_vpn_gateway.go",
         "postgresql_flexible_server.go",
         "private_dns_record.go",

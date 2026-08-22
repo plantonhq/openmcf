@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsssmpatchbaseline
+spec:
+  aws:
+    statements:
+      - sid: CreateBaseline
+        actions:
+          - ssm:CreatePatchBaseline
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ssm_patch_baseline / ssm.PatchBaseline creation. The service reference publishes NO resource types for CreatePatchBaseline (the pb- ID does not exist yet at authorization time), so an ARN-scoped grant would be a runtime DENY -- the wildcard is the narrowest possible scope for this one action.
+      - sid: ManageBaseline
+        actions:
+          - ssm:GetPatchBaseline
+          - ssm:UpdatePatchBaseline
+          - ssm:DeletePatchBaseline
+        resources:
+          - arn:aws:ssm:*:*:patchbaseline/*
+        provenance: derived
+        notes: Covers the rest of aws_ssm_patch_baseline / ssm.PatchBaseline -- GetPatchBaseline serves every plan/refresh, Update reconciles rules/filters/lists/sources in place, Delete tears down. All three scope to the baseline ARN per the service reference.
+      - sid: ManagePatchGroups
+        actions:
+          - ssm:RegisterPatchBaselineForPatchGroup
+          - ssm:DeregisterPatchBaselineForPatchGroup
+        resources:
+          - arn:aws:ssm:*:*:patchbaseline/*
+        provenance: derived
+        notes: Covers aws_ssm_patch_group / ssm.PatchGroup -- one registration per patch_groups entry, folded into this component. Both actions scope to the baseline ARN per the service reference.
+      - sid: ReadPatchGroups
+        actions:
+          - ssm:DescribePatchGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: The patch-group registration has no per-group read API -- the provider refreshes each aws_ssm_patch_group by listing the account's registrations through DescribePatchGroups, for which the service reference publishes no resource types; the wildcard is the narrowest possible scope.
+      - sid: ManageDefaultBaseline
+        actions:
+          - ssm:RegisterDefaultPatchBaseline
+          - ssm:GetDefaultPatchBaseline
+        resources:
+          - arn:aws:ssm:*:*:patchbaseline/*
+          - arn:aws:ssm:*::patchbaseline/*
+        provenance: derived
+        notes: "Covers aws_ssm_default_patch_baseline / ssm.DefaultPatchBaseline -- created only when set_as_default_baseline is true. GetDefaultPatchBaseline records the OS's current default before the claim and serves every refresh; destroy REVERTS the designation by re-registering AWS's own predefined default baseline, whose ARN carries an EMPTY account field (arn:aws:ssm:*::patchbaseline/*) -- omitting that second format breaks the revert. Both actions scope to the baseline ARN per the service reference."
+      - sid: TagBaseline
+        actions:
+          - ssm:AddTagsToResource
+          - ssm:RemoveTagsFromResource
+          - ssm:ListTagsForResource
+        resources:
+          - arn:aws:ssm:*:*:patchbaseline/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh of the baseline resource. The service reference scopes all three tagging actions to many SSM resource types; only the patchbaseline ARN format is needed here.

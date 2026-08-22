@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpkmskeyring
+spec:
+  gcp:
+    groups:
+      - purpose: EnableCloudKmsApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling cloudkms.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageKeyRing
+        permissions:
+          - cloudkms.keyRings.create
+          - cloudkms.keyRings.get
+        provenance: derived
+        notes: Covers google_kms_key_ring -- create and read/refresh are the resource's ENTIRE lifecycle. No update permission is needed because every spec field is ForceNew, and no delete permission is needed because Cloud KMS has no key-ring delete API -- on destroy the provider only removes the ring from state (cloudkms.keyRings.delete does appear in IAM's testable-permissions inventory, but no module code path can ever exercise it). Both listed permissions verified present in the inventory.

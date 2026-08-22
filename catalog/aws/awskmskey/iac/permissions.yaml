@@ -1,0 +1,59 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awskmskey
+spec:
+  aws:
+    statements:
+      - sid: CreateKeyAndListAliases
+        actions:
+          - kms:CreateKey
+          - kms:ListAliases
+        resources:
+          - "*"
+        provenance: derived
+        notes: Create side of aws_kms_key and the read side of aws_kms_alias. The service reference authorizes neither action against any resource type, so the wildcard is the narrowest possible scope.
+      - sid: ManageKey
+        actions:
+          - kms:DescribeKey
+          - kms:GetKeyPolicy
+          - kms:PutKeyPolicy
+          - kms:GetKeyRotationStatus
+          - kms:EnableKeyRotation
+          - kms:DisableKeyRotation
+          - kms:EnableKey
+          - kms:DisableKey
+          - kms:UpdateKeyDescription
+          - kms:ScheduleKeyDeletion
+          - kms:TagResource
+          - kms:UntagResource
+          - kms:ListResourceTags
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Covers aws_kms_key after creation -- reads during plan/refresh (DescribeKey, GetKeyPolicy, GetKeyRotationStatus, ListResourceTags), in-place updates (policy, description, enabled state, rotation and its period), tagging (CreateKey tags also authorize as kms:TagResource on the key), and teardown (ScheduleKeyDeletion honoring spec.deletion_window_days).
+      - sid: ManageAliases
+        actions:
+          - kms:CreateAlias
+          - kms:UpdateAlias
+          - kms:DeleteAlias
+        resources:
+          - arn:aws:kms:*:*:alias/*
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Covers aws_kms_alias -- one alias resource per spec.aliases entry. The service reference authorizes all three actions against BOTH the alias ARN and the target key ARN, so the statement carries both formats; granting only the alias format fails at the key-side authorization.
+      - sid: ManageGrants
+        actions:
+          - kms:CreateGrant
+          - kms:ListGrants
+          - kms:RevokeGrant
+          - kms:RetireGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Covers aws_kms_grant -- one grant per spec.grants entry, keyed by list position. Teardown exercises RevokeGrant (retire_on_delete false, the default hard stop) or RetireGrant (retire_on_delete true, the graceful path), so both are reachable from the spec.

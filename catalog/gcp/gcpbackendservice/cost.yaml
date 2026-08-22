@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbackendservice
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: enable_cdn
+      sku_meter: cache data transfer out
+      pricing_unit: GiB
+      impact: Turning on Cloud CDN starts three meters -- cache data transfer out at $0.02-$0.20/GiB by destination (North America and Europe $0.08/GiB for the first 10 TiB, cheaper above), cache fill, and cache lookups at $0.0075 per 10,000 GET/HEAD requests -- and simultaneously CUTS the load balancer's outbound data-processing charge, because Google's pricing page notes cache hits are served without transiting the load balancer.
+    - field_path: cdn_policy.cache_mode
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: What fraction of responses the edge may cache decides the fill-versus-egress split -- USE_ORIGIN_HEADERS (preset 02) caches only routes the origin marks cacheable, and every miss adds cache fill ($0.01/GiB within North America or Europe, $0.02 within other continents, $0.04 inter-region) plus a full trip through the backends.
+    - field_path: cdn_policy.cache_key_policy
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: The backend-service cache key is richer than a bucket's -- host, protocol, query handling, named cookies, and headers can all join it. Every extra dimension multiplies cache entries and fills; stripping never-varying query parameters (preset 02 blacklists utm_*) collapses equivalent requests into one entry.
+    - field_path: log_config.sample_rate
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: Request logging is off by default; enabled at sample_rate 1.0 it writes one Cloud Logging entry per request -- a real cost line on high-QPS services, billed as standard Logging ingestion on what is retained. Preset 01 samples at 0.1 for exactly this reason; preset 03 logs everything because access to an internal tool is worth auditing.
+    - field_path: compression_mode
+      sku_meter: cache data transfer out
+      pricing_unit: GiB
+      impact: AUTOMATIC compresses compressible responses at the load balancer, and CDN meters count bytes after compression -- fewer GiB billed on cache hits, and fewer bytes processed on the LB leg, at no charge for the compression itself.
+  estimate_exclusions:
+    - the backend service carries no hourly or per-request charge of its own -- it is the routing hub, and its meters start only with traffic
+    - forwarding-rule hours ($0.025/hour for the first 5) and per-GiB data processing ($0.008/GiB inbound and outbound in us-central1) bill on the load balancer frontend components, not here
+    - the serving capacity behind it -- instance groups, NEGs, Cloud Run services -- bills on its own components; health-check probe pricing belongs to the GcpHealthCheck kind
+  notes: "A backend service is the hub of GCP's L7 load-balancing family and holds no meter of its own: creating it, attaching backends, health checks, Cloud Armor policies, and signed-URL keys all cost nothing at rest. The meters it can start are Cloud CDN's trio (when enable_cdn is on) and Cloud Logging ingestion (when log_config is enabled). Identity-Aware Proxy is explicitly free for protecting Google Cloud-hosted resources -- Google's IAP pricing page says so, with paid capabilities reserved for Chrome Enterprise Premium -- so preset 03's zero-trust gate adds no meter. Cloud Armor policies referenced by security_policy and edge_security_policy bill per-policy and per-request on the GcpCloudArmorPolicy component, and Google's pricing page notes both Cloud Armor blocks and CDN cache hits reduce the LB's data-processing bill by keeping traffic out of it."

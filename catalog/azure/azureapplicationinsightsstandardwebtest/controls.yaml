@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The test is a configuration object; its results live in the bound Application Insights component's Log Analytics store, encrypted there under that component's posture. One caveat a reviewer should hear -- request headers configured here (including any Authorization header) are stored in the test definition itself, so secrets do not belong in them.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed keys for results are the workspace's territory.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: request.url
+      evidence:
+        type: spec_default
+        reference: The test speaks whatever scheme the URL declares -- https runs TLS end to end, and spec validation rejects SSL assertions on plain-http URLs, so an encrypted-and-verified probe is expressible while an http probe of an http endpoint stays possible on purpose.
+      notes: Both presets probe https URLs; preset 01 additionally asserts the certificate itself (ssl_check_enabled with a 30-day lifetime floor) -- the probe as a certificate-expiry early-warning system.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The test RUNS FROM Azure's public web-test locations against the URL it is given -- it is an outside-in prober by design, and probing a private endpoint is out of its reach. The endpoint's own exposure is that component's posture; the test resource itself has no reachable surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists to restrict. Worth knowing when composing -- the PROBED endpoint must accept traffic from Azure's published web-test location addresses, so a locked-down endpoint needs those ranges allowed.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a WAF to filter; the test is a client, not a server.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the test -- create, edit the request or schedule, disable, delete -- is authorized by Azure RBAC unconditionally; results are read through the Application Insights component's own RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The test holds no cloud credentials and calls no cloud APIs -- it issues the configured HTTP request from Microsoft-operated probes. Any endpoint authentication rides static request headers (see enc-at-rest's caveat), not a platform identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane change to the test lands in the Azure Activity Log unconditionally; every run's result is recorded in the bound Application Insights component's availabilityResults table.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The test IS monitoring integration -- outside-in availability as a first-class metric. Results flow to the bound Application Insights component's availability metric and availabilityResults table with no further configuration.
+      notes: The component's purpose-control; the paging half is composed as an AzureMonitorMetricAlert with web-test availability criteria referencing this test's web_test_id output.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration -- recovery is redeployment from this manifest. Result history lives in the Application Insights component's workspace and follows its retention.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: geo_locations
+      evidence:
+        type: spec_default
+        reference: Each entry is an independent Microsoft-operated probe location running the full schedule -- several locations make the MONITORING itself survive any one region's trouble, and the alerting convention (failed_location_count below the location count) tolerates single-location blips without paging.
+      notes: Preset 01 probes from three locations across two continents; preset 02's single location is deliberately minimal and reads any local blip as a failure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the webtests API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The spec's safe pause is enabled=false -- the definition survives, the schedule stops.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed -- Microsoft operates the probe infrastructure in every web-test location; no customer-visible patch surface exists.

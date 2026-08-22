@@ -4,9 +4,12 @@ metadata:
   name: my-cname-record
 spec:
   domain:
-    value: "<zone-domain>"
+    valueFrom:
+      kind: DigitalOceanDnsZone
+      name: my-zone
+      fieldPath: status.outputs.zone_name
   name: www
   type: CNAME
   value:
-    value: "<target-hostname>"
+    value: example.com.
   ttlSeconds: 3600

@@ -1,0 +1,105 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesperconamysqloperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.percona_mysql_operator -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces. Namespaces listed in watch.namespaces are never created by the module or the chart -- they must pre-exist.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.percona_mysql_operator -- the operator ServiceAccount and the percona-xtradb-cluster-operator Service (the in-cluster target the CR-validation webhook points at).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The operator Deployment (replicas from spec.replicas) applied by helm_release.percona_mysql_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's watch-scoped RBAC in the default posture -- the operator watches its own namespace with a namespaced Role granting it the StatefulSets, Services, Secrets, ConfigMaps, and PVCs it provisions for every managed database. Rendered by helm_release.percona_mysql_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The widened watch posture -- when spec.watch.cluster_wide is true (or watch.namespaces fences a set) the chart grants cluster-scoped RBAC so the operator reconciles databases beyond its own namespace; an operator chart's RBAC is among the widest in the catalog.
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_validating_webhook_configuration_v1.pxc_validation -- the operator's fixed-name CR-validation webhook (percona-xtradbcluster-webhook), MODULE-OWNED in the widened-watch arms so destroy removes it with the resource (upstream, nothing ever removes it, stranding a Fail-closed webhook after uninstall). Rendered only when watch.cluster_wide or watch.namespaces widens the watch; own-namespace installs render nothing. The operator manages the CA bundle -- the module ignores it.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+        cluster_scoped: true
+        provenance: derived
+        notes: "The PerconaXtraDBCluster CRD family ships in the chart's Helm-native crds/ directory: installed on FIRST install only, never upgraded or deleted by Helm -- hence no update/patch/delete. CRD schema updates across chart upgrades are a deliberate manual apply outside this module."

@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchdashboard
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The dashboard stores no customer data -- it is a widget-layout document (positions, metric coordinates, query strings) over metrics, logs, and alarms that live elsewhere. The data charted stays in its source services under their own encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest); the dashboard API offers no KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The dashboard exposes no network endpoint of its own; it is created and read exclusively through the HTTPS-only CloudWatch API and console. There is no plaintext transport option anywhere in the spec or modules to harden.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The manifest can make nothing public -- a dashboard is reachable only through IAM-authorized CloudWatch API calls. CloudWatch's dashboard-sharing feature (public links via a Cognito stack) is a separate console/account-level act outside this spec and both modules; nothing here enables it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress exists to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request traffic exists to filter; there is no WAF attachment point on a console visualization.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture on the dashboard ARN, not a component choice; the dashboard exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The dashboard runs no workloads and holds no credentials. Widgets that name Lambda-backed custom data sources invoke those functions under CloudWatch's service integration, with permissions governed on the function, not by this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own -- the only access path is the IAM-authorized CloudWatch API.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The dashboard has no logging configuration of its own. Administrative changes (PutDashboard, DeleteDashboards) are captured by account-level AWS CloudTrail -- a service behavior, not a manifest choice.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: dashboard_body is a required field, so an instance of this component without monitoring content is unrepresentable -- every dashboard IS a monitoring integration, a curated canvas of metric graphs, Logs Insights queries, and alarm status widgets.
+      notes: What the dashboard watches is decided entirely by the widget layout; the component adds visualization, not collection -- metrics and logs must already flow into CloudWatch from their sources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless visualization -- no data to back up. The entire dashboard is declarative and re-creatable from the manifest; the charted history lives in CloudWatch metrics and logs under their own retention.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The dashboard is a regional CloudWatch construct with no zonal placement anywhere in the spec or modules -- there is no availability topology for a manifest to get right or wrong.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The CloudWatch dashboard API offers no deletion-protection flag; neither the spec nor the provider resource carries one. Deleting the dashboard removes only the view -- the charted metrics, logs, and alarms are untouched.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the CloudWatch console and rendering infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslambdalayer
+spec:
+  aws:
+    statements:
+      - sid: PublishLayerVersion
+        actions:
+          - lambda:PublishLayerVersion
+        resources:
+          - arn:aws:lambda:*:*:layer:*
+        provenance: derived
+        notes: Covers aws_lambda_layer_version / lambda.LayerVersion at create -- and at every replacement, since all layer-version arguments are immutable at AWS and any spec change publishes a NEW version. The service reference scopes PublishLayerVersion to the layer ARN (the name-level identity that persists across versions), not the versioned ARN.
+      - sid: ReadAndDeleteLayerVersion
+        actions:
+          - lambda:GetLayerVersion
+          - lambda:DeleteLayerVersion
+        resources:
+          - arn:aws:lambda:*:*:layer:*:*
+        provenance: derived
+        notes: GetLayerVersion serves every plan/refresh read-back of the published version. DeleteLayerVersion runs at destroy and when a replacement retires the old version -- unless skip_destroy is set, in which case the provider leaves the version in AWS (the grant is still needed for the non-skip path). Both actions scope to the layerVersion ARN format (layer name plus version number) per the service reference.
+      - sid: ManageShareGrants
+        actions:
+          - lambda:AddLayerVersionPermission
+          - lambda:RemoveLayerVersionPermission
+          - lambda:GetLayerVersionPolicy
+        resources:
+          - arn:aws:lambda:*:*:layer:*:*
+        provenance: derived
+        notes: Covers aws_lambda_layer_version_permission / lambda.LayerVersionPermission -- one resource per spec.permissions entry, keyed by statement_id, pinning the only action AWS supports on layers (lambda:GetLayerVersion) into the version's resource policy. GetLayerVersionPolicy reads the policy back on every refresh. All three actions scope to the layerVersion ARN per the service reference. Neither module resource is taggable at AWS, so no tagging actions exist here.
+      - sid: ReadArchiveFromS3
+        actions:
+          - s3:GetObject
+          - s3:GetObjectVersion
+        resources:
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: PublishLayerVersion names the archive by bucket/key (spec.code), and AWS fetches it with the CALLER's credentials -- the runner principal itself needs read on the object (GetObjectVersion additionally when spec.code.version pins a specific object version). Narrow this to the actual artifact bucket and key prefix in a hardened deployment; the object only needs to exist during the publish call, since Lambda copies the archive into its own storage.

@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningcomputecluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster nodes' OS and temporary disks are Azure managed disks, encrypted at rest with platform-managed keys on every VM; the durable artifacts (datasets, models, job outputs) live in the workspace's storage account, also encrypted at rest by default.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The cluster spec carries no key surface. Customer-managed-key encryption for Azure Machine Learning is a workspace-level, creation-time decision configured on AzureMachineLearningWorkspace and inherited by the computes in it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Jobs are submitted to the cluster through the workspace's HTTPS endpoints, and nodes pull data and images over TLS to the workspace's storage and registry; SSH, when the ssh block enables it, is encrypted by the protocol itself. No plaintext control path exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: node_public_ip_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default -- every node gets a public IP); setting it false removes the public addresses for a VNet-only cluster, typically together with subnet_id or a workspace managed network. Fixed at creation.
+      notes: No preset disables it. Even with public IPs, the nodes' SSH port stays closed unless ssh_public_access_enabled is set true (Azure's default is false), so the default public surface answers nothing.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: subnet_id
+      evidence:
+        type: spec_default
+        reference: Unset leaves the nodes on service-managed networking reached only through the workspace's authenticated endpoints; placing the cluster in your subnet puts node ingress under that subnet's NSG topology. The SSH port is closed by the provider's own default (ssh_public_access_enabled false), so the only default ingress is the authenticated job-submission path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A training pool reached through authenticated workspace endpoints has no request-filtering attachment point; a WAF fronts public HTTP applications, which this is not. Inference endpoints -- the family members that DO face callers -- are separate catalog kinds.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management of the cluster is Azure RBAC on the workspace unconditionally, and submitting jobs to it requires the AzureML data-plane actions on the workspace scope -- there is no anonymous path to run work on the pool.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Absent means no managed identity; the block attaches a system-assigned or user-assigned identity through which jobs on the cluster reach storage, Key Vault and the container registry with short-lived tokens instead of embedded credentials. Updatable in place.
+      notes: All three presets attach SYSTEM_ASSIGNED.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default -- Azure Machine Learning token authentication works); setting it false forces Entra ID authentication only. Fixed at creation; pair it with an identity block.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the compute (create, scale-settings update, delete) to the Azure Activity Log unconditionally, and job submissions land in the workspace's own audit surface.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster node counts and utilization surface through the workspace's Azure Monitor metric and diagnostic surface without per-cluster configuration -- the workspaces resource type carries its own Azure Monitor metric and log definitions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The cluster is a stateless pool -- nodes are ephemeral, provisioned at scale-up and released at scale-down, and anything worth keeping (datasets, checkpoints, models) belongs in the workspace's datastores, outside this component. Recovery is redeployment from infrastructure-as-code; replacement is routine, though running jobs fail when it happens.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The computes API offers no zone-placement surface -- nodes land where the service puts them in the cluster's region, and neither the provider resource nor this spec can spread or pin them across zones. Resilience for training work is job-level (checkpointing and retry, which LOW_PRIORITY clusters already require), not zone topology.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the provider resource nor this spec offers a deletion-protection flag -- the kind is built around disposability: only identity, scale_settings and tags update in place, so most changes replace the cluster anyway, and it holds no data to lose."
+    - control_id: managed-patching
+      status: configurable
+      field_path: scale_settings.min_node_count
+      evidence:
+        type: spec_default
+        reference: Nodes provision from Microsoft's current curated VM image at every scale-up, so a scale-to-zero cluster (min_node_count 0, every preset) is effectively re-imaged between jobs without any action. A floor above 0 keeps nodes running on the image they booted with until they cycle.
+      notes: All three presets keep min_node_count 0, so the patch channel rides the scale cycle by default.

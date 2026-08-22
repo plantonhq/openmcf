@@ -43,6 +43,33 @@ Invalid valueFrom references: Field 'no_such_output' not found in …StackOutput
 2. Update `fieldPath: status.outputs.<correctLeaf>`.
 3. Ensure producer `metadata.name` matches the `valueFrom.name`.
 
+## Sensitive field rejected (plaintext, or a secret reference not found)
+
+**Symptom** (at apply/deploy — sensitive-field validation runs on the
+control plane, not in `chart build`):
+
+```
+one or more sensitive fields must reference an existing org secret (use '$secret/<slug>'); the following are invalid:
+  - spec.password: secret not found for environment 'staging' slug 'db-password'
+```
+
+**Fix** (per offending field path — the error lists them all):
+
+1. Plaintext or a placeholder in the field → replace it with a `$secret/...`
+   reference; a sensitive field never accepts a literal
+   (`config-references.md`).
+2. "secret not found for organization slug …" → the reference is org-scoped
+   but no org secret has that slug. `planton secret list -o json` — if the
+   secret is environment-scoped (its record carries an `env`), add the sigil:
+   `$secret/@<env>/<slug>`.
+3. "secret not found for environment '<env>' …" → wrong env in the sigil, or
+   the secret genuinely does not exist yet — create it
+   (`planton secret set <slug> value=<value> --env <env>`) or hand the user
+   that exact command with the reference already in place.
+
+Scope is strict: org-scoped and env-scoped references never fall back to
+each other. The reference must encode the scope the secret actually has.
+
 ## YAML parse error in values.yaml
 
 **Symptom:**

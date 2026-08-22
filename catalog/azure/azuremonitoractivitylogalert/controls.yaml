@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitoractivitylogalert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An alert rule is a matching definition held by Azure Monitor; it stores no customer data at rest. The Activity Log entries it evaluates are retained by Azure as platform posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The rule carries no traffic of its own; managing it flows through ARM's TLS-only management API, and fired notifications travel through the action group's channels, which own that posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An alert rule has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The rule is a watch definition, not an access grant; creating and editing it is governed by ARM RBAC on its resource group, which is platform posture for every ARM resource.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule authenticates nobody; Azure Monitor evaluates the Activity Log and fires actions as platform machinery, with no credential in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The rule exists only as a consumer of the Azure Activity Log -- the subscription-level audit record of control-plane operations, policy events, and health transitions that Azure captures automatically, with no toggle and at no charge. The alert is the response half of that audit trail; it is the only alert type that can act on audit events that never surface as metrics (a deleted VM, a policy denial, a service incident).
+      notes: criteria.category selects which audit slice is watched (ADMINISTRATIVE, POLICY, SECURITY, service and resource health); the alert cannot weaken the underlying capture -- Azure records the Activity Log whether or not any rule watches it.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS a monitoring integration -- criteria is required (a rule with no criteria matches nothing and is rejected at validate time), and each actions entry wires matches to an AzureMonitorActionGroup whose receivers carry the signal to email, webhooks, paging, and automation. An alert with no actions still records matches in the portal's alert history.
+      notes: The exclusivity CELs on criteria (recommendation_type, resource_health, service_health) keep the watch definition valid at authoring time instead of failing at deploy time.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless rule definition -- nothing to back up; the manifest recreates the alert declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The rule has no runtime footprint with a zonal failure mode; evaluation runs in Microsoft-operated Azure Monitor infrastructure (the location field places only the definition, and "global" is the norm).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an alert rule; deleting one stops the watching and is recreated declaratively (enabled false keeps the definition while silencing it).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The evaluation pipeline that matches Activity Log entries and fires actions is Microsoft-operated Azure Monitor infrastructure; no customer-visible patch surface exists.

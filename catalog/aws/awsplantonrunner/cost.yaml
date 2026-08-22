@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The spec deliberately hides the compute
+# substrate; the official modules provision it on ECS Fargate -- one
+# always-on task (the modules fix the count at one runner per
+# registration) plus a Secrets Manager secret holding the runner
+# token. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsplantonrunner
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AWS Fargate
+      sku_meter: Fargate vCPU hours
+      pricing_unit: vCPU-hours
+      description: The runner is standing infrastructure -- one Fargate task runs every hour of the month, billing its vCPU allocation (cpu / 1024 vCPUs) at the region's Fargate vCPU-hour rate from creation to destroy.
+    - service_name: AWS Fargate
+      sku_meter: Fargate memory hours
+      pricing_unit: GB-hours
+      description: The same always-on task bills its memory allocation (memory / 1024 GB) at the region's Fargate per-GB-hour rate, every hour.
+    - service_name: AWS Secrets Manager
+      sku_meter: runner token secret
+      pricing_unit: secret-months
+      description: The deployment stores the runner token as one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime.
+  cost_drivers:
+    - field_path: cpu
+      sku_meter: Fargate vCPU hours
+      pricing_unit: vCPU-hours
+      impact: Sizes the always-on vCPU bill directly -- the default 512 (0.5 vCPU) is the floor; each doubling of cpu doubles this line. Size up for large stacks or high operation concurrency.
+    - field_path: memory
+      sku_meter: Fargate memory hours
+      pricing_unit: GB-hours
+      impact: Sizes the always-on memory bill directly -- the default 1024 MiB (1 GB) is the floor. Memory is the cheaper lever, and the spec's own guidance is to size memory up before cpu when IaC operations fail mid-apply.
+    - field_path: assign_public_ip
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: When true, the task's network interface holds a billed public IPv4 address every hour. Keep it false in private subnets with a NAT route (the recommended posture) and the charge disappears -- NAT processing then bills on the NAT gateway's own component.
+    - field_path: log_retention_days
+      sku_meter: CloudWatch Logs storage
+      pricing_unit: GB-months
+      impact: Bounds how many months of operation logs accumulate as billed CloudWatch storage -- the 30-day default caps it tightly; 365+ days lets the audit trail grow into a standing storage charge. The stored volume itself follows how much the runner executes.
+  estimate_exclusions:
+    - CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
+    - data transfer -- image pulls, control-plane traffic, and NAT gateway processing (in the recommended private-subnet posture, NAT hours and per-GB processing bill on the NAT gateway's own component)
+  free_tier: The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more). The ECS cluster, task definition, security group, and IAM roles the modules create are free resources.
+  notes: "The compute substrate is an implementation detail of the modules, confirmed from their sources: one ECS Fargate task (Linux/x86_64 rates -- the modules set no runtime platform, so the AWS default applies) with desired count fixed at one -- scaling execution capacity means more runners, never more copies of this one. The token secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately."

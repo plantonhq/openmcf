@@ -1,0 +1,71 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awskinesisstream
+spec:
+  aws:
+    statements:
+      - sid: ManageStream
+        actions:
+          - kinesis:CreateStream
+          - kinesis:DeleteStream
+          - kinesis:IncreaseStreamRetentionPeriod
+          - kinesis:DecreaseStreamRetentionPeriod
+          - kinesis:UpdateMaxRecordSize
+          - kinesis:UpdateStreamWarmThroughput
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers aws_kinesis_stream lifecycle -- creation, deletion, retention_period_hours moves in either direction, max_record_size_in_kib (the module comment itself calls out kinesis:UpdateMaxRecordSize), and warm_throughput_mib_ps. The service reference authorizes each of these against the stream ARN format.
+      - sid: ManageCapacityAndMonitoring
+        actions:
+          - kinesis:UpdateShardCount
+          - kinesis:UpdateStreamMode
+          - kinesis:EnableEnhancedMonitoring
+          - kinesis:DisableEnhancedMonitoring
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers shard_count scaling, stream_mode changes, and shard_level_metrics toggling on aws_kinesis_stream. The service reference lists no resource types for these four actions, so no resource-level scoping exists -- the wildcard is the narrowest possible scope.
+      - sid: ManageStreamEncryption
+        actions:
+          - kinesis:StartStreamEncryption
+          - kinesis:StopStreamEncryption
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Covers the encryption_type/kms_key_id pair the modules derive from spec.kms_key_id (set = KMS, absent = NONE). The service reference authorizes both actions against the stream AND kmsKey ARN formats, so both are granted.
+      - sid: DescribeStream
+        actions:
+          - kinesis:DescribeStreamSummary
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Read-side of aws_kinesis_stream during plan/refresh. The service reference authorizes it against the stream ARN format.
+      - sid: TagStream
+        actions:
+          - kinesis:AddTagsToStream
+          - kinesis:RemoveTagsFromStream
+          - kinesis:ListTagsForStream
+          - kinesis:TagResource
+          - kinesis:UntagResource
+          - kinesis:ListTagsForResource
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers the resource-identity tags both modules apply to the stream. Both tagging API families are granted -- the stream-specific calls and the unified TagResource calls -- because provider versions differ in which they use; every action is verified in the service reference against the stream ARN format.
+      - sid: ManageResourcePolicy
+        actions:
+          - kinesis:PutResourcePolicy
+          - kinesis:GetResourcePolicy
+          - kinesis:DeleteResourcePolicy
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers aws_kinesis_resource_policy -- created only when spec.resource_policy is set, keyed by the stream ARN. Scoped to the stream ARN format (the reference also authorizes these against consumer ARNs, which belong to AwsKinesisStreamConsumer's own profile).

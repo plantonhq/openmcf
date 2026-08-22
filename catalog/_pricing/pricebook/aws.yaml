@@ -910,3 +910,895 @@ spec:
         region_code: us-west-2
         usage_type: USW2-Kafka.m5.large
         operation: RunBroker
+    - name: nlb-hours-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0225"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: LoadBalancerUsage
+        operation: LoadBalancing:Network
+    - name: nlb-reserved-lcu-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: LCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.006"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: ReservedLCUUsage
+        operation: LoadBalancing:Network
+    - name: public-ipv4-idle-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: IP-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-PublicIPv4:IdleAddress
+    - name: tgw-vpc-attachment-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.05"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-TransitGateway-Hours
+        operation: TransitGatewayVPC
+    - name: kms-key-us-east-1
+      service_name: AWS Key Management Service
+      pricing_unit: key-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awskms/20250828153913/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awskms
+        region_code: us-east-1
+        usage_type: us-east-1-KMS-Keys
+    - name: secretsmanager-secret-us-east-1
+      service_name: AWS Secrets Manager
+      pricing_unit: secret-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.4"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20250828153804/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSSecretsManager
+        region_code: us-east-1
+        usage_type: USE1-AWSSecretsManager-Secrets
+    - name: route53-health-check-non-aws
+      service_name: Amazon Route 53
+      pricing_unit: health-check-months
+      region: global
+      currency: USD
+      list_unit_price: "0.75"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-Non-AWS
+    - name: route53-health-check-aws
+      service_name: Amazon Route 53
+      pricing_unit: health-check-months
+      region: global
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-AWS
+        description_contains: additional Health Checks of AWS endpoints
+    - name: route53-health-check-optional-feature-non-aws
+      service_name: Amazon Route 53
+      pricing_unit: feature-months
+      region: global
+      currency: USD
+      list_unit_price: "2"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-Option-Non-AWS
+    - name: cloudwatch-standard-alarm-metric-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-metric-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:AlarmMonitorUsage
+    - name: cloudwatch-highres-alarm-metric-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-metric-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.3"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:HighResAlarmMonitorUsage
+    - name: cloudwatch-composite-alarm-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:CompositeAlarmMonitorUsage
+    - name: kinesis-provisioned-shard-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: shard-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.015"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: Storage-ShardHour
+        operation: shardHourStorage
+    - name: kinesis-extended-retention-shard-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: shard-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.02"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: Extended-ShardHour
+        operation: shardHourStorage
+    - name: kinesis-on-demand-stream-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: stream-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: OnDemand-StreamHour
+        operation: OnDemandStreamHr
+    - name: client-vpn-endpoint-association-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-ClientVPN-EndpointHours
+        operation: ClientVPNEndpoints
+    - name: global-accelerator-fixed-fee
+      service_name: AWS Global Accelerator
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.025"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSGlobalAccelerator/20230914175116/aws-other/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSGlobalAccelerator
+        region_code: aws-other
+        usage_type: Global-Accelerator-fixed-fee
+    - name: waf-web-acl-month-us-east-1
+      service_name: AWS WAF
+      pricing_unit: months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awswaf
+        region_code: us-east-1
+        usage_type: USE1-WebACLV2
+    - name: waf-rule-month-us-east-1
+      service_name: AWS WAF
+      pricing_unit: months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awswaf
+        region_code: us-east-1
+        usage_type: USE1-RuleV2
+    - name: fsx-lustre-scratch-ssd-storage-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.14"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage
+        operation: CreateFileSystem:Lustre
+    - name: fsx-lustre-persistent-ssd-1000-storage-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.6"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        per_unit_storage_throughput: "1000"
+        storage_type: SSD
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.SSD.1000
+        operation: CreateFileSystem:Lustre
+    - name: fsx-lustre-persistent-hdd-12-readcache-storage-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.041"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        drive_cache_type: READ
+        per_unit_storage_throughput: "12"
+        storage_type: HDD
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.HDD.12.RC20
+        operation: CreateFileSystem:Lustre
+    - name: fsx-lustre-intelligent-tiering-throughput-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.52"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.P2
+        operation: CreateFileSystem:Lustre
+    - name: fsx-lustre-intelligent-tiering-ssd-read-cache-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.09"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.P2:INT_SSDCache
+        operation: CreateFileSystem:Lustre
+    - name: fsx-lustre-metadata-iops-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: IOPS-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.055"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-MetadataIOPS
+        operation: CreateFileSystem:Lustre
+    - name: fsx-ontap-ssd-storage-single-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_2
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.SAZ_2N2:SSD
+        operation: CreateFileSystem:ONTAP
+    - name: fsx-ontap-ssd-storage-multi-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.25"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: MULTI_AZ_2
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.MAZ2:SSD
+        operation: CreateFileSystem:ONTAP
+    - name: fsx-ontap-throughput-single-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1.6"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_2
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.SAZ_2N2
+        operation: CreateFileSystem:ONTAP
+    - name: fsx-ontap-throughput-multi-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "2.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: MULTI_AZ_2
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.MAZ2
+        operation: CreateFileSystem:ONTAP
+    - name: fsx-windows-ssd-storage-single-az-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.13"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment: single-az
+        file_system: windows
+        meter: provisioned-storage
+        storage_type: SSD
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage
+        operation: CreateFileSystem:Windows
+    - name: fsx-windows-throughput-single-az-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "2.2"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity
+        operation: CreateFileSystem:Windows
+    - name: fsx-windows-throughput-multi-az-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "4.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.MultiAZ
+        operation: CreateFileSystem:Windows
+    - name: fsx-openzfs-ssd-storage-single-az-1-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.09"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_1
+        file_system: openzfs
+        meter: provisioned-ssd-storage
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.SAZ:SSD
+        operation: CreateFileSystem:OpenZFS
+    - name: fsx-openzfs-ssd-storage-single-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.09"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_2
+        file_system: openzfs
+        meter: provisioned-ssd-storage
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.SAZ2:SSD
+        operation: CreateFileSystem:OpenZFS
+    - name: fsx-openzfs-throughput-single-az-1-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.26"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_1
+        file_system: openzfs
+        meter: throughput-capacity
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.SAZ
+        operation: CreateFileSystem:OpenZFS
+    - name: fsx-openzfs-throughput-single-az-2-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.26"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        deployment_type: SINGLE_AZ_2
+        file_system: openzfs
+        meter: throughput-capacity
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-ThroughputCapacity.SAZ2
+        operation: CreateFileSystem:OpenZFS
+    - name: fsx-openzfs-intelligent-tiering-read-cache-us-east-1
+      service_name: Amazon FSx
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.18"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonFSx
+        region_code: us-east-1
+        usage_type: USE1-Storage.MAZ:INT_SSDCache
+        operation: CreateFileSystem:OpenZFS
+    - name: sagemaker-host-ml-m5-large-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-Host:ml.m5.large
+        operation: RunInstance
+    - name: sagemaker-notebook-ml-t3-medium-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.05"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: notebook
+        instance_type: ml.t3.medium
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-Notebk:ml.t3.medium
+        operation: RunInstance
+    - name: sagemaker-notebook-ml-g4dn-xlarge-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.736"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: notebook
+        instance_type: ml.g4dn.xlarge
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-Notebk:ml.g4dn.xlarge
+        operation: RunInstance
+    - name: sagemaker-notebook-volume-gb-month-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: GB-months
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.14"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-Notebk:VolumeUsage.gp2
+        operation: CreateVolume-Gp2
+    - name: sagemaker-mlflow-small-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.6"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        size: Small
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-MLflow:TrackingServerCompute-Small
+        operation: RunTrackingServer
+    - name: sagemaker-mlflow-medium-us-west-2
+      service_name: Amazon SageMaker
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "1.04"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        size: Medium
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-west-2
+        usage_type: USW2-MLflow:TrackingServerCompute-Medium
+        operation: RunTrackingServer
+    - name: apprunner-provisioned-memory-us-east-1
+      service_name: AWS App Runner
+      pricing_unit: GB-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.007"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        meter: provisioned-memory
+      aws_selector:
+        offer_code: AWSAppRunner
+        region_code: us-east-1
+        usage_type: USE1-AppRunner-Provisioned-GB-hours
+        operation: RunService
+    - name: apprunner-provisioned-memory-us-west-2
+      service_name: AWS App Runner
+      pricing_unit: GB-hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.007"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        meter: provisioned-memory
+      aws_selector:
+        offer_code: AWSAppRunner
+        region_code: us-west-2
+        usage_type: USW2-AppRunner-Provisioned-GB-hours
+        operation: RunService
+    - name: apprunner-automatic-deployment-us-east-1
+      service_name: AWS App Runner
+      pricing_unit: months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        meter: automatic-deployment
+      aws_selector:
+        offer_code: AWSAppRunner
+        region_code: us-east-1
+        usage_type: USE1-AppRunner-AutomaticDeployment
+        operation: BuildService
+    - name: fargate-vcpu-hours-us-east-1
+      service_name: AWS Fargate
+      pricing_unit: vCPU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04048"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonECS
+        region_code: us-east-1
+        usage_type: USE1-Fargate-vCPU-Hours:perCPU
+    - name: fargate-memory-gb-hours-us-east-1
+      service_name: AWS Fargate
+      pricing_unit: GB-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.004445"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonECS
+        region_code: us-east-1
+        usage_type: USE1-Fargate-GB-Hours
+    - name: msk-serverless-cluster-hours-us-west-2
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.75"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+      retrieved_on: "2026-08-18"
+      attributes:
+        cluster_mode: serverless
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-west-2
+        usage_type: USW2-KafkaServerless-ClusterHours
+        operation: Serverless
+    - name: vpc-endpoint-interface-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-Hours
+        operation: VpcEndpoint
+    - name: vpc-endpoint-gwlbe-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-GWLBE-Hours
+        operation: VpcEndpoint
+    - name: vpc-endpoint-resource-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.02"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-Resource-Hours
+        operation: VpcResourceConsumer
+    - name: ssm-advanced-parameter-hours-us-east-1
+      service_name: AWS Systems Manager
+      pricing_unit: parameter-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00007"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSystemsManager/20260716124634/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSSystemsManager
+        region_code: us-east-1
+        usage_type: USE1-PS-Advanced-Param-Tier1
+    - name: cloudwatch-dashboard-months-global
+      service_name: AmazonCloudWatch
+      pricing_unit: dashboard-months
+      region: global
+      currency: USD
+      list_unit_price: "3"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: global
+        usage_type: DashboardsUsageHour-Basic
+        operation: DashboardHour
+    - name: ebs-gp3-iops-us-east-1
+      service_name: Amazon Elastic Block Store
+      pricing_unit: IOPS-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://aws.amazon.com/ebs/pricing/
+      retrieved_on: "2026-08-19"
+    - name: ebs-gp3-throughput-us-east-1
+      service_name: Amazon Elastic Block Store
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://aws.amazon.com/ebs/pricing/
+      retrieved_on: "2026-08-19"
+    - name: cloudwatch-canary-runs-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: runs
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0012"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: USE1-CW:Canary-runs
+    - name: amp-collector-hours-us-east-1
+      service_name: AmazonPrometheus
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonPrometheus/20260804172725/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonPrometheus
+        region_code: us-east-1
+        usage_type: USE1-AMP:CollectorHours
+    - name: budgets-action-enabled-budget-days-global
+      service_name: AWSBudgets
+      pricing_unit: Budget-days
+      region: global
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSBudgets/20221110130741/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSBudgets
+        region_code: global
+        usage_type: ActionEnabledBudgetsUsage
+        description_contains: $0.10 per Action-enabled Budget-day
+    - name: route53-resolver-eni-hours-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-ResolverNetworkInterface
+    - name: route53-firewall-domain-months-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: domain-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-DNS-FirewallDomainName
+    - name: route53-firewall-advanced-association-hours-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.16"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-AdvancedDNS-ThreatProtectionsVPCAssociationHours
+    - name: cloudmap-resource-months-us-east-1
+      service_name: AWSCloudMap
+      pricing_unit: resource-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCloudMap/20250828173015/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCloudMap
+        region_code: us-east-1
+        usage_type: USE1-Cloud-Map-Resources
+    - name: privateca-general-purpose-ca-months-us-east-1
+      service_name: AWSCertificateManager
+      pricing_unit: ca-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "400"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCertificateManager
+        region_code: us-east-1
+        usage_type: USE1-PaidPrivateCA
+    - name: privateca-short-lived-ca-months-us-east-1
+      service_name: AWSCertificateManager
+      pricing_unit: ca-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "50"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCertificateManager
+        region_code: us-east-1
+        usage_type: USE1-ShortLivedCertificatePrivateCA
+    - name: bedrock-custom-model-storage-months-us-east-1
+      service_name: AmazonBedrock
+      pricing_unit: model-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1.95"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/20260813210707/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonBedrock
+        region_code: us-east-1
+        usage_type: USE1-TitanTextG1-Lite-Customization-Storage
+    - name: sagemaker-studio-volume-gb-months-us-east-1
+      service_name: AmazonSageMaker
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.112"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-east-1
+        usage_type: USE1-Studio:VolumeUsage.gp3
+        operation: CreateVolume-Gp3

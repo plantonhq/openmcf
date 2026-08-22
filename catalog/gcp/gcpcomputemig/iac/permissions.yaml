@@ -1,0 +1,58 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcomputemig
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageInstanceTemplate
+        permissions:
+          - compute.instanceTemplates.create
+          - compute.instanceTemplates.get
+          - compute.instanceTemplates.delete
+          - compute.instanceTemplates.useReadOnly
+        provenance: derived
+        notes: Covers google_compute_instance_template and google_compute_region_instance_template (the module picks one by zone vs region); templates are immutable, so updates are create-new-then-delete-old, never an update permission. GCP defines NO compute.regionInstanceTemplates permissions (verified against IAM's testable-permissions inventory) -- regional templates authorize under these same unqualified names. useReadOnly lets the group manager reference the template.
+      - purpose: ManageGroupManager
+        permissions:
+          - compute.instanceGroupManagers.create
+          - compute.instanceGroupManagers.get
+          - compute.instanceGroupManagers.update
+          - compute.instanceGroupManagers.delete
+          - compute.instanceGroupManagers.use
+          - compute.instanceGroups.get
+          - compute.instances.create
+          - compute.instances.delete
+          - compute.zoneOperations.get
+          - compute.regionOperations.get
+        provenance: derived
+        notes: Covers google_compute_instance_group_manager / _region_instance_group_manager plus every sub-resource that authorizes THROUGH the manager -- per-instance configs (google_compute_per_instance_config / _region_) and resize requests (google_compute_resize_request / _region_) all check instanceGroupManagers.update, since GCP defines no compute.resizeRequests or per-instance-config permissions (verified against the IAM inventory; mirrors how node pools authorize under container.clusters.update). The manager creates and deletes VMs on the caller's behalf, so instances.create/delete are checked on sizing changes; zone/regionOperations.get polls the operations every mutation returns.
+      - purpose: ManageAutoscaler
+        permissions:
+          - compute.autoscalers.create
+          - compute.autoscalers.get
+          - compute.autoscalers.update
+          - compute.autoscalers.delete
+        provenance: derived
+        notes: Required only when spec.autoscaler is set (google_compute_autoscaler / _region_autoscaler). GCP defines NO compute.regionAutoscalers permissions (verified against the IAM inventory) -- regional autoscalers authorize under these same names.
+      - purpose: UseHealthCheck
+        permissions:
+          - compute.healthChecks.useReadOnly
+        provenance: derived
+        notes: Required only when auto_healing references a health check by self link -- the group manager reads it to wire auto-healing.
+      - purpose: ActAsServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Required only when template.service_account.email attaches an identity to the fleet -- GCP demands actAs on that account before creating instances running as it. Not needed when the block is omitted.

@@ -1051,6 +1051,14 @@ Fields that can point at another resource's outputs:
 | `spec.iamRoles[].role` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.options[].vpcSecurityGroupMemberships` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsRdsProxy | `spec.target.dbInstanceIdentifier` | `status.outputs.instance_identifier` |
+
 ## See Also
 
 - [Overview](../README.md)

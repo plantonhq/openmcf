@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscostcategory.v1alpha1;
+
+// AwsCostCategoryStackOutputs captures the observable state of the
+// cost category after apply.
+message AwsCostCategoryStackOutputs {
+  // The category's ARN (also the provider's import ID).
+  string category_arn = 1;
+
+  // The category's name (the key other expressions reference the
+  // category by).
+  string category_name = 2;
+
+  // When the category's rules take effect (AWS-normalized month
+  // start).
+  string effective_start = 3;
+
+  // When the category stops applying (set by AWS on deletion;
+  // normally empty).
+  string effective_end = 4;
+}

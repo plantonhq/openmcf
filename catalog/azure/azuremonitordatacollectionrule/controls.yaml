@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitordatacollectionrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule stores routing configuration, not telemetry; collected data rests at the destinations (Log Analytics workspace, Event Hub, storage account), each of which owns its encryption posture as its own catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt on the rule itself (see enc-at-rest); customer-managed-key levers live on the destination kinds.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Agent configuration download and telemetry upload run over the Azure Monitor Agent's TLS channels as platform posture; the rule offers no transport toggle.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The rule has no network endpoint of its own. Private-link ingestion is arranged through a Data Collection Endpoint (data_collection_endpoint_id references one; the DCE is managed outside this catalog), not on the rule.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both of the rule's planes are RBAC-governed with no key-based alternative -- management is ordinary ARM RBAC, and the rule's ingestion path authenticates Entra identities holding the Microsoft.Insights/DataCollectionRules/Data/Write data action (the logs-ingestion contract); agents present the machine's managed identity. No connection string, shared key, or SAS path to a rule exists.
+      notes: Granting a sender is a role assignment on the rule (Monitoring Metrics Publisher carries the data action) -- composable with AzureRoleAssignment.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The rule can carry its own managed identity -- SYSTEM_ASSIGNED created and rotated by Azure with the rule, or USER_ASSIGNED referencing an AzureUserAssignedIdentity -- used when a destination needs the rule to authenticate as itself (storage destinations on AgentDirectToStore rules, transformations querying other resources). Either way the credential is platform-issued; no secret is stored in the spec.
+      notes: A CEL pins identity_ids to the USER_ASSIGNED flavor, so a malformed identity block fails at validate time instead of deploy time.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule exposes no weaker authentication path to disable -- ingestion against it is Entra-token-only by construction (see rbac).
+    - control_id: audit-logging
+      status: configurable
+      field_path: data_sources
+      evidence:
+        type: spec_default
+        reference: The rule is the collection vehicle for machine audit trails -- windows_event_logs XPath queries select the Security and System channels, syslogs facility_names include auth/authpriv, and the selected events flow to Log Analytics where they are queryable and alertable. Which audit-bearing sources are collected is exactly what data_sources declares.
+      notes: Changes to the rule itself land in the Azure Activity Log automatically as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS the monitoring integration -- destinations is required with at least one arm (CEL-enforced), data_flows is required with at least one flow, and a deployed rule exists only to deliver telemetry streams into Log Analytics, Azure Monitor metrics, managed Prometheus, Event Hubs, or storage. A rule that routes nothing is rejected at validate time.
+      notes: The rule does nothing on its own until machines attach via AzureMonitorDataCollectionRuleAssociation -- one association per machine completes the integration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative routing configuration -- nothing to back up; the manifest recreates the rule (and re-attached machines resume collecting from it).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); retention of the COLLECTED data is the destination workspace's posture.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The rule has no runtime footprint with a zonal failure mode; the ingestion pipeline that executes it is Microsoft-operated (the region field places the rule object and its processing, while machines in any region may associate).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a rule; deleting one stops collection for every associated machine and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The ingestion pipeline that evaluates flows and transformations is Microsoft-operated Azure Monitor infrastructure; no customer-visible patch surface exists on the rule.

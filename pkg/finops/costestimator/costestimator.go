@@ -54,7 +54,7 @@ func Evaluate(
 	spec *derivationv1.ComponentCostDerivationSpec,
 	entries map[string]*pricebookv1.PriceBookEntry,
 ) (*estimatemodelv1.PresetEstimateModel, *Refusal, error) {
-	specMsg, err := manifestSpec(manifest)
+	specMsg, err := ManifestSpec(manifest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -79,11 +79,11 @@ func Evaluate(
 		return nil, refusal, err
 	}
 
-	exclusions, err := matchingTexts(specMsg, spec.GetExclusions())
+	exclusions, err := MatchingTexts(specMsg, spec.GetExclusions())
 	if err != nil {
 		return nil, nil, err
 	}
-	notes, err := matchingTexts(specMsg, spec.GetNotes())
+	notes, err := MatchingTexts(specMsg, spec.GetNotes())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -179,8 +179,27 @@ func resolvePrice(
 	currency string,
 ) (string, *Refusal, error) {
 	if slug := rule.GetPriceSlug(); slug != "" {
-		if _, ok := entries[slug]; !ok {
+		entry, ok := entries[slug]
+		if !ok {
 			return "", nil, fmt.Errorf("line %q: price_slug %q resolves to no price book entry", rule.GetSkuMeter(), slug)
+		}
+		// The live boundary's own agreement check: the replay lane's
+		// generator re-proves entry/preset region and currency agreement
+		// offline, but a LIVE manifest carries its own region -- pricing a
+		// Frankfurt manifest with a Virginia rate would be a wrong number
+		// that looks exactly like a right one, so a slug-named entry that
+		// disagrees refuses instead of silently pricing. Mirrors the Java
+		// evaluator's identical check; value-keyed lookups filter on both
+		// fields already.
+		if entry.GetCurrency() != currency {
+			return "", &Refusal{Reason: fmt.Sprintf(
+				"the pinned price for %s is in %s but this component prices in %s -- a number across currencies would be a guess",
+				rule.GetSkuMeter(), entry.GetCurrency(), currency)}, nil
+		}
+		if entry.GetRegion() != pricebook.GlobalRegion && entry.GetRegion() != region {
+			return "", &Refusal{Reason: fmt.Sprintf(
+				"no pinned price for %s in %s -- the price book covers this charge in %s only, and a number priced from another region's rate would be a guess",
+				rule.GetSkuMeter(), region, entry.GetRegion())}, nil
 		}
 		return slug, nil, nil
 	}
@@ -402,7 +421,10 @@ func conditionsHold(specMsg protoreflect.Message, conditions []*derivationv1.Con
 // conditionHolds evaluates one condition. Comparisons read the field's
 // EFFECTIVE value (an unset scalar reads as its zero value); presence
 // checks read explicit presence. Catalog placeholders ("<aws-region>")
-// read as unset either way.
+// read as unset either way. A value-or-reference wrapper is PRESENT for
+// the presence ops when EITHER arm is populated: a manifest that wires
+// the field by reference has configured it, even though the referenced
+// value itself stays unknowable to comparisons, quantities, and lookups.
 func conditionHolds(specMsg protoreflect.Message, condition *derivationv1.Condition) (bool, error) {
 	resolved, err := specpath.Resolve(specMsg, condition.GetFieldPath())
 	if err != nil {
@@ -420,7 +442,11 @@ func conditionHolds(specMsg protoreflect.Message, condition *derivationv1.Condit
 				present = false
 			}
 		} else if present && resolved.Field.Kind() == protoreflect.MessageKind && !resolved.Field.IsMap() {
-			if text, unwrapped := unwrapValue(resolved.Field, resolved.Value); unwrapped && text == "" {
+			// A wrapper whose literal arm renders empty is unset only
+			// when nothing else is populated: an empty or placeholder
+			// literal reads unset, a reference arm reads set.
+			if text, unwrapped := unwrapValue(resolved.Field, resolved.Value); unwrapped && text == "" &&
+				!wrapperCarriesReference(resolved.Value) {
 				present = false
 			}
 		}
@@ -482,8 +508,12 @@ func zoneToRegion(location string) string {
 	return location
 }
 
-// matchingTexts returns the texts whose conditions hold, in authored order.
-func matchingTexts(specMsg protoreflect.Message, texts []*derivationv1.ConditionalText) ([]string, error) {
+// MatchingTexts returns the texts whose conditions hold, in authored
+// order. Exported because the capacity estimator's exclusions and notes
+// ride the same ConditionalText vocabulary -- condition semantics
+// (effective values, placeholder-as-unset, reference presence) have
+// exactly one home, this package.
+func MatchingTexts(specMsg protoreflect.Message, texts []*derivationv1.ConditionalText) ([]string, error) {
 	var matched []string
 	for _, text := range texts {
 		holds, err := conditionsHold(specMsg, text.GetAppliesWhen())
@@ -497,8 +527,9 @@ func matchingTexts(specMsg protoreflect.Message, texts []*derivationv1.Condition
 	return matched, nil
 }
 
-// manifestSpec returns the manifest's spec message.
-func manifestSpec(manifest proto.Message) (protoreflect.Message, error) {
+// ManifestSpec returns the manifest's spec message. Exported for the
+// capacity estimator, which evaluates the same spec-relative paths.
+func ManifestSpec(manifest proto.Message) (protoreflect.Message, error) {
 	reflected := manifest.ProtoReflect()
 	specField := reflected.Descriptor().Fields().ByName("spec")
 	if specField == nil || specField.Kind() != protoreflect.MessageKind {
@@ -529,6 +560,23 @@ func effectiveString(resolved specpath.Resolved) (string, error) {
 		value = resolved.Field.Default()
 	}
 	return renderScalar(resolved.Field, value)
+}
+
+// wrapperCarriesReference reports whether a value-or-reference wrapper is
+// populated on an arm OTHER than its literal `value` field -- i.e. the
+// manifest configures the field by referencing another resource's output.
+// The referenced VALUE is unknowable at estimate time, but its PRESENCE is
+// a real configuration fact -- exactly what presence conditions ask.
+func wrapperCarriesReference(value protoreflect.Value) bool {
+	carries := false
+	value.Message().Range(func(field protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+		if field.Name() != "value" {
+			carries = true
+			return false
+		}
+		return true
+	})
+	return carries
 }
 
 // unwrapValue reads a wrapper message's scalar `value` field (the

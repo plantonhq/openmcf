@@ -1,0 +1,69 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsecrregistrysettings
+spec:
+  aws:
+    statements:
+      - sid: ManageRegistrySingletons
+        actions:
+          - ecr:PutRegistryPolicy
+          - ecr:GetRegistryPolicy
+          - ecr:DeleteRegistryPolicy
+          - ecr:PutRegistryScanningConfiguration
+          - ecr:GetRegistryScanningConfiguration
+          - ecr:PutReplicationConfiguration
+          - ecr:DescribeRegistry
+        resources:
+          - "*"
+        provenance: derived
+        notes: "Covers the three one-per-registry singletons: aws_ecr_registry_policy / ecr.RegistryPolicy (Put serves create and update, Delete serves destroy, Get every plan/refresh), aws_ecr_registry_scanning_configuration / ecr.RegistryScanningConfiguration (Put serves create, update, AND destroy -- destroy puts the empty BASIC default back, since AWS has no delete), and aws_ecr_replication_configuration / ecr.ReplicationConfiguration (same reset-not-delete shape; DescribeRegistry is its read on every refresh). Every registry-level ECR action is NON-SCOPABLE -- the service reference publishes only the repository resource type for ECR -- so the wildcard is the narrowest possible scope; an ARN-scoped grant would be a runtime DENY."
+      - sid: ManagePullThroughCacheRules
+        actions:
+          - ecr:CreatePullThroughCacheRule
+          - ecr:UpdatePullThroughCacheRule
+          - ecr:DeletePullThroughCacheRule
+          - ecr:DescribePullThroughCacheRules
+        resources:
+          - "*"
+        provenance: derived
+        notes: "Covers aws_ecr_pull_through_cache_rule / ecr.PullThroughCacheRule -- one per prefix-keyed entry; Update serves credential/custom-role changes, Describe runs on every plan/refresh, and prefix changes replace (Delete + Create). All four are NON-SCOPABLE per the service reference. The pull-TIME permissions AWS documents for cache use (ecr:BatchImportUpstreamImage, ecr:CreateRepository on the cached prefixes) belong to the principals PULLING through the cache -- subject-matter guidance for the registry policy or pullers' identity policies, never a grant the runner needs to manage the rules."
+      - sid: ManageRepositoryCreationTemplates
+        actions:
+          - ecr:CreateRepositoryCreationTemplate
+          - ecr:UpdateRepositoryCreationTemplate
+          - ecr:DeleteRepositoryCreationTemplate
+          - ecr:DescribeRepositoryCreationTemplates
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ecr_repository_creation_template / ecr.RepositoryCreationTemplate -- one per prefix-keyed entry; in-place updates of every mutable argument, Describe on every plan/refresh, prefix changes replace. All four are NON-SCOPABLE per the service reference.
+      - sid: ManageAccountSettings
+        actions:
+          - ecr:PutAccountSetting
+          - ecr:GetAccountSetting
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ecr_account_setting / ecr.AccountSetting -- one Put upsert per configured toggle (BASIC_SCAN_TYPE_VERSION, BLOB_MOUNTING, REGISTRY_POLICY_SCOPE), Get on every plan/refresh; the resource's delete is a provider no-op (values persist), so no delete action exists. Both actions are NON-SCOPABLE per the service reference.
+      - sid: ManagePullTimeUpdateExclusions
+        actions:
+          - ecr:RegisterPullTimeUpdateExclusion
+          - ecr:DeregisterPullTimeUpdateExclusion
+          - ecr:ListPullTimeUpdateExclusions
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ecr_pull_time_update_exclusion / ecr.PullTimeUpdateExclusion -- one immutable registration per principal ARN (a change re-registers), List on every plan/refresh. All three are NON-SCOPABLE per the service reference (a young API surface -- if AWS later publishes resource types for these actions, this is the statement to tighten).
+      - sid: PassCustomRolesToEcr
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "Required only when a cache rule's custom_role_arn (cross-account ECR upstream pulls) or a creation template's custom_role_arn (the repository-creation role ECR assumes, mandatory when a template stamps KMS encryption or resource tags) is set: handing any AWS service a role to assume requires the configuring principal to hold iam:PassRole on that role -- IAM's platform-wide pass-role rule, enforced by the ECR APIs that accept the ARN. Tighten the resource to the specific role ARNs the manifests reference."

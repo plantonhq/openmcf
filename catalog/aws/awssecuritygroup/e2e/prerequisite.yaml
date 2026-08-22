@@ -127,3 +127,57 @@ spec:
       ipv4Cidrs:
         - 0.0.0.0/0
       description: All outbound (AWS APIs, package installs)
+---
+# Document 4 -- resolver DNS group (AwsRoute53ResolverEndpoint): DNS on
+# TCP+UDP 53 from the VPC prerequisite's CIDR (inbound endpoints answer
+# queries on it; outbound endpoints originate from it and need the
+# egress), nothing internet-reachable. Consumers select this instance
+# by name.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSecurityGroup
+metadata:
+  name: planton-oss-e2e-awssg-resolver-dns
+  id: planton-oss-e2e-awssg-resolver-dns
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  description: Planton E2E resolver DNS group; DNS (TCP+UDP 53) within the VPC
+  ingress:
+    - protocol: tcp
+      fromPort: 53
+      toPort: 53
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: DNS over TCP from the E2E VPC
+    - protocol: udp
+      fromPort: 53
+      toPort: 53
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: DNS over UDP from the E2E VPC
+  egress:
+    - protocol: tcp
+      fromPort: 53
+      toPort: 53
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: Forwarded DNS over TCP to targets in the VPC CIDR
+    - protocol: udp
+      fromPort: 53
+      toPort: 53
+      ipv4Cidrs:
+        - 10.0.0.0/16
+      description: Forwarded DNS over UDP to targets in the VPC CIDR

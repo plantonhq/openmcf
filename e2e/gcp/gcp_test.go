@@ -946,6 +946,13 @@ func TestGcpEventarcMessageBus_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpeventarcmessagebus", "terraform")
 }
 
+func TestGcpPlantonRunner_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpplantonrunner", "pulumi")
+}
+func TestGcpPlantonRunner_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpplantonrunner", "terraform")
+}
+
 // --- GCP Certificate Map (SNI routing table: deploys the GcpCertManagerCert prerequisite chain) ---
 
 func TestGcpCertificateMap_Pulumi(t *testing.T) {

@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefirewallpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy is a configuration document held by Azure's network control plane; it stores no customer data at rest. Notably, the TLS-inspection CA private key never lives on the policy -- tls_certificate references a Key Vault secret the firewall reads at runtime.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy carries no traffic of its own; management flows through ARM's TLS-only API. (Premium TLS inspection -- tls_certificate plus terminate_tls rules -- is about decrypting and re-encrypting OTHER workloads' traffic for inspection, a filtering capability recorded under edge-protection, not this component's own transit posture.)
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy document has no network endpoint -- nothing exists to reach from the internet. The explicit_proxy block makes the attached FIREWALL listen as a forward proxy; the exposure surface is the firewall's, a separate kind.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Firewall is deny-by-default -- a firewall enforcing this policy drops every flow no rule explicitly allows, so inbound traffic reaches workloads only through DNAT and network rules deliberately declared in the policy's rule collection groups. An empty policy attached to a firewall is a closed door, not an open one.
+      notes: The allow rules themselves live in AzureFirewallPolicyRuleCollectionGroup children, each carrying explicit source/destination contracts; base_policy_id layers a security-team baseline beneath application policies so the restriction floor is inherited, not re-authored.
+    - control_id: edge-protection
+      status: enforced_by_default
+      field_path: threat_intelligence_mode
+      evidence:
+        type: spec_default
+        reference: Traffic filtering IS the resource -- the policy is the complete inspection document Azure Firewall enforces. Threat intelligence is on from birth -- unspecified threat_intelligence_mode deploys ALERT (Microsoft's feed of known-malicious IPs and domains, logged), and DENY -- log and block -- is a one-enum upgrade. Premium (sku PREMIUM) adds signature-based IDPS (intrusion_detection, per-signature overrides, traffic bypass) and TLS inspection (tls_certificate) so even encrypted flows are inspected.
+      notes: The spec front-loads the Premium gates (IDPS and TLS inspection are rejected on lower tiers) and the dns block's proxy_enabled keeps FQDN rules deterministic. Enforcement happens on the firewalls that attach the policy -- one document, every firewall in the fleet.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the policy exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The identity block attaches a managed identity to the policy -- required in practice for TLS inspection, where the firewall reads the CA certificate from Key Vault as a USER_ASSIGNED identity with platform-issued tokens ("Key Vault Secrets User" under RBAC). No credential is ever stored on the policy.
+      notes: Policies without TLS inspection legitimately carry no identity -- the stance is configurable, not default-on.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Policy creation, rule-surface changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; traffic and rule-hit logs are emitted by the attached FIREWALLS through their diagnostic settings, a separate kind's posture.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: insights
+      evidence:
+        type: spec_default
+        reference: The insights block wires Firewall Policy Analytics into a Log Analytics workspace (default_log_analytics_workspace_id, per-region routing for multi-region fleets, retention_in_days) -- rule-usage and traffic analysis for the policy across every firewall enforcing it.
+      notes: Policy Analytics carries its own enablement fee (see the cost profile). Raw firewall metrics and logs remain the firewalls' diagnostic posture.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the policy, and its rule collection groups recreate from their own manifests.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); insights.retention_in_days governs analytics retention, not backups.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional configuration object with no data path of its own -- zone redundancy is the attached firewalls' deployment posture. One policy can serve firewalls in any region, which is resilience of MANAGEMENT, not of a runtime.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a firewall policy (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a policy still attached to firewalls or still carrying rule collection groups, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The enforcement engine is Microsoft-operated, and so is the intelligence inside it -- Microsoft continuously updates the threat-intelligence feed and the IDPS signature catalog the policy references; no customer-visible patch surface exists.

@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandropletautoscalepool
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Droplets
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      description: Every pool member is a real droplet billing its size's hourly rate from the moment the pool provisions it. A static pool bills target_instances droplets around the clock; a dynamic pool bills between min_instances and max_instances depending on load.
+  cost_drivers:
+    - field_path: droplet_template.size
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      impact: The size slug sets every member's hourly rate -- the pool multiplies it by the member count, so a one-step size change moves the whole pool's bill.
+    - field_path: static.target_instances
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      impact: A static pool holds exactly this many droplets running at all times.
+    - field_path: dynamic.min_instances
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      impact: The floor of a dynamic pool's bill -- min_instances droplets run even at zero load.
+    - field_path: dynamic.max_instances
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      impact: The ceiling of a dynamic pool's bill under sustained load.
+    - field_path: droplet_template.ipv6
+      sku_meter: member droplet hours
+      pricing_unit: hours
+      impact: No separate charge -- IPv6 is free on droplets; listed only to note it does NOT move the bill.
+  notes: Destroying the pool destroys its member droplets (the API's only delete is the dangerous variant), which also STOPS the bill -- but an orphaned pool keeps real droplets billing indefinitely, so the zero-orphan sweep matters doubly here.

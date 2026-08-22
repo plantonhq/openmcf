@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurebackupcontainerstorageaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The registration is a control-plane binding that moves and stores no data; encryption of the storage account's data and of vaulted backups belongs to AzureStorageAccount and AzureRecoveryServicesVault respectively.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The registration moves no data; backup transfer transport belongs to the Azure Backup service and is exercised by the protected-share bindings, not by this registration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The registration has no reachable endpoint; network exposure posture belongs to the storage account and the vault, each a separate catalog kind.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path of its own to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is ARM RBAC on the vault's protection-container operations (subscription/resource-group posture); the registration exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The registration runs no workloads and holds no credentials; Azure Backup's own service identity performs the protection.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Register and unregister operations land in the Azure Activity Log as subscription-level posture; backup-job audit belongs to the vault's diagnostic surface.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The registration publishes no metrics of its own; backup alerts and job health are the vault's monitoring surface (AzureRecoveryServicesVault's built-in alerts).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The registration is the PREREQUISITE for file-share protection but backs nothing up itself -- protection (and its restore capability) attaches per share through AzureBackupProtectedFileShare bindings.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention lives on the file-share backup policy (AzureBackupPolicyFileShare), not on the registration.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A control-plane binding with no data plane of its own; backup-data redundancy is the vault's storage_mode_type, and share availability is the storage account's SKU -- both separate catalog kinds.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure refuses to unregister the container while ANY of the account's file shares are still protected -- destroying this resource fails until the protections are destroyed first. While registered, Azure Backup also places an ARM resource lock on the storage account, protecting the backups' source from deletion.
+      notes: The GUIDE carries the teardown recipe; vault soft delete (always on) can hold deleted protections for 14 days, delaying the unregister. The lock is removed when the account is unregistered.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure ARM registration object inside the Microsoft-operated Azure Backup fabric -- no software surface of its own to patch.

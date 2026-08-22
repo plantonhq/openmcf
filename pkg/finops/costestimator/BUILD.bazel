@@ -23,6 +23,7 @@ go_test(
     deps = [
         "//catalog/aws/awsalb/v1alpha1",
         "//catalog/aws/awseksnodegroup/v1alpha1",
+        "//catalog/aws/awselasticip/v1alpha1",
         "//catalog/aws/awsrdsinstance/v1alpha1",
         "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/pricebook/v1:pricebook",

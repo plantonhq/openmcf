@@ -1,0 +1,99 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesvalkey
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.valkey (Pulumi namespace equivalent) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.auth -- the <name>-auth Opaque Secret holding declared ACL passwords (one key per username), rendered only when spec.auth is declared. The Helm release itself also stores its state in namespace-scoped release Secrets, covered by the same verbs.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.valkey -- the official Valkey chart renders the write/headless/read/metrics Services, the valkey.conf ConfigMap, a ServiceAccount, and (replication mode) volumeClaimTemplates that materialize PVCs. The release installs with wait=true, so the runner also reads pods to confirm readiness. The chart's full object surface is the chart's to evolve; these are the families the pinned chart (0.11.0) manages.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workload -- a Deployment in standalone mode, a StatefulSet in replication mode (spec.replication present).
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's PodDisruptionBudget -- rendered only in replication mode with spec.pod_disruption_budget.enabled (the chart gates its PDB template on replica.enabled, so the module omits it standalone).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's ServiceMonitor -- rendered only when spec.metrics.service_monitor_enabled is true (requires the Prometheus operator CRDs on the cluster).

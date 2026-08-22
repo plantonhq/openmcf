@@ -1,0 +1,21 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  namespace:
+    value: planton-runner
+  createNamespace: true
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token
+  # The build worker executes container-image build pipelines through
+  # Tekton on this cluster. Tekton Pipelines must already be installed.
+  build:
+    enabled: true
+    # The namespace Tekton build pipelines run in -- the conventional
+    # namespace of a stock Tekton Pipelines install.
+    tektonNamespace: tekton-pipelines

@@ -1,0 +1,97 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpcloudarmorpolicy
+spec:
+  presets:
+    - preset: 01-basic-ip-allowlist
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Networking
+          sku_meter: security policy months
+          pricing_unit: policy-months
+          pricing_quantity: "1"
+          quantity_basis: one security policy, billed the flat Cloud Armor Standard monthly policy fee from creation, attached or not
+          list_unit_price: "5"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "5.0000"
+        - service_name: Networking
+          sku_meter: security policy rule months
+          pricing_unit: rule-months
+          pricing_quantity: "2"
+          quantity_basis: one flat Cloud Armor Standard monthly rule fee per authored rule, including the mandatory priority-2147483647 default rule the API requires a non-empty set to carry
+          list_unit_price: "1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "2.0000"
+      total_list_cost: "7.0000"
+      exclusions:
+        - request inspections -- every request the policy evaluates bills per million (globally scoped rate) and follows traffic no manifest can know
+      notes: Priced at Cloud Armor Standard, the tier every project without a Cloud Armor Enterprise enrollment bills. Enterprise enrollment -- a project-level subscription invisible to this manifest -- zeroes the policy, rule, and request meters and bills a subscription plus per-GiB data processing instead.
+    - preset: 02-rate-limiting-api
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Networking
+          sku_meter: security policy months
+          pricing_unit: policy-months
+          pricing_quantity: "1"
+          quantity_basis: one security policy, billed the flat Cloud Armor Standard monthly policy fee from creation, attached or not
+          list_unit_price: "5"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "5.0000"
+        - service_name: Networking
+          sku_meter: security policy rule months
+          pricing_unit: rule-months
+          pricing_quantity: "2"
+          quantity_basis: one flat Cloud Armor Standard monthly rule fee per authored rule, including the mandatory priority-2147483647 default rule the API requires a non-empty set to carry
+          list_unit_price: "1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "2.0000"
+      total_list_cost: "7.0000"
+      exclusions:
+        - request inspections -- every request the policy evaluates bills per million (globally scoped rate) and follows traffic no manifest can know
+      notes: Priced at Cloud Armor Standard, the tier every project without a Cloud Armor Enterprise enrollment bills. Enterprise enrollment -- a project-level subscription invisible to this manifest -- zeroes the policy, rule, and request meters and bills a subscription plus per-GiB data processing instead.
+    - preset: 03-waf-owasp-protection
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Networking
+          sku_meter: security policy months
+          pricing_unit: policy-months
+          pricing_quantity: "1"
+          quantity_basis: one security policy, billed the flat Cloud Armor Standard monthly policy fee from creation, attached or not
+          list_unit_price: "5"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "5.0000"
+        - service_name: Networking
+          sku_meter: security policy rule months
+          pricing_unit: rule-months
+          pricing_quantity: "3"
+          quantity_basis: one flat Cloud Armor Standard monthly rule fee per authored rule, including the mandatory priority-2147483647 default rule the API requires a non-empty set to carry
+          list_unit_price: "1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "3.0000"
+      total_list_cost: "8.0000"
+      exclusions:
+        - request inspections -- every request the policy evaluates bills per million (globally scoped rate) and follows traffic no manifest can know
+      notes: Priced at Cloud Armor Standard, the tier every project without a Cloud Armor Enterprise enrollment bills. Enterprise enrollment -- a project-level subscription invisible to this manifest -- zeroes the policy, rule, and request meters and bills a subscription plus per-GiB data processing instead.

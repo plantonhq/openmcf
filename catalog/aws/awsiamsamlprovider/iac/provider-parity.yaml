@@ -1,0 +1,22 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_iam_saml_provider:
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the platform names resources through metadata, never a spec field
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+specExclusions:
+  # IAM is a GLOBAL service: the consumed resource carries no region
+  # argument. The spec's region drives only the provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- IAM is global and the consumed resource has no region argument

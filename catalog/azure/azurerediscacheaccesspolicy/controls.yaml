@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurerediscacheaccesspolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A policy is authorization metadata held by the cache's control plane; the cached data it governs -- and any persistence encryption -- belong to the AzureRedisCache kind's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy carries no traffic of its own; client TLS enforcement (non-SSL port, minimum TLS version) is the AzureRedisCache kind's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A permission set has no network endpoint; the cache's exposure (public network access, private endpoints) is the AzureRedisCache kind's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access) -- the policy's key patterns scope DATA access, not network sources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS a data-plane permission set -- the Redis analog of a custom role definition, and it cannot be deployed without expressing one. permissions (the ACL string) and policy_name are required, and the ACL grammar is least-privilege by construction -- command categories ("+@read"), single commands ("+get"), carve-outs ("-@dangerous"), and key patterns ("~app1:*") narrow the grant to exactly what a workload touches.
+      notes: The policy grants nothing by itself -- an AzureRedisCacheAccessPolicyAssignment (a separate kind) binds it to an Entra principal. Custom policies exist for when the built-in Data Owner/Contributor/Reader trio is too coarse.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy names no principal -- WHO gets it is the assignment kind's posture; the policy only defines the rights that token-authenticated identities can be granted.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Policies gate token-authenticated (Entra) clients only -- access-key clients bypass them entirely. The switches that enable Entra auth and disable access keys live on the AzureRedisCache kind's spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Policy creation, updates, and deletion land in the Azure Activity Log as subscription-level posture; data-plane connection auditing is the cache's diagnostic-settings surface.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A permission set emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the policy, and its permissions string updates in place.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A policy has no runtime footprint with a zonal failure mode; it lives in the cache's Microsoft-operated configuration store and follows the cache's own availability posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an access policy (Azure resource locks are subscription-side governance outside the manifest); deleting one strands any assignments referencing it, and both are recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The ACL engine that stores and evaluates policies is part of the Microsoft-operated Azure Cache for Redis service; no customer-visible patch surface exists.

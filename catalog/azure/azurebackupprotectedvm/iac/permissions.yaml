@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurebackupprotectedvm
+spec:
+  azure:
+    groups:
+      - purpose: ManageProtectedItem
+        actions:
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/protectedItems/read
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/protectedItems/write
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/protectedItems/delete
+        provenance: derived
+        notes: Covers azurerm_backup_protected_vm / backup.NewProtectedVM -- register the VM under the policy (write on the vault-scoped protected item ARM derives the name of), refresh, in-place updates (policy re-point, disk scoping, protection_state), and destroy (which stops protection AND deletes backup data -- the modules keep the engines' default). Typically held via Backup Contributor or Contributor on the VAULT's resource group. Providers poll the item after mutations, so read persists through creates and destroys.
+      - purpose: ReadVaultAndPolicy
+        actions:
+          - Microsoft.RecoveryServices/Vaults/read
+          - Microsoft.RecoveryServices/Vaults/backupPolicies/read
+        provenance: derived
+        notes: The providers address the protected item as a child of the named vault and validate the referenced backup_policy_id against it at plan and apply time -- reads on the vault and its policies, on the vault's scope.
+      - purpose: ReadSourceVm
+        actions:
+          - Microsoft.Compute/virtualMachines/read
+        provenance: derived
+        notes: The modules never call the compute API -- the resolved source_vm_id rides the registration payload -- but ARM derives the protected item's identity from the VM's group and name and validates the VM exists in the vault's region, reading it on the VM's own scope (service-side). VMs in other resource groups need this read there.

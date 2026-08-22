@@ -1,0 +1,54 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awselasticfilesystem
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: throughput_mode
+      sku_meter: elastic throughput
+      pricing_unit: GB
+      impact: Picks how bandwidth bills. Bursting (the default) includes throughput with the storage footprint for free; elastic bills every GB read and written at per-GB rates that scale to zero when idle; provisioned turns throughput into a committed monthly charge (see provisioned_throughput_in_mibps). AWS enforces a 24-hour cooldown between mode changes.
+    - field_path: provisioned_throughput_in_mibps
+      sku_meter: provisioned throughput
+      pricing_unit: MBps-months
+      impact: The one field in this spec that bills without any workload -- provisioned MiB/s charge monthly whether or not a byte moves, net of the baseline throughput the Standard storage footprint already includes. None of the presets set it; the default bursting and the recommended elastic modes carry no idle throughput charge.
+    - field_path: transition_to_ia
+      sku_meter: Infrequent Access storage
+      pricing_unit: GB-months
+      impact: Moves files untouched for the configured window to the IA class -- a lower GB-month rate in exchange for per-GB charges on tiering and on every later access. Savings for data read a few times a quarter; a new meter for data that was not actually cold.
+    - field_path: transition_to_archive
+      sku_meter: Archive storage
+      pricing_unit: GB-months
+      impact: The deepest discount tier for files already in IA -- the lowest GB-month rate with per-GB access charges suited to data touched a few times a year or less. Spec validation requires transition_to_ia first (files pass through IA on the way down).
+    - field_path: transition_to_primary_storage_class
+      sku_meter: tiering activity
+      pricing_unit: GB
+      impact: AFTER_1_ACCESS warms any IA/Archive file back to Standard on first read -- one tiering charge per GB moved, in exchange for taking rewarmed files off the per-access meters. Leaving it empty keeps files cold (and their access charges recurring) no matter how often they are read.
+    - field_path: availability_zone_name
+      sku_meter: One Zone storage
+      pricing_unit: GB-months
+      impact: Pinning an AZ switches every storage class to its cheaper One Zone variant -- single-AZ redundancy at a lower GB-month rate. Create-time only, and the EFS free tier does not apply to One Zone file systems.
+    - field_path: backup_enabled
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Enrolls the file system in AWS Backup's automatic daily backups -- backup storage bills per GB-month and restores bill per GB, both on AWS Backup's meters rather than EFS's.
+    - field_path: replication
+      sku_meter: replication data transfer
+      pricing_unit: GB
+      impact: The replica is a second file system billing its own storage and access meters, and the sync traffic bills at EC2 data-transfer rates -- cross-region replication pays inter-region transfer out of the source region, cross-AZ replication pays the cross-AZ rate. An AZ-name destination makes the replica One Zone, the cheaper DR shape.
+    - field_path: mount_targets
+      sku_meter: cross-AZ data transfer
+      pricing_unit: GB
+      impact: Mount targets are free, but their placement decides transfer charges -- clients mounting through a target in their own AZ transfer for free, while reaching a target in another AZ bills EC2's cross-AZ rate in each direction. One mount target per AZ is the cost-and-availability shape.
+  free_tier: New AWS accounts get 5 GB per month of EFS Standard storage on a Regional file system for their first 12 months. The free tier does not apply to One Zone file systems.
+  estimate_exclusions:
+    - storage is written-data-driven -- GB-months by class (Standard, IA, Archive, or their One Zone variants) grow and shrink with the files, and an empty file system bills nothing under the default bursting mode
+    - elastic throughput and IA/Archive access charges follow read/write traffic entirely
+    - cross-AZ and cross-region access and replication traffic bill at EC2 data-transfer rates
+    - backup storage and restore volume bill through AWS Backup
+    - a customer-managed encryption key bills its monthly charge and requests on the referenced AwsKmsKey component
+  notes: "EFS bills what the files weigh and what the workload moves: storage per GB-month by class, plus throughput on whichever arm throughput_mode picks. Applying this manifest starts no meter in the default shape -- bursting throughput is included with storage, and even the recommended elastic mode bills only per GB actually transferred. The exception to watch is provisioned mode: provisioned_throughput_in_mibps is committed monthly spend from the moment it is set, the only always-billing choice this spec can make. The lifecycle trio (IA, Archive, back-to-primary) is the storage cost control, and its trap is the same one S3's cold classes have -- cold-class access bills per GB, so tiering data that is still read regularly moves the spend rather than removing it."

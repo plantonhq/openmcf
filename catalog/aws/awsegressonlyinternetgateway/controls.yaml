@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsegressonlyinternetgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An egress-only internet gateway stores nothing -- it is a stateless-to-the-operator packet-forwarding element (the connection state AWS tracks to block unsolicited inbound is internal and ephemeral), with no data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A layer-3 gateway forwards whatever the communicating endpoints negotiated -- it neither terminates nor enforces TLS. Transport encryption is decided by the workloads on each side, outside this spec.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: One-way traffic is the component's entire design -- AWS statefully allows only connections INITIATED from inside the VPC and drops every unsolicited inbound IPv6 connection at any configuration. Nothing behind this gateway is reachable from the internet through it; that guarantee is why it exists, since globally-routable IPv6 addresses get no NAT layer to hide behind.
+      notes: The guarantee covers traffic routed through THIS gateway -- a subnet that also routes ::/0 to a full internet gateway has chosen bidirectional exposure on that other component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The gateway performs no per-source filtering to configure -- it blocks ALL unsolicited inbound (see no-public-access) rather than restricting to declared sources. Source-scoped inbound rules for the workloads live on their security groups (AwsSecurityGroup) and network ACLs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web ACL or request filter can attach to an egress-only internet gateway -- and since it admits no inbound connections, there is no inbound request surface to protect.
+    - control_id: rbac
+      status: not_applicable
+      notes: The gateway has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and the traffic it forwards carries no identity model.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The gateway exposes no authentication path at all -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls land in AWS CloudTrail as account-level posture, and traffic-level visibility is VPC Flow Logs, configured on the VPC, subnet, or interface -- none of it per-gateway configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An egress-only internet gateway publishes no CloudWatch metrics of its own -- traffic through it appears in the metrics of the instances sending it and in VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The gateway is declarative configuration fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An egress-only internet gateway is a horizontally scaled, redundant, highly available AWS-managed component, with nothing to configure and no zonal placement to choose.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag, and AWS deletes the gateway even while subnet route tables still target it (those IPv6 default routes then blackhole) -- teardown care is operational discipline, not a configurable guard.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The gateway is an AWS-operated infrastructure element with no operator-visible software -- AWS maintains it invisibly, and nothing about patching is exposed to configure.

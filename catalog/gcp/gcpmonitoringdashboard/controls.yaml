@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmonitoringdashboard
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A dashboard stores no customer data -- dashboard_json is Cloud Monitoring control-plane metadata held inside Google's own service infrastructure; the metric data the charts display lives in Monitoring's datastore, not in this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); the Monitoring API exposes no CMEK surface for dashboards.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A dashboard terminates no connections of its own. Management calls and console rendering happen on Google API and console endpoints, which serve exclusively over TLS as provider behavior, not per-dashboard configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A dashboard has no network endpoint to expose; it is viewable only through the IAM-governed GCP console and Monitoring API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a dashboard is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A dashboard receives no HTTP requests of its own -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, modifying, deleting, and viewing dashboards is governed by Cloud Monitoring IAM roles on the owning project (the monitoring.dashboards.* permission family); no anonymous or non-IAM path exists.
+      notes: The spec exposes no per-dashboard access surface -- access scoping is the project's IAM posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A dashboard holds no credentials and calls no cloud APIs as itself; chart queries execute under the viewing user's identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path involving the dashboard is IAM-authenticated console and API access; no weaker alternative exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create, update, and delete on a dashboard is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The dashboard is itself a monitoring VIEW -- it displays metrics rather than emitting runtime telemetry of its own to export.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A dashboard holds no data to back up -- it is declarative configuration fully re-creatable from the manifest (dashboard_json is the complete definition).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Dashboards live in Cloud Monitoring's regional-redundant control plane with no zonal placement to configure; availability is Google's service posture, not per-dashboard configuration.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the provider default); PREVENT makes any destroying plan fail until the value is lifted, and ABANDON removes the dashboard from management while it stays visible in the GCP console.
+      notes: This is an IaC-engine guard, not an API-side flag -- deletion through the GCP console or gcloud is not blocked by it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A dashboard is a pure configuration object with no software to patch; the rendering surface is the Google-operated console.

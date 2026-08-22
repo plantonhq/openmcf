@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLambdaLayer
+metadata:
+  name: org-runtime-layer
+spec:
+  region: us-east-1
+  code:
+    bucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: build-artifacts
+        fieldPath: status.outputs.bucket_id
+    key: layers/org-runtime.zip
+  sourceCodeHash: REPLACE_WITH_BASE64_SHA256_OF_ZIP
+  description: Organization-wide custom runtime layer
+  compatibleRuntimes:
+    - provided.al2023
+  skipDestroy: true
+  permissions:
+    - statementId: org-wide
+      principal: "*"
+      organizationId: o-REPLACE12345

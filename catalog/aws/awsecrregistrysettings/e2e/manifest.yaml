@@ -1,0 +1,43 @@
+# Canonical AwsEcrRegistrySettings example (hack/dev manifest and
+# refgen Example source): enhanced scanning, a same-account
+# cross-region replication rule, a credential-less pull-through cache
+# of registry.k8s.io with its creation template, account settings,
+# and one pull-time update exclusion for a CI role.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcrRegistrySettings
+metadata:
+  name: use-west-2-registry
+  id: use-west-2-registry
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  scanning:
+    scanType: ENHANCED
+    rules:
+      - scanFrequency: CONTINUOUS_SCAN
+        filters:
+          - "prod-*"
+      - scanFrequency: SCAN_ON_PUSH
+        filters:
+          - "*"
+  replicationRules:
+    - destinations:
+        - region: us-east-1
+          registryId: "123456789012"
+      repositoryFilters:
+        - prod-
+  pullThroughCacheRules:
+    - ecrRepositoryPrefix: k8s
+      upstreamRegistryUrl: registry.k8s.io
+  repositoryCreationTemplates:
+    - prefix: k8s
+      description: Repositories created by the registry.k8s.io cache
+      appliedFor:
+        - PULL_THROUGH_CACHE
+      imageTagMutability: IMMUTABLE
+  accountSettings:
+    basicScanTypeVersion: AWS_NATIVE
+    registryPolicyScope: V2
+  pullTimeUpdateExclusions:
+    - value: arn:aws:iam::123456789012:role/ci-push-role

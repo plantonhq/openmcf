@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying an Eventarc ADVA
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/eventarc.admin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 6. **Region**: Eventarc Advanced serves a subset of regions — the API rejects unsupported ones at create time
 
 ## Directory Structure

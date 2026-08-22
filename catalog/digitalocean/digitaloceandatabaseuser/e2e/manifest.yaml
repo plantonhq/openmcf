@@ -1,0 +1,29 @@
+# Reference manifests for DigitalOceanDatabaseUser -- protovalidate-valid,
+# embedded as the reference page's Example block, and the documents the
+# offline tofu plans render. Two documents: a plain PostgreSQL/MySQL-style
+# user, and a Kafka user exercising the full ACL surface.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseUser
+metadata:
+  name: orders-service-user
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  userName: orders-service
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseUser
+metadata:
+  name: events-pipeline-user
+spec:
+  cluster:
+    value: bbbbbbbb-cccc-dddd-eeee-ffffffffffff
+  userName: events-pipeline
+  settings:
+    kafkaAcls:
+      - topic: events-*
+        permission: produceconsume
+      - topic: audit-log
+        permission: produce

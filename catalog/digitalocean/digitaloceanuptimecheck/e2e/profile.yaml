@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` is an https probe on a stable
+  # public target (EXTERNAL -- no fixture at all, the cheapest lanes in
+  # the wave); `alerted` proves the composed alert-rows fan-out (down +
+  # latency, email delivery) and the alerts' destroy-with-the-check
+  # semantics, including the two-part {check_id},{alert_id} blind import
+  # of the alert rows. Deliberately not in the live lanes: slack delivery
+  # (needs a real webhook URL -- an environmental gate), ssl_expiry
+  # (proves the same row wiring; its threshold semantics are day-based
+  # renewal policy, not lifecycle). Watch item: alert emails may need to
+  # be verified account members. Checks and alerts are free API objects,
+  # seconds-fast.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

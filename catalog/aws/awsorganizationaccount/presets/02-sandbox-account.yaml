@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationAccount
+metadata:
+  name: sandbox-account
+spec:
+  region: <aws-region>
+  accountName: Developer Sandbox
+  # Root emails are unique across ALL of AWS -- plus-address per sandbox.
+  email: aws+sandbox-dev1@example.com
+  parentId:
+    valueFrom:
+      kind: AwsOrganizationalUnit
+      name: <sandbox-ou-resource-name>
+      fieldPath: status.outputs.ou_id
+  closeOnDeletion: true

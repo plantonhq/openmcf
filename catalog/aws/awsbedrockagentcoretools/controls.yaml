@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcoretools
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Tool state -- session working data, saved profile artifacts -- rests under AWS-owned encryption; an unencrypted browser, profile, or interpreter is not representable. Session recordings inherit the referenced S3 bucket's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No CMK surface exists on this kind -- browsers, profiles, and interpreters expose no KMS key field, so tool state rests under AWS-owned keys only. The customer-key decision that CAN be made lives on the referenced components -- the recording bucket's key and the certificate secrets' keys are chosen there.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Control-plane and session APIs are HTTPS-only SigV4 endpoints, and the tools' outbound traffic is what agents drive: browsers negotiate TLS with the sites they visit (and can present mTLS client certificates from `certificates`), while SANDBOX-mode interpreters have no network path at all."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Starting, driving, and stopping browser and interpreter sessions are IAM-authorized bedrock-agentcore APIs scoped to each tool's ARN; no anonymous or network-exposed entry point to a session exists.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens -- tools originate OUTBOUND traffic only (page fetches, code's API calls). The VPC network mode places that outbound traffic into your subnets and security groups; there is no inbound surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Tools serve no requests a WAF could front -- AgentCore's WebACL attachment exists only on the gateway kind.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation is IAM-authorized, and the service reference scopes the read/delete and session operations to the browser-custom, browser-profile, and code-interpreter-custom ARN formats for resource-level policies.
+    - control_id: workload-identity
+      status: configurable
+      field_path: code_interpreters.execution_role_arn
+      evidence:
+        type: spec_default
+        reference: "Omitted means the sandbox runs with NO AWS credentials -- the safest posture for model-written code. Setting it hands the tool an assumed role with short-lived credentials (trusting bedrock-agentcore.amazonaws.com); the browser's parallel execution_role_arn works the same way and is required in practice for recording, enterprise policies, and certificates."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: browsers.recording
+      evidence:
+        type: spec_default
+        reference: Unset means browser activity leaves only CloudTrail's control-plane record. Enabling recording writes every session to the referenced S3 bucket for replay -- a full audit trail of what the agent actually did on the web, which is the evidence that matters when an autonomous browser misbehaves.
+      notes: Control-plane operations on the tools themselves (create, delete, session starts) are management events CloudTrail records unconditionally either way.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring field exists on this kind -- live view, session replay, and telemetry ride account-level AgentCore Observability powered by CloudWatch, configured outside this manifest.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Tools are configuration shells recreated from this manifest (AWS exposes no update -- every change is already a recreate). Profile artifacts are re-savable convenience state; recordings live in the referenced bucket under its durability posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists here by design -- recordings persist until the referenced bucket's lifecycle rules say otherwise, and profile artifacts persist until the profile is deleted.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AgentCore built-in tools are regional managed services AWS operates across availability zones -- sessions have no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists, and the no-update lifecycle cuts the other way: EVERY field change recreates the tool. That is safe precisely because tools hold no irreplaceable state -- the deletion that actually loses something is a browser profile with saved logins, which is re-created by re-saving state."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the browser engines and interpreter sandboxes; the tools expose no runtime version or maintenance surface to manage.

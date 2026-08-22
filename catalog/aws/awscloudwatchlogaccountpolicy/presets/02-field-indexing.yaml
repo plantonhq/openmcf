@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAccountPolicy
+metadata:
+  name: request-field-index
+spec:
+  region: us-east-1
+  policyName: request-field-index
+  policyType: FIELD_INDEX_POLICY
+  policyDocument:
+    Fields:
+      - requestId
+      - customerId
+      - sourceIp
+  selectionCriteria: LogGroupNamePrefix IN ["/app"]

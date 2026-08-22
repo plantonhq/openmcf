@@ -1,0 +1,106 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureapplicationgateway
+spec:
+  presets:
+    - preset: 01-standard-https
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Application Gateway
+          sku_meter: fixed gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the v2 fixed meter bills every provisioned hour at the SKU's rate (x 730) -- the same per hour regardless of instance count, even at an autoscale floor of zero
+          list_unit_price: "0.2"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Fixed Cost' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "146.0000"
+        - service_name: Application Gateway
+          sku_meter: capacity units
+          pricing_unit: capacity-unit-hours
+          pricing_quantity: "14600"
+          quantity_basis: the autoscale minimum is a billing floor -- min_capacity instances reserve 10 capacity units each, billed whether or not traffic arrives; min_capacity x 10 x 730 at the SKU's capacity-unit rate
+          list_unit_price: "0.008"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Capacity Units' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "116.8000"
+      total_list_cost: "262.8000"
+      exclusions:
+        - capacity units consumed above the reserved floor bill on the same meter as traffic demands and cannot be known from the manifest
+        - outbound data transfer bills per GB at Azure's bandwidth rates
+        - the referenced Standard public IPs bill hourly on their own components
+        - Key Vault-sourced certificates bill on the referenced vault's component
+      notes: A virtual network protected by DDoS Network Protection moves a WAF_V2 gateway onto Microsoft's discounted meters at Standard_V2-equal rates -- a rate change invisible in this manifest.
+    - preset: 02-waf-path-routing
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Application Gateway
+          sku_meter: fixed gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the v2 fixed meter bills every provisioned hour at the SKU's rate (x 730) -- the same per hour regardless of instance count, even at an autoscale floor of zero
+          list_unit_price: "0.36"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Fixed Cost' and productName eq 'Application Gateway WAF v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "262.8000"
+        - service_name: Application Gateway
+          sku_meter: capacity units
+          pricing_unit: capacity-unit-hours
+          pricing_quantity: "14600"
+          quantity_basis: the autoscale minimum is a billing floor -- min_capacity instances reserve 10 capacity units each, billed whether or not traffic arrives; min_capacity x 10 x 730 at the SKU's capacity-unit rate
+          list_unit_price: "0.0144"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Capacity Units' and productName eq 'Application Gateway WAF v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "210.2400"
+      total_list_cost: "473.0400"
+      exclusions:
+        - capacity units consumed above the reserved floor bill on the same meter as traffic demands and cannot be known from the manifest
+        - outbound data transfer bills per GB at Azure's bandwidth rates
+        - the referenced Standard public IPs bill hourly on their own components
+        - Key Vault-sourced certificates bill on the referenced vault's component
+      notes: WAF enforcement is priced into the gateway's own meters -- the WAF_V2 fixed and capacity-unit rates are the premium; the referenced WAF policy document adds no meter of its own. A virtual network protected by DDoS Network Protection moves a WAF_V2 gateway onto Microsoft's discounted meters at Standard_V2-equal rates -- a rate change invisible in this manifest.
+    - preset: 03-internal-gateway
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Application Gateway
+          sku_meter: fixed gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the v2 fixed meter bills every provisioned hour at the SKU's rate (x 730) -- the same per hour regardless of instance count, even at an autoscale floor of zero
+          list_unit_price: "0.2"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Fixed Cost' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "146.0000"
+        - service_name: Application Gateway
+          sku_meter: capacity units
+          pricing_unit: capacity-unit-hours
+          pricing_quantity: "14600"
+          quantity_basis: each manually scaled instance reserves 10 capacity units billed every hour the gateway is active, load or no load -- capacity x 10 x 730 at the SKU's capacity-unit rate
+          list_unit_price: "0.008"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Capacity Units' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "116.8000"
+      total_list_cost: "262.8000"
+      exclusions:
+        - traffic pushing an instance past its 10 reserved capacity units bills additional units on the same meter
+        - outbound data transfer bills per GB at Azure's bandwidth rates
+        - the referenced Standard public IPs bill hourly on their own components
+        - Key Vault-sourced certificates bill on the referenced vault's component
+      notes: A virtual network protected by DDoS Network Protection moves a WAF_V2 gateway onto Microsoft's discounted meters at Standard_V2-equal rates -- a rate change invisible in this manifest.

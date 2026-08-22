@@ -1,0 +1,27 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetestemporal
+spec:
+  presets:
+    - preset: 02-production
+      capacity_footprint:
+        cpu_requests: 2700m
+        memory_requests: 5632Mi
+        cpu_limits: "12"
+        memory_limits: 18Gi
+        basis: 2 frontend replicas x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits); 3 history replicas x (500m CPU / 1Gi memory requests, 2 CPU / 4Gi limits); 2 matching replicas x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits); 2 worker replicas x (100m CPU / 256Mi memory requests, 1 CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the admin-tools pod (on by default) and the schema-setup and namespace-creation Jobs carry only chart-default sizing -- the spec models no resources for them, and the Jobs are ephemeral (install/upgrade time)
+        - the database is a separate component (nothing is bundled) -- workflow-state storage growth and connection pressure ride its own footprint -- and archival writes to external object storage
+      notes: Temporal provisions no volumes -- every workflow's state lives in the database you declare, so the footprint is purely compute reservations across the four server services and the Web UI num_history_shards is DATA partitioning baked into the schema at first install -- shard ownership distributes across the history replicas; it is never a pod count and is deliberately not bound

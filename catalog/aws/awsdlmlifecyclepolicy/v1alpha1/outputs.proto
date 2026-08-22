@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsdlmlifecyclepolicy.v1alpha1;
+
+// AwsDlmLifecyclePolicyStackOutputs captures the observable state of
+// the policy after apply.
+message AwsDlmLifecyclePolicyStackOutputs {
+  // The policy's id (policy-...) - the provider's import ID.
+  string policy_id = 1;
+
+  // The policy's ARN.
+  string policy_arn = 2;
+}

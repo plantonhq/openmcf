@@ -4,10 +4,13 @@ metadata:
   name: my-dev-cluster
 spec:
   clusterName: my-dev-cluster
-  region: nyc1
-  kubernetesVersion: "1.31"
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
   vpc:
-    value: "<vpc-name>"
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: my-vpc
+      fieldPath: status.outputs.vpc_id
   tags:
     - development
     - kubernetes

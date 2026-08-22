@@ -1,0 +1,14 @@
+# Planton Image Processor Dependencies
+
+# Beautiful terminal formatting with colors, tables, progress bars
+rich>=13.0.0
+
+# Image metadata and basic operations
+Pillow>=10.0.0
+
+# S3/R2 uploads
+boto3>=1.34.0
+
+# CLI argument parsing (enhanced)
+click>=8.1.0
+

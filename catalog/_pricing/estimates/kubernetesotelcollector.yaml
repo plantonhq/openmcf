@@ -1,0 +1,21 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesotelcollector
+spec:
+  presets:
+    - preset: 02-traces-gateway-to-tempo
+      capacity_footprint:
+        cpu_requests: 400m
+        memory_requests: 1Gi
+        memory_limits: 1Gi
+        basis: 2 replicas x (200m CPU / 512Mi memory requests, 512Mi memory limit -- no CPU limit declared)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics

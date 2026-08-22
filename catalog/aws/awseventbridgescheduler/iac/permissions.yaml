@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseventbridgescheduler
+spec:
+  aws:
+    statements:
+      - sid: ManageSchedule
+        actions:
+          - scheduler:CreateSchedule
+          - scheduler:UpdateSchedule
+          - scheduler:GetSchedule
+          - scheduler:DeleteSchedule
+        resources:
+          - arn:aws:scheduler:*:*:schedule/*/*
+        provenance: derived
+        notes: "Covers aws_scheduler_schedule / scheduler.Schedule -- creation, every in-place change (expression, window, state, target), GetSchedule on each plan/refresh, and deletion. The schedule ARN embeds its group (schedule/${GroupName}/${ScheduleName}), so the two-segment wildcard spans default-group and custom-group schedules alike. Schedules themselves are untaggable at AWS -- only the GROUP takes tags."
+      - sid: ManageScheduleGroup
+        actions:
+          - scheduler:CreateScheduleGroup
+          - scheduler:GetScheduleGroup
+          - scheduler:DeleteScheduleGroup
+          - scheduler:TagResource
+          - scheduler:UntagResource
+          - scheduler:ListTagsForResource
+        resources:
+          - arn:aws:scheduler:*:*:schedule-group/*
+        provenance: derived
+        notes: Covers aws_scheduler_schedule_group / scheduler.ScheduleGroup -- rendered only when the spec OWNS a group. The group is a name-and-tags container whose only update path is tags, so the tagging trio does double duty as the update mechanism; GetScheduleGroup reads on every plan/refresh. All six actions scope to the schedule-group ARN per the service reference.
+      - sid: PassExecutionRoleToScheduler
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "CreateSchedule and UpdateSchedule hand Scheduler its REQUIRED execution role (target.role_arn), so the configuring principal must hold iam:PassRole on it -- IAM's platform-wide pass-role rule. Tighten the resource to the specific role ARNs the manifests reference. A fresh role's IAM propagation makes first deploys eventually consistent (the provider retries for up to two minutes) -- a timing fact, not an extra grant. What the EXECUTION ROLE may do per fire (invoke the Lambda, run the ECS task, send to the queue) is that AwsIamRole's policy -- subject-matter content, never a runner grant here."

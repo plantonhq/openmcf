@@ -1,0 +1,74 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureservicebusnamespace
+spec:
+  presets:
+    - preset: 01-standard-namespace
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Service Bus
+          sku_meter: Standard base charge
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: one flat monthly base charge (includes the first 13M operations and first 1,000 brokered connections) -- this arm covers sku STANDARD and an unspecified sku, which deploys STANDARD. Azure bills the base charge once per Azure subscription across ALL Standard namespaces, so this attribution is exact when this is the subscription's only (or first) Standard namespace and an overstatement otherwise -- the honest ceiling
+          list_unit_price: "10.0"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Standard Base Unit' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "10.0000"
+      total_list_cost: "10.0000"
+      exclusions:
+        - operations above the 13M/month included in the base charge bill tiered per-million rates that decline with volume, and brokered connections above the included 1,000/month bill per prorated peak concurrent connection -- both follow traffic
+        - network egress follows consumer placement
+      notes: The base charge is subscription-wide -- a second Standard namespace in the same Azure subscription adds no base charge of its own. Queues, topics, subscriptions, and SAS rules are free objects inside the namespace -- their kinds add no meters of their own.
+    - preset: 02-premium-isolated
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Service Bus
+          sku_meter: messaging units
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: capacity messaging units (the spec requires 1, 2, 4, 8, or 16 on PREMIUM) x premium_messaging_partitions (Microsoft's price list multiplies the billed MUs by the partition count; 1 = not partitioned) x 730 hours at the Premium Messaging Unit rate -- dedicated capacity billing around the clock, with every operation included
+          list_unit_price: "0.9275"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Premium Messaging Unit' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "677.0750"
+      total_list_cost: "677.0750"
+      exclusions:
+        - Geo-Replication, when configured, bills per GB replicated by geography zone, and the replica is a second Premium namespace billing its own messaging units on its own component
+        - customer-managed-key encryption drives Key Vault key operations billed on the referenced vault's own components
+        - network egress follows consumer placement
+      notes: Azure bills Premium as a flat daily rate at each day's MAXIMUM messaging-unit count, so scaling down mid-day does not trim that day's bill; the monthly figure here assumes a steady MU count. Queues, topics, subscriptions, and SAS rules are free objects inside the namespace -- their kinds add no meters of their own.
+    - preset: 03-keyless-entra
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Service Bus
+          sku_meter: Standard base charge
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: one flat monthly base charge (includes the first 13M operations and first 1,000 brokered connections) -- this arm covers sku STANDARD and an unspecified sku, which deploys STANDARD. Azure bills the base charge once per Azure subscription across ALL Standard namespaces, so this attribution is exact when this is the subscription's only (or first) Standard namespace and an overstatement otherwise -- the honest ceiling
+          list_unit_price: "10.0"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Standard Base Unit' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "10.0000"
+      total_list_cost: "10.0000"
+      exclusions:
+        - operations above the 13M/month included in the base charge bill tiered per-million rates that decline with volume, and brokered connections above the included 1,000/month bill per prorated peak concurrent connection -- both follow traffic
+        - network egress follows consumer placement
+      notes: The base charge is subscription-wide -- a second Standard namespace in the same Azure subscription adds no base charge of its own. Queues, topics, subscriptions, and SAS rules are free objects inside the namespace -- their kinds add no meters of their own.

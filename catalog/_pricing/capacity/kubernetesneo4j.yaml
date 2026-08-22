@@ -1,0 +1,39 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesNeo4j manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesneo4j.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. One release is one
+# Neo4j server (the chart's grain -- a StatefulSet of exactly one pod)
+# carrying the declared resources and its data volume; Enterprise
+# clustering multiplies across RESOURCES (members sharing cluster_name),
+# never inside one manifest. Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesneo4j
+spec:
+  workloads:
+    - label: server
+      resources_path: resources
+      instances:
+        constant: "1"
+      volumes:
+        - label: data
+          size_path: data_volume.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources
+  notes:
+    - applies_when:
+        - field_path: data_volume.size
+          op: is_unset
+      text: the chart provisions a 10Gi data volume by default even without a declared size -- a reservation this footprint cannot count
+    - applies_when:
+        - field_path: cluster_name
+          op: is_set
+      text: each Enterprise cluster member is its own KubernetesNeo4j resource; this footprint covers only this member

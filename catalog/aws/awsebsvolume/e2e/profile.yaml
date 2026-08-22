@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsebsvolume
+spec:
+  # One scenario: an encrypted gp3 volume with explicit performance
+  # dials attached to the fixture instance (shared subnet chain +
+  # one t3.micro path prerequisite) - pennies for minutes of
+  # instance + 10 GiB.
+  #
+  # Deliberately not exercised live:
+  #   - the COPY arm (copy_from) -- its source is another
+  #     AwsEbsVolume, the same kind under test, which the harness's
+  #     self-kind-prerequisite guard blocks. Unblock: same-kind
+  #     path-prerequisite support in the harness.
+  #   - io1/io2 multi-attach -- needs two instances and a
+  #     cluster-aware filesystem to mean anything; the spec's
+  #     multi-attach CELs are the load-bearing guards. Unblock: a
+  #     second instance prerequisite when demand shows.
+  #   - final_snapshot -- config-only at AWS (never read back);
+  #     asserting it means observing an untracked snapshot appear on
+  #     destroy. Unblock: a post-destroy DescribeSnapshots probe in
+  #     the verifier.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q46
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

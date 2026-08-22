@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureloadbalancer
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Load Balancer
+      sku_meter: included LB rule hours
+      pricing_unit: hours
+      description: A Standard load balancer with at least one load-balancing or outbound rule bills a flat hourly meter that covers the first five rules; the meter is per hour, not per rule, so one rule and five rules cost the same. A load balancer with no rules at all (frontends and NAT rules only) bills nothing.
+  cost_drivers:
+    - field_path: rules
+      sku_meter: overage LB rule hours
+      pricing_unit: rule-hours
+      impact: Load-balancing rules count toward the five the flat meter includes; every rule past the combined fifth (rules plus outbound rules) bills its own per-rule hourly overage meter, so a many-rule load balancer grows linearly where a five-rule one stays flat.
+    - field_path: outbound_rules
+      sku_meter: overage LB rule hours
+      pricing_unit: rule-hours
+      impact: Outbound (SNAT) rules count against the same five-rule allotment as load-balancing rules -- an outbound rule on a five-rule load balancer is the sixth rule and starts the overage meter.
+    - field_path: nat_rules
+      sku_meter: included LB rule hours
+      pricing_unit: hours
+      impact: Inbound NAT rules are free -- they never count toward the five-rule allotment and add no meter of their own, whichever mode (single-target or pool-style) they use.
+    - field_path: sku
+      sku_meter: gateway hours
+      pricing_unit: hours
+      impact: The GATEWAY SKU swaps the rule-based meters for its own pair -- an hourly gateway meter plus an hourly meter per load balancer chained to it -- and processes data at a lower per-GB rate than Standard.
+    - field_path: sku_tier
+      sku_meter: included LB rule hours
+      pricing_unit: hours
+      impact: The GLOBAL tier (cross-region) bills its own included/overage rule meters at the same published rates as REGIONAL Standard, and its data-processed meter is published at zero -- data charges stay on the regional load balancers behind it.
+  estimate_exclusions:
+    - data processed bills per GB through the load-balancing rules (Standard rate; inbound NAT rule traffic is not metered) and follows traffic entirely
+    - the referenced public IPs, public IP prefixes, and subnets bill on their own components
+    - backend instances (VMs, scale sets) bill their own compute
+  notes: "Azure prices a Standard load balancer by its rule count, not its existence: the first five load-balancing and outbound rules together bill one flat hourly meter, each rule beyond five bills a per-rule hourly overage, and inbound NAT rules are free. All Load Balancer meters bill in Azure's Global region -- the rate does not vary by deployment region. The usage arm is data processed per GB through the rules. The niche SKUs change the shape: GATEWAY bills per gateway-hour plus per chained load balancer, and the GLOBAL tier's data meter is published at zero because the regional load balancers behind it already metered the bytes."

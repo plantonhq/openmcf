@@ -21,16 +21,21 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanDnsZoneStackOutputs captures the output information after provisioning a DNS zone on DigitalOcean.
+// DigitalOceanDnsZoneStackOutputs captures the identifiers exported after a
+// DNS zone (domain) is provisioned on DigitalOcean.
 type DigitalOceanDnsZoneStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// name of the DNS zone (domain) created on DigitalOcean.
+	// The domain name of the DNS zone (e.g. "example.com").
 	ZoneName string `protobuf:"bytes,1,opt,name=zone_name,json=zoneName,proto3" json:"zone_name,omitempty"`
-	// The unique identifier of the created DNS zone (typically the domain name or ID assigned by DigitalOcean).
+	// The zone's resource identifier. DigitalOcean addresses domains by NAME —
+	// this is the domain name itself, not a UUID.
 	ZoneId string `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// The list of nameserver addresses for the DNS zone.
-	// These are the nameservers that need to be set at the domain registrar for this zone.
-	NameServers   []string `protobuf:"bytes,3,rep,name=name_servers,json=nameServers,proto3" json:"name_servers,omitempty"`
+	// DigitalOcean's authoritative name servers for every hosted zone
+	// (ns1/ns2/ns3.digitalocean.com — a fixed platform-wide set the API does
+	// not return per zone). Set these at the domain's registrar to delegate.
+	NameServers []string `protobuf:"bytes,3,rep,name=name_servers,json=nameServers,proto3" json:"name_servers,omitempty"`
+	// The uniform resource name of the domain (e.g. "do:domain:example.com").
+	Urn           string `protobuf:"bytes,4,opt,name=urn,proto3" json:"urn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -86,15 +91,23 @@ func (x *DigitalOceanDnsZoneStackOutputs) GetNameServers() []string {
 	return nil
 }
 
+func (x *DigitalOceanDnsZoneStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceandnszone_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceandnszone_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"?catalog/digitalocean/digitaloceandnszone/v1alpha1/outputs.proto\x125dev.planton.digitalocean.digitaloceandnszone.v1alpha1\"z\n" +
+	"?catalog/digitalocean/digitaloceandnszone/v1alpha1/outputs.proto\x125dev.planton.digitalocean.digitaloceandnszone.v1alpha1\"\x8c\x01\n" +
 	"\x1fDigitalOceanDnsZoneStackOutputs\x12\x1b\n" +
 	"\tzone_name\x18\x01 \x01(\tR\bzoneName\x12\x17\n" +
 	"\azone_id\x18\x02 \x01(\tR\x06zoneId\x12!\n" +
-	"\fname_servers\x18\x03 \x03(\tR\vnameServersB\xae\x03\n" +
+	"\fname_servers\x18\x03 \x03(\tR\vnameServers\x12\x10\n" +
+	"\x03urn\x18\x04 \x01(\tR\x03urnB\xae\x03\n" +
 	"9com.dev.planton.digitalocean.digitaloceandnszone.v1alpha1B\fOutputsProtoP\x01Zjgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandnszone/v1alpha1;digitaloceandnszonev1alpha1\xa2\x02\x04DPDD\xaa\x025Dev.Planton.Digitalocean.Digitaloceandnszone.V1alpha1\xca\x025Dev\\Planton\\Digitalocean\\Digitaloceandnszone\\V1alpha1\xe2\x02ADev\\Planton\\Digitalocean\\Digitaloceandnszone\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Digitalocean::Digitaloceandnszone::V1alpha1b\x06proto3"
 
 var (

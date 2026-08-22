@@ -20,6 +20,7 @@ go_test(
     embed = [":pulumiazureprovider"],
     deps = [
         "//catalog/azure",
+        "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

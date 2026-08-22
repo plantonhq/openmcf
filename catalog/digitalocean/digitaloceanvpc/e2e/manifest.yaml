@@ -1,9 +1,24 @@
+# Example DigitalOceanVpc manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real VPC: region only. DigitalOcean assigns a
+# non-conflicting IP range and reports it through the ip_range output.
+#
+# Document 2 -- a production-shaped VPC: described, with an explicit /16 for
+# deliberate IP planning. The range is immutable -- changing it later
+# replaces the VPC.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
-  name: first-vpc
+  name: example-dovpc-minimal
 spec:
-  description: "Primary VPC for Planton staging environment"
-  region: blr1
+  region: nyc3
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpc
+metadata:
+  name: example-dovpc-full
+spec:
+  description: Production network for the web tier
+  region: nyc3
   ipRangeCidr: "10.10.0.0/16"
-  isDefaultForRegion: false

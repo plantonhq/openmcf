@@ -1,0 +1,107 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsautoscalinggroup
+spec:
+  aws:
+    statements:
+      - sid: ManageGroup
+        actions:
+          - autoscaling:CreateAutoScalingGroup
+          - autoscaling:UpdateAutoScalingGroup
+          - autoscaling:DeleteAutoScalingGroup
+          - autoscaling:CreateOrUpdateTags
+          - autoscaling:DeleteTags
+        resources:
+          - arn:aws:autoscaling:*:*:autoScalingGroup:*:autoScalingGroupName/*
+        provenance: derived
+        notes: Covers aws_autoscaling_group / autoscaling.Group -- only the name is create-only, so nearly every spec change rides UpdateAutoScalingGroup in place. The tag actions manage the group's native key/value/propagate-at-launch tag triples (CreateOrUpdateTags also rides the create call). force_delete maps to the delete call's ForceDelete flag (the service reference exposes an autoscaling:ForceDelete condition key to constrain it). All five actions authorize on the autoScalingGroup ARN format per the service reference.
+      - sid: ManageTrafficAttachment
+        actions:
+          - autoscaling:AttachLoadBalancerTargetGroups
+          - autoscaling:DetachLoadBalancerTargetGroups
+          - autoscaling:AttachTrafficSources
+          - autoscaling:DetachTrafficSources
+        resources:
+          - arn:aws:autoscaling:*:*:autoScalingGroup:*:autoScalingGroupName/*
+        provenance: derived
+        notes: Changing target_groups or traffic_sources after creation attaches and detaches through these calls (create-time attachments ride CreateAutoScalingGroup itself). All four authorize on the group's ARN; the service reference additionally offers autoscaling:TargetGroupARNs / autoscaling:TrafficSourceIdentifiers condition keys to pin WHICH sources may be attached.
+      - sid: ManageFleetOperations
+        actions:
+          - autoscaling:EnableMetricsCollection
+          - autoscaling:DisableMetricsCollection
+          - autoscaling:SuspendProcesses
+          - autoscaling:ResumeProcesses
+          - autoscaling:PutWarmPool
+          - autoscaling:DeleteWarmPool
+          - autoscaling:StartInstanceRefresh
+          - autoscaling:CancelInstanceRefresh
+        resources:
+          - arn:aws:autoscaling:*:*:autoScalingGroup:*:autoScalingGroupName/*
+        provenance: derived
+        notes: The group resource's operational folds -- enabled_metrics, suspended_processes, warm_pool, and the instance_refresh block (the providers start a refresh when watched attributes change and cancel an in-flight one before starting anew). All authorize on the group's ARN.
+      - sid: ManageFoldedSubresources
+        actions:
+          - autoscaling:PutScalingPolicy
+          - autoscaling:DeletePolicy
+          - autoscaling:PutScheduledUpdateGroupAction
+          - autoscaling:DeleteScheduledAction
+          - autoscaling:PutLifecycleHook
+          - autoscaling:DeleteLifecycleHook
+          - autoscaling:PutNotificationConfiguration
+          - autoscaling:DeleteNotificationConfiguration
+        resources:
+          - arn:aws:autoscaling:*:*:autoScalingGroup:*:autoScalingGroupName/*
+        provenance: derived
+        notes: Covers the folded sub-resources both modules manage as separate provider resources keyed by name -- aws_autoscaling_policy (scaling_policies), aws_autoscaling_schedule (scheduled_actions), aws_autoscaling_lifecycle_hook (hooks without apply_at_launch; flagged hooks ride CreateAutoScalingGroup inline), and aws_autoscaling_notification (notifications). Every action authorizes on the OWNING GROUP's ARN -- these sub-resources have no ARN format of their own in the service reference.
+      - sid: DescribeAutoScalingResources
+        actions:
+          - autoscaling:DescribeAutoScalingGroups
+          - autoscaling:DescribePolicies
+          - autoscaling:DescribeScheduledActions
+          - autoscaling:DescribeLifecycleHooks
+          - autoscaling:DescribeNotificationConfigurations
+          - autoscaling:DescribeWarmPool
+          - autoscaling:DescribeInstanceRefreshes
+          - autoscaling:DescribeScalingActivities
+          - autoscaling:DescribeTrafficSources
+          - autoscaling:DescribeLoadBalancerTargetGroups
+          - autoscaling:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Plan/refresh reads for the group and every folded sub-resource, refresh progress tracking, and the scaling-activity reads behind the capacity waiters and error reporting (ignore_failed_scaling_activities changes what the provider does with them, not whether it reads). Auto Scaling Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: PassRolesToAutoScaling
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Three passes, all proven from the service reference's API-to-IAM mapping. CreateAutoScalingGroup and UpdateAutoScalingGroup pass service_linked_role_arn when set (PassedToService autoscaling.amazonaws.com; the create mapping also lists ec2.amazonaws.com for the launch template's instance profile role, validated at group creation). PutLifecycleHook passes each hook's role_arn to autoscaling.amazonaws.com for SNS/SQS notification delivery. Add iam:PassedToService conditions and narrow to the actual role ARNs in a hardened deployment.
+      - sid: CreateAutoScalingServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/autoscaling.amazonaws.com/*
+        provenance: derived
+        notes: The FIRST group created in an account triggers automatic creation of the AWSServiceRoleForAutoScaling service-linked role, and AWS documents that the caller must hold this permission or the automatic creation -- and with it the group create -- fails. Accounts where the role already exists never exercise this statement. Scoped to the Auto Scaling service's role path; an iam:AWSServiceName condition of autoscaling.amazonaws.com narrows it further.
+      - sid: ValidateLaunchTemplateUse
+        actions:
+          - ec2:RunInstances
+          - ec2:CreateTags
+        resources:
+          - arn:aws:ec2:*:*:instance/*
+          - arn:aws:ec2:*:*:launch-template/*
+          - arn:aws:ec2:*:*:network-interface/*
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:volume/*
+          - arn:aws:ec2:*:*:key-pair/*
+          - arn:aws:ec2:*::image/*
+        provenance: derived
+        notes: Service-side authorization, not a call the modules make -- AWS documents that CreateAutoScalingGroup, UpdateAutoScalingGroup, and StartInstanceRefresh issue a dry-run RunInstances validating that the CALLER may launch from the referenced launch template before the request proceeds; a principal without it cannot create the group at all (after creation, actual launches use the service-linked role's permissions, not the caller's). RunInstances authorizes across the template's referenced EC2 resources -- the ARN classes above; note the image format carries no account id. ec2:CreateTags is exercised when the referenced template carries tag specifications that tag instances or volumes at launch.

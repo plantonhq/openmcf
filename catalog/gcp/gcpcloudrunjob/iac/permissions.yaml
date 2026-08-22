@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudrunjob
+spec:
+  gcp:
+    groups:
+      - purpose: EnableRunApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling run.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageJob
+        permissions:
+          - run.jobs.create
+          - run.jobs.get
+          - run.jobs.update
+          - run.jobs.delete
+          - run.operations.get
+        provenance: derived
+        notes: Covers google_cloud_run_v2_job -- create, read/refresh, in-place updates (template, task_count, parallelism, binary authorization, execution tokens), and destroy. Job mutations on the Cloud Run Admin API v2 return long-running operations the provider polls, which authorize as run.operations.get. The run service prefix is not yet in the committed action-inventory snapshot; every run.* permission here was verified live against Google's Cloud Run IAM documentation (https://cloud.google.com/run/docs/reference/iam/roles, which lists run.jobs.create/get/update/delete and run.operations.get and states run.operations.get is required "to read the status" of a deploy).
+      - purpose: ActAsRuntimeServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Cloud Run's deployment-permissions documentation requires iam.serviceAccounts.actAs on the service identity for every create or update -- and jobs ALWAYS have a service identity. When template.service_account names an account, actAs is needed on that account; when it is unset, the job runs as the project's Compute Engine default service account and actAs is needed there instead. There is no shape of this component that escapes the requirement.

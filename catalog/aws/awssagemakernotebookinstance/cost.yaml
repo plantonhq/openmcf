@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakernotebookinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon SageMaker
+      sku_meter: notebook instance hours
+      pricing_unit: hours
+      description: The instance bills its instance_type's notebook rate every hour it is InService -- and it starts InService at creation, so the bill runs until someone stops it.
+    - service_name: Amazon SageMaker
+      sku_meter: notebook ML storage
+      pricing_unit: GB-months
+      description: The ML storage volume bills per GB-month for as long as the instance exists -- including while it is stopped, which is why stopping pauses most of the bill but never all of it.
+  cost_drivers:
+    - field_path: instance_type
+      sku_meter: notebook instance hours
+      pricing_unit: hours
+      impact: The instance type picks the hourly rate -- ml.t3.medium is the cheapest current-generation choice at roughly $0.05/hour, and a GPU type like ml.g4dn.xlarge is roughly 15x that, every running hour.
+    - field_path: volume_size_gb
+      sku_meter: notebook ML storage
+      pricing_unit: GB-months
+      impact: Every provisioned GB bills per month whether used or not. Growing the volume updates in place; shrinking it replaces the instance -- so oversizing is a one-way spend decision in practice.
+  estimate_exclusions:
+    - hours while the instance is stopped bill no instance-hours -- stopping outside working hours is the dominant savings lever and no manifest field expresses a schedule
+    - data transfer out of the region and to the internet follows whatever the notebook's code moves
+    - CloudWatch Logs ingestion for Jupyter and lifecycle-script logs follows log volume
+    - whatever AWS resources the notebook's code creates through its execution role bill on their own
+  notes: Billing is state-driven, not manifest-driven -- the manifest cannot say how many hours a month the notebook runs, so the committed figure reads the always-on billing model literally (24x7 InService). SageMaker stops the instance to apply most spec changes and restarts it afterwards; those maintenance minutes are billed like any other running time.

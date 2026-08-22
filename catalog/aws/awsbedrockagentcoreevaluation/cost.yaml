@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcoreevaluation
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: evaluators.llm_as_a_judge
+      sku_meter: custom evaluations
+      pricing_unit: evaluations
+      impact: An evaluator you define is a CUSTOM evaluator -- each run bills $1.50 per 1,000 evaluations, and the judge model's inference bills SEPARATELY on Bedrock's own meters for the chosen model_id. The evaluator object itself is free to exist; only runs meter.
+    - field_path: evaluators.code_based
+      sku_meter: custom evaluations
+      pricing_unit: evaluations
+      impact: The same $1.50 per 1,000 evaluations custom-evaluator meter -- plus the scoring function's invocations and duration, which bill on the referenced AwsLambda, not here.
+    - field_path: online_evaluation_configs.evaluator_ids
+      sku_meter: built-in evaluator input tokens
+      pricing_unit: tokens
+      impact: Builtin.* entries bill per token processed during scoring ($0.0024 per 1,000 input tokens, $0.012 per 1,000 output tokens, judge-model usage INCLUDED); custom-evaluator entries bill the per-evaluation meter instead. Every listed evaluator scores every sampled session -- a ten-entry list meters the same session ten times.
+    - field_path: online_evaluation_configs.rule.sampling_percentage
+      sku_meter: custom evaluations
+      pricing_unit: evaluations
+      impact: The volume throttle for continuous evaluation -- this percentage of production sessions gets scored, so every evaluator meter (per-token builtin, per-evaluation custom) scales linearly with it against traffic the manifest cannot see. Production configs usually sample low single digits.
+    - field_path: online_evaluation_configs.enabled
+      sku_meter: custom evaluations
+      pricing_unit: evaluations
+      impact: The kill switch -- a disabled config keeps existing for free, samples nothing, and bills nothing; re-enabling resumes scoring (and spending) against live traffic immediately.
+    - field_path: harnesses
+      sku_meter: Runtime microVM CPU
+      pricing_unit: vCPU-hours
+      impact: A harness object is free; AWS publishes no separate harness-run meter. Each run consumes the services it drives -- the AWS-managed runtime environment bills AgentCore Runtime microVM meters ($0.0895 per vCPU-hour active CPU, $0.00945 per GB-hour peak memory), the model under test bills its own inference, and configured tools bill their gateway/browser/code-interpreter meters.
+    - field_path: evaluators.kms_key_arn
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: Encrypting an evaluator's data under a customer-managed key bills that key's per-request meter on the referenced AwsKmsKey; unset means the AWS-owned key at no charge.
+  free_tier: "AgentCore Evaluations publishes no permanent free allotment -- built-in evaluators bill from the first token and custom evaluators from the first evaluation. The up-to-$200 AWS Free Tier credit for new customers is a one-time trial credit, not a permanent tier. There are no upfront commitments or minimum fees, so a bundle whose evaluators and harnesses are never run bills nothing."
+  estimate_exclusions:
+    - evaluation volume is entirely workload-driven -- the same manifest bills nothing until evaluation runs execute or an online config samples live sessions
+    - judge-model inference for custom LLM-judge evaluators bills separately on Bedrock's meters for the chosen model_id (the pricing page's "model usage billed separately")
+    - code-evaluator scoring invocations and duration bill on the referenced AwsLambda
+    - harness runs consume what they drive -- AgentCore Runtime microVM meters for the managed environment, model inference (Bedrock or the vendor's own API billing), and tool meters on any referenced gateway, browser, or code interpreter
+    - batch evaluations run through AgentCore optimization bill discounted rates ($0.0018 per 1,000 input tokens, $0.009 per 1,000 output tokens)
+    - online configs read session traces from CloudWatch -- observability telemetry ingestion and storage bill at CloudWatch rates on the referenced AwsCloudwatchLogGroup
+    - non-Bedrock vendor API keys ride the referenced AwsSecretsManagerSecret, which carries its own per-secret and per-call meters
+    - customer-managed-key encryption requests bill on the referenced AwsKmsKey
+  notes: "Every object this bundle creates -- evaluators, harnesses, online evaluation configs -- is free at rest; the bill starts when scoring happens. The pricing model splits by who owns the evaluator: AWS's 13 builtins bill per token processed with model usage included ($0.0024 per 1,000 input, $0.012 per 1,000 output), while evaluators YOU define (LLM judge or Lambda) bill $1.50 per 1,000 evaluations with model usage billed separately -- so a custom LLM judge pays twice, once per evaluation here and once per token on Bedrock. The quiet cost risk is the online config: it scores a percentage of PRODUCTION traffic continuously, so its spend tracks live session volume the manifest never states -- sampling_percentage is the one field standing between a cheap quality signal and metering every conversation. Harness runs have no meter of their own; they bill as the runtime, model, and tool consumption they cause."

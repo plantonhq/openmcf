@@ -1,0 +1,26 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesargocd
+spec:
+  presets:
+    - preset: 03-scaled-platform
+      capacity_footprint:
+        cpu_requests: 2500m
+        memory_requests: 3584Mi
+        memory_limits: 4Gi
+        basis: 1 controller x (1 CPU / 2Gi requests, 4Gi memory limit) + 2 server replicas at the HPA floor x (250m CPU / 256Mi requests) + 2 repo-server replicas at the HPA floor x (500m CPU / 512Mi requests) -- no CPU limits declared, and only the controller declares a memory limit
+      exclusions:
+        - the server and repo server scale on HPAs -- this footprint states their min_replicas floors (2 each); runtime scaling can reach 5 server and 6 repo-server replicas, each new replica adding its full declared resources
+        - the redis.ha arm replaces the bundled Redis pod with the redis-ha subchart -- a Sentinel cluster of 3 Redis replicas plus HAProxy pods at chart-default sizing this spec does not model, with a REQUIRED anti-affinity needing 3+ schedulable worker nodes
+        - the ApplicationSet controller, notifications controller and Dex run unsized at chart defaults -- the chart ships no default requests or limits, so those pods schedule unbounded and reserve nothing
+        - helm_values merges LAST over the typed rendering and can override modeled values, including per-component resources and replicas -- this footprint describes the spec's declaration
+        - the dollar value of this capacity is the target cluster's node economics
+      notes: controller replicas are SHARDS across target clusters, not load-balanced copies -- this preset runs one, sized for the whole reconciliation load.

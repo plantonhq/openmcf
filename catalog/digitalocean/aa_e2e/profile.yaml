@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ProviderE2EProfile
+metadata:
+  name: digitalocean
+spec:
+  # DigitalOcean authenticates with a scoped API token, never an OIDC
+  # federation: the harness and BOTH IaC engines read the same ambient
+  # DIGITALOCEAN_TOKEN environment variable (the exact name the upstream
+  # terraform provider and the pulumi bridge resolve), so one credential
+  # feeds deploys, destroys, and verification with zero plumbing.
+  #
+  # Spaces (object storage) is a separate credential plane: bucket lanes
+  # additionally need SPACES_ACCESS_KEY_ID and SPACES_SECRET_ACCESS_KEY --
+  # again the provider's own env names -- because Spaces buckets are only
+  # reachable over the S3-compatible API, not the DigitalOcean REST API.
+  # Lanes for every other kind run on the API token alone.
+  credential_approach: api_token
+  test_substrate: real_cloud
+  default_cost_class: paid_ephemeral
+  default_schedule_lane: weekly
+  required_tools:
+    - pulumi
+    - tofu
+  github_environment: e2e-digitalocean
+  # Most DigitalOcean API objects create in seconds, but the account-level
+  # droplet/volume quotas on a fresh account are modest; four concurrent
+  # tests keeps lanes inside default limits.
+  max_concurrent_tests: 4
+  # assert_apply_idempotency stays unarmed until the first live proof
+  # sessions establish a green baseline: arming it on a never-run harness
+  # would conflate provider perma-diff classes with harness defects. Arm it
+  # once the cheap kinds (vpc, firewall, dns) are proven.

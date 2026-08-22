@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The spec deliberately hides the compute
+# substrate; the official modules provision it as one always-on Container
+# App replica (min = max = 1) in a REFERENCED Container App Environment --
+# the environment itself bills on its own component. Schema:
+# finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureplantonrunner
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Container Apps
+      sku_meter: active vCPU seconds
+      pricing_unit: vCPU-seconds
+      description: The runner is standing infrastructure -- the modules pin the app to exactly one replica (min = max = 1), and an always-polling worker never meets the idle thresholds, so its vCPU allocation bills the Consumption plan's active rate every second of the month from creation to destroy.
+    - service_name: Azure Container Apps
+      sku_meter: memory GiB seconds
+      pricing_unit: GiB-seconds
+      description: The same always-on replica bills its memory allocation per second (Azure prices memory identically idle and active).
+  cost_drivers:
+    - field_path: cpu
+      sku_meter: active vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: Sizes the always-on vCPU bill directly -- the default 0.5 vCPU is the floor; each Consumption-plan step up multiplies this line. Size up for large stacks or high operation concurrency.
+    - field_path: memory
+      sku_meter: memory GiB seconds
+      pricing_unit: GiB-seconds
+      impact: Sizes the always-on memory bill directly -- the default 1Gi is the floor, and the Consumption plan fixes memory at cpu x 2, so the pairing moves both meters together. Memory pressure shows up as failed IaC operations mid-apply; when in doubt, size the pairing up.
+  estimate_exclusions:
+    - the Container App Environment's own charges (Dedicated plan management, zone-redundancy prerequisites, its Log Analytics workspace) bill on the environment's own component, not here
+    - egress data transfer -- image pulls, control-plane traffic, and any VNet-bound traffic follow Azure networking pricing
+    - Log Analytics ingestion and retention bill per GiB when the environment wires console logs to a workspace, following how many operations the runner executes
+  free_tier: The Consumption plan's monthly free grant (the first 180,000 vCPU-seconds and 360,000 GiB-seconds per subscription) offsets a slice of one small always-on replica; the runner shares the grant with every other Consumption app in the subscription.
+  notes: "The compute substrate is an implementation detail of the modules, confirmed from their sources: one single-revision Container App pinned to exactly one replica (scaling execution capacity means more runners, never more copies of this one). The runner is a pull-based worker that polls its work queue continuously, so it holds Container Apps' active rate rather than the reduced idle rate -- the honest planning number is one replica x the cpu/memory pairing x active-rate seconds for the whole month. No ingress exists, so the per-request meter never bills."

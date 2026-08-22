@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesflinkoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its desired state is the flink.apache.org custom resources in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Flink job state (checkpoints, savepoints) rides each KubernetesFlinkDeployment's own storage.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption and each deployment's checkpoint storage, owned elsewhere.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: With the webhook enabled (the spec default), the admission endpoint serves TLS with a cert-manager-issued certificate -- the chart renders the Issuer/Certificate pair unconditionally on that arm and the API server trusts it through cert-manager CA injection. The operator's own calls to the Kubernetes API ride the API server's TLS.
+      notes: webhook_enabled=false removes the webhook and its certificate machinery entirely -- there is then no inbound TLS surface to protect.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- the only Service is the in-cluster webhook Service (flink-operator-webhook-service, ClusterIP), reachable solely by the API server for admission calls.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: watch_namespaces
+      evidence:
+        type: spec_default
+        reference: Empty watches every namespace -- the normal one-operator-per-cluster posture. A list scopes the chart's RBAC AND the admission webhook's namespaceSelector to exactly those namespaces; Flink declarations outside them are ignored without an error.
+      notes: This governs which namespaces may reach the operator's reconcile and admission surface, not a network path -- the only network ingress is API-server-to-webhook. The 02-fenced-ha preset fences the operator to two team namespaces.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The operator serves no HTTP edge traffic -- its only inbound surface is Kubernetes admission calls from the API server. Web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates the operator's RBAC scoped to its watch surface -- cluster-wide when watch_namespaces is empty, per-namespace Role/RoleBinding planted into exactly the watched namespaces when set -- plus the job service account FlinkDeployments run as. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+      notes: The 02-fenced-ha preset demonstrates the fenced posture -- RBAC and webhook scope narrowed to two namespaces.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator authenticates to the Kubernetes API through its ServiceAccount token -- it holds no cloud API credentials. Cloud identity for Flink jobs (e.g. checkpoint object stores) is configured on each KubernetesFlinkDeployment, not here.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart's default webhook keystore credential is a HARDCODED PUBLIC PASSWORD. The modules never ship it -- they generate a random 32-character password per install, materialize it as a module-owned Secret, wire webhook.keystore.passwordSecretRef at it, and re-pin useDefaultPassword=false AFTER the helm_values merge so the public default cannot resurface through the escape hatch.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation the operator performs is a Kubernetes API operation, captured by the target cluster's audit policy. The operator emits its own reconcile logs to stdout for the cluster's log collector; a dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: operator_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves the chart's default operator configuration, which exports no metrics reporter. operator_config entries configure Flink's own metrics system (kubernetes.operator.metrics.* keys -- e.g. a Prometheus reporter) appended over the chart defaults.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up -- desired state is the Flink CRs (the cluster's etcd backup posture), and job state recovery (checkpoints, savepoints) is each KubernetesFlinkDeployment's concern. The chart leaves the flink.apache.org CRDs and every Flink declaration in place on uninstall, so removing the operator never destroys operand state.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (no failover). More than 1 pairs with module-rendered leader election -- one active reconciler, warm standbys -- which the chart REFUSES to run without; the modules render the leader-election config automatically.
+      notes: The 02-fenced-ha preset runs 2 replicas. Spreading the replicas across zones rides scheduling (node_selector, tolerations) and the cluster's topology.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the operator install; protection is operational (namespace RBAC, change review). The chart's crds/ posture and the keep-on-uninstall job service account mean deleting this component strands but never destroys running Flink workloads.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the default 1.15.0 -- the modules pin the image tag to the chart version explicitly (the chart's own default is the unpinned "latest", which never ships). Version changes are deliberate manifest edits.
+      notes: Chart upgrades NEVER upgrade the flink.apache.org CRDs (Helm crds/ directory posture) -- new CRD files are applied manually per the upstream release notes when a bump changes them.

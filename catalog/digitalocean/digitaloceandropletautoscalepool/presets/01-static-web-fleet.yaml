@@ -1,0 +1,27 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: web-fleet
+spec:
+  poolName: web-fleet
+  static:
+    targetInstances: 2
+  dropletTemplate:
+    size: s-1vcpu-1gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    sshKeys:
+      - valueFrom:
+          kind: DigitalOceanSshKey
+          name: ops-key
+          fieldPath: status.outputs.ssh_key_id
+    vpc:
+      valueFrom:
+        kind: DigitalOceanVpc
+        name: app-vpc
+        fieldPath: status.outputs.vpc_id
+    # Tag-targeted firewall and load-balancer rules follow the membership
+    # automatically as members are replaced.
+    tags:
+      - web
+    withDropletAgent: true

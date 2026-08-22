@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpglobaladdress
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageGlobalAddress
+        permissions:
+          - compute.globalAddresses.get
+          - compute.globalAddresses.setLabels
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_global_address reads, label changes (labels are the reservation's one mutable surface -- everything else forces replacement), and polling the global operation every mutation returns.
+      - purpose: ReserveExternalAddress
+        permissions:
+          - compute.globalAddresses.create
+          - compute.globalAddresses.delete
+        provenance: derived
+        notes: Reserving and releasing an EXTERNAL global address (address_type unset or EXTERNAL -- the default).
+      - purpose: ReserveInternalAddress
+        permissions:
+          - compute.globalAddresses.createInternal
+          - compute.globalAddresses.deleteInternal
+        provenance: derived
+        notes: INTERNAL reservations (VPC_PEERING ranges, PRIVATE_SERVICE_CONNECT endpoints) authorize under the dedicated *Internal permission variants, NOT the external create/delete (both pairs verified against IAM's testable-permissions inventory).

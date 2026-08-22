@@ -9,17 +9,28 @@ charts/*/*/template.yaml
 helm/*/charts/
 build/
 bin/
+# Website (site/) dependency, build, and toolchain artifacts: Next.js static
+# export output, the Yarn Berry cache, and files every `make -C site build`
+# regenerates (next-env.d.ts, the recent-changelog JSON). Nested .gitignore
+# files inside site/ (e.g. the R2 image inbox) handle their own local zones.
 site/node_modules/
+site/.next/
+site/out/
 site/build/
+site/coverage/
 site/.yarn/*
-site/!next-env.d.ts
+!site/.yarn/patches
+!site/.yarn/plugins
+!site/.yarn/releases
+!site/.yarn/versions
+site/.pnp.*
+site/next-env.d.ts
+site/*.tsbuildinfo
+site/.env*
+site/public/changelog/recent.json
+site/.venv/
 # Pinned proto toolchain, provisioned by `make proto-tools`
 .tools/
-
-# Swap the comments on the following lines if you don't wish to use zero-installs
-# Documentation here: https://yarnpkg.com/features/zero-installs
-site/!.yarn/cache
-#.pnp.*
 
 # Terraform init/plan/apply artifacts (generated locally, never committed)
 **/.terraform/
@@ -58,6 +69,10 @@ web-app/src/gen/
 !tools/ci/**/*.sh
 # CI guard scripts must be tracked (run by .github/workflows/lint.*.yaml)
 !hack/guards/*.sh
+# Scenario SETUP-phase scripts (see e2e/README.md). The blanket *.sh
+# ignore would otherwise leave them only on the machine that wrote them
+# and break every fresh checkout's lane.
+!catalog/**/e2e/scenarios/*.setup.sh
 **/*.env
 # Local-only provider credentials for live E2E (see forge rule "Post-Forge Live
 # E2E Validation"). NEVER commit. Note **/*.env above does not match *.env.e2e.

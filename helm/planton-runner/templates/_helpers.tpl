@@ -75,12 +75,15 @@ the configured tektonNamespace, or the runner's own namespace when empty
 
 {{/*
 Fail fast at install time when the build block cannot work as configured --
-a clear error beats a build worker that silently never polls.
+a clear error beats a build worker that silently never polls. Only an
+EXPLICIT grpc mode conflicts with builds: "auto" resolves from the identity
+document the runner receives at enrollment (a Temporal address means dual),
+so it is build-compatible by construction.
 */}}
 {{- define "planton-runner.validateBuild" -}}
 {{- if .Values.build.enabled }}
-{{- if not (or (eq .Values.runner.executionMode "temporal") (eq .Values.runner.executionMode "dual")) }}
-{{- fail "build.enabled requires runner.executionMode \"temporal\" or \"dual\" -- the build worker is a Temporal worker" }}
+{{- if eq .Values.runner.executionMode "grpc" }}
+{{- fail "build.enabled conflicts with runner.executionMode \"grpc\" -- the build worker is a Temporal worker; use \"auto\" (default), \"temporal\", or \"dual\"" }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -94,25 +97,34 @@ Container image with tag.
 {{- end }}
 
 {{/*
-Name of the Kubernetes Secret containing the runner credentials.
+The runner's name in its organization -- the name it registers itself under
+when it joins. Defaults to the Helm release name, the operator's natural
+name for this runner.
+*/}}
+{{- define "planton-runner.runnerName" -}}
+{{- default .Release.Name .Values.enrollment.runnerName }}
+{{- end }}
+
+{{/*
+Name of the Kubernetes Secret containing the runner token.
 Returns the existingSecret name if set, otherwise generates a name from the release.
 */}}
-{{- define "planton-runner.credentialsSecretName" -}}
-{{- if .Values.credentials.existingSecret }}
-{{- .Values.credentials.existingSecret }}
+{{- define "planton-runner.tokenSecretName" -}}
+{{- if .Values.enrollment.existingSecret }}
+{{- .Values.enrollment.existingSecret }}
 {{- else }}
-{{- printf "%s-credentials" (include "planton-runner.fullname" .) }}
+{{- printf "%s-token" (include "planton-runner.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
-Key within the credentials Secret that holds the JSON content.
-Returns the existingSecretKey if an external secret is used, otherwise "credentials.json".
+Key within the token Secret that holds the runner token.
+Returns the existingSecretKey if an external secret is used, otherwise "token".
 */}}
-{{- define "planton-runner.credentialsSecretKey" -}}
-{{- if .Values.credentials.existingSecret }}
-{{- default "credentials.json" .Values.credentials.existingSecretKey }}
+{{- define "planton-runner.tokenSecretKey" -}}
+{{- if .Values.enrollment.existingSecret }}
+{{- default "token" .Values.enrollment.existingSecretKey }}
 {{- else }}
-{{- "credentials.json" }}
+{{- "token" }}
 {{- end }}
 {{- end }}

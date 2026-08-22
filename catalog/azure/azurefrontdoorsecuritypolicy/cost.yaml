@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefrontdoorsecuritypolicy
+spec:
+  billing_model: free
+  free_tier: The security policy itself never bills -- it is the association that attaches a WAF policy to hostnames; the association is metadata, and adding or removing protected domains moves no money through it.
+  notes: "No field of this spec buys anything: the policy is configuration on the Front Door PROFILE it references (profile_id), and the cost of the traffic being inspected lives there -- a base fee per the profile's SKU plus requests and egress, a separate catalog kind. The WAF rules themselves live on the referenced AzureFrontDoorFirewallPolicy, its own catalog kind; note that managed rule sets require a PREMIUM profile, whose higher SKU rates bill on the profile, not here."

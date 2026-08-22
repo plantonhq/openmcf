@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssesaccountsettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: This settings singleton stores no customer data -- the suppression reasons and VDM toggles are SES-internal account metadata held in AWS's managed control-plane storage. There is no data store on this component for an encryption posture to apply to; the emails the account sends live on the sending path, not here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no key surface -- SES account settings expose no customer-managed-key option anywhere in the SESv2 API.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The SESv2 management API that carries these settings (PutAccountSuppressionAttributes, PutAccountVdmAttributes) is HTTPS-only; no plaintext path to the account object exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The account settings object exposes no endpoint -- it is pure control-plane configuration. Whether the account's MAIL is reachable is the sending identities' and receiving rules' territory, on their own components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a settings object; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for account-level configuration.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every read and write of these settings is IAM-authorized (ses:GetAccount, ses:PutAccountSuppressionAttributes, ses:PutAccountVdmAttributes). The service reference publishes no resource types for the account-level actions, so authorization is all-or-nothing per principal -- a grant to change suppression is a grant to change every account setting in the region.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A settings singleton runs no user workload -- there is no execution context to give an identity to. The sending applications that use SES authenticate on their own components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The SESv2 settings API has a single authentication path: SigV4-signed IAM requests. SES's SMTP-credential mechanism belongs to the message-submission path, not to this account object -- no legacy protocol can touch these settings."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: PutAccountSuppressionAttributes and PutAccountVdmAttributes are management events captured in CloudTrail unconditionally -- who turned auto-suppression off, and when, is always on the record.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: vdm
+      evidence:
+        type: spec_default
+        reference: Unset leaves the account without deliverability analytics; enabling VDM (with engagement_metrics) turns on the Virtual Deliverability Manager dashboard -- open/click tracking, bounce and complaint analytics, and Guardian advisories -- SES's own observability suite for the account's sending health.
+      notes: The suppression arm is itself a reputation-protection control -- BOUNCE and COMPLAINT auto-suppression stops repeat sends to addresses that already signalled harm.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- both arms are a handful of flags, fully recreatable by re-applying the manifest. Notably the suppression setting PERSISTS after destroy (SES has no delete for it), so the account never regresses to unsuppressed by accident; the VDM arm resets to disabled on destroy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set; no field of this spec governs data retention of any kind.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SES is a regional managed service AWS operates across availability zones; the account settings object has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists, and the destroy semantics differ per arm by AWS's design: destroying this component leaves the last-applied suppression reasons in force (SES has no delete API for them) and resets VDM to disabled. Nothing durable is lost either way -- re-applying the manifest restores the full posture."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches SES's control plane; the settings object exposes no runtime, version, or maintenance surface.

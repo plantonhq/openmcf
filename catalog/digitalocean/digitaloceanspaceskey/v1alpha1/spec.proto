@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanspaceskey.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanSpacesKeySpec models the full digitalocean_spaces_key resource
+// surface: an access-key pair for Spaces (DigitalOcean's S3-compatible object
+// storage), optionally scoped to specific buckets through per-bucket grants.
+//
+// Keys are managed through DigitalOcean's REST API (not the S3-compatible
+// endpoint), so provisioning needs only the account API token. The SECRET KEY
+// IS RETURNED EXACTLY ONCE -- in the create response -- and can never be
+// retrieved again; rotating a key means destroying and recreating it. The
+// key name and the grant list both update in place (the grant list is
+// replaced wholesale on every update); only the key material itself is
+// immutable.
+message DigitalOceanSpacesKeySpec {
+  // Human-readable name identifying the key in the DigitalOcean control
+  // panel. Renames apply in place without touching the key material.
+  string key_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // (Optional) Per-bucket access grants. When empty, DigitalOcean creates
+  // the key with NO access to anything -- grants are the only thing that
+  // authorizes it. Account-wide access is expressed as a single grant with
+  // permission "fullaccess" and no bucket. Updates replace the whole grant
+  // list in one call.
+  repeated DigitalOceanSpacesKeyGrant grants = 2;
+}
+
+// One access grant on a Spaces key: a permission applied either to a single
+// bucket or (for "fullaccess" only) to every bucket in the account.
+message DigitalOceanSpacesKeyGrant {
+  // The provider's own grant grammar: a fullaccess grant carries an empty
+  // bucket string upstream, while read/readwrite grants require the bucket
+  // they scope to. Both provisioners render the unset bucket as the empty
+  // string DigitalOcean expects.
+  option (buf.validate.message).cel = {
+    id: "grant.bucket_matches_permission"
+    message: "a fullaccess grant must not name a bucket; read and readwrite grants must name one"
+    expression: "(this.permission == 'fullaccess' && !has(this.bucket)) || (this.permission != 'fullaccess' && has(this.bucket))"
+  };
+
+  // The bucket this grant scopes to. Use a literal bucket name or a
+  // reference to a DigitalOceanBucket resource. Leave unset only for a
+  // "fullaccess" grant, which covers every bucket in the account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Access level granted: read, readwrite, or fullaccess. This wall exists
+  // only here -- the provider has no validator and silently maps any other
+  // value to an EMPTY permission, creating a grant that authorizes nothing.
+  string permission = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "read",
+        "readwrite",
+        "fullaccess"
+      ]
+    }
+  ];
+}

@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakermodel
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The model object stores no customer data -- it is an immutable serving definition held in SageMaker's control plane. The artifacts it points at rest in S3 (the owning bucket's encryption posture) and the inference image rests in ECR (that repository's posture); at serving time, volume encryption belongs to the deploying AwsSagemakerEndpoint.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key on the model itself (see enc-at-rest); customer-key choices live on the artifact bucket, the ECR repository, and the endpoint's kms_key_arn.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A model definition terminates no connections. Management calls ride the TLS-only SageMaker API as provider behavior; the serving path's transport is the deploying endpoint's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A model has no network endpoint to expose -- it is deployable configuration reachable only through the IAM-authorized SageMaker API. Public reachability questions belong to what deploys it, and the endpoint's invocation path is itself SigV4-gated on that component.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_config
+      evidence:
+        type: spec_default
+        reference: Unset means the model's containers run on the SageMaker platform network when deployed; setting vpc_config places their ENIs in the declared subnets under the declared security groups, so every serving deployment of this model inherits VPC-scoped network control. Changing it replaces the model, like every field on this immutable object.
+      notes: enable_network_isolation goes further -- the container gets NO inbound or outbound network path at all (not even to AWS services), with artifacts and image still loading normally; the strongest stance for untrusted third-party model code.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing surface -- the model terminates no HTTP traffic and no web ACL can attach to a serving definition; request filtering belongs to whatever fronts the deploying endpoint.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the model -- CreateModel, DescribeModel, DeleteModel, tagging -- is IAM-authorized against the model ARN, and deploying it is separately authorized on the endpoint and endpoint-config actions; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The spec's required execution_role_arn is the ONLY credential path the serving containers ever get -- SageMaker assumes the role and injects short-lived credentials for pulling the ECR image, reading S3 artifacts, and whatever the container calls at inference time. No static credentials are provisioned anywhere on this object.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The single access path is SigV4-signed HTTPS through the SageMaker API; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CreateModel, DeleteModel, and tagging are control-plane API operations recorded by CloudTrail by default -- and because the model is immutable, its audit story is unusually clean; every change is a recorded create-and-replace, never a silent mutation.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A model object emits nothing -- there is no runtime to measure until it is deployed, and then invocation metrics, container logs, and Model Monitor all attach to the AwsSagemakerEndpoint serving it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The model holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and the durable inputs (S3 artifacts, ECR image) live on their own components with their own durability postures.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A model definition has no running footprint to replicate. Availability is decided at deployment -- the endpoint's instance count spreads instances across zones on that component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Models expose no deletion-protection flag -- DeleteModel succeeds whenever IAM allows it. Endpoints already running the model keep serving (they hold their own copy of the definition), and artifacts stay in S3; deletion only removes the deployable entry.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs inside the model object. The inference image it points at is the customer's own artifact -- patched by rebuilding the image and rolling a NEW model (the object is immutable by AWS contract), then repointing the endpoint.

@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetestempo
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Every Tempo replica carries the declared resources and its own volume. One replica is the local-storage ceiling; going wider requires an object-storage backend, and each added replica scales ingest and query alongside the reservation.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per replica. Empty means NO requests or limits (the chart default) -- the pods reserve nothing schedulable; set them for any real deployment, since memory scales with ingest volume and block size.
+    - field_path: disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every replica provisions a volume of this size -- 10Gi when unset. With local storage it holds ALL trace blocks (size it for the full retention window); with an object-storage backend it holds only the write-ahead log.
+    - field_path: retention
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: How long trace blocks live before compaction deletes them (24h when unset). With local storage this directly drives how large disk_size must be; with an object backend it drives the bucket's stored bytes instead.
+    - field_path: storage
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: An s3/gcs/azure backend moves trace blocks into object storage -- stored bytes and request counts are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), not by this cluster's capacity.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - object-storage backends are billed by the external store (or an in-cluster KubernetesSeaweedFs with its own footprint), outside this component's capacity
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x (requests + volume). Know the divergence from the chart: the chart's own default runs on emptyDir, but this component provisions a PersistentVolumeClaim by default (ephemeral restores the chart posture) -- so even an all-defaults manifest reserves 10Gi. The tempo-query sidecar (tempo_query_enabled) adds an untyped container per pod when enabled."

@@ -3,37 +3,45 @@ kind: ComponentE2EProfile
 metadata:
   name: azurecontainerinstance
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green across the maximal
-  # every-arm shape and all three lanes); live dual-engine proof has
-  # not yet run. THREE scenarios run: `minimal` (public IP +
-  # run-id-tokened DNS label -- proves the FQDN/IP outputs and the
-  # omit-exposed-ports derivation), `private-subnet` (the ACI-delegated
-  # fixture subnet's first live exercise; Azure serializes group
-  # operations per subnet, so this lane never runs alongside another
-  # group in that subnet), and `full-shape` (init container + shared
-  # empty_dir + Azure File volume on the fixture share + secure env
-  # vars + both probe forms + Log Analytics diagnostics + system
-  # identity -- every write-only secret surface in one lane; the
-  # import round-trip must expect those secrets ABSENT from reads,
-  # and `commands`/`exposed_port` read back populated -- expected, not
-  # drift). Watch-list is led by the full-shape lane's image pulls
-  # (cbl-mariner/busybox for the init container -- if MCR moves it,
-  # swap the init image; the aci-helloworld main image is Azure's own
-  # sample). Groups bill per second: all three lanes together cost
-  # effectively $0. Offline-proven with reasons: Windows os_type
-  # (multi-GB image pulls make the lane slow and flaky, and the wire
-  # shape is identical); Confidential sku (regional/attestation
-  # constraints on the test subscription); Spot priority (capacity-
-  # dependent eviction class -- exercised by the run-once-job preset's
-  # offline plan); the git_repo and secret volume arms (the Azure File
-  # arm proves the union's wire path; these two differ only in the
-  # payload ARM validates uniformly -- both render in the manifest's
-  # offline plan); customer-managed-key encryption (needs a
-  # purge-protected vault plus an unwrap grant the lane cannot
-  # honestly stand up cheaply -- rendered in the manifest's offline
-  # plan).
+  # PROVEN live on both engines: ALL THREE scenarios through the full
+  # lifecycle with the apply-idempotency re-plan clean. `minimal`
+  # (public IP + run-id-tokened DNS label; FQDN/IP outputs and the
+  # omit-exposed-ports derivation proven; ~3-5 min/engine) and
+  # `private-subnet` (the ACI-delegated fixture subnet's first live
+  # join; ~15-19 min/engine -- the subnet's create/delete serialization
+  # dominates; never run alongside another group in that subnet) both
+  # round-tripped their blind imports zero-change, `exposed_port` and
+  # `commands` reading back populated as expected. `full-shape` (init
+  # container + shared empty_dir + Azure File volume + secure env vars
+  # + both probe forms + ContainerInsights diagnostics with metadata +
+  # system identity; ~8-11 min/engine) proved init-before-main
+  # ordering live through the exec readiness probe on the init-seeded
+  # file, and carries the reason-carrying import-round-trip skip: its
+  # write-only ForceNew secret plans a one-time replace after any
+  # import (see the import catalog row and the GUIDE -- the recipes
+  # are proven by the secret-free scenarios). THREE live-caught
+  # contracts landed from these lanes: log_type
+  # ContainerInstanceLogs is undeployable (the provider always sends a
+  # metadata object with a log type; ARM answers
+  # LogAnalyticsMetadataNotAllowed -- CEL-blocked), the diagnostics
+  # metadata KEYS are ARM's closed vocabulary
+  # (pod-uuid/cluster-resource-id/node-name,
+  # InvalidLogAnalyticsMetadataKeys -- CEL-enforced), and the probe
+  # http_get scheme must be explicit-sent ("http" when unset -- ARM
+  # materializes it and the provider treats it as replace-forcing).
+  # Groups bill per second: all lanes together cost effectively $0.
+  # Offline-proven with reasons: Windows os_type (multi-GB image pulls
+  # make the lane slow and flaky, and the wire shape is identical);
+  # Confidential sku (regional/attestation constraints on the test
+  # subscription); Spot priority (capacity-dependent eviction class --
+  # exercised by the run-once-job preset's offline plan); the git_repo
+  # and secret volume arms (the Azure File arm proves the union's wire
+  # path; these two differ only in the payload ARM validates uniformly
+  # -- both render in the manifest's offline plan);
+  # customer-managed-key encryption (needs a purge-protected vault
+  # plus an unwrap grant the lane cannot honestly stand up cheaply --
+  # rendered in the manifest's offline plan).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremssqlserver
+spec:
+  billing_model: free
+  free_tier: The Azure SQL logical server is a free administrative container -- the login endpoint, authentication posture, TDE key binding, and network rules. It has no compute of its own, and Microsoft's pricing charges compute, I/O, and storage per DATABASE or ELASTIC POOL, never for the server that hosts them; a server with no databases costs nothing.
+  notes: "The real spend lives in the AzureMssqlDatabase and AzureMssqlElasticPool kinds that reference this server's server_id. Three spec fields route additional spend to OTHER meters without billing here: security_alert_policy and express_vulnerability_assessment_enabled are the server-scope faces of Microsoft Defender for SQL, which bills through Microsoft Defender for Cloud per protected server-month when the Defender plan is active; extended_auditing continuously writes audit events into the referenced storage account (billing as AzureStorageAccount) and/or into Azure Monitor, where log ingestion is metered. Firewall, virtual-network, and outbound rules, the Entra administrator, managed identities, and the connection policy are all free configuration."

@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcplogbucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: retention_days
+      sku_meter: log retention
+      pricing_unit: GiB-months
+      impact: The first 30 days of storage ride the ingestion charge; every day beyond 30 bills $0.01 per GiB per month on whatever volume is held. At the default 30, retention costs nothing extra -- the 400-day compliance preset pays the retention meter on 370 extra days of every GiB it holds.
+    - field_path: locked
+      sku_meter: log retention
+      pricing_unit: GiB-months
+      impact: Locking is one-way -- a locked bucket's retention can never be shortened or unlocked, so the extended-retention meter cannot be turned down, and the bucket cannot be deleted until every entry has aged out. The compliance posture, priced accordingly.
+    - field_path: bucket_id
+      sku_meter: log storage
+      pricing_unit: GiB ingested
+      impact: A custom ID creates a fresh destination that bills $0.50/GiB only for what sinks route into it; "_Default" adopts the bucket that already receives everything the project's _Default sink catches, so the retention set here reprices the project's whole default log flow.
+    - field_path: scope
+      sku_meter: log storage
+      pricing_unit: GiB ingested
+      impact: The project CONTAINING the bucket pays -- entries routed in from other projects bill here, not at their source, and the 50 GiB/month free allotment is per project. A central-scope bucket deliberately concentrates the whole fleet's ingestion and retention spend on one bill.
+  estimate_exclusions:
+    - an empty bucket bills nothing -- ingestion charges $0.50/GiB (vended network logs $0.25/GiB with no free allotment) as sinks stream entries in, past the first 50 GiB/project/month
+    - ingestion is per DESTINATION -- an entry routed to three buckets bills three times; what lands here is the sinks' (separate resources') routing decision
+    - Log Analytics (enable_analytics) and the linked BigQuery dataset add no Logging charge -- the linked dataset duplicates no storage into BigQuery; SQL run through BigQuery services is governed by BigQuery's own pricing
+  notes: "The bucket is where Logging's money lands: routing is free (Log Router carries no charge) and the SOURCES pay nothing -- the one-time $0.50/GiB streaming charge and the past-30-days retention meter both bill the project holding the destination bucket (Cloud Logging pricing summary, Google Cloud Observability pricing page). The built-in _Required bucket is the free exception -- no storage or retention charges, fixed 400 days, undeletable -- and this component can only ever adopt, never create, the built-ins. deletion_policy ABANDON leaves the bucket storing and billing after it is unmanaged."

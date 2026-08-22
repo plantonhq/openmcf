@@ -74,6 +74,5 @@ module "public_ip_prefix" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Network/publicIPPrefixes/write`
-on the resource group -- held via Network Contributor, Contributor, or
-Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+action manifest the deploying credential needs.

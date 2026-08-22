@@ -114,8 +114,13 @@ func Resources(ctx *pulumi.Context, stackInput *azuremachinelearningcomputeinsta
 	ctx.Export(OpMachineLearningComputeInstanceId, createdInstance.ID())
 	ctx.Export(OpMachineLearningComputeInstanceName, createdInstance.Name)
 	ctx.Export(OpSystemAssignedIdentityPrincipalId, createdInstance.Identity.PrincipalId())
-	ctx.Export(OpSshUsername, createdInstance.Ssh.Username())
-	ctx.Export(OpSshPort, createdInstance.Ssh.Port())
+	// The ssh outputs are populated only when the ssh block is configured.
+	// Elem() dereferences nil to the zero value ("" / 0), mirroring the
+	// Terraform module's try(..., "") / try(..., 0) fallbacks -- both
+	// engines must emit the same output shape, and a raw nil export fails
+	// the harness's int32 parse.
+	ctx.Export(OpSshUsername, createdInstance.Ssh.Username().Elem())
+	ctx.Export(OpSshPort, createdInstance.Ssh.Port().Elem())
 
 	return nil
 }

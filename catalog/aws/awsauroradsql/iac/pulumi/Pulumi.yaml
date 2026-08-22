@@ -1,0 +1,3 @@
+name: awsauroradsql
+runtime: go
+description: Pulumi module to manage an Aurora DSQL cluster with multi-region pairing

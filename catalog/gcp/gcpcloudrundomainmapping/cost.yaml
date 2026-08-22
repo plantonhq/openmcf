@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudrundomainmapping
+spec:
+  billing_model: free
+  free_tier: A domain mapping carries no meter -- Cloud Run's pricing bills vCPU-seconds, memory, requests, and data transfer on the SERVICE, and neither the mapping nor the managed TLS certificate it provisions in AUTOMATIC mode appears anywhere on that bill. Issuance and every automatic renewal of the certificate are equally chargeless.
+  notes: "No field of this spec buys anything: the domain names the mapping, certificate_mode decides whether Google issues a free managed certificate, and nothing here meters. The real spend is the Cloud Run service the domain routes to (route) -- its request, CPU, memory, and data-transfer meters bill as the GcpCloudRun kind, and mapping a domain onto it changes none of them. The DNS records this mapping emits as outputs must live somewhere: hosting them on Cloud DNS rides GcpDnsZone's monthly zone fee and per-query rates, while an external host bills on its own terms. The cost contrast worth knowing runs the other way -- this kind exists precisely to AVOID the load-balancer composition, whose forwarding rule bills hourly and whose data processing bills per GiB; a domain mapping serves the custom domain with none of that, at the price of the load balancer's features (Cloud Armor, CDN, multi-service routing)."

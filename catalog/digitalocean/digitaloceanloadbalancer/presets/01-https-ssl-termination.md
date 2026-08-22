@@ -1,29 +1,20 @@
 # HTTPS Load Balancer with SSL Termination
 
-This preset creates a load balancer that terminates TLS on port 443 and forwards traffic to backend Droplets over HTTP on port 80. Uses tag-based targeting so any Droplet with the `web` tag in the VPC is automatically added. Health checks ensure only healthy backends receive traffic.
+This preset creates a load balancer that terminates TLS on port 443 and forwards traffic to backend Droplets over HTTP on port 80. An HTTP rule on port 80 plus `redirectHttpToHttps` sends browsers to HTTPS. Tag-based targeting attaches every Droplet carrying the `web` tag. Health checks keep unhealthy backends out of rotation.
 
 ## When to Use
 
-- Production web applications requiring HTTPS
-- SSL termination at the load balancer (certificate managed separately)
-- Tag-based scaling: add/remove Droplets with the tag to scale
-- Multiple backend Droplets behind a single public endpoint
+- Production web applications that need HTTPS
+- TLS termination at the load balancer (certificate managed as a `DigitalOceanCertificate`)
+- Tag-based scaling: add or remove Droplets with the tag to change membership
 
 ## Key Configuration Choices
 
-- **HTTPS to HTTP** (`entryPort: 443`, `entryProtocol: https`, `targetPort: 80`) -- TLS terminates at the LB; backends serve plain HTTP for simplicity.
-- **Certificate** (`certificateName`) -- use the name of a `DigitalOceanCertificate` (Let's Encrypt or custom) resource; prefer name over ID for stable IaC.
-- **Tag-based targeting** (`dropletTag: web`) -- all Droplets with tag `web` in the VPC are attached; no manual droplet ID management.
-- **Health check** (`path: /health`, `checkIntervalSec: 10`) -- backends must respond 2xx on `/health`; adjust path to match your app.
-- **VPC required** (`vpc`) -- load balancer must be in a VPC; same VPC as your Droplets.
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<vpc-id>` | UUID of the target VPC | DigitalOcean VPC console or `DigitalOceanVpc` status outputs |
-| `<certificate-name>` | Name of the SSL certificate in DigitalOcean | `DigitalOceanCertificate` resource `certificate_name` or status |
-| `nyc3` | Target DigitalOcean region slug | Must match the VPC's region |
+- **HTTPS to HTTP** (`entryPort: 443`, `entryProtocol: https`, `targetPort: 80`) -- TLS terminates at the balancer; backends serve plain HTTP.
+- **Certificate by name** -- the `certificateName` reference resolves to `DigitalOceanCertificate.status.outputs.certificate_id`, which at the pinned provider is the certificate NAME (UUIDs rotate on Let's Encrypt renewal).
+- **HTTP redirect** -- the port-80 rule plus `redirectHttpToHttps` sends cleartext visitors to 443.
+- **Tag-based targeting** (`dropletTag: web`) -- membership follows the tag; do not also set `dropletIds`.
+- **VPC** -- a reference to a `DigitalOceanVpc`. Omit it to use the region's default VPC.
 
 ## Related Presets
 

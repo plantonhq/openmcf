@@ -248,9 +248,15 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerinstancev1alpha1.A
 				if probe.HttpGet.Port != 0 {
 					httpGetArgs.Port = pulumi.Int(int(probe.HttpGet.Port))
 				}
+				// Explicit-send "http" when unset: ARM materializes the
+				// scheme on reads and the provider treats it as
+				// replace-forcing, so an omitted scheme re-plans as a
+				// destroy+create (live-proven by the idempotency gate).
+				scheme := "http"
 				if probe.HttpGet.Scheme != "" {
-					httpGetArgs.Scheme = pulumi.String(probe.HttpGet.Scheme)
+					scheme = probe.HttpGet.Scheme
 				}
+				httpGetArgs.Scheme = pulumi.String(scheme)
 				if len(probe.HttpGet.HttpHeaders) > 0 {
 					httpGetArgs.HttpHeaders = pulumi.ToStringMap(probe.HttpGet.HttpHeaders)
 				}
@@ -287,9 +293,13 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerinstancev1alpha1.A
 				if probe.HttpGet.Port != 0 {
 					httpGetArgs.Port = pulumi.Int(int(probe.HttpGet.Port))
 				}
+				// Explicit-send "http" when unset -- see the liveness
+				// probe's scheme note (replace-forcing echo).
+				scheme := "http"
 				if probe.HttpGet.Scheme != "" {
-					httpGetArgs.Scheme = pulumi.String(probe.HttpGet.Scheme)
+					scheme = probe.HttpGet.Scheme
 				}
+				httpGetArgs.Scheme = pulumi.String(scheme)
 				if len(probe.HttpGet.HttpHeaders) > 0 {
 					httpGetArgs.HttpHeaders = pulumi.ToStringMap(probe.HttpGet.HttpHeaders)
 				}
@@ -330,7 +340,12 @@ func Resources(ctx *pulumi.Context, stackInput *azurecontainerinstancev1alpha1.A
 			logAnalyticsArgs.LogType = pulumi.String(diagnostics.LogType)
 		}
 		// The provider only sends metadata alongside a log type
-		// (validated upstream).
+		// (validated upstream). Note the provider ALSO attaches an
+		// empty metadata object whenever a log type is set, which ARM
+		// rejects for ContainerInstanceLogs
+		// (LogAnalyticsMetadataNotAllowed, live-proven) -- a spec CEL
+		// blocks that log type until the provider stops sending the
+		// empty map.
 		if len(diagnostics.Metadata) > 0 {
 			logAnalyticsArgs.Metadata = pulumi.ToStringMap(diagnostics.Metadata)
 		}

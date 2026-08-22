@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandatabasedb
+spec:
+  billing_model: free
+  notes: Logical databases are a feature of the managed database cluster and carry no charge of their own -- the cluster's node-hours (a DigitalOceanDatabaseCluster cost) are the entire bill. Data stored in the logical database consumes the cluster's disk, which is sized and billed on the cluster.

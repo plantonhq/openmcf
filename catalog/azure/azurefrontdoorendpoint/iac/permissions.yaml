@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoorendpoint
+spec:
+  azure:
+    groups:
+      - purpose: ManageEndpoint
+        actions:
+          - Microsoft.Cdn/profiles/afdendpoints/read
+          - Microsoft.Cdn/profiles/afdendpoints/write
+          - Microsoft.Cdn/profiles/afdendpoints/delete
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_endpoint -- create, read/refresh, in-place enabled/tags updates, and destroy. The parent profile is addressed by its ARM ID parsed from the profile_id reference, and the module performs no other API calls. Held via CDN Profile Contributor, Contributor, or narrower custom roles.

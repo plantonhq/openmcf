@@ -12,7 +12,6 @@ spec:
     statements:
       - sid: ManageDistribution
         actions:
-          - cloudfront:CreateDistribution
           - cloudfront:GetDistribution
           - cloudfront:UpdateDistribution
           - cloudfront:DeleteDistribution
@@ -23,9 +22,17 @@ spec:
           - arn:aws:cloudfront::*:distribution/*
         provenance: derived
         notes: Covers aws_cloudfront_distribution -- create, read, converge, tag, and the disable-then-delete teardown. CloudFront is a global service; the distribution id is the ARN's variable part.
+      - sid: CreateGlobalResources
+        actions:
+          - cloudfront:CreateDistribution
+          - cloudfront:CreateOriginAccessControl
+          - cloudfront:CreateContinuousDeploymentPolicy
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for these three Create actions -- the CloudFront developer guide's own policy examples specify Resource "*" for CreateDistribution, not a distribution-ARN pattern -- while every read/update/delete/tag sibling scopes to its resource ARN. An ARN-scoped create grant never matches and would deny provisioning at runtime; the wildcard is the narrowest possible scope.
       - sid: ManageOriginAccessControl
         actions:
-          - cloudfront:CreateOriginAccessControl
           - cloudfront:GetOriginAccessControl
           - cloudfront:UpdateOriginAccessControl
           - cloudfront:DeleteOriginAccessControl
@@ -35,7 +42,6 @@ spec:
         notes: Covers aws_cloudfront_origin_access_control, created for each S3 origin with create_origin_access_control true so the bucket accepts only this distribution's signed requests.
       - sid: ManageContinuousDeploymentPolicy
         actions:
-          - cloudfront:CreateContinuousDeploymentPolicy
           - cloudfront:GetContinuousDeploymentPolicy
           - cloudfront:UpdateContinuousDeploymentPolicy
           - cloudfront:DeleteContinuousDeploymentPolicy
@@ -49,6 +55,6 @@ spec:
           - cloudfront:GetMonitoringSubscription
           - cloudfront:DeleteMonitoringSubscription
         resources:
-          - arn:aws:cloudfront::*:distribution/*
+          - "*"
         provenance: derived
-        notes: Covers aws_cloudfront_monitoring_subscription, created only when enable_additional_metrics is true -- the subscription is addressed by the distribution's own ARN.
+        notes: Covers aws_cloudfront_monitoring_subscription, created only when enable_additional_metrics is true. The service reference lists NO resource types for any of the three subscription actions, so IAM evaluates them against Resource "*" -- an ARN-scoped grant never matches. The wildcard is the narrowest possible scope.

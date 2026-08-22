@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestoragecontainer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Storage service-side encryption covers every blob in every container with 256-bit AES, always on, with no disable switch at any configuration level -- the container's data is encrypted at rest before it ever lands on disk."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: default_encryption_scope
+      evidence:
+        type: spec_default
+        reference: "Unset, blobs encrypt under the account's default key posture. Set, blobs written without their own scope encrypt under the referenced AzureStorageEncryptionScope -- which can carry a customer-managed Key Vault key -- and encryption_scope_override_enabled false makes that scope mandatory for every blob in the container."
+      notes: "The Tenant-Scoped Encryption preset binds a scope with override disabled -- per-tenant key custody inside one shared account. Account-wide customer-managed keys are the AzureStorageAccount kind's posture; the container-level scope narrows key isolation below the account without splitting accounts."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Transport posture is account-level: HTTPS-only enforcement and the minimum TLS version live on the AzureStorageAccount, and every container under the account inherits them. The container offers no transport lever of its own."
+    - control_id: no-public-access
+      status: configurable
+      field_path: container_access_type
+      evidence:
+        type: spec_default
+        reference: "Unspecified means PRIVATE -- the modules materialize \"private\" explicitly, so a container is born requiring authorization on every read. BLOB and CONTAINER are deliberate spec choices, and anonymous access additionally requires the ACCOUNT's allow_nested_items_to_be_public to be true; when the account forbids it, Azure forces private regardless of this field."
+      notes: "The Private Container preset states PRIVATE explicitly; only the Public CDN Origin preset opens BLOB (anonymous reads by direct URL, no listing). CONTAINER also allows anonymous enumeration of every blob and is rarely appropriate. Note this control governs anonymous ACCESS -- network reachability of the endpoint is the account's firewall and private-endpoint posture."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Network-source restriction (IP rules, VNet rules, private endpoints, public-network disable) is the AzureStorageAccount's firewall posture -- the account's single blob endpoint serves every container, so there is no per-container network filter to configure."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The blob endpoint accepts storage API requests, not application traffic -- there is no WAF attachment point at the container grain. Public-content patterns front the container with Azure CDN or Front Door (where WAF policies live) and keep the container as origin."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every non-anonymous data-plane request must be authorized -- Entra ID RBAC, SAS, or the account's shared key -- and the container's ARM ID is a first-class role-assignment scope, so Storage Blob Data Reader/Contributor grants can be issued per container rather than account-wide."
+      notes: "The container_id output is the least-privilege data-plane grant scope (compose grants via AzureRoleAssignment). The one authorization bypass is deliberate: container_access_type BLOB/CONTAINER opens anonymous READS (see no-public-access); writes always require authorization."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The container holds no credentials and runs no workloads. Keyless access is composed caller-side -- a managed identity plus a data role scoped to container_id -- and the shared-key/SAS alternatives are governed by the account's shared_access_key_enabled posture."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Disabling shared-key authorization (the legacy path) is the AzureStorageAccount's shared_access_key_enabled switch, account-wide by design; the container exposes no authentication toggles of its own."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Container create/update/delete land in the Azure Activity Log automatically. Data-plane read/write/delete auditing is Azure Monitor resource logs configured on the account's blob service via diagnostic settings -- account-side posture with no per-container toggle."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Azure Storage metrics (capacity, transactions, latency, availability) emit at the account and blob-service grain -- Microsoft defines no per-container metric surface, and this spec carries no monitoring toggle. Per-container visibility is composed from resource logs filtered by container name."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Blob protection features -- soft delete for blobs and containers, versioning, snapshots, point-in-time restore -- are account-level blob_properties on the AzureStorageAccount, and each covers every container under the account. Worth knowing the blast radius: deleting the container deletes its blobs, and only the ACCOUNT's container soft-delete window can bring them back."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "Retention windows for blob and container soft delete are set on the account's delete-retention policies (see backup-recovery); no retention lever exists on this spec."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Durability and zone/geo redundancy follow the ACCOUNT's replication choice (LRS, ZRS, GRS, GZRS and their RA variants) -- the container inherits whatever the account chose, with no per-container lever."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the container API nor this spec offers a deletion-protection flag; ARM resource locks and legal hold / immutability policies are separate governance surfaces outside this manifest. A container delete takes every blob in it -- the account's container soft-delete window is the recovery net."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Blob Storage is a fully managed service -- Microsoft operates and patches the storage infrastructure with no customer-visible patch surface."

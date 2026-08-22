@@ -1,0 +1,52 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbackendservice
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageBackendService
+        permissions:
+          - compute.backendServices.create
+          - compute.backendServices.get
+          - compute.backendServices.update
+          - compute.backendServices.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_backend_service -- create, read/refresh, in-place updates (backends, health check, affinity, CDN, IAP, logging, headers are all mutable; name and project changes replace), and destroy. Global backend services return global operations the provider polls. service_lb_policy attaches a Network Services ServiceLbPolicy by URL through this same compute mutation -- Google's networkservices role reference defines no serviceLbPolicies.use permission (only create/get/list/update/delete, verified live), so no extra grant is listed here; reading the referenced policy in its own project requires networkservices.serviceLbPolicies.get there.
+      - purpose: UseReferencedBackendsAndHealthCheck
+        permissions:
+          - compute.healthChecks.useReadOnly
+          - compute.instanceGroups.use
+          - compute.networkEndpointGroups.use
+        provenance: derived
+        notes: Service-side checks, not module API calls -- attaching a health check authorizes with compute.healthChecks.useReadOnly on the referenced check, and each backend group authorizes with compute.instanceGroups.use or compute.networkEndpointGroups.use on the referenced group. Grant the one(s) matching what the spec actually references, on the projects that own those resources (which differ from the backend service's project in cross-project setups); a backend service with no health check and no backends (a valid creation order) needs none of these.
+      - purpose: ManageSignedUrlKeys
+        permissions:
+          - compute.backendServices.addSignedUrlKey
+          - compute.backendServices.deleteSignedUrlKey
+        provenance: derived
+        notes: Required only when signed_url_keys is set -- covers google_compute_backend_service_signed_url_key. Keys are immutable in GCP (add/delete only), so rotation and key-value changes exercise both permissions; the key material itself never leaves the request. Not needed for backend services without signed URLs.
+      - purpose: AttachSecurityPolicies
+        permissions:
+          - compute.backendServices.setSecurityPolicy
+          - compute.securityPolicies.use
+        provenance: derived
+        notes: Required only when security_policy or edge_security_policy references a Cloud Armor policy -- both attachments authorize on both sides, setting the policy on the backend service and using the referenced security policy. Not needed for backend services without Cloud Armor.
+      - purpose: ApplyResourceManagerTags
+        permissions:
+          - compute.backendServices.createTagBinding
+          - resourcemanager.tagValueBindings.create
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- attaching a tag at create time authorizes on both sides, the binding on the backend service and the use of each named tag value (tag values are org-level resources, so the tagValueBindings grant lives there). The module sends tags only through the create-only params block; tag changes replace the backend service, re-running these checks. Not needed for untagged backend services.

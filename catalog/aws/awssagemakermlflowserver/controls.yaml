@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The managed server's own experiment and run metadata is encrypted at rest by AWS-managed keys as part of the managed service; MLflow artifacts live in the customer's S3 location (artifact_store_uri), where S3 default encryption applies.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The tracking-server API exposes no customer-managed-key surface for the server's own storage -- there is no KMS field on the spec because AWS offers none. Customer-key coverage for the artifacts belongs to the artifact bucket's own component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The MLflow UI and REST API are reached over HTTPS -- through presigned URLs or SigV4-authenticated calls to the tracking server's endpoint -- and management rides the SageMaker API over TLS; no plaintext path exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The server exposes no anonymously reachable surface -- access requires IAM authorization, either a presigned URL minted through the SageMaker API or SigV4-signed MLflow API calls; there is no public-network toggle to get wrong.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec carries no VPC, subnet, or security-group surface -- AWS operates the server's network entirely, and source restriction happens through IAM on the callers, not through network rules on the server.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The MLflow endpoint is fronted by AWS's managed service surface -- no web ACL can attach to it, and no spec field exposes one.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path in is IAM-authorized against the mlflow-tracking-server ARN -- presigned-URL issuance, the sagemaker-mlflow API actions, and all management calls; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required (spec-validated) -- the server reads and writes the artifact store exclusively through that IAM role; no static credentials exist anywhere in the component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access paths are SigV4-signed HTTPS and IAM-minted presigned URLs -- no weaker or legacy authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call (create, update, resize, delete, presigned-URL issuance) is recorded by CloudTrail by default, and MLflow REST calls authorize through the sagemaker-mlflow IAM actions, leaving the same account-level trail.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: AWS operates the server's health and capacity -- the component exposes no customer-facing metric or log stream of its own to wire into a monitoring system; operational visibility is the MLflow UI and API themselves.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No customer-facing backup or restore exists for the server's experiment and run metadata -- AWS manages the store with no snapshot control on the API. The artifacts themselves persist independently in the customer's S3 location and survive server deletion.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The spec's only capacity control is size (Small/Medium/Large) -- AWS manages placement with no availability-zone or replication control exposed; there is no HA form to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists -- DeleteMlflowTrackingServer succeeds whenever IAM allows it (deletion takes ~25 minutes, which is provisioning choreography, not protection). The artifact store survives deletion because it lives in the customer's own S3 bucket.
+    - control_id: managed-patching
+      status: configurable
+      field_path: weekly_maintenance_window_start
+      evidence:
+        type: spec_default
+        reference: AWS applies maintenance to the managed server on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
+      notes: The 02-regulated-experiment-tracking preset pins SUN:03:00. mlflow_version pins the major.minor MLflow line (omitted = AWS picks the latest); moving lines replaces the server, so version currency is a deliberate change, not silent drift.

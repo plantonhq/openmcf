@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecognitivedeployment
+spec:
+  azure:
+    groups:
+      - purpose: ManageCognitiveDeployment
+        actions:
+          - Microsoft.CognitiveServices/accounts/deployments/read
+          - Microsoft.CognitiveServices/accounts/deployments/write
+          - Microsoft.CognitiveServices/accounts/deployments/delete
+        provenance: derived
+        notes: Covers azurerm_cognitive_deployment / cognitive.NewDeployment -- create, read/refresh (the assigned rai_policy_name and resolved model version are read back), the in-place updates (model version, sku capacity, rai_policy_name, version_upgrade_option, dynamic throttling), and destroy; everything else is delete-and-recreate under these same actions. The parent account is addressed by the ARM ID in cognitive_account_id and never read; the rai_policy_name is a by-name reference validated by the service at write time on the same account, adding no extra grant. Regional model availability and subscription quota gate what actually deploys -- capacity concerns, not RBAC actions. Held via Cognitive Services Contributor on the account's resource group or an equivalent custom role.

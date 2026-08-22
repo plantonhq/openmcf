@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awss3tablebucket
+spec:
+  presets:
+    - preset: 01-analytics-lake
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - S3 Tables Standard storage bills per GB-month from the first byte written into the events table ($0.0265/GB first 50 TB in the pricing page's US-West Oregon example) -- the manifest creates the table EMPTY
+        - PUT requests ($0.005 per 1,000) and GET requests ($0.0004 per 1,000) follow the ETL and query traffic, invisible to this manifest
+        - object monitoring ($0.025 per 1,000 objects-month) and compaction ($0.002 per 1,000 objects + $0.005 per GB processed, tuned here to 256 MiB targets) are the per-object maintenance meters -- exactly zero while the table is empty
+        - the 168-hour/3-snapshot retention holds a week of time travel; the storage those snapshots pin bills on the storage meter as data accumulates
+      notes: Zero committed cost -- the zero is commitment-absence on an empty Iceberg table, not a free tier; S3 Tables has no permanent free allotment, and every meter starts with the first object the lake ingests.
+    - preset: 02-replicated-lake
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the same storage, request, monitoring, and compaction meters as the single-region preset, all zero on the empty events table this manifest creates
+        - replication starts its meter family with the first write -- $0.010 per 1,000 table updates, destination PUT requests per replicated file, inter-Region Data Transfer OUT per GB to the us-west-2 replica, and the replica bucket's own storage and monitoring meters
+        - the aws:kms encryption choice routes KMS request charges (including the maintenance service's GenerateDataKey/Decrypt calls during compaction) to the referenced key, billed on its own AwsKmsKey component
+        - the replication IAM role is free and billed nowhere; it is authored as its own AwsIamRole component
+      notes: Zero committed cost -- KMS encryption and cross-region replication are POSTURE on this manifest, and both bill only per unit of data moved or key operation made; an idle replicated lake meters nothing on this component.

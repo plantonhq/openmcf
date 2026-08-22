@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awss3objectset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: S3 encrypts every new object at rest -- uploads with no encryption override inherit the bucket's default encryption, which is at minimum SSE-S3 and cannot be turned off. There is no unencrypted write path for this set's objects to take.
+      notes: The per-object server_side_encryption field is an OVERRIDE for objects that must diverge from the bucket's posture; uniform encryption belongs on the AwsS3Bucket.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: objects.kms_key
+      evidence:
+        type: spec_default
+        reference: Unset inherits the bucket's default encryption key. Referencing an AwsKmsKey encrypts THAT object under a customer-managed key (aws:kms is implied when server_side_encryption is unset; pairing a key with AES256 is rejected by spec validation). Bucket-wide CMK posture is configured on the AwsS3Bucket instead.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The set's own writes and reads ride TLS (the modules speak HTTPS), and server-side copies never leave S3. Whether CONSUMERS must use TLS is decided bucket-side -- an aws:SecureTransport deny in the bucket policy on AwsS3Bucket -- with no per-object lever in this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: objects.acl
+      evidence:
+        type: spec_default
+        reference: Unset keeps every object private -- reachable only by principals that bucket policies and IAM grant. A public-read canned ACL is the one public-exposure lever this spec carries, and it only functions on buckets whose ownership controls still permit ACLs; the modern default posture (BucketOwnerEnforced on AwsS3Bucket) rejects it at apply time with AccessControlListNotSupported.
+      notes: Bucket-level public access blocking and policy-based public reads are AwsS3Bucket territory.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Objects have no network ingress of their own -- source-network restrictions (VPC endpoint conditions, aws:SourceIp) are bucket-policy territory on the AwsS3Bucket that holds them.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Objects are served by S3's endpoints or whatever CDN is composed in front of the bucket (CloudFront with a WAF web ACL); no request-filtering attachment point exists at the object level.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on these objects -- upload, read, tag, lock, delete -- authorizes through IAM and the bucket's policies unconditionally. The legacy exception, object ACLs, is disabled by the default bucket ownership posture and only resurfaces if the bucket deliberately relaxes it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Objects authenticate nothing and hold no credentials. The workloads that read them bring their own identities (task roles, IRSA, instance profiles), configured on the consuming components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The legacy access model for objects is the ACL, and DISABLING it is a bucket-side act -- AwsS3Bucket's default object_ownership (BucketOwnerEnforced) switches ACLs off for every object in the bucket. This spec's acl field only has effect where the bucket has deliberately re-enabled the legacy path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Object-level operations are CloudTrail DATA events -- opt-in on a trail, not recorded by default -- and S3 server access logging is a bucket-level setting (AwsS3Bucket's logging field). Neither lever lives in this spec; only the deploy-time control-plane calls land in CloudTrail's default management history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Request metrics, storage analytics, and inventory are bucket-level configurations on AwsS3Bucket; an object set exports no signals of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The manifest IS the recovery mechanism for this component -- inline content re-creates byte-for-byte on the next apply, and copy-sourced objects re-copy from their source. Durability and version history of the stored objects are the bucket's (S3 multi-AZ storage, versioning on AwsS3Bucket).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility here, there is no retention to configure -- noncurrent-version retention for these objects rides the bucket's lifecycle rules.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: objects.storage_class
+      evidence:
+        type: spec_default
+        reference: Unset stores objects in STANDARD, which S3 replicates redundantly across multiple Availability Zones. ONEZONE_IA and EXPRESS_ONEZONE deliberately trade to single-AZ storage -- cheaper, and lost if that zone's data is destroyed. The choice is per object.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: objects.object_lock_mode
+      evidence:
+        type: spec_default
+        reference: Unset objects delete freely. GOVERNANCE-mode retention blocks deletion until the retain-until date unless a privileged principal bypasses it (this set's force_destroy sends that bypass, requiring s3:BypassGovernanceRetention); COMPLIANCE-mode retention cannot be shortened or bypassed by anyone, root included -- destroy genuinely fails until the date passes. Requires the bucket to have been created with Object Lock enabled.
+      notes: object_lock_legal_hold_status adds an indefinite deletion block independent of the retention window.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Objects are inert content -- there is no runtime to patch. Keeping the CONTENT current is exactly what declarative management through this set does.

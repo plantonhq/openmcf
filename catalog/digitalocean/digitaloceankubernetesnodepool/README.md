@@ -1,44 +1,66 @@
-# Overview
+# DigitalOcean Kubernetes Node Pool
 
-The **DigitalOcean Kubernetes Node Pool API Resource** provides a consistent and standardized interface for managing node pools within DigitalOcean Kubernetes (DOKS) clusters. This resource simplifies node pool lifecycle management, enabling users to scale, isolate, and optimize Kubernetes workloads without the complexity of manual infrastructure management.
+An additional worker pool for an existing DigitalOcean Kubernetes (DOKS) cluster, described once in a Planton manifest: node sizing and count, autoscaling bounds, Kubernetes labels and taints, DigitalOcean tags, and AMD GPU partitioning. The cluster's own default pool belongs to the `DigitalOceanKubernetesCluster` kind; this kind grows a cluster with separately shaped pools.
 
-## Purpose
+## What this component models
 
-We developed this API resource to streamline the deployment and management of DOKS node pools. By offering a unified interface, it reduces the complexity involved in setting up and managing Kubernetes node pools, enabling users to:
+The spec maps one-to-one onto DigitalOcean's standalone node pool:
 
-- **Easily Deploy Node Pools**: Quickly provision node pools with minimal configuration.
-- **Customize Pool Settings**: Configure node pool parameters such as size, autoscaling, labels, and taints.
-- **Lifecycle Independence**: Manage node pools independently from the cluster lifecycle, enabling safe resizing and updates.
-- **Workload Isolation**: Use labels and taints to isolate different workload types (web, batch, GPU) on dedicated node pools.
-- **Cost Optimization**: Right-size node pools and use autoscaling to optimize infrastructure costs.
+| Spec field | What it controls |
+|---|---|
+| `nodePoolName` | The pool's name, unique within the cluster |
+| `cluster` | The owning DOKS cluster — a literal UUID or a reference to a `DigitalOceanKubernetesCluster`; create-only |
+| `size` | Droplet size slug for every node (`s-2vcpu-4gb`, GPU slugs, ...); changing it replaces the pool |
+| `nodeCount` | Node count; with autoscaling on, only the initial count |
+| `autoScale` / `minNodes` / `maxNodes` | DigitalOcean's cluster-autoscaler manages the count between the bounds |
+| `labels` | Kubernetes node labels for scheduling (nodeSelector, affinity) |
+| `taints` | Kubernetes taints keeping untolerating pods off the nodes |
+| `tags` | DigitalOcean tags on the pool's Droplets — billing attribution and grouping |
+| `gpuPartitionMode` | AMD GPU partitioning for GPU sizes; changing it replaces the pool |
 
-## Key Features
+## Quick start
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying cloud infrastructure across providers.
-- **Simplified Deployment**: Automates the provisioning of node pools with production-ready defaults.
-- **Flexible Scaling**: Supports both fixed-size and autoscaling configurations.
-- **Workload Isolation**: First-class support for Kubernetes labels and taints for scheduling control.
-- **Cost Attribution**: DigitalOcean tags for granular billing and cost allocation.
-- **Production-Ready**: Built-in best practices for multi-pool architectures.
+A fixed one-node pool on an existing cluster:
 
-## Use Cases
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: app-pool
+spec:
+  nodePoolName: app-pool
+  cluster:
+    valueFrom:
+      kind: DigitalOceanKubernetesCluster
+      name: my-doks-cluster
+      fieldPath: status.outputs.cluster_id
+  size: s-2vcpu-4gb
+  nodeCount: 2
+```
 
-- **Multi-Tier Architecture**: Separate system services, applications, and batch workloads onto dedicated pools.
-- **GPU Workloads**: Create specialized GPU pools with taints to prevent non-GPU pods from consuming expensive hardware.
-- **Cost Optimization**: Use autoscaling pools that scale to zero during off-peak hours.
-- **High-Availability**: Distribute workloads across multiple node pools for resilience.
-- **Environment Isolation**: Label pools by environment (dev, staging, prod) for clear separation.
+```shell
+planton apply -f app-pool.yaml
+```
 
-## Production Features
+## Outputs
 
-This resource provides complete support for production-grade node pool management, including:
+Both provisioners export the identical output set:
 
-- **Autoscaling**: Configure min/max node boundaries for dynamic scaling.
-- **Node Labels**: Kubernetes labels for pod affinity and node selection.
-- **Node Taints**: Prevent unwanted workloads from being scheduled on specialized pools.
-- **DigitalOcean Tags**: Cost attribution and organizational tagging.
-- **Lifecycle Independence**: Modify or delete pools without affecting the parent cluster.
-- **Best Practices**: Follows the "sacrificial default pool" pattern for safe cluster management.
+| Output | Description |
+|---|---|
+| `node_pool_id` | The pool's UUID (import id for `digitalocean_kubernetes_node_pool`) |
+| `cluster_id` | The owning cluster's UUID — the pool's API address needs both ids |
+| `node_ids` | The DOKS node object UUIDs of the pool's current members |
+| `droplet_ids` | The integer ids of the Droplets backing the nodes — wire Droplet-scoped resources (e.g. firewalls) to the pool's machines |
+
+## Behavior worth knowing
+
+- **`cluster` and `size` replace the pool when changed** (the nodes are recreated); everything else updates in place.
+- **Autoscaling bounds are validated early**: `autoScale: true` requires `minNodes >= 1` and `maxNodes >= minNodes` — the API would reject them late, the spec rejects them at validation.
+- **With autoscaling on, the live node count drifts by design.** `nodeCount` is only the initial count; the provider suppresses the diff while the count sits between the bounds.
+- **Taints must spell their effect exactly as Kubernetes does** (`NoSchedule`, `PreferNoSchedule`, `NoExecute`), and a taint's `value` may be empty — Kubernetes allows valueless taints.
+- **A cluster's default pool cannot be managed here** — it is part of the cluster resource itself, and DigitalOcean refuses to import a default pool as a standalone one.
+- **Pulumi SDK v4.49.0 cannot express `gpuPartitionMode`.** The Pulumi module fails loudly if it is set; Terraform wires it. See the [GUIDE](GUIDE.md).
 
 ---
 

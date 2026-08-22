@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcorememory
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: strategies
+      sku_meter: long-term memory records stored
+      pricing_unit: record-months
+      impact: Each strategy turns raw session events into stored long-term records, and every stored record bills monthly while it exists -- $0.75 per 1,000 records per month for built-in strategies, billed hourly assuming a 31-day month. More strategies over the same events means more records metering in parallel, and records never expire on their own -- the store grows (and bills) until something deletes them.
+    - field_path: strategies.custom
+      sku_meter: long-term memory records stored (override)
+      pricing_unit: record-months
+      impact: Built-in-with-override and self-managed strategies store records at the LOWER $0.25 per 1,000 records per month rate -- but the extraction and consolidation models they run bill Bedrock inference in YOUR account on top, which usually dwarfs the storage discount.
+    - field_path: event_expiry_days
+      sku_meter: short-term memory events
+      pricing_unit: events
+      impact: "Short-term memory bills per event CREATED -- $0.25 per 1,000 new events at write time -- and AWS publishes no meter on stored-event days, so stretching this window from 7 to 365 days changes what strategies can still extract from, not the bill. The cost lever is event volume, and it sits with the agents writing events, not with this field."
+    - field_path: kinesis_delivery
+      sku_meter: Kinesis stream capacity
+      pricing_unit: shard-hours
+      impact: "AgentCore publishes no meter for the delivery itself -- what bills is the destination: the referenced AwsKinesisStream meters its own capacity and ingest, and FULL_CONTENT delivery pushes every record's body through it while METADATA_ONLY keeps the payload small."
+    - field_path: encryption_key_arn
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key bills its per-request meter on the referenced AwsKmsKey for the memory's encrypt/decrypt traffic; unset means the service-managed key at no charge. Changing the key replaces the memory.
+  free_tier: "AgentCore Memory publishes no permanent free allotment -- short-term events bill from the first event created, long-term records from the first record-month stored, retrievals from the first call. The up-to-$200 AWS Free Tier credit for new customers is a one-time trial credit, not a permanent tier. There are no minimum fees, so a memory nobody writes to bills nothing."
+  estimate_exclusions:
+    - event and record volume is entirely workload-driven -- the same manifest bills nothing for an idle agent and grows monthly with a busy one
+    - short-term memory bills $0.25 per 1,000 new events as agents write them
+    - long-term retrieval bills $0.50 per 1,000 memory record retrievals as agents read
+    - long-term storage accrues monthly per stored record ($0.75 per 1,000 built-in, $0.25 per 1,000 override/self-managed, billed hourly assuming a 31-day month) and persists -- and bills -- until records are deleted
+    - override and self-managed strategies run their extraction/consolidation/reflection models in your account, billing Bedrock inference separately
+    - the Kinesis analytics stream bills its own capacity and ingest on the referenced AwsKinesisStream
+    - customer-managed-key requests bill on the referenced AwsKmsKey
+  notes: "A memory's existence is free -- no meter counts the memory object, its strategies, or its indexed keys at rest. The bill has three usage legs: events in ($0.25 per 1,000 created), records held (per record per month, the one meter that ACCUMULATES -- a store that only ever grows converges on a steady monthly floor), and records out ($0.50 per 1,000 retrieved). The strategy-type choice is the real pricing decision: built-in strategies cost triple per stored record but include the extraction model; overrides and self-managed strategies store at a third of the rate but move model inference onto your own Bedrock bill. The common misconception is that a longer event_expiry_days window costs more -- event retention has no published meter; what compounds is the long-term record count."

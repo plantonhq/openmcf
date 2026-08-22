@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The controller stores no data of its own -- fleet declarations and runner state live as actions.github.com objects in the cluster's etcd, whose at-rest encryption is the cluster's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd are configured on the target cluster (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The controller talks to the Kubernetes API over the cluster's TLS endpoint and to GitHub over HTTPS. It holds no GitHub credential itself -- each runner scale set's listener authenticates with that fleet's Secret.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the controller accepts no inbound traffic and only dials OUT to the Kubernetes API; GitHub polling is done by the per-fleet listeners, also outbound-only.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no ingress surface to restrict -- the controller is driven through actions.github.com custom resources, which are Kubernetes API operations governed by the cluster's RBAC.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart runs the controller under its own ServiceAccount bound to purpose-scoped roles, and every fleet operation is an actions.github.com custom-resource operation governed by the target cluster's Kubernetes RBAC. flags.watch_single_namespace fences a controller to one namespace for hard multi-tenancy.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The controller holds no cloud or GitHub credential of its own -- GitHub authentication rides each KubernetesGhaRunnerScaleSet's auth Secret, where the App-vs-PAT strength choice lives.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The controller exposes no authentication path of its own (see workload-identity for where credentials live).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Fleet changes are actions.github.com custom-resource operations, captured by the target cluster's Kubernetes audit policy; job-level activity is in GitHub's own audit log. The controller's logs stream to stdout (flags.log_level defaults to the chart's "debug" -- production clusters usually set "info", as the 02-production preset does).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics
+      evidence:
+        type: spec_default
+        reference: Empty means metrics are DISABLED (the chart default passes empty metrics flags); declaring the metrics block enables Prometheus endpoints on the controller manager AND every listener pod it creates (all three addresses required).
+      notes: The 02-production preset enables metrics on ":8080" with the listener endpoint /metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The controller is stateless -- fleet declarations are Kubernetes objects that back up with the cluster, and runner pods are ephemeral by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: Default 1 (no standby). More than one replica enables leader election automatically -- a hot standby takes over if the leader's node or zone is lost; flags.priority_class_name (set to system-cluster-critical in the 02-production preset) keeps the control plane ahead of node-pressure evictions.
+      notes: A brief controller outage delays scaling decisions -- queued jobs wait in GitHub; running jobs finish unaffected.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. The actions.github.com CRDs ship in the chart's crds/ directory, which Helm installs once and never removes -- destroying the controller keeps the CRDs and any declared runner scale sets' objects on the cluster (they stop reconciling; destroy KubernetesGhaRunnerScaleSet resources first, and a later controller install adopts the kept CRDs cleanly).
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: The chart version is pinned (default "0.14.2"; chart and controller image move in lockstep) -- upgrades are deliberate pin changes. flags.update_strategy governs rollout behavior while jobs run -- "immediate" (chart default) recreates listeners at once; "eventual" waits for running jobs to finish.
+      notes: The 02-production preset selects update_strategy eventual to avoid runner overprovisioning during rollouts. Runner scale set installs must move to the SAME chart version -- GitHub supports the pair only at matching versions.

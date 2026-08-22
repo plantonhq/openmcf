@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganizationaccount.v1alpha1;
+
+// AwsOrganizationAccountStackOutputs captures the observable state of
+// the member account after apply.
+message AwsOrganizationAccountStackOutputs {
+  // The member account's 12-digit AWS account ID (also the provider's
+  // import ID; the folded contact and region settings import as
+  // composites of it).
+  string account_id = 1;
+
+  // The member account's ARN.
+  string arn = 2;
+
+  // The account's lifecycle state as reported by Organizations
+  // (ACTIVE, SUSPENDED, PENDING_CLOSURE).
+  string state = 3;
+
+  // The companion GovCloud (US) account's ID, when create_govcloud
+  // was set.
+  string govcloud_id = 4;
+}

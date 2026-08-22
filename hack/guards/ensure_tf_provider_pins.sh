@@ -43,6 +43,7 @@ canonical_pins=(
   # move the ARM client under every admitted kind at once.
   "azure|azapi|2.11.0"
   "cloudflare|cloudflare|~> 5.23"
+  "digitalocean|digitalocean|~> 2.99"
   "gcp|google|~> 7.43"
 )
 

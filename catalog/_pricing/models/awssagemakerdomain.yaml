@@ -1,0 +1,61 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model rather than a derivation: the committed
+# quantity is spaces[].spaceSettings.spaceStorageSettings.ebsVolumeSizeInGb,
+# a value nested inside a repeated field the derivation grammar cannot
+# traverse, so each preset's provisioned storage is read and defended by
+# hand. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awssagemakerdomain
+spec:
+  presets:
+    - preset: 01-basic-jupyter-domain
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - apps users launch bill per instance-hour while running; the home EFS bills per GB-month of data stored, starting near zero
+      notes: "Zero committed: the domain is a free control-plane shell with no spaces and no provisioned storage. This preset even flips home_efs_retention_policy to Delete, closing the retained-EFS teardown trap. Region: the manifest pins us-west-2, but with no priced line the assumption is moot."
+    - preset: 02-production-vpc-only
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - apps bill per instance-hour at the chosen type's rate while running (idle shutdown at 120 minutes caps the bleed); the home EFS bills per GB-month stored
+        - VpcOnly mode needs VPC interface endpoints to reach SageMaker, S3, and STS -- committed hourly charges on their own components
+        - the customer-managed KMS key bills on its own AwsKmsKey component
+      notes: "Zero committed on this component: spaceStorageSettings here only sets the DEFAULT (20 GB) and ceiling (200 GB) for volumes future spaces provision -- no space exists in the manifest, so nothing is provisioned. home_efs_retention_policy stays Retain (the default), so the EFS and its bill survive domain deletion."
+    - preset: 03-ml-team-with-custom-images
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - JupyterLab apps on ml.m5.large and KernelGateway apps on ml.g4dn.xlarge (a GPU rate) bill per instance-hour while running -- the 180-minute idle shutdown is the control
+        - custom images live in ECR, billing storage on that component; notebook outputs land in the pinned S3 path
+        - VPC endpoints for VpcOnly mode and the customer-managed KMS key bill on their own components
+      notes: "Zero committed: no spaces exist -- defaultEbsVolumeSizeInGb 50 is a template for future volumes, not a provisioned one. The GPU KernelGateway default is the cost story to watch, but it is usage, not commitment."
+    - preset: 04-governed-canvas-workspace
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - Canvas bills per session-hour while business users work, plus model-training charges when they build models -- governed here by registry-only deployment, but usage all the same
+        - Canvas artifacts land in the pinned S3 workspace path; Forecast jobs bill under Amazon Forecast on the dedicated role
+      notes: "Zero committed: a Canvas-only governance shell -- no spaces, no provisioned storage. Every dollar follows business-user sessions."
+    - preset: 05-team-workspaces
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned ML storage
+          price: sagemaker-studio-volume-gb-months-us-east-1
+          pricing_quantity: "25"
+          quantity_basis: the team-workspace space pins spaceStorageSettings.ebsVolumeSizeInGb 25 -- a 25 GB gp3 volume provisioned the moment the space is applied, billing every hour it exists whether or not anyone opens the shared notebook (~$2.80 a month)
+      exclusions:
+        - the shared JupyterLab app on ml.t3.medium bills per instance-hour while the workspace is open (60-minute idle shutdown closes it); alice's and bob's own apps bill the same way under the 120-minute domain default
+        - the home EFS bills per GB-month of alice's and bob's stored files, starting near zero
+      notes: "The manifest leaves region as a placeholder, so the estimate assumes us-east-1 (stated per the lane rule). The space's volume is the only committed spend; user profiles are free."

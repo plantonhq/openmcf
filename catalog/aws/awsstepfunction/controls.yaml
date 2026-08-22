@@ -1,0 +1,81 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsstepfunction
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: State machine definitions, execution state, history, and input/output payloads are encrypted at rest with AWS-owned keys on every state machine; it cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Omitted means AWS-owned keys; referencing a customer-managed KMS key encrypts state machine data, execution history, and payloads with a key you own and can revoke, with kms_data_key_reuse_period_seconds tuning how long data keys are reused.
+      notes: One-way in practice -- once a customer key is applied, removing the block keeps the last applied key (the provider suppresses the removal); reverting to AWS-owned keys needs an out-of-band update.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All interaction with a state machine -- StartExecution, service integrations, console -- rides the Step Functions HTTPS API; no plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A state machine has no network endpoint to expose -- it is invoked through the IAM-authorized AWS API, and its own calls to private endpoints ride PrivateLink or VPC Lattice. There is no public/private toggle because there is nothing to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: With no listener or endpoint, ingress restriction has no meaning here -- who may start executions is IAM policy on states:StartExecution, governed outside this manifest on the calling principals.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attachment point exists for a workflow engine; request filtering belongs to whatever fronts the workflow (an API gateway component invoking it), never to the state machine.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, delete, StartExecution, DescribeExecution -- is authorized by IAM unconditionally; execution and version ARNs give fine-grained grant surfaces per workflow.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required by the spec -- Step Functions assumes the referenced execution role for every service call the workflow makes (Lambda invokes, SQS sends, log delivery); short-lived assumed-role credentials are the only mechanism offered, and no static-credential alternative exists.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path is SigV4-signed IAM requests -- Step Functions has no legacy or weaker alternative to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging.level
+      evidence:
+        type: spec_default
+        reference: Omitted means no execution-history logging (new state machines default to OFF); ALL/ERROR/FATAL stream execution events to the referenced CloudWatch log group. Management-plane calls land in CloudTrail by default regardless.
+      notes: STANDARD workflows keep 90 days of execution history in Step Functions itself even without logging; EXPRESS workflows record nothing unless this block is configured -- for them logging IS the audit trail.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Step Functions publishes execution metrics (started, succeeded, failed, timed out, duration; billed memory and duration for Express) to CloudWatch automatically; tracing_enabled adds X-Ray distributed traces across the workflow's service calls.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The state machine is declarative configuration recreated from the manifest; publish snapshots immutable versions of the definition on every change, and running executions' state is managed by the service -- there is no separate data store to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup facility means no retention to configure; execution-history retention in CloudWatch is governed on the referenced log group, and Standard's built-in 90-day history is fixed by AWS.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Step Functions is a regional, multi-AZ managed service; executions survive zone failure without any configuration, and no single-zone mode exists.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists; DeleteStateMachine proceeds asynchronously and stops running executions. The definition is recreated from the manifest, though a recreated machine has a new ARN and loses prior execution history.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the workflow engine; no customer-visible patch surface exists.

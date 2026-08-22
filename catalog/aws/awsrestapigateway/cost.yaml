@@ -1,0 +1,66 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrestapigateway
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: routes
+      sku_meter: REST API requests
+      pricing_unit: requests
+      impact: Every matched request bills at the REST API per-million rate (tiered downward at high volume) -- roughly triple the HTTP API rate, the price of mapping templates, request validation, caching, and WAF attachment. Each route's integration also invokes a backend that bills its own compute.
+    - field_path: stage.cache_cluster.enabled
+      sku_meter: stage cache hours
+      pricing_unit: cache-hours
+      impact: Enabling the stage cache provisions a dedicated cache cluster that bills EVERY HOUR while enabled, traffic or none -- the one meter on this component that does not follow use. Turning it on converts an otherwise usage-only API into a committed hourly spend.
+    - field_path: stage.cache_cluster.size
+      sku_meter: stage cache hours
+      pricing_unit: cache-hours
+      impact: The cache size tier (0.5 GB through 237 GB) sets the hourly rate -- the largest tier costs hundreds of times the smallest, and resizing means AWS reprovisions the cluster (up to 90 minutes).
+    - field_path: stage.method_settings.metrics_enabled
+      sku_meter: detailed CloudWatch metrics
+      pricing_unit: metrics
+      impact: Per-method CloudWatch metrics bill monthly per metric -- multiplying across methods on APIs with wide resource trees.
+    - field_path: stage.method_settings.logging_level
+      sku_meter: execution log ingestion
+      pricing_unit: GB
+      impact: ERROR or INFO execution logging writes per-request records to CloudWatch Logs at standard ingestion rates; INFO with data_trace_enabled logs full payloads and multiplies the volume.
+    - field_path: stage.access_log
+      sku_meter: access log ingestion
+      pricing_unit: GB
+      impact: Access logging writes one record per request to the referenced CloudWatch log group at standard ingestion rates -- full request volume.
+    - field_path: stage.xray_tracing_enabled
+      sku_meter: trace records
+      pricing_unit: traces
+      impact: X-Ray tracing records a trace per sampled request at X-Ray's per-trace rates.
+    - field_path: authorizers
+      sku_meter: authorizer invocations
+      pricing_unit: requests
+      impact: A Lambda TOKEN/REQUEST authorizer invokes (and bills) a function per request; Cognito authorizers validate tokens without a metered call.
+    - field_path: authorizers.result_ttl_seconds
+      sku_meter: authorizer invocations
+      pricing_unit: requests
+      impact: Caching authorizer results (default 300 seconds) collapses repeated invocations for the TTL window -- the direct dial on Lambda-authorizer spend; an explicit 0 disables the cache and bills every request.
+    - field_path: routes.integration.response_transfer_mode
+      sku_meter: REST API requests
+      pricing_unit: requests
+      impact: STREAM responses meter in 10 MB increments -- a 65 MB streamed response bills as seven requests, where BUFFERED responses bill as one.
+    - field_path: endpoint_configuration.type
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: REGIONAL and EDGE endpoints bill data transfer out per GB (EDGE's managed CloudFront distribution is included in REST rates, not billed separately); PRIVATE endpoints carry no data-transfer-out charge but push interface-endpoint hourly and per-GB charges onto the referenced AwsVpcEndpoint components.
+    - field_path: minimum_compression_size
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: Response compression at or above the threshold shrinks the billed data-transfer-out volume -- a free lever on text-heavy APIs.
+  free_tier: The first 1 million REST API calls each month are free for the first 12 months of an AWS account (accounts created after July 15, 2025 instead receive a credit-based free tier).
+  estimate_exclusions:
+    - request volume is entirely traffic-driven -- an idle API with no cache cluster bills nothing
+    - the stage cache, when enabled, bills hourly regardless of traffic and is the profile's one existence-shaped meter
+    - backend compute (the Lambda functions and services behind routes.integration.uri) bills on its own components
+    - CloudWatch log ingestion, detailed metrics, and X-Ray traces bill on those services at their own rates
+    - data transfer out bills per GB; PRIVATE endpoint PrivateLink charges bill on the referenced AwsVpcEndpoint components
+  notes: "A REST API's existence is free -- the bill is request count times the tiered per-million rate, about three times the HTTP API rate, which is what the v1 feature set (mapping templates, validation, API keys, caching, WAF) costs per call. The one exception hides in the stage: cache_cluster.enabled provisions a dedicated cache billing hourly by size tier whether or not a single request arrives -- a manifest that commits the cache has committed an always-on spend and should be costed as such. Neither shipped preset enables it. The EDGE endpoint's CloudFront distribution is AWS-managed and included in REST API rates -- no separate CloudFront charge appears. PRIVATE APIs trade data-transfer-out charges for AWS PrivateLink interface-endpoint charges, which bill on the referenced AwsVpcEndpoint components, not here."

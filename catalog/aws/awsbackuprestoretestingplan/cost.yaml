@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: schedule_expression
+      sku_meter: restore testing evaluations
+      pricing_unit: recovery points
+      impact: Every scheduled run bills a flat evaluation fee per recovery point it successfully orchestrates for restore -- the cron cadence is a straight multiplier on the monthly evaluation count.
+    - field_path: selections
+      sku_meter: restore testing evaluations
+      pricing_unit: recovery points
+      impact: Each selection adds a protected resource type (and its matched resources) to every run -- more selections mean more recovery points tested, and therefore more evaluation fees and more restored data, per firing. A plan with no selections schedules tests that never restore anything and bills nothing.
+    - field_path: recovery_point_selection
+      sku_meter: restore testing storage
+      pricing_unit: GB
+      impact: Which recovery points get drawn (vaults, eligible types, window, newest-vs-random) decides what data each test restores. Restored GB bills at the same per-type rates as regular restores -- and a random draw across a long window can land on COLD recovery points, which restore at the higher cold-storage rate.
+    - field_path: selections.validation_window_hours
+      sku_meter: restored-resource runtime
+      pricing_unit: hours
+      impact: The restored copy is a real, temporary resource that bills its own service's rates until AWS deletes it at the end of this window -- a longer validation window means more hours of that resource's runtime on every test.
+  free_tier: AWS Backup restore testing publishes no free allotment -- the pricing page states pay only for what you use, with no minimums or upfront commitments.
+  estimate_exclusions:
+    - restored data volume is workload-driven -- it is the size of whatever recovery points the tests draw, invisible to this manifest
+    - per-GB restored-storage rates vary by resource type, and some types restore free (the pricing page's own example prices EBS restore-testing storage at zero while EFS warm restores bill)
+    - S3 restore tests add S3 PUT request charges for the restored objects
+    - a restored resource retained past its validation window keeps billing its own service rates for as long as it lives
+    - the recovery points being tested bill their storage on the AwsBackupPlan and vault components that created them
+  notes: "Restore testing is spend that buys proof: each successfully orchestrated recovery point bills a flat evaluation fee, the restored data bills per GB at the regular restore rates, and the temporary restored resource bills its own runtime until AWS tears it down after the validation window. The plan object itself is free -- an idle plan with no selections costs nothing. The quiet cost lever is recovery_point_selection: RANDOM_WITHIN_WINDOW over a long selection window is the stronger recovery proof precisely because it exercises older points, but those may sit in cold storage, where restores bill at the higher cold rate."

@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: policy_type
+      sku_meter: log data scanned by data protection
+      pricing_unit: GB
+      impact: "Only one of the five types starts a meter of its own: DATA_PROTECTION_POLICY makes every GB the covered log groups ingest also a GB scanned, at $0.12 per GB (CloudWatch pricing, Data Protection example) -- on top of, not instead of, the groups' own ingestion charge. The other four types carry no listed scan meter; what they cost flows through what their documents switch on downstream."
+    - field_path: selection_criteria
+      sku_meter: log data scanned by data protection
+      pricing_unit: GB
+      impact: The blast-radius throttle -- unset applies the policy to EVERY log group in the region, so a data-protection policy scans the account's entire ingestion volume. A LogGroupNamePrefix selection shrinks the scanned (and billed) GB to the named prefix; tightening it is the single biggest lever on this component's bill.
+    - field_path: policy_document
+      sku_meter: custom metrics
+      pricing_unit: metrics
+      impact: A METRIC_EXTRACTION_POLICY document turns matching log fields into CloudWatch custom metrics, and each unique metric it derives bills at the custom-metrics rate ($0.30 per metric-month in the first tier) -- account-wide extraction over high-cardinality fields can mint thousands of billable metrics from one document.
+  free_tier: The policy object itself is never billed -- no meter counts account policies, and creating one in every region costs nothing while the covered log groups are silent. The data-protection scan meter has NO free allotment, permanent or trial -- it bills $0.12 per GB from the first byte scanned; CloudWatch Logs' permanent 5 GB free tier applies to the ingestion meter on the log groups, not to the scan.
+  estimate_exclusions:
+    - scanned volume is entirely workload-driven -- $0.12 per GB across whatever the covered log groups ingest, so the same account-wide DATA_PROTECTION manifest costs nothing in a quiet account and real money in a busy one
+    - the ingestion being scanned bills separately on each AwsCloudwatchLogGroup ($0.50 per GB standard class) -- data protection is a second meter over the same bytes
+    - a data-protection Audit statement with a findings destination writes findings into a log group, Firehose stream, or S3 bucket that bills as its own component
+    - a SUBSCRIPTION_FILTER_POLICY document forwards every matched event account-wide to its Kinesis, Firehose, or Lambda destination -- the receiving component's meters, multiplied by account-wide match volume
+    - a METRIC_EXTRACTION_POLICY's derived metrics bill per unique metric on CloudWatch's custom-metrics tiers, in proportion to field cardinality this manifest cannot see
+    - a TRANSFORMER_POLICY has no listed meter of its own on the pricing page; transformed events still bill their log group's ingestion
+  notes: "The object is free; the document is what spends. One policy per (name, type) pair exists per region, and its cost character flips entirely on policy_type: FIELD_INDEX and TRANSFORMER carry no listed charge, METRIC_EXTRACTION mints billable custom metrics, SUBSCRIPTION_FILTER drives destination meters, and DATA_PROTECTION is the one with its own line -- $0.12 per GB scanned, layered over ingestion the log groups already bill. The classic surprise is scope: selection_criteria unset means account-wide, so a pii-masking policy quietly doubles-dips every log group in the region the moment any team ships a chatty service."

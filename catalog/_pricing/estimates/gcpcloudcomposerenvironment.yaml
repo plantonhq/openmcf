@@ -1,0 +1,162 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpcloudcomposerenvironment
+spec:
+  presets:
+    - preset: 01-dev-small
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Composer
+          sku_meter: environment fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the small standard-resilience environment fee, billed every hour of the month (SMALL is also the provider default when environment_size is unset)
+          list_unit_price: "0.35"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "255.5000"
+        - service_name: Cloud Composer
+          sku_meter: workload vCPU
+          pricing_unit: mCPU-hours
+          pricing_quantity: "1095000"
+          quantity_basis: scheduler vCPUs x 1000 (the meter bills per milli-vCPU) x replica count x 730 hours -- allocated capacity, billed whether or not DAGs run; web server vCPUs x 1000 (per milli-vCPU) x 730 hours -- the web server always runs exactly one instance; worker vCPUs x 1000 (per milli-vCPU) x the autoscaling floor (min_count) x 730 hours -- the committed worker capacity; scaling above the floor is usage and rides the exclusions
+          list_unit_price: "0.000045"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "49.2750"
+        - service_name: Cloud Composer
+          sku_meter: workload memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "4380"
+          quantity_basis: scheduler memory GiB x replica count x 730 hours of allocated capacity; web server memory GiB x 730 hours of allocated capacity; worker memory GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.005"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "21.9000"
+        - service_name: Cloud Composer
+          sku_meter: workload storage
+          pricing_unit: GiB-hours
+          pricing_quantity: "2190"
+          quantity_basis: scheduler storage GiB per replica x replica count x 730 hours of allocated capacity; web server storage GiB x 730 hours of allocated capacity; worker storage GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.0002"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "0.4380"
+      total_list_cost: "327.1130"
+      exclusions:
+        - worker compute above the min_count floor -- workers autoscale toward max_count with queued task load, and every scaled-up worker bills its full CPU, memory, and storage allocation on the same meters while it runs
+        - managed database storage grows with task history, XComs, and DAG count, billed per GiB-month
+        - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
+        - network egress follows traffic and destination
+        - no triggerer block is declared -- if Composer's per-version defaults run one, its allocation bills the same meters but is invisible in this manifest
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+    - preset: 02-production-private
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Composer
+          sku_meter: environment fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the medium highly-resilient environment fee, billed every hour of the month
+          list_unit_price: "0.77"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "562.1000"
+        - service_name: Cloud Composer
+          sku_meter: workload vCPU
+          pricing_unit: mCPU-hours
+          pricing_quantity: "8030000"
+          quantity_basis: scheduler vCPUs x 1000 (the meter bills per milli-vCPU) x replica count x 730 hours -- allocated capacity, billed whether or not DAGs run; web server vCPUs x 1000 (per milli-vCPU) x 730 hours -- the web server always runs exactly one instance; triggerer vCPUs x 1000 (per milli-vCPU) x replica count x 730 hours; a count of 0 disables the triggerer and emits nothing; worker vCPUs x 1000 (per milli-vCPU) x the autoscaling floor (min_count) x 730 hours -- the committed worker capacity; scaling above the floor is usage and rides the exclusions
+          list_unit_price: "0.000045"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "361.3500"
+        - service_name: Cloud Composer
+          sku_meter: workload memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "28835"
+          quantity_basis: scheduler memory GiB x replica count x 730 hours of allocated capacity; web server memory GiB x 730 hours of allocated capacity; triggerer memory GiB x replica count x 730 hours of allocated capacity; worker memory GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.005"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "144.1750"
+        - service_name: Cloud Composer
+          sku_meter: workload storage
+          pricing_unit: GiB-hours
+          pricing_quantity: "18250"
+          quantity_basis: scheduler storage GiB per replica x replica count x 730 hours of allocated capacity; web server storage GiB x 730 hours of allocated capacity; worker storage GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.0002"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "3.6500"
+      total_list_cost: "1071.2750"
+      exclusions:
+        - worker compute above the min_count floor -- workers autoscale toward max_count with queued task load, and every scaled-up worker bills its full CPU, memory, and storage allocation on the same meters while it runs
+        - managed database storage grows with task history, XComs, and DAG count, billed per GiB-month
+        - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
+        - network egress follows traffic and destination
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+    - preset: 03-enterprise-encrypted
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Composer
+          sku_meter: environment fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the large highly-resilient environment fee, billed every hour of the month
+          list_unit_price: "1.19"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "868.7000"
+        - service_name: Cloud Composer
+          sku_meter: workload vCPU
+          pricing_unit: mCPU-hours
+          pricing_quantity: "18980000"
+          quantity_basis: scheduler vCPUs x 1000 (the meter bills per milli-vCPU) x replica count x 730 hours -- allocated capacity, billed whether or not DAGs run; web server vCPUs x 1000 (per milli-vCPU) x 730 hours -- the web server always runs exactly one instance; triggerer vCPUs x 1000 (per milli-vCPU) x replica count x 730 hours; a count of 0 disables the triggerer and emits nothing; worker vCPUs x 1000 (per milli-vCPU) x the autoscaling floor (min_count) x 730 hours -- the committed worker capacity; scaling above the floor is usage and rides the exclusions
+          list_unit_price: "0.000045"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "854.1000"
+        - service_name: Cloud Composer
+          sku_meter: workload memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "68620"
+          quantity_basis: scheduler memory GiB x replica count x 730 hours of allocated capacity; web server memory GiB x 730 hours of allocated capacity; triggerer memory GiB x replica count x 730 hours of allocated capacity; worker memory GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.005"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "343.1000"
+        - service_name: Cloud Composer
+          sku_meter: workload storage
+          pricing_unit: GiB-hours
+          pricing_quantity: "43800"
+          quantity_basis: scheduler storage GiB per replica x replica count x 730 hours of allocated capacity; web server storage GiB x 730 hours of allocated capacity; worker storage GiB x min_count x 730 hours at the autoscaling floor
+          list_unit_price: "0.0002"
+          price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "8.7600"
+      total_list_cost: "2074.6600"
+      exclusions:
+        - worker compute above the min_count floor -- workers autoscale toward max_count with queued task load, and every scaled-up worker bills its full CPU, memory, and storage allocation on the same meters while it runs
+        - managed database storage grows with task history, XComs, and DAG count, billed per GiB-month
+        - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
+        - network egress follows traffic and destination
+        - scheduled snapshots accumulate in the named Cloud Storage location, billed at storage rates by size and cadence
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.

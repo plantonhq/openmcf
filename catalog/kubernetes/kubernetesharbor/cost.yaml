@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesharbor
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: core
+      sku_meter: cluster CPU and memory reservations
+      impact: "Harbor is a SET of cooperating workloads: core, portal, registry, jobservice, and the always-deployed nginx front door each carry their own replicas and resources sizing (this same shape on portal/registry/jobservice/nginx). When a manifest omits resources, the spec-declared defaults apply (100m CPU / 256Mi requests, 1 CPU / 1Gi limits per pod) -- the reservation exists either way, and it multiplies by five components before anything scales."
+    - field_path: trivy
+      sku_meter: cluster CPU and memory reservations
+      impact: The Trivy scanner is ON by default -- a StatefulSet with the chart's own sizing (200m CPU / 512Mi requests, 1 CPU / 1Gi limits) plus a 5Gi vulnerability-database cache volume per replica. Set enabled false to run scannerless.
+    - field_path: database
+      sku_meter: cluster CPU and memory reservations
+      impact: The internal arm runs a single-node PostgreSQL StatefulSet in this footprint (evaluation-grade by upstream's own position) with its own data volume. The external arm moves that capacity to the composed database component (a KubernetesPostgres).
+    - field_path: cache
+      sku_meter: cluster CPU and memory reservations
+      impact: The internal arm runs a single-node Redis StatefulSet in this footprint with its own data volume; the external arm rides a composed KubernetesValkey or any Redis-compatible endpoint.
+    - field_path: storage
+      sku_meter: persistent volume storage
+      impact: The filesystem backend binds the artifact PVC here -- it holds every layer of every artifact and only grows. The s3/gcs/azure backends move blob bytes to object storage billed on the provider account (or a composed KubernetesSeaweedFs's own footprint).
+    - field_path: expose.service_type
+      sku_meter: cloud load balancer
+      impact: LoadBalancer provisions a provider-billed load balancer for the nginx front door; ClusterIP (the default) and NodePort reserve nothing beyond the cluster.
+    - field_path: metrics.enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling metrics deploys the dedicated harbor-exporter Deployment alongside the /metrics endpoints -- an extra pod sized only by the chart.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "external database, cache, and object-storage backends ride their own components or provider accounts -- only the internal arms land in this footprint"
+    - "the registryctl container in the registry pods and the harbor-exporter keep chart-default sizing -- the spec deliberately does not size them (helm_values is the seam)"
+    - "artifact blob growth, image traffic, and Trivy's vulnerability-database downloads are workload-driven and unknowable at manifest time"
+  notes: "This component creates no cloud SKU of its own (except a LoadBalancer front door when declared) -- its cost is the share of the cluster its many pods and volumes reserve. An honest manifest-time statement sums per-component replicas x requests, where omitted resources fall back to the spec-declared defaults the module applies. KNOW THE UNINSTALL SHAPE: keep_volumes_on_uninstall defaults TRUE, and the internal database and Redis volumes are StatefulSet-template PVCs Helm NEVER deletes -- retired installs keep paying for storage until the volumes are swept explicitly."

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpsubnetwork
+spec:
+  billing_model: free
+  free_tier: "Google's VPC network pricing page prices data transfer, external IP addresses, Cloud NAT, and Network Telemetry -- creating and holding a subnetwork appears nowhere on it as a billable item. The subnet object, its primary and secondary IPv4 ranges, its purpose (including proxy-only and Private Service Connect roles), and its IPv6 configuration cost nothing at rest: the page states outright that internal IP addresses carry no charge ('There is no charge for static or ephemeral internal IP addresses') and that 'You are not charged for external IPv6 address ranges that are assigned to subnets.'"
+  notes: "One field starts a meter: log_config enables VPC Flow Logs, whose log generation bills under Network Telemetry per GiB -- $0.25/GiB for the first 10,240 GiB each month, $0.15 to 30,720 GiB, $0.075 to 51,200 GiB, $0.05 above -- plus Cloud Logging Vended Logs storage for what is retained, and Google charges the generation fee irrespective of destination, even when the logs are excluded from Cloud Logging. flow_sampling (default 0.5) and filter_expr are the throttles: full sampling with INCLUDE_ALL_METADATA on a busy subnet is real money, so scope flow logs deliberately. Everything else on this spec is free address-space configuration; the traffic in the subnet bills on the resources sending it (VM egress, Cloud NAT, load balancers), and a proxy-only subnet reserves space for Envoy proxies whose charges bill on the load balancer components. Deleting or ABANDONing a subnet costs nothing -- an abandoned subnet keeps its CIDR claimed in the VPC, free at rest."

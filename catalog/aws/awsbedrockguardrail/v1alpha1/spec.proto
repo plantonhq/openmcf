@@ -164,7 +164,12 @@ message AwsBedrockGuardrailContentPolicy {
   // original English-centric tier. Omitted = AWS default (CLASSIC).
   string tier = 1 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["CLASSIC", "STANDARD"]}
+    (buf.validate.field).string = {
+      in: [
+        "CLASSIC",
+        "STANDARD"
+      ]
+    }
   ];
 
   // One filter per harmful-content category. AWS evaluates each configured
@@ -222,14 +227,24 @@ message AwsBedrockGuardrailContentFilter {
   // set - omitted lets AWS default to BLOCK.
   string input_action = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // What to do when the filter matches an OUTPUT: BLOCK (default) or NONE
   // (detect-only). Sent only when set.
   string output_action = 5 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // Evaluate this filter on inputs. AWS defaults to true; set false
@@ -243,11 +258,21 @@ message AwsBedrockGuardrailContentFilter {
 
   // Input modalities the filter evaluates: TEXT and/or IMAGE. Omitted =
   // AWS default (TEXT). IMAGE requires a model with image understanding.
-  repeated string input_modalities = 8 [(buf.validate.field).repeated.items.string = {in: ["TEXT", "IMAGE"]}];
+  repeated string input_modalities = 8 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "TEXT",
+      "IMAGE"
+    ]
+  }];
 
   // Output modalities the filter evaluates: TEXT and/or IMAGE. Omitted =
   // AWS default (TEXT).
-  repeated string output_modalities = 9 [(buf.validate.field).repeated.items.string = {in: ["TEXT", "IMAGE"]}];
+  repeated string output_modalities = 9 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "TEXT",
+      "IMAGE"
+    ]
+  }];
 }
 
 // AwsBedrockGuardrailTopicPolicy configures denied topics.
@@ -257,7 +282,12 @@ message AwsBedrockGuardrailTopicPolicy {
   // default (CLASSIC).
   string tier = 1 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["CLASSIC", "STANDARD"]}
+    (buf.validate.field).string = {
+      in: [
+        "CLASSIC",
+        "STANDARD"
+      ]
+    }
   ];
 
   // Topics the model must not engage with (at least one). All topics are
@@ -332,14 +362,24 @@ message AwsBedrockGuardrailManagedWordList {
   // Sent only when set.
   string input_action = 1 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // What to do on an OUTPUT match: BLOCK (default) or NONE (detect-only).
   // Sent only when set.
   string output_action = 2 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // Evaluate the list on inputs. AWS defaults to true; explicit false
@@ -360,14 +400,24 @@ message AwsBedrockGuardrailCustomWord {
   // Sent only when set.
   string input_action = 2 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // What to do on an OUTPUT match: BLOCK (default) or NONE (detect-only).
   // Sent only when set.
   string output_action = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "NONE"
+      ]
+    }
   ];
 
   // Evaluate this word on inputs. AWS defaults to true.
@@ -465,14 +515,26 @@ message AwsBedrockGuardrailPiiEntity {
   // reverted to "AWS-derived" - only to another explicit value.
   string input_action = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "ANONYMIZE",
+        "NONE"
+      ]
+    }
   ];
 
   // Override the action for OUTPUTS only. Same materialize-once semantics
   // as input_action.
   string output_action = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "ANONYMIZE",
+        "NONE"
+      ]
+    }
   ];
 
   // Evaluate this entity on inputs. AWS defaults to true.
@@ -512,13 +574,25 @@ message AwsBedrockGuardrailRegex {
   // entities).
   string input_action = 5 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "ANONYMIZE",
+        "NONE"
+      ]
+    }
   ];
 
   // Override the action for OUTPUTS only.
   string output_action = 6 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+    (buf.validate.field).string = {
+      in: [
+        "BLOCK",
+        "ANONYMIZE",
+        "NONE"
+      ]
+    }
   ];
 
   // Evaluate this pattern on inputs. AWS defaults to true.

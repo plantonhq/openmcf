@@ -1,0 +1,55 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureloganalyticsworkspace
+spec:
+  presets:
+    - preset: 01-pay-as-you-go
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - pay-as-you-go ingestion bills 2.30 USD per GB in eastus past the billing account's 5 GB monthly free grant, following what the estate's agents, diagnostic settings, and applications write
+        - every GB retained past the included interactive window (31 days for Analytics tables, 90 for Application Insights tables and Sentinel-enabled workspaces) bills 0.10 USD per GB per month in eastus at daily granularity; long-term retention and search jobs against it bill their own meters
+        - Basic and Auxiliary table plans (chosen per table outside this spec) bill reduced ingestion rates plus per-GB-scanned query meters; data export bills per GB; enabling Microsoft Sentinel adds Sentinel's meters on top
+      notes: daily_quota_gb caps what a day can bill AND what a day can store -- ingestion stops at the cap until the next UTC day, so the ceiling is also a data-loss dial (-1 means unlimited).
+    - preset: 02-commitment-tier
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: commitment tier capacity reservation
+          pricing_unit: days
+          pricing_quantity: "30.416667"
+          quantity_basis: the commitment tier bills its flat fee once per day regardless of ingested volume -- 730 hours / 24 = 30.416667 days a month at the 100 GB/day tier's daily rate, accruing from the moment the tier is selected
+          list_unit_price: "196"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq '100 GB Commitment Tier Capacity Reservation' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "5961.666732"
+      total_list_cost: "5961.666732"
+      exclusions:
+        - ingestion above the reserved 100 GB/day bills fractional units of the SAME tier meter at the tier's effective per-GB rate (Microsoft's cost documentation's own example -- 300 GB into a 200 GB/day tier bills 1.5 units), following actual volume
+        - every GB retained past the included interactive window (31 days for Analytics tables, 90 for Application Insights tables and Sentinel-enabled workspaces) bills 0.10 USD per GB per month in eastus at daily granularity; long-term retention and search jobs against it bill their own meters
+        - Basic and Auxiliary table plans (chosen per table outside this spec) bill reduced ingestion rates plus per-GB-scanned query meters; data export bills per GB; enabling Microsoft Sentinel adds Sentinel's meters on top
+      notes: The commitment carries Azure's 31-day minimum period from selection or change (lowerable only within the first 6 hours); the daily fee is an effective 1.96 USD/GB at full utilization, about 15% under the 2.30 pay-as-you-go rate -- the deal only pays at sustained volume.
+    - preset: 03-private-hardened
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - pay-as-you-go ingestion bills 2.30 USD per GB in eastus past the billing account's 5 GB monthly free grant, following what the estate's agents, diagnostic settings, and applications write
+        - every GB retained past the included interactive window (31 days for Analytics tables, 90 for Application Insights tables and Sentinel-enabled workspaces) bills 0.10 USD per GB per month in eastus at daily granularity; long-term retention and search jobs against it bill their own meters
+        - Basic and Auxiliary table plans (chosen per table outside this spec) bill reduced ingestion rates plus per-GB-scanned query meters; data export bills per GB; enabling Microsoft Sentinel adds Sentinel's meters on top

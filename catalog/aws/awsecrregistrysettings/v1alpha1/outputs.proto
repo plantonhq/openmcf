@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsecrregistrysettings.v1alpha1;
+
+// AwsEcrRegistrySettingsStackOutputs captures the observable state of
+// the registry configuration after apply.
+message AwsEcrRegistrySettingsStackOutputs {
+  // The registry id - the account's 12-digit id, and the import ID
+  // for the policy/scanning/replication singletons.
+  string registry_id = 1;
+
+  // The registry's pull URL base,
+  // "{account}.dkr.ecr.{region}.amazonaws.com" - the chart-ready
+  // prefix cached upstream images pull through.
+  string registry_url = 2;
+
+  // Cache-rule registry ids keyed by ecr_repository_prefix (each
+  // rule's import ID is its prefix; the map's keys enumerate the
+  // rules that exist).
+  map<string, string> pull_through_cache_rule_registry_ids = 3;
+
+  // Creation-template registry ids keyed by prefix (each template's
+  // import ID is its prefix).
+  map<string, string> repository_creation_template_registry_ids = 4;
+
+  // Pull-time update exclusions keyed by the RESOLVED principal ARN
+  // (the exclusion's import ID is the ARN itself).
+  map<string, string> pull_time_update_exclusion_arns = 5;
+}

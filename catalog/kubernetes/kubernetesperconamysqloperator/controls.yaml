@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesperconamysqloperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its state is the custom resources it reconciles, held in the cluster's etcd. Database data at rest is a property of the volumes the managed clusters provision, owned by KubernetesMysql resources and the cluster's storage classes.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); customer-managed keys for database volumes are configured on the target cluster's storage classes.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The spec models no TLS seam for the operator itself -- its traffic is the Kubernetes API, TLS by construction, and it issues the serving certificate for its own CR-validation webhook. TLS for the managed databases is declared on KubernetesMysql resources.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the release's only service surface is the in-cluster operator Service the CR-validation webhook targets (consumed by the API server), and the spec offers no ingress or LoadBalancer seam.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no client-facing traffic to restrict; its inbound caller is the Kubernetes API server (admission webhook). Network exposure of the managed databases is declared on KubernetesMysql resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cluster-internal controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: watch.cluster_wide
+      evidence:
+        type: spec_default
+        reference: False (the upstream default) keeps the operator's rights namespace-scoped -- it watches its own namespace, or the explicit watch.namespaces fence; true grants cluster-wide RBAC so one operator reconciles databases in every namespace. The spec's CEL rule makes the two widened arms mutually exclusive.
+      notes: The 01-standard preset keeps the own-namespace default. Access to the operator's own resources is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator calls no cloud APIs -- it authenticates to the Kubernetes API with its ServiceAccount. Object-store credentials for database backups are declared per database on KubernetesMysql resources (s3_workers_limit here only bounds upload concurrency).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator exposes no authentication surface of its own -- no credentials, no user-facing endpoint. Database user management is declared on KubernetesMysql resources.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, Services, and Secrets for managed clusters -- captured by the target cluster's audit policy. log.structured switches its diagnostic logs to JSON for log pipelines; that is operational logging, not an audit trail.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This spec models no metrics seam for the operator -- scrape wiring rides the helm_values chart surface, and metrics for the managed databases (PMM integration) are declared on KubernetesMysql resources. disable_telemetry governs Percona's anonymous usage pings to check.percona.com, not monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up; its own configuration is this manifest, re-appliable at any time. It IS the engine behind database backups -- scheduled XtraBackup with point-in-time recovery -- but what gets backed up, where, and on what schedule is declared on KubernetesMysql resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer; retention for database backups is declared per database on KubernetesMysql resources (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; extra replicas are leader-elected warm standbys (leader_election.enabled, default true -- exactly one replica reconciles at a time) that shorten failover of the operator itself.
+      notes: An operator outage pauses reconciliation and failover automation only -- managed databases keep serving. The 01-standard preset runs one replica.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is deliberately bounded: the PerconaXtraDBCluster CRDs ship in the chart's Helm-native crds/ directory, which Helm never deletes on uninstall, so removing the operator never cascade-deletes the database clusters. In the widened-watch arms the MODULE additionally owns the operator's fixed-name CR-validation webhook so destroy removes it with the resource -- left to the operator, uninstall would strand a Fail-closed webhook that bricks every future PerconaXtraDBCluster admission in the cluster."
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default chart (1.20.0 -- chart and operator versions move together); upgrades are deliberate chart_version changes. KNOW THE CRD LAG -- Helm's crds/ posture leaves CRDs at their installed versions across upgrades; apply the new release's CRDs manually when its release notes call for it.

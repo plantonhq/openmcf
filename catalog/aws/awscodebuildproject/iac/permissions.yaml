@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscodebuildproject
+spec:
+  aws:
+    statements:
+      - sid: ManageProject
+        actions:
+          - codebuild:CreateProject
+          - codebuild:BatchGetProjects
+          - codebuild:UpdateProject
+          - codebuild:DeleteProject
+          - codebuild:UpdateProjectVisibility
+        resources:
+          - arn:aws:codebuild:*:*:project/*
+        provenance: derived
+        notes: Covers aws_codebuild_project / codebuild.Project, the module's core resource. CodeBuild has no separate tagging action for projects -- tags ride CreateProject and UpdateProject. project_visibility is applied by a distinct UpdateProjectVisibility call the provider sequences after create/update (AWS's permissions reference pairs it with iam:PassRole for the resource access role). All five actions authorize on the project ARN per the service reference.
+      - sid: ManageWebhook
+        actions:
+          - codebuild:CreateWebhook
+          - codebuild:UpdateWebhook
+          - codebuild:DeleteWebhook
+        resources:
+          - arn:aws:codebuild:*:*:project/*
+        provenance: derived
+        notes: Covers aws_codebuild_webhook / codebuild.Webhook, the folded 1:1 satellite. Webhooks have no ARN of their own -- all three actions authorize on the owning project's ARN. manual_creation still calls CreateWebhook (AWS mints the payload URL and HMAC secret without registering with the provider), and the provider reads webhook state back through BatchGetProjects, already granted above.
+      - sid: ManageResourcePolicy
+        actions:
+          - codebuild:PutResourcePolicy
+          - codebuild:GetResourcePolicy
+          - codebuild:DeleteResourcePolicy
+        resources:
+          - arn:aws:codebuild:*:*:project/*
+        provenance: derived
+        notes: Covers aws_codebuild_resource_policy / codebuild.ResourcePolicy, the folded cross-account policy document keyed by the project ARN. The service reference authorizes these three actions on both project and report-group ARN formats; this module only ever targets the project.
+      - sid: PassProjectRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateProject, UpdateProject, and UpdateProjectVisibility each require passing the roles the manifest references -- service_role (required; the identity every build runs as), resource_access_role (PUBLIC_READ visibility; the role CodeBuild uses to read the logs and artifacts it re-exposes), and build_batch_config.service_role (the role that launches batch child builds). Add an iam:PassedToService=codebuild.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment.

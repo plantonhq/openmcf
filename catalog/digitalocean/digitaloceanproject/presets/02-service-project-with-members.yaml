@@ -1,0 +1,15 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: orders-service
+spec:
+  projectName: orders-service
+  description: Everything the orders service runs on
+  purpose: Service or API
+  environment: staging
+  resources:
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: orders-worker
+        fieldPath: status.outputs.urn
+    - value: do:space:orders-assets

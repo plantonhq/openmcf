@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureapplicationinsights
+spec:
+  azure:
+    groups:
+      - purpose: ManageComponent
+        actions:
+          - Microsoft.Insights/Components/Read
+          - Microsoft.Insights/Components/Write
+          - Microsoft.Insights/Components/Delete
+        provenance: derived
+        notes: Covers azurerm_application_insights / appinsights.NewInsights -- create with the workspace binding in the payload (workspace_id is a resolved ARM ID the module passes client-side, no workspace API call from the module), read/refresh, in-place update of retention, sampling, network flags, and auth posture, and destroy. Held at the resource group's scope; Monitoring Contributor carries them (ARM spells this type's segments capitalized -- Components -- in its operations inventory).
+      - purpose: ManageDailyCap
+        actions:
+          - Microsoft.Insights/Components/CurrentBillingFeatures/Read
+          - Microsoft.Insights/Components/CurrentBillingFeatures/Write
+        provenance: derived
+        notes: The daily data cap and its notification flag live on a separate component-billing-features API surface, not the component body -- the provider reads and writes CurrentBillingFeatures to apply daily_data_cap_in_gb and daily_data_cap_notifications_enabled on every create and refresh, so both actions are exercised even by manifests that leave the cap on Azure's default.
+      - purpose: LinkCrossSubscriptionWorkspace
+        actions:
+          - Microsoft.OperationalInsights/workspaces/sharedKeys/action
+        provenance: derived
+        notes: "Needed on the REFERENCED workspace's scope only when workspace_id points at a Log Analytics workspace in a DIFFERENT subscription -- Microsoft documents that creating or updating a workspace-based Application Insights resource linked cross-subscription requires this action on the target workspace, or the operation fails 403, even within one Entra tenant (Azure Monitor 'Create a workspace-based resource' documentation, additional-requirements section). Same-subscription linking needs no explicit workspace grant. Microsoft.OperationalInsights is absent from the committed action-inventory snapshot; the action name was verified against Microsoft's live Azure Monitor documentation and the Log Analytics Contributor built-in role definition on 2026-08-18."

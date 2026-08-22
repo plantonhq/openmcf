@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsvpcendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An endpoint is connectivity plumbing -- it forwards traffic to a service and stores no customer data at rest. What the target service stores (S3 objects, DynamoDB items) is encrypted on that service's own component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored there is no key to choose -- the endpoint API carries no encryption surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The endpoint neither terminates nor originates encryption -- TLS rides end-to-end between the client and the service (AWS APIs behind interface endpoints speak HTTPS regardless of the path). What PrivateLink adds is PRIVACY of routing -- traffic stays on the AWS network instead of crossing the internet -- which is a network-exposure property, not encryption.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The endpoint IS the private path -- it is reachable only from inside the VPC it lives in (via route-table entries for Gateway, via in-VPC ENIs for the other types), and its entire purpose is keeping service traffic off the internet, NAT gateways, and internet gateways. No public endpoint exists and none can be configured.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The referenced security groups attach to an Interface endpoint's network interfaces and decide which clients reach the service through it -- they must allow inbound on the service's port (443 for AWS APIs). Empty means AWS attaches the VPC's DEFAULT security group, whose rules are whatever that group accumulated.
+      notes: The 02-interface-endpoint preset carries a dedicated endpoint security group precisely because the default-group fallback is usually wrong for production. Gateway endpoints take no security groups -- their reach is bounded by which route tables (route_table_ids) carry the prefix-list route; the folded policy narrows WHO and WHAT on both types.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Private service plumbing has no WAF attachment point -- there is no internet-facing surface to filter. Request filtering belongs on the service side (or its load balancer) when it exists at all.
+    - control_id: rbac
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: Empty means AWS attaches its full-access default document -- any principal in the VPC may use the endpoint to reach anything the service offers. A policy narrows which principals, actions, and resources may transit the endpoint (e.g. "only this account's buckets" on an S3 gateway endpoint), turning the endpoint into a data-exfiltration control that binds even callers holding valid IAM credentials.
+      notes: The endpoint policy is an ADDITIONAL gate, not a replacement -- the caller's own IAM policy and the target resource's policy still apply. Management-plane operations on the endpoint itself are IAM-authorized unconditionally.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The endpoint holds no credentials and calls nothing as itself -- caller identity flows through it unchanged to the target service, where IAM evaluates it. The keyless posture of those callers lives on the calling workloads.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication surface of its own to weaken or harden -- the endpoint admits traffic by network reachability and its policy document; authentication happens at the target service.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- CreateVpcEndpoint, ModifyVpcEndpoint, DeleteVpcEndpoints -- lands in AWS CloudTrail unconditionally. Calls made THROUGH the endpoint to AWS services are likewise CloudTrail events on the target service, carrying the endpoint's ID in the event's vpcEndpointId field, so private-path usage is attributable.
+      notes: Per-flow network visibility is VPC Flow Logs on the endpoint ENIs' subnets, composed outside this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: endpoint_type
+      evidence:
+        type: provider_default
+        reference: Every ENI-based endpoint publishes AWS/PrivateLinkEndpoints metrics (ActiveConnections, BytesProcessed, NewConnections, PacketsDropped, RstPacketsReceived) to CloudWatch automatically at one-minute intervals at no additional cost. Gateway endpoints -- the default type -- publish no metrics of their own; their traffic is observed on the target service's metrics or VPC Flow Logs.
+      notes: BytesProcessed is also the billing meter made visible -- it is the byte count the endpoint owner is charged data processing for.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The endpoint carries no data to back up -- its whole state is this manifest, recreated declaratively in minutes. Nothing a restore would recover outlives a re-apply.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With nothing backed up there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: An ENI-based endpoint places one network interface per listed subnet -- a single-subnet endpoint shares that zone's fate, and each added subnet extends the endpoint into another Availability Zone (each AZ billed separately). The subnet set updates in place.
+      notes: Both ENI-based presets spread across two AZs. Gateway endpoints are inherently regional -- a route-table entry with no zonal footprint to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a VPC endpoint -- the provider's aws_vpc_endpoint resource carries none. The blast radius of deletion is lost private connectivity (and, for Gateway endpoints, S3/DynamoDB traffic falling back to NAT or internet paths), restored declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the PrivateLink fleet behind every endpoint; no customer-visible runtime, version, or maintenance window exists.

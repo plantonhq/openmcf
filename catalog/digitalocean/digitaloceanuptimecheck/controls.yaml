@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A check stores no user data; its one credential-like value (the Slack webhook URL on alert rules) is marked sensitive in the spec and secret-wrapped by both provisioners.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: type's recommended default is https (also DigitalOcean's own default) -- the probe then negotiates TLS to the target; ping and http are deliberate opt-downs for targets that need them.
+      notes: The check's traffic is the probe itself; https probes exercise the target's TLS path and enable ssl_expiry alert rules.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The check probes an EXTERNAL endpoint; it has no inbound surface of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge of its own; the probed target's edge posture belongs to the target.
+    - control_id: rbac
+      status: not_applicable
+      notes: Checks carry no permission model; who can edit them is account-level DigitalOcean team permissioning.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Probes are unauthenticated by design (they measure what an anonymous client sees); Slack delivery uses the webhook URL the spec carries as a sensitive field.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface (see workload-identity).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-check audit surface; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: alerts
+      evidence:
+        type: spec_validation
+        reference: The kind is itself an availability monitor; each alerts row is validated to carry a type from the closed list and at least one notification channel, so an alert rule that notifies nobody is unrepresentable.
+      notes: A bare check records uptime history; adding alerts rows turns it into an alerting monitor (down, down_global, latency, ssl_expiry).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The check is stateless configuration, recreated by IaC; probe history lives on DigitalOcean's platform.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: regions is required with at least one entry and a closed four-region list; multi-region probing is declared, never left to a server-side default the provider cannot reconcile.
+      notes: Probes run from DigitalOcean's global vantage regions; down_global alert rules distinguish single-region blips from global outages.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for uptime checks. Deleting the check deletes its alert rules with it -- the GUIDE says so where users decide.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch; probing runs on DigitalOcean's platform.

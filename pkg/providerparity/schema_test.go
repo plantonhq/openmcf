@@ -184,8 +184,13 @@ func TestCommittedArtifacts(t *testing.T) {
 		if s.Version == "" || s.Source == "" {
 			t.Errorf("%s: missing identity: %+v", name, s)
 		}
-		if len(s.Resources) < 100 {
-			t.Errorf("%s: only %d resources -- a real provider schema has hundreds; the artifact is truncated", name, len(s.Resources))
+		// The floor catches a truncated or garbage artifact (a distiller
+		// failure writes a near-empty file), so it sits well below the
+		// smallest real provider surface: hyperscalers register hundreds to
+		// thousands of resources, while the smaller IaaS providers
+		// (DigitalOcean, Hetzner Cloud) legitimately register only tens.
+		if len(s.Resources) < 10 {
+			t.Errorf("%s: only %d resources -- even the smallest real provider registers tens; the artifact is truncated", name, len(s.Resources))
 		}
 	}
 }

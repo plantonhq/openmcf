@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorfirewallpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule document held by Azure's network control plane; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy carries no traffic of its own; client-side TLS lives on the associated profile's endpoints and custom domains, origin-side re-encryption on its routes -- all separate kinds.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy document has no network endpoint; it governs how PUBLIC traffic reaching the associated Front Door domains is filtered, not whether those domains are public.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: custom_rules
+      evidence:
+        type: spec_default
+        reference: Custom rules are the source-restriction layer, evaluated FIRST by ascending priority -- IP_MATCH conditions on REMOTE_ADDR or SOCKET_ADDR (the direct TCP peer, immune to X-Forwarded-For spoofing) with BLOCK express IP denylists, GEO_MATCH expresses country-level restriction, negate_condition turns either into an allowlist, and RATE_LIMIT_RULE caps per-client request rates over a sliding window before the managed rules ever run.
+      notes: An ALLOW action skips the remaining custom AND managed rules -- the allowlist gesture -- so priority ordering is part of the security design. The standard-rate-limit preset pairs a 300-requests-per-5-minutes API cap with a SOCKET_ADDR denylist.
+    - control_id: edge-protection
+      status: configurable
+      field_path: managed_rules
+      evidence:
+        type: spec_default
+        reference: Request filtering IS the resource, and the depth is chosen here -- Microsoft_DefaultRuleSet (OWASP-class SQLI/XSS/RCE coverage plus Microsoft threat-intelligence rules, anomaly-scored at 2.x) and Microsoft_BotManagerRuleSet enforce on PREMIUM only (a spec CEL rejects managed_rules on STANDARD, mirroring Azure); STANDARD filters with custom rules alone. The required mode field decides whether matches are acted on (PREVENTION) or only logged (DETECTION, the tuning posture).
+      notes: The policy enforces nothing until an AzureFrontDoorSecurityPolicy associates it with a profile's domains -- and Azure requires the policy's sku to match the profile's. Per-rule overrides, scoped exclusions, and the JS-challenge/CAPTCHA actions tune false positives and bot handling without disabling whole sets; the detection-rollout preset stages Microsoft_DefaultRuleSet 2.1 log-only before flipping to PREVENTION in place.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the policy exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      field_path: log_scrubbing
+      notes: Policy creation, rule changes, and deletion land in the Azure Activity Log automatically as subscription-level posture. WAF match/block logs are emitted through a diagnostic setting on the ASSOCIATED profile (a separate kind) -- and this policy's log_scrubbing rules redact sensitive request parts (auth headers, PII arguments, client IPs) from those logs before they land, the lever the premium-managed-prevention preset uses on Authorization headers and client IPs.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy emits no metrics of its own; the WAF request-count metric and firewall logs ride the associated Front Door profile's monitoring surface.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the policy and its rules as one document.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A global configuration object with no runtime footprint of its own -- Azure evaluates it at every Front Door edge location by design, and the delivery platform's redundancy is the associated profile's posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a WAF policy (Azure resource locks are subscription-side governance outside the manifest); deleting the policy detaches enforcement from every security policy that referenced it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The WAF engine and the managed rule content are Microsoft-maintained -- Microsoft curates and updates the default rule set and the bot manager set server-side; no customer-visible patch surface exists on the engine.
+      notes: The rule-set VERSION is pinned by the spec (managed_rules[].version) -- adopting a newer curated version (e.g. Microsoft_DefaultRuleSet 2.1) is an explicit one-field change, which is version discipline rather than unpatched software.

@@ -7,6 +7,7 @@ import (
 
 	albv1 "github.com/plantonhq/planton/catalog/aws/awsalb/v1alpha1"
 	eksngv1 "github.com/plantonhq/planton/catalog/aws/awseksnodegroup/v1alpha1"
+	eipv1 "github.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1"
 	rdsv1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
 	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
@@ -115,6 +116,67 @@ func TestStaticSlugHoursAndCounts(t *testing.T) {
 	}
 	if len(preset.GetQuantityLines()) != 1 {
 		t.Fatalf("internal ALB lines: got %d, want 1 (no public IPv4)", len(preset.GetQuantityLines()))
+	}
+}
+
+// TestSlugRegionAndCurrencyAgreement pins the live boundary's agreement
+// check on slug-named prices: pricing a Frankfurt manifest with a
+// Virginia rate would be a wrong number that looks exactly like a right
+// one -- the defining failure mode this engine exists to prevent -- so a
+// slug entry whose region disagrees with the manifest's refuses (naming
+// both regions), a "global" entry prices anywhere, and a currency
+// disagreement refuses too. Mirrors the Java evaluator's identical pin.
+func TestSlugRegionAndCurrencyAgreement(t *testing.T) {
+	manifest := &albv1.AwsAlb{Spec: &albv1.AwsAlbSpec{
+		Region:   "eu-central-1",
+		Internal: true,
+	}}
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{FromField: "region", Assumption: "us-east-1"},
+		Lines: []*derivationv1.LineRule{{
+			SkuMeter: "Application Load Balancer hours",
+			Quantity: []*derivationv1.QuantityFactor{constantFactor("1"), hoursFactor()},
+			Price:    &derivationv1.LineRule_PriceSlug{PriceSlug: "alb-hours-us-east-1"},
+			Basis:    "one load balancer, billed every hour of the month",
+		}},
+	}
+
+	// A slug entry pinned for another region refuses instead of silently
+	// pricing this one, and the reason names both regions.
+	entries := entriesBySlug(usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "us-east-1"))
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || preset != nil {
+		t.Fatalf("Evaluate(wrong region): err=%v preset=%+v, want a refusal", err, preset)
+	}
+	if refusal == nil {
+		t.Fatal("Evaluate(wrong region): priced instead of refusing")
+	}
+	if !strings.Contains(refusal.Reason, "eu-central-1") || !strings.Contains(refusal.Reason, "us-east-1") {
+		t.Errorf("refusal reason must name both regions, got %q", refusal.Reason)
+	}
+
+	// A "global" entry prices the same manifest fine.
+	entries = entriesBySlug(usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "global"))
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(global entry): err=%v refusal=%+v, want priced", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 1 {
+		t.Fatalf("global entry lines: got %d, want 1", len(preset.GetQuantityLines()))
+	}
+
+	// A currency disagreement refuses too, naming both currencies.
+	eurEntry := usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "eu-central-1")
+	eurEntry.Currency = "EUR"
+	entries = entriesBySlug(eurEntry)
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(wrong currency): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "EUR") || !strings.Contains(refusal.Reason, "USD") {
+		t.Errorf("currency refusal must name both currencies, got %+v", refusal)
 	}
 }
 
@@ -316,6 +378,92 @@ func TestRefusalRulesAndZeroQuantity(t *testing.T) {
 	}
 	if len(preset.GetExclusions()) != 1 || preset.GetNotes() != "" {
 		t.Errorf("on-demand prose: exclusions=%d notes=%q, want 1 and empty", len(preset.GetExclusions()), preset.GetNotes())
+	}
+}
+
+// TestReferencePresence pins the presence semantics of value-or-reference
+// wrapper fields: a wrapper populated on its reference arm reads SET (the
+// manifest configured the field, even though the referenced value stays
+// unknowable), a placeholder or absent wrapper reads unset, and a refusal
+// rule keyed on the reference fires -- the silent-mispricing class where
+// a knowably-understated estimate printed instead of refusing.
+func TestReferencePresence(t *testing.T) {
+	byReference := &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{Name: "my-ec2-instance", FieldPath: "status.outputs.instance_id"},
+		},
+	}
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{FromField: "region", Assumption: "us-east-1"},
+		Lines: []*derivationv1.LineRule{
+			{
+				SkuMeter:    "public IPv4 address usage",
+				AppliesWhen: []*derivationv1.Condition{condition("instance", derivationv1.Condition_is_set, "")},
+				Quantity:    []*derivationv1.QuantityFactor{hoursFactor()},
+				Price:       &derivationv1.LineRule_PriceSlug{PriceSlug: "public-ipv4-in-use-us-east-1"},
+				Basis:       "attached to an instance, billed as in use",
+			},
+			{
+				SkuMeter:    "public IPv4 address usage",
+				AppliesWhen: []*derivationv1.Condition{condition("instance", derivationv1.Condition_is_unset, "")},
+				Quantity:    []*derivationv1.QuantityFactor{hoursFactor()},
+				Price:       &derivationv1.LineRule_PriceSlug{PriceSlug: "public-ipv4-idle-us-east-1"},
+				Basis:       "unattached, billed as idle",
+			},
+		},
+	}
+	entries := entriesBySlug(
+		usdEntry("public-ipv4-in-use-us-east-1", "Amazon Virtual Private Cloud", "IP-hours", "us-east-1"),
+		usdEntry("public-ipv4-idle-us-east-1", "Amazon Virtual Private Cloud", "IP-hours", "us-east-1"),
+	)
+
+	// Reference arm populated: the field IS configured -- the in-use rule
+	// fires and the idle rule does not.
+	attached := &eipv1.AwsElasticIp{Spec: &eipv1.AwsElasticIpSpec{Region: "us-east-1", Instance: byReference}}
+	preset, refusal, err := Evaluate(attached, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(by reference): err=%v refusal=%+v", err, refusal)
+	}
+	if lines := preset.GetQuantityLines(); len(lines) != 1 || lines[0].GetPrice() != "public-ipv4-in-use-us-east-1" {
+		t.Fatalf("by reference: want exactly the in-use line, got %+v", lines)
+	}
+
+	// Placeholder literal: unset, exactly like an absent wrapper.
+	for name, instance := range map[string]*foreignkeyv1.StringValueOrRef{
+		"placeholder": {LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "<ec2-instance-id>"}},
+		"absent":      nil,
+	} {
+		manifest := &eipv1.AwsElasticIp{Spec: &eipv1.AwsElasticIpSpec{Region: "us-east-1", Instance: instance}}
+		preset, refusal, err := Evaluate(manifest, spec, entries)
+		if err != nil || refusal != nil {
+			t.Fatalf("Evaluate(%s): err=%v refusal=%+v", name, err, refusal)
+		}
+		if lines := preset.GetQuantityLines(); len(lines) != 1 || lines[0].GetPrice() != "public-ipv4-idle-us-east-1" {
+			t.Fatalf("%s: want exactly the idle line, got %+v", name, lines)
+		}
+	}
+
+	// A refusal rule keyed on the reference fires -- the honesty upgrade:
+	// a fact delegated to a referenced resource refuses instead of
+	// silently pricing without it.
+	refusing := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{FromField: "region", Assumption: "us-east-1"},
+		Refusals: []*derivationv1.RefusalRule{{
+			When:   []*derivationv1.Condition{condition("instance", derivationv1.Condition_is_set, "")},
+			Reason: "the committed charge rides the referenced instance and is invisible in this manifest",
+		}},
+		Lines: spec.Lines[1:2],
+	}
+	_, refusal, err = Evaluate(attached, refusing, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(refusal by reference): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "referenced instance") {
+		t.Fatalf("refusal by reference: want the delegation refusal, got %+v", refusal)
 	}
 }
 

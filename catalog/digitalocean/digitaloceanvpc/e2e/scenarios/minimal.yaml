@@ -1,0 +1,18 @@
+# Minimal VPC: region only. DigitalOcean assigns a non-conflicting range,
+# which must land in the ip_range output with no plan diff.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpc
+metadata:
+  name: planton-oss-e2e-digitaloceanvpc-min
+  id: planton-oss-e2e-digitaloceanvpc-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanvpc
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: nyc3

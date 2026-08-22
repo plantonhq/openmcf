@@ -1,0 +1,344 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscostanomalymonitor.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsCostAnomalyMonitorSpec defines one Cost Explorer anomaly
+// monitor - the ML-driven watcher that flags unusual spend - together
+// with its folded alert SUBSCRIPTIONS (a subscription's monitor list
+// is the structural edge that makes it this monitor's satellite).
+//
+// A monitor is one of two shapes, chosen by monitor_type:
+// DIMENSIONAL segments spend by ONE built-in dimension (the common
+// "by service" monitor); CUSTOM watches the slice a Cost Explorer
+// expression selects (linked accounts, tags, cost categories).
+// Both shape arms are create-only - changing the shape replaces the
+// monitor; only the name updates in place.
+//
+// Cost Explorer is account-global (served from us-east-1); the spec's
+// region is the provider endpoint region. Anomaly detection itself is
+// free - AWS bills nothing for monitors or subscriptions.
+message AwsCostAnomalyMonitorSpec {
+  // The shape arms mirror the AWS API's runtime rule: DIMENSIONAL
+  // requires the dimension, CUSTOM requires the expression - the
+  // provider only fails at apply, so the mirror keeps the failure at
+  // manifest time.
+  option (buf.validate.message).cel = {
+    id: "spec.dimensional_requires_dimension"
+    message: "DIMENSIONAL monitors segment by monitor_dimension - set it (and leave monitor_specification unset)"
+    expression: "(this.monitor_type == 'DIMENSIONAL') == (this.monitor_dimension != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.custom_requires_specification"
+    message: "CUSTOM monitors watch the slice monitor_specification selects - set it (and leave monitor_dimension unset)"
+    expression: "(this.monitor_type == 'CUSTOM') == has(this.monitor_specification)"
+  };
+  // Subscription names key the folded satellites - duplicates would
+  // silently collapse for_each entries in both engines.
+  option (buf.validate.message).cel = {
+    id: "spec.subscription_names_unique"
+    message: "subscriptions entries must have unique names"
+    expression: "this.subscriptions.map(s, s.name).unique()"
+  };
+
+  // The AWS region used by the provider while managing the monitor.
+  // Cost Explorer is account-global (served from us-east-1) - every
+  // API call still needs a regional endpoint. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The monitor's display name - an explicit field because monitor
+  // names legally carry spaces and mixed case metadata.name cannot.
+  // Up to 1024 characters; the only field that updates in place.
+  string monitor_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // The monitor's shape. DIMENSIONAL segments spend by one built-in
+  // dimension; CUSTOM watches a Cost Explorer expression's slice.
+  // Changing the shape replaces the monitor.
+  string monitor_type = 3 [(buf.validate.field).string = {
+    in: [
+      "DIMENSIONAL",
+      "CUSTOM"
+    ]
+  }];
+
+  // For DIMENSIONAL monitors: the segmentation dimension. SERVICE is
+  // AWS's recommended default posture (one anomaly stream per
+  // service). Create-only.
+  string monitor_dimension = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SERVICE",
+        "LINKED_ACCOUNT",
+        "TAG",
+        "COST_CATEGORY"
+      ]
+    }
+  ];
+
+  // For CUSTOM monitors: the Cost Explorer Expression (as free-form
+  // JSON, the AWS Expression document verbatim) selecting the spend
+  // slice to watch - e.g. {"Dimensions": {"Key": "LINKED_ACCOUNT",
+  // "Values": ["123456789012"]}}. Create-only.
+  google.protobuf.Struct monitor_specification = 5;
+
+  // Alert subscriptions - the folded satellites: each entry is one
+  // aws_ce_anomaly_subscription bound to this monitor, keyed by its
+  // name. A subscription decides who hears about anomalies, how often,
+  // and above what impact threshold.
+  repeated AwsCostAnomalyMonitorSubscription subscriptions = 6;
+}
+
+// AwsCostAnomalyMonitorSubscription is one folded alert subscription
+// on the monitor.
+message AwsCostAnomalyMonitorSubscription {
+  // AWS pairs the delivery channel with the frequency: IMMEDIATE
+  // alerts deliver individually via SNS; DAILY/WEEKLY summaries
+  // deliver via email. A mismatched pairing is rejected at apply -
+  // the mirror keeps the failure at manifest time.
+  option (buf.validate.message).cel = {
+    id: "subscription.immediate_delivers_via_sns"
+    message: "IMMEDIATE subscriptions deliver individual alerts via SNS - every subscriber must be type SNS"
+    expression: "this.frequency != 'IMMEDIATE' || this.subscribers.all(s, s.type == 'SNS')"
+  };
+  option (buf.validate.message).cel = {
+    id: "subscription.summaries_deliver_via_email"
+    message: "DAILY and WEEKLY summary subscriptions deliver via email - every subscriber must be type EMAIL"
+    expression: "this.frequency == 'IMMEDIATE' || this.subscribers.all(s, s.type == 'EMAIL')"
+  };
+
+  // The subscription's name - the key the modules use for the
+  // for_each entry and the outputs map, and the AlertSubscription
+  // name at AWS. Up to 1024 characters.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // How alerts deliver: IMMEDIATE (individual alerts, SNS),
+  // DAILY or WEEKLY (email summaries).
+  string frequency = 2 [(buf.validate.field).string = {
+    in: [
+      "IMMEDIATE",
+      "DAILY",
+      "WEEKLY"
+    ]
+  }];
+
+  // Who receives the alerts (at least one).
+  repeated AwsCostAnomalyMonitorSubscriber subscribers = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // The impact threshold an anomaly must exceed before this
+  // subscription alerts - a Cost Explorer expression over the
+  // ANOMALY_TOTAL_IMPACT_ABSOLUTE or ANOMALY_TOTAL_IMPACT_PERCENTAGE
+  // dimensions (e.g. "absolute impact >= 100 USD"). Unset = every
+  // anomaly the monitor flags alerts.
+  AwsCostAnomalyMonitorExpression threshold_expression = 4;
+}
+
+// AwsCostAnomalyMonitorSubscriber is one alert recipient.
+message AwsCostAnomalyMonitorSubscriber {
+  // An email address (type EMAIL) or an SNS topic ARN (type SNS -
+  // reference an AwsSnsTopic's topic_arn output or pass a literal
+  // ARN; the topic's policy must allow costalerts.amazonaws.com to
+  // publish).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef address = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // How the subscriber is reached.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "EMAIL",
+      "SNS"
+    ]
+  }];
+}
+
+// AwsCostAnomalyMonitorExpression is the root of a subscription's
+// threshold expression: a leaf (dimension / tag / cost_category) or a
+// composition (and / or / not) of leaf children. The LEVELED shape
+// (root -> leaf) mirrors the AWS API exactly - subscription
+// thresholds accept ONE composition level below the root, so the
+// deepest legal tree is expressible and nothing deeper can be
+// written.
+message AwsCostAnomalyMonitorExpression {
+  // A dimension leaf. For threshold expressions the impact dimensions
+  // (ANOMALY_TOTAL_IMPACT_ABSOLUTE / ANOMALY_TOTAL_IMPACT_PERCENTAGE)
+  // with match option GREATER_THAN_OR_EQUAL are the meaningful keys.
+  AwsCostAnomalyMonitorExpressionDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsCostAnomalyMonitorExpressionTag tag = 2;
+
+  // A cost-category leaf.
+  AwsCostAnomalyMonitorExpressionCostCategory cost_category = 3;
+
+  // Leaf children that must ALL match (e.g. absolute AND percentage
+  // impact thresholds together).
+  repeated AwsCostAnomalyMonitorExpressionLeaf and = 4;
+
+  // Leaf children of which AT LEAST ONE must match.
+  repeated AwsCostAnomalyMonitorExpressionLeaf or = 5;
+
+  // A leaf child that must NOT match.
+  AwsCostAnomalyMonitorExpressionLeaf not = 6;
+}
+
+// AwsCostAnomalyMonitorExpressionLeaf is a terminal filter: exactly
+// one of the three leaf shapes, with no further composition (AWS
+// rejects deeper nesting on subscription thresholds).
+message AwsCostAnomalyMonitorExpressionLeaf {
+  // A dimension leaf.
+  AwsCostAnomalyMonitorExpressionDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsCostAnomalyMonitorExpressionTag tag = 2;
+
+  // A cost-category leaf.
+  AwsCostAnomalyMonitorExpressionCostCategory cost_category = 3;
+}
+
+// AwsCostAnomalyMonitorExpressionDimension filters on one Cost
+// Explorer dimension.
+message AwsCostAnomalyMonitorExpressionDimension {
+  // The dimension to filter on.
+  string key = 1 [(buf.validate.field).string = {
+    in: [
+      "AZ",
+      "INSTANCE_TYPE",
+      "LINKED_ACCOUNT",
+      "LINKED_ACCOUNT_NAME",
+      "OPERATION",
+      "PURCHASE_TYPE",
+      "REGION",
+      "SERVICE",
+      "SERVICE_CODE",
+      "USAGE_TYPE",
+      "USAGE_TYPE_GROUP",
+      "RECORD_TYPE",
+      "OPERATING_SYSTEM",
+      "TENANCY",
+      "SCOPE",
+      "PLATFORM",
+      "SUBSCRIPTION_ID",
+      "LEGAL_ENTITY_NAME",
+      "INVOICING_ENTITY",
+      "DEPLOYMENT_OPTION",
+      "DATABASE_ENGINE",
+      "CACHE_ENGINE",
+      "INSTANCE_TYPE_FAMILY",
+      "BILLING_ENTITY",
+      "RESERVATION_ID",
+      "RESOURCE_ID",
+      "RIGHTSIZING_TYPE",
+      "SAVINGS_PLANS_TYPE",
+      "SAVINGS_PLAN_ARN",
+      "PAYMENT_OPTION",
+      "AGREEMENT_END_DATE_TIME_AFTER",
+      "AGREEMENT_END_DATE_TIME_BEFORE",
+      "PAYER_ACCOUNT",
+      "ANOMALY_TOTAL_IMPACT_ABSOLUTE",
+      "ANOMALY_TOTAL_IMPACT_PERCENTAGE"
+    ]
+  }];
+
+  // How values match. Unset = EQUALS. Impact-threshold dimensions use
+  // GREATER_THAN_OR_EQUAL.
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The values to match (for impact thresholds: the numeric threshold
+  // as a string, e.g. "100").
+  repeated string values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {max_len: 1024}
+    }
+  }];
+}
+
+// AwsCostAnomalyMonitorExpressionTag filters on one cost-allocation
+// tag key.
+message AwsCostAnomalyMonitorExpressionTag {
+  // The tag key.
+  string key = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // How values match (see the dimension leaf).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The tag values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}
+
+// AwsCostAnomalyMonitorExpressionCostCategory filters on one cost
+// category's values.
+message AwsCostAnomalyMonitorExpressionCostCategory {
+  // The cost category's name.
+  string key = 1 [(buf.validate.field).string = {max_len: 50}];
+
+  // How values match (see the dimension leaf).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The category values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}

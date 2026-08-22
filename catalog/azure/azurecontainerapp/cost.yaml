@@ -1,0 +1,55 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerapp
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Container Apps
+      sku_meter: idle vCPU seconds
+      pricing_unit: vCPU-seconds
+      description: "An app with min_replicas above zero keeps that many replicas always running in idle mode, and every allocated vCPU bills the reduced idle rate per second around the clock (0.000003 USD/vCPU-second in eastus at list) -- the committed floor. An app that scales to zero (min_replicas 0 or unset) has no baseline: no usage charges apply while it is scaled to zero."
+    - service_name: Azure Container Apps
+      sku_meter: idle memory GiB seconds
+      pricing_unit: GiB-seconds
+      description: "The memory half of the idle floor: every allocated GiB on the always-running minimum replicas bills per second (0.000003 USD/GiB-second in eastus at list -- Azure prices memory identically idle and active)."
+  cost_drivers:
+    - field_path: min_replicas
+      sku_meter: idle vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: "The commitment dial: zero means the app costs nothing while idle (cold starts are the trade); any positive floor is that many replicas' vCPU and memory billing every second of the month at idle rates even with zero traffic. This is the field that decides whether the component is pay-per-use or a standing charge."
+    - field_path: containers
+      sku_meter: idle vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: "Each container's cpu and memory allocations sum into the replica's billed size -- the multiplier on every replica-second, idle or active. Halving cpu halves the compute half of the bill."
+    - field_path: max_replicas
+      sku_meter: active vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: "The spend ceiling under load: scale rules can bill at most max_replicas x per-replica resources at active rates (vCPU actives at 8x the idle rate; memory prices the same both ways)."
+    - field_path: http_scale_rules
+      sku_meter: active vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: "Scale rules move the billed replica count between the floor and the ceiling with demand -- the mechanism that makes spend track traffic instead of the maximum. A replica turns active (8x vCPU rate) while starting, processing requests, or above the activity thresholds (0.01 cores, 1,000 bytes/second received)."
+    - field_path: custom_scale_rules
+      sku_meter: active vCPU seconds
+      pricing_unit: vCPU-seconds
+      impact: "Event-driven scaling (queues, KEDA scalers) bills the same way HTTP scaling does -- replicas woken by events bill active seconds until the events drain and cooldown returns them to the floor (or zero)."
+    - field_path: ingress
+      sku_meter: requests
+      pricing_unit: million requests
+      impact: "An app serving HTTP traffic bills per request past the subscription's free 2 million per month (0.40 USD per million in eastus at list) -- small next to compute for most workloads, but real at high volume. TCP apps bill per connection on the same meter."
+    - field_path: workload_profile_name
+      sku_meter: dedicated workload profile vCPU hours
+      pricing_unit: vCPU-hours
+      impact: "Naming a Dedicated workload profile moves this app's compute off the per-second Consumption meters entirely: the ENVIRONMENT bills the profile's provisioned instances by the hour (on the AzureContainerAppEnvironment component) whether this app is busy or not, and the app itself adds no meter."
+  free_tier: "The first 180,000 vCPU-seconds, 360,000 GiB-seconds, and 2 million requests per subscription per month are free on the Consumption plan (Microsoft's Container Apps pricing page, retrieved 2026-08-18). Estimates here price list rates without the grant."
+  estimate_exclusions:
+    - "active usage above the idle floor -- replicas processing traffic bill vCPU at the active rate (0.000024 USD/vCPU-second in eastus, 8x idle) and scale-out replicas between min and max bill entirely on demand; no manifest can know traffic"
+    - "requests bill 0.40 USD per million in eastus past the 2-million free grant, following traffic volume"
+    - "apps placed on a Dedicated workload profile (workload_profile_name set) bill through the environment's profile instances on the AzureContainerAppEnvironment component, not through these meters"
+    - "Azure Files volumes an app mounts bill on their own AzureStorageShare component; container registry storage bills on the registry component"
+    - "the environment's own meters (Dedicated plan management, zone-redundancy prerequisites) bill on the AzureContainerAppEnvironment component"
+  notes: "Container Apps' pricing is a two-rate machine: idle seconds and active seconds. min_replicas is the honest committed spend -- Microsoft's pricing page states replicas kept always-running in idle mode bill the reduced idle rate when not processing requests, and a replica turns active (vCPU at 8x idle; memory unchanged) while starting up, serving traffic, or above the 0.01-core/1,000-bytes-per-second thresholds. Scale-to-zero apps genuinely bill nothing between events. The committed floor is min_replicas x the summed container allocations x the idle rates x 2,628,000 seconds a month; everything above it follows load. All rates read from Microsoft's Container Apps pricing page and the Retail Prices API (eastus) on 2026-08-18."

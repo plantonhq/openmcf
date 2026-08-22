@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The peering object is free to hold -- no
+# hourly meter exists for it -- and everything it ever costs is the data
+# crossing it: Azure bills peered traffic per GB at BOTH ends of the link
+# (egress at the sending network, ingress at the receiving one), with
+# same-region and cross-region (global) peering on different rate classes.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualnetworkpeering
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: remote_virtual_network_id
+      sku_meter: VNet peering data transfer
+      pricing_unit: GB
+      impact: "Where the remote network sits decides the rate class. Same region: intra-region peering bills $0.01 per GB ingress and $0.01 per GB egress (Global meters), so a GB crossing the pair costs $0.02 combined. Another region: global peering bills zonal per-direction rates at each end -- $0.035 per GB in Zone 1 regions (eastus, westeurope...), $0.09 in Zone 2 (japaneast, southeastasia...), $0.16 in Zone 3 (brazilsouth, UAE, South Africa), $0.044 in US Gov (Retail Prices API, retrieved 2026-08-18)."
+    - field_path: allow_forwarded_traffic
+      sku_meter: VNet peering data transfer
+      pricing_unit: GB
+      impact: "True admits traffic the remote network merely relays -- the hub-inspection pattern -- and transit topologies pay twice: a spoke-to-spoke GB steered through a hub crosses TWO peerings, billing each one's ingress and egress, plus the inspecting appliance's own per-GB processing on its component."
+    - field_path: allow_virtual_network_access
+      sku_meter: VNet peering data transfer
+      pricing_unit: GB
+      impact: "False blocks direct VM-to-VM traffic in this direction while the peering stands -- the data-transfer meter stops accruing for blocked flows. Since the object itself is free, a fully blocked peering costs exactly zero."
+    - field_path: use_remote_gateways
+      sku_meter: VPN/ExpressRoute gateway data processing
+      pricing_unit: GB
+      impact: "Riding the hub's gateway routes this network's on-premises traffic through it -- the gateway's hourly and per-GB meters bill on the gateway's own component, and the hop between spoke and hub bills standard peering data rates here."
+  estimate_exclusions:
+    - every GB crossing the peering bills at both ends -- intra-region $0.01 per GB ingress plus $0.01 per GB egress; global peering at zonal per-direction rates ($0.035 Zone 1, $0.09 Zone 2, $0.16 Zone 3, $0.044 US Gov per GB) -- and traffic volume is runtime behavior no manifest predicts
+    - transit topologies (forwarded traffic through a hub NVA or firewall) bill each crossed peering separately, plus the appliance's per-GB processing on its own component
+    - gateway transit (use_remote_gateways) adds the remote gateway's hourly and data-processing meters, carried on the gateway's component
+    - subnet-scoped peering narrows WHICH addresses can generate billable traffic but rides the same per-GB meters at the same rates
+  notes: "The peering is the canonical free-to-hold, pay-to-use object: Azure's price list has no hourly or monthly meter for the peering itself, so an idle link costs nothing forever -- and the pricing page's rule that 'inbound and outbound traffic is charged at both ends of the peered networks' means every flowing GB lands on the invoice twice (sender's egress, receiver's ingress), four rate-events total on a hub-transit path. One resource is ONE DIRECTION of a peering; the reciprocal resource carries the same economics for the reverse flows. Global peering's zonal spread (4.5x between Zone 1 and Zone 3, per direction) makes the region pair the biggest cost decision this manifest encodes. Rates read 2026-08-18 from https://azure.microsoft.com/en-us/pricing/details/virtual-network/ and https://prices.azure.com."

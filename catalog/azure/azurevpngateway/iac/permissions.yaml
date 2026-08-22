@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevpngateway
+spec:
+  azure:
+    groups:
+      - purpose: ManageVpnGateway
+        actions:
+          - Microsoft.Network/vpnGateways/read
+          - Microsoft.Network/vpnGateways/write
+          - Microsoft.Network/vpnGateways/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_gateway / network.VpnGateway -- create (a 30-45 minute operation), refresh, in-place updates (scale_unit, tags, custom APIPA addresses -- the provider applies those addresses in a SECOND write call after the gateway exists), and destroy. All three actions are included in Azure's built-in Network Contributor role, the coarse grant this manifest replaces.
+      - purpose: ManageNatRules
+        actions:
+          - Microsoft.Network/vpnGateways/natRules/read
+          - Microsoft.Network/vpnGateways/natRules/write
+          - Microsoft.Network/vpnGateways/natRules/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_gateway_nat_rule / network.VnpGatewayNatRule (the SDK token carries a legacy typo; the ARM object is the same) -- one child resource per spec nat_rules entry, keyed by name. NAT rules are ARM children of the gateway, so their actions live under the vpnGateways namespace, not a top-level one.
+      - purpose: ReadVirtualHub
+        actions:
+          - Microsoft.Network/virtualHubs/read
+        provenance: derived
+        notes: The modules never call the hub API -- they pass the resolved virtual_hub_id in the gateway payload -- but ARM validates the referenced hub at create (service-side), which requires read on the hub's scope. One VPN gateway per hub is ARM's rule; the create fails against a hub that already carries one.

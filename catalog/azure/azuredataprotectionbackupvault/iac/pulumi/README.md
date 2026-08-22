@@ -25,4 +25,4 @@ Creates a Data Protection backup vault -- the safe that modern Azure Backup data
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.DataProtection/backupVaults/*` on the resource group (Contributor covers it). Customer-managed-key encryption additionally needs wrap/unwrap access on the Key Vault key for the vault's system-assigned identity.
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpbackendservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The backend service stores no customer data -- it is routing policy (backends, health checks, affinity, caching), and Cloud CDN's edge caches hold transient copies on Google-managed encrypted infrastructure with no customer switch.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); encryption keys for the data behind it belong to the backend workloads' own kinds.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: protocol
+      evidence:
+        type: spec_default
+        reference: The default HTTP forwards to backends in cleartext over Google's network; HTTPS, HTTP2, and SSL encrypt the load-balancer-to-backend leg, and tls_settings can additionally pin the backend's certificate identity (SNI, subject alternative names, an authentication config). Client-side TLS is terminated in front, at the target HTTPS proxy.
+      notes: All three presets forward HTTP to backends -- the common pattern where the frontend terminates TLS and the backend leg rides Google's encrypted-at-the-physical-layer fabric. Regulated workloads that need payload-level backend TLS set protocol HTTPS and tls_settings.
+    - control_id: no-public-access
+      status: configurable
+      field_path: load_balancing_scheme
+      evidence:
+        type: spec_default
+        reference: The default EXTERNAL (and EXTERNAL_MANAGED) serves internet-facing Application Load Balancers -- public by design. INTERNAL_MANAGED (cross-region internal ALB) and INTERNAL_SELF_MANAGED (Traffic Director) carry only VPC-internal traffic no internet client can reach.
+      notes: For services that must stay on a public frontend, iap gates every request behind Google-identity authentication -- preset 03 exposes an internal tool publicly but unauthenticated requests never reach the backends.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_policy
+      evidence:
+        type: spec_default
+        reference: Unset (the default) means every request the frontend admits reaches the backends. Referencing a GcpCloudArmorPolicy of type CLOUD_ARMOR enforces allow/deny rules by source IP range and geography on every request, evaluated after the CDN cache and before the backends.
+      notes: Which ports and protocols the frontend admits at all is the forwarding rule's surface; this field restricts WHO gets through by network source. No preset attaches a policy.
+    - control_id: edge-protection
+      status: configurable
+      field_path: edge_security_policy
+      evidence:
+        type: spec_default
+        reference: Unset (the default) applies no edge filter. Referencing a GcpCloudArmorPolicy of type CLOUD_ARMOR_EDGE filters requests -- geo/IP blocking at Google's edge -- BEFORE they reach the CDN cache, protecting cached content that security_policy (evaluated after the cache) never sees.
+      notes: The full WAF rule language -- preconfigured OWASP rules, rate limiting -- lives on the referenced GcpCloudArmorPolicy kind; this component is the attachment point, with security_policy guarding the backends and edge_security_policy guarding the cache.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM on every project -- backend-service mutations authorize against the compute.backendServices permission family, including the dedicated setSecurityPolicy authorization for Cloud Armor attachment.
+      notes: iap.enabled extends role-based control to the DATA plane -- with IAP on, every request authorizes against Google identities granted the IAP-secured accessor roles, turning per-user access into an IAM decision (preset 03).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The backend service holds no principal and authenticates to no cloud API. The one static credential its spec can carry -- security_settings.aws_v4_authentication for signing requests to AWS-hosted internet-NEG origins -- is deliberate cross-cloud origin auth, handled as a secret and never exposed in outputs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The resource has no authentication protocol of its own to harden. With IAP enabled there is exactly one way in -- authenticated Google identities -- and no weaker fallback path exists on the resource.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backend-service create, update, delete, signed-URL-key add/delete, and security-policy attachment land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the backend service; per-request visibility of traffic THROUGH it is log_config's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: log_config
+      evidence:
+        type: spec_default
+        reference: Request logging is off by default; log_config.enable writes per-request entries to Cloud Logging with sample_rate (default 1.0) throttling volume and optional_mode/optional_fields tuning entry detail. Load-balancer metrics (request counts, latencies, backend health) flow to Cloud Monitoring automatically regardless.
+      notes: Preset 01 samples 10% of requests -- enough to debug, cheap at scale; preset 03 logs 100% because access to an internal tool is worth auditing. Outlier detection and health checks add passive and active health signals independent of logging.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The backend service is declarative configuration fully re-creatable from source control; the data behind it belongs to the backend workloads' own kinds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A global backend service is served by Google's global load-balancing fabric -- no single zone or region embodies it, and it balances across every healthy backend it references, shifting traffic away from unhealthy zones automatically via health checks.
+      notes: The redundancy of the service as a whole follows the backends attached -- one zonal instance group is one zone of capacity behind a fabric that could balance across many; outlier_detection (EXTERNAL_MANAGED and Traffic Director) additionally ejects erroring hosts without waiting for the health check.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (GCP refuses the delete while a URL map or forwarding rule still references the backend service, so a live route cannot be silently broken); PREVENT makes destroy fail outright -- a guard for the routing target of a live load balancer; ABANDON unmanages the backend service and its signed-URL keys while they keep serving.
+      notes: One switch governs both objects this kind manages -- the backend service and its signed-URL keys. The backends it points at (instance groups, NEGs) are untouched either way.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the global load-balancing data plane and Cloud CDN edge are Google-managed infrastructure maintained invisibly, and the backend workloads' patch posture belongs to their own kinds.

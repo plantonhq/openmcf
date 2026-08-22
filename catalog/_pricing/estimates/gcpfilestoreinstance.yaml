@@ -1,0 +1,91 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpfilestoreinstance
+spec:
+  presets:
+    - preset: 01-dev-basic
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Filestore
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-months
+          pricing_quantity: "2560"
+          quantity_basis: without custom performance the bill is capacity-only -- the provisioned GiB at the tier's monthly rate, billed as allocated regardless of use; tiers the book does not carry at this region refuse via the deterministic-or-dead lookup
+          list_unit_price: "0.3"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "768.0000"
+      total_list_cost: "768.0000"
+      exclusions:
+        - Filestore backups bill per GiB-month of backup data actually held, following the share's contents and backup cadence
+        - network egress follows client placement
+      notes: Capacity bills as provisioned from creation and can grow but never shrink, so the estimate is the floor of a ratcheting bill.
+    - preset: 02-production-enterprise
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Filestore
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-months
+          pricing_quantity: "1024"
+          quantity_basis: without custom performance the bill is capacity-only -- the provisioned GiB at the tier's monthly rate, billed as allocated regardless of use; tiers the book does not carry at this region refuse via the deterministic-or-dead lookup
+          list_unit_price: "0.45"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "460.8000"
+      total_list_cost: "460.8000"
+      exclusions:
+        - Filestore backups bill per GiB-month of backup data actually held, following the share's contents and backup cadence
+        - network egress follows client placement
+      notes: Capacity bills as provisioned from creation and can grow but never shrink, so the estimate is the floor of a ratcheting bill.
+    - preset: 03-high-performance-zonal
+      region_assumption: us-west1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Filestore
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-months
+          pricing_quantity: "2048"
+          quantity_basis: custom performance switches capacity to the discounted per-GiB monthly rate for the tier
+          list_unit_price: "0.12"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "245.7600"
+        - service_name: Cloud Filestore
+          sku_meter: custom performance IOPS
+          pricing_unit: IOPS-months
+          pricing_quantity: "8000"
+          quantity_basis: scaled provisioning bills capacity_tb x max_iops_per_tb IOPS -- capacity_gb over 1024 (the 0.0009765625 factor); GCP rounds effective IOPS to the nearest 1000, which this product does not model, so quantities land within half a thousand IOPS of the billed figure (exact whenever capacity x rate divides evenly, as in the presets)
+          list_unit_price: "0.0145"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "116.0000"
+        - service_name: Cloud Filestore
+          sku_meter: custom performance instance fee
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: a flat monthly per-instance fee rides every custom-performance instance; GCP's smaller under-1-TiB fee tier is unreachable because the spec floors capacity at 1024 GiB
+          list_unit_price: "20"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "20.0000"
+      total_list_cost: "381.7600"
+      exclusions:
+        - Filestore backups bill per GiB-month of backup data actually held, following the share's contents and backup cadence
+        - network egress follows client placement
+      notes: Capacity bills as provisioned from creation and can grow but never shrink, so the estimate is the floor of a ratcheting bill.

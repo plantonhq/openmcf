@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurenetworkinterface
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A NIC is a software-defined attachment point; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Payload encryption belongs to the workloads behind the NIC (TLS) and to the virtual network's VNet-encryption posture (AzureVirtualNetwork's encryption field); the NIC exposes no transport-encryption control of its own.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ip_configurations.public_ip_address_id
+      evidence:
+        type: spec_default
+        reference: Unset keeps the configuration private-only -- the NIC holds a private subnet address with no internet-facing identity, the production shape behind a load balancer or NAT gateway; setting it fronts the configuration with a referenced AzurePublicIp, making the workload directly reachable.
+      notes: Public exposure is per ip_configuration and off by default. The referenced public IP is a separate kind carrying its own posture.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_security_group_id
+      evidence:
+        type: spec_default
+        reference: Unset relies on subnet-level NSG filtering alone (the common case); setting it attaches a NIC-level network security group as its own association resource, so inbound traffic must pass the subnet NSG THEN this NIC's NSG -- per-workload rules the subnet's neighbors do not share.
+      notes: application_security_group_ids complements this -- joining ASGs lets NSG rules target the workload group by name instead of by IP. The rules themselves live on the referenced AzureNetworkSecurityGroup kind.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request-level filtering (WAF) belongs to application gateways and Front Door -- the NIC can JOIN an Application Gateway backend pool (application_gateway_backend_address_pool_ids), but the protection is that gateway's posture, not the NIC's.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the NIC exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The NIC runs no workloads and holds no credentials; workload identity belongs to the VM that attaches it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic audit (flow logs) is configured through Network Watcher on the NSGs or virtual network -- separate resources, not fields of this spec; control-plane changes land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Monitor collects per-NIC platform metrics (bytes and packets sent/received) for every network interface without configuration.
+      notes: Deeper traffic observability (flow logs, connection monitor) is Network Watcher configuration on separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless network configuration -- nothing to back up; the manifest recreates the NIC and its associations declaratively (the MAC address is reassigned on attach, so nothing durable is lost).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A NIC has no zonal placement of its own -- it follows the VM that attaches it, and high availability is achieved by running zone-spread VMs each with their own NIC; no field here participates.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a NIC (Azure resource locks are subscription-side governance outside the manifest). A NIC attached to a VM refuses deletion until detached, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- Microsoft operates and patches the virtual network fabric realizing the NIC; no customer-visible patch surface exists.

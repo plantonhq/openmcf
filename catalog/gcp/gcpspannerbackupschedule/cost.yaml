@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpspannerbackupschedule
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: cron
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: The cadence sets how many backups coexist -- retention divided by frequency is the standing count, so a daily schedule keeping each backup 31 days holds roughly 31 database-sized copies billing at once (fewer with incremental chains).
+    - field_path: retention_duration
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: Each backup bills from the moment it completes until it is deleted, with a 24-hour minimum -- retention up to 366 days multiplies the standing copy count, and changes apply only to backups created afterward.
+    - field_path: backup_type
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: FULL makes every backup a complete, self-contained copy; INCREMENTAL chains store only changes since the previous backup -- significantly cheaper storage at the same restore semantics, available on ENTERPRISE and ENTERPRISE_PLUS instances only.
+    - field_path: instance
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: The instance's configuration sets the backup rate and the copy count -- regional configurations bill $0.000136986/GiB-hour and dual-region/multi-region $0.000410959/GiB-hour (us-central1 page rates), and backup pricing already includes every replica of the configuration, additional read-only replicas included.
+    - field_path: encryption_config
+      sku_meter: Cloud KMS key usage
+      impact: CUSTOMER_MANAGED_ENCRYPTION adds no Spanner charge; the key's (or per-region keys') version storage and per-operation charges bill on the referenced GcpKmsKey components.
+  estimate_exclusions:
+    - the schedule object itself is free -- backup storage accrues per GiB-month as backups of a data-bearing database complete, and a backup of an empty database stores almost nothing
+    - the database's own storage and the instance's compute bill on GcpSpannerDatabase and GcpSpannerInstance respectively
+    - restores create a new database whose storage and compute bill on those components
+  notes: "A backup schedule is a cadence with a rate card: nothing bills until a backup of real data completes, then each backup bills complete-until-deleted (24-hour minimum) at the instance configuration's backup rate. cron times the copies, retention_duration counts them, backup_type decides how big each one is. Backups outlive both the schedule and the database -- deleting either leaves existing backups billing until their retention expires."

@@ -1,0 +1,34 @@
+# Sized DigitalOceanDatabaseReplica: explicit larger size, custom storage,
+# and tags -- the arguments beyond the minimal identity. Proves the size
+# upgrade path relative to the primary (replica size must be >= the
+# primary's), the bare-MiB storage string wiring, and the tag set (user
+# tags plus Planton labels, identical across engines). The in-place RESIZE
+# transition (editing size/storage on a live replica) is a proof-lane
+# exercise -- the offline runner deploys each scenario once.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasereplica-sized
+  id: planton-oss-e2e-digitaloceandatabasereplica-sized
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasereplica
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  replicaName: pltn-e2e-dodbrep-sized
+  region: nyc3
+  size: db-s-1vcpu-2gb
+  storageSizeMib: 30720
+  tags:
+    - planton-e2e
+    - replica-lane

@@ -1,0 +1,28 @@
+# Canonical AwsEventBridgeApiDestination example (hack/dev manifest and
+# refgen Example source): an api-key connection fronting a partner
+# webhook, with a static header on every invocation.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeApiDestination
+metadata:
+  name: partner-webhook
+  id: partner-webhook
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  connection:
+    name: partner-api
+    description: Partner ingestion API (api-key auth)
+    apiKey:
+      key: x-api-key
+      value: replace-with-real-key
+    invocationHttpParameters:
+      header:
+        - key: x-planton-source
+          value: eventbridge
+  destination:
+    name: partner-webhook
+    description: Partner order-events webhook
+    invocationEndpoint: https://api.example.com/events
+    httpMethod: POST
+    invocationRateLimitPerSecond: 10

@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskeda
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: KEDA stores no data of its own -- scaling declarations and its internal certificate Secrets live in Kubernetes objects in etcd, whose encryption at rest is the cluster control plane's property.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the cluster's etcd encryption (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: certificates.type defaults to "operator" -- the KEDA operator self-generates and rotates the internal TLS chain (operator, metrics server, webhooks, and the external-metrics APIService caBundle) with zero prerequisites; type cert_manager delegates issuance and renewal to cert-manager. Scaler calls to cloud metric sources ride those providers' HTTPS APIs.
+      notes: The 03-ha-production preset takes the cert-manager path with a platform ClusterIssuer.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- the metrics API, webhook, and telemetry Services are ClusterIP only; the external-metrics API is consumed by the HPA controller through the Kubernetes API aggregation layer, never from outside.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The only inbound traffic is the Kubernetes API server calling the webhooks and the aggregation layer proxying external-metrics reads; there is no user-facing ingress surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: KEDA serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates dedicated ServiceAccounts for the operator, metrics server, and webhooks, each bound to chart-rendered roles scoped to its function -- reading scale targets and driving HPAs is the operator's job, confined to its own identity.
+      notes: watch_namespace fences the engine into a single namespace for the scoped posture (empty watches all namespaces, the normal cluster-wide default).
+    - control_id: workload-identity
+      status: configurable
+      field_path: pod_identity
+      evidence:
+        type: spec_default
+        reference: Unset means scalers reaching cloud metric sources need explicit credentials in TriggerAuthentication resources; the pod_identity arms annotate KEDA's service accounts for keyless access -- aws_irsa for SQS/CloudWatch/Kinesis, azure_workload_identity for Service Bus/Event Hubs/Monitor, gcp_workload_identity for Pub/Sub/Stackdriver. Validation requires each arm's identity fields when enabled.
+      notes: The 02-eks-irsa-scalers preset binds IRSA. Per-trigger authentication beyond the ambient identity lives in TriggerAuthentication resources next to the workloads.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: KEDA exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster, and credentials for metric sources are declared per-trigger in TriggerAuthentication resources, outside this spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Scaling decisions stream to stdout for the cluster's log collector and surface as Kubernetes Events on the scaled objects; administrative changes to KEDA are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: prometheus.enabled
+      evidence:
+        type: spec_default
+        reference: Unset means KEDA's own /metrics endpoints (scaler loop latencies, trigger errors, HPA interactions) are not exposed; prometheus.enabled opens them and prometheus.service_monitor adds scrape discovery -- validation ties the ServiceMonitor to the endpoints existing, and the CRDs must be on the cluster.
+      notes: This is telemetry ABOUT KEDA -- unrelated to the external metrics it serves to HPAs. The 03-ha-production preset enables both.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: KEDA holds no data to back up -- its entire state is the declarative configuration in this manifest plus the scaling declarations in etcd, protected by the cluster's own state backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: operator.replicas
+      evidence:
+        type: spec_default
+        reference: Both the operator and the metrics API server default to 1 replica; extras are leader-elected failover standbys per upstream's HA guidance -- one instance leads/serves at a time. priority_class_name keeps the engine ahead of workload evictions.
+      notes: The 03-ha-production preset runs 2 of each plus 2 webhook replicas under system-cluster-critical. During an engine outage, existing workloads keep their last replica counts -- only scaling reactions pause.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: crds.keep_on_uninstall defaults to true -- rendered as the helm.sh/resource-policy=keep annotation on the CRDs (the chart has no native keep knob), so uninstalling keeps every ScaledObject, ScaledJob, and TriggerAuthentication in the cluster; purging them requires an explicit false.
+      notes: The release itself carries no deletion lock -- what the default protects is the cluster-wide scaling-declaration data, the destructive blast radius of this component.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 2.20.1; chart and app versions move together); changing it re-runs the Helm release, rolling all three components deliberately through the module.

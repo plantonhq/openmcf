@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappcustomdomain
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The binding is ingress configuration inside the Container App and stores no customer data. Any bring-your-own key material lives on the environment's certificate store (AzureContainerAppEnvironmentCertificate), a separate kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: certificate_binding_type
+      evidence:
+        type: spec_default
+        reference: The binding IS the hostname's TLS story. The default (both certificate fields unset) is the Azure-managed-certificate flow -- the binding deploys certificate-less and Azure attaches the free, domain-validated certificate it issues for the same hostname, after which the domain serves HTTPS. Bring-your-own pairs container_app_environment_certificate_id with SNI_ENABLED to serve TLS from an environment-stored certificate.
+      notes: DISABLED attaches the domain WITHOUT serving TLS from the referenced certificate -- a documented transitional state where browsers reject the hostname over HTTPS until a certificate binds; leave it only while cutting over.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The binding exists to serve the app's ingress on a public hostname -- Azure's domain validation itself requires the asuid TXT record and routing record to resolve publicly before the binding deploys. Whether and how the app answers traffic is the AzureContainerApp's ingress posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec carries no source filter; inbound restriction lives on the app's ingress and the environment's network, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-filtering surface exists on a domain binding; WAF-class protection sits in front of the app (e.g. Front Door), separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the binding exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The binding runs no workloads and holds no credentials -- domain ownership is proven by the asuid TXT record you publish, not by a stored secret.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation and removal of the binding land in the Azure Activity Log automatically as subscription-level posture; request logs belong to the app and environment, separate kinds.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The binding publishes no metrics of its own; traffic and TLS telemetry ride the app and its environment, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless ingress configuration -- nothing to back up; the manifest recreates the binding declaratively (recreation re-runs domain validation, so the asuid TXT and routing records must still resolve).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The binding has no runtime footprint of its own with a zonal failure mode; availability of the hostname is the app's and environment's posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a domain binding (Azure resource locks are subscription-side governance outside the manifest); removing it stops serving the hostname and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The ingress fleet that terminates TLS for the bound hostname is Microsoft-operated Container Apps infrastructure, and managed certificates are issued and renewed by Azure; no customer-visible patch surface exists.

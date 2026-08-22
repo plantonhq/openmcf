@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitoractivitylogalert
+spec:
+  azure:
+    groups:
+      - purpose: ManageActivityLogAlert
+        actions:
+          - Microsoft.Insights/ActivityLogAlerts/Read
+          - Microsoft.Insights/ActivityLogAlerts/Write
+          - Microsoft.Insights/ActivityLogAlerts/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_activity_log_alert -- create, read/refresh, in-place updates (criteria, actions, enabled, tags), and destroy, held on the alert's resource group. The module passes scopes and each action's action_group_id as opaque ARM IDs and performs no secondary reads -- Azure validates the references server-side at PUT. ARM's inventory spells these operations with PascalCase verbs (Read/Write/Delete), unlike most namespaces. Monitoring Contributor carries all three.

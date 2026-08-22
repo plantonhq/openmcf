@@ -1,0 +1,17 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  namespace:
+    value: planton-runner
+  createNamespace: true
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. The token comes from YOUR control plane -- create it there
+  # with `planton runner token create`.
+  token: $secret/runner-token
+  # The one bootstrap coordinate the join cannot deliver: host:port of
+  # your self-hosted control plane, no scheme prefix. Everything else
+  # (work queue, tunnel, API endpoints) arrives in the join response.
+  controlPlaneEndpoint: planton.example.com:443

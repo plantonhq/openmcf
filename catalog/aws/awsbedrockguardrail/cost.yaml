@@ -1,0 +1,54 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockguardrail
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: content_policy
+      sku_meter: content filter text units evaluated
+      pricing_unit: text units
+      impact: "Content filters bill $0.15 per 1,000 text units (a text unit is up to 1,000 characters), the same rate for CLASSIC and STANDARD tiers. One configured family is one meter regardless of how many categories it checks -- six filters at HIGH cost the same as one at LOW; what multiplies spend is traffic volume and message length, not filter count."
+    - field_path: content_policy.filters.input_modalities
+      sku_meter: content filter images processed
+      pricing_unit: images
+      impact: "Adding IMAGE to a filter's modalities starts a second meter -- $0.00075 per image processed -- on top of the text-unit meter. Text-only guardrails (the default) never touch it."
+    - field_path: topic_policy
+      sku_meter: denied topic text units evaluated
+      pricing_unit: text units
+      impact: "Denied topics bill $0.15 per 1,000 text units, independently of content filters -- each enabled policy family meters the SAME text separately, so a guardrail running both families pays $0.30 per 1,000 text units, exactly AWS's own pricing example."
+    - field_path: sensitive_information_policy.pii_entities
+      sku_meter: sensitive information filter text units evaluated
+      pricing_unit: text units
+      impact: "PII entity detection bills $0.10 per 1,000 text units -- one meter for the whole entity list, whether it anonymizes one type or thirty. BLOCK versus ANONYMIZE changes behavior, not price."
+    - field_path: sensitive_information_policy.regexes
+      sku_meter: regular-expression sensitive information filters
+      pricing_unit: text units
+      impact: "AWS prices regex filters as Free -- custom patterns are exact matching, not model inference, so organization-specific identifiers cost nothing to redact. Pair them with PII entities and only the entity meter bills."
+    - field_path: word_policy
+      sku_meter: word filter text units evaluated
+      pricing_unit: text units
+      impact: "AWS prices word filters as Free -- the managed profanity list and up to 10,000 custom words are exact matching with no meter. A word-policy-only guardrail evaluates traffic at zero guardrail cost."
+    - field_path: contextual_grounding_policy
+      sku_meter: contextual grounding text units evaluated
+      pricing_unit: text units
+      impact: "Grounding checks bill $0.10 per 1,000 text units, and the counted text is the COMBINED source material, query, and model response -- RAG flows carrying large retrieved passages consume text units far faster here than the user-visible message length suggests."
+    - field_path: cross_region_profile
+      sku_meter: content filter text units evaluated
+      pricing_unit: text units
+      impact: "Enabling cross-region evaluation carries no premium -- AWS documents no additional routing cost, prices are calculated from the calling region, and STANDARD-tier rates equal CLASSIC-tier rates. This field unlocks the STANDARD tier without changing what a text unit costs."
+    - field_path: versions
+      sku_meter: content filter text units evaluated
+      pricing_unit: text units
+      impact: Publishing numbered versions is free -- versions are immutable snapshots with no storage or per-version meter. What a version changes is WHICH policy set (and therefore which meters) evaluates the traffic pinned to it.
+  free_tier: "Word filters and regular-expression sensitive-information filters are permanently free -- AWS's pricing table prices both as \"Free\", not as a trial. Everything else bills from the first text unit: content filters and denied topics at $0.15, PII entities and grounding checks at $0.10 per 1,000 text units, with no free allotment. The guardrail OBJECT is free at rest -- charges are incurred only by the filters used, per AWS's own pricing note -- which is commitment-absence, not a free tier."
+  estimate_exclusions:
+    - text-unit volume is entirely traffic-driven -- every model input and output the guardrail evaluates counts, and a text unit is up to 1,000 characters, so long RAG contexts multiply units fast
+    - each enabled policy family meters the same traffic separately -- families are additive tolls on the same text, per AWS's own pricing example
+    - image processing bills $0.00075 per image only when a content filter enables the IMAGE modality
+    - grounding checks count source material plus query plus response -- the largest text-unit consumer per call in RAG shapes
+    - the same guardrail invoked standalone through ApplyGuardrail bills these same meters; the resource-less InvokeGuardrailChecks API carries its own separate rate card and never touches this object
+  notes: "Guardrails price by what they CHECK, not what they block: AWS charges per filter family used -- content filters and denied topics at $0.15 per 1,000 text units each, sensitive-information entities and contextual grounding at $0.10 each, word and regex filters free, identical rates for classic and standard tiers. A text unit is up to 1,000 characters (a 5,600-character input is 6 units), and every enabled family re-meters the same text, so the per-conversation cost is (families that bill) x (text units) -- AWS's own example prices a chatbot running content filters plus denied topics at $0.30 per 1,000 units. The guardrail, its draft, and its published versions cost nothing at rest; attaching it to a busy agent is what starts the meter, because every orchestration step's input and output flows through the checks."

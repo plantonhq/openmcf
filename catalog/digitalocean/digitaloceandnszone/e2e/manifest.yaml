@@ -1,25 +1,59 @@
+# Example DigitalOceanDnsZone manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real zone: just the domain name. DigitalOcean
+# hosts the zone immediately; it resolves publicly once the registrar
+# delegates to ns1/ns2/ns3.digitalocean.com.
+#
+# Document 2 -- a production-shaped zone: apex A records (two values fan out
+# to two provider records), a www alias, mail routing (MX with priority),
+# an SPF policy, a service locator (SRV), certificate authority pinning
+# (CAA), and the create-only ip_address convenience that seeds an untracked
+# apex A record.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsZone
 metadata:
-  name: first-dns-zone
+  name: example-dodns-minimal
 spec:
-  domainName: planton.com                # fully‑qualified domain
+  domainName: example.com
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsZone
+metadata:
+  name: example-dodns-full
+spec:
+  domainName: example.org
+  ipAddress: 203.0.113.10
   records:
-    # Root A record – points the zone apex to an IP address
     - name: "@"
       type: A
       values:
-        - value: "203.0.113.10"
-      ttlSeconds: 3600                   # optional; defaults to 3600
-
-    # www CNAME record – redirects www.example.com to the apex
+        - value: 203.0.113.1
+        - value: 203.0.113.2
+      ttlSeconds: 300
     - name: www
       type: CNAME
       values:
-        - value: "@"
-
-    # TXT record – typical SPF configuration (quotes required in YAML)
+        - value: example.org.
+    - name: "@"
+      type: MX
+      values:
+        - value: mail.example.org.
+      priority: 10
     - name: "@"
       type: TXT
       values:
-        - value: "v=spf1 include:mail.example.com ~all"
+        - value: v=spf1 include:_spf.google.com ~all
+    - name: _sip._tcp
+      type: SRV
+      values:
+        - value: sip.example.org.
+      priority: 10
+      weight: 60
+      port: 5060
+    - name: "@"
+      type: CAA
+      values:
+        - value: letsencrypt.org
+      flags: 0
+      tag: issue

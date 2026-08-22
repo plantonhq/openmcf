@@ -1,0 +1,56 @@
+# Full-surface DigitalOceanDnsZone: proves the inline record fan-out (one
+# provider record per value), every per-type argument class (MX priority,
+# SRV priority/weight/port, CAA flags/tag), the multi-value flattening, a
+# custom TTL, and the create-only ip_address that seeds an untracked apex A
+# record. The domain name carries the run token because DigitalOcean domain
+# names are unique across ALL accounts.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsZone
+metadata:
+  name: planton-oss-e2e-digitaloceandnszone-full
+  id: planton-oss-e2e-digitaloceandnszone-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandnszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domainName: pltn-e2e-full-${E2E_RUN_ID}.com
+  ipAddress: 192.0.2.10
+  records:
+    - name: "@"
+      type: A
+      values:
+        - value: 192.0.2.1
+        - value: 192.0.2.2
+      ttlSeconds: 300
+    - name: www
+      type: CNAME
+      values:
+        - value: pltn-e2e-full-${E2E_RUN_ID}.com.
+    - name: "@"
+      type: MX
+      values:
+        - value: mail.pltn-e2e-full-${E2E_RUN_ID}.com.
+      priority: 10
+    - name: "@"
+      type: TXT
+      values:
+        - value: v=spf1 -all
+    - name: _sip._tcp
+      type: SRV
+      values:
+        - value: sip.pltn-e2e-full-${E2E_RUN_ID}.com.
+      priority: 10
+      weight: 60
+      port: 5060
+    - name: "@"
+      type: CAA
+      values:
+        - value: letsencrypt.org
+      flags: 0
+      tag: issue

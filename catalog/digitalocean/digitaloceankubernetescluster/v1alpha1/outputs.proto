@@ -2,14 +2,37 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1;
 
-// DigitalOceanKubernetesClusterStackOutputs captures the outputs after provisioning a DigitalOcean Kubernetes cluster.
+// DigitalOceanKubernetesClusterStackOutputs captures the key outputs after
+// provisioning a DigitalOcean Kubernetes cluster. Outputs are durable
+// identifiers and connection details; live state (status, timestamps) is
+// read from the API, never exported, because an apply-time snapshot goes
+// stale immediately.
 message DigitalOceanKubernetesClusterStackOutputs {
   // The unique identifier (UUID) of the created Kubernetes cluster.
   string cluster_id = 1;
 
-  // A base64-encoded Kubernetes config (kubeconfig) for accessing the cluster.
+  // The raw kubeconfig YAML for accessing the cluster (not base64-encoded);
+  // write it to a file and point KUBECONFIG at it. Contains admin
+  // credentials -- treat as a secret.
   string kubeconfig = 2;
 
   // The endpoint URL of the Kubernetes API server for the cluster.
   string api_server_endpoint = 3;
+
+  // The uniform resource name of the cluster ("do:kubernetes:<cluster_id>"),
+  // used when attaching the cluster to a DigitalOcean project.
+  string urn = 4;
+
+  // The public IPv4 address of the cluster's control plane. Empty on
+  // highly-available clusters, which have no single control-plane IP.
+  string ipv4_address = 5;
+
+  // The unique identifier (UUID) of the cluster's inline default node pool.
+  string default_node_pool_id = 6;
+
+  // The CIDR block from which pod IPs are assigned.
+  string cluster_subnet = 7;
+
+  // The CIDR block from which service ClusterIPs are assigned.
+  string service_subnet = 8;
 }

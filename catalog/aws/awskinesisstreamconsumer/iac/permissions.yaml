@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awskinesisstreamconsumer
+spec:
+  aws:
+    statements:
+      - sid: RegisterConsumer
+        actions:
+          - kinesis:RegisterStreamConsumer
+        resources:
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Creation side of aws_kinesis_stream_consumer. The service reference authorizes RegisterStreamConsumer against the STREAM ARN format (the consumer does not exist yet at authorization time), so the grant targets streams, not consumers.
+      - sid: ManageConsumer
+        actions:
+          - kinesis:DeregisterStreamConsumer
+          - kinesis:DescribeStreamConsumer
+        resources:
+          - arn:aws:kinesis:*:*:stream/*/consumer/*
+        provenance: derived
+        notes: Deletion and plan/refresh read of aws_kinesis_stream_consumer. The service reference's consumer ARN format is stream/<name>/consumer/<consumer-name>:<creation-timestamp> -- the trailing wildcard covers the name:timestamp suffix.
+      - sid: TagConsumer
+        actions:
+          - kinesis:TagResource
+          - kinesis:UntagResource
+          - kinesis:ListTagsForResource
+        resources:
+          - arn:aws:kinesis:*:*:stream/*/consumer/*
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers the resource-identity tags both modules apply to the consumer. The service reference authorizes the unified tagging actions against both the consumer and stream ARN formats, so both are granted.
+      - sid: ManageResourcePolicy
+        actions:
+          - kinesis:PutResourcePolicy
+          - kinesis:GetResourcePolicy
+          - kinesis:DeleteResourcePolicy
+        resources:
+          - arn:aws:kinesis:*:*:stream/*/consumer/*
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers aws_kinesis_resource_policy -- created only when spec.resource_policy is set, keyed by the consumer ARN. The service reference authorizes these actions against both the consumer and stream ARN formats, so both are granted.

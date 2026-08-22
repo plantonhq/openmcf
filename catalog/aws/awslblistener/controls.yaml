@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslblistener
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A listener stores no data -- it is routing configuration held by the Elastic Load Balancing control plane. The TLS private keys it presents live in ACM, which stores them encrypted as that service's own posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data means no key decision here (see enc-at-rest); certificate key custody belongs to ACM.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: protocol
+      evidence:
+        type: spec_default
+        reference: The listener IS the load balancer's encryption-in-transit posture -- choosing "HTTPS" (ALB) or "TLS" (NLB) terminates encrypted transport at the edge with the certificate in certificate_arn (the modules refuse a TLS-protocol listener without one), while "HTTP", "TCP", and "UDP" accept plaintext. ssl_policy then names the negotiable TLS versions and ciphers.
+      notes: The canonical deployment pairs a plaintext port-80 listener whose only default action is an HTTP_301 redirect with the real HTTPS listener, so cleartext exists solely to bounce clients to encrypted transport. mutual_authentication upgrades an ALB HTTPS listener from server-only TLS to verified client certificates. Encryption from the load balancer onward to targets is the target group's protocol decision, not this listener's.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Reachability is decided entirely by the parent load balancer -- an internal load balancer's listeners are private and an internet-facing one's are public. The listener opens a port on whatever exposure the load balancer already has and carries no scheme, subnet, or addressing surface of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering lives on the load balancer's security groups; the listener has no network-source surface. Its own gating is application-layer (authenticate and jwt-validation actions), covered under rbac.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF web ACLs associate with the load balancer as a whole (the AwsAlb spec's web_acl_arn), never with an individual listener -- there is no per-listener attachment point in WAFv2 or in these modules.
+    - control_id: rbac
+      status: configurable
+      field_path: default_actions
+      evidence:
+        type: spec_default
+        reference: Without an authentication action, the listener forwards every request that reaches it. Chaining an authenticate-cognito, authenticate-oidc, or jwt-validation action ahead of the terminal forward makes the ALB itself reject or redirect unauthenticated clients, and jwt-validation's additional_claims restrict access by claim values (audience, scope) -- identity-based gating enforced at the edge before any target sees the request.
+      notes: ALB HTTPS listeners only; NLB-protocol listeners forward at Layer 4 and AWS rejects authentication actions there. Management-plane access to the listener itself is IAM, account-level posture outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A listener runs no workloads and holds no cloud credentials. The one secret it can carry -- the OIDC client_secret of an authenticate-oidc action -- is an IdP credential the spec marks sensitive end to end, not an AWS API credential.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: ssl_policy
+      evidence:
+        type: spec_default
+        reference: Omitted, AWS applies its default security policy, which still negotiates TLS 1.0 and 1.1 with legacy cipher suites; setting a modern policy such as "ELBSecurityPolicy-TLS13-1-2-2021-06" (the spec's recommendation) retires the legacy protocol versions and ciphers so old clients cannot negotiate down.
+      notes: Applies to "HTTPS" and "TLS" listeners; plaintext protocols have no handshake to police. mutual_authentication mode "verify" further replaces bearer-anything access with certificate-verified clients.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Request-level access logging is a load-balancer attribute (the AwsAlb spec's access_logs block), not a listener setting -- the listener's traffic appears in the parent's access logs when the parent enables them. Administrative actions on the listener land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Elastic Load Balancing publishes CloudWatch metrics automatically with load-balancer, target-group, and availability-zone dimensions -- there is no per-listener metric dimension and no export knob on this spec; the listener's traffic is visible in the parent's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A listener holds no data to back up -- it is declarative routing configuration re-creatable from the manifest, and its certificates live in ACM.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the listener level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is inherited from the parent load balancer's subnet layout across availability zones; the listener is served from every zone the load balancer occupies and cannot choose its own footprint.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for listeners. The parent load balancer's deletion protection guards the whole load balancer, listeners included, but a listener alone can always be deleted once its rules are gone.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A listener is configuration on a fully managed service -- Elastic Load Balancing patches its own fleet and the listener carries no software of its own to patch.

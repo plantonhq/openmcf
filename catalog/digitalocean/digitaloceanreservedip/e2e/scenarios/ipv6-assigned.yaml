@@ -1,0 +1,30 @@
+# IPv6 DigitalOceanReservedIp assigned to a droplet: proves BOTH v6
+# resources the module folds (the reservation and the separate assignment
+# resource -- v6 cannot assign inline). Shares the region-pinned droplet
+# fixture with the v4 assigned scenario. IPv6 reservations are free either
+# way. Upstream watch item: the v6 delete swallows non-404 errors (an
+# inverted error check in the provider), so the verifier's live absence
+# check after destroy is the only trustworthy signal.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: planton-oss-e2e-digitaloceanreservedip-ipv6
+  id: planton-oss-e2e-digitaloceanreservedip-ipv6
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanreservedip
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/digitalocean/digitaloceanreservedip/e2e/fixtures/droplet-nyc3.yaml"
+  tags:
+    - planton-e2e
+spec:
+  ipVersion: ipv6
+  region: nyc3
+  droplet:
+    valueFrom:
+      kind: DigitalOceanDroplet
+      name: planton-oss-e2e-digitaloceanreservedip-droplet-fixture
+      fieldPath: status.outputs.droplet_id

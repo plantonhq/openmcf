@@ -1,0 +1,950 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonplatform.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesPlantonPlatformSpec** declares a self-hosted Planton
+ * platform — control plane, web console, identity server (Keycloak),
+ * PostgreSQL (CloudNativePG), cache, workflow engine (Temporal), secrets
+ * manager (OpenBAO), and an in-cluster deployment runner — as a
+ * `PlantonPlatform` custom resource that the Planton operator reconciles.
+ *
+ * PREREQUISITE: the Planton operator must be installed first (declare a
+ * KubernetesPlantonOperator resource). One operator serves EVERY platform
+ * on the cluster; each platform lives in its own namespace with its own
+ * URL, identity server, and databases.
+ *
+ * ZERO-CONFIG BY DESIGN: `version` is the only required choice. A
+ * version-only platform serves console, API, and sign-in on one origin
+ * through a built-in gateway reachable with a single `kubectl
+ * port-forward` (the exact command is this resource's
+ * `port_forward_command` output), and the console's first visitor becomes
+ * the admin using a setup code read from a Secret (the
+ * `setup_code_command` output). Everything else — a real hostname and
+ * TLS, storage classes and sizes, workload identity for the runner —
+ * is opt-in refinement of a working platform.
+ *
+ * VERSION IS A DELIBERATE CHOICE, ALWAYS: the field is required and never
+ * defaulted, because a default that moved with catalog updates would
+ * silently upgrade a running platform — databases and all — on an
+ * ordinary re-apply. Upgrades are a one-line edit of this field.
+ *
+ * SPEC SURFACE AND OPERATOR VERSION: this spec models the PlantonPlatform
+ * schema as of the catalog release. A newer operator may accept fields
+ * this catalog does not model yet — reach them by updating the catalog,
+ * or through the `planton` umbrella Helm chart, whose values pass the
+ * platform spec through verbatim.
+ *
+ * DESTROY BEHAVIOR: deleting the resource deletes the platform — every
+ * workload, Service, Secret, and volume the operator created is
+ * owner-referenced to this declaration and garbage-collected by
+ * Kubernetes (so teardown completes even when the operator itself is
+ * already gone), and the database layer removes its volumes and
+ * credentials together — no orphaned volume holds a password a reinstall
+ * cannot match. Two residues are known: build caches and workflow
+ * volumes can survive in the namespace (deleting the namespace, automatic
+ * when this resource owned it via create_namespace, sweeps them), and the
+ * platform's namespace-qualified token-review ClusterRole/Binding
+ * lingers inert (its subject ServiceAccount is deleted with the
+ * platform) until an operator release adds the janitor. Cluster-shared
+ * sub-operators (CloudNativePG, Tekton) deliberately stay — sibling
+ * platforms may ride them.
+ */
+message KubernetesPlantonPlatformSpec {
+  /**
+   * The namespace the platform lives in. Accepts a literal namespace name
+   * or a reference to a KubernetesNamespace resource. Every platform
+   * workload, Service, Secret, and volume is created here, named from
+   * this resource's metadata.name.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the platform is declared, and deleted with
+   * the resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The Planton platform version to deploy (e.g.
+   * "v0.0.40-selfhosted-preview") — pins the control plane, console, and
+   * runner images as one coherent line. REQUIRED, never defaulted:
+   * changing it is how a platform upgrades, and upgrades of a system
+   * holding your data must always be a deliberate act.
+   */
+  string version = 3 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * License activation. Without one the platform runs the Community
+   * feature set. Set AT MOST one of key or secret_key_ref.
+   */
+  KubernetesPlantonPlatformLicense license = 4;
+
+  /**
+   * Platform-wide storage defaults: every persistent volume the platform
+   * creates (databases, cache, workflow engine, search, secrets manager,
+   * runner state) uses these unless its component overrides them.
+   * Unset means the cluster's default StorageClass and each component's
+   * built-in size.
+   */
+  KubernetesPlantonPlatformStorage storage = 5;
+
+  /**
+   * The platform's own data stores (PostgreSQL and the Redis-protocol
+   * cache). Sizing and placement only — the stores themselves are always
+   * deployed; the platform cannot run without them.
+   */
+  KubernetesPlantonPlatformDatabase database = 6;
+
+  /**
+   * Expose the platform at a real URL through the cluster's ingress
+   * controller. Off by default — the built-in gateway plus port-forward
+   * is the zero-config door. `hostname` serves your own domain;
+   * `tls` adds HTTPS (bring a certificate Secret or name a cert-manager
+   * issuer).
+   */
+  KubernetesPlantonPlatformIngress ingress = 7;
+
+  /**
+   * The built-in front-door gateway: console, API, and sign-in on one
+   * origin over a single `kubectl port-forward`. Always deployed; the
+   * local_port here is baked into the identity server's issuer and the
+   * console's callbacks at first boot, so pick it before the first visit.
+   */
+  KubernetesPlantonPlatformGateway gateway = 8;
+
+  /**
+   * The platform's identity server (Keycloak, operator-deployed).
+   * Everything defaults: the realm is "planton" and the first console
+   * visitor becomes the admin through the setup-code page. Set
+   * admin_email only to pre-seed a known admin instead.
+   */
+  KubernetesPlantonPlatformIdentity identity = 9;
+
+  /**
+   * First-boot seeding: the initial organization and environment, extra
+   * admins, the IaC provisioner the in-cluster runner uses, and where the
+   * platform's managed secrets live.
+   */
+  KubernetesPlantonPlatformBootstrap bootstrap = 10;
+
+  /**
+   * The in-cluster deployment runner — how this platform deploys real
+   * infrastructure. ON by default; disabling it leaves a platform that
+   * can model but not deploy. Cloud identity comes from workload-identity
+   * annotations OR a customer-owned credentials Secret — the platform
+   * stores no cloud credentials itself.
+   */
+  KubernetesPlantonPlatformRunner runner = 11;
+
+  /**
+   * Container-image build pipelines (Tekton). ON by default; follows the
+   * runner off when the runner is disabled. NOTE: Tekton allows exactly
+   * one cluster-wide build-events sink, so builds can feed only ONE
+   * build-enabled platform per cluster — disable this on all but one when
+   * several platforms share a cluster.
+   */
+  KubernetesPlantonPlatformBuild build = 12;
+
+  /**
+   * The bundled secrets manager (OpenBAO). ON by default — a
+   * version-only platform stores connection secrets with zero
+   * configuration. Explicit `enabled: false` is the deliberate opt-out
+   * (bring a cloud secret backend through bootstrap.secret_backend
+   * instead).
+   */
+  KubernetesPlantonPlatformVault vault = 13;
+
+  /**
+   * Opt-in platform components, all off by default: fine-grained
+   * authorization (OpenFGA), search (Solr), and the graph explorer
+   * (Neo4j).
+   */
+  KubernetesPlantonPlatformComponents components = 14;
+
+  /**
+   * Cluster-shared sub-operators the platform rides (CloudNativePG,
+   * Tekton Pipelines, the Solr operator). "auto" (the default) installs
+   * each one only when no installation exists on the cluster; "skip"
+   * declares that something else manages it.
+   */
+  KubernetesPlantonPlatformPrerequisites prerequisites = 15;
+
+  /**
+   * The platform's control-plane deployment (the API monolith). Sizing,
+   * image mirrors, extra environment through a Secret, and the
+   * platform's OWN cloud identity (for cloud secret backends and KMS) —
+   * distinct from the runner's deploy-time identity.
+   */
+  KubernetesPlantonPlatformControlPlane control_plane = 16;
+
+  /**
+   * The web console deployment. Sizing, image mirrors, and extra
+   * environment through a Secret.
+   */
+  KubernetesPlantonPlatformConsole console = 17;
+}
+
+/**
+ * License activation — at most one delivery form.
+ */
+message KubernetesPlantonPlatformLicense {
+  option (buf.validate.message).cel = {
+    id: "spec.license.key_xor_secret_ref"
+    message: "set at most one of key or secret_key_ref — one license, one delivery form"
+    expression: "this.key == '' || !has(this.secret_key_ref)"
+  };
+
+  /**
+   * The license key, inline. This is a secret: supply it as a
+   * managed-secret reference, never inline plaintext.
+   */
+  string key = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Read the license key from an existing Kubernetes Secret in the
+   * platform's namespace instead.
+   */
+  KubernetesPlantonPlatformLicenseSecretKeyRef secret_key_ref = 2;
+}
+
+/**
+ * A key in an existing Kubernetes Secret.
+ */
+message KubernetesPlantonPlatformLicenseSecretKeyRef {
+  /**
+   * Secret name (in the platform's namespace).
+   */
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Key within the Secret holding the license key.
+   */
+  string key = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * Platform-wide storage defaults.
+ */
+message KubernetesPlantonPlatformStorage {
+  /**
+   * StorageClass for every platform volume unless a component overrides
+   * it. Unset = the cluster's default class (the operator verifies the
+   * default class can actually provision before deploying).
+   */
+  string storage_class_name = 1;
+
+  /**
+   * Size for every platform volume unless a component overrides it
+   * (e.g. "10Gi"). Useful when the storage backend enforces a minimum
+   * volume size — one value lifts every volume above the floor.
+   */
+  string size = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "storage.size_quantity"
+      message: "size must be a Kubernetes quantity like \"10Gi\" or \"800Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+}
+
+/**
+ * The platform's own data stores.
+ */
+message KubernetesPlantonPlatformDatabase {
+  /**
+   * PostgreSQL (CloudNativePG-managed).
+   */
+  KubernetesPlantonPlatformPostgresql postgresql = 1;
+
+  /**
+   * The Redis-protocol cache (Valkey).
+   */
+  KubernetesPlantonPlatformRedis redis = 2;
+}
+
+/**
+ * The platform's PostgreSQL.
+ */
+message KubernetesPlantonPlatformPostgresql {
+  /**
+   * PostgreSQL instances: 1 is a single primary; 2+ grows the SAME
+   * database into a streaming-replication pair with automatic failover —
+   * a LIVE edit, no reinstall.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Volume size per instance (e.g. "10Gi"). Falls back to
+   * spec.storage.size, then the platform default.
+   */
+  string storage_size = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "postgresql.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"10Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the database volumes.
+   */
+  string storage_class_name = 3;
+}
+
+/**
+ * The platform's cache.
+ */
+message KubernetesPlantonPlatformRedis {
+  /**
+   * Volume size (e.g. "1Gi"). Falls back to spec.storage.size, then the
+   * platform default.
+   */
+  string storage_size = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "redis.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"1Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the cache volume.
+   */
+  string storage_class_name = 2;
+}
+
+/**
+ * Ingress exposure.
+ */
+message KubernetesPlantonPlatformIngress {
+  option (buf.validate.message).cel = {
+    id: "spec.ingress.tls_requires_hostname"
+    message: "tls requires hostname: a certificate cannot be brought or issued for an auto-derived hostname"
+    expression: "!has(this.tls) || this.hostname != ''"
+  };
+
+  /**
+   * Expose the platform through the cluster's ingress controller. With
+   * no hostname, the operator derives a working URL from the
+   * controller's published address (magic DNS).
+   */
+  bool enabled = 1;
+
+  /**
+   * The platform's hostname (e.g. "planton.example.com"). One hostname
+   * serves console AND API. The identity server bakes this URL into its
+   * realm at first boot — set it before the first sign-in.
+   */
+  string hostname = 2;
+
+  /**
+   * IngressClass to use. Unset = the cluster's default.
+   */
+  string ingress_class_name = 3;
+
+  /**
+   * Extra annotations on the Ingress (controller-specific tuning —
+   * ALB schemes, proxy budgets).
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * HTTPS. Requires hostname. Exactly one of secret_name (bring your own
+   * certificate) or issuer (cert-manager issues one).
+   */
+  KubernetesPlantonPlatformIngressTls tls = 5;
+}
+
+/**
+ * Ingress TLS — bring a certificate or have cert-manager issue one.
+ */
+message KubernetesPlantonPlatformIngressTls {
+  option (buf.validate.message).cel = {
+    id: "spec.ingress.tls.secret_xor_issuer"
+    message: "exactly one of secret_name or issuer must be set — bring a certificate or have cert-manager issue one, never both"
+    expression: "(this.secret_name != '') != has(this.issuer)"
+  };
+
+  /**
+   * An existing kubernetes.io/tls Secret in the platform's namespace.
+   */
+  string secret_name = 1;
+
+  /**
+   * A cert-manager issuer to obtain the certificate from. Requires
+   * cert-manager on the cluster.
+   */
+  KubernetesPlantonPlatformCertManagerIssuer issuer = 2;
+}
+
+/**
+ * A cert-manager issuer reference.
+ */
+message KubernetesPlantonPlatformCertManagerIssuer {
+  /**
+   * Issuer name.
+   */
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * Issuer kind.
+   */
+  optional string kind = 2 [
+    (dev.planton.shared.options.default) = "Issuer",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "Issuer",
+        "ClusterIssuer"
+      ]
+    }
+  ];
+}
+
+/**
+ * The built-in front-door gateway.
+ */
+message KubernetesPlantonPlatformGateway {
+  /**
+   * The local port the port-forward door advertises
+   * (`kubectl port-forward ... {local_port}:80`). Baked into the identity
+   * server's issuer and the console's callbacks at first boot — pick it
+   * before the first visit; two port-forward platforms on one machine
+   * need distinct ports.
+   */
+  optional int32 local_port = 1 [
+    (dev.planton.shared.options.default) = "8080",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+}
+
+/**
+ * The identity server.
+ */
+message KubernetesPlantonPlatformIdentity {
+  /**
+   * The Keycloak realm name.
+   */
+  optional string realm = 1 [(dev.planton.shared.options.default) = "planton"];
+
+  /**
+   * Pre-seed a known admin account instead of the first-visitor setup
+   * page: the operator creates this user and writes a one-time password
+   * into the platform's admin-user Secret. Unset (the default) leaves
+   * the setup-code flow — the first console visitor becomes the admin.
+   */
+  string admin_email = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "identity.admin_email_format"
+      message: "admin_email must be an email address like \"admin@example.com\""
+      expression: "this.matches('^[^@ ]+@[^@ ]+\\\\.[^@ ]+$')"
+    }
+  ];
+}
+
+/**
+ * First-boot seeding.
+ */
+message KubernetesPlantonPlatformBootstrap {
+  /**
+   * The initial organization.
+   */
+  KubernetesPlantonPlatformBootstrapOrg organization = 1;
+
+  /**
+   * The initial environment.
+   */
+  KubernetesPlantonPlatformBootstrapEnv environment = 2;
+
+  /**
+   * Additional admin emails granted org ownership and platform-operator
+   * rights at boot (the identity.admin_email, when set, is always
+   * included).
+   */
+  repeated string admins = 3;
+
+  /**
+   * The IaC provisioner the in-cluster runner deploys with.
+   */
+  optional string iac_provisioner = 4 [
+    (dev.planton.shared.options.default) = "tofu",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "tofu",
+        "terraform"
+      ]
+    }
+  ];
+
+  /**
+   * Where the platform's managed secrets live: the bundled secrets
+   * manager ("platform", the default) or a cloud backend.
+   */
+  KubernetesPlantonPlatformSecretBackend secret_backend = 5;
+}
+
+/**
+ * The initial organization.
+ */
+message KubernetesPlantonPlatformBootstrapOrg {
+  /**
+   * Organization slug.
+   */
+  optional string slug = 1 [(dev.planton.shared.options.default) = "default"];
+
+  /**
+   * Display name. Defaults to the slug.
+   */
+  string name = 2;
+}
+
+/**
+ * The initial environment.
+ */
+message KubernetesPlantonPlatformBootstrapEnv {
+  /**
+   * Environment slug.
+   */
+  optional string slug = 1 [(dev.planton.shared.options.default) = "default"];
+
+  /**
+   * Display name. Defaults to the slug.
+   */
+  string name = 2;
+}
+
+/**
+ * The platform's managed-secret backend.
+ */
+message KubernetesPlantonPlatformSecretBackend {
+  option (buf.validate.message).cel = {
+    id: "spec.bootstrap.secret_backend.aws_requires_config"
+    message: "awsSecretsManager needs its configuration block: aws_secrets_manager.region and aws_secrets_manager.kms_key_arn are required"
+    expression: "this.type != 'awsSecretsManager' || (has(this.aws_secrets_manager) && this.aws_secrets_manager.region != '' && this.aws_secrets_manager.kms_key_arn != '')"
+  };
+
+  /**
+   * Backend type: "platform" (the bundled OpenBAO) or
+   * "awsSecretsManager".
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "platform",
+        "awsSecretsManager"
+      ]
+    }
+  ];
+
+  /**
+   * AWS Secrets Manager configuration (required when type is
+   * awsSecretsManager). The control plane reaches AWS through its own
+   * workload identity — see control_plane.service_account_annotations.
+   */
+  KubernetesPlantonPlatformAwsSecretsManager aws_secrets_manager = 2;
+}
+
+/**
+ * AWS Secrets Manager backend configuration.
+ */
+message KubernetesPlantonPlatformAwsSecretsManager {
+  /**
+   * AWS region (e.g. "us-east-1").
+   */
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  /**
+   * KMS key ARN encrypting the secrets.
+   */
+  string kms_key_arn = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+/**
+ * The in-cluster deployment runner.
+ */
+message KubernetesPlantonPlatformRunner {
+  /**
+   * Deploy the runner. Platform default: true. Explicit false leaves a
+   * platform that can model infrastructure but not deploy it.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Runner state volume size (e.g. "2Gi"). Falls back to
+   * spec.storage.size, then the platform default.
+   */
+  string storage_size = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "runner.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"2Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the runner state volume.
+   */
+  string storage_class_name = 3;
+
+  /**
+   * Workload-identity annotations on the runner's ServiceAccount — the
+   * keyless way the runner reaches your cloud (EKS:
+   * "eks.amazonaws.com/role-arn"; GKE: "iam.gke.io/gcp-service-account";
+   * AKS: "azure.workload.identity/client-id").
+   */
+  map<string, string> service_account_annotations = 4;
+
+  /**
+   * Name of a customer-owned Secret (in the platform's namespace) whose
+   * keys are injected into the runner as environment variables — the
+   * static-credentials way the runner reaches your cloud. The platform
+   * stores nothing: rotate by updating YOUR Secret.
+   */
+  string cloud_credentials_secret_name = 5;
+}
+
+/**
+ * Container-image build pipelines.
+ */
+message KubernetesPlantonPlatformBuild {
+  /**
+   * Enable Tekton-backed build pipelines. Platform default: true
+   * (follows the runner off when the runner is disabled). One
+   * build-enabled platform per cluster — Tekton's build-events sink is
+   * cluster-wide.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * The bundled secrets manager.
+ */
+message KubernetesPlantonPlatformVault {
+  /**
+   * Deploy the bundled secrets manager (OpenBAO). Platform default:
+   * true. Explicit false is the deliberate opt-out — pair it with a
+   * cloud backend in bootstrap.secret_backend or connection secrets have
+   * nowhere to live.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Initialization: "auto" (the operator initializes and unseals,
+   * storing the unseal keys in an annotated platform Secret) or "manual"
+   * (you run the init ceremony).
+   */
+  optional string init_mode = 2 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "auto",
+        "manual"
+      ]
+    }
+  ];
+
+  /**
+   * Volume size (e.g. "2Gi"). Falls back to spec.storage.size, then the
+   * platform default.
+   */
+  string storage_size = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "vault.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"2Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the secrets-manager volume.
+   */
+  string storage_class_name = 4;
+}
+
+/**
+ * Opt-in platform components (all off by default).
+ */
+message KubernetesPlantonPlatformComponents {
+  /**
+   * Fine-grained authorization (OpenFGA). Off = the platform's
+   * allow-authenticated authorization arm.
+   */
+  KubernetesPlantonPlatformToggle authorization = 1;
+
+  /**
+   * Search (Solr).
+   */
+  KubernetesPlantonPlatformSearch search = 2;
+
+  /**
+   * The graph explorer (Neo4j).
+   */
+  KubernetesPlantonPlatformGraph graph = 3;
+}
+
+/**
+ * A plain component toggle.
+ */
+message KubernetesPlantonPlatformToggle {
+  /**
+   * Enable the component.
+   */
+  bool enabled = 1;
+}
+
+/**
+ * Search (Solr).
+ */
+message KubernetesPlantonPlatformSearch {
+  /**
+   * Enable search.
+   */
+  bool enabled = 1;
+
+  /**
+   * Deployment mode: "standalone" (a single Solr with its ZooKeeper) or
+   * "operator" (SolrCloud via the Solr operator — see
+   * prerequisites.solr_operator).
+   */
+  optional string mode = 2 [
+    (dev.planton.shared.options.default) = "standalone",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "standalone",
+        "operator"
+      ]
+    }
+  ];
+
+  /**
+   * Volume size (e.g. "10Gi"). Falls back to spec.storage.size, then the
+   * platform default.
+   */
+  string storage_size = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "search.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"10Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the search volumes.
+   */
+  string storage_class_name = 4;
+
+  /**
+   * ZooKeeper for standalone-mode Solr.
+   */
+  KubernetesPlantonPlatformZookeeper zookeeper = 5;
+}
+
+/**
+ * ZooKeeper (standalone-mode search only).
+ */
+message KubernetesPlantonPlatformZookeeper {
+  /**
+   * ZooKeeper replicas.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Volume size (e.g. "5Gi"). Falls back to spec.storage.size, then the
+   * platform default.
+   */
+  string storage_size = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "zookeeper.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"5Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the ZooKeeper volumes.
+   */
+  string storage_class_name = 3;
+}
+
+/**
+ * The graph explorer (Neo4j).
+ */
+message KubernetesPlantonPlatformGraph {
+  /**
+   * Enable the graph explorer.
+   */
+  bool enabled = 1;
+
+  /**
+   * Volume size (e.g. "10Gi"). Falls back to spec.storage.size, then the
+   * platform default.
+   */
+  string storage_size = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "graph.storage_size_quantity"
+      message: "storage_size must be a Kubernetes quantity like \"10Gi\""
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass override for the graph volume.
+   */
+  string storage_class_name = 3;
+}
+
+/**
+ * Cluster-shared sub-operator handling.
+ */
+message KubernetesPlantonPlatformPrerequisites {
+  /**
+   * CloudNativePG: "auto" installs it only when absent; "skip" declares
+   * it externally managed (a helm/GitOps CloudNativePG is respected
+   * automatically either way).
+   */
+  optional string postgres_operator = 1 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "auto",
+        "skip"
+      ]
+    }
+  ];
+
+  /**
+   * The Solr operator (only relevant when components.search.mode is
+   * "operator").
+   */
+  optional string solr_operator = 2 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "auto",
+        "skip"
+      ]
+    }
+  ];
+
+  /**
+   * Tekton Pipelines (build pipelines). The build-events sink is wired
+   * even on "skip".
+   */
+  optional string tekton_pipelines = 3 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "",
+        "auto",
+        "skip"
+      ]
+    }
+  ];
+}
+
+/**
+ * The control-plane deployment.
+ */
+message KubernetesPlantonPlatformControlPlane {
+  /**
+   * Image override (air-gapped mirrors of the SAME version).
+   */
+  KubernetesPlantonPlatformImage image = 1;
+
+  /**
+   * Control-plane replicas.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Name of a Secret (in the platform's namespace) whose keys are all
+   * injected into the control plane as environment variables — the
+   * escape hatch for configuration the spec does not model.
+   */
+  string external_config_secret_name = 3;
+
+  /**
+   * Workload-identity annotations on the control plane's ServiceAccount
+   * — the platform's OWN cloud identity (cloud secret backends, KMS).
+   * Distinct from runner.service_account_annotations, which is the
+   * DEPLOY-TIME identity.
+   */
+  map<string, string> service_account_annotations = 4;
+}
+
+/**
+ * The console deployment.
+ */
+message KubernetesPlantonPlatformConsole {
+  /**
+   * Image override (air-gapped mirrors of the SAME version).
+   */
+  KubernetesPlantonPlatformImage image = 1;
+
+  /**
+   * Console replicas.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Name of a Secret (in the platform's namespace) whose keys are all
+   * injected into the console as environment variables.
+   */
+  string external_config_secret_name = 3;
+}
+
+/**
+ * A platform image override (repository and/or tag).
+ */
+message KubernetesPlantonPlatformImage {
+  /**
+   * Full image repository (e.g.
+   * "my-mirror.example.com/planton/control-plane").
+   */
+  string repository = 1;
+
+  /**
+   * Image tag. Empty = spec.version.
+   */
+  string tag = 2;
+}

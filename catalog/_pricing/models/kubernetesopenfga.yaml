@@ -1,0 +1,27 @@
+# Estimate model: the authored capacity footprints of this cluster-capacity
+# component's presets. A hand model instead of a capacity derivation because
+# the only preset omits explicit resources and relies on the spec's
+# (dev.planton.kubernetes.default_container_resources) annotation -- defaults
+# the modules apply at deploy time but the capacity estimator never consults
+# (it reads only explicit manifest values), so a derivation would understate
+# the true reservation. The footprint is computed from the preset manifest by
+# hand and defended in its basis sentence, using the spec-declared defaults.
+# Cluster-capacity components carry no priced lines -- the dollar value of
+# the reservation is the target cluster's node economics.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesopenfga
+spec:
+  presets:
+    - preset: 01-with-postgres-datastore
+      capacity_footprint:
+        cpu_requests: 300m
+        memory_requests: 384Mi
+        cpu_limits: "3"
+        memory_limits: 1536Mi
+        basis: 3 stateless server replicas x spec-declared default resources (100m CPU / 128Mi memory requests, 1000m CPU / 512Mi limits -- the platform applies them when the manifest omits resources); no volumes -- all authorization data lives in the referenced PostgreSQL datastore
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the PostgreSQL datastore is a separately composed resource -- its capacity, storage, and cost are declared on its own manifest

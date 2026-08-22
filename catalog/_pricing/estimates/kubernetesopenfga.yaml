@@ -1,0 +1,23 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesopenfga
+spec:
+  presets:
+    - preset: 01-with-postgres-datastore
+      capacity_footprint:
+        cpu_requests: 300m
+        memory_requests: 384Mi
+        cpu_limits: "3"
+        memory_limits: 1536Mi
+        basis: 3 stateless server replicas x spec-declared default resources (100m CPU / 128Mi memory requests, 1000m CPU / 512Mi limits -- the platform applies them when the manifest omits resources); no volumes -- all authorization data lives in the referenced PostgreSQL datastore
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the PostgreSQL datastore is a separately composed resource -- its capacity, storage, and cost are declared on its own manifest

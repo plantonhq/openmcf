@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The billing class turns entirely on one
+# field: a Gateway endpoint (the default) is free, while the ENI-based
+# types bill hourly on existence -- per AZ for Interface and
+# GatewayLoadBalancer, per reached resource for the VPC Lattice types --
+# so the profile carries the honest always-billing arm rather than letting
+# "usage_based" imply a free idle it does not have.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsvpcendpoint
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: VPC endpoint hours
+      pricing_unit: hours
+      description: Interface and GatewayLoadBalancer endpoints bill for each hour they remain provisioned in EACH Availability Zone, irrespective of association state or traffic -- three subnets means three meters, and partial hours bill as full hours. A Resource endpoint bills per resource-hour with no AZ multiplier (one resource configuration per endpoint); a ServiceNetwork endpoint carries no endpoint meter of its own, but every VPC resource associated with the referenced service network bills per resource-hour. Only the Gateway type (the default -- S3 and DynamoDB via route tables) carries no hourly or data charge at all.
+  cost_drivers:
+    - field_path: endpoint_type
+      sku_meter: VPC endpoint hours
+      pricing_unit: hours
+      impact: The whole bill switch -- Gateway (the default when empty) is free with no meter of any kind, while the ENI-based types start an hourly meter the moment the endpoint exists -- per AZ for Interface and GatewayLoadBalancer, per reached resource for the VPC Lattice types. Create-time immutable, so the class is fixed at birth. For S3 and DynamoDB the free Gateway path exists; everything else forces an ENI-based type.
+    - field_path: subnet_ids
+      sku_meter: VPC endpoint hours
+      pricing_unit: hours
+      impact: One ENI per subnet, and for Interface and GatewayLoadBalancer endpoints each AZ bills its own endpoint-hour meter -- the two-AZ spread the presets recommend for availability literally doubles the hourly floor. Updates in place, so the AZ count can be tuned without replacement.
+    - field_path: service_region
+      sku_meter: data transfer
+      pricing_unit: GB
+      impact: A cross-region endpoint adds no PrivateLink premium, but every gigabyte moving between the regions bills inter-region data transfer to the endpoint owner regardless of direction -- on top of the normal endpoint-hour and data-processing meters.
+    - field_path: dns_options.private_dns_only_for_inbound_resolver_endpoint
+      sku_meter: PrivateLink data processed
+      pricing_unit: GB
+      impact: The S3 dual-stack cost pattern -- with both a gateway and an interface endpoint in the VPC, this flag keeps in-VPC S3 traffic on the FREE gateway path and sends only on-premises resolver traffic through the billed interface endpoint.
+  free_tier: The Gateway endpoint type is entirely free -- no hourly charge and no data processing charge, stated on AWS's own VPC pricing page. No free allotment exists for the ENI-based types.
+  estimate_exclusions:
+    - data processing bills per GB through every ENI-based endpoint regardless of the traffic's source or destination, on a regional tier that aggregates across ALL interface endpoints in the region
+    - inter-region data transfer for cross-region endpoints (service_region) follows traffic volume
+    - some AWS services fold their interface-endpoint cost into their own service pricing, so the endpoint may not appear as a separate bill line
+    - the PrivateLink service being reached bills its owner separately (endpoint-service hours, cross-region active-region hours)
+  notes: "One field decides whether this component costs nothing or bills around the clock: endpoint_type. A Gateway endpoint is a route-table entry -- free, and often a NET SAVER, because S3/DynamoDB traffic that rides it stops paying NAT gateway data-processing rates. An Interface endpoint is a fleet of ENIs billing per AZ-hour from creation, plus per-GB data processing -- an idle interface endpoint spread across two AZs bills roughly 1,460 endpoint-AZ-hours a month before the first byte moves. The hourly meter survives even a rejected or failed service association: AWS bills while the endpoint remains provisioned, and a rejected endpoint must be DELETED to stop the meter, not just left unassociated."

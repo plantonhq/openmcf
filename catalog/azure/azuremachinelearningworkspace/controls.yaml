@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningworkspace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Machine Learning encrypts workspace data at rest with Microsoft-managed keys by default -- metadata service-side, and artifacts in the required companion storage account, which Azure Storage encrypts unconditionally. No plaintext mode exists.
+      notes: The encryption block upgrades the default to customer-managed keys (see enc-at-rest-cmk).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption
+      evidence:
+        type: spec_default
+        reference: The encryption block swaps Microsoft-managed keys for your own Key Vault key -- key_vault_id plus key_id (a versionless reference follows rotation automatically), optionally unwrapped by a named user-assigned identity. service_side_encryption_enabled extends the CMK to service-side data and requires the block. The whole block is fixed at creation, and the workspace's identity needs wrap/unwrap access on the key BEFORE deploying.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: All interaction with the workspace -- studio, SDK, ARM -- rides Azure's TLS-only management and Azure ML endpoints, which is platform posture rather than a component choice; the spec carries no transport toggle.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (ARM's own default) -- the workspace endpoint answers the public internet. Setting false makes the workspace reachable only through private endpoints.
+      notes: The batch-scoring surface of AzureMachineLearningBatchEndpoint children inherits exactly this setting -- the batch ARM surface carries no network property of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound reachability is the binary public toggle plus private endpoints (separate kinds) -- the spec carries no source-range filter. The managed_network block and the three outbound-rule lists govern the OUTBOUND side instead (ALLOW_ONLY_APPROVED_OUTBOUND with fqdn, private-endpoint, and service-tag allowlists).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class surface exists for a workspace endpoint; ML scoring traffic that needs edge filtering fronts the endpoints with a gateway, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the workspace's management plane and studio is governed by Azure RBAC (Owner/Contributor/AzureML Data Scientist and friends) assigned at subscription or resource-group scope -- posture outside this manifest; the spec carries no access-policy surface of its own.
+    - control_id: workload-identity
+      status: configurable
+      field_path: storage_account_access_type
+      evidence:
+        type: spec_default
+        reference: Unspecified applies the provider default ACCESS_KEY -- the built-in datastores reach the default storage account with account keys. IDENTITY is the hardened posture -- the workspace's managed identity (which the spec REQUIRES on every workspace) authenticates instead, needing Storage Blob Data Contributor on the account and no stored key.
+      notes: The required identity block is itself the keyless foundation -- the workspace reaches its companion storage, key vault, and insights through a managed identity, never a stored credential. IDENTITY mode is a recorded Terraform-only parity exception.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: v1_legacy_mode_enabled
+      evidence:
+        type: spec_default
+        reference: Default false keeps the legacy v1 API mode OFF -- the workspace serves the v2 API surface. Setting true pins the workspace to the legacy v1 CLI/SDK and blocks v2, a deliberate opt-in for estates that cannot move yet.
+      notes: Retiring account-key access to the default datastores (ACCESS_KEY -> IDENTITY) is the companion hardening, covered under workload-identity.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations land in the Azure Activity Log automatically as subscription-level posture; richer workspace diagnostic logs are wired through diagnostic settings outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      field_path: application_insights_id
+      evidence:
+        type: spec_default
+        reference: application_insights_id is spec-REQUIRED -- every workspace attaches an Application Insights component at creation and sends its telemetry there by construction; the attachment is fixed for the workspace's lifetime.
+      notes: high_business_impact additionally REDUCES the diagnostic data Microsoft itself collects from the workspace -- the privacy dial for sensitive estates, fixed at creation.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The workspace object is coordination metadata recreated declaratively; the data worth protecting -- artifacts, datasets, models -- rests in the companion storage account, whose backup posture is its own kind. Deletion is a SOFT delete -- a purgeable ghost holds the name -- which is a recovery window for the metadata, not a backup system.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The workspace control plane is a Microsoft-operated regional service with no customer zonal dial; availability of what RUNS through it (compute clusters, endpoint deployments) is those kinds' posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest). Deletion IS soft -- the workspace becomes a purgeable ghost holding its name, and the provider only purges when the purge-on-destroy features flag is enabled -- a cushion against accidental loss, not a refusal gate.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The workspace service -- studio, API surface, managed network fabric, serverless compute images -- is Microsoft-operated and patched; no customer-visible patch surface exists on the workspace object itself.

@@ -1,0 +1,21 @@
+# Consumer-scoped AwsCloudwatchLogGroup install profile: one log group
+# serving both the workspace-logging and query-logging arms (the
+# log-group kind publishes no shared install profile). Zero-traffic,
+# one-day retention, ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogGroup
+metadata:
+  name: planton-oss-e2e-awsamp-lg
+  id: planton-oss-e2e-awsamp-lg
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchloggroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  retentionInDays: 1

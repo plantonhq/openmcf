@@ -1,0 +1,32 @@
+# Tag-targeted DigitalOceanMonitorAlert: no entity ids at all -- the
+# policy covers every Droplet carrying the tag, so no fixture is needed
+# (DigitalOcean creates tags implicitly, the dispositions ledger's recorded
+# judgment). Proves the tags-only targeting path and the enabled=false arm
+# (the policy is defined but silent, so a tag with no droplets never
+# pages anyone).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: planton-oss-e2e-digitaloceanmonitoralert-tag
+  id: planton-oss-e2e-digitaloceanmonitoralert-tag
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanmonitoralert
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Planton E2E tag-targeted memory alert
+  metricType: v1/insights/droplet/memory_utilization_percent
+  compare: GreaterThan
+  value: 85
+  window: 10m
+  enabled: false
+  tags:
+    - planton-e2e-${E2E_RUN_ID}
+  alerts:
+    emails:
+      - e2e@planton.cloud

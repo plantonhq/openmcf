@@ -75,9 +75,3 @@ module "hub_vpn_gateway" {
   unspecified instance pin emits null (the rule applies on both
   instances).
 - Deleting the gateway requires its connections to be gone first.
-
-## Required Permissions
-
-The deploying credential needs `Microsoft.Network/vpnGateways/write`
-and `Microsoft.Network/vpnGateways/natRules/write` plus read on the
-hub -- held via Network Contributor, Contributor, or Owner.

@@ -10,7 +10,6 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	dnsrecordtype "github.com/plantonhq/planton/shared/networking/enums/dnsrecordtype"
-	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,16 +24,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean.
-// This allows you to manage DNS records for a given domain via DigitalOcean's DNS service, focusing on the essential parameters (80/20 principle).
+// DigitalOceanDnsZoneSpec models the full `digitalocean_domain` surface plus
+// an inline record list (each record is a `digitalocean_record` the module
+// manages inside the zone). Adding a domain to DigitalOcean DNS does not
+// require owning it, but the domain only resolves once its registrar
+// delegates to DigitalOcean's name servers (ns1/ns2/ns3.digitalocean.com).
 type DigitalOceanDnsZoneSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The domain name for the DNS zone.
-	// Must be a valid fully-qualified domain name (e.g., "example.com").
+	// The domain name for the DNS zone. Must be a fully-qualified domain name
+	// (e.g. "example.com"). Domain names are unique across ALL DigitalOcean
+	// accounts — adding a domain another account already holds fails. Changing
+	// it recreates the zone.
 	DomainName string `protobuf:"bytes,1,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
-	// A list of DNS records to create within the zone (optional).
-	// Each record includes its type, name, value(s), and TTL.
-	Records       []*DigitalOceanDnsZoneRecord `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty"`
+	// DNS records to create within the zone (optional).
+	Records []*DigitalOceanDnsZoneRecord `protobuf:"bytes,2,rep,name=records,proto3" json:"records,omitempty"`
+	// (Optional) An IPv4 address that seeds an initial A record at the zone
+	// apex when the zone is created. Create-only convenience: the DigitalOcean
+	// API never returns it, and the A record it creates is NOT tracked — later
+	// edits to `records` will not see or manage it. Prefer declaring an apex A
+	// record in `records`, which is tracked and updatable; use this only when
+	// migrating a configuration that already relies on it.
+	IpAddress     string `protobuf:"bytes,3,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,56 +93,59 @@ func (x *DigitalOceanDnsZoneSpec) GetRecords() []*DigitalOceanDnsZoneRecord {
 	return nil
 }
 
-// DnsRecord represents a DNS record entry to be created in the zone.
+func (x *DigitalOceanDnsZoneSpec) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
+	}
+	return ""
+}
+
+// A DNS record entry managed inside the zone. The same type-conditional
+// requirements as the standalone DigitalOceanDnsRecord kind apply, enforced
+// with the same presence semantics.
 type DigitalOceanDnsZoneRecord struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The host/name for the DNS record, relative to the zone.
-	// For root records, use "@" to denote the zone itself.
+	// The record's host name, relative to the zone. Use "@" for the zone apex.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The value or values for the DNS record.
-	// - For A/AAAA: one or more IP address(es).
-	// - For CNAME: the target domain name.
-	// - For TXT: the text data (if multiple strings, they will be concatenated by DNS).
-	// - For MX: the mail server domain name (priority is specified separately in the priority field).
-	// - For SRV: the target server (priority, weight, and port are specified separately).
-	// - For CAA: the certificate authority domain (flags and tag are specified separately).
+	// The value or values for the record; each value creates its own record
+	// row of the same name and type (e.g. two A values make two A records).
+	// - A/AAAA: one or more IP addresses
+	// - CNAME/MX/NS/SRV: the target hostname
+	// - TXT: the text data
+	// - CAA: the certificate authority domain
 	// Each value can be a literal or a reference to another resource's output.
+	// Read-back normalization: for CNAME, MX, NS, SRV, and CAA (except
+	// tag=iodef), the provider appends a trailing dot to the stored value.
 	Values []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
-	// The time-to-live for this DNS record, in seconds.
-	// Determines how long resolvers cache the record. Defaults to 3600 seconds (1 hour) if not set.
+	// Time to live for the record, in seconds. When unset (0), the DigitalOcean
+	// API applies its default (1800 seconds). DigitalOcean harmonizes TTLs
+	// across records sharing a fully-qualified name (RFC 2181 §5.2).
 	TtlSeconds uint32 `protobuf:"varint,3,opt,name=ttl_seconds,json=ttlSeconds,proto3" json:"ttl_seconds,omitempty"`
-	// The type of the DNS record.
-	// This field is required and must be one of the supported record types.
+	// The type of DNS record. Required; see the message rules for the accepted
+	// subset of the shared enum.
 	Type dnsrecordtype.DnsRecordType `protobuf:"varint,4,opt,name=type,proto3,enum=dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordType" json:"type,omitempty"`
-	// Priority for MX and SRV records.
-	// - For MX records: Lower values indicate higher priority (e.g., 1 is higher priority than 10).
-	// - For SRV records: Used in conjunction with weight for load distribution.
-	// - Ignored for other record types.
-	// Defaults to 0 if not specified.
-	Priority uint32 `protobuf:"varint,5,opt,name=priority,proto3" json:"priority,omitempty"`
-	// Weight for SRV records.
-	// Specifies the relative weight for records with the same priority.
-	// Higher weights are chosen more often.
-	// Ignored for non-SRV record types.
-	// Defaults to 0 if not specified.
-	Weight uint32 `protobuf:"varint,6,opt,name=weight,proto3" json:"weight,omitempty"`
-	// Port for SRV records.
-	// Specifies the TCP or UDP port on which the service is available.
-	// Required for SRV records, ignored for other types.
-	// Defaults to 0 if not specified.
-	Port uint32 `protobuf:"varint,7,opt,name=port,proto3" json:"port,omitempty"`
-	// Flags for CAA records.
-	// - 0: Non-critical (default) - If a CA doesn't understand the tag, it can ignore it.
-	// - 128: Critical - If a CA doesn't understand the tag, it must refuse to issue.
-	// Ignored for non-CAA record types.
-	// Defaults to 0 if not specified.
-	Flags uint32 `protobuf:"varint,8,opt,name=flags,proto3" json:"flags,omitempty"`
-	// Tag for CAA records.
-	// Specifies the property being authorized:
-	// - "issue": Authorizes a CA to issue certificates for the domain.
-	// - "issuewild": Authorizes a CA to issue wildcard certificates.
-	// - "iodef": Specifies a URL to which a CA may report policy violations.
-	// Required for CAA records, ignored for other types.
+	// Priority for MX and SRV records; lower values are preferred. Required
+	// for MX and SRV, ignored for other types. Range: 0-65535. Provider
+	// quirk: an explicit 0 passes validation but is dropped from the create
+	// request, so the API's default applies — use a positive value when the
+	// priority must be exact.
+	Priority *uint32 `protobuf:"varint,5,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
+	// Weight for SRV records: the relative share of traffic among records
+	// with equal priority. Required for SRV, ignored for other types.
+	// Range: 0-65535. The same explicit-zero provider quirk as priority
+	// applies.
+	Weight *uint32 `protobuf:"varint,6,opt,name=weight,proto3,oneof" json:"weight,omitempty"`
+	// Port for SRV records: where the service is available. Required for SRV,
+	// ignored for other types. Range: 0-65535. The same explicit-zero
+	// provider quirk as priority applies.
+	Port *uint32 `protobuf:"varint,7,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// Flags for CAA records: 0 (non-critical, the common value) or 128
+	// (critical). Required for CAA, ignored for other types. Range: 0-255.
+	// An explicit 0 is dropped from the create request (provider quirk),
+	// which is harmless: the API defaults flags to 0.
+	Flags *uint32 `protobuf:"varint,8,opt,name=flags,proto3,oneof" json:"flags,omitempty"`
+	// Tag for CAA records — the property being authorized: "issue",
+	// "issuewild", or "iodef". Required for CAA, ignored for other types.
 	Tag           string `protobuf:"bytes,9,opt,name=tag,proto3" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -197,29 +210,29 @@ func (x *DigitalOceanDnsZoneRecord) GetType() dnsrecordtype.DnsRecordType {
 }
 
 func (x *DigitalOceanDnsZoneRecord) GetPriority() uint32 {
-	if x != nil {
-		return x.Priority
+	if x != nil && x.Priority != nil {
+		return *x.Priority
 	}
 	return 0
 }
 
 func (x *DigitalOceanDnsZoneRecord) GetWeight() uint32 {
-	if x != nil {
-		return x.Weight
+	if x != nil && x.Weight != nil {
+		return *x.Weight
 	}
 	return 0
 }
 
 func (x *DigitalOceanDnsZoneRecord) GetPort() uint32 {
-	if x != nil {
-		return x.Port
+	if x != nil && x.Port != nil {
+		return *x.Port
 	}
 	return 0
 }
 
 func (x *DigitalOceanDnsZoneRecord) GetFlags() uint32 {
-	if x != nil {
-		return x.Flags
+	if x != nil && x.Flags != nil {
+		return *x.Flags
 	}
 	return 0
 }
@@ -235,22 +248,32 @@ var File_catalog_digitalocean_digitaloceandnszone_v1alpha1_spec_proto protorefle
 
 const file_catalog_digitalocean_digitaloceandnszone_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/digitalocean/digitaloceandnszone/v1alpha1/spec.proto\x125dev.planton.digitalocean.digitaloceandnszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a;shared/networking/enums/dnsrecordtype/dns_record_type.proto\x1a\x1cshared/options/options.proto\"\xd4\x01\n" +
+	"<catalog/digitalocean/digitaloceandnszone/v1alpha1/spec.proto\x125dev.planton.digitalocean.digitaloceandnszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a;shared/networking/enums/dnsrecordtype/dns_record_type.proto\"\xf3\x01\n" +
 	"\x17DigitalOceanDnsZoneSpec\x12M\n" +
 	"\vdomain_name\x18\x01 \x01(\tB,\xbaH)\xc8\x01\x01r$2\"^(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}$R\n" +
 	"domainName\x12j\n" +
-	"\arecords\x18\x02 \x03(\v2P.dev.planton.digitalocean.digitaloceandnszone.v1alpha1.DigitalOceanDnsZoneRecordR\arecords\"\xa5\x03\n" +
+	"\arecords\x18\x02 \x03(\v2P.dev.planton.digitalocean.digitaloceandnszone.v1alpha1.DigitalOceanDnsZoneRecordR\arecords\x12\x1d\n" +
+	"\n" +
+	"ip_address\x18\x03 \x01(\tR\tipAddress\"\x9a\t\n" +
 	"\x19DigitalOceanDnsZoneRecord\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12W\n" +
-	"\x06values\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x06values\x12)\n" +
-	"\vttl_seconds\x18\x03 \x01(\rB\b\x92\xa6\x1d\x043600R\n" +
+	"\x06values\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x06values\x12\x1f\n" +
+	"\vttl_seconds\x18\x03 \x01(\rR\n" +
 	"ttlSeconds\x12\\\n" +
-	"\x04type\x18\x04 \x01(\x0e2@.dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12!\n" +
-	"\bpriority\x18\x05 \x01(\rB\x05\x92\xa6\x1d\x010R\bpriority\x12\x1d\n" +
-	"\x06weight\x18\x06 \x01(\rB\x05\x92\xa6\x1d\x010R\x06weight\x12\x19\n" +
-	"\x04port\x18\a \x01(\rB\x05\x92\xa6\x1d\x010R\x04port\x12\x1b\n" +
-	"\x05flags\x18\b \x01(\rB\x05\x92\xa6\x1d\x010R\x05flags\x12\x10\n" +
-	"\x03tag\x18\t \x01(\tR\x03tagB\xab\x03\n" +
+	"\x04type\x18\x04 \x01(\x0e2@.dev.planton.shared.networking.enums.dnsrecordtype.DnsRecordTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12*\n" +
+	"\bpriority\x18\x05 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03H\x00R\bpriority\x88\x01\x01\x12&\n" +
+	"\x06weight\x18\x06 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03H\x01R\x06weight\x88\x01\x01\x12\"\n" +
+	"\x04port\x18\a \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03H\x02R\x04port\x88\x01\x01\x12#\n" +
+	"\x05flags\x18\b \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01H\x03R\x05flags\x88\x01\x01\x123\n" +
+	"\x03tag\x18\t \x01(\tB!\xbaH\x1e\xd8\x01\x01r\x19R\x05issueR\tissuewildR\x05iodefR\x03tag:\x8b\x05\xbaH\x87\x05\x1a\xc0\x01\n" +
+	"\x15record.type_supported\x12stype must be one of A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, SOA (DigitalOcean does not support ALIAS or PTR records)\x1a2this.type != 0 && this.type != 3 && this.type != 7\x1ar\n" +
+	"\x1frecord.priority_required_for_mx\x12)priority must be specified for MX records\x1a$this.type != 5 || has(this.priority)\x1a\xba\x01\n" +
+	",record.priority_weight_port_required_for_srv\x12<priority, weight, and port must be specified for SRV records\x1aLthis.type != 9 || (has(this.priority) && has(this.weight) && has(this.port))\x1a\x90\x01\n" +
+	"%record.flags_and_tag_required_for_caa\x12/flags and tag must be specified for CAA records\x1a6this.type != 11 || (has(this.flags) && this.tag != '')B\v\n" +
+	"\t_priorityB\t\n" +
+	"\a_weightB\a\n" +
+	"\x05_portB\b\n" +
+	"\x06_flagsB\xab\x03\n" +
 	"9com.dev.planton.digitalocean.digitaloceandnszone.v1alpha1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandnszone/v1alpha1;digitaloceandnszonev1alpha1\xa2\x02\x04DPDD\xaa\x025Dev.Planton.Digitalocean.Digitaloceandnszone.V1alpha1\xca\x025Dev\\Planton\\Digitalocean\\Digitaloceandnszone\\V1alpha1\xe2\x02ADev\\Planton\\Digitalocean\\Digitaloceandnszone\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Digitalocean::Digitaloceandnszone::V1alpha1b\x06proto3"
 
 var (
@@ -288,6 +311,7 @@ func file_catalog_digitalocean_digitaloceandnszone_v1alpha1_spec_proto_init() {
 	if File_catalog_digitalocean_digitaloceandnszone_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_digitalocean_digitaloceandnszone_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

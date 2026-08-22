@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsssmparameter
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWS Systems Manager
+      sku_meter: advanced parameter storage
+      pricing_unit: parameter-hours
+      description: An Advanced-tier parameter bills $0.05 per parameter-month, prorated hourly from the hour it is created -- value read or not. Standard tier is permanently free; the one field flips the whole committed bill.
+  cost_drivers:
+    - field_path: tier
+      sku_meter: advanced parameter storage
+      pricing_unit: parameter-hours
+      impact: "The whole committed bill hangs on this one field: unset or Standard is permanently free, while Advanced bills $0.05 per parameter per month (prorated hourly, from the AWS Systems Manager pricing page) for every hour the parameter exists -- value read or not. Intelligent-Tiering lets AWS pick the concrete tier per write, so its committed cost is indeterminate from the manifest, and a later Advanced-to-Standard downgrade forces replacement."
+    - field_path: region
+      sku_meter: advanced parameter storage
+      pricing_unit: parameter-hours
+      impact: The Advanced per-parameter rate and the per-10,000 API-interaction rate are published per region; the parameter bills in the region it lives in.
+    - field_path: key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A SecureString under a customer-managed key spends one KMS request per encrypted write and per decrypted read -- billed on the referenced AwsKmsKey along with its monthly key fee. The default AWS-managed aws/ssm key carries no monthly fee.
+  free_tier: Standard-tier parameters are free of charge as a permanent part of the price structure -- no count cap AWS bills past, no trial window. Advanced parameters have no free allowance; the meter starts the hour the parameter is created.
+  estimate_exclusions:
+    - an Advanced parameter's API interactions bill $0.05 per 10,000 from the first read or write (each parameter touched by a request counts as one interaction) -- read frequency is workload-driven and invisible to this manifest
+    - Standard-tier API interactions are free at standard throughput; flipping the ACCOUNT-level higher-throughput switch (not a field of this manifest) makes every interaction with every parameter bill per 10,000
+    - customer-managed KMS key charges (monthly key fee, per-request charges for SecureString encrypt/decrypt) bill on the referenced AwsKmsKey component
+  notes: "The tier cliff is the whole story: the same name-plus-value manifest is free forever at Standard and a metered resource at Advanced -- what Advanced buys is 8KB values, parameter policies, and higher parameter counts. Charges for Advanced parameters stored less than a month are prorated hourly per AWS's published terms. Intelligent-Tiering is resolved server-side per write to Standard or Advanced, so reads never report Intelligent-Tiering and the manifest alone cannot say whether the meter runs."

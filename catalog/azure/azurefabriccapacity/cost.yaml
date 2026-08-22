@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefabriccapacity
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Microsoft Fabric
+      sku_meter: capacity compute
+      pricing_unit: CU-hours
+      description: A running capacity bills its full Capacity Unit count every hour at the pay-as-you-go CU-hour rate, from creation -- whether the workloads inside consume the CUs or not. The F-SKU number IS the CU count (F2 = 2 CUs, F64 = 64 CUs).
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: capacity compute
+      pricing_unit: CU-hours
+      impact: The only cost dial on the resource -- each step of the F2..F2048 ladder doubles the CU count and with it the hourly bill. The SKU scales up and down IN PLACE, so right-sizing is an update, not a rebuild. F64 is the first tier where Power BI report consumers need no Pro license.
+  estimate_exclusions:
+    - OneLake storage bills per GB-month on its own meters ('OneLake Storage Hot Data Stored' and its cool/cold tiers), following data volume
+    - capacity overage consumption, where enabled, bills its own CU meter ('Capacity Overage Capacity Usage CU') beyond the provisioned CUs
+    - Power BI Pro/Premium Per User licenses for report consumers below F64 are Microsoft 365 licensing outside Azure billing
+  notes: "Pause/resume is the cost lever the SKU ladder does not show: a suspended capacity stops the CU-hour meter entirely while its OneLake data keeps billing storage. The always-on figure (CU count x 730 hours) is the ceiling for a capacity that never pauses."

@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskarpenternodepool
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - karpenter.sh
+        resources:
+          - nodepools
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "The modules render exactly ONE object: the cluster-scoped karpenter.sh/v1 NodePool named after metadata.name (kubectl_manifest.node_pool in Terraform, server-side applied with no wait; the typed karpenterv1.NewNodePool custom resource in Pulumi). The karpenter.sh CRDs must already exist -- a KubernetesKarpenter controller install is the prerequisite -- and the machines the pool launches are created by that controller under ITS identity, never by the runner. The launched nodes' cloud-side permissions (EC2 launch, IAM instance profile) ride the controller's IRSA role and the referenced node class, not this manifest."

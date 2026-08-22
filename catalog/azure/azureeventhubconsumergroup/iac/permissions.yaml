@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhubconsumergroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageConsumerGroup
+        actions:
+          - Microsoft.EventHub/namespaces/eventHubs/consumergroups/read
+          - Microsoft.EventHub/namespaces/eventHubs/consumergroups/write
+          - Microsoft.EventHub/namespaces/eventHubs/consumergroups/Delete
+        provenance: derived
+        notes: Covers azurerm_eventhub_consumer_group -- create, read/refresh, user_metadata updates, and destroy, addressed by the resource group, namespace, and hub names the module parses from event_hub_id. Azure's operation inventory spells these with camel-case eventHubs and a capital-D Delete.

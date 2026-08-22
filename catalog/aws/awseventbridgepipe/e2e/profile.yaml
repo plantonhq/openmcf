@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awseventbridgepipe
+spec:
+  # An SQS-to-SQS pipe RUNNING against empty queues (per-event billing,
+  # zero events, $0): filter + batch tuning + input template, under a
+  # consumer-scoped pipes-trusting role. Creates and deletes ride the
+  # pipe's provisioning state machine (the provider waits up to 30
+  # minutes; healthy creates land in ~1-2).
+  #
+  # Deliberately not exercised live:
+  #   - the stream/Kafka/MQ source families and the 10 non-SQS target
+  #     families -- each needs its service's fixture chain (Kinesis and
+  #     DynamoDB fixtures exist; MSK/MQ do not). The SQS pair is the
+  #     family representative; the spec's at-most-one CELs and the
+  #     ConflictsWith-mirroring unions are the load-bearing guards.
+  #     Unblock: per-family scenarios on their fixture chains.
+  #   - enrichment -- needs a Lambda or API-destination fixture wired as
+  #     the enrichment step. Unblock: compose the proven AwsLambda
+  #     fixture chain.
+  #   - log_configuration -- a per-consumer log group fixture (the
+  #     log-group kind publishes no shared install profile). Unblock:
+  #     the awscwlad consumer-scoped pattern.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q45
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 40

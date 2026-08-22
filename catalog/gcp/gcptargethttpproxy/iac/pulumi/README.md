@@ -15,7 +15,7 @@ A target HTTP proxy binds a global forwarding rule (the VIP) to a URL map (the r
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.targetHttpProxies.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 6. **A URL map** — a `GcpUrlMap` whose `self_link` you wire in
 
 ## Directory Structure

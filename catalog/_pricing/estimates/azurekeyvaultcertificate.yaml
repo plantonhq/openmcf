@@ -1,0 +1,46 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurekeyvaultcertificate
+spec:
+  presets:
+    - preset: 01-self-signed-auto-renew
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each AUTO_RENEW the vault performs bills 3.00 USD per certificate renewal request -- with 12-month validity renewing at 80% lifetime, roughly one charge every 9.6 months, a cadence a monthly estimate cannot honestly place
+        - all other certificate operations (the initial self-signed enrollment, policy updates, reads) bill the parent vault's operations meter at 0.03 USD per 10,000 transactions, with no free grant
+        - consumer reads of the certificate's secret and key faces bill the same operations meter; this preset's RSA 2,048-bit software key stays on the base rate (advanced key types would bill 0.15 USD per 10,000)
+        - HSM per-key monthly charges cannot occur here -- the key type is software-protected RSA
+      notes: Zero committed cost -- self-signed issuance has no CA fee and no holding charge; the first money is the vault operation that enrolls it, and the first recurring money is the 3.00 USD renewal when the 80%-lifetime trigger fires.
+    - preset: 02-imported-bundle
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the import itself and every later re-import (each a new version) bill the parent vault's operations meter at 0.03 USD per 10,000 transactions
+        - a renewal performed through the vault would bill 3.00 USD per renewal request -- this preset carries no policy, so renewal is a manual re-import and the renewal meter stays untouched unless one is requested
+        - consumer reads of the certificate's secret and key faces bill the vault's operations meter (0.03 USD per 10,000; 0.15 USD per 10,000 if the imported key is RSA 3,072/4,096-bit or elliptic-curve)
+        - whatever the purchased certificate cost at its public CA is the CA's invoice, never an Azure meter
+      notes: "Zero committed cost -- an imported bundle just sits there: no storage charge, no version charge, and Azure never re-bills what the CA already charged."
+    - preset: 03-ca-pending-csr
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the CSR enrollment, its eventual merge, policy updates, and reads bill the parent vault's operations meter at 0.03 USD per 10,000 transactions
+        - a renewal request through the vault bills 3.00 USD -- this preset's Unknown issuer makes renewal inherently manual (EMAIL_CONTACTS only notifies, and notification emails are free), so the meter moves only when a human re-enrolls
+        - consumer reads of the certificate's secret face bill the vault's operations meter; the non-exportable RSA 2,048-bit key's operations stay on the base rate
+        - the out-of-band CA's signing fee is the CA's invoice, never an Azure meter
+      notes: Zero committed cost -- a pending CSR is free to hold, expiry notification is free, and every Azure charge this certificate can generate is an operation someone chooses to make.

@@ -1,0 +1,23 @@
+# Minimal DigitalOceanDnsZone: a bare zone with no records. Proves the full
+# create/verify/destroy lifecycle and the zone_name/zone_id outputs. The
+# domain name carries the run token because DigitalOcean domain names are
+# unique across ALL accounts -- a fixed name would eventually collide.
+# The reserved `minimal` name also serves as the DigitalOceanDnsRecord
+# kind's install fixture: the harness installs registry prerequisites from
+# a kind's prerequisite.yaml when present, else from this scenario.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsZone
+metadata:
+  name: planton-oss-e2e-digitaloceandnszone-min
+  id: planton-oss-e2e-digitaloceandnszone-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandnszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domainName: pltn-e2e-min-${E2E_RUN_ID}.com

@@ -1,0 +1,79 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremssqlserver
+spec:
+  azure:
+    groups:
+      - purpose: ManageLogicalServer
+        actions:
+          - Microsoft.Sql/servers/read
+          - Microsoft.Sql/servers/write
+          - Microsoft.Sql/servers/delete
+        provenance: derived
+        notes: Covers azurerm_mssql_server -- create (polled to completion; the Entra administrator rides in the create payload), read/refresh, in-place updates, and destroy.
+      - purpose: ManageConnectionPolicy
+        actions:
+          - Microsoft.Sql/servers/connectionPolicies/read
+          - Microsoft.Sql/servers/connectionPolicies/write
+        provenance: derived
+        notes: The provider writes the connection policy sub-resource on EVERY create and update -- even when connection_policy is unset it writes Default -- and reads it on every refresh. No delete exists; the policy lives and dies with the server.
+      - purpose: ManageVulnerabilityAssessment
+        actions:
+          - Microsoft.Sql/servers/sqlVulnerabilityAssessments/read
+          - Microsoft.Sql/servers/sqlVulnerabilityAssessments/write
+        provenance: derived
+        notes: The provider unconditionally writes the express vulnerability-assessment setting on every create and update (Enabled or Disabled, tracking express_vulnerability_assessment_enabled) and reads it on every refresh -- the grant is needed even when the feature stays off.
+      - purpose: ManageEntraAdministrator
+        actions:
+          - Microsoft.Sql/servers/administrators/read
+          - Microsoft.Sql/servers/administrators/write
+          - Microsoft.Sql/servers/administrators/delete
+          - Microsoft.Sql/servers/azureADOnlyAuthentications/read
+          - Microsoft.Sql/servers/azureADOnlyAuthentications/write
+          - Microsoft.Sql/servers/azureADOnlyAuthentications/delete
+        provenance: derived
+        notes: Exercised on updates to azuread_administrator -- the provider drives the administrators sub-API directly (create-or-update, existence read, delete on removal), and toggling azuread_authentication_only writes or deletes the azureADOnlyAuthentications sub-resource, polling it back with reads until ARM reflects the change.
+      - purpose: ReadRestorableDroppedDatabases
+        actions:
+          - Microsoft.Sql/servers/restorableDroppedDatabases/read
+        provenance: derived
+        notes: Every read/refresh lists the server's restorable dropped databases to populate the resource's restorable_dropped_database_ids attribute -- exercised on every plan even though this module surfaces no output from it.
+      - purpose: ManageFirewallRules
+        actions:
+          - Microsoft.Sql/servers/firewallRules/read
+          - Microsoft.Sql/servers/firewallRules/write
+          - Microsoft.Sql/servers/firewallRules/delete
+        provenance: derived
+        notes: Covers the azurerm_mssql_firewall_rule resources materialized from the spec's firewall_rules list -- one CRUD cycle per declared IPv4 allowlist rule. Only exercised when rules are declared.
+      - purpose: ManageVirtualNetworkRules
+        actions:
+          - Microsoft.Sql/servers/virtualNetworkRules/read
+          - Microsoft.Sql/servers/virtualNetworkRules/write
+          - Microsoft.Sql/servers/virtualNetworkRules/delete
+        provenance: derived
+        notes: Covers the azurerm_mssql_virtual_network_rule resources from virtual_network_rules -- create is polled to completion; the referenced subnet is passed by ID and never read, so no Microsoft.Network grant is needed. Only exercised when rules are declared.
+      - purpose: ManageOutboundFirewallRules
+        actions:
+          - Microsoft.Sql/servers/outboundFirewallRules/read
+          - Microsoft.Sql/servers/outboundFirewallRules/write
+          - Microsoft.Sql/servers/outboundFirewallRules/delete
+        provenance: derived
+        notes: Covers the azurerm_mssql_outbound_firewall_rule resources from outbound_firewall_rules -- one CRUD cycle per allowed outbound FQDN. Only exercised when outbound restriction is configured.
+      - purpose: ManageExtendedAuditing
+        actions:
+          - Microsoft.Sql/servers/extendedAuditingSettings/read
+          - Microsoft.Sql/servers/extendedAuditingSettings/write
+        provenance: derived
+        notes: Covers azurerm_mssql_server_extended_auditing_policy, created when the spec declares extended_auditing. ARM has no delete for auditing settings -- destroy writes the policy back to Disabled, so write covers teardown too.
+      - purpose: ManageSecurityAlertPolicy
+        actions:
+          - Microsoft.Sql/servers/securityAlertPolicies/read
+          - Microsoft.Sql/servers/securityAlertPolicies/write
+        provenance: derived
+        notes: Covers azurerm_mssql_server_security_alert_policy, created when the spec declares security_alert_policy. ARM has no delete here either -- destroy writes the policy back to Disabled and reads it to confirm.

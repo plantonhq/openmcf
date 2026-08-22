@@ -26,7 +26,3 @@ Creates an Azure Monitor data collection rule (DCR) -- the routing table declari
 - **`sampling_frequency_in_seconds` must be exactly 60** for streams targeting `Microsoft-InsightsMetrics` (Azure enforces at deploy time).
 - **Name, resource group, and region are ForceNew**; everything else updates in place (except `kind`, per above).
 - **Billing**: the rule object itself is free; you pay for the telemetry it lands (workspace ingestion, storage, Event Hub throughput).
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Insights/dataCollectionRules/*` (Monitoring Contributor covers it) plus read on the referenced destinations.

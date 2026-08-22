@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmskserverlesscluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MSK Serverless encrypts all data at rest with service-managed keys issued through AWS KMS -- always on, with no toggle to disable and no unencrypted mode.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Serverless clusters offer no customer-managed-key slot -- the CreateClusterV2 serverless request carries no encryption configuration, so the service-managed key is the only option. Choosing your own KMS key for data at rest is a provisioned-cluster capability (AwsMskCluster).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All client traffic rides TLS -- the mandatory SASL/IAM listener (port 9098) accepts only SASL_SSL connections, and AWS states serverless clusters encrypt all traffic in transit. The plaintext listener option that provisioned MSK offers does not exist here.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Clients reach a serverless cluster only through the network interfaces AWS provisions in the referenced subnets (private connectivity powered by AWS PrivateLink) -- there is no public-access option to turn on, unlike provisioned MSK's public endpoints.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_configs.security_group_ids
+      evidence:
+        type: spec_default
+        reference: The referenced security groups attach directly to each placement's client-facing network interfaces and decide what can reach the brokers; omitted, AWS attaches the VPC's default security group -- whatever that group happens to allow. The ingress rule for port 9098 belongs on the referenced AwsSecurityGroup nodes.
+      notes: Each VPC placement carries its own security groups (maximum 5), keeping per-VPC network policy where that VPC's clients live.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Kafka's binary protocol has no WAF attachment point -- request filtering products speak HTTP, not the Kafka wire protocol. Network-level guarding is the referenced security groups' job.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both planes are IAM-governed unconditionally -- cluster management (create, describe, delete) authorizes through kafka:* IAM actions, and every client operation (connect, produce, consume, topic administration) authorizes through kafka-cluster:* IAM actions scoped to cluster, topic, and group ARNs. Apache Kafka ACLs are not supported on serverless clusters; IAM policy is the only authorization language.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The cluster authenticates callers; it never authenticates AS anything. That said, its mandatory SASL/IAM scheme means producing and consuming workloads sign with AWS credentials -- short-lived role credentials on EC2/EKS/Lambda -- and no static Kafka password can exist; the keyless posture of each caller lives on the calling workload's own role wiring.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SASL/IAM is the only client-authentication scheme serverless MSK supports, and it is mandatory -- SASL/SCRAM, mTLS, plaintext, and unauthenticated access do not exist on this cluster type. Both modules hardcode the IAM scheme because AWS offers nothing weaker to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- CreateClusterV2, DescribeClusterV2, DeleteCluster, tagging -- lands in AWS CloudTrail unconditionally, and MSK logs IAM access-control events so client authentication and authorization decisions are auditable.
+      notes: Serverless clusters offer no broker-log delivery (the LoggingInfo surface is a provisioned-cluster capability), so per-message data-plane logging is not available on this cluster type.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Serverless clusters publish per-topic CloudWatch metrics (bytes in/out, messages in, consumer lag) under AWS/Kafka automatically at the DEFAULT monitoring level -- no configuration exists or is needed on this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Kafka is a retention-bounded stream, not a backed-up store -- neither the serverless API nor this spec carries a backup facility. Durability comes from AWS-managed replication across availability zones; data that must outlive its retention window belongs in a downstream sink (S3, a database) that consumers write.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to configure. Topic retention (retention.ms / retention.bytes, defaults 7 days / 250 GiB per partition) governs LIVE stream data through the Kafka admin API, outside this manifest -- a storage-cost dial, not a backup policy.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MSK Serverless creates two replicas of every partition and places them in different availability zones, and automatically detects and recovers failed backend resources -- replication is AWS-managed with no single-AZ mode to opt into.
+      notes: Client-path redundancy is the manifest's share -- spread vpc_configs.subnet_ids across at least two availability zones so client access does not hinge on one zone's network interfaces.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the MSK API nor this spec offers a deletion-protection flag for serverless clusters -- a destroy deletes the cluster and its retained stream data. The resource is otherwise effectively immutable (every field is create-time), so the manifest's own change surface is small.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS owns the entire runtime -- Kafka version, broker software, and infrastructure are managed and patched by the service, with no version field to pin and no maintenance window to schedule. The spec deliberately carries no Kafka version because serverless MSK has none to choose.

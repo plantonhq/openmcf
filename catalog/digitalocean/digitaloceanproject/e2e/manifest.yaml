@@ -1,0 +1,25 @@
+# Reference manifests for DigitalOceanProject -- protovalidate-valid,
+# embedded as the reference page's Example block, and the documents the
+# offline tofu plans render. Two documents: a bare project, and a fully
+# populated one with membership by literal URN.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: web-team
+spec:
+  projectName: web-team
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: web-production
+spec:
+  projectName: web-production
+  description: Production web workloads
+  purpose: Web Application
+  environment: production
+  resources:
+    # Literal URNs; use valueFrom with an explicit kind to reference the
+    # producing resource's urn output instead.
+    - value: do:droplet:123456
+    - value: do:space:web-assets

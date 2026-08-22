@@ -1,0 +1,69 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurebastionhost
+spec:
+  presets:
+    - preset: 01-basic-host
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Bastion
+          sku_meter: gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one BASIC host bills its flat hourly gateway meter around the clock (x 730); the SKU's fixed 2 instances are part of the base rate, and BASIC has no additional-instance meter to reach
+          list_unit_price: "0.19"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Basic Gateway' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "138.7000"
+      total_list_cost: "138.7000"
+      exclusions:
+        - outbound data transfer through sessions bills per GB in volume tiers after the free 5 GB/month
+        - the referenced Standard public IP bills hourly on its own component
+      notes: Billing runs from provisioning until deletion, sessions or no sessions -- an idle jump host costs the same as a busy one.
+    - preset: 02-standard-tunneling
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Bastion
+          sku_meter: gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one STANDARD host bills its flat hourly gateway meter around the clock (x 730), with the first 2 scale units included in the base rate
+          list_unit_price: "0.29"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Standard Gateway' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "211.7000"
+        - service_name: Azure Bastion
+          sku_meter: additional instance hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: scale_units 4 means 2 units ride the base rate and 2 bill the additional-instance meter -- 2 x 730 hours
+          list_unit_price: "0.14"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Standard Additional Gateway' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "204.4000"
+      total_list_cost: "416.1000"
+      exclusions:
+        - outbound data transfer through sessions bills per GB in volume tiers after the free 5 GB/month
+        - the referenced Standard public IP bills hourly on its own component
+      notes: The feature toggles this preset enables (tunneling, file copy, IP connect) gate on the STANDARD SKU but add no meters -- capacity (scale_units) is the only dial beyond the SKU itself, adjustable in place.
+    - preset: 03-developer
+      region_assumption: eastus2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - outbound data transfer through sessions bills per GB in volume tiers after the free 5 GB/month
+        - the target virtual machines bill on their own components
+      notes: "The DEVELOPER SKU is genuinely free: Azure-hosted shared infrastructure with no gateway meter at all (the Retail Prices API carries no Developer meter -- verified), no dedicated subnet, and no public IP. The estimate totals to zero because the committed spend IS zero; the real money lives in outbound data transfer and the VMs being reached. The trade is capability: one connection per user, no feature knobs, limited regions."

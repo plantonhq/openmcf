@@ -1,0 +1,61 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureSearchService manifest's spec values into metered quantities and
+# price choices -- the billable search-unit product (replicas x
+# partitions) at the sku's SU-hour rate. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/azuresearchservice.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuresearchservice
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+  lines:
+    - sku_meter: search units
+      applies_when:
+        - field_path: sku
+          op: not_equals
+          value: free
+      quantity:
+        - field_value:
+            field_path: replica_count
+            default_when_unset: "1"
+        - field_value:
+            field_path: partition_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Azure Cognitive Search
+        pricing_unit: hours
+        attributes:
+          - key: search_sku
+            from_field: sku
+      basis: search units = replicas x partitions (each defaults to 1, the service default when unset) x 730 hours at the sku's per-SU hourly rate
+  exclusions:
+    - applies_when:
+        - field_path: semantic_search_sku
+          op: equals
+          value: standard
+      text: semantic ranking bills per 1,000 semantic queries (the 'Semantic Ranker queries' meter) on top of the search-unit hours, following query volume
+    - applies_when:
+        - field_path: shared_private_link_services
+          op: is_set
+      text: shared private links to data sources accrue charges outside the search-unit meter
+    - text: indexer AI enrichment (document cracking, custom skills) bills usage meters that follow document volume
+    - text: network egress follows client placement
+  notes:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: free
+      text: The free tier's own meter is a published 0.00 ('Free Unit'), capped at one replica and one partition with no SLA -- the committed spend is genuinely zero.
+    - applies_when:
+        - field_path: semantic_search_sku
+          op: equals
+          value: free
+      text: The free semantic tier is capped by Microsoft and adds no charge.

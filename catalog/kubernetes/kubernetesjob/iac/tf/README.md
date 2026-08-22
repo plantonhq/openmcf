@@ -7,11 +7,11 @@ This Terraform module deploys a KubernetesJob to a Kubernetes cluster.
 The module creates the following Kubernetes resources:
 
 1. **Namespace** (optional) - Created if `create_namespace: true`
-2. **ServiceAccount** - For pod identity and RBAC
-3. **ConfigMaps** - From `spec.config_maps`
-4. **Secret** - For environment secrets with direct values
-5. **Image Pull Secret** (optional) - If Docker credentials are provided
-6. **Job** - The main batch workload
+2. **Secret** (optional) - For environment secrets with direct values
+3. **Image Pull Secret** (optional) - If Docker credentials are provided
+4. **Job** - The main batch workload
+
+The module never creates ServiceAccounts, RBAC objects, or ConfigMaps -- pods run as the ServiceAccount referenced in `spec.pod.service_account` (composed through KubernetesServiceAccount and KubernetesRbac resources), and configuration composes through KubernetesConfigMap resources. The Kubernetes permissions the IaC runner needs are declared in `../permissions.yaml`.
 
 ## Usage
 
@@ -147,8 +147,7 @@ module "kubernetes_job" {
 |------|-------------|
 | namespace | The Kubernetes namespace |
 | job_name | The name of the Job |
-| service_account_name | The service account name |
-| resource_id | The unique resource ID |
+| selector_labels | Labels selecting the Job's pods |
 
 ## Requirements
 
@@ -160,10 +159,8 @@ module "kubernetes_job" {
 ## Resources Created
 
 - `kubernetes_namespace` (conditional)
-- `kubernetes_service_account`
-- `kubernetes_secret` (for env secrets and image pull)
-- `kubernetes_config_map` (for each config_map entry)
-- `kubernetes_job`
+- `kubernetes_secret_v1` (conditional -- env secrets and image pull)
+- `kubernetes_job_v1`
 
 ## Notes
 

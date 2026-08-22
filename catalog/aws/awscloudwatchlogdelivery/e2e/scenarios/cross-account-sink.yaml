@@ -1,0 +1,44 @@
+# The legacy cross-account arm live: a named Kinesis-backed
+# subscription destination with its access policy, on the stream
+# fixture and the consumer-scoped logs-trusting role. Proves the
+# IAM-propagation retry window, the policy attach, and the real
+# destination delete (the policy's own delete is a provider no-op -
+# the destroy path proves the destination removal carries it away).
+# ~$0: the on-demand stream fixture lives minutes.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogDelivery
+metadata:
+  name: planton-oss-e2e-awscwld-sink
+  id: planton-oss-e2e-awscwld-sink
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchlogdelivery
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsKinesisStream,AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  crossAccountDestination:
+    name: planton-oss-e2e-awscwld-sink
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-awscwld-sink
+        fieldPath: status.outputs.role_arn
+    targetArn:
+      valueFrom:
+        kind: AwsKinesisStream
+        name: planton-oss-e2e-awskinesisstream-prereq
+        fieldPath: status.outputs.stream_arn
+    accessPolicy:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:root
+          Action: logs:PutSubscriptionFilter
+          Resource: "*"

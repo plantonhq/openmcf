@@ -1,0 +1,26 @@
+# Minimal DigitalOceanDatabaseCluster: single-node PostgreSQL on the
+# cheapest managed-database slug, no VPC, no tuning. Proves the full
+# create/verify/destroy lifecycle and the cluster_id / host / port /
+# connection outputs. Named `minimal` so it doubles as this kind's install
+# profile when database satellites compose it as a fixture.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasecluster-min
+  id: planton-oss-e2e-digitaloceandatabasecluster-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-dodb-min
+  engine: pg
+  engineVersion: "16"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1

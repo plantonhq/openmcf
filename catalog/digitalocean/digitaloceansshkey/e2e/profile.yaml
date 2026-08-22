@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceansshkey
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. ONE scenario: `minimal` IS the kind's total surface (two
+  # arguments) -- it registers a throwaway ed25519 key and proves the
+  # lifecycle plus the numeric-id/fingerprint outputs, including the
+  # numeric-id-only blind import (fingerprints do not import). Deliberately
+  # not in the live lanes: in-place rename (the runner has no update
+  # phase; a rename arm is a proof-lane watch item, exercised when the
+  # runner grows one). Keys are free API objects, seconds-fast.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

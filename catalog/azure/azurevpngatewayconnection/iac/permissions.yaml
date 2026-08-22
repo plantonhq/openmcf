@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevpngatewayconnection
+spec:
+  azure:
+    groups:
+      - purpose: ManageVpnConnections
+        actions:
+          - Microsoft.Network/vpnGateways/vpnConnections/read
+          - Microsoft.Network/vpnGateways/vpnConnections/write
+          - Microsoft.Network/vpnGateways/vpnConnections/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_gateway_connection / network.VpnGatewayConnection -- create, refresh (the connection GET embeds every link's state), in-place tunnel updates, and destroy. The connection is an ARM child of the gateway, so its actions live under the vpnGateways namespace and authorize on the gateway's scope. All are included in Azure's built-in Network Contributor role, the coarse grant this manifest replaces.
+      - purpose: ReadVpnSite
+        actions:
+          - Microsoft.Network/vpnsites/read
+          - Microsoft.Network/vpnSites/vpnSiteLinks/read
+        provenance: derived
+        notes: The modules never call the site API -- they pass the resolved remote_vpn_site_id and each link's vpn_site_link_id in the connection payload -- but ARM validates the referenced site and its links at create (service-side). The casing is Microsoft's own providerOperations inventory verbatim -- the site resource type is inventoried lowercase (vpnsites/read) while its links subresource is camel-cased (vpnSites/vpnSiteLinks/read); spell both exactly.
+      - purpose: ReadReferencedRoutingAndNat
+        actions:
+          - Microsoft.Network/virtualHubs/hubRouteTables/read
+          - Microsoft.Network/virtualHubs/routeMaps/read
+          - Microsoft.Network/vpnGateways/natRules/read
+        provenance: derived
+        notes: Service-side reads on optional cross-resource references -- required only when the manifest uses them. A configured routing block names hub route tables (association and propagation) and optionally route maps; tunnels can opt into gateway NAT rules via egress/ingress NAT rule id lists. ARM authorizes each referenced id against its own scope at create; a manifest using none of these needs none of them.

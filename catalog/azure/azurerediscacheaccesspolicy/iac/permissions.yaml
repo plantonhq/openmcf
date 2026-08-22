@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurerediscacheaccesspolicy
+spec:
+  azure:
+    groups:
+      - purpose: ManageAccessPolicy
+        actions:
+          - Microsoft.Cache/redis/accessPolicies/read
+          - Microsoft.Cache/redis/accessPolicies/write
+          - Microsoft.Cache/redis/accessPolicies/delete
+        provenance: derived
+        notes: Covers azurerm_redis_cache_access_policy -- create (polled to completion), read/refresh, in-place permissions updates, and destroy, addressed as a child of the cache parsed from redis_cache_id (the cache itself is never read; no secondary calls exist).

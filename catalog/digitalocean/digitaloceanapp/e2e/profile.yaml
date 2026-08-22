@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanapp
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, tofu validate green, checker-green parity
+  # manifest, import map, presets, README/catalog/GUIDE). Live
+  # dual-engine proof has not yet run. TWO scenarios: `minimal` is a
+  # public Docker Hub nginx image (no GitHub connection, no private
+  # registry) proving the image-source service path; `composed` is a
+  # service plus a worker from public images proving the multi-component
+  # app spec. Deliberately not in the live lanes: GitHub deploy_on_push
+  # (needs a linked GitHub account), custom domains (needs a delegated
+  # zone), VPC placement / maintenance / liveness probes / ingress
+  # authority and secure_header / alert destinations (Pulumi SDK gaps
+  # at v4.49.0 -- Terraform wires them; Pulumi fails loudly if set).
+  # App Platform image deploys typically finish in a few minutes;
+  # basic-xxs bills ~$5/month, so a minutes-long lane is cents.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 25

@@ -1,0 +1,11 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: web-frontdoor-ip
+spec:
+  region: nyc3
+  droplet:
+    valueFrom:
+      kind: DigitalOceanDroplet
+      name: web-server
+      fieldPath: status.outputs.droplet_id

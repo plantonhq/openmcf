@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscodepipeline
+spec:
+  aws:
+    statements:
+      - sid: ManagePipeline
+        actions:
+          - codepipeline:CreatePipeline
+          - codepipeline:GetPipeline
+          - codepipeline:UpdatePipeline
+          - codepipeline:DeletePipeline
+        resources:
+          - arn:aws:codepipeline:*:*:*
+        provenance: derived
+        notes: Covers aws_codepipeline / codepipeline.Pipeline, the module's single resource -- stages, actions, triggers, variables, and stage conditions are all facets of the one pipeline document, so create/read/update/delete is the whole lifecycle. CodePipeline's pipeline ARN carries the pipeline name directly after the account with NO resource-type prefix (arn:aws:codepipeline:region:account:pipeline-name), so the trailing wildcard is the name position -- it also happens to match the service's stage/action sub-ARNs, which extend the pipeline ARN.
+      - sid: ManagePipelineTags
+        actions:
+          - codepipeline:TagResource
+          - codepipeline:UntagResource
+          - codepipeline:ListTagsForResource
+        resources:
+          - arn:aws:codepipeline:*:*:*
+        provenance: derived
+        notes: Tag reconciliation on the pipeline -- the provider tags at create, reads tags back on refresh, and adjusts on update. The service reference authorizes these three actions on pipeline, actiontype, and webhook ARNs; this module only ever targets the pipeline.
+      - sid: PassPipelineRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreatePipeline and UpdatePipeline pass every role the manifest references -- role_arn (required; the service role CodePipeline assumes for artifact movement and action dispatch), each action's optional role_arn override (cross-account deploys, narrowed per-step roles), and each condition rule's role_arn. Add an iam:PassedToService=codepipeline.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment.

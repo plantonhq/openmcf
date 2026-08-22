@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkaconnect
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Connect workers are stateless -- connector configurations, offsets, and status persist in three internal topics on the target Kafka cluster, so encryption at rest is that cluster's storage posture, not this component's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The component stores no data of its own (see enc-at-rest); customer-managed keys apply to the target Kafka cluster's storage, which this spec has no seam for.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Unset means the workers connect to Kafka in plaintext (only sensible against plaintext listeners); tls.trusted_certificates trusts the target cluster's CA so the connection is served over TLS.
+      notes: "The 02-debezium-prebuilt-image preset connects to a TLS listener trusting the cluster CA Secret. The Connect REST API service is plain HTTP but in-cluster only and read-only in practice -- connector management is declarative (see rbac)."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the operator creates only a ClusterIP REST API service (<name>-connect-api), so the Connect cluster is reachable solely inside the cluster network and the workers dial OUT to Kafka.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec models no ingress or exposure seam -- the only inbound surface is the in-cluster ClusterIP REST service the operator creates. Restricting the network path to it is a Kubernetes NetworkPolicy concern (separate resources).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Connect cluster serves no HTTP edge traffic to users -- web application firewalls do not apply. The REST API is in-cluster inspection only.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: "The modules always annotate the KafkaConnect CR strimzi.io/use-connector-resources: \"true\", so connector management flows through KubernetesKafkaConnector resources governed by the target cluster's Kubernetes RBAC -- the operator reverts changes made through the Connect REST API that it does not own."
+      notes: Data-plane access to Kafka itself is governed by the target cluster's listener authentication and ACLs against the principal declared in authentication.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The workers authenticate to Kafka with the declared mechanism (mutual TLS or SCRAM credentials read from Kubernetes Secrets) -- there is no cloud API access in this component and no seam for platform-issued cloud identities. Connectors reaching cloud services carry their own credentials on their KubernetesKafkaConnector declarations.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authentication
+      evidence:
+        type: spec_default
+        reference: Unset connects unauthenticated (only possible against unauthenticated listeners); the authentication arms are modern mechanisms -- mutual TLS, SCRAM-SHA-512/256, plain over TLS, or a custom SASL mechanism -- matched to the target listener.
+      notes: The 02-debezium-prebuilt-image preset authenticates with scram-sha-512 credentials from an operator-generated Secret.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Worker activity logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled. Changes to the Connect cluster and its connectors are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Unset serves no metrics; enabled renders the canonical Strimzi JMX Prometheus Exporter rules ConfigMap and wires it as the cluster's metricsConfig, exposing worker, connector, and task metrics on port 9404 in every worker pod.
+      notes: The 02-debezium-prebuilt-image preset enables metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The workers hold no state to back up -- connector configurations, offsets, and status live in Kafka topics on the target cluster, whose durability comes from topic replication (the storage replication factors set in config) and the Kafka cluster's own resilience posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the internal topics' retention is governed by the target Kafka cluster.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (a single worker, no failover); multiple workers share and re-balance connector tasks through the Connect group protocol, so a lost worker's tasks move to survivors. Zone spreading is the scheduler's default topology behavior -- the spec models no anti-affinity seam.
+      notes: The 02-debezium-prebuilt-image and 03-operator-built-image presets run 3 workers. rack.topology_key adds zone-aware replica fetching, an efficiency posture rather than an availability one.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Strimzi offers a deletion-protection flag on the KafkaConnect resource; protection is operational (namespace RBAC, change review). Deleting the CR removes the workers but not the internal topics on the Kafka cluster.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: version empty runs the operator's default Kafka version (the newest the pinned Strimzi release supports), so patch releases arrive with operator upgrades and the cluster operator rolls the workers automatically; pinning version or image makes changes deliberate.

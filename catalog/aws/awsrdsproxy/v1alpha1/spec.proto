@@ -1,0 +1,346 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrdsproxy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsRdsProxySpec defines one RDS Proxy - the managed connection pool
+// that sits between connection-hungry applications (Lambda above all)
+// and a database - with its connection-pool tuning, additional
+// endpoints, and database target managed in-line.
+//
+// The proxy authenticates clients with IAM or native credentials and
+// signs in to the database with credentials read from Secrets Manager
+// (the auth entries below) under the IAM role you provide. The proxy
+// name is wired from metadata.name.
+//
+// Fixed for life at the provider: engine_family, the proxy's subnets,
+// and both network-type dials - changing any of them replaces the
+// proxy (its endpoint DNS names change with it).
+message AwsRdsProxySpec {
+  // Endpoint names key the for_each on both engines and the endpoint
+  // output maps.
+  option (buf.validate.message).cel = {
+    id: "spec.endpoint_names_unique"
+    message: "endpoint names must be unique within the proxy"
+    expression: "this.endpoints.map(e, e.name).unique()"
+  };
+
+  // The AWS region the proxy lives in. Example: "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The database engine family the proxy speaks. Must match the
+  // target database's engine. Fixed for life.
+  string engine_family = 2 [(buf.validate.field).string = {
+    in: [
+      "MYSQL",
+      "POSTGRESQL",
+      "SQLSERVER"
+    ]
+  }];
+
+  // The IAM role the proxy assumes to read database credentials from
+  // Secrets Manager. Its policy needs secretsmanager:GetSecretValue
+  // on every secret in auth (plus kms:Decrypt when the secrets use a
+  // customer-managed key), and its trust policy must allow
+  // rds.amazonaws.com to assume it. Reference an AwsIamRole role_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The subnets the proxy places its network interfaces in. AWS
+  // requires at least two, in different availability zones. Fixed for
+  // life. Reference AwsSubnet subnet_id outputs or pass literal
+  // subnet-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_subnet_ids = 4 [
+    (buf.validate.field).repeated.min_items = 2,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The security groups on the proxy's network interfaces - they must
+  // allow the applications in and the database out. Empty uses the
+  // VPC's default security group. Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal sg-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_security_group_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // How the proxy signs in to the database: one entry per Secrets
+  // Manager secret holding database credentials (multiple entries
+  // let different applications use different database users through
+  // one proxy).
+  repeated AwsRdsProxyAuth auth = 6 [(buf.validate.field).repeated.min_items = 1];
+
+  // Require TLS on client connections to the proxy. Strongly
+  // recommended with IAM authentication (IAM auth REQUIRES TLS at
+  // connect time).
+  bool require_tls = 7;
+
+  // Seconds a client connection may sit idle before the proxy closes
+  // it (1-28800). Unset leaves AWS's default (1800 = 30 minutes).
+  int64 idle_client_timeout = 8 [(buf.validate.field).cel = {
+    id: "spec.idle_client_timeout_range"
+    message: "idle_client_timeout must be between 1 and 28800 seconds (AWS defaults to 1800 when unset)"
+    expression: "this == 0 || (this >= 1 && this <= 28800)"
+  }];
+
+  // Log the SQL statements the proxy forwards, for debugging. The
+  // logs can contain sensitive query text - leave off outside active
+  // troubleshooting.
+  bool debug_logging = 9;
+
+  // The default authentication scheme for the proxy's endpoints:
+  // "IAM_AUTH" (clients present IAM tokens) or "NONE" (native
+  // database credentials). Unset leaves AWS's default. Per-secret
+  // iam_auth entries refine this.
+  string default_auth_scheme = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IAM_AUTH",
+        "NONE"
+      ]
+    }
+  ];
+
+  // The IP protocol of the proxy's DEFAULT endpoint: "IPV4" (the
+  // default), "IPV6", or "DUAL". Fixed for life.
+  string endpoint_network_type = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IPV4",
+        "IPV6",
+        "DUAL"
+      ]
+    }
+  ];
+
+  // The IP protocol between the proxy and the database: "IPV4" (the
+  // default) or "IPV6". Fixed for life.
+  string target_connection_network_type = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IPV4",
+        "IPV6"
+      ]
+    }
+  ];
+
+  // Connection-pool tuning for the default target group. Omit for
+  // AWS's defaults. (The target group is part of the proxy - it has
+  // no delete of its own; destroying the proxy takes it along.)
+  AwsRdsProxyConnectionPool connection_pool = 13;
+
+  // Additional proxy endpoints, keyed by name - read-only endpoints
+  // for Aurora reader farms, or endpoints in other network
+  // configurations.
+  repeated AwsRdsProxyEndpoint endpoints = 14;
+
+  // The database the proxy fronts. Omit to create the proxy first and
+  // register the target later (the proxy is usable only once a
+  // target is registered).
+  AwsRdsProxyTarget target = 15;
+}
+
+// AwsRdsProxyAuth is one database sign-in the proxy can use, backed
+// by a Secrets Manager secret.
+message AwsRdsProxyAuth {
+  // The Secrets Manager secret holding the database credentials
+  // (the standard RDS secret shape: username + password). Reference
+  // an AwsSecretsManagerSecret secret_arn output or pass a literal
+  // ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // What this sign-in is for.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 1024
+  ];
+
+  // Whether clients using this sign-in authenticate to the PROXY with
+  // IAM: "DISABLED" (native database credentials - the default),
+  // "REQUIRED" (IAM tokens only), or "ENABLED" (either). IAM auth
+  // requires require_tls.
+  string iam_auth = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DISABLED",
+        "REQUIRED",
+        "ENABLED"
+      ]
+    }
+  ];
+
+  // The password hashing scheme the database uses for this user.
+  // Unset leaves AWS's engine-family default
+  // (MYSQL_NATIVE_PASSWORD / POSTGRES_SCRAM_SHA_256 /
+  // SQL_SERVER_AUTHENTICATION).
+  string client_password_auth_type = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MYSQL_NATIVE_PASSWORD",
+        "MYSQL_CACHING_SHA2_PASSWORD",
+        "POSTGRES_SCRAM_SHA_256",
+        "POSTGRES_MD5",
+        "SQL_SERVER_AUTHENTICATION"
+      ]
+    }
+  ];
+
+  // Pin this sign-in to one database username. Empty uses the
+  // username stored in the secret.
+  string username = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+// AwsRdsProxyConnectionPool tunes how the proxy multiplexes client
+// connections onto database connections.
+message AwsRdsProxyConnectionPool {
+  // Seconds a client waits for a database connection from the pool
+  // before timing out (0-3600; 0 means fail immediately). Unset
+  // leaves AWS's default (120).
+  optional int64 connection_borrow_timeout = 1 [
+    (buf.validate.field).cel = {
+      id: "pool.connection_borrow_timeout_range"
+      message: "connection_borrow_timeout must be between 0 and 3600 seconds"
+      expression: "this >= 0 && this <= 3600"
+    },
+    (dev.planton.shared.options.default) = "120"
+  ];
+
+  // SQL to run on every new database connection before handing it to
+  // a client - session presets like "SET x=1, y=2" (one statement;
+  // engines differ on multi-statement support).
+  string init_query = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 4096
+  ];
+
+  // Ceiling on database connections, as a percent of the database's
+  // max_connections (1-100). Unset leaves AWS's default (100).
+  optional int64 max_connections_percent = 3 [
+    (buf.validate.field).cel = {
+      id: "pool.max_connections_percent_range"
+      message: "max_connections_percent must be between 1 and 100"
+      expression: "this >= 1 && this <= 100"
+    },
+    (dev.planton.shared.options.default) = "100"
+  ];
+
+  // Ceiling on IDLE database connections the pool keeps warm, as a
+  // percent of max_connections (0-100; must not exceed
+  // max_connections_percent). Unset leaves AWS's default (50).
+  optional int64 max_idle_connections_percent = 4 [
+    (buf.validate.field).cel = {
+      id: "pool.max_idle_connections_percent_range"
+      message: "max_idle_connections_percent must be between 0 and 100"
+      expression: "this >= 0 && this <= 100"
+    },
+    (dev.planton.shared.options.default) = "50"
+  ];
+
+  // Session states that EXCLUDE a connection from reuse by other
+  // clients (session pinning). The only value AWS supports today is
+  // "EXCLUDE_VARIABLE_SETS" - session variable changes no longer pin
+  // the connection.
+  repeated string session_pinning_filters = 5 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: ["EXCLUDE_VARIABLE_SETS"]
+      }
+    }
+  }];
+}
+
+// AwsRdsProxyEndpoint is one additional endpoint on the proxy.
+message AwsRdsProxyEndpoint {
+  // The endpoint's name - the for_each key on both engines, the key
+  // in the endpoint output maps, and part of the endpoint's DNS name.
+  // Lowercase letters, digits, and single hyphens; must start with a
+  // letter and must not end with a hyphen.
+  string name = 1 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 63
+      pattern: "^[a-z][0-9a-z-]*$"
+    },
+    (buf.validate.field).cel = {
+      id: "endpoint.name_hyphen_rules"
+      message: "endpoint name must not contain consecutive hyphens or end with a hyphen"
+      expression: "!this.contains('--') && !this.endsWith('-')"
+    }
+  ];
+
+  // Whether the endpoint fronts writers or readers: "READ_WRITE"
+  // (the default) or "READ_ONLY" (Aurora reader farms - read-only
+  // endpoints distribute across up to the cluster's readers). Fixed
+  // for life.
+  string target_role = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "READ_WRITE",
+        "READ_ONLY"
+      ]
+    }
+  ];
+
+  // The subnets this endpoint places its network interfaces in (at
+  // least two, different availability zones). Fixed for life.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_subnet_ids = 3 [
+    (buf.validate.field).repeated.min_items = 2,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The security groups on this endpoint's network interfaces. Empty
+  // inherits the VPC default.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_security_group_ids = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsRdsProxyTarget is the database the proxy fronts - one RDS
+// instance or one Aurora cluster.
+message AwsRdsProxyTarget {
+  // A proxy fronts exactly one database.
+  option (buf.validate.message).cel = {
+    id: "target.exactly_one_database"
+    message: "set exactly one of db_instance_identifier and db_cluster_identifier - a proxy fronts one RDS instance or one Aurora cluster"
+    expression: "has(this.db_instance_identifier) != has(this.db_cluster_identifier)"
+  };
+
+  // The RDS instance the proxy fronts. Reference an AwsRdsInstance
+  // instance_identifier output or pass a literal identifier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef db_instance_identifier = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRdsInstance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_identifier"
+  ];
+
+  // The Aurora cluster the proxy fronts (the proxy tracks the
+  // cluster's writer/reader topology). Reference an AwsRdsCluster
+  // cluster_identifier output or pass a literal identifier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef db_cluster_identifier = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRdsCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_identifier"
+  ];
+}

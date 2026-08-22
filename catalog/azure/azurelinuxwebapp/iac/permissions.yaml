@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurelinuxwebapp
+spec:
+  azure:
+    groups:
+      - purpose: ManageWebApp
+        actions:
+          - Microsoft.Web/sites/Read
+          - Microsoft.Web/sites/Write
+          - Microsoft.Web/sites/Delete
+          - Microsoft.Web/sites/config/Read
+          - Microsoft.Web/sites/config/Write
+          - Microsoft.Web/sites/config/delete
+          - Microsoft.Web/sites/config/list/Action
+        provenance: derived
+        notes: "Covers azurerm_linux_web_app / appservice.NewLinuxWebApp -- both modules create exactly one site resource, with site_config (including auto-heal rules), app settings, connection strings, sticky settings, the logs block, Easy Auth v2, backup schedule, storage mounts, and identity all riding the site and its config subresources (create, refresh, in-place update, destroy; config/delete clears removed logging and backup configuration). config/list/Action is the sensitive read: it fetches the publishing credentials both modules export as the site_credential outputs, plus app settings and auth settings on refresh. zip_deploy_file publishes through the SCM endpoint authenticated with those fetched credentials -- no additional ARM action. Typically held via Website Contributor, Contributor, or Owner on the resource group."
+      - purpose: JoinServicePlan
+        actions:
+          - Microsoft.Web/serverfarms/Read
+          - Microsoft.Web/serverfarms/Join/Action
+        provenance: derived
+        notes: "The modules never call the plan API -- the resolved service_plan_id rides the site payload -- but ARM authorizes hosting the app on the REFERENCED plan with Join/Action on the plan's scope, service-side. This app's plan reference is updatable in place (apps can move between plans in the same region and resource group), so the grant applies on every plan move, not just create. This is the grant Azure's built-in Website Contributor role carries for exactly this purpose."
+      - purpose: JoinVnetIntegrationSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: "Needed only when the spec sets virtual_network_subnet_id (regional VNet integration): Microsoft documents these three actions on the subnet's scope (or higher) as the minimum to set the virtualNetworkSubnetId site property. The subnet must already be delegated to Microsoft.Web/serverFarms -- delegation is subnet-side state on the referenced AzureSubnet component, so subnets/write is deliberately NOT granted here."

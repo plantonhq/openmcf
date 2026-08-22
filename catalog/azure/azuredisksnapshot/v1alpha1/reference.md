@@ -146,7 +146,14 @@ The source managed disk (or snapshot) for create_option "Copy".
 Can be a literal ARM ID or a reference to an AzureManagedDisk
 output.
 
-**ForceNew**: changing this destroys and recreates the snapshot.
+**Create-time-only**: a snapshot's creation data is immutable
+history, and Azure never returns the source on reads (live-proven
+at the v5 provider pin), so both engines deliberately ignore
+in-place edits to this field -- editing it does NOT destroy and
+recreate the snapshot (that would silently delete a backup
+artifact). To capture a different disk, create a NEW snapshot
+resource. This is also what makes adopting an existing snapshot
+(import) plan clean.
 
 - references: AzureManagedDisk (`status.outputs.disk_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureManagedDisk, name: <that resource's name>, fieldPath: status.outputs.disk_id}} -- a bare string does not parse
@@ -157,7 +164,10 @@ output.
 
 The source VHD blob URI for create_option "Import".
 
-**ForceNew**: changing this destroys and recreates the snapshot.
+**Create-time-only**: like source_resource_id, the URI is immutable
+creation data Azure never returns on reads -- both engines ignore
+in-place edits (no destroy+recreate); importing a different VHD is
+a NEW snapshot resource.
 
 ### spec.storageAccountId
 

@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsapprunnerobservabilityconfiguration
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An observability configuration stores no customer data -- its single trace-vendor setting is App Runner control-plane metadata held inside AWS's own service infrastructure. The trace data it causes to exist lives in AWS X-Ray, which encrypts traces at rest as its own service posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); App Runner exposes no KMS surface for observability configurations, and X-Ray's key choice is X-Ray account configuration outside this spec.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A tracing policy terminates no connections of its own. The management calls that touch it, and the span forwarding from the referencing services' OpenTelemetry collector sidecars to X-Ray, both ride AWS API endpoints serving exclusively over TLS as provider behavior, not per-configuration settings.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration has no network endpoint to expose -- it is a named tracing policy that App Runner services reference by ARN. Network exposure is decided entirely on the referencing service.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a tracing policy carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A tracing policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to. The referencing App Runner service is where WAF association lives.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal or access surface of its own -- who may create, revise, or delete configurations is governed by IAM permissions on the App Runner API, account-level posture outside this spec and the modules.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no workloads and holds no credentials. The collector sidecar that forwards spans authenticates to X-Ray with the referencing service's instance role -- that identity decision belongs to the AwsAppRunnerService.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The configuration exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the configuration is recorded by AWS CloudTrail as account-level posture, not per-configuration settings.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: trace_configuration
+      evidence:
+        type: spec_default
+        reference: This component IS a monitoring-integration surface -- setting trace_configuration makes every referencing App Runner service export distributed request traces to AWS X-Ray (the only vendor App Runner supports), with each instance running an OpenTelemetry collector sidecar that forwards spans emitted by ADOT-instrumented application code. Omitted means the configuration is registered without tracing -- valid but inert, exporting nothing.
+      notes: The provider's update path is tags-only and silently changes nothing at AWS when the trace block changes on an existing configuration (both modules document this upstream gap) -- changing tracing posture honestly means registering a NEW configuration and repointing services. Application code must be instrumented with the ADOT SDK for the collector to have spans to forward.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The configuration holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and AWS itself versions it as retained revisions under the same name.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). X-Ray's 30-day trace retention is X-Ray service behavior, not a setting of this resource.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A control-plane configuration object has no zonal placement -- AWS stores it in the regional App Runner service infrastructure, and availability of the referencing services belongs to their managed runtime.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for observability configurations.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The configuration itself is pure metadata with no software to patch; the OpenTelemetry collector sidecar it activates is part of App Runner's managed runtime, patched by AWS on the referencing services.

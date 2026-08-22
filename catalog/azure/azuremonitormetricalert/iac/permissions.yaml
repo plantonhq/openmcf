@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitormetricalert
+spec:
+  azure:
+    groups:
+      - purpose: ManageMetricAlert
+        actions:
+          - Microsoft.Insights/MetricAlerts/Read
+          - Microsoft.Insights/MetricAlerts/Write
+          - Microsoft.Insights/MetricAlerts/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_metric_alert / monitoring.NewMetricAlert -- create in the resource group, refresh, in-place updates (thresholds, windows, severity, enabled), and destroy. Typically held via Monitoring Contributor, Contributor, or Owner on the resource group.
+      - purpose: ReadScopedMetricDefinitions
+        actions:
+          - Microsoft.Insights/MetricDefinitions/Read
+        provenance: derived
+        notes: The modules never call the metrics API -- resolved scope ARM IDs ride the rule payload -- but ARM validates at create time that the named metric exists on every scoped resource (unless skip_metric_validation), which reads metric definitions on each SCOPE's own resource scope (service-side). Scopes in other resource groups need this read there.
+      - purpose: ReadReferencedActionGroups
+        actions:
+          - Microsoft.Insights/ActionGroups/Read
+        provenance: derived
+        notes: Each actions entry references an action group by resolved ARM ID; ARM authorizes wiring the rule to the REFERENCED group by reading it on the group's scope at create/update time (service-side).

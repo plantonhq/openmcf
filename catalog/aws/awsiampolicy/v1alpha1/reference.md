@@ -140,6 +140,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBudget | `spec.actions[].iamActionDefinition.policyArn` | `status.outputs.policy_arn` |
+| AwsIamGroup | `spec.managedPolicyArns` | `status.outputs.policy_arn` |
 | AwsIamRole | `spec.managedPolicyArns` | `status.outputs.policy_arn` |
 | AwsIamRole | `spec.permissionsBoundary` | `status.outputs.policy_arn` |
 | AwsIamUser | `spec.managedPolicyArns` | `status.outputs.policy_arn` |

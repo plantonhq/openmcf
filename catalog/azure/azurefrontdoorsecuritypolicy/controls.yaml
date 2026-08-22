@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorsecuritypolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The security policy is an association record; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transit posture lives on the routes (protocols, redirect) and custom domains (certificates, cipher policy) -- separate kinds; the association carries no protocol field.
+    - control_id: edge-protection
+      status: enforced_by_default
+      field_path: firewall_policy_id
+      evidence:
+        type: spec_default
+        reference: firewall_policy_id is spec-required -- a security policy cannot exist without naming a Front Door WAF policy, and deploying the association is exactly what turns WAF enforcement ON for every hostname in domain_ids (a WAF policy enforces nothing until a security policy associates it; this kind is the enforcement seam).
+      notes: The path scope is fixed at /* -- Azure's security policies accept no other pattern -- so enforcement is scoped by choosing WHICH domains to list in domain_ids (endpoint IDs protect the generated *.azurefd.net hostname, custom-domain IDs protect that hostname). The rules being enforced live on the referenced AzureFrontDoorFirewallPolicy, its own kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The association has no reachable surface of its own; it governs how PUBLIC traffic to the listed hostnames is filtered, not whether they are public.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Source-based restriction (IP allow/deny lists, geo-filtering) is expressed as rules INSIDE the referenced WAF policy -- posture of the AzureFrontDoorFirewallPolicy kind; this association applies whatever that policy says.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the association exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The association runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; WAF match/block logs are the Front Door profile's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The association publishes no metrics of its own; WAF metrics ride the Front Door profile, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless association -- nothing to back up; the manifest recreates it declaratively (replacement leaves a brief enforcement gap while the old association tears down, worth sequencing deliberately).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the WAF association is enforced at Microsoft's worldwide edge fleet by design, with no single-zone or single-region failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a security policy (Azure resource locks are subscription-side governance outside the manifest). Deleting the association silently removes WAF enforcement from the listed hostnames -- a change-safety concern to govern through review, not a control this resource offers.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that enforces the association; no customer-visible patch surface exists.

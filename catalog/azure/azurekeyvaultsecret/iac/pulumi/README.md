@@ -27,4 +27,4 @@ Stores a secret in an Azure Key Vault -- a versioned data-plane object the vault
 
 ## Required Permissions
 
-The deploying principal needs the "Key Vault Administrator" or "Key Vault Secrets Officer" RBAC role on the vault (or secret permissions in a legacy access policy), plus ARM read on the vault.
+The deployer permissions this module needs are cataloged in [`../permissions.yaml`](../permissions.yaml).

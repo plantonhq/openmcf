@@ -19,7 +19,7 @@ No API-enablement resource is created — deny policies live on the IAM v2 surfa
 
 ### GCP Organization
 
-- **IAM**: creating deny policies requires ORG-LEVEL `roles/iam.denyAdmin` — even for policies attached to a single project. This is a Google requirement, and it is why deny policies are typically owned by platform teams rather than project teams.
+- **IAM**: the deploying principal's permissions are listed in [`iac/permissions.yaml`](iac/permissions.yaml) — note they must be granted at the ORGANIZATION level even for project-attached policies (the manifest notes explain why).
 - **Supported permissions**: only permissions on [Google's supported-permissions list](https://cloud.google.com/iam/docs/deny-permissions-support) can be denied — the deny API rejects others.
 
 ## Deploy
@@ -99,7 +99,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 ## Important Notes
 
 - **Deny always outranks allow** — even project owners are blocked. Test the exception list before applying a broad denial; a deny policy with a wrong `exceptionPrincipals` entry locks out the account meant to keep access.
-- **Org-level `roles/iam.denyAdmin` is required to create, update, or delete deny policies** — even project-attached ones. Project-level credentials cannot manage them.
+- **Deny policies are managed with org-scoped credentials** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the deploying principal's permissions and why project-level credentials cannot manage them.
 - **Only supported permissions can be denied** — check Google's supported-permissions list; most but not all IAM permissions are deniable.
 - **Prefer `deletionPolicy: PREVENT` for production guardrails** — silently removing a deny policy re-opens the surface it guards, with no incident-side symptom until someone uses the re-opened permission.
 

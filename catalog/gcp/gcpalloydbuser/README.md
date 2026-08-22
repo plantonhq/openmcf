@@ -10,7 +10,7 @@ Deploys a database user (`google_alloydb_user`) on an AlloyDB cluster. Users are
 ## Prerequisites
 
 - **An existing AlloyDB cluster** — [GcpAlloydbCluster](/docs/catalog/gcp/gcpalloydbcluster) or literal cluster path
-- **GCP credentials** with AlloyDB admin permissions
+- **GCP credentials** — [`iac/permissions.yaml`](iac/permissions.yaml) lists the exact least-privilege permissions
 
 ## Quick Start
 

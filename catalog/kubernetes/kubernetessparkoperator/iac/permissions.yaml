@@ -1,0 +1,108 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetessparkoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.spark_operator (rendered only when spec.create_namespace is true) AND the workload namespaces the CHART creates in the fenced posture (spec.workload.namespaces set -- workloadResources.namespaces.create). The chart marks workload namespaces helm.sh/resource-policy keep, so Helm never deletes them; delete applies only to the module-owned install namespace.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+          - configmaps
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.spark_operator -- the operator ServiceAccount (release-named), the workload ServiceAccount ("spark" by default, planted into the install namespace and each fenced workload namespace, chart-kept on uninstall), the spark-operator.properties ConfigMap, and the hot-reload ConfigMap when spec.dynamic_config.enabled is true.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's operator Deployment, applied by helm_release.spark_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The operator's ClusterRole/ClusterRoleBinding (always) and the workload ClusterRole for Spark pods (only when spec.workload.namespaces is empty -- the cluster-wide posture; the fenced posture replaces it with per-namespace Roles). The modules re-pin the chart's hardcoded RBAC names to the release identity (locals.typed_values operatorRbac/workloadResources).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The config-monitor Role/RoleBinding (the operator's dynamic-config watch RBAC) and, in the fenced posture, the workload Role/RoleBinding the chart plants into each spec.workload.namespaces namespace (chart-kept on uninstall).
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - create
+        cluster_scoped: true
+        provenance: derived
+        notes: Helm installs the chart's two spark.apache.org CRDs (sparkapplications, sparkclusters) from its crds/ directory on first install -- it never upgrades them on chart bumps and leaves them on uninstall (no update/delete needed by design; CRD changes are applied manually per the upstream release notes).
+      - api_groups:
+          - policy
+          - networking.k8s.io
+        resources:
+          - poddisruptionbudgets
+          - networkpolicies
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart carries PodDisruptionBudget and NetworkPolicy templates named from the release identity (module comment in locals.tf typed_values). They render per chart configuration -- including features enabled only through spec.helm_values -- so the runner covers them; installs that never enable them simply never exercise these verbs.

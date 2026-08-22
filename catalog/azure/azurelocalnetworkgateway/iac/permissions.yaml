@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurelocalnetworkgateway
+spec:
+  azure:
+    groups:
+      - purpose: ManageLocalNetworkGateway
+        actions:
+          - Microsoft.Network/localnetworkgateways/read
+          - Microsoft.Network/localnetworkgateways/write
+          - Microsoft.Network/localnetworkgateways/delete
+        provenance: derived
+        notes: Covers azurerm_local_network_gateway -- create, read/refresh, in-place endpoint/routing/BGP updates, and destroy. Action casing follows Azure's own operation inventory (lowercase resource-type segment). Held via Network Contributor, Contributor, or narrower custom roles.

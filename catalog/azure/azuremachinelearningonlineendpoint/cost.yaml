@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningonlineendpoint
+spec:
+  billing_model: free
+  free_tier: A managed online endpoint is the stable HTTPS scoring address with a traffic dial -- a routing object on the workspace. It carries no meter under Azure Machine Learning's no-additional-charge model; Microsoft's own pricing example bills the endpoint layer at exactly zero.
+  notes: "No field of this spec buys anything: the name, auth_mode, identity, and the traffic / mirror_traffic percentage maps are request routing. The real spend is the DEPLOYMENTS the dial routes to -- each deployment provisions VM instances that bill at plain compute rates for every hour they run, whether or not requests arrive (a separate catalog kind, and the opposite economics of the batch endpoint: online capacity is always-on). Mirrored shadow traffic doubles work on the mirrored deployment's instances, spend that appears on that deployment, not here."

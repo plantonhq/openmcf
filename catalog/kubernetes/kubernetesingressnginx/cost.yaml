@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesingressnginx
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Default 1. Production entry points run 2+ for zero-drop rollouts and node-failure tolerance -- each replica reserves the controller resources. Ignored when autoscaling is enabled.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: "The controller container's reservation. Unset, the CHART's defaults apply: requests cpu=100m memory=90Mi, no limits (upstream recommends leaving CPU unlimited -- throttling an entry point converts load spikes into cluster-wide latency)."
+    - field_path: autoscaling.enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: Hands the replica count to a chart-managed HorizontalPodAutoscaler between min_replicas (default 1) and max_replicas (default 11) -- capacity then follows traffic, and the manifest's replicas field no longer states the fleet size.
+    - field_path: controller_kind
+      sku_meter: cluster CPU and memory reservations
+      impact: daemon_set switches the controller to ONE POD PER (SELECTED) NODE -- the reservation multiplies by node count, which grows with the cluster rather than with this manifest.
+    - field_path: service.type
+      sku_meter: cloud load balancer
+      impact: The default load_balancer makes the host cloud provision a load balancer for the controller Service -- a real, separately-billed cloud resource (hourly plus data processing on AWS/GCP/Azure), shaped entirely by service.annotations. node_port and cluster_ip provision nothing.
+    - field_path: service.internal.enabled
+      sku_meter: cloud load balancer
+      impact: Adds the chart's SECOND, internal load-balancer Service alongside the external one -- a second billed cloud load balancer answering a private address from the same pods.
+    - field_path: default_backend.enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: Deploys the catch-all error backend as its own Deployment -- default_backend.replicas (default 1) times default_backend.resources of additional reservation. Off by default; the controller itself answers 404 without it.
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: The overlay merges LAST and can override any modeled value, including replicas, resources, and autoscaling.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "no committed preset declares controller resources: the chart's own defaults (requests cpu=100m memory=90Mi, no limits) size every preset's pods, so no capacity footprint is derived from these manifests -- the spec's resources field is the lever that would make the reservation a manifest-time statement"
+    - "when service.type is load_balancer (the default), the HOST CLOUD bills the provisioned load balancer separately -- hourly plus traffic charges at the provider named by the cluster (AWS NLB/ALB, GCP, Azure), shaped by service.annotations; enabling service.internal adds a second one -- neither is priced here"
+    - "with controller_kind daemon_set the controller runs one pod per (selected) node: total reservation multiplies by the cluster's node count, unknowable from this spec"
+    - when autoscaling is enabled the HPA moves the replica count with traffic between its min and max -- only the minimum is a standing floor
+    - the helm_values overlay merges last and can change any of the above
+  notes: "This component installs the cluster's traffic ENTRY POINT -- its own cost is the controller pods' reservation plus, on managed clouds, the load balancer the Service provisions (billed by the cloud, not by the cluster). Routing rules are separate KubernetesIngress resources and carry no capacity of their own; the workloads they route to carry theirs."

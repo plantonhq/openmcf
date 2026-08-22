@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbatchschedulingpolicy
+spec:
+  aws:
+    statements:
+      - sid: ManageSchedulingPolicy
+        actions:
+          - batch:CreateSchedulingPolicy
+          - batch:UpdateSchedulingPolicy
+          - batch:DeleteSchedulingPolicy
+          - batch:TagResource
+          - batch:UntagResource
+          - batch:ListTagsForResource
+        resources:
+          - arn:aws:batch:*:*:scheduling-policy/*
+        provenance: derived
+        notes: Covers aws_batch_scheduling_policy, the only resource either module registers (the Pulumi module drives the same provider through the pulumi-aws bridge). Create registers the policy with its always-present fair-share block and the platform's identity tags; every dial (compute_reservation, share_decay_seconds, share_distributions) updates in place via UpdateSchedulingPolicy; Tag/Untag reconcile tags; Delete removes the policy. The service reference authorizes all six actions on the scheduling-policy ARN format.
+      - sid: DescribeSchedulingPolicies
+        actions:
+          - batch:DescribeSchedulingPolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_batch_scheduling_policy during plan/refresh. Batch Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.

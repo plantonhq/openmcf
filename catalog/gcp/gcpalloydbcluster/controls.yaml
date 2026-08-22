@@ -1,0 +1,110 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpalloydbcluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB encrypts cluster storage, automated backups, and continuous-backup data at rest with Google-managed keys on every cluster without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the cluster's data with the customer-managed key. The choice is immutable for the cluster's life.
+      notes: The 03-enterprise-encrypted preset sets it, plus independent CMEK keys for automated backups (automated_backup_policy.encryption_kms_key_name) and PITR data (continuous_backup_config.encryption_kms_key_name). The AlloyDB service agent needs encrypt/decrypt on each key as a prerequisite.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: primary_instance.ssl_mode
+      evidence:
+        type: spec_default
+        reference: Unset means GCP's ENCRYPTED_ONLY default -- the primary rejects unencrypted client connections unless ALLOW_UNENCRYPTED_AND_ENCRYPTED is chosen explicitly.
+      notes: Presets 02 and 03 pin ENCRYPTED_ONLY explicitly. require_connectors goes further by demanding the AlloyDB Auth Proxy or Language Connectors' identity-bound TLS.
+    - control_id: no-public-access
+      status: configurable
+      field_path: primary_instance.enable_public_ip
+      evidence:
+        type: spec_default
+        reference: Unset (false) means no public IP -- the cluster is reachable only over Private Service Access peering (network) or Private Service Connect (psc_config); a public address is an explicit opt-in.
+      notes: All three presets are private-only over PSA. The spec's connectivity validation requires exactly one of network or psc_config.psc_enabled.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: primary_instance.authorized_external_networks
+      evidence:
+        type: spec_default
+        reference: For a primary with a public IP, the authorized external network CIDRs are the complete allowlist of sources that may connect; the spec rejects the list without enable_public_ip, and an empty list on a public instance admits no direct client.
+      notes: Private-only clusters (all presets) restrict ingress by network topology instead -- only the peered VPC or PSC consumers reach them.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed PostgreSQL endpoint is protected by TLS, IAM, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access is governed by AlloyDB IAM roles, and database-plane access by PostgreSQL's own grant system; both are always active, and IAM database authentication is additionally available for password-free logins.
+      notes: initial_user creates the bootstrap superuser; omitting it forces access setup through the Auth Proxy with IAM authentication.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB IAM database authentication and the Auth Proxy / Language Connectors let workloads authenticate with short-lived IAM credentials instead of static passwords; the surface is always present.
+      notes: primary_instance.require_connectors (preset 03) makes the identity-bound connector path the only path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: primary_instance.ssl_mode
+      evidence:
+        type: spec_default
+        reference: The legacy-weak path is cleartext database protocol, and it exists only when ALLOW_UNENCRYPTED_AND_ENCRYPTED is chosen explicitly -- the unset default is ENCRYPTED_ONLY.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the cluster and its instances land in Cloud Audit Logs unconditionally; database logs flow to Cloud Logging.
+      notes: pgAudit-style statement auditing is a database flag (primary_instance.database_flags), not a separate switch.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB publishes instance and cluster metrics (CPU, memory, storage, connections, replication) to Cloud Monitoring for every cluster without configuration.
+      notes: primary_instance.query_insights_config (preset 03) adds per-query performance telemetry on top.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automated_backup_policy.enabled
+      evidence:
+        type: spec_default
+        reference: When the block is absent GCP applies its default policy -- automated backups enabled, daily, 14-day retention -- and continuous backup (WAL streaming for point-in-time recovery) is separately on by default with a 14-day window; setting enabled false is the explicit opt-out.
+      notes: Presets 02 and 03 enable automated backups explicitly; preset 03 also pins continuous backup with a 21-day PITR window. Restore paths exist for both (restore_backup_source, restore_continuous_backup_source).
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automated_backup_policy.time_based_retention_period
+      evidence:
+        type: spec_default
+        reference: Sets how long automated backups are kept (preset 02 keeps 7 days, preset 03 keeps 30); quantity_based_retention_count is the count-based alternative, and continuous_backup_config.recovery_window_days (1-35) bounds the point-in-time window.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: primary_instance.availability_type
+      evidence:
+        type: spec_default
+        reference: REGIONAL (GCP's default when unset) runs the primary as an active node plus a synchronously replicated standby in another zone with automatic failover; ZONAL is the explicit single-zone opt-down.
+      notes: Presets 02 and 03 pin REGIONAL; the dev preset opts down to ZONAL. cluster_type SECONDARY extends resilience across regions.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- any destroy fails until the flag is deliberately flipped false and applied; both engines always send the value explicitly.
+      notes: deletion_policy PREVENT is a second, stronger guard evaluated even before deletion_protection; the bundled primary has its own primary_instance.deletion_policy.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB applies engine patches and system updates through managed maintenance; maintenance_window only steers when, never whether.
+      notes: database_version major upgrades apply in place; skip_await_major_version_upgrade tunes the wait, not the channel.

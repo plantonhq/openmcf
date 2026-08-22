@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremongocluster
+spec:
+  azure:
+    groups:
+      - purpose: ManageCluster
+        actions:
+          - Microsoft.DocumentDB/mongoClusters/read
+          - Microsoft.DocumentDB/mongoClusters/write
+          - Microsoft.DocumentDB/mongoClusters/delete
+          - Microsoft.DocumentDB/mongoClusters/listConnectionStrings/action
+        provenance: derived
+        notes: Covers azurerm_mongo_cluster -- create (including the provider's staged post-create updates for Data API enablement and Free/M25 tier upgrades), read/refresh, in-place updates, and destroy. listConnectionStrings/action backs the module's connection-string output, which the provider derives by calling the list API on every read.
+      - purpose: ManageFirewallRules
+        actions:
+          - Microsoft.DocumentDB/mongoClusters/firewallRules/read
+          - Microsoft.DocumentDB/mongoClusters/firewallRules/write
+          - Microsoft.DocumentDB/mongoClusters/firewallRules/delete
+        provenance: derived
+        notes: One azurerm_mongo_cluster_firewall_rule per named rule in firewall_rules -- creates, in-place address updates, and per-rule deletes as the set changes.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when user_assigned_identity_ids attaches the CMK unwrap identity -- ARM checks assign/action on every identity referenced in the cluster payload (service-side; the modules only pass the resolved identity IDs). The identity's own wrap/unwrap access on the Key Vault must exist BEFORE create and is the identity's grant, not the runner's.

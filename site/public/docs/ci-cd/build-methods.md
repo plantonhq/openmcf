@@ -1,0 +1,118 @@
+---
+title: "Build Methods"
+description: "How Service Hub transforms source code into deployable container images or Cloudflare Worker scripts."
+icon: deployment
+order: 25
+tags:
+  - Build
+  - Buildpacks
+  - Dockerfile
+  - Service Hub
+---
+
+# Build Methods
+
+A build method determines how your source code is transformed into a deployable artifact. The choice matters because it defines the trade-off between convenience and control: Buildpacks handle everything automatically but give you less customization, while Dockerfiles give you full control but require you to maintain the build definition yourself.
+
+## Artifact Types
+
+Every Service produces one of two artifact types, selected during service creation:
+
+| Artifact Type | What It Produces | Deploys To |
+|---------------|-----------------|-------------|
+| Container image | Docker container image | Kubernetes, AWS ECS, GCP Cloud Run, DigitalOcean App Platform |
+| Cloudflare Worker script | JavaScript/TypeScript bundle | Cloudflare Workers |
+
+The artifact type determines which build methods and deployment targets are available.
+
+## Build Methods for Container Images
+
+When building container images, two methods are available for platform-managed pipelines.
+
+### Cloud Native Buildpacks
+
+Buildpacks analyze your source code, detect the language and framework, and produce an optimized container image without requiring a Dockerfile. No additional build files are needed in your repository.
+
+Buildpacks handle language and framework detection, dependency installation, application compilation, base image selection with security patches, and container layer optimization for caching. Supported languages include Node.js, Python, Go, Java, Ruby, PHP, .NET, Rust, and static files served via nginx.
+
+**When to use Buildpacks**: Standard web services, APIs, and microservices in well-supported languages. Buildpacks are the recommended default for most services — they produce production-quality images with no configuration overhead, and base image security patches are applied automatically by buildpack maintainers.
+
+**When to choose something else**: Projects with custom native dependencies, multi-stage builds, GPU requirements, ML workloads, or specialized base image needs.
+
+### Dockerfile
+
+A Dockerfile gives you full control over the build process. Place a Dockerfile in your repository and Planton executes the build.
+
+By default, the platform looks for a `Dockerfile` in the project root directory. You can specify a custom path (relative to the project root) if your Dockerfile lives elsewhere — for example, `docker/Dockerfile.prod` for teams that maintain multiple Dockerfile variants.
+
+```yaml
+pipeline_configuration:
+  pipeline_provider: platform
+  image_build_method: dockerfile
+  dockerfile_path: "docker/Dockerfile.prod"
+```
+
+**When to use Dockerfile**: Custom native dependencies, multi-stage builds, ML/AI workloads with CUDA or specific library versions, specific base image requirements, or any scenario where you need precise control over the build environment.
+
+## Image Tagging
+
+For container image services, the pipeline tags images to ensure traceability:
+
+- **Branch builds**: Tagged with the full Git commit SHA (e.g., `a1b2c3d4e5f6`), ensuring every image is traceable to exactly one commit.
+- **Tag builds**: Tagged with the Git tag name (e.g., `v1.0.0`), providing human-readable version references for release workflows.
+
+The final image is pushed to the container registry configured on the Service. The registry host and authentication come from the container registry credential referenced by the Service (see [Container Registries](/docs/connections/container-registries)).
+
+<!-- SCREENSHOT: Build configuration in service details
+  Page: /orgs/{org}/service/{serviceId} (Overview or Settings tab)
+  Action: Show the pipeline configuration section with image build method and repository path
+  Focus: The image build method radio group and image repository path field
+  Alt: Service pipeline configuration showing Buildpacks selected as build method with image repository path configured
+-->
+
+## Cloudflare Worker Builds
+
+When producing a Cloudflare Worker script, the build process differs from container image builds:
+
+- No build method selection — Worker scripts are built using the project's package manager (npm/yarn).
+- Built scripts are stored in a Cloudflare R2 bucket rather than a container registry.
+- For monorepos using yarn workspaces, you can set the package manager directory to the workspace root (e.g., `.`) while the project root points to the worker subdirectory. This ensures `yarn install` runs at the repository root where workspace definitions live.
+
+## Configuring Build Methods
+
+### Web Console
+
+During service creation, the build configuration step presents:
+
+1. **Build method selection**: Buildpacks (recommended) or Dockerfile for container images.
+2. **Container registry**: Select from configured registries in the organization.
+3. **Image repository path**: The path within the registry for built images.
+4. **Pipeline branches**: Branches that trigger builds on push.
+5. **Advanced settings** (collapsed): Dockerfile path, tag build toggles, and tag patterns.
+
+After creation, build configuration is editable in the service's **Settings** tab under Pipeline Configuration.
+
+### CLI
+
+Build method is part of the Service configuration, set during `planton service register` (interactive) or via the Service YAML.
+
+```bash
+# Initialize a kustomize directory with a service manifest
+planton service kustomize init
+
+# Build the kustomize output to inspect the resolved manifest
+planton service kustomize build
+```
+
+## Self-Managed Pipelines
+
+When using a self-managed pipeline provider, the build method settings are ignored — you control the build process entirely through your Tekton pipeline YAML. The platform executes your pipeline and handles deployment orchestration.
+
+See [Self-Managed Pipelines](/docs/ci-cd/self-managed-pipelines) for details on writing custom build pipelines.
+
+## Related Documentation
+
+- [What is a Service?](/docs/ci-cd/what-is-a-service) — Service configuration overview
+- [Pipelines](/docs/ci-cd/pipelines) — The pipeline execution model
+- [Self-Managed Pipelines](/docs/ci-cd/self-managed-pipelines) — Custom Tekton pipelines
+- [Deployment Targets](/docs/ci-cd/deployment-targets) — Where built artifacts are deployed

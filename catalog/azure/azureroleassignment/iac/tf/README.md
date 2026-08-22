@@ -68,6 +68,4 @@ module "role_assignment" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Authorization/roleAssignments/write`
-at the target scope -- typically via Owner, User Access Administrator, or Role
-Based Access Control Administrator. Contributor alone is NOT sufficient.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

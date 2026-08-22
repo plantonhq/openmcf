@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurekeyvaultkey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The private key material never exists in plaintext outside the vault: software-protected keys are persisted encrypted with HSM-backed keys unconditionally, and the _HSM variants are generated inside and locked to a FIPS 140-2 Level 3 hardware module. No configuration weakens this."
+      notes: "key_type is the strength dial WITHIN the control: RSA/EC keep material software-protected at rest; RSA_HSM/EC_HSM (preset 02) put it in hardware custody, at the Premium vault's monthly per-key fee."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "This key IS the customer-managed key other components reference for their CMK posture -- there is no key-of-the-key. The vault's own storage encryption is Microsoft-managed with no customer-key surface."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every operation on the key rides the vault's HTTPS-only data plane ({name}.vault.azure.net, TLS 1.2+), and the private half never travels at all -- consumers send data TO the vault for wrap/unwrap/sign; the key stays put."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "A key has no network surface of its own -- reachability is the parent vault's posture (public_network_access_enabled, network_acls, private endpoints), set on the AzureKeyVault component key_vault_id references."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Inbound filtering is the vault's network_acls territory (see no-public-access); no per-key network rule exists. What this spec does scope per-key is capability, not source: key_opts is the operation allowlist -- Azure rejects any operation not listed, so a WRAP_KEY/UNWRAP_KEY CMK can never be made to sign."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The data plane serving this key is a Microsoft-managed REST endpoint with no WAF attachment point; the customer-side perimeter is the vault's network rules plus Entra ID authentication."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every data-plane call touching the key is authorized by the vault -- Azure RBAC roles like Key Vault Crypto User in the recommended mode, or legacy access-policy key permissions -- and no configuration makes a key anonymously usable."
+      notes: "WHICH authorization model applies is the vault's rbac_authorization_enabled choice, examined on the AzureKeyVault profile. key_opts then bounds what an authorized caller can DO with this specific key -- grant only what its consumers actually perform."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The key runs nothing and authenticates nowhere -- it is held cryptographic material. Whether its consumers reach it with managed identities instead of embedded credentials is decided on the consumer components; being the CMK those identities unwrap with is this component's contribution."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The key has no authentication paths of its own to strengthen or disable; legacy access-policy versus RBAC authorization is the vault's choice (see rbac)."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "A key is a data-plane object -- who created, rotated, or used it lands in the vault's AuditEvent diagnostic logging, a vault-level diagnostic setting outside both this spec and the vault's. Compose it when key-usage audit is required; for a CMK it usually is."
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: rotation_policy.notify_before_expiry
+      evidence:
+        type: spec_default
+        reference: "Unset, versions expire silently. Set (together with expire_after), Azure raises the near-expiry Event Grid notification that far ahead of each version's expiry -- the hook that turns key expiry from an outage into a ticket."
+      notes: "Preset 02 notifies at P30D. Per-object metrics do not exist; traffic signals ride the vault's platform metrics. The Event Grid system topic and its subscriptions are separate components."
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Soft delete is always on vault-wide and covers every key: a deleted key stays recoverable for the vault's retention window (7-90 days, default 90), and the official modules auto-recover a name-colliding create against a soft-deleted key rather than failing."
+      notes: "Deletion-recovery, not escrow: HSM key material is unexportable by design, so the recoverable thing is the vault's own copy. Version history additionally preserves every rotation's predecessor -- old ciphertext stays unwrappable by its original version."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "Recovery retention is the vault's soft_delete_retention_days -- one window for everything inside; no per-key retention knob exists."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The key inherits Key Vault's automatic redundancy -- zone-redundant service in availability-zone regions, replicated within the region and to the paired region where one exists; no configuration surface, no opt-out."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No per-key protection flag exists. The vault's purge_protection_enabled is the relevant guard -- with it on, even a deleted key cannot be purged before the retention window lapses, which for a CMK is the difference between an incident and permanent data loss. Set on the AzureKeyVault component."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed PaaS -- Microsoft operates and patches the vault service and the HSM fleet holding the key; no customer-visible patch surface exists."

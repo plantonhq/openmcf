@@ -6,9 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	eventhubnsv1 "github.com/plantonhq/planton/catalog/azure/azureeventhubnamespace/v1alpha1"
 	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
 	"github.com/plantonhq/planton/pkg/finops/costderivation"
+	"github.com/plantonhq/planton/pkg/finops/costestimator"
+	"github.com/plantonhq/planton/pkg/finops/pricebook"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 )
 
 // TestPresetReplayHonesty pins the honesty semantics of derivation-driven
@@ -103,6 +107,111 @@ func TestPresetReplayHonesty(t *testing.T) {
 			t.Fatal("the internet-facing preset is missing")
 		} else if lines := linesForMeter(facing, "public IPv4 address usage"); len(lines) != 1 || lines[0].GetPricingQuantity() != "1460" {
 			t.Errorf("internet-facing IPv4: want one line of 1460 IP-hours (2 subnets x 730), got %+v", lines)
+		}
+	})
+
+	t.Run("awsapprunnerservice", func(t *testing.T) {
+		// The reference-presence fixture: a preset whose committed floor
+		// rides a REFERENCED auto-scaling configuration refuses by the
+		// reference's presence -- never priced at the account-default
+		// floor of 1, which would be knowably wrong.
+		presets := generatedPresets(t, summary, "awsapprunnerservice")
+		if _, exists := presets["02-production-vpc-encrypted"]; exists {
+			t.Error("the ASC-referencing preset is priced -- its floor lives on the referenced AwsAppRunnerAutoScalingConfiguration and must be refused")
+		}
+		public, ok := presets["01-basic-public-image"]
+		if !ok {
+			t.Fatal("the basic preset is missing -- no reference, so the account-default floor prices under a stated assumption")
+		}
+		if lines := linesForMeter(public, "provisioned instance memory"); len(lines) != 1 || lines[0].GetPricingQuantity() != "1460" {
+			t.Errorf("basic preset memory: want one line of 1460 GB-hours (2048 MB / 1024 x 730), got %+v", lines)
+		}
+	})
+
+	t.Run("azureeventhubnamespace", func(t *testing.T) {
+		// The reference-presence fixture on the refusal side: a namespace
+		// wired onto a dedicated cluster BY REFERENCE bills through the
+		// cluster's capacity units, so the committed derivation must
+		// refuse it rather than pricing tier meters the placement
+		// supersedes. No committed preset places on a cluster, so the
+		// pin evaluates the committed rules against a synthetic
+		// cluster-placed manifest.
+		derivation, err := costderivation.Load(root, "azureeventhubnamespace")
+		if err != nil {
+			t.Fatalf("loading the committed derivation: %v", err)
+		}
+		entries, err := pricebook.Entries(root, "azure")
+		if err != nil {
+			t.Fatalf("loading the azure price book: %v", err)
+		}
+		manifest := &eventhubnsv1.AzureEventHubNamespace{Spec: &eventhubnsv1.AzureEventHubNamespaceSpec{
+			Region: "eastus",
+			Sku:    eventhubnsv1.AzureEventHubNamespaceSku_STANDARD,
+			DedicatedClusterId: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "shared-dedicated-cluster"},
+				},
+			},
+		}}
+		preset, refusal, err := costestimator.Evaluate(manifest, derivation.GetSpec(), entries)
+		if err != nil || preset != nil {
+			t.Fatalf("Evaluate(cluster-placed): err=%v preset=%+v, want a refusal", err, preset)
+		}
+		if refusal == nil || !strings.Contains(refusal.Reason, "dedicated cluster") {
+			t.Errorf("a cluster-placed namespace must refuse naming the cluster placement, got %+v", refusal)
+		}
+	})
+
+	t.Run("awselasticip", func(t *testing.T) {
+		// The reference-presence semantics: an address attached to an
+		// instance BY REFERENCE is attached -- it wears the in-use meter
+		// basis, not the idle one.
+		presets := generatedPresets(t, summary, "awselasticip")
+		attached, ok := presets["03-instance-attached"]
+		if !ok {
+			t.Fatal("the instance-attached preset is missing")
+		}
+		lines := linesForMeter(attached, "public IPv4 address usage")
+		if len(lines) != 1 {
+			t.Fatalf("instance-attached IPv4: want one line, got %d", len(lines))
+		}
+		if !strings.Contains(lines[0].GetQuantityBasis(), "associated with an instance") {
+			t.Errorf("instance-attached basis reads %q -- a reference-attached address must price as in-use, not idle", lines[0].GetQuantityBasis())
+		}
+	})
+
+	t.Run("kubernetespostgres", func(t *testing.T) {
+		// The capacity standard's acceptance oracle: replaying the presets
+		// through the capacity derivation reproduces the hand-verified
+		// footprints -- summed replicas, merged data+WAL storage, no
+		// priced lines, and the honesty exclusion on every preset.
+		presets := generatedPresets(t, summary, "kubernetespostgres")
+		if len(presets) != 3 {
+			t.Fatalf("kubernetespostgres: want all 3 presets, got %d", len(presets))
+		}
+		ha, ok := presets["02-production-ha"]
+		if !ok {
+			t.Fatal("the production-HA preset is missing")
+		}
+		footprint := ha.GetCapacityFootprint()
+		for _, check := range []struct{ name, got, want string }{
+			{"cpu_requests", footprint.GetCpuRequests(), "3"},
+			{"memory_requests", footprint.GetMemoryRequests(), "6Gi"},
+			{"cpu_limits", footprint.GetCpuLimits(), "6"},
+			{"memory_limits", footprint.GetMemoryLimits(), "12Gi"},
+			{"persistent_storage", footprint.GetPersistentStorage(), "360Gi"},
+		} {
+			if check.got != check.want {
+				t.Errorf("production-HA %s: got %q, want %q", check.name, check.got, check.want)
+			}
+		}
+		for key, preset := range presets {
+			if len(preset.GetLineItems()) != 0 || preset.GetTotalListCost() != "" {
+				t.Errorf("%s: cluster-capacity presets carry no priced lines or totals", key)
+			}
+			if len(preset.GetExclusions()) == 0 {
+				t.Errorf("%s: a footprint without exclusions hides that its dollar value is the cluster's economics", key)
+			}
 		}
 	})
 

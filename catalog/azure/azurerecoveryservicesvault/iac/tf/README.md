@@ -38,4 +38,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.RecoveryServices/vaults/*` on the resource group (Contributor covers it). Customer-managed-key encryption additionally needs wrap/unwrap access on the Key Vault key for the vault's identity.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege control-plane actions the deploying principal needs.

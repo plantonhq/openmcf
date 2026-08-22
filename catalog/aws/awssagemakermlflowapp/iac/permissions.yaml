@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakermlflowapp
+spec:
+  aws:
+    statements:
+      - sid: ManageMlflowApp
+        actions:
+          - sagemaker:CreateMlflowApp
+          - sagemaker:DescribeMlflowApp
+          - sagemaker:UpdateMlflowApp
+          - sagemaker:DeleteMlflowApp
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:mlflow-app/*
+        provenance: derived
+        notes: Covers aws_sagemaker_mlflow_app / sagemaker.MlflowApp -- the modules' single resource -- across create (~2 minutes, serverless), the Describe read on every plan/refresh, in-place updates (name, artifact store URI, account-default status, domain associations, model registration mode, maintenance window), tagging, and teardown. All four lifecycle actions authorize on the mlflow-app ARN format per the service reference, and the tagging trio lists mlflow-app among its resource types; the ARN keys on an AWS-assigned app ID rather than the name, so the grant stays a wildcard over the format. A deleted app soft-deletes (status DELETED) and reads as absent upstream.
+      - sid: PassArtifactStoreRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateMlflowApp passes the referenced role (role_arn, required by the spec) to SageMaker, which assumes it to read and write the artifact store -- and role_arn is the ONE replace-on-change field, so changing it replaces the app and passes the new role. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

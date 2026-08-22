@@ -1,0 +1,107 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpcomputemig
+spec:
+  presets:
+    - preset: 01-autoscaled-web-tier
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: fleet instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "730"
+          quantity_basis: the autoscaler's committed floor of min_replicas instances x e2-small's documented 0.5 fractional vCPU x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "15.9224607"
+        - service_name: Compute Engine
+          sku_meter: fleet instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "2920"
+          quantity_basis: the autoscaler's committed floor of min_replicas instances x e2-small's 2 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "8.5367076"
+      total_list_cost: "24.4591683"
+      exclusions:
+        - per-instance disk storage -- every instance carries its own copy of each template.disks entry (boot and data alike), billing per provisioned GiB-month, but per-element sizes and types inside the repeated list are beyond these rules' reach; the 03-stateful-group preset's 100 GB pd-balanced data disk x 3 instances is 300 GiB of excluded committed storage
+        - scaling above the floor -- each additional instance up to max_replicas bills the full per-instance rate while load keeps it alive
+        - external IPv4 usage bills hourly per instance whose template interface holds an access config -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill per instance on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: The estimate is the committed floor -- min_replicas instances around the clock. The actual bill follows load between that floor and max_replicas; the ceiling is max_replicas divided by min_replicas times this estimate's compute lines. Priced at on-demand rates for the template machine type's documented vCPU and memory, fleet-multiplied. Instance templates themselves are free -- only the instances they stamp out bill. Shared-core E2 types bill their documented fractional vCPU.
+    - preset: 02-regional-ha-group
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: fleet instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "4380"
+          quantity_basis: target_size instances x e2-medium's documented 1.0 fractional vCPU (2 vCPUs exposed to the guest) x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "95.5347642"
+        - service_name: Compute Engine
+          sku_meter: fleet instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "17520"
+          quantity_basis: target_size instances x e2-medium's 4 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "51.2202456"
+      total_list_cost: "146.7550098"
+      exclusions:
+        - per-instance disk storage -- every instance carries its own copy of each template.disks entry (boot and data alike), billing per provisioned GiB-month, but per-element sizes and types inside the repeated list are beyond these rules' reach; the 03-stateful-group preset's 100 GB pd-balanced data disk x 3 instances is 300 GiB of excluded committed storage
+        - external IPv4 usage bills hourly per instance whose template interface holds an access config -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill per instance on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: Priced at on-demand rates for the template machine type's documented vCPU and memory, fleet-multiplied. Instance templates themselves are free -- only the instances they stamp out bill. Shared-core E2 types bill their documented fractional vCPU.
+    - preset: 03-stateful-group
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: fleet instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2190"
+          quantity_basis: target_size instances x e2-medium's documented 1.0 fractional vCPU (2 vCPUs exposed to the guest) x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "47.7673821"
+        - service_name: Compute Engine
+          sku_meter: fleet instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "8760"
+          quantity_basis: target_size instances x e2-medium's 4 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "25.6101228"
+      total_list_cost: "73.3775049"
+      exclusions:
+        - per-instance disk storage -- every instance carries its own copy of each template.disks entry (boot and data alike), billing per provisioned GiB-month, but per-element sizes and types inside the repeated list are beyond these rules' reach; the 03-stateful-group preset's 100 GB pd-balanced data disk x 3 instances is 300 GiB of excluded committed storage
+        - external IPv4 usage bills hourly per instance whose template interface holds an access config -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill per instance on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: Priced at on-demand rates for the template machine type's documented vCPU and memory, fleet-multiplied. Instance templates themselves are free -- only the instances they stamp out bill. Shared-core E2 types bill their documented fractional vCPU.

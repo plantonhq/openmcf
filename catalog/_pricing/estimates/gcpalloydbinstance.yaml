@@ -1,0 +1,97 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpalloydbinstance
+spec:
+  presets:
+    - preset: 01-read-pool-basic
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU on every node (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- node_count nodes' memory billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "130.8160"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "1460"
+          quantity_basis: node_count read-pool nodes, each of cpu_count vCPUs, billed every hour of the month at the N2 rate; the region is assumed us-central1 because the instance lives in its parent cluster's region, which this manifest does not carry
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "96.4768"
+      total_list_cost: "227.2928"
+      exclusions:
+        - the parent cluster bills separately -- its primary instance compute, cluster storage, and backups belong to the referenced GcpAlloydbCluster
+        - network egress follows client placement
+    - preset: 02-read-pool-ha
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "46720"
+          quantity_basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU on every node (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- node_count nodes' memory billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "523.2640"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "5840"
+          quantity_basis: node_count read-pool nodes, each of cpu_count vCPUs, billed every hour of the month at the N2 rate; the region is assumed us-central1 because the instance lives in its parent cluster's region, which this manifest does not carry
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "385.9072"
+      total_list_cost: "909.1712"
+      exclusions:
+        - the parent cluster bills separately -- its primary instance compute, cluster storage, and backups belong to the referenced GcpAlloydbCluster
+        - network egress follows client placement
+    - preset: 03-read-pool-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "140160"
+          quantity_basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU on every node (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- node_count nodes' memory billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1569.7920"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "17520"
+          quantity_basis: node_count read-pool nodes, each of cpu_count vCPUs, billed every hour of the month at the N2 rate; the region is assumed us-central1 because the instance lives in its parent cluster's region, which this manifest does not carry
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1157.7216"
+      total_list_cost: "2727.5136"
+      exclusions:
+        - the parent cluster bills separately -- its primary instance compute, cluster storage, and backups belong to the referenced GcpAlloydbCluster
+        - network egress follows client placement

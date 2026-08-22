@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbigquerydataset
+spec:
+  gcp:
+    groups:
+      - purpose: EnableBigQueryApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling bigquery.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageDataset
+        permissions:
+          - bigquery.datasets.create
+          - bigquery.datasets.delete
+          - bigquery.datasets.get
+          - bigquery.datasets.update
+        provenance: derived
+        notes: Covers google_bigquery_dataset -- create with location, defaults, CMEK, and the authoritative ACL; get for read/refresh; update for every mutable field including the access list (dataset ACL entries are dataset metadata, written through datasets.update, not IAM policy calls); delete on destroy. The predefined roles/bigquery.dataOwner (or the broader roles/bigquery.admin) carries all of these. The bigquery service is not yet in the committed action-inventory snapshot; every permission here was verified against Google's own BigQuery access-control reference (cloud.google.com/bigquery/docs/access-control) live.
+      - purpose: DeleteContainedTables
+        permissions:
+          - bigquery.tables.delete
+        provenance: derived
+        notes: Required only when delete_contents_on_destroy is true -- deleting a non-empty dataset also deletes every table in it, which BigQuery authorizes per table. With the default false, destroy refuses on a non-empty dataset and this permission is never exercised. Verified against Google's BigQuery access-control reference live (bigquery service not yet in the inventory snapshot).

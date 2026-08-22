@@ -1,24 +1,51 @@
+# Example DigitalOceanDroplet manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real droplet (name + size + image;
+# DigitalOcean chooses the region and uses its default VPC). The second
+# exercises the full surface: explicit region and VPC, SSH keys, weekly
+# backups with a policy window, the monitoring and web-console agents,
+# IPv6, tags, cloud-init user data, graceful shutdown, and the reversible
+# resize mode.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
-  name: first-droplet                        # Kubernetes object name
+  name: example-dodrop-minimal
 spec:
-  dropletName: first-droplet                         # droplet hostname
-  region: blr1                             # NYC3 | SFO3 | FRA1 etc.
-  size: s-2vcpu-4gb                        # enum value
-  image: ubuntu-22-04-x64                  # official Ubuntu image slug
+  dropletName: example-dodrop-minimal
+  size: s-1vcpu-1gb
+  image: ubuntu-24-04-x64
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDroplet
+metadata:
+  name: example-dodrop-full
+spec:
+  dropletName: web-1.example.com
+  region: nyc3
+  size: s-2vcpu-4gb
+  image: ubuntu-24-04-x64
   vpc:
-    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                           # UUID or ref to DigitalOceanVpc
-  enableIpv6: false                         # optional
-  enableBackups: false                     # optional
-  disableMonitoring: false                 # keep DO monitoring agent
-#  volumeIds:                               # optional block‑volume attachment(s)
-#    - value: 93a7a5b4-62ce-11f0-b9db-0a58ac1466b2                      # UUID or ref to DigitalOceanVolume
-  tags:                                    # unique,  ≤ .64 .chars each
-    - planton
-  userData: |                              # cloud‑init (≤32 .KiB)
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
+  sshKeys:
+    - "12345678"
+    - "3b:16:bf:e4:8b:00:8b:b8:59:8c:a9:d3:f0:19:45:fa"
+  enableIpv6: true
+  enableBackups: true
+  backupPolicy:
+    plan: weekly
+    weekday: SUN
+    hour: 4
+  monitoring: true
+  dropletAgent: true
+  gracefulShutdown: true
+  resizeDisk: false
+  tags:
+    - web
+    - env:prod
+  userData: |
     #cloud-config
     package_update: true
     runcmd:
       - apt-get install -y nginx
-  timezone: utc                            # utc (default) | local

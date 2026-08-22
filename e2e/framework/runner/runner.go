@@ -17,6 +17,7 @@ type Phase string
 
 const (
 	PhaseDepsUp      Phase = "DEPENDENCIES-UP"
+	PhaseSetup       Phase = "SETUP"
 	PhaseValidate    Phase = "VALIDATE"
 	PhaseDeploy      Phase = "DEPLOY"
 	PhaseIdempotency Phase = "IDEMPOTENCY"
@@ -142,6 +143,33 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 			}
 			tc.ManifestPath = resolvedPath
 			verifyCtx = context.WithValue(ctx, provider.ManifestPathKey{}, tc.ManifestPath)
+		}
+	}
+
+	// SETUP: the scenario's data-plane seeding hook (see SetupScriptAnnotation).
+	// It runs after the dependency chain and reference resolution because the
+	// assets it seeds live INSIDE fixtures, and before VALIDATE because a
+	// seeding failure must stop the lane before any component deploy.
+	if setupScript, annErr := ManifestAnnotation(tc.ManifestPath, SetupScriptAnnotation); annErr == nil && setupScript != "" {
+		setupStart := time.Now()
+		setupErr := runSetupScript(tc, setupScript, expandRunID)
+		result.Phases = append(result.Phases, PhaseResult{
+			Phase:    PhaseSetup,
+			Duration: time.Since(setupStart),
+			Passed:   setupErr == nil,
+			Error:    setupErr,
+		})
+		if setupErr != nil {
+			result.Passed = false
+			if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+				result.Phases = append(result.Phases, PhaseResult{
+					Phase:  PhaseDepsDn,
+					Passed: false,
+					Error:  tdErr,
+				})
+			}
+			result.Duration = time.Since(start)
+			return result
 		}
 	}
 

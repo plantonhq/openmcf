@@ -1,8 +1,8 @@
 apiVersion: v2
 name: planton-runner
-description: Deploy Planton Runner with a single RunnerCredentials JSON file for identity, connectivity, and authentication
+description: Deploy Planton Runner with a runner token -- the runner enrolls itself on first boot and receives its own identity from the control plane
 type: application
-version: 0.3.1
+version: 0.4.0
 # appVersion is the runner image tag this chart deploys. The runner image is built
 # in the platform repo and published to ghcr.io/plantonhq/planton/runner; keep this
 # pinned to a known-good published tag. NOTE: the runner deployment path is not yet
@@ -19,6 +19,6 @@ keywords:
   - planton
   - runner
   - cloud-operations
-  - mtls
+  - enrollment
+  - runner-token
   - tunnel
-  - service-account

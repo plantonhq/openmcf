@@ -1,12 +1,20 @@
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
-  name: my-static-website
+  name: static-site-assets
 spec:
-  bucketName: my-static-website
+  bucketName: static-site-assets
   region: nyc3
   accessControl: PUBLIC_READ
-  versioningEnabled: false
-  tags:
-    - static-site
-    - cdn
+  corsRules:
+    - allowedMethods:
+        - GET
+        - HEAD
+      allowedOrigins:
+        - "https://www.example.com"
+      allowedHeaders:
+        - "*"
+      exposeHeaders:
+        - ETag
+      id: site-read
+      maxAgeSeconds: 3600

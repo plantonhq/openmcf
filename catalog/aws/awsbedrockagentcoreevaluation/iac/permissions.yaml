@@ -1,0 +1,66 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockagentcoreevaluation
+spec:
+  aws:
+    statements:
+      - sid: CreateEvaluationResources
+        actions:
+          - bedrock-agentcore:CreateEvaluator
+          - bedrock-agentcore:CreateHarness
+          - bedrock-agentcore:CreateOnlineEvaluationConfig
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the create side of aws_bedrockagentcore_evaluator / bedrock.AgentcoreEvaluator, aws_bedrockagentcore_harness / bedrock.AgentcoreHarness, and aws_bedrockagentcore_online_evaluation_config / bedrock.AgentcoreOnlineEvaluationConfig. All three Create actions are NON-SCOPABLE -- the bedrock-agentcore service reference lists no resource types for them, so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope. AWS derives each resource's ID from its name at create, so there is no pre-knowable ARN anyway.
+      - sid: ManageEvaluators
+        actions:
+          - bedrock-agentcore:GetEvaluator
+          - bedrock-agentcore:UpdateEvaluator
+          - bedrock-agentcore:DeleteEvaluator
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:evaluator/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_evaluator / bedrock.AgentcoreEvaluator for spec.evaluators entries. GetEvaluator serves every plan/refresh and the create-time CREATING-to-ACTIVE wait; Update reconciles in-place changes (description, KMS key, scoring config); Delete is destroy. All three scope to the evaluator ARN per the service reference.
+      - sid: ManageHarnesses
+        actions:
+          - bedrock-agentcore:GetHarness
+          - bedrock-agentcore:UpdateHarness
+          - bedrock-agentcore:DeleteHarness
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:harness/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_harness / bedrock.AgentcoreHarness for spec.harnesses entries. GetHarness serves plan/refresh and the CREATING-to-READY wait; everything except the identity-seed name updates in place. All three scope to the harness ARN.
+      - sid: ManageOnlineEvaluationConfigs
+        actions:
+          - bedrock-agentcore:GetOnlineEvaluationConfig
+          - bedrock-agentcore:UpdateOnlineEvaluationConfig
+          - bedrock-agentcore:DeleteOnlineEvaluationConfig
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:online-evaluation-config/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_online_evaluation_config / bedrock.AgentcoreOnlineEvaluationConfig for spec.online_evaluation_configs entries. Update also carries the enabled knob's execution_status half (ENABLED/DISABLED), so toggling continuous evaluation is an Update, not a replace. All three scope to the online-evaluation-config ARN.
+      - sid: TagEvaluationResources
+        actions:
+          - bedrock-agentcore:TagResource
+          - bedrock-agentcore:UntagResource
+          - bedrock-agentcore:ListTagsForResource
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:evaluator/*
+          - arn:aws:bedrock-agentcore:*:*:harness/*
+          - arn:aws:bedrock-agentcore:*:*:online-evaluation-config/*
+        provenance: derived
+        notes: Both modules tag every resource with the Planton identity tags (local.aws_tags / the shared tags map) -- tag-on-create, later reconciliation, and the tag read on every refresh. The service reference scopes all three tagging actions to these ARN formats (they also accept the other AgentCore resource families this component never touches).
+      - sid: PassExecutionRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateHarness/UpdateHarness pass the harness's required execution_role_arn (the role that runs the agent under test), and CreateOnlineEvaluationConfig/UpdateOnlineEvaluationConfig pass the config's required execution_role_arn (the role that reads source logs and invokes evaluators) -- both to bedrock-agentcore, which assumes them. Add an iam:PassedToService=bedrock-agentcore.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment. The Lambda a code evaluator invokes authorizes through that FUNCTION's resource policy (it must allow bedrock-agentcore) -- the referenced AwsLambda's contract, so the runner needs no lambda grants here.

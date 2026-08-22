@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbatchjobqueue
+spec:
+  aws:
+    statements:
+      - sid: ManageJobQueue
+        actions:
+          - batch:CreateJobQueue
+          - batch:UpdateJobQueue
+          - batch:DeleteJobQueue
+          - batch:TagResource
+          - batch:UntagResource
+          - batch:ListTagsForResource
+        resources:
+          - arn:aws:batch:*:*:job-queue/*
+          - arn:aws:batch:*:*:compute-environment/*
+          - arn:aws:batch:*:*:scheduling-policy/*
+        provenance: derived
+        notes: "Covers aws_batch_job_queue, the only resource either module registers (the Pulumi module drives the same provider through the pulumi-aws bridge). The service reference authorizes CreateJobQueue and UpdateJobQueue on the job-queue ARN AND every companion the call references -- the mapped compute environments and the optional fair-share scheduling policy -- so all three ARN formats must be granted (an under-scoped create denies provisioning). Delete runs the provider's disable-then-drain-then-delete sequence via UpdateJobQueue and DeleteJobQueue on the queue; Tag/Untag/ListTags reconcile the platform's identity tags. The service-environment ARN the reference also lists for CreateJobQueue is omitted: these modules map compute environments only, never SageMaker service environments."
+      - sid: DescribeJobQueues
+        actions:
+          - batch:DescribeJobQueues
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_batch_job_queue during plan/refresh and the provider's post-create/post-disable state polling. Batch Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.

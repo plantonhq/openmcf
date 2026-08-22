@@ -1,0 +1,42 @@
+# A two-widget dashboard live: the markdown header proves the text
+# widget path and the metric graph proves the metric widget path
+# (charting a metric requires no data to exist). Dashboards above the
+# free tier bill ~$3/month prorated - a minutes-lived lane costs ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchDashboard
+metadata:
+  name: planton-oss-e2e-awscwd-svc
+  id: planton-oss-e2e-awscwd-svc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchdashboard
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  dashboardName: planton-oss-e2e-awscwd-svc
+  dashboardBody:
+    widgets:
+      - type: text
+        x: 0
+        y: 0
+        width: 24
+        height: 2
+        properties:
+          markdown: "# Planton E2E service dashboard"
+      - type: metric
+        x: 0
+        y: 2
+        width: 12
+        height: 6
+        properties:
+          metrics:
+            - ["AWS/Lambda", "Errors", "FunctionName", "planton-e2e-absent"]
+          period: 300
+          stat: Sum
+          region: us-west-2
+          title: Lambda errors

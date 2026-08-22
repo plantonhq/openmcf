@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: workers-registry
+spec:
+  region: us-east-1
+  type: HTTP
+  description: API-only discovery for background workers
+  services:
+    - name: workers
+      instances:
+        - instanceId: worker-1
+          customAttributes:
+            queue: high-priority
+            zone: use1-az1

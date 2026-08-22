@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanreservedip
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Reserved IPs
+      sku_meter: unassigned reserved IPv4 hours
+      pricing_unit: hours
+      description: A reserved IPv4 bills (~$5/month, prorated hourly) for every hour it exists WITHOUT a droplet assignment -- reserving capacity is exactly what is charged for. A freshly created reservation with no droplet starts billing immediately.
+  cost_drivers:
+    - field_path: droplet
+      sku_meter: unassigned reserved IPv4 hours
+      pricing_unit: hours
+      impact: Assignment is the whole bill switch -- while the reservation is assigned to a droplet the charge is suspended; unassign it (or leave the field unset) and the hourly charge runs.
+    - field_path: ip_version
+      sku_meter: unassigned reserved IPv4 hours
+      pricing_unit: hours
+      impact: Only IPv4 reservations bill; reserved IPv6 addresses are free whether assigned or not.
+  notes: The orphan trap on this kind is inverted from most -- an idle, forgotten reservation is the EXPENSIVE state and an actively used one is free. Destroy reservations the moment they stop being needed.

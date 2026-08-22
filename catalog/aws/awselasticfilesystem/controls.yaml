@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awselasticfilesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: encrypted
+      evidence:
+        type: spec_default
+        reference: The EFS API default is UNencrypted -- encryption is a create-time choice (ForceNew) that can never be added to an existing file system. The spec marks true as the recommended default and all three presets enable it.
+      notes: An unencrypted file system can only become encrypted by creating a new one and migrating data.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset (with encrypted true) uses the AWS-managed aws/elasticfilesystem key; referencing an AwsKmsKey encrypts file data under a key you own, can rotate, and can revoke -- revoking EFS's grant cuts the service off from the data. ForceNew, and spec validation requires encrypted to be true.
+      notes: Replicas are always encrypted regardless of the source; replication.destination_kms_key_id picks the replica's key.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: NFS traffic is plaintext unless clients mount with TLS (the EFS mount helper's -o tls). The file system cannot force that from the client side -- but the resource policy can reject what non-TLS clients send, with a deny on aws:SecureTransport false. Enforcing encryption in transit is the policy field's first documented use in the spec.
+      notes: Without a policy, whether connections are encrypted is each client's mount-option choice.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Mount targets are elastic network interfaces inside the VPC's subnets -- the file system is reachable only from the VPC and networks routed to it. EFS offers no internet-facing NFS endpoint to accidentally expose.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: Omitted attaches the VPC's DEFAULT security group to every mount target -- whatever that group happens to admit. Declaring AwsSecurityGroup references replaces it and narrows NFS (TCP 2049) ingress to the declared sources on all mount targets.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An NFS endpoint inside a VPC has no WAF attachment point -- request filtering is an HTTP-layer concept, and EFS's protections are network (security groups) and identity (the file system policy) instead.
+    - control_id: rbac
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The management plane is IAM unconditionally, but the DATA plane is open by default -- any client that can reach a mount target over the network can mount the file system anonymously. A file system policy turns the data plane identity-governed, restricting mount/read/write to named IAM principals and optionally denying root access from NFS clients.
+      notes: Per-application POSIX identity enforcement composes through AwsEfsAccessPoint, a first-class component referencing this file system.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The file system authenticates callers; it never authenticates AS anything. Keyless client identity (ECS task roles, EKS IRSA with the EFS CSI driver, Lambda execution roles) is configured on the consuming components and becomes meaningful here only when the policy field demands IAM identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: Anonymous plaintext NFS -- the protocol's own baseline -- stays open until a policy closes it. A file system policy that requires IAM authentication and denies aws:SecureTransport false disables both weak paths at once, which is exactly the pattern the spec documents for this field.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- file system creation, policy changes, mount-target and throughput updates, and the KMS grant calls EFS makes with the caller's credentials -- lands in AWS CloudTrail unconditionally.
+      notes: File-level NFS operations are not a CloudTrail event source; data-plane auditing happens on the clients.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EFS publishes CloudWatch metrics for every file system with no configuration -- storage bytes by class, burst credit balance, throughput, IOPS, and client connections -- the signals capacity and cost alarms build on.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup_enabled
+      evidence:
+        type: spec_default
+        reference: False (the default) leaves the file system with no backups; true enrolls it in AWS Backup's automatic daily backups, the mechanism AWS recommends for all production file systems. Mutable -- protection can be added or removed at any time.
+      notes: The regional and production presets enable it; the One Zone dev preset does not.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: backup_enabled toggles ENROLLMENT only -- how long backups are kept lives on the AWS Backup plan and vault that serve the automatic-backup policy, outside this manifest.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: availability_zone_name
+      evidence:
+        type: spec_default
+        reference: Unset creates a Regional file system storing data and metadata redundantly across multiple Availability Zones -- the highest-availability shape and the default. Naming an AZ creates One Zone storage that lives and dies with that zone. Create-time only (ForceNew).
+      notes: Availability also depends on mount-target placement -- one per AZ keeps clients mounting locally even when another zone is down.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: EFS has no deletion-protection flag -- DeleteFileSystem permanently severs access to the contents. The spec's replication_overwrite_protection (default ENABLED) guards a different hazard, being overwritten as a replication DESTINATION; it does not block deletion. Backups are the recovery path for a wrongly deleted file system.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A fully managed service -- AWS operates and patches the NFS servers and storage fleet; no customer-visible runtime exists to patch. Client-side NFS/TLS tooling (efs-utils) is patched on the consuming instances.

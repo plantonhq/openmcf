@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceancdn
+spec:
+  # The CDN endpoint imports by its UUID (passthrough importer). Lossless:
+  # origin, ttl, certificate name, and custom domain are all read back
+  # (the provider resolves the API's certificate UUID back to the stable
+  # NAME on every read -- the same name this component's certificate
+  # reference carries).
+  values:
+    - name: cdn_id
+      derivations:
+        - from_stack_output: cdn_id
+      where_to_find: >-
+        DigitalOcean control panel -> Spaces Object Storage -> the bucket's
+        Settings -> CDN section, or the API (GET /v2/cdn/endpoints).

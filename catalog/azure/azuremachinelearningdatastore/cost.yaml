@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningdatastore
+spec:
+  billing_model: free
+  free_tier: A datastore is the saved connection that tells the workspace where data lives -- a pointer to a blob container, Data Lake Gen2 filesystem, or file share, plus how to authenticate. It is workspace metadata under Azure Machine Learning's no-additional-charge model; registering, holding, and resolving any number of datastores never bills.
+  notes: "No field of this spec buys anything: the variant block, credentials, and service_data_identity are connection configuration the workspace stores and hands to jobs. The real spend sits on both ends of the pointer, each its own catalog kind: the STORAGE it points at (the storage account behind the container, filesystem, or share bills capacity and transactions regardless of how many datastores reference it) and the COMPUTE that reads through it (jobs and endpoint deployments metered as the compute they consume)."

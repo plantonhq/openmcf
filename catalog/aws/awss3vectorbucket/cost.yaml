@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awss3vectorbucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: indexes
+      sku_meter: S3 Vectors storage
+      pricing_unit: GB-month
+      impact: "The bucket and its indexes carry no fee -- storage meters per logical GB-month from the first vector ($0.06 per GB in the pricing page's US East N. Virginia examples), where each vector's logical size is its data (4 bytes per dimension), its metadata, and its key (1 byte per character). One reclamation quirk: overwritten or deleted vectors can stay in the index's billable size for up to a day."
+    - field_path: indexes.dimension
+      sku_meter: S3 Vectors query data processed
+      pricing_unit: per TB
+      impact: Dimension is fixed for life and multiplies BOTH meters -- 4 bytes per dimension per vector on storage, and the same bytes again in every query's data-processed charge (average vector size times vector count per query, tiered at $0.004/TB for the first 100K vectors, $0.002/TB to 10M, $0.0004/TB beyond, per the page). A 256-dimension index queries at a quarter of a 1024-dimension index's processed bytes.
+    - field_path: indexes.non_filterable_metadata_keys
+      sku_meter: S3 Vectors query data processed
+      pricing_unit: per TB
+      impact: The cost-shaping lever the page calls out -- keys listed here are EXCLUDED from every query's data-processed bytes (non-filterable metadata is stored and returnable but never scanned). Parking bulky payloads (source text chunks, URLs) here keeps them off the per-query meter; they still bill storage and count toward data returned.
+  free_tier: "No permanent free tier exists on the S3 Vectors meters except one: the first 512 KB of data returned per query is free (the pricing page's definitional prose says 512 KB; its worked examples compute with 500 KB -- the page disagrees with itself, so the definitional figure is quoted). What IS permanently free: the vector bucket itself (the page's bucket-types table prints 'Vector buckets: Free' verbatim), empty indexes, and the resource policy. New-account AWS Free Tier credits are a time-boxed trial, not an S3 Vectors allotment."
+  estimate_exclusions:
+    - S3 Vectors storage bills $0.06 per logical GB-month from the first vector (4 bytes per dimension plus metadata plus key) -- entirely driven by what the embedding pipeline uploads
+    - uploads bill $0.20 per logical GB with a 128 KB minimum charge per PUT request -- batching many vectors per PUT is the page's own cost advice
+    - every query bills a $2.50-per-million request fee plus data processed across the index's vectors (tiered $0.004/$0.002/$0.0004 per TB) plus data returned at $0.01 per GB beyond the free first 512 KB, with a 256-byte per-result minimum
+    - read and list request meters (GetVectors, ListVectors) are not yet published on the pricing page -- treated as absence, never as $0
+    - an aws:kms encryption choice routes KMS request and key charges to the referenced AwsKmsKey, billed on its own kind
+  notes: "A NEW surface priced for RAG economics: you pay for logical bytes stored, logical bytes uploaded, and bytes scanned per query -- no cluster, no hourly node, no committed capacity anywhere. Both presets create empty indexes, so committed cost is zero and every dollar tracks the workload's embeddings and queries. The dimension choice deserves the most care: it is create-only, must match the embedding model, and silently sets the slope of both the storage and per-query meters."

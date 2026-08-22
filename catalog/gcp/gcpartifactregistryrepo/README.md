@@ -21,7 +21,7 @@ Three serving modes define the operational model:
 
 ## Prerequisites
 
-- GCP credentials with `roles/artifactregistry.admin` on the target project (the Artifact Registry API is enabled automatically)
+- **Deployer permissions**: the least-privilege permission set the IaC runner's principal needs lives in [`iac/permissions.yaml`](iac/permissions.yaml) (the Artifact Registry API is enabled automatically)
 - For CMEK: a `GcpKmsKey` whose key the Artifact Registry service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
 
 ## Quick Start

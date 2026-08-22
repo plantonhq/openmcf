@@ -1,0 +1,46 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed at deploy:
+# the azure flavor bills vCore-hours only while a Spark cluster is up (its
+# warm pool exists only AFTER a run), the SSIS flavor is created STOPPED
+# and unbilled (Microsoft's status model starts billing at Starting, stops
+# it at Stopped -- and the modules never start anything), and the
+# self-hosted flavor is a free registration for compute you own -- stated
+# in exclusions, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azuredatafactoryintegrationruntime
+spec:
+  presets:
+    - preset: 01-dataflow-compute
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every data flow run on this runtime bills its full core count (the 8-vCore default here) per minute at General Purpose "0.27325" USD per vCore-hour (East US), prorated by the minute and rounded up
+        - the 10-minute time_to_live_min warm pool bills like run time AFTER each run -- zero runs means the pool never exists, but every run's tail adds 10 warm minutes of the full core count
+        - interactive authoring is not enabled in this preset; enabling it later bills a live debug cluster's vCore-hours while enabled
+        - membership in the factory's managed virtual network is free -- it changes which PATH data flows take, not what the runtime costs; activities executed through the managed network bill the factory's managed-VNet rate class
+      notes: "Zero committed cost -- serverless Spark that exists only while data flows run; the meter is entirely run-driven and lands on the parent factory's Data Factory v2 service."
+    - preset: 02-self-hosted-bridge
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the registration is free on Azure's side -- the compute, OS licenses, power, and patching of the machines you install the agent on are your own infrastructure bill, outside every Azure meter
+        - activities executed through this bridge bill the factory at self-hosted rates -- orchestration "1.5" USD per 1,000 runs and data movement "0.10" USD/hour (East US)
+        - copies that move data out of an Azure datacenter add outbound data transfer at bandwidth rates
+      notes: "Zero committed cost on Azure's side -- Azure allocates the registration and issues authorization keys for free; the money is your own hardware plus per-use meters on the factory when pipelines run through it."
+    - preset: 03-ssis-runtime
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "created stopped and unbilled: node-hours bill only from START to STOP (Microsoft's status model -- billing starts at Starting, stops at Stopped), and starting is an operational action outside this manifest; while started, this preset's single Standard_D4_v3 Standard-edition license-included node bills \"0.969\" USD/hour (East US), around 707 USD for a full month left running"
+        - "on the FIRST start Azure creates the SSISDB catalog database at pricing_tier S1 on your Azure SQL server -- from then on it bills continuously on that server's own component and survives stopping (and even deleting) the runtime"
+        - SSIS package executions also bill the factory's orchestration and external-activity meters per run
+      notes: "Zero committed cost at deploy -- the manifest ships a stopped engine. The honest warning is the other direction: one start without a stop turns this into a round-the-clock node-hour bill plus a permanent S1 database; Microsoft's own guidance is to schedule start/stop around package runs."

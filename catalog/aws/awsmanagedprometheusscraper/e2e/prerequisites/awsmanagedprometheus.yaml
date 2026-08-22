@@ -1,0 +1,21 @@
+# Consumer-scoped AwsManagedPrometheus install profile: the bare
+# workspace the scraper delivers into (the workspace kind publishes no
+# shared install profile - its only scenario is the full surface, far
+# more than a fixture needs). Idle workspaces bill nothing.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheus
+metadata:
+  name: planton-oss-e2e-awsamps-ws
+  id: planton-oss-e2e-awsamps-ws
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmanagedprometheus
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  alias: planton-oss-e2e-awsamps-ws

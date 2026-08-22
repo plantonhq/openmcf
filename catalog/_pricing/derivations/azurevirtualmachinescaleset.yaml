@@ -1,0 +1,74 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVirtualMachineScaleSet manifest's spec values into metered
+# quantities and price choices -- instances x hours x the SKU's hourly
+# rate. Mixed-SKU fleets (the "Mix" sentinel), spot capacity, and
+# pay-as-you-go Windows licensing are refusals: each re-prices the
+# compute meter in ways no list price commits to. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurevirtualmachinescaleset.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevirtualmachinescaleset
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: Mix
+      reason: a mixed-SKU fleet draws from several sizes at allocation time (sku_profile decides per allocation), so no single list rate describes its compute bill -- mixed fleets price at market, not list
+    - when:
+        - field_path: spot
+          op: is_set
+      reason: spot capacity bills at Azure's fluctuating market rate at allocation time -- an on-demand list figure would misstate an evictable fleet's bill
+    - when:
+        - field_path: instances
+          op: is_unset
+      reason: the manifest fixes no instance count, and a fleet's bill is instances x rate -- there is no honest quantity to multiply
+    - when:
+        - field_path: os_profile.windows
+          op: is_set
+        - field_path: os_profile.windows.license_type
+          op: not_equals
+          value: WINDOWS_SERVER
+        - field_path: os_profile.windows.license_type
+          op: not_equals
+          value: WINDOWS_CLIENT
+      reason: a pay-as-you-go Windows fleet adds a per-core Windows Server license meter on every instance, and that meter is not yet in the price book -- only fleets bringing their own license (Azure Hybrid Benefit) price at the base rate
+  lines:
+    - sku_meter: Fleet compute
+      quantity:
+        - field_value:
+            field_path: instances
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: sku_name
+      basis: instances x 730 hours at the SKU's base pay-as-you-go rate (the Linux rate; Windows fleets reach this line only with Azure Hybrid Benefit) -- a floor when autoscaling manages capacity, since the real count follows the autoscaler
+  exclusions:
+    - applies_when:
+        - field_path: os_disk.diff_disk_settings
+          op: is_unset
+      text: each instance's managed OS disk bills at the tier matching the configured storage SKU and size (image-inherited when unset), a per-instance managed-disk meter not yet priced here
+    - text: fleet-wide data disks (data_disks) bill one managed disk per instance at each definition's tier
+    - text: instance-level public IPs configured inline bill per address; referenced subnets, load balancer pools, and application gateway pools bill on their own components
+    - text: network egress follows traffic and client placement
+  notes:
+    - applies_when:
+        - field_path: os_disk.diff_disk_settings
+          op: is_set
+      text: Ephemeral OS disks live on instance-local storage and add no managed-disk charge, on any fleet size.
+    - applies_when:
+        - field_path: os_profile.windows
+          op: is_set
+      text: Azure Hybrid Benefit prices every instance at the base compute rate; the Windows Server license obligation is carried by the customer's own licensing, not this bill.

@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremanagedredisgeoreplication
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The group is replication configuration; it stores no data of its own. Each member's dataset rests on its AzureManagedRedis instance, which owns that posture (and the link-time contract forbids persistence on members anyway).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The cross-region replication channel the group creates is operated end-to-end by the Microsoft-managed Redis Enterprise service with no transport toggle in this spec; client sessions ride each member instance's own TLS posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group has no network endpoint of its own -- each member's Redis endpoint exposure is that instance's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The group is replication topology, not an access grant -- it decides which instances share data, never who may read it. Data-plane access on each member is governed by that instance's grants (AzureManagedRedisAccessPolicyAssignment), and managing the group is ordinary ARM RBAC on the member clusters.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group authenticates nobody; the members replicate over a Microsoft-operated service channel with no credential in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The group exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Link and unlink operations land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on the group itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The group emits no metrics of its own; replication health surfaces through each member instance's Azure Monitor metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Membership is declarative configuration -- nothing to back up; the manifest recreates the links. The data itself is protected by the topology, not by backups (link-time rules forbid member persistence), and an unlinked member keeps its own full copy of the dataset.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Cross-failure-domain replication is the resource's entire content -- deploying it links 2 to 5 instances (managed_redis_id plus 1-4 linked_managed_redis_ids) into an ACTIVE multi-primary group where every member accepts writes in its own region and Azure merges the datasets with conflict-free semantics. A deployed group cannot exist without spanning failure domains.
+      notes: The redundancy is region-level, stronger than zonal -- but failover is the application's responsibility (write locally, evacuate a region by removing its ID from linked_managed_redis_ids), and replication is eventually consistent with no sync-time SLA.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for the group. Deleting it force-unlinks the members -- each keeps its own copy of the data and becomes an independent instance, so no data is destroyed with the link.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The replication engine that links members and merges datasets is the Microsoft-operated Redis Enterprise service; no customer-visible patch surface exists on the group.

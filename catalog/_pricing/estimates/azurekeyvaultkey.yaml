@@ -1,0 +1,59 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurekeyvaultkey
+spec:
+  presets:
+    - preset: 01-rsa-cmk
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - every operation on the key bills 0.03 USD per 10,000 transactions in eastus (RSA 2048, software-protected) -- wrap/unwrap calls follow the consumers' startup and rotation behavior, unknowable from the manifest
+        - the parent Premium-or-Standard vault this key lives in has no at-rest charge of its own; its posture is the AzureKeyVault component's
+      notes: "Zero-committed: a software-protected RSA 2048 key has no per-key fee -- Microsoft's Key Vault pricing page bills software keys per 10,000 transactions only. The key object sitting unused costs exactly nothing."
+    - preset: 02-hsm-auto-rotating
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Key Vault
+          sku_meter: HSM-protected key fee
+          pricing_unit: key-months
+          pricing_quantity: "1"
+          quantity_basis: keyType RSA_HSM at keySize 2048 bills the flat per-key monthly fee for the one active version; the fee is use-gated (charged when the key was used at least once in the prior 30 days) and a production CMK is used at every consumer startup, so the floor counts 1 key-month per month
+          list_unit_price: "1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Key Vault' and armRegionName eq 'eastus' and meterName eq 'Premium HSM-protected RSA 2048-bit key' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "1.0000"
+        - service_name: Key Vault
+          sku_meter: automated key rotation
+          pricing_unit: rotations
+          pricing_quantity: "0.0908"
+          quantity_basis: the rotation policy fires every P335D (timeAfterCreation), so a month carries 30.416667 / 335 ~ 0.0908 scheduled rotations at 1.00 USD each -- about 1.09 USD a year, deterministic from the manifest
+          list_unit_price: "1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Key Vault' and armRegionName eq 'eastus' and meterName eq 'Automated Key Rotation' and skuName eq 'Premium' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "0.0908"
+      total_list_cost: "1.0908"
+      exclusions:
+        - operations on the key bill 0.03 USD per 10,000 transactions (the RSA 2048 rate applies to HSM keys too; only the monthly fee differs) -- volume follows the consumers
+        - after each rotation, any consumer still touching the PREVIOUS version makes that version bill its own 1.00 USD monthly fee that cycle (each used version counts as a separate HSM key per Microsoft's FAQ); the floor models steady-state single-active-version usage
+        - the Event Grid near-expiry notifications (notifyBeforeExpiry P30D) bill on the Event Grid components that subscribe, not here
+      notes: The committed floor is the HSM custody fee plus the amortized rotation cadence. The fee is never prorated -- a key used once on day 29 bills the full month -- and requires the vault's PREMIUM SKU (an AzureKeyVault choice).
+    - preset: 03-ec-signing
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - every sign/verify bills the ADVANCED key operations meter -- 0.15 USD per 10,000 transactions in eastus (all ECC keys are advanced-class regardless of curve) -- following JWT issuance volume, unknowable from the manifest
+      notes: "Zero-committed: a software-protected EC P-384 key has no per-key fee. The 5x transaction rate versus RSA 2048 (0.15 vs 0.03 per 10,000) is the only pricing consequence of choosing ECC."

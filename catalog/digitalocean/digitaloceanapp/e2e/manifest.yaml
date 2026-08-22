@@ -1,0 +1,50 @@
+# DigitalOcean App -- examples
+#
+# DigitalOceanApp is a full App Platform application: any mix of
+# services, workers, jobs, static sites, functions, and in-app
+# databases. The app name is 2-32 characters. Component instance
+# sizes are free-form slugs such as basic-xxs.
+#
+# Usage:
+#   planton apply -f manifest.yaml
+
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanApp
+metadata:
+  name: demo-app
+spec:
+  appName: demo-app
+  region: nyc3
+  services:
+    - name: web
+      image:
+        registryType: docker_hub
+        registry: library
+        repository: nginx
+        tag: latest
+      instanceSizeSlug: basic-xxs
+      instanceCount: 1
+      httpPort: 80
+      envs:
+        - key: NODE_ENV
+          plaintext: production
+
+---
+# Git-source web service. Use the generic git clone URL when the
+# DigitalOcean account has no linked GitHub connection. Runtime and
+# build are auto-detected from the repo.
+
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanApp
+metadata:
+  name: sample-nodejs
+spec:
+  appName: sample-nodejs
+  region: nyc3
+  services:
+    - name: web
+      git:
+        repoCloneUrl: https://github.com/digitalocean/sample-nodejs.git
+        branch: main
+      instanceSizeSlug: basic-xxs
+      instanceCount: 1

@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awswafipset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An IP set stores only CIDR ranges -- firewall configuration held by the WAF control plane, not customer data with an encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data store means no key decision here (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: An IP set terminates no connections -- WAF evaluates it inline at the protected resource's edge (ALB, CloudFront), and transport encryption is that resource's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An IP set is not addressable -- it has no endpoint, only a management API governed by IAM. It exists to decide OTHER resources' exposure, not its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The set is the reusable source-list building block for Layer-7 ingress decisions, but it enforces nothing alone -- the allow, block, count, or CAPTCHA action lives on the web ACL rule that references it (see edge-protection). Network-level ingress restriction belongs to the protected resource's security groups.
+    - control_id: edge-protection
+      status: configurable
+      field_path: addresses
+      evidence:
+        type: spec_default
+        reference: Serving edge request filtering IS this component's purpose -- the CIDR list is the match material web ACL rules evaluate against every inspected request, backing allow-lists (office/VPN ranges, health-checker fleets) and deny-lists (known-bad ranges) across many web ACLs at once. An empty list is a valid placeholder that matches nothing; populating it activates every referencing rule's filter.
+      notes: The set contributes the WHO; the referencing web ACL rule owns the verdict (allow, block, count, CAPTCHA) and the web ACL owns the attachment to the protected resource. Updating the addresses propagates to every referencing rule immediately, with no web ACL redeploy -- which makes the set the fast path for emergency blocks.
+    - control_id: rbac
+      status: not_applicable
+      notes: The set has no data plane; management (who may update the address list) is IAM on the caller's side, account-level posture outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: An IP set runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec exposes no authentication surface -- there is no protocol negotiation and no legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the set (the interesting audit event -- who altered a firewall list) land in CloudTrail as account-level posture; request-level logging is the referencing web ACL's logging configuration, not the set's.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: WAF publishes CloudWatch metrics per web ACL and per rule -- matches against this set appear under the referencing rule's metric name; the set itself has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The set holds no data to back up beyond its declarative CIDR list, which is re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the set level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: WAF is a managed regional (or CloudFront-global) control plane with no zonal footprint to replicate -- availability is AWS's side of the shared-responsibility line.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for IP sets. AWS does refuse to delete a set still referenced by a web ACL rule -- a dependency guard, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An IP set is configuration on a fully managed service -- there is no software of its own to patch.

@@ -1,0 +1,30 @@
+# Consumer-scoped AwsS3ObjectSet install profile for the canary's code
+# bundle: a Synthetics-layout zip (nodejs/node_modules/heartbeat.js -
+# the runtime convention, NOT the Lambda layout the shared object-set
+# fixture stages) carrying a no-network heartbeat script. Staged into
+# the shared versioned bucket fixture.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-awssyn-code
+  id: planton-oss-e2e-awssyn-code
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_id
+  objects:
+    - key: e2e/canary-heartbeat.zip
+      content_base64: UEsDBBQAAAAAAFtwEF2vEi8V5wAAAOcAAAAgAAAAbm9kZWpzL25vZGVfbW9kdWxlcy9oZWFydGJlYXQuanNjb25zdCBzeW50aGV0aWNzID0gcmVxdWlyZSgnU3ludGhldGljcycpOwpjb25zdCBsb2cgPSByZXF1aXJlKCdTeW50aGV0aWNzTG9nZ2VyJyk7CmV4cG9ydHMuaGFuZGxlciA9IGFzeW5jICgpID0+IHsKICByZXR1cm4gYXdhaXQgc3ludGhldGljcy5leGVjdXRlU3RlcCgnaGVhcnRiZWF0JywgYXN5bmMgKCkgPT4gewogICAgbG9nLmluZm8oJ3BsYW50b24gZTJlIGhlYXJ0YmVhdCBvaycpOwogIH0pOwp9OwpQSwECFAMUAAAAAABbcBBdrxIvFecAAADnAAAAIAAAAAAAAAAAAAAAgAEAAAAAbm9kZWpzL25vZGVfbW9kdWxlcy9oZWFydGJlYXQuanNQSwUGAAAAAAEAAQBOAAAAJQEAAAAA
+      content_type: application/zip

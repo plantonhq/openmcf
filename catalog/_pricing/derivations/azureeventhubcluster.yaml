@@ -1,0 +1,32 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureEventHubCluster manifest's spec values into metered quantities and
+# price choices -- the dedicated cluster bills its capacity units by the
+# hour from creation, and nothing else in the spec buys anything. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureeventhubcluster.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureeventhubcluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: dedicated capacity units
+      quantity:
+        - field_value:
+            field_path: capacity_units
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: eventhubs-dedicated-capacity-unit-eastus
+      basis: capacity_units (Azure's entry size 1 when unset -- the modules compose the ARM sku "Dedicated_{n}" with the same default) x 730 hours at the Dedicated Capacity Unit rate
+  exclusions:
+    - text: event data retained beyond the included window bills per GB-month on the Dedicated Extended Retention meter, following event volume and per-hub retention settings
+    - text: network egress follows consumer placement
+  notes:
+    - text: The CU-hours are the whole committed bill -- namespaces placed on the cluster draw on its capacity instead of carrying their own throughput meters. Azure forbids deleting a cluster for 4 hours after creation, so even the shortest-lived cluster pays at least four CU-hours.

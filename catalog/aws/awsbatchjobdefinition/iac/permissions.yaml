@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbatchjobdefinition
+spec:
+  aws:
+    statements:
+      - sid: ManageJobDefinition
+        actions:
+          - batch:RegisterJobDefinition
+          - batch:DeregisterJobDefinition
+          - batch:TagResource
+          - batch:UntagResource
+          - batch:ListTagsForResource
+        resources:
+          - arn:aws:batch:*:*:job-definition/*
+        provenance: derived
+        notes: Covers aws_batch_job_definition, the only resource either module registers (the Pulumi module drives the same provider through the pulumi-aws bridge). Every change registers a new revision, and with deregister_on_new_revision at its default the provider also deregisters the previous one. The service reference authorizes RegisterJobDefinition on the job-definition ARN (name form) and DeregisterJobDefinition plus the tagging actions on the job-definition-revision ARN (name:revision form) -- the single job-definition/* pattern covers both formats, since the revision suffix falls inside the wildcard.
+      - sid: DescribeJobDefinitions
+        actions:
+          - batch:DescribeJobDefinitions
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_batch_job_definition during plan/refresh. Batch Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: PassRolesToBatchJobs
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Both modules submit up to two role ARNs inside containerProperties -- jobRoleArn (spec container.job_role, assumed by the job's code at runtime) and executionRoleArn (spec container.execution_role, assumed by the ECS agent for image pulls, secret resolution, and log writes). RegisterJobDefinition validates the caller may pass them, and both are assumed by ecs-tasks.amazonaws.com, so the grant should carry an iam:PassedToService=ecs-tasks.amazonaws.com condition and narrow the resource to the deployment's role ARNs (or naming convention) once fixed. EKS-arm definitions pass no roles (identity rides the cluster's service accounts), so this statement is exercised only by the container arm.

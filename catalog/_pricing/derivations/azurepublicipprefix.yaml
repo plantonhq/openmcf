@@ -1,0 +1,92 @@
+# Cost derivation: the machine-executable rules turning any
+# AzurePublicIpPrefix manifest's spec values into metered quantities and
+# price choices -- every address in the reserved block bills per IP-hour
+# from creation, so the quantity is 2^(32-prefix_length) addresses times
+# the hours in the month. The grammar has no exponentiation, so the
+# block sizes are enumerated per length the committed presets use (/28 =
+# 16 addresses, /30 = 4); other lengths are refusals until a preset
+# commits them. BYOIP-derived prefixes are verified free. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurepublicipprefix.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurepublicipprefix
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku
+          op: equals
+          value: STANDARD_V2
+      reason: the next-generation StandardV2 SKU has no prefix meter of its own in Azure's retail price API (the Public IP Prefix product publishes only Standard and Global meters) -- no API-verifiable rate exists to commit
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: GLOBAL
+      reason: a GLOBAL-tier prefix bills each reserved address at double the Standard per-address rate, a niche shape no committed preset uses -- pinning its price would create a book entry nothing consumes
+    - when:
+        - field_path: ip_version
+          op: equals
+          value: IPV6
+      reason: Microsoft's price documents meter only IPv4 prefixes and the retail API publishes no IPv6-prefix meter -- committing either the IPv4 rate or zero to an IPv6 range would guess where Microsoft has published nothing
+    - when:
+        - field_path: prefix_length
+          op: is_set
+        - field_path: prefix_length
+          op: not_equals
+          value: "28"
+        - field_path: prefix_length
+          op: not_equals
+          value: "30"
+      reason: the billed quantity is 2^(32-prefix_length) reserved addresses, an exponentiation the derivation grammar cannot compute -- only the /28 (16 addresses) and /30 (4 addresses) block sizes the committed presets use are enumerated as constants; a new length needs its arm added alongside the preset that commits it
+  lines:
+    - sku_meter: prefix reserved addresses
+      applies_when:
+        - field_path: prefix_length
+          op: is_unset
+        - field_path: custom_ip_prefix_id
+          op: is_unset
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: public-ip-prefix-per-ip-eastus
+      basis: an unset length applies Azure's default of /28 -- 16 reserved addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+    - sku_meter: prefix reserved addresses
+      applies_when:
+        - field_path: prefix_length
+          op: equals
+          value: "28"
+        - field_path: custom_ip_prefix_id
+          op: is_unset
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: public-ip-prefix-per-ip-eastus
+      basis: a /28 reserves 2^(32-28) = 16 addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+    - sku_meter: prefix reserved addresses
+      applies_when:
+        - field_path: prefix_length
+          op: equals
+          value: "30"
+        - field_path: custom_ip_prefix_id
+          op: is_unset
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: public-ip-prefix-per-ip-eastus
+      basis: a /30 reserves 2^(32-30) = 4 addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+  exclusions:
+    - text: traffic to and from addresses in the range bills per GB as bandwidth on the resources using them
+    - text: AzurePublicIp resources drawn from the prefix add no meter of their own -- the reservation already paid for them
+  notes:
+    - applies_when:
+        - field_path: custom_ip_prefix_id
+          op: is_set
+      text: A prefix carved from a Custom IP Prefix (bring-your-own IP range) is free -- Microsoft states there is no charge for public IP prefixes or addresses derived from BYOIP ranges. Egress from the range still bills at internet bandwidth rates.

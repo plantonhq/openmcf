@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: source_arn
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: "Every invocation through this profile bills input and output tokens at the UNDERLYING model's published per-1M rate -- the profile adds no premium and no fee. AWS documents it plainly: there is no additional routing cost for cross-region inference, and the price is calculated based on the region from which you call the profile. Pointing source_arn at a global cross-region profile is the one rate lever -- AWS prices global routing at roughly 10% below geographic/in-region rates."
+    - field_path: region
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: The calling region selects the rate table -- Bedrock publishes different per-1M token prices per region group for the same model, and cross-region routing still prices from HERE, the region the profile lives in, regardless of where AWS actually processes the request.
+  free_tier: "The profile object is permanently free -- AWS publishes no meter for creating or holding an application inference profile, and its own docs price cross-region routing at zero additional cost (\"There's no additional routing cost for using cross-region inference\"). What bills is the model usage flowing through it, from the first token, with no free allotment -- the profile's zero is commitment-absence, not a trial."
+  estimate_exclusions:
+    - token volume is entirely workload-driven -- the profile is a routing-and-attribution handle, and the same manifest costs nothing un-invoked and real money under traffic
+    - the per-token rate belongs to the model behind source_arn (or behind the system-defined profile it inherits) -- this manifest names the reference, and the model's own price table decides the dollars
+    - a global cross-region source prices approximately 10% below geographic routing per AWS's cross-region inference documentation -- a discount, not a meter of its own
+  notes: "An application inference profile is cost ATTRIBUTION, not cost: it wraps a model (or an AWS cross-region profile) in an ARN you can tag, IAM-scope, and read per-tenant spend from, while every invocation bills exactly what the underlying model would have billed called directly -- same tokens, same rate, priced from the calling region, no routing premium. The one economic decision in this spec is which source_arn shape to use: a geographic cross-region profile buys throughput resilience at standard pricing, and a global profile trades data-residency control for roughly 10% off. Everything else on the invoice -- and it can be the account's biggest line -- belongs to the model, metered per token as the profile's consumers converse."

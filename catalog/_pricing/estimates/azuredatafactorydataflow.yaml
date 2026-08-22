@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuredatafactorydataflow
+spec:
+  presets:
+    - preset: 01-mapping-transformation
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - every execution bills data flow vCore-hours while the Spark cluster runs it -- General Purpose "0.27325" USD, Memory Optimized "0.34275" USD, Compute Optimized "0.19225" USD per vCore-hour at East US, 8-vCore minimum, prorated by the minute and rounded up; cluster size, compute class, and time-to-live are chosen on the Execute Data Flow activity's integration runtime, not in this manifest
+        - debug sessions bill the same vCore-hour meter for as long as the debug cluster stays up
+        - each execution also bills one orchestration activity run on the factory, and Microsoft notes data flows additionally bill the managed disk and blob storage required for execution and debugging
+        - Data Factory operations bill read/write per 50,000 entity operations and monitoring per 50,000 run records on the factory
+        - the stores behind the source and sink linked services bill their own storage and request meters as their own kinds
+      notes: Zero committed cost -- the definition never appears on the invoice; an idle mapping data flow bills nothing, and every dollar it can cause is decided by the pipeline that runs it and the runtime it runs on.
+    - preset: 02-reusable-flowlet
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a flowlet never runs alone and never bills alone -- its logic executes inside each embedding data flow's Spark cluster, metered there as that flow's vCore-hours (General Purpose "0.27325" USD per vCore-hour at East US, 8-vCore minimum)
+        - Data Factory operations bill read/write per 50,000 entity operations on the factory when the flowlet is authored or updated
+        - the embedding flows' executions carry every downstream charge -- orchestration activity runs, vCore-hours, and the connected stores' own meters
+      notes: "Zero committed cost -- the flowlet form is pure reuse: one shared definition whose cost surface is entirely inside the data flows that embed it."

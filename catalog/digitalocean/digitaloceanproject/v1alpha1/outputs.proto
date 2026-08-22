@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanproject.v1alpha1;
+
+// DigitalOceanProjectStackOutputs captures the key outputs after
+// provisioning a DigitalOcean project.
+message DigitalOceanProjectStackOutputs {
+  // UUID of the project (the API identity, and the import id).
+  string project_id = 1;
+
+  // UUID of the account or team that owns the project.
+  string owner_uuid = 2;
+
+  // Numeric id of the account or team that owns the project.
+  string owner_id = 3;
+}

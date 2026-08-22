@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53healthcheck
+spec:
+  aws:
+    statements:
+      - sid: CreateHealthCheck
+        actions:
+          - route53:CreateHealthCheck
+        resources:
+          - "*"
+        provenance: derived
+        notes: Create side of aws_route53_health_check. The service reference authorizes CreateHealthCheck against no resource type (the check's id does not exist yet), so the wildcard is the narrowest possible scope.
+      - sid: ManageHealthCheck
+        actions:
+          - route53:GetHealthCheck
+          - route53:UpdateHealthCheck
+          - route53:DeleteHealthCheck
+        resources:
+          - arn:aws:route53:::healthcheck/*
+        provenance: derived
+        notes: Covers aws_route53_health_check after creation -- reads during plan/refresh, in-place updates of the mutable arguments (endpoint coordinates, thresholds, state shaping, children, alarm coordinates), and teardown. check_type, request_interval, measure_latency, and routing_control_arn are ForceNew, replacing through CreateHealthCheck + DeleteHealthCheck.
+      - sid: TagHealthCheck
+        actions:
+          - route53:ChangeTagsForResource
+          - route53:ListTagsForResource
+        resources:
+          - arn:aws:route53:::healthcheck/*
+          - arn:aws:route53:::hostedzone/*
+        provenance: derived
+        notes: Covers the tags argument -- the provider applies health-check tags through ChangeTagsForResource after creation and reads them back with ListTagsForResource. The service reference authorizes both actions against the healthcheck AND hostedzone ARN formats, so the statement carries every authorized format; the module itself only ever names ResourceType=healthcheck.

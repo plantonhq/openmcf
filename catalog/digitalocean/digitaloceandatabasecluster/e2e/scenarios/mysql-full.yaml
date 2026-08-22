@@ -1,0 +1,41 @@
+# Full-surface MySQL DigitalOceanDatabaseCluster: composes the VPC fixture
+# (the spec's vpc is OPTIONAL, so the fixture rides the e2e-prerequisites
+# annotation, never a registry edge) and proves private networking, custom
+# storage (the provider's bare-MiB string wiring -- the arm the old module
+# broke), a maintenance window, sql_mode on MySQL, and the user-tags +
+# Planton-labels tag composition. storage_autoscale is deliberately absent:
+# the Pulumi SDK v4.49.0 has no such field and the module fails loudly.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasecluster-mysql
+  id: planton-oss-e2e-digitaloceandatabasecluster-mysql
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasecluster
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanVpc"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-dodb-mysql
+  engine: mysql
+  engineVersion: "8"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  storageGib: 30
+  maintenanceWindow:
+    day: sunday
+    hour: "02:00"
+  sqlMode: "ANSI,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+  tags:
+    - planton-e2e

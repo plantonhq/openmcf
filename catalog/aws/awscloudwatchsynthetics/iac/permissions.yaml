@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudwatchsynthetics
+spec:
+  aws:
+    statements:
+      - sid: CreateSyntheticsResources
+        actions:
+          - synthetics:CreateCanary
+          - synthetics:CreateGroup
+        resources:
+          - "*"
+        provenance: derived
+        notes: Both create actions are NON-SCOPABLE per the service reference (they list no resource types), so the wildcard is the narrowest possible scope -- an ARN-scoped grant on either is a runtime DENY. CreateCanary covers aws_synthetics_canary; CreateGroup covers aws_synthetics_group, one per groups entry.
+      - sid: ManageCanary
+        actions:
+          - synthetics:GetCanary
+          - synthetics:UpdateCanary
+          - synthetics:StartCanary
+          - synthetics:StopCanary
+          - synthetics:DeleteCanary
+        resources:
+          - arn:aws:synthetics:*:*:canary:*
+        provenance: derived
+        notes: GetCanary serves every plan/refresh; UpdateCanary applies in-place changes (code, schedule, run_config, retention); StartCanary/StopCanary reconcile start_canary; DeleteCanary tears down (its delete_lambda flag makes the SERVICE sweep the Synthetics-managed Lambda -- no lambda grants flow through the module). All five scope to the canary ARN, whose format uses a COLON before the name (arn:${Partition}:synthetics:${Region}:${Account}:canary:${CanaryName}) per the service reference.
+      - sid: ManageGroupsAndAssociations
+        actions:
+          - synthetics:GetGroup
+          - synthetics:DeleteGroup
+          - synthetics:AssociateResource
+          - synthetics:DisassociateResource
+          - synthetics:ListGroupResources
+          - synthetics:ListAssociatedGroups
+        resources:
+          - arn:aws:synthetics:*:*:group:*
+          - arn:aws:synthetics:*:*:canary:*
+        provenance: derived
+        notes: Covers aws_synthetics_group (Get/Delete on the group ARN -- note the ARN carries the cloud-generated group ID, not the name, so the id segment stays wildcarded) and aws_synthetics_group_association, one per group_names entry (AssociateResource/DisassociateResource/ListGroupResources authorize on the group ARN; ListAssociatedGroups reads the join back from the canary side on refresh).
+      - sid: TagSyntheticsResources
+        actions:
+          - synthetics:TagResource
+          - synthetics:UntagResource
+          - synthetics:ListTagsForResource
+        resources:
+          - arn:aws:synthetics:*:*:canary:*
+          - arn:aws:synthetics:*:*:group:*
+        provenance: derived
+        notes: Both the canary and each owned group are tagged (tags = local.aws_tags in the module) -- tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three to the canary and group ARN formats.
+      - sid: PassExecutionRoleToSynthetics
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateCanary and UpdateCanary pass the referenced execution_role_arn to the Synthetics service (the role the canary's Lambda assumes at every run) -- without PassRole the create is an authorization error. Narrow the resource to the deployment's role naming convention where one exists.

@@ -10,10 +10,10 @@ import "shared/metadata.proto";
 // digital-ocean-function
 message DigitalOceanFunction {
   //api-version
-  string api_version = 1 [(buf.validate.field).string.const = 'digital-ocean.planton.dev/v1alpha1'];
+  string api_version = 1 [(buf.validate.field).string.const = "digital-ocean.planton.dev/v1alpha1"];
 
   //resource-kind
-  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanFunction'];
+  string kind = 2 [(buf.validate.field).string.const = "DigitalOceanFunction"];
 
   //metadata
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];

@@ -359,7 +359,8 @@ generate-provider-schemas:
 		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
 		--provider 'azurerm=hashicorp/azurerm@5.0.0' \
 		--provider 'aws=hashicorp/aws@~> 6.58' \
-		--provider 'cloudflare=cloudflare/cloudflare@5.23.0'
+		--provider 'cloudflare=cloudflare/cloudflare@5.23.0' \
+		--provider 'digitalocean=digitalocean/digitalocean@~> 2.99'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this
@@ -390,7 +391,9 @@ generate-reference: generate-proto-docs
 # (catalog/_pricing/estimates/): derived components replay every preset
 # through their cost derivation (catalog/_pricing/derivations/), modeled
 # components join their estimate model (catalog/_pricing/models/) with the
-# provider's price book (catalog/_pricing/pricebook/). Always whole-tree:
+# provider's price book (catalog/_pricing/pricebook/), and cluster-capacity
+# components replay their presets through their capacity derivation
+# (catalog/_pricing/capacity/) into footprint estimates. Always whole-tree:
 # the dead-price sweep
 # needs every model's references. Offline and deterministic: unchanged
 # inputs regenerate byte-identical files (enforced by the drift test in
@@ -411,12 +414,20 @@ generate-cost-estimates:
 generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
-# Refreshes the committed AWS action-inventory snapshot
-# (pkg/iac/actioninventory/aws.yaml) from AWS's machine-readable service
-# reference, scoped to the services the committed runner permissions
-# manifests reference. Requires network access; CI never fetches -- it
-# validates every manifest action against the committed snapshot (an
-# invented or misspelled action name cannot ship).
+# Refreshes the committed action-inventory snapshots
+# (pkg/iac/actioninventory/{aws,azure,gcp}.yaml) from each provider's own
+# published inventory -- AWS's machine-readable service reference
+# (including each action's resource-scopability, which the scopability
+# gate holds statements to), ARM's provider-operations metadata (the
+# Azure arm needs a signed-in Azure CLI for its bearer token), and GCP
+# IAM's testable-permissions inventory (the GCP arm needs gcloud
+# application-default credentials, an active gcloud project, and the
+# PLANTON_GCP_ORG / PLANTON_GCP_BILLING_ACCOUNT anchors -- any org and
+# billing account the credential can query; they only type the queries,
+# whose results union) -- scoped to the services the committed runner
+# permissions manifests reference. Requires network access; CI never
+# fetches -- it validates every manifest action against the committed
+# snapshots (an invented or misspelled action name cannot ship).
 .PHONY: generate-action-inventory
 generate-action-inventory:
 	go run ./pkg/iac/actioninventory/fetcher
@@ -507,6 +518,18 @@ release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: pat
 .PHONY: test-and-release
 test-and-release: test release
 
+# ── Website (site/) ───────────────────────────────────────────────────────────
+# The planton.ai website lives in site/ with its own Makefile; these targets
+# just delegate. run-site starts the Next.js dev server; preview-site builds
+# the full static export (what GitHub Pages serves) and serves it locally.
+.PHONY: run-site
+run-site:
+	$(MAKE) -C site run
+
+.PHONY: preview-site
+preview-site:
+	$(MAKE) -C site preview-site
+
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies
 # the -run filter, so sweeping ./e2e/... pays every provider's harness setup --
@@ -527,11 +550,11 @@ e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesKafkaTopic|KubernetesKafkaUser|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKarapace|KubernetesKafkaUi|KubernetesOpenSearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse|KubernetesRabbitMq|KubernetesSignoz|KubernetesTekton|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOtelCollector|KubernetesAirflow|KubernetesRayCluster|KubernetesFlinkDeployment|KubernetesJupyterHub|KubernetesMlflow|KubernetesTrino|KubernetesSuperset)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesKafkaTopic|KubernetesKafkaUser|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKarapace|KubernetesKafkaUi|KubernetesOpenSearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse|KubernetesRabbitMq|KubernetesSignoz|KubernetesTekton|KubernetesGhaRunnerScaleSet|KubernetesPlantonRunner|KubernetesPlantonPlatform|KubernetesKeycloak|KubernetesOtelCollector|KubernetesAirflow|KubernetesRayCluster|KubernetesFlinkDeployment|KubernetesJupyterHub|KubernetesMlflow|KubernetesTrino|KubernetesSuperset)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier4
 e2e-test-kubernetes-tier4:  ## Run Kubernetes Tier 4 (operators, addons, cluster infra) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesRabbitMqOperator|KubernetesGhaRunnerScaleSetController|KubernetesTektonOperator|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesKubeRayOperator|KubernetesFlinkOperator)_" ./e2e/
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesRabbitMqOperator|KubernetesGhaRunnerScaleSetController|KubernetesTektonOperator|KubernetesPlantonOperator|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesKubeRayOperator|KubernetesFlinkOperator)_" ./e2e/
 
 # ── Terraform-only E2E targets (requires kind, tofu/terraform, kubectl, Docker) ──
 
@@ -545,11 +568,11 @@ e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-b
 
 .PHONY: e2e-test-kubernetes-terraform-tier3
 e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operator-dependent) E2E tests
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesKafkaTopic|KubernetesKafkaUser|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKarapace|KubernetesKafkaUi|KubernetesOpenSearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse|KubernetesRabbitMq|KubernetesSignoz|KubernetesTekton|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOtelCollector|KubernetesAirflow|KubernetesRayCluster|KubernetesFlinkDeployment|KubernetesJupyterHub|KubernetesMlflow|KubernetesTrino|KubernetesSuperset)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesKafkaTopic|KubernetesKafkaUser|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKarapace|KubernetesKafkaUi|KubernetesOpenSearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse|KubernetesRabbitMq|KubernetesSignoz|KubernetesTekton|KubernetesGhaRunnerScaleSet|KubernetesPlantonRunner|KubernetesPlantonPlatform|KubernetesKeycloak|KubernetesOtelCollector|KubernetesAirflow|KubernetesRayCluster|KubernetesFlinkDeployment|KubernetesJupyterHub|KubernetesMlflow|KubernetesTrino|KubernetesSuperset)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier4
 e2e-test-kubernetes-terraform-tier4:  ## Run Kubernetes Tier 4 Terraform (operators, addons) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesRabbitMqOperator|KubernetesGhaRunnerScaleSetController|KubernetesTektonOperator|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesKubeRayOperator|KubernetesFlinkOperator)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesRabbitMqOperator|KubernetesGhaRunnerScaleSetController|KubernetesTektonOperator|KubernetesPlantonOperator|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesKubeRayOperator|KubernetesFlinkOperator)_Terraform" ./e2e/
 
 # ── Auth0 E2E targets ────────────────────────────────────────────────────────
 
@@ -593,17 +616,34 @@ e2e-test-gcp-pulumi:  ## Run GCP Pulumi E2E tests only
 e2e-test-gcp-terraform:  ## Run GCP Terraform E2E tests only
 	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Terraform" ./e2e/gcp/...
 
+# ── DigitalOcean E2E targets ─────────────────────────────────────────────────
+
+.PHONY: e2e-test-digitalocean
+e2e-test-digitalocean:  ## Run all DigitalOcean E2E tests (requires DIGITALOCEAN_TOKEN; bucket lanes also need SPACES_ACCESS_KEY_ID/SPACES_SECRET_ACCESS_KEY)
+	go test -tags=e2e -timeout=60m -v -count=1 ./e2e/digitalocean/...
+
+.PHONY: e2e-test-digitalocean-pulumi
+e2e-test-digitalocean-pulumi:  ## Run DigitalOcean Pulumi E2E tests only
+	go test -tags=e2e -timeout=60m -v -count=1 -run ".*_Pulumi" ./e2e/digitalocean/...
+
+.PHONY: e2e-test-digitalocean-terraform
+e2e-test-digitalocean-terraform:  ## Run DigitalOcean Terraform E2E tests only
+	go test -tags=e2e -timeout=60m -v -count=1 -run ".*_Terraform" ./e2e/digitalocean/...
+
 # ── Generic component E2E targets ────────────────────────────────────────────
 
 # Resolve the component name's provider prefix to the test package that owns it
 # (see the harness-setup note at the top of the E2E section for why runs must
 # never sweep ./e2e/...). Unknown prefixes fall back to the full sweep.
-e2e_component_pkg = $(if $(findstring Kubernetes,$(component)),./e2e/,\
+# DigitalOcean is matched before Kubernetes: DigitalOceanKubernetesCluster
+# contains "Kubernetes", so prefix order is load-bearing.
+e2e_component_pkg = $(if $(findstring DigitalOcean,$(component)),./e2e/digitalocean/...,\
+$(if $(findstring Kubernetes,$(component)),./e2e/,\
 $(if $(findstring Aws,$(component)),./e2e/aws/...,\
 $(if $(findstring Gcp,$(component)),./e2e/gcp/...,\
 $(if $(findstring Azure,$(component)),./e2e/azure/...,\
 $(if $(findstring Auth0,$(component)),./e2e/auth0/...,\
-$(if $(findstring Cloudflare,$(component)),./e2e/cloudflare/...,./e2e/...))))))
+$(if $(findstring Cloudflare,$(component)),./e2e/cloudflare/...,./e2e/...)))))))
 
 .PHONY: e2e-test-component
 e2e-test-component:  ## Single component E2E test (usage: make e2e-test-component component=KubernetesNamespace)

@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscostcategory
+spec:
+  # A Cost Explorer cost category under live E2E: one lane proves an
+  # expression rule (or-composed dimension + tag), a tag-inherited
+  # rule, the default value, and a proportional split-charge rule.
+  # Categories are free (~$0). The verifier treats an END-DATED
+  # definition as absent -- AWS keeps answering Describe until month
+  # end after a delete, with effective_end set.
+  #
+  # Deliberately not exercised live:
+  #   - FIXED/EVEN split methods and deeper and/or/not nesting --
+  #     render-proven offline; the proportional split and the two-level
+  #     tree are the canonical forms. Unblock: a second scenario when
+  #     the proof queue wants the datapoints.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q43
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

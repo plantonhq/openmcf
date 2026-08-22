@@ -1,0 +1,70 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsapprunnerservice
+spec:
+  aws:
+    statements:
+      - sid: ManageService
+        actions:
+          - apprunner:CreateService
+          - apprunner:UpdateService
+          - apprunner:DeleteService
+          - apprunner:DescribeService
+          - apprunner:ListTagsForResource
+          - apprunner:TagResource
+          - apprunner:UntagResource
+        resources:
+          - arn:aws:apprunner:*:*:service/*
+          - arn:aws:apprunner:*:*:autoscalingconfiguration/*
+          - arn:aws:apprunner:*:*:connection/*
+          - arn:aws:apprunner:*:*:observabilityconfiguration/*
+          - arn:aws:apprunner:*:*:vpcconnector/*
+        provenance: derived
+        notes: Covers aws_apprunner_service across both source arms. The service reference authorizes CreateService and UpdateService on the service ARN AND every companion the call references -- the auto scaling configuration, the App Runner connection (code_source), the observability configuration, and the VPC connector -- so all five ARN formats must be granted; omitting any denies creation of manifests that reference that companion. Describe polls the service through provisioning and deletion.
+      - sid: ManageCustomDomains
+        actions:
+          - apprunner:AssociateCustomDomain
+          - apprunner:DisassociateCustomDomain
+          - apprunner:DescribeCustomDomains
+        resources:
+          - arn:aws:apprunner:*:*:service/*
+        provenance: derived
+        notes: Covers aws_apprunner_custom_domain_association -- one per custom_domains entry. All three actions authorize on the service ARN per the service reference; the association returns once the certificate-validation records are available.
+      - sid: ManageVpcIngressConnections
+        actions:
+          - apprunner:CreateVpcIngressConnection
+          - apprunner:DescribeVpcIngressConnection
+          - apprunner:UpdateVpcIngressConnection
+          - apprunner:DeleteVpcIngressConnection
+          - apprunner:TagResource
+          - apprunner:UntagResource
+        resources:
+          - arn:aws:apprunner:*:*:vpcingressconnection/*
+        provenance: derived
+        notes: Covers aws_apprunner_vpc_ingress_connection -- one per vpc_ingress_connections entry, tagged with the platform's identity tags. Every configuration value is create-time immutable, so Update exists for tag reconciliation paths the provider may take.
+      - sid: ManageWafAssociation
+        actions:
+          - wafv2:AssociateWebACL
+          - wafv2:DisassociateWebACL
+          - wafv2:GetWebACLForResource
+          - apprunner:AssociateWebAcl
+          - apprunner:DisassociateWebAcl
+          - apprunner:DescribeWebAclForService
+        resources:
+          - arn:aws:wafv2:*:*:regional/webacl/*/*
+          - arn:aws:apprunner:*:*:service/*
+        provenance: derived
+        notes: Covers aws_wafv2_web_acl_association when spec.web_acl_arn is set. The wafv2 actions authorize on both the web ACL and the protected App Runner service ARN per the service reference, and WAF forwards matching apprunner:* authorization checks to the service -- both action families are required or the association call denies.
+      - sid: PassRolesToAppRunner
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: The module passes up to two roles into App Runner -- image_source.access_role_arn (assumed by build.apprunner.amazonaws.com to pull private ECR images) and instance_role_arn (assumed by tasks.apprunner.amazonaws.com at runtime). Narrow the resource to the specific role ARNs (or a naming convention) once the deployment's role names are fixed.

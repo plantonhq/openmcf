@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakerfeaturegroup
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: online_store.enabled
+      sku_meter: online store write request units
+      pricing_unit: write units
+      impact: Every record write bills write request units per KB of record (rounded up, minimum 1 unit -- deletes included) in the default on-demand mode. This switch turns the online store's request and storage meters on; a disabled or absent online store writes nothing and bills nothing.
+    - field_path: online_store.ttl
+      sku_meter: standard online store storage
+      pricing_unit: GB-months
+      impact: Standard-store records bill per GB-month for as long as they exist, and TTL (ExpiresAt = EventTime + ttl) is the storage meter's only throttle -- without it every record persists forever and the meter only grows with write volume.
+    - field_path: online_store.storage_type
+      sku_meter: in-memory online store storage
+      pricing_unit: GB-hours
+      impact: InMemory swaps per GB-month storage for per GB-hour with a 5 GiB (5.37 GB) hourly minimum -- the one configuration where an EMPTY feature group bills around the clock. Standard (the default) bills only the GB actually stored, so an empty group costs zero.
+    - field_path: throughput.mode
+      sku_meter: online store read request units
+      pricing_unit: read units
+      impact: OnDemand (the default) bills read request units per 4 KB returned as GetRecord traffic happens and nothing when idle; Provisioned stops metering requests and bills the declared capacity every hour instead -- used or not.
+    - field_path: throughput.provisioned_read_capacity_units
+      sku_meter: provisioned read capacity units
+      pricing_unit: RCU-hours
+      impact: Each provisioned RCU (one read of up to 4 KB per second) bills for every hour the group exists whether any read arrives -- committed spend sized by this number, converting the profile's zero-at-rest into a standing hourly charge.
+    - field_path: throughput.provisioned_write_capacity_units
+      sku_meter: provisioned write capacity units
+      pricing_unit: WCU-hours
+      impact: Each provisioned WCU (one write of up to 1 KB per second) bills every hour whether any write arrives -- the write-side half of the same committed-capacity trade.
+    - field_path: offline_store
+      sku_meter: S3 storage (offline store)
+      pricing_unit: GB-months
+      impact: The offline store adds no Feature Store meter of its own -- every write is appended under s3_uri and bills as that bucket's S3 storage and requests, growing without bound because the offline store keeps full history (there is no TTL on it). Glue Data Catalog and the query engines that read it (Athena, EMR) bill their own services.
+  free_tier: "The AWS Free Tier grants 10 million write units, 10 million read units, and 25 GB of standard online-store storage per month -- but only for the first 2 months after the account's first SageMaker AI resource, a trial allotment, not a permanent one. After it lapses, every unit and GB bills from zero."
+  estimate_exclusions:
+    - read and write volume is entirely workload-driven -- the pricing page's example bills on-demand traffic at 1.25 dollars per million write units and 0.25 dollars per million read units, rates the manifest cannot predict
+    - standard online-store storage accrues per GB-month with record count and size; the TTL setting is the only cap
+    - the offline store bills as S3 storage and requests on the bucket behind s3_uri (named by URI, not a managed reference), plus Glue Data Catalog objects and Athena/EMR query compute when training reads it
+    - SSE-KMS requests bill per call on the referenced AwsKmsKey when either store's kms_key_arn is set
+    - switching throughput to Provisioned or online storage to InMemory converts this profile's zero-at-rest into committed hourly spend
+  notes: "With the defaults this spec renders -- Standard online storage and OnDemand throughput -- an empty feature group costs exactly nothing: storage bills only actual GB, and request units bill only as PutRecord/GetRecord traffic happens. The bill has two cliffs, both explicit spec choices: Provisioned throughput bills the declared RCUs and WCUs every hour whether used or not, and InMemory storage carries a 5 GiB hourly minimum even when empty. The quiet third meter is the offline store: it is append-only full history in S3 with no expiry, so its storage line grows with every write forever until the bucket's own lifecycle rules intervene -- and it bills on the bucket, invisible on this component's SageMaker line."

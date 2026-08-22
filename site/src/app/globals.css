@@ -1,0 +1,347 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer base {
+  :root {
+    --radius-2xl: 1.5rem;
+  }
+
+  /* Prevent page-level horizontal scroll on mobile.
+     Uses 'clip' instead of 'hidden' to avoid creating a scroll container
+     that would break position:sticky on child elements. Applied to both
+     html and body for defense-in-depth across all mobile browsers. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+}
+
+/* Demo-specific styles - scoped to .demo-layout */
+.demo-layout {
+  --radius-2xl: 1.5rem;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+/* Button and component styles */
+.demo-layout .btn-gradient {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.3);
+}
+
+.demo-layout .btn-gradient:hover { 
+  filter: brightness(0.95); 
+  transform: translateY(-1px); 
+}
+
+.demo-layout .btn-gradient:focus-visible { 
+  outline: 3px solid rgba(255,255,255,0.3); 
+  outline-offset: 2px; 
+}
+
+.demo-layout .shadow-card { 
+  box-shadow: 0 24px 48px -12px rgba(16, 24, 40, 0.25); 
+}
+
+/* Rich text content (Markdown/HTML) - scoped to .demo-layout */
+.demo-layout .prose-custom h1,
+.demo-layout .prose-custom h2,
+.demo-layout .prose-custom h3 { 
+  color: #111827; 
+}
+
+.demo-layout .prose-custom p { 
+  color: #374151; 
+}
+
+.demo-layout .prose-custom a { 
+  color: #ffffff; 
+  text-decoration: underline; 
+}
+
+.demo-layout .prose-custom ul { 
+  list-style: disc; 
+  padding-left: 1.25rem; 
+  color: #374151; 
+}
+
+.demo-layout .prose-custom ol { 
+  list-style: decimal; 
+  padding-left: 1.25rem; 
+  color: #374151; 
+}
+
+.demo-layout .prose-custom strong { 
+  color: #111827; 
+}
+
+/* Prose content styling */
+.demo-layout .prose {
+  color: #4B5563;
+  line-height: 1.75;
+}
+
+.demo-layout .prose h1, 
+.demo-layout .prose h2, 
+.demo-layout .prose h3, 
+.demo-layout .prose h4, 
+.demo-layout .prose strong {
+  color: #1F2937;
+  font-weight: 700;
+}
+
+.demo-layout .prose h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.demo-layout .prose h2 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.demo-layout .prose h3 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.demo-layout .prose p {
+  margin-bottom: 1rem;
+}
+
+.demo-layout .prose ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.demo-layout .prose li {
+  margin-bottom: 0.5rem;
+}
+
+.demo-layout .prose a {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.demo-layout .prose a:hover {
+  color: #d4d4d4;
+}
+
+/* :root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+}
+} */
+
+body {
+  /* color: var(--foreground);
+  background: var(--background); */
+  font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.word-carousel {
+  overflow: hidden;
+  text-align: left;
+}
+
+.word-carousel-container {
+  display: flex;
+  flex-direction: column;
+  transition: margin-top 0.5s ease-in-out;
+  text-align: left;
+}
+
+/* Line clamp utilities for blog posts */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Muted monochrome syntax highlighting for code blocks.
+ *
+ * Each hue family is preserved at ~25% saturation so tokens remain
+ * distinguishable, but the overall impression is tinted grays rather
+ * than a rainbow. Matches the monochrome design language used by
+ * Cursor, Vercel, and Linear.
+ *
+ * Palette:
+ *   background  #1a1a1a  (bgTertiary)
+ *   base text   #c8c8c8
+ *   keywords    #8b9bb5  (cool gray-blue)
+ *   functions   #c5c0a0  (warm muted)
+ *   comments    #666666  (textMuted)
+ *   strings     #b5a08f  (warm gray)
+ *   numbers     #a0ad98  (sage gray)
+ *   variables   #9cb5c5  (cool gray)
+ *   types       #85ada3  (muted teal)
+ *   deletion    #c07070  (muted red – semantic)
+ *   addition    #90a888  (muted green – semantic)
+ */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  background: transparent;
+  color: #c8c8c8;
+  line-height: 1.5;
+}
+
+.hljs-keyword,
+.hljs-operator,
+.hljs-pattern-match,
+.hljs-tag,
+.hljs-selector-tag,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta {
+  color: #8b9bb5;
+  font-weight: normal;
+}
+
+.hljs-function,
+.hljs-class,
+.hljs-params {
+  color: #c5c0a0;
+}
+
+.hljs-comment {
+  color: #666666;
+  font-style: italic;
+}
+
+.hljs-string,
+.hljs-built_in,
+.hljs-char,
+.hljs-template-variable,
+.hljs-strong,
+.hljs-value,
+.hljs-meta-string {
+  color: #b5a08f;
+}
+
+.hljs-number,
+.hljs-literal {
+  color: #a0ad98;
+}
+
+.hljs-variable,
+.hljs-template-tag,
+.hljs-attribute,
+.hljs-attr {
+  color: #9cb5c5;
+}
+
+.hljs-title,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-section,
+.hljs-type {
+  color: #85ada3;
+}
+
+.hljs-deletion {
+  color: #c07070;
+}
+
+.hljs-addition {
+  color: #90a888;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+/* Custom enhancements for code blocks */
+pre {
+  position: relative;
+  max-width: 100%;
+}
+
+pre code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace !important;
+  font-size: 14px;
+  line-height: 1.6;
+  /* Reset inline-code styling when inside a fenced block —
+     the parent <pre> (CodeBlock) owns the background/padding/radius. */
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+@media (max-width: 640px) {
+  pre code {
+    font-size: 13px;
+  }
+}
+
+/* Inline code should wrap on narrow screens instead of overflowing */
+.prose code:not(pre code) {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prevent Mermaid diagrams from causing horizontal overflow */
+.mermaid {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Ensure copy button is visible above siblings */
+.group:hover .absolute {
+  z-index: 10;
+}
+
+
+
+/* Excerpt text styling for NextArticle component */
+.excerpt-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  max-height: 96px;
+  line-height: 24px;
+  overflow: hidden;
+}
+
+.excerpt-gradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to top, #1a1a1a 0%, rgba(26, 26, 26, 0.8) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Tour route CSS variables - scoped to tour route only */
+.tour-layout {
+  --foreground: 0 0% 3.9%;
+  color: hsl(var(--foreground));
+}

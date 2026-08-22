@@ -68,9 +68,10 @@ The module reads its configuration from the `GcpProjectStackInput` proto message
 
 ## Required Permissions
 
-The identity running the module needs
-`roles/resourcemanager.projectCreator` on the parent, and
-`roles/billing.user` on the billing account when linking one.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+permission set the deploying principal needs. The scopes are split:
+project creation authorizes on the parent organization or folder, and the
+billing link authorizes on the billing account itself.
 
 ## Implementation Notes
 

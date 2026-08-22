@@ -1,0 +1,50 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsebsvolume
+spec:
+  presets:
+    - preset: 01-database-data-volume
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Block Store
+          sku_meter: volume storage
+          pricing_unit: GB-months
+          pricing_quantity: "200"
+          quantity_basis: the manifest provisions 200 GiB of gp3 (size_gb 200), billing every GiB monthly from creation -- full or empty, attached or not
+          list_unit_price: "0.08"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "16.0000"
+        - service_name: Amazon Elastic Block Store
+          sku_meter: provisioned IOPS
+          pricing_unit: IOPS-months
+          pricing_quantity: "3000"
+          quantity_basis: the manifest provisions 6,000 IOPS and gp3 includes a 3,000-IOPS baseline free -- only the 3,000-IOPS excess bills monthly
+          list_unit_price: "0.005"
+          price_source: https://aws.amazon.com/ebs/pricing/
+          retrieved_on: "2026-08-19"
+          list_cost: "15.0000"
+        - service_name: Amazon Elastic Block Store
+          sku_meter: provisioned throughput
+          pricing_unit: MiBps-months
+          pricing_quantity: "125"
+          quantity_basis: the manifest provisions 250 MiB/s and gp3 includes a 125-MiB/s baseline free -- only the 125-MiB/s excess bills monthly
+          list_unit_price: "0.04"
+          price_source: https://aws.amazon.com/ebs/pricing/
+          retrieved_on: "2026-08-19"
+          list_cost: "5.0000"
+      total_list_cost: "36.0000"
+      exclusions:
+        - snapshot storage follows whatever snapshots the owner takes -- none are configured here (final_snapshot is unset)
+        - I/O carries no request meter on gp3 -- performance is what is provisioned, and only the excess over the included baselines bills
+      notes: encrypted true with kms_key_id unset uses the AWS-managed aws/ebs key -- no monthly fee and no extra meter. The attachment to the database instance adds no charge, and the volume keeps billing all three meters while that instance is stopped; deleting the volume is the only off switch. All three meters bill per-second with a 60-second minimum.

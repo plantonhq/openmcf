@@ -1,0 +1,68 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ce_cost_category:
+    mappings:
+      # The category's name is an explicit spec field (names legally
+      # carry spaces metadata.name cannot).
+      - arg: name
+        spec: spec.category_name
+      # The provider's singular rule block carries the spec's ordered
+      # rules list (value/type/inherited_value children match by name).
+      - arg: rule
+        spec: spec.rules
+      # The provider's singular split_charge_rule block carries the
+      # spec's list; its singular parameter block carries parameters.
+      - arg: split_charge_rule
+        spec: spec.split_charge_rules
+      - arg: split_charge_rule.parameter
+        spec: spec.split_charge_rules.parameters
+      # The rule expression's tag leaf is singular in the spec (the
+      # provider names the block "tags") at every level of the leveled
+      # tree; dimension and cost_category names already match.
+      - arg: rule.rule.tags
+        spec: spec.rules.rule.tag
+      - arg: rule.rule.and.tags
+        spec: spec.rules.rule.and.tag
+      - arg: rule.rule.or.tags
+        spec: spec.rules.rule.or.tag
+      - arg: rule.rule.not.tags
+        spec: spec.rules.rule.not.tag
+      - arg: rule.rule.and.and.tags
+        spec: spec.rules.rule.and.and.tag
+      - arg: rule.rule.and.or.tags
+        spec: spec.rules.rule.and.or.tag
+      - arg: rule.rule.and.not.tags
+        spec: spec.rules.rule.and.not.tag
+      - arg: rule.rule.or.and.tags
+        spec: spec.rules.rule.or.and.tag
+      - arg: rule.rule.or.or.tags
+        spec: spec.rules.rule.or.or.tag
+      - arg: rule.rule.or.not.tags
+        spec: spec.rules.rule.or.not.tag
+      - arg: rule.rule.not.and.tags
+        spec: spec.rules.rule.not.and.tag
+      - arg: rule.rule.not.or.tags
+        spec: spec.rules.rule.not.or.tag
+      - arg: rule.rule.not.not.tags
+        spec: spec.rules.rule.not.not.tag
+    exclusions:
+      # The API accepts exactly one value; the modules pin it.
+      - arg: rule_version
+        reason: single legal value (CostCategoryExpression.v1) -- module-pinned, a spec knob would be dead configuration
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+specExclusions:
+  # Cost Explorer is an account-global service: the consumed resource
+  # carries no region argument. The spec's region drives only the
+  # provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- Cost Explorer is account-global and the consumed resource has no region argument

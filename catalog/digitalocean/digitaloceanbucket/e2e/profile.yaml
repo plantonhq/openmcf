@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanbucket
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest
+  # covering the bucket plus its three settings satellites, import map,
+  # presets, README/catalog/GUIDE). Live dual-engine proof has not yet run.
+  # Bucket lanes need the Spaces key pair (SPACES_ACCESS_KEY_ID /
+  # SPACES_SECRET_ACCESS_KEY) alongside DIGITALOCEAN_TOKEN -- Spaces is an
+  # S3-compatible credential plane the API token cannot reach; the verifier
+  # reads the same pair. Bucket names are globally unique per region across
+  # ALL DigitalOcean customers, so both scenarios carry the run-id token.
+  # TWO scenarios: `minimal` is a name-only bucket (no region -- proves the
+  # provider's own nyc3 default); `full` proves versioning, lifecycle rules
+  # (days-based expiration, noncurrent-version expiration, multipart-upload
+  # abort), CORS through the standalone resource, a bucket policy, and
+  # force_destroy (which also guarantees teardown even if a lane writes
+  # objects). Deliberately not in the live lanes: logging (the target
+  # bucket is a same-kind fixture the framework's prerequisite chain cannot
+  # express -- a kind cannot be its own registry prerequisite; the offline
+  # plan proves the wiring; unblocks if the framework grows same-kind
+  # path-entry fixtures for this shape). Buckets create in seconds and
+  # storage bills $0.02/GB-month -- an empty-bucket sweep costs effectively
+  # nothing.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

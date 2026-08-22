@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcoreidentity
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: api_key_credential_providers
+      sku_meter: token or API key requests for non-AWS resources
+      pricing_unit: requests
+      impact: Vaulting the key is free; each successful request an agent makes to retrieve it for a non-AWS resource bills $0.010 per 1,000 -- unless the request rides AgentCore Runtime or Gateway, where AWS waives the Identity charge entirely. The meter follows how agents fetch, not how many providers exist.
+    - field_path: oauth2_credential_providers
+      sku_meter: token or API key requests for non-AWS resources
+      pricing_unit: requests
+      impact: Every OAuth token an agent requests through a vaulted client bills on the same $0.010-per-1,000 meter as API keys -- and the same Runtime/Gateway waiver applies. Token-heavy patterns (short-lived tokens, per-call refresh) multiply requests without any manifest change.
+    - field_path: workload_identities
+      sku_meter: token or API key requests for non-AWS resources
+      pricing_unit: requests
+      impact: A workload identity is the principal that requests tokens in delegated OAuth flows -- the identity object itself is free, and each token requested on its behalf outside Runtime/Gateway lands on the per-1,000-requests meter.
+    - field_path: policy_engine
+      sku_meter: authorization requests
+      pricing_unit: requests
+      impact: The engine and its stored Cedar policies are free at rest. The meter starts when a gateway evaluates tool calls against the engine -- $0.000025 per authorization request, one per policy-enforced tool call, so the bill scales with gateway traffic, not with how many policies this manifest declares.
+    - field_path: policy_engine.encryption_key_arn
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key bills its per-request meter on the referenced AwsKmsKey for the engine's policy encrypt/decrypt traffic; unset means the service-managed key at no charge. Changing the key replaces the engine.
+  free_tier: "AgentCore Identity has a permanent conditional free path, quoted from the pricing page: \"AgentCore Identity is available at no additional charge to customers when they use it through either AgentCore Runtime or AgentCore Gateway.\" Only direct use outside those two services bills. AgentCore Policy adds one permanent allotment -- \"Your first 100 temporal policies per policy engine incur no additional authorization charges.\" Beyond those, no permanent free allotment exists; the up-to-$200 AWS Free Tier credit for new customers is a one-time trial credit, not a permanent tier."
+  estimate_exclusions:
+    - token and API key request volume is entirely workload-driven -- $0.010 per 1,000 successful requests bills only when agents fetch credentials outside AgentCore Runtime or Gateway, and the same manifest bills nothing when every consumer rides the waiver
+    - policy authorization bills $0.000025 per request as gateways evaluate tool calls against the engine -- traffic on the gateway kind, invisible to this manifest
+    - natural-language policy authoring bills $0.13 per 1,000 input tokens, but this component's policies arrive as ready Cedar statements -- that console authoring meter cannot start from this manifest
+    - guardrail safeguards invoked through Policy bill per Amazon Bedrock Guardrails pricing when configured, outside this kind's surface
+    - customer-managed-key requests for the policy engine bill on the referenced AwsKmsKey
+  notes: "Everything this manifest creates is free to exist -- workload identities, vaulted API keys, vaulted OAuth clients, the Cedar engine, and its policies carry no meter at rest, and AWS vaults the secrets in Secrets Manager under the service's token vault without a Secrets Manager charge surfacing here. The bill has two usage legs, both driven by agent traffic elsewhere: credential requests ($0.010 per 1,000 token or API keys requested for non-AWS resources) and policy authorizations ($0.000025 per request as gateways enforce the engine). The design intent shows in the waiver: AWS wants agents consuming Identity through Runtime or Gateway, where the Identity charge disappears entirely -- direct SDK use is the only path that pays. The common misconception is that more vaulted providers or more Cedar policies cost more; provider and policy count never meters, request volume does."

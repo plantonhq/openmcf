@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssubnet
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A subnet stores nothing -- it is an address range plus routing configuration; the resources placed in it own their own data and encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A subnet is an addressing boundary, not a connection endpoint -- transport encryption is negotiated by the workloads inside it, outside this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: routes
+      evidence:
+        type: spec_default
+        reference: Whether a subnet is public IS a routing decision made in this spec -- with routes omitted (and no external route_table_id), the subnet rides the VPC's main route table and declares no internet path of its own; declaring a default route with target_type internet_gateway is the explicit act that makes it public. A private subnet's outbound-only shapes (nat_gateway, egress_only_internet_gateway targets) keep it unreachable from the internet.
+      notes: Reachability also requires the resource to hold a public address -- map_public_ip_on_launch defaults to false (the AWS default), so even in a routed-public subnet, instances expose nothing until that flag or an explicit public address says so. Both levers sit in this spec, which is exactly where the public/private decision belongs.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A subnet performs no traffic filtering of its own in this spec -- per-source inbound restriction lives on the workloads' security groups (AwsSecurityGroup), and the network ACL layer stays on the VPC default, unmanaged by either module.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web ACL or request filter attaches to a subnet -- edge protection attaches to the fronting services running inside it (load balancers, CloudFront, API Gateway).
+    - control_id: rbac
+      status: not_applicable
+      notes: A subnet has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and the address space it defines carries no identity model.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The subnet runs no workloads of its own and holds no credentials; the instances placed in it carry identity through their own components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A subnet exposes no authentication path at all -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls land in AWS CloudTrail as account-level posture, and traffic-level visibility (VPC Flow Logs can be enabled at subnet scope) is a separate resource outside this spec and the modules.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A subnet publishes no CloudWatch metrics of its own -- operational signals come from the resources inside it and from VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A subnet is declarative configuration fully re-creatable from the manifest (its owned route table and association re-create with it) -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A subnet is single-AZ by definition -- AWS scopes every subnet to exactly one availability zone, and this spec makes the placement explicit (availability_zone or availability_zone_id, exactly one required). Multi-zone resilience is built ABOVE this kind, one AwsSubnet per zone, by the architecture that consumes them.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for subnets. AWS does refuse to delete a subnet that still contains network interfaces -- a dependency guard that surfaces live workloads, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A subnet is a pure configuration object with no software to patch.

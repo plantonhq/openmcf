@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningcomputeinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: instance VM hours
+      pricing_unit: hours
+      description: The instance is a single VM billing its size's plain Linux pay-as-you-go rate around the clock from creation until stopped or deleted -- Azure Machine Learning adds no surcharge for the instance itself (the service's standard vCPU surcharge meter is published at zero).
+  cost_drivers:
+    - field_path: virtual_machine_size
+      sku_meter: instance VM hours
+      pricing_unit: hours
+      impact: The entire dial -- the VM size fixes the hourly rate, and it is fixed at creation (changing it replaces the instance, like every other field on this provider resource).
+  estimate_exclusions:
+    - hours while the instance is stopped bill no VM hours -- the spec carries no schedule or idle-shutdown field, so stopping is an out-of-band operation and the committed figure assumes 24x7 running
+    - network egress follows what the workstation's code moves
+    - the workspace's companion resources (storage account, container registry, Key Vault, Application Insights) bill on their own components
+  notes: "One data scientist's cloud workstation read literally: an always-on billing model priced always-on. The instance runs in its workspace's region (the service's own rule -- the spec has no region field), so the rate follows the referenced workspace's placement. There is no auto-scale-to-zero and no manifest-expressible schedule; stopping the instance outside working hours is the savings lever, exercised in the studio or CLI, not here."

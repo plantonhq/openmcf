@@ -1,0 +1,50 @@
+# A table bucket with maintenance dials, one namespace, and one
+# schema-bearing Iceberg table with per-table compaction and snapshot
+# management. Exercises the bucket pivot, the untyped
+# maintenance-configuration objects on both engines (the provider
+# validates nothing there - the typed spec is the guard), the
+# namespace and table satellites, and the create-only schema.
+# Storage is empty - free at rest, seconds per phase.
+#
+# Deliberately unexercised arms (recorded in the profile): bucket and
+# table replication (destination is another AwsS3TableBucket - the
+# self-kind-prerequisite guard), and the resource policies (need the
+# account id interpolated into a valid principal).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3TableBucket
+metadata:
+  name: planton-oss-e2e-awss3tblb
+  id: planton-oss-e2e-awss3tblb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3tablebucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  forceDestroy: true
+  unreferencedFileRemoval:
+    nonCurrentDays: 20
+    unreferencedDays: 5
+  namespaces:
+    - name: analytics
+      tables:
+        - name: events
+          icebergSchema:
+            fields:
+              - name: event_id
+                type: string
+                required: true
+              - name: occurred_at
+                type: timestamp
+              - name: payload
+                type: string
+          compaction:
+            targetFileSizeMb: 256
+          snapshotManagement:
+            maxSnapshotAgeHours: 240
+            minSnapshotsToKeep: 2

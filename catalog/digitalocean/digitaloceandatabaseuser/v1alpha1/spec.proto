@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabaseuser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseUserSpec models the full digitalocean_database_user
+// resource surface: an additional user on a DigitalOcean managed database
+// cluster, with the MySQL authentication plugin choice and the Kafka /
+// OpenSearch access-control lists.
+//
+// DigitalOcean generates the user's password and role server-side; both are
+// exported as stack outputs, never configured here. The API serializes user
+// creation and deletion per cluster, so composing many users on one cluster
+// is safe but inherently sequential.
+message DigitalOceanDatabaseUserSpec {
+  // The database cluster this user belongs to. Use a literal cluster UUID or
+  // a reference to a DigitalOceanDatabaseCluster resource. Changing it
+  // replaces the user (the new user gets a NEW server-generated password).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the database user. Unique within the cluster; the name IS the
+  // user's API identity. Changing it replaces the user.
+  string user_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // (Optional) MySQL authentication plugin for this user. Applies only to
+  // MySQL clusters (DigitalOcean rejects it on other engines at request
+  // time). When unset, DigitalOcean uses caching_sha2_password; clearing a
+  // previously set value resets the user back to that default. Updates apply
+  // in place through a password-preserving auth reset.
+  string mysql_auth_plugin = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "mysql_native_password",
+        "caching_sha2_password"
+      ]
+    }
+  ];
+
+  // (Optional) Engine-specific access control for this user (Kafka topic
+  // ACLs and OpenSearch index ACLs). DigitalOcean returns these only in the
+  // create response -- reads never include them -- so what is configured here
+  // is the source of truth; the live ACL state is not observable afterward.
+  // ACL changes apply in place.
+  DigitalOceanDatabaseUserSettings settings = 4;
+}
+
+// Engine-specific access-control lists for a database user. Kafka ACLs apply
+// only on Kafka clusters and OpenSearch ACLs only on OpenSearch clusters;
+// the DigitalOcean API rejects mismatched settings at request time.
+message DigitalOceanDatabaseUserSettings {
+  // Kafka topic ACLs granting this user permissions on topics. Topic
+  // accepts a literal name or a wildcard pattern (e.g. "events-*").
+  repeated DigitalOceanDatabaseUserKafkaAcl kafka_acls = 1;
+
+  // OpenSearch index ACLs granting this user permissions on indexes. Index
+  // accepts a literal name or a wildcard pattern (e.g. "logs-*").
+  repeated DigitalOceanDatabaseUserOpenSearchAcl opensearch_acls = 2;
+}
+
+// One Kafka topic ACL entry. DigitalOcean assigns each entry a server-side
+// id, which is provisioning noise and deliberately not modeled; reads
+// lowercase and canonicalize the permission (read_write becomes
+// produceconsume), which the modules absorb.
+message DigitalOceanDatabaseUserKafkaAcl {
+  // The Kafka topic (or wildcard topic pattern) the permission applies to.
+  string topic = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Permission on the topic.
+  string permission = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "admin",
+        "consume",
+        "produce",
+        "produceconsume"
+      ]
+    }
+  ];
+}
+
+// One OpenSearch index ACL entry.
+message DigitalOceanDatabaseUserOpenSearchAcl {
+  // The OpenSearch index (or wildcard index pattern) the permission applies
+  // to.
+  string index = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Permission on the index.
+  string permission = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "deny",
+        "admin",
+        "read",
+        "write",
+        "readwrite"
+      ]
+    }
+  ];
+}

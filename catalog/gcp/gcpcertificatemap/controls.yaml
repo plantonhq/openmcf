@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcertificatemap
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The map stores routing metadata only -- hostnames and certificate resource references, no customer data and no key material (the keys live on the referenced GcpCertManagerCert resources).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Certificate Manager exposes no KMS surface for maps.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: entries
+      evidence:
+        type: spec_default
+        reference: The map is the TLS-material routing table -- each entry binds a hostname or the PRIMARY fallback to 1-15 certificates (entries[].certificates, min_items 1), selected by SNI at handshake time. A hostname with no matching entry and no PRIMARY fallback FAILS the handshake; the proxy never falls back to serving unencrypted.
+      notes: Encryption strength is the referenced certificates' posture; the protocol floor (minimum TLS version, ciphers) is the serving proxy's SSL policy. The API validates at entry-create time that every attached certificate's domain set covers the entry's hostname.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The map has no network endpoint of its own -- exposure belongs to the target HTTPS proxy and forwarding rule that consult it, each a separate catalog kind.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the map is Certificate Manager control-plane configuration.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering (Cloud Armor) attaches to the load balancer's backend services, not to the certificate map the proxy consults at handshake time.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Certificate Manager roles), not a component choice; the map exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The map runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire; TLS version floors are the serving proxy's SSL policy.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Control-plane changes to the map and its entries land in Cloud Audit Logs as project-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The map publishes no metrics of its own; TLS handshake and serving metrics belong to the load balancer kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest -- the map and every entry re-apply from the spec.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A GLOBAL control-plane object by API design (no location argument) with no zonal placement to configure; Google serves it through the load-balancing control plane.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before touching the map or its entries -- the module applies the policy to the map and every entry alike. A deleted map leaves any proxy still referencing it failing every TLS handshake, which is exactly what PREVENT guards.
+      notes: Both presets set PREVENT -- live TLS routing is the thing this kind exists to protect.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software to patch; certificate renewal posture lives on the referenced certificates.

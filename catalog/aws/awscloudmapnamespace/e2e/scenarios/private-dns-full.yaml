@@ -1,0 +1,53 @@
+# Full-surface private DNS namespace in the chain VPC: an A-record
+# service with custom health and a statically registered IP instance
+# (with a custom attribute), and a CNAME service registering an
+# endpoint alias - the static-registration chart story. Free at AWS
+# (the namespace's private hosted zone bills nothing while it exists
+# under an hour).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: planton-oss-e2e-cmns.internal
+  id: planton-oss-e2e-awscmns-priv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudmapnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  type: PRIVATE_DNS
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  description: Planton E2E private service discovery namespace
+  services:
+    - name: api
+      description: A-record service with custom health
+      dnsConfig:
+        records:
+          - type: A
+            ttl: 10
+        routingPolicy: MULTIVALUE
+      healthCheckCustomConfig: {}
+      instances:
+        - instanceId: static-1
+          ip: 10.0.1.10
+          port: 8080
+          customAttributes:
+            stage: e2e
+    - name: db
+      description: CNAME service aliasing an endpoint
+      dnsConfig:
+        records:
+          - type: CNAME
+            ttl: 30
+      instances:
+        - instanceId: primary
+          cname: db.example.com

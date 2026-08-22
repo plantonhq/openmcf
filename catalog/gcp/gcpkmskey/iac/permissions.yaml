@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpkmskey
+spec:
+  gcp:
+    groups:
+      - purpose: EnableCloudKmsApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling cloudkms.googleapis.com on the ring's project (extracted from the key_ring_id path). disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageCryptoKey
+        permissions:
+          - cloudkms.cryptoKeys.create
+          - cloudkms.cryptoKeys.get
+          - cloudkms.cryptoKeys.update
+        provenance: derived
+        notes: Covers google_kms_crypto_key (Terraform) / kms.CryptoKey (Pulumi) -- create, read/refresh (including the primary-version outputs, which ride the key's GetCryptoKey response), and the in-place updates the spec allows (rotation_period, version_template.algorithm, labels). The Cloud KMS API has no DeleteCryptoKey method, so no key-delete permission is ever exercised -- teardown is entirely the version work below plus a rotation-disabling key update, which also authorizes as cloudkms.cryptoKeys.update.
+      - purpose: DestroyKeyVersions
+        permissions:
+          - cloudkms.cryptoKeyVersions.list
+          - cloudkms.cryptoKeyVersions.destroy
+        provenance: derived
+        notes: What "destroy" actually is for an undeletable key -- under deletion_policy DELETE the provider lists every CryptoKeyVersion and schedules each for destruction. All four catalog presets pin deletion_policy PREVENT, which fails the destroy before these are exercised, but the official modules' destroy path requires them whenever DELETE (the provider default) applies. Both permissions verified against IAM's testable-permissions inventory for the project.

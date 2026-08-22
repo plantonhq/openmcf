@@ -1,0 +1,42 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesRabbitMq manifest's spec values into the capacity footprint
+# it reserves from its target cluster. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/kubernetesrabbitmq.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every RabbitMQ node
+# carries the declared resources plus its own data volume. The operand
+# only -- the RabbitMQ Cluster Operator that reconciles it is a
+# separate component (KubernetesRabbitMqOperator) with its own
+# footprint. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesrabbitmq
+spec:
+  workloads:
+    - label: node
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+      volumes:
+        - label: data
+          size_path: disk_size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the operator applies its own default container resources when the manifest declares none (requests 1 CPU / 2Gi memory, limits 2 CPU / 2Gi) -- a real reservation this footprint cannot count
+  notes:
+    - applies_when:
+        - field_path: ephemeral
+          op: is_set
+      text: ephemeral clusters run on emptyDir -- no persistent volume is provisioned, so any disk_size value (including the platform-stamped 10Gi default) reserves nothing
+    - applies_when:
+        - field_path: ephemeral
+          op: is_unset
+        - field_path: disk_size
+          op: is_unset
+      text: the operator provisions a 10Gi data volume per node by default even without a declared disk_size -- a reservation this footprint cannot count

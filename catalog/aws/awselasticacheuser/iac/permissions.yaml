@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awselasticacheuser
+spec:
+  aws:
+    statements:
+      - sid: ManageUser
+        actions:
+          - elasticache:CreateUser
+          - elasticache:ModifyUser
+          - elasticache:DeleteUser
+          - elasticache:DescribeUsers
+          - elasticache:AddTagsToResource
+          - elasticache:RemoveTagsFromResource
+          - elasticache:ListTagsForResource
+        resources:
+          - arn:aws:elasticache:*:*:user:*
+        provenance: derived
+        notes: Covers aws_elasticache_user -- creation with tags, in-place updates to the access string and authentication mode (ModifyUser), reads during plan/refresh, tagging, and deletion. Every action here, DescribeUsers included, is resource-scoped to the user ARN format (arn:...:user:{UserId}, colon-separated) in the ElastiCache service reference, so one resource pattern covers the full lifecycle with no wildcard statement needed.

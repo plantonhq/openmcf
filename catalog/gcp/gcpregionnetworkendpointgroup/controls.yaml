@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpregionnetworkendpointgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The NEG stores no customer data -- it is a set of endpoint pointers, configuration metadata Google holds on its own encrypted control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The NEG names endpoints; the protocol and encryption used to reach them belong to the backend service's protocol choice. For serverless targets Google carries the load-balancer-to-Cloud-Run/Functions/App-Engine hop on its own fabric; for internet NEGs the backend service decides whether the external origin is reached over HTTPS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The NEG is not reachable itself -- it has no address. Notably, the PRIVATE_SERVICE_CONNECT type (preset 02) exists precisely to reach producer services over private connectivity; whether the LOAD BALANCER in front is public is the forwarding rule's affair.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress reaches the NEG; source restriction on the serving path lives in Cloud Armor policies and, for VM-backed paths, firewall rules.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A pointer collection filters nothing; the WAF (Cloud Armor) attaches to the backend service that consumes this NEG.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM (the compute.regionNetworkEndpointGroups permission family, plus compute.networks.use / compute.subnetworks.use on referenced VPC resources) on every project; the resource has no data plane to govern separately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a NEG; it carries no credential surface. IAM on the fronted serverless workload (e.g. Cloud Run invoker) is that kind's concern.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The NEG carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: NEG create and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The NEG publishes no metrics of its own; traffic telemetry surfaces on the load balancer's monitored resources and on the fronted workload's own metrics (Cloud Run, Cloud Functions, App Engine).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The NEG is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "The NEG is a regional pointer with no replicas of its own; the fronted workload's availability is its own kind's concern. Multi-REGION resilience is built one level up: give the backend service one serverless NEG per region and let the global load balancer fail over between them."
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE; PREVENT makes destroy fail outright, and ABANDON removes the NEG from management while it keeps serving in GCP.
+      notes: GCP independently refuses to delete a NEG still referenced by a backend service (resourceInUseByAnotherResource), so replacement is create-before-destroy -- the whole resource is immutable, making that the only change path anyway.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; endpoint resolution (e.g. finding the Cloud Run service's current revision at serving time) is performed by Google's platform infrastructure.

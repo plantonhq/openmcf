@@ -1,0 +1,3 @@
+name: awseventbridgepipe
+runtime: go
+description: Pulumi module to manage an AWS EventBridge Pipe

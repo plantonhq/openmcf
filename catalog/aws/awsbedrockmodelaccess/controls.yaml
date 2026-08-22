@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockmodelaccess
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An access agreement stores no data -- it is a marketplace entitlement record AWS keeps in its own control plane. There is nothing of the customer's at rest to encrypt; prompts and completions flowing through the unlocked model are the invoking workload's concern.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data at rest exists here (see enc-at-rest), so there is no key choice to make.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The agreement APIs (ListFoundationModelAgreementOffers, CreateFoundationModelAgreement, PutUseCaseForModelAccess) are HTTPS-only SigV4 endpoints; the use-case form and agreement acceptance never travel in plaintext.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The entitlement is account- and region-private -- it grants THIS account's principals the ability to invoke the model and exposes nothing outside the account. Who inside the account may invoke remains an IAM decision on the calling principals.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists -- the agreement is control-plane state with nothing listening.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Nothing serves requests, so there is no edge to protect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Managing agreements is IAM-gated at two layers: the bedrock agreement actions, and the AWS Marketplace actions (aws-marketplace:Subscribe/Unsubscribe) the subscription rides on -- AWS's model-access docs show restricting WHICH models can be enabled via the aws-marketplace:ProductId condition key on Subscribe. Holding model access does not authorize invocation; InvokeModel is its own IAM decision per principal."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No execution role and no workload -- the agreement runs nothing. Invoking workloads bring their own identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: SigV4-signed IAM requests are the only authentication path; no legacy protocol exists.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Agreement lifecycle operations -- offer lookups, agreement creation and deletion, use-case form submission -- are control-plane calls CloudTrail records unconditionally as management events, so who unlocked which model in which region is always answerable.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An entitlement emits nothing to monitor -- no traffic, no capacity, no failure modes. Usage metrics belong to the model invocations themselves (AWS/Bedrock namespace), observable regardless of how access was granted.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The agreement is fully re-derivable from this manifest -- re-deploying re-accepts the public offer. The account-global Anthropic use-case form persists on AWS's side independently (AWS provides no delete for it), so there is no state to lose.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The entitlement lives in AWS's regional control plane with no zonal footprint the manifest could configure; its availability is AWS's own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists. Worth knowing operationally: destroying this component CANCELS the agreement, and every workload in the region invoking that model starts failing with AccessDeniedException -- the blast radius of a casual destroy is real even though the object is free."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface to patch -- the agreement is a record, not a runtime.

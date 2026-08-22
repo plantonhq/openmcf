@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostCategory
+metadata:
+  name: team-chargeback
+spec:
+  region: us-east-1
+  categoryName: Team
+  defaultValue: unallocated
+  rules:
+    - type: INHERITED_VALUE
+      inheritedValue:
+        dimensionName: TAG
+        dimensionKey: team

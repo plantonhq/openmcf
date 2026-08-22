@@ -1,0 +1,71 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockagentcoreidentity
+spec:
+  aws:
+    statements:
+      - sid: ManageWorkloadIdentities
+        actions:
+          - bedrock-agentcore:CreateWorkloadIdentity
+          - bedrock-agentcore:GetWorkloadIdentity
+          - bedrock-agentcore:UpdateWorkloadIdentity
+          - bedrock-agentcore:DeleteWorkloadIdentity
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:workload-identity-directory/*
+          - arn:aws:bedrock-agentcore:*:*:workload-identity-directory/*/workload-identity/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_workload_identity / bedrock.AgentcoreWorkloadIdentity -- one per workload_identities entry. All four actions take resource-level scoping on the workload-identity and workload-identity-directory ARN formats per the service reference (the identity lives under the account's directory, so both formats are granted). Get runs on every plan/refresh; Update reconciles allowed_resource_oauth2_return_urls in place; renaming replaces.
+      - sid: ManageCredentialProviders
+        actions:
+          - bedrock-agentcore:CreateApiKeyCredentialProvider
+          - bedrock-agentcore:GetApiKeyCredentialProvider
+          - bedrock-agentcore:UpdateApiKeyCredentialProvider
+          - bedrock-agentcore:DeleteApiKeyCredentialProvider
+          - bedrock-agentcore:CreateOauth2CredentialProvider
+          - bedrock-agentcore:GetOauth2CredentialProvider
+          - bedrock-agentcore:UpdateOauth2CredentialProvider
+          - bedrock-agentcore:DeleteOauth2CredentialProvider
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*/apikeycredentialprovider/*
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*/oauth2credentialprovider/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_api_key_credential_provider and aws_bedrockagentcore_oauth2_credential_provider / bedrock.AgentcoreApiKeyCredentialProvider and bedrock.AgentcoreOauth2CredentialProvider. The service reference scopes every action here to BOTH the provider ARN and the parent token-vault ARN (providers live under the account's vault, id "default" unless changed), so all three formats are granted. Get runs on every plan/refresh; Update carries key and client-secret rotation in place. AWS performs the Secrets Manager vaulting itself under the service's token vault -- the runner needs no secretsmanager grants.
+      - sid: CreatePolicyEngine
+        actions:
+          - bedrock-agentcore:CreatePolicyEngine
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_policy_engine / bedrock.AgentcorePolicyEngine at create. NON-SCOPABLE -- the service reference lists no resource types for CreatePolicyEngine (the engine id does not exist until the call returns), so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope for this one action.
+      - sid: ManagePolicyEngineAndPolicies
+        actions:
+          - bedrock-agentcore:GetPolicyEngine
+          - bedrock-agentcore:UpdatePolicyEngine
+          - bedrock-agentcore:DeletePolicyEngine
+          - bedrock-agentcore:CreatePolicy
+          - bedrock-agentcore:GetPolicy
+          - bedrock-agentcore:UpdatePolicy
+          - bedrock-agentcore:DeletePolicy
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:policy-engine/*
+          - arn:aws:bedrock-agentcore:*:*:policy-engine/*/policy/*
+        provenance: derived
+        notes: Covers the rest of aws_bedrockagentcore_policy_engine plus aws_bedrockagentcore_policy / bedrock.AgentcorePolicy. CreatePolicy IS scopable (to the parent engine ARN, which exists by then), unlike CreatePolicyEngine. The Get twins run on every plan/refresh; UpdatePolicyEngine reconciles description in place, while engine_name and encryption_key_arn changes replace the engine (and with it every child policy -- destroy-before-create ordering the modules encode).
+      - sid: TagIdentityResources
+        actions:
+          - bedrock-agentcore:TagResource
+          - bedrock-agentcore:UntagResource
+          - bedrock-agentcore:ListTagsForResource
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*/apikeycredentialprovider/*
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*/oauth2credentialprovider/*
+          - arn:aws:bedrock-agentcore:*:*:policy-engine/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh, scoped to exactly the resources the modules tag -- both credential-provider types and the policy engine. Workload identities and individual policies carry no tags argument on the provider resources, so their ARN formats are deliberately absent.

@@ -1,0 +1,306 @@
+/* Meets Micro-App Specific Styles */
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
+.meets-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================================
+   SLIDE BACKGROUNDS
+   ============================================================================ */
+
+.bg-slide-dark {
+  background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+}
+
+.bg-slide-gradient {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+}
+
+.bg-slide-problem {
+  background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+}
+
+.bg-slide-solution {
+  background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+}
+
+/* ============================================================================
+   TYPOGRAPHY ENHANCEMENTS
+   ============================================================================ */
+
+.highlight-gradient {
+  color: #ededed;
+}
+
+.highlight-green {
+  color: #ededed;
+}
+
+/* ============================================================================
+   CARD STYLES
+   ============================================================================ */
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 1.5rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  opacity: 0.7;
+  margin-top: 0.5rem;
+}
+
+/* ============================================================================
+   COMPARISON STYLES (semantic — red/green preserved)
+   ============================================================================ */
+
+.comparison-before {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.comparison-after {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* ============================================================================
+   FLOW DIAGRAM
+   ============================================================================ */
+
+.flow-step {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.flow-arrow {
+  color: #a0a0a0;
+  font-size: 1.5rem;
+}
+
+/* ============================================================================
+   CHECKLIST STYLES
+   ============================================================================ */
+
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.checklist li:last-child {
+  border-bottom: none;
+}
+
+.check-icon {
+  color: #10b981;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   ICON LIST
+   ============================================================================ */
+
+.icon-list li {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  align-items: flex-start;
+}
+
+.icon-list .icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
+
+/* ============================================================================
+   QUOTE BOX
+   ============================================================================ */
+
+.quote-box {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 4px solid rgba(255, 255, 255, 0.3);
+  padding: 1.5rem 1.75rem;
+  border-radius: 0 12px 12px 0;
+}
+
+.quote-box blockquote {
+  font-size: 1.1rem;
+  font-style: italic;
+  color: white;
+  line-height: 1.6;
+}
+
+.quote-box .attribution {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: normal;
+}
+
+/* ============================================================================
+   STATS GRID
+   ============================================================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ededed;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.5rem;
+}
+
+/* ============================================================================
+   DEMO BADGE
+   ============================================================================ */
+
+.demo-badge {
+  display: inline-block;
+  background: #ededed;
+  color: #0a0a0a;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   PRESENTER NOTES
+   ============================================================================ */
+
+.presenter-notes {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.presenter-notes h4 {
+  color: #a0a0a0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.presenter-notes ul {
+  padding-left: 1rem;
+}
+
+.presenter-notes li {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   KEYBOARD SHORTCUTS
+   ============================================================================ */
+
+kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+/* ============================================================================
+   PROGRESS BAR
+   ============================================================================ */
+
+.progress-bar {
+  background: rgba(255, 255, 255, 0.2);
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  background: #ededed;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* ============================================================================
+   TWO COLUMN LAYOUT
+   ============================================================================ */
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .metric-value {
+    font-size: 2rem;
+  }
+  
+  .quote-box {
+    padding: 1rem 1.25rem;
+  }
+  
+  .quote-box blockquote {
+    font-size: 0.95rem;
+  }
+}

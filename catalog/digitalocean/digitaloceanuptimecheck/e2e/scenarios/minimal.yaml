@@ -1,0 +1,25 @@
+# Minimal DigitalOceanUptimeCheck: an https probe on a stable public
+# target from two vantage regions, no alert rules. Proves the full
+# lifecycle and the check_id output the verifier addresses the check with.
+# The target is EXTERNAL, so no fixture exists at all -- the cheapest kind
+# in its wave.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: planton-oss-e2e-digitaloceanuptimecheck-min
+  id: planton-oss-e2e-digitaloceanuptimecheck-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanuptimecheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  checkName: pltn-e2e-douptc-min-${E2E_RUN_ID}
+  target: https://www.digitalocean.com
+  regions:
+    - us_east
+    - eu_west

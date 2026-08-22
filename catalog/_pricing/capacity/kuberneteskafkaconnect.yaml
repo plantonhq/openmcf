@@ -1,0 +1,34 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKafkaConnect manifest's spec values into the capacity footprint
+# it reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kuberneteskafkaconnect.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every replica is a full
+# Connect worker pod carrying the declared resources -- workers are
+# stateless (connector state lives in Kafka topics on the target cluster),
+# so no persistent volumes are bound.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskafkaconnect
+spec:
+  workloads:
+    - label: worker
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "Connect's three internal storage topics (configs, offsets, status) live on the target Kafka cluster and grow there"
+    - applies_when:
+        - field_path: build
+          op: is_set
+      text: the operator-driven image build runs a transient build pod whose sizing the operator owns; its capacity is claimed only while the build runs and is not declared in this spec
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the manifest declares no resource requests or limits -- the workers schedule unbounded and the cluster reserves nothing for them"

@@ -20,6 +20,9 @@ are read-only and fast (see `planton-cli.md` for exact commands):
   built, and did it succeed?
 - Available provider connections (which clouds, which Kubernetes clusters).
 - Environments in the org.
+- The organization's catalog availability — which kinds its catalog policy
+  disables (`catalog-availability.md`: check here, design complete anyway,
+  disclose before deploy).
 
 What you find shapes the BUILD, not a question: an existing green cluster is
 something to build on, not duplicate; a connection to exactly one cloud

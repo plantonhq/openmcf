@@ -1,0 +1,41 @@
+# Composed DigitalOceanApp: an HTTP service plus a background worker,
+# both from public Docker Hub images. Proves the multi-component app
+# spec (service + worker families) without GitHub, private registries,
+# or any Pulumi-gap field (no vpc, maintenance, liveness, custom
+# domain, or alert destinations).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanApp
+metadata:
+  name: planton-oss-e2e-digitaloceanapp-comp
+  id: planton-oss-e2e-digitaloceanapp-comp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanapp
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  appName: pltn-e2e-doapp-comp
+  region: nyc3
+  services:
+    - name: web
+      image:
+        registryType: docker_hub
+        registry: library
+        repository: nginx
+        tag: latest
+      instanceSizeSlug: basic-xxs
+      instanceCount: 1
+      httpPort: 80
+  workers:
+    - name: worker
+      image:
+        registryType: docker_hub
+        registry: library
+        repository: nginx
+        tag: latest
+      instanceSizeSlug: basic-xxs
+      instanceCount: 1

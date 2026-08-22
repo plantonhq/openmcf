@@ -1,0 +1,42 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeScheduler
+metadata:
+  name: queue-drainer
+spec:
+  region: us-east-1
+  description: Drain the work queue every 15 minutes on Fargate
+  groupName: batch-jobs
+  scheduleExpression: rate(15 minutes)
+  flexibleTimeWindow:
+    mode: FLEXIBLE
+    maximumWindowInMinutes: 5
+  target:
+    arn:
+      valueFrom:
+        kind: AwsEcsCluster
+        name: batch-cluster
+        fieldPath: status.outputs.cluster_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: scheduler-ecs-exec
+        fieldPath: status.outputs.role_arn
+    ecsParameters:
+      taskDefinitionArn:
+        valueFrom:
+          kind: AwsEcsTaskDefinition
+          name: queue-drainer
+          fieldPath: status.outputs.task_definition_arn
+      launchType: FARGATE
+      networkConfiguration:
+        subnets:
+          - valueFrom:
+              kind: AwsSubnet
+              name: private-a
+              fieldPath: status.outputs.subnet_id
+        securityGroups:
+          - valueFrom:
+              kind: AwsSecurityGroup
+              name: batch-tasks
+              fieldPath: status.outputs.security_group_id
+      propagateTags: TASK_DEFINITION

@@ -21,7 +21,7 @@ func certManagerCert(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 	meta := locals.AwsCertManagerCert.Metadata
 
 	isImported := spec.Imported != nil
-	isPrivate := !isImported && spec.CertificateAuthorityArn != ""
+	isPrivate := !isImported && spec.GetCertificateAuthorityArn().GetValue() != ""
 	isRequested := !isImported && !isPrivate
 
 	// Requested certificates validate via DNS unless EMAIL is chosen;
@@ -59,7 +59,7 @@ func certManagerCert(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 		if isPrivate {
 			// Private-CA issuance is authorized by the CA itself -- passing a
 			// validation method alongside the CA ARN is rejected by AWS.
-			args.CertificateAuthorityArn = pulumi.String(spec.CertificateAuthorityArn)
+			args.CertificateAuthorityArn = pulumi.String(spec.GetCertificateAuthorityArn().GetValue())
 			// Managed early renewal -- a private-CA mechanism (ACM's
 			// RenewCertificate is private-certificate-only; CEL ties the
 			// field to the private arm). Durations under 60 days have no

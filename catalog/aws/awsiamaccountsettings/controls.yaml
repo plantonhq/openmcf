@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiamaccountsettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: These settings store no customer data -- the alias, password policy, and STS preference are IAM control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for account settings.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The settings terminate no connections of their own. IAM management calls and the console sign-in page the alias shapes both ride AWS endpoints that serve exclusively over TLS -- provider behavior, not per-setting configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network endpoint belongs to this component. The account_alias does appear in a public URL (https://<alias>.signin.aws.amazon.com/console), but that sign-in endpoint is AWS's own service surface -- the alias only names it, and aliases are globally unique so squatting is structural, not configurable here.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the settings are account-wide IAM configuration with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The settings receive no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The settings grant nothing and gate nothing by role -- changing them is IAM-authorized like every AWS management call (account-wide posture, not this spec's). WHO may sign in and what they may do is governed on the identity objects (AwsIamRole, AwsIamGroup), not on this singleton.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No workload runs here. The sts arm tunes the token FORMAT the global endpoint issues (v1 versus v2, an opt-in-region compatibility matter) -- it does not create or replace workload identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: password_policy
+      evidence:
+        type: spec_default
+        reference: IAM user console passwords are the account's long-lived, human-held credential path, and this arm is exactly the lever that hardens it -- minimum length up to 128, character-class requirements, rotation (max_password_age), reuse prevention up to 24 generations, and hard_expiry forcing administrator resets. Unset means AWS's permissive default (6-character minimum, nothing else required); the policy is replaced whole on every apply, so the manifest states the entire posture.
+      notes: "The 01 preset pins the hardened shape: 14-character minimum, all four character classes, 90-day rotation, 24-generation reuse prevention. The sts arm's v2Token is a compatibility upgrade, not an auth-strength control; and the FAQ's own recommendation -- prefer roles and federation over IAM users entirely -- is decided on the identity components, not here."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Changes to these settings (alias writes, password-policy updates, STS preference calls) are recorded by AWS CloudTrail as account-level posture, not per-setting configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics for account settings; credential-hygiene signals (credential reports, last-used data) are account-level IAM features outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The settings hold no data to back up -- they are declarative configuration fully re-creatable from the manifest, with per-arm destroy semantics worth knowing: the alias deletes, the password policy resets to AWS defaults, and the STS preference persists as last applied."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- these settings are account-wide facts AWS replicates across its own infrastructure, with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither AWS nor the modules expose a deletion-protection flag. The blast radius of destroy is bounded by design: the worst case is the password policy reverting to AWS's permissive default and the sign-in URL reverting to the bare account ID."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The settings are pure configuration with no software to patch.

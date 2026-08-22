@@ -1,0 +1,54 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualhub
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualHub
+        actions:
+          - Microsoft.Network/virtualHubs/read
+          - Microsoft.Network/virtualHubs/write
+          - Microsoft.Network/virtualHubs/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_hub / network.VirtualHub -- create, refresh (the outputs read the router's ASN and peering IPs off the hub resource), in-place updates (routing preference, branch-to-branch, capacity floor, inline routes, tags), and destroy. ARM refuses to delete a hub that still has gateways or connections; teardown order is enforced service-side, not by extra permissions. Every action in this manifest is contained in the built-in Network Contributor role (and Contributor/Owner) for principals granted by role rather than custom definition.
+      - purpose: JoinVirtualWan
+        actions:
+          - Microsoft.Network/virtualWans/join/action
+        provenance: derived
+        notes: The modules never call the WAN API -- they pass the resolved virtual_wan_id in the hub payload -- but ARM authorizes attaching the hub to the referenced WAN with join/action on the WAN's scope at create (service-side; Microsoft's Virtual WAN roles-and-permissions reference lists it as the hub's referenced-resource permission).
+      - purpose: ManageHubRouteTables
+        actions:
+          - Microsoft.Network/virtualHubs/hubRouteTables/read
+          - Microsoft.Network/virtualHubs/hubRouteTables/write
+          - Microsoft.Network/virtualHubs/hubRouteTables/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_hub_route_table / network.VirtualHubRouteTable, one per spec.route_tables entry with routes managed inline -- each table PUT carries its full route list, so route edits also land on hubRouteTables/write.
+      - purpose: ManageRouteMaps
+        actions:
+          - Microsoft.Network/virtualHubs/routeMaps/read
+          - Microsoft.Network/virtualHubs/routeMaps/write
+          - Microsoft.Network/virtualHubs/routeMaps/delete
+        provenance: derived
+        notes: Covers azurerm_route_map / network.RouteMapResource, one per spec.route_maps entry (the Pulumi SDK's legacy "RouteMapResource" token creates the same ARM routeMaps child).
+      - purpose: ManageBgpConnections
+        actions:
+          - Microsoft.Network/virtualHubs/bgpConnections/read
+          - Microsoft.Network/virtualHubs/bgpConnections/write
+          - Microsoft.Network/virtualHubs/bgpConnections/delete
+          - Microsoft.Network/virtualHubs/hubVirtualNetworkConnections/read
+        provenance: derived
+        notes: Covers azurerm_virtual_hub_bgp_connection / network.BgpConnection, one per spec.bgp_connections entry (every field is ForceNew, so updates are delete-and-recreate). hubVirtualNetworkConnections/read is service-side -- when a peering names virtual_network_connection_id, ARM reads the referenced hub connection to validate it; needed only when that reference is set.
+      - purpose: ManageRoutingIntent
+        actions:
+          - Microsoft.Network/virtualHubs/routingIntent/read
+          - Microsoft.Network/virtualHubs/routingIntent/write
+          - Microsoft.Network/virtualHubs/routingIntent/delete
+          - Microsoft.Network/azurefirewalls/read
+        provenance: derived
+        notes: Covers azurerm_virtual_hub_routing_intent / network.RoutingIntent (at most one per hub). azurefirewalls/read is service-side -- ARM reads every next-hop firewall referenced in the routing policies (and in route-table routes whose next_hop is a firewall) at write time; the lowercase "azurefirewalls" is how Microsoft's providerOperations inventory spells the resource type. A next hop pointing at an NVA instead needs networkVirtualAppliances/read the same way.

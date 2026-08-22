@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseventbridgepipe
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: source
+      sku_meter: Pipe requests
+      pricing_unit: requests
+      impact: The pipe's only EventBridge meter -- requests billed per million ($0.40 per million on the EventBridge pricing page), counted in 64 KB payload chunks, running exactly as fast as the source produces. An idle pipe on an empty source costs nothing at rest; a firehose source bills continuously.
+    - field_path: source_parameters.filter_criteria
+      sku_meter: Pipe requests
+      pricing_unit: requests
+      impact: "The cost throttle: only events matching a filter pattern become billable requests -- the pricing page's own example filters 10M source events down to 25% before metering. Filtering happens BEFORE the meter, so a tight pattern is a direct discount."
+    - field_path: source_parameters
+      sku_meter: Pipe requests
+      pricing_unit: requests
+      impact: Batching divides the bill -- the pricing example batches five events per request and meters 500,000 requests from 2.5M matched events. A family block's batch_size and batching window turn many events into one request; 64 KB chunking pushes the other way (one fat batch can bill as several requests).
+    - field_path: log_configuration
+      sku_meter: Log delivery to CloudWatch Logs, Firehose, or S3
+      pricing_unit: GB
+      impact: Execution logging ships bytes to the configured destinations, which bill ingestion and storage on their own components (AwsCloudwatchLogGroup, AwsKinesisFirehose, AwsS3Bucket). TRACE with include_execution_data writes full payloads -- the volume, and the bill, scale with event traffic.
+  free_tier: "Pipes have NO free allotment -- the per-million request meter bills from the first matched event, permanently. Existence is what costs nothing: a pipe (RUNNING on an empty source, or STOPPED) carries no hourly fee, so the zero is commitment absence, not an allowance."
+  estimate_exclusions:
+    - request volume is entirely source-driven -- $0.40 per million requests after filtering, in 64 KB chunks, a rate the manifest cannot see
+    - the enrichment step's own execution bills on ITS component -- Lambda invocations and duration, Step Functions Express charges, or API-destination invocation events
+    - the target's work bills on ITS component -- Lambda invocations, SQS requests, Kinesis puts, ECS/Fargate task runtime, Batch compute, Redshift Data API, SageMaker pipeline executions
+    - dead-letter deliveries of exhausted batches bill SQS or SNS requests on the referenced queue or topic
+    - execution-log bytes bill ingestion and storage on the configured CloudWatch Logs, Firehose, or S3 destinations
+    - a customer-managed key on kms_key_identifier bills its monthly fee and per-request charges on the referenced AwsKmsKey
+    - source services meter their own request, retention, and storage charges on their own kinds (SQS requests, Kinesis shard hours, MSK brokers)
+  notes: "A pipe is a toll road between two services you already pay for: EventBridge's own charge is only $0.40 per million post-filter requests, and the real spend usually sits at the ends -- what the source charges to hold events and what the target charges to process them. The three levers that shape the toll are the filter (fewer billable requests), the batch size (many events per request), and payload size (64 KB chunking multiplies). desired_state STOPPED pauses consumption -- and the meter -- without deleting the pipe."

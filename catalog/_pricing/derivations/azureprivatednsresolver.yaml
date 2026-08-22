@@ -1,0 +1,38 @@
+# Cost derivation: the machine-executable rules turning any
+# AzurePrivateDnsResolver manifest's spec values into metered quantities
+# and price choices -- one flat monthly fee per declared endpoint,
+# inbound and outbound each on their own meter at the same worldwide
+# rate. The per-endpoint rate is UNIFORM (nothing on an endpoint entry
+# -- allocation method, static address, subnet choice -- moves it), so
+# count_of on each repeated field prices every manifest exactly; the
+# resolver object itself is free, and no usage arm exists -- Azure
+# publishes no per-query meter for the resolver. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/azureprivatednsresolver.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureprivatednsresolver
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: inbound resolver endpoints
+      quantity:
+        - count_of: inbound_endpoints
+      price_slug: dns-resolver-inbound-endpoint
+      basis: one flat monthly fee per declared inbound endpoint, prorated to hours if deleted earlier -- the rate is uniform across endpoints and identical in every Azure DNS billing geography, so endpoint count is the whole quantity
+    - sku_meter: outbound resolver endpoints
+      quantity:
+        - count_of: outbound_endpoints
+      price_slug: dns-resolver-outbound-endpoint
+      basis: one flat monthly fee per declared outbound endpoint, the same list rate as the inbound meter -- an inbound-only resolver simply has zero of these
+  exclusions:
+    - text: DNS forwarding rulesets bill their own flat monthly fee on the AzurePrivateDnsResolverForwardingRuleset component that binds the outbound endpoints
+    - text: the resolver adds no per-query meter -- queries answered from private zones bill those zones' per-million meter zone-side, and queries forwarded on-premises bill nothing in Azure
+    - text: the anchor virtual network and the dedicated endpoint subnets are first-class components billing on their own lines

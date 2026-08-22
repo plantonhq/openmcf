@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the policy is created (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/monitoring.alertPolicyEditor` or broader.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 - **Notification channels** to page (reference GcpMonitoringNotificationChannel resources).
 
 ## Deploy

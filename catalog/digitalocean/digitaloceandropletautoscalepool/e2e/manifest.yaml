@@ -1,0 +1,54 @@
+# Reference manifest for DigitalOceanDropletAutoscalePool --
+# protovalidate-valid, embedded as the reference page's Example block, and
+# the documents the offline tofu plan renders. Two documents so the plan
+# proves BOTH scaling branches' rendering: a static pool and a dynamic
+# pool with the full template surface.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: web-static-pool
+spec:
+  poolName: web-static
+  static:
+    targetInstances: 2
+  dropletTemplate:
+    size: s-1vcpu-1gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    # Literal numeric SSH key ids; use valueFrom to reference
+    # DigitalOceanSshKey resources instead.
+    sshKeys:
+      - value: "12345678"
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: web-dynamic-pool
+spec:
+  poolName: web-dynamic
+  dynamic:
+    minInstances: 1
+    maxInstances: 5
+    targetCpuUtilization: 0.7
+    targetMemoryUtilization: 0.8
+    cooldownMinutes: 10
+  dropletTemplate:
+    size: s-1vcpu-1gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    sshKeys:
+      - value: "12345678"
+    vpc:
+      value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+    projectId:
+      value: ffffffff-1111-2222-3333-444444444444
+    tags:
+      - web
+      - autoscaled
+    # Dynamic scaling decides on agent-supplied CPU/memory metrics.
+    withDropletAgent: true
+    ipv6: true
+    userData: |
+      #cloud-config
+      packages:
+        - nginx

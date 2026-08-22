@@ -21,5 +21,7 @@ spec:
       - purpose: JoinPoolSubnet
         actions:
           - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/read
         provenance: derived
-        notes: Required only when vnet_subnet_id (or pod_subnet_id) places the pool on a BYO subnet -- creating NICs in a subnet the pool does not own demands join on it. Not needed with AKS-managed networking.
+        notes: Required only when vnet_subnet_id (or pod_subnet_id) places the pool on a BYO subnet -- creating NICs in a subnet the pool does not own demands join on it, and after creating the pool the provider polls BOTH the subnet and its parent virtual network until their provisioning states return to Succeeded (Get on each), which is where the two read actions are exercised. Not needed with AKS-managed networking.

@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awskinesisfirehose
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: sse_enabled
+      evidence:
+        type: spec_default
+        reference: For Direct PUT streams, server-side encryption of buffered records is opt-in -- false leaves data staged in Firehose unencrypted until delivery. With a Kinesis-stream or MSK source, spec validation forbids the flag because the SOURCE's encryption already covers records (Firehose decrypts on read, buffers, and re-encrypts destination-side).
+      notes: Delivered data's at-rest posture belongs to the destination components (the S3 bucket's encryption, the OpenSearch domain's, the Redshift cluster's).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: sse_kms_key_arn
+      evidence:
+        type: spec_default
+        reference: With sse_enabled and no key, AWS uses an AWS-owned key; referencing a customer-managed KMS key puts buffered records under a key you own and can revoke.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Producers ingest over the TLS-only Firehose API, and every delivery leg rides TLS -- HTTP endpoint destinations require HTTPS URLs, Splunk HEC and Snowflake are TLS endpoints, and AWS destinations use the services' encrypted APIs.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A delivery stream exposes no endpoint -- ingestion is the IAM-fronted AWS API and delivery pushes outward. vpc_config on the OpenSearch destinations keeps the DELIVERY leg inside a VPC, but that is a reachability choice for the destination, not an exposure surface on this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No listener exists; who may PutRecord is IAM policy on the producing principals, and stream-source ingestion is governed by the referenced source's own access model.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attachment point exists for an ingestion pipeline; request filtering belongs to whatever public surface fronts the producers.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, describe, destination updates, PutRecord -- is IAM-authorized against the delivery stream's ARN unconditionally.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: Every destination requires a role_arn the spec validates -- Firehose assumes the referenced roles for all reads (stream and MSK sources) and writes (S3, OpenSearch, Redshift staging, VPC ENI management); short-lived assumed-role credentials are the only AWS-side mechanism.
+      notes: Third-party destinations authenticate with their own credentials (Splunk HEC token, Snowflake key pair), best held in Secrets Manager via each destination's secrets_manager_config rather than inline.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The AWS-side surface is SigV4-only with no weaker alternative; third-party endpoint credential strength is governed by those platforms.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- create, destination updates, encryption toggles, deletion -- lands in CloudTrail by default. Each destination's logging block adds delivery-failure diagnostics to CloudWatch Logs on top.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firehose publishes ingestion and delivery metrics (incoming bytes/records, delivery success rates, data freshness, throttling) to CloudWatch automatically for every stream.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: extended_s3.s3_backup_mode
+      evidence:
+        type: spec_default
+        reference: Unset keeps only delivered output; Enabled tees every source record to a backup S3 bucket before transformation -- recovery for the in-flight data this component handles. Push destinations (OpenSearch, HTTP endpoint, Splunk, Snowflake, Iceberg) back failed records up to S3 by design regardless.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backed-up and failed records land in referenced S3 buckets whose lifecycle policies govern retention on their own AwsS3Bucket components; the stream itself retains nothing beyond its delivery buffers.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firehose is a regional, multi-AZ managed service; ingestion and delivery survive zone failure without configuration, and VPC delivery spreads ENIs across the subnets you declare.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists; deleting the stream discards buffered records not yet delivered. Everything durable lives destination-side and survives on those components.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the ingestion and delivery fleet; no customer-visible patch surface exists.

@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteslocust
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The stack is stateless -- no volumes exist; test scripts ride ConfigMaps and run statistics live in the master's memory for the run. The only stored material is the module-generated login credential Secret, whose at-rest posture is the target cluster's etcd encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Nothing rests to encrypt (see enc-at-rest); this spec has no key seam.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: No TLS seam is typed -- the web UI serves plain HTTP on the ClusterIP Service, and TLS composes at the exposure layer over the exported handle. Traffic to the system under test is whatever the locustfile requests (an https target_host is exercised over TLS).
+    - control_id: no-public-access
+      status: configurable
+      field_path: service.type
+      evidence:
+        type: spec_default
+        reference: ClusterIP by default -- the master's Service (web UI 8089 + worker coordination) is reachable only inside the cluster; LoadBalancer or NodePort exposes it directly, with service.annotations carrying the cloud load-balancer configuration.
+      notes: Compose exposure kinds over the exported handle instead of flipping the type. The secured-by-default login (see rbac) is what stands between an exposed UI and anyone starting load tests.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may reach the web UI; source restriction lives on the composed exposure layer or Kubernetes NetworkPolicies declared as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A load-test tool serves no public HTTP edge traffic of its own -- when the UI is exposed through composed kinds, request filtering lives on that exposure layer.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Upstream ships the web UI OPEN -- anyone who can reach the Service can start load tests against any host it can see. That never deploys from this kind -- the modules enable the web-UI login by default with a generated credential in the module-owned `<name>-auth` Secret, delivered through Locust's own documented extension seam, so the UI and every REST route require the authenticated session.
+      notes: A single operator credential (web_ui_auth.username, "locust" by default), not per-user roles. Headless runs start no web UI, so there is nothing to log into. Management-plane access (the release itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: This component talks to no cloud API -- test credentials reach the locustfile as environment variables from EXISTING Secrets (env_from_secrets / env_from_secret_keys), references the pods read at runtime.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The web-UI login mechanism requires Locust >= 2.21.0 -- older tags fall onto a chart code path that renders the credential as a literal pod argument, and the modules REFUSE that combination outright (the deploy fails loudly rather than shipping a credential in process arguments).
+      notes: The chart's values-rendered-Secret path (environment_secret) is nulled by the modules after every merge, so credentials can never ride rendered values either.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- Locust logs stream to stdout at the declared log levels for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics-export seam is typed -- live test statistics are the master's web UI and REST API (the same stats API the KEDA arm scales on); export results from there before tearing the stack down.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing persists to back up -- the stack is stateless, test scripts are declared in the manifest (or the user's own ConfigMaps), and run statistics are ephemeral by nature.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A load generator has no high-availability story to configure -- the master runs exactly one replica (the chart's fixed shape; losing it interrupts the test, nothing more) and workers reschedule freely. pdb_enabled on the master and workers guards against voluntary disruptions (node drains) killing a test mid-run -- test continuity, not zone redundancy.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release; deletion is the normal end of a load-test stack's life, and nothing of value is lost with it (see backup-recovery).
+    - control_id: managed-patching
+      status: configurable
+      field_path: image.tag
+      evidence:
+        type: spec_default
+        reference: The tag defaults to the Locust release this kind is built against (2.32.2, always pinned explicitly in the rendered values -- the deployed version is declared, never inherited); upgrading is a deliberate act of changing the tag, floored at 2.21.0 while the login is enabled. The chart version itself is module-pinned (0.35.0), not a spec seam.

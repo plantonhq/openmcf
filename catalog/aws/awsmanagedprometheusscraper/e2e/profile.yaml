@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmanagedprometheusscraper
+spec:
+  # One VPC-sourced lane: collectors in the subnet fixture scraping a
+  # static (silent) target into the consumer-scoped workspace fixture -
+  # the scraper lifecycle proven WITHOUT an EKS cluster. Collector
+  # pricing is hourly (~$0.10-0.20 for the lane's lifetime); creates
+  # wait up to 30 minutes, deletes drain up to 20 - the timeout below
+  # budgets the full dual-engine cycle.
+  #
+  # Deliberately not exercised live:
+  #   - the EKS source arm -- needs a live EKS cluster (~25-minute
+  #     create/delete, the suite's slowest fixture). The arm is
+  #     offline-proven (plan + preview render cluster_arn/subnets).
+  #     Unblock: the shared EKS fixture chain (the same unblock the
+  #     Batch EKS arm records) - one costed lane proves the arm plus
+  #     the unset-scrape-configuration default resolution together.
+  #   - scraper logging -- rides the EKS lane when it comes (a
+  #     log-group fixture is cheap, but the logging satellite is most
+  #     meaningful with a source that actually collects).
+  #   - role_configuration -- cross-account scraping needs a second
+  #     account (none exists today).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 2
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 120

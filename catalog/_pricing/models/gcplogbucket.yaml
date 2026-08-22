@@ -1,0 +1,37 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcplogbucket
+spec:
+  presets:
+    - preset: 01-compliance-retention
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - an empty bucket bills nothing -- ingestion charges $0.50/GiB (first 50 GiB/project/month free) only as sinks route entries in, which is a separate resource's decision
+        - the 400-day retention meters $0.01 per GiB per month on every GiB held past day 30 -- the preset's real cost shape once audit volume arrives, roughly 12 extra months of retention on each GiB
+      notes: Zero committed because the manifest routes nothing into the bucket -- the retention posture is expensive per GiB by design, but only on GiB that actually land.
+    - preset: 02-analytics-and-views
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - ingestion bills $0.50/GiB as application logs stream in past the project's 50 GiB monthly free allotment; the 90-day retention adds $0.01/GiB-month for the 60 days held past the default
+        - Log Analytics and the linked BigQuery dataset add no Logging charge -- the link duplicates no storage into BigQuery, and SQL run through BigQuery services bills under BigQuery's own pricing
+        - log views are free configuration
+      notes: Zero committed at creation -- analytics and views change who can see and query the logs, not what the logs cost; the spend follows the application's log volume.
+    - preset: 03-adopt-default-bucket
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - adoption changes no meter by itself, but the _Default bucket already receives everything the project's _Default sink routes -- ingestion of that flow bills $0.50/GiB past the free allotment whether or not this resource manages the bucket
+        - raising retention to 90 days adds $0.01 per GiB per month on volume held past day 30 -- this preset's one real repricing of an existing flow
+      notes: Zero committed -- the estimate models the resource, and the resource adds no spend; the honest caveat is that it manages a bucket whose ingestion meter is already running on the project's default log flow, and its retention change is what moves that bill.

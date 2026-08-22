@@ -1,0 +1,137 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesexternalsecretsoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.external_secrets -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.external_secrets -- the webhook and metrics ClusterIP Services and the controller/webhook/cert-controller ServiceAccounts (the controller SA carries the workload-identity annotations the modules render). Secrets cover Helm's own release-state Secret; the webhook's serving-certificate Secret is created and rotated at runtime by the cert-controller, not by the runner.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's three Deployments -- controller, webhook (rendered while webhook.enabled, the default), and cert-controller (rendered while cert_controller.enabled, the default; the chart skips it on its own when cert-manager integration takes over via helm_values).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's ClusterRoles and ClusterRoleBindings -- the controller's cluster-wide ESO-resource and Secret management (writing Secrets IS its function, so this grant is broad by design) and the cert-controller's webhook-configuration patching. Not rendered for the controller when scoped_rbac narrows it to a namespace Role.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders -- leader-election access in the installation namespace, plus the namespace-scoped Role/RoleBinding pair that replaces the controller's ClusterRole when scoped_namespace and scoped_rbac take the fully-scoped multi-tenant posture.
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart registers the ESO admission webhook cluster-wide (secretstore and externalsecret validation) while webhook.enabled, the default. The cert-controller patches the CA bundle into these configurations at runtime under its own RBAC.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The ESO CRDs (ExternalSecret, SecretStore, ClusterSecretStore, ...) -- installed with the release while crds.install is true, the default. The modules stamp helm.sh/resource-policy=keep while crds.keep_on_uninstall is true (the default), so delete is exercised only when keeping is explicitly disabled.
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The controller's PodDisruptionBudget (minAvailable 1) -- rendered only when spec.pod_disruption_budget is true.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.prometheus.service_monitor is true -- requires the Prometheus operator CRDs on the cluster (the release fails to install without them).

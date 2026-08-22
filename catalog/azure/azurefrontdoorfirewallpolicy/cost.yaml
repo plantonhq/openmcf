@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefrontdoorfirewallpolicy
+spec:
+  billing_model: free
+  free_tier: A Front Door WAF policy on the Standard/Premium tiers bills nothing -- not the policy, not its custom rules, not the managed rule sets, not log scrubbing. Microsoft prices WAF into the associated profile's tier, and the Retail Prices API carries no policy, rule, or rule-set meter for the Standard/Premium product. The separately-metered WAF (per policy-month, per rule-month, per managed rule set) is Front Door CLASSIC's billing -- a different product this spec does not model.
+  notes: "The spend this policy steers lives elsewhere. The associated profile's sku must MATCH this policy's, so choosing PREMIUM here (the only tier with managed rule sets and bot challenges) commits the profile to Premium's roughly-tenfold monthly base fee -- the real price of managed rules is paid on the profile. Requests the WAF inspects, blocks included, still bill on the profile's per-10,000 request meter. And the WAF's match logs bill as Log Analytics ingestion once a diagnostic setting on the PROFILE exports them -- log_scrubbing changes what the log lines contain, not what they cost. The policy alone enforces (and spends) nothing: an AzureFrontDoorSecurityPolicy association is what puts it in front of traffic. One conditional meter follows this policy's own rule actions: CAPTCHA challenges bill $0.40 per 1,000 CAPTCHA sessions on the associated profile (the Premium Captcha Sessions meter, verified at the Retail Prices API) -- a policy whose rules never issue CAPTCHA never starts it."

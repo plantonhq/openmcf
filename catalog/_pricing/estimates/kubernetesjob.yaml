@@ -1,0 +1,45 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesjob
+spec:
+  presets:
+    - preset: 01-database-migration
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 concurrent pod x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - capacity is reserved only while the Job's pods execute -- a run-to-completion workload releases its reservation when it finishes, so wall-clock share depends on the run's duration
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-parallel-batch
+      capacity_footprint:
+        cpu_requests: 300m
+        memory_requests: 768Mi
+        cpu_limits: "3"
+        memory_limits: 3Gi
+        basis: 3 concurrent pods x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - capacity is reserved only while the Job's pods execute -- a run-to-completion workload releases its reservation when it finishes, so wall-clock share depends on the run's duration
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 03-resilient-batch
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 concurrent pod x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - capacity is reserved only while the Job's pods execute -- a run-to-completion workload releases its reservation when it finishes, so wall-clock share depends on the run's duration
+        - the dollar value of this capacity is the target cluster's node economics

@@ -1,0 +1,17 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesrabbitmqoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator runs as a single controller pod; these requests are what the scheduler reserves for it. Empty does NOT mean unbounded -- the release manifest ships defaults (200m CPU / 500Mi memory for both requests and limits), applied whenever the manifest omits resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the RabbitMQ clusters this operator reconciles -- StatefulSets, their volumes, credential-updater sidecars -- reserve their own capacity on their KubernetesRabbitMq resources, never this footprint"
+  notes: "This component installs the ENGINE, not the message brokers: its footprint is the single operator pod in the fixed rabbitmq-system namespace. RabbitMQ clusters are declared through KubernetesRabbitMq resources, each carrying its own capacity footprint. The manifest-default operator resources make the honest manifest-time statement a hand-computed footprint: the declared resources, or the release manifest's defaults when omitted. There is no helm_values overlay -- the operator has no Helm chart; its official distribution is the single-file release manifest, applied per document."

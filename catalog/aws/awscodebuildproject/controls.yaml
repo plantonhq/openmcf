@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscodebuildproject
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: artifacts.encryption_disabled
+      evidence:
+        type: spec_default
+        reference: False (the default) means CodeBuild encrypts build artifacts at rest with the project's encryption key -- the AWS-managed S3 key when encryption_key is omitted; setting it true ships plaintext artifacts to the destination bucket. S3 build logs carry the parallel logs_config.s3_logs.encryption_disabled toggle.
+      notes: The encryption toggle exists per output -- secondary_artifacts each carry their own encryption_disabled, so one plaintext output does not weaken the others.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption_key
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS-managed key for S3; referencing an AwsKmsKey encrypts build artifacts with a customer-managed key you own and can revoke. Every principal that downloads the artifacts then also needs kms:Decrypt on that key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path in and out of a build is TLS -- the CodeBuild API itself, source fetches from Git providers and S3, artifact and cache writes back to S3, and log delivery. No plaintext transport option exists in the spec or the API.
+      notes: source.insecure_ssl (GitHub Enterprise / self-managed GitLab only) skips certificate VERIFICATION on the source fetch -- traffic stays encrypted but loses authenticity guarantees; leave it false against any provider with a real certificate.
+    - control_id: no-public-access
+      status: configurable
+      field_path: project_visibility
+      evidence:
+        type: spec_default
+        reference: PRIVATE (the default) keeps build results visible only to principals in the account; PUBLIC_READ publishes build results, logs, and artifacts world-readably (the open-source CI posture), served through the resource_access_role. Spec validation refuses PUBLIC_READ without that role.
+      notes: This governs visibility of build RESULTS -- the build containers themselves accept no inbound connections either way.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A build container opens no listener -- its network life is outbound only (fetch source, pull images, push artifacts). vpc_config places that egress inside your VPC and its security_group_ids shape what the build may reach, but there is no inbound surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attachment point exists for a build service -- nothing routes external requests to a CodeBuild project. Webhook events arrive at an AWS-operated endpoint authenticated by provider-side HMAC secrets, outside this manifest.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation -- CreateProject, StartBuild, StopBuild, BatchGetProjects, DeleteProject -- is authorized by IAM unconditionally against the project ARN. resource_policy extends IAM-evaluated grants across accounts (a central CI account starting builds here) without weakening the default-deny posture.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: service_role is required by the spec -- every build runs with short-lived credentials from that assumed role for all its AWS access (source pulls, artifact writes, log delivery); no static-credential alternative exists for the build's own identity.
+      notes: Keep static provider tokens out of environment_variables (PLAINTEXT values are readable by anyone who can describe the project); source access belongs on source.auth via CodeConnections, and secrets belong in SECRETS_MANAGER-typed variables.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: source.auth.type
+      evidence:
+        type: spec_default
+        reference: CODECONNECTIONS authenticates source access through a CodeConnections connection with no stored token; OAUTH is the legacy account-level OAuth grant and SECRETS_MANAGER stores a long-lived provider token. Omitting the block falls back to the account-wide source credential, whatever mechanism that credential uses.
+      notes: The 04-fork-pr-gated-oss-ci preset pins CODECONNECTIONS; the other GitHub presets ride the account-level credential.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- who created the project, who started or stopped which build, who changed visibility -- lands in CloudTrail unconditionally. What the BUILD ITSELF printed is separate, governed by logs_config.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CodeBuild publishes per-project build metrics (builds started, succeeded, failed, duration) to CloudWatch automatically, and logs_config.cloudwatch_logs defaults to ENABLED -- build output streams to CloudWatch Logs with no configuration.
+      notes: Disabling cloudwatch_logs without enabling s3_logs leaves builds with no retained output at all -- failures then debug blind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The project is declarative configuration recreated from this manifest -- it stores no data of its own. Build artifacts, caches, and logs live in the referenced S3 buckets and CloudWatch log groups, whose durability is governed on those components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no data store of its own there is no retention to configure here -- artifact and log retention live on the referenced bucket and log-group components.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Builds are ephemeral executions, not a running service -- AWS places each on-demand build on managed capacity and a failed build is re-run, not failed over. Nothing long-lived exists to replicate across zones; vpc_config.subnet_ids spanning zones widens placement options for VPC builds without creating HA semantics.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the CodeBuild API nor this spec carries a deletion-protection flag -- DeleteProject proceeds when authorized. The project is recreated from the manifest, though build history and the build badge URL do not survive recreation.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Build hosts are AWS-operated and provisioned fresh per build -- there is no long-lived machine for the operator to patch, and host_kernel selects a kernel line AWS itself maintains.
+      notes: The build IMAGE is the operator's own patch surface -- AWS updates the curated aws/codebuild images within a tag, but a custom environment.image from ECR is patched only when its owner rebuilds it.

@@ -1,0 +1,101 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurerediscache
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cache's working set lives in memory, not on disk; everything the service durably persists (Premium RDB snapshots and AOF logs) lands in Azure Storage, which encrypts all data at rest with service-managed keys unconditionally.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The classic Azure Cache for Redis API exposes no customer-managed-key surface for the cache itself; the persistence storage account's encryption posture (including CMK) belongs to that storage account's own component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Clients connect over TLS on port 6380 by default; the plaintext port 6379 exists only behind non_ssl_port_enabled, which defaults to false and stays false unless deliberately opened.
+      notes: All three presets leave the non-SSL port closed.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (public endpoint gated by TLS, auth, and firewall rules); setting it false limits connectivity to private endpoints. Premium caches can go further with VNet injection (subnet_id), which places the cache inside a subnet with no public endpoint at all.
+      notes: The 02-premium-enterprise preset disables public network access.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall_rules
+      evidence:
+        type: spec_default
+        reference: Firewall rules are an IP allowlist of client address ranges on the cache endpoint; an empty list applies no source filtering. The rules matter only while the public endpoint exists.
+      notes: The 03-development preset allowlists a single office range.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cache endpoint speaks the Redis protocol, not HTTP; it is protected by TLS, authentication, and network scoping rather than a WAF -- no request-filtering attachment point exists.
+    - control_id: rbac
+      status: configurable
+      field_path: redis_configuration.active_directory_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default (access-key authentication only); enabling it lets Microsoft Entra identities authenticate to the data plane with directory-issued tokens under the cache's access policies. Management-plane access is always Azure RBAC.
+      notes: Presets 01-standard-entra and 02-premium-enterprise enable Entra authentication.
+    - control_id: workload-identity
+      status: configurable
+      field_path: redis_configuration.active_directory_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: With Entra authentication on, workloads holding managed identities connect with short-lived directory tokens instead of a stored access key -- the identity path exists only when this is enabled.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: access_keys_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (shared access keys accepted); setting it false -- legal only with Entra authentication enabled -- retires the static shared-secret path entirely.
+      notes: The 02-premium-enterprise preset disables access keys.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the cache land in the Azure Activity Log unconditionally.
+      notes: Connection-level audit logs are an Azure Monitor diagnostic-settings concern outside this spec's fields.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cache publishes server load, memory, connections, and cache-hit metrics to Azure Monitor for every instance without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: redis_configuration.rdb_backup_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; on Premium caches, enabling RDB persistence snapshots the cache to a storage account on the configured frequency (AOF persistence is the write-log sibling). Basic and Standard tiers hold data in memory only, with no backup surface.
+      notes: The 02-premium-enterprise preset takes hourly RDB snapshots authenticated with a managed identity.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: redis_configuration.rdb_backup_max_snapshot_count
+      evidence:
+        type: spec_default
+        reference: Bounds how many RDB snapshots are kept before the oldest is overwritten, alongside rdb_backup_frequency for cadence -- together they set the persistence window the organization retains.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: Empty means the platform places nodes without a zone guarantee; listing zones on a Premium cache pins its nodes across the named availability zones. Zone placement is fixed at creation.
+      notes: The 02-premium-enterprise preset pins zones 1, 2, and 3.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the cache API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. A Premium cache with persistence can be re-imported from its last RDB snapshot after an accidental deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft patches the Redis engine and underlying platform on every cache; patch_schedules steers when maintenance may disrupt, never whether patching occurs.

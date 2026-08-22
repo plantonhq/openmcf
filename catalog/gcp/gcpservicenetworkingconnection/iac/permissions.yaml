@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpservicenetworkingconnection
+spec:
+  gcp:
+    groups:
+      - purpose: EnableApis
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers the module's two google_project_service resources enabling servicenetworking.googleapis.com (the producer-side control plane) and compute.googleapis.com (where the network and reserved ranges live). disable_on_destroy is false on both, so the disable permission is never needed.
+      - purpose: ManageConnection
+        permissions:
+          - servicenetworking.services.addPeering
+          - servicenetworking.services.get
+          - servicenetworking.services.deleteConnection
+          - servicenetworking.operations.get
+        provenance: derived
+        notes: Covers google_service_networking_connection. GCP defines NO servicenetworking.connections.* permission family -- connections are authorized through the SERVICE resource (verified against IAM's testable-permissions inventory and the provider source) -- so create and the reserved-range patch (including the update_on_creation_fail adoption path) authorize as servicenetworking.services.addPeering, the read that lists connections for the network as servicenetworking.services.get, and destroy as servicenetworking.services.deleteConnection. Every mutation returns a long-running operation the provider polls under servicenetworking.operations.get.
+      - purpose: ResolveProjectNumber
+        permissions:
+          - resourcemanager.projects.get
+        provenance: derived
+        notes: The Service Networking API addresses networks by project NUMBER, so the provider calls Cloud Resource Manager's projects.get on every create, read, update, and delete to translate the network's project ID (verified in the provider's RetrieveServiceNetworkingNetworkName) -- without it the resource fails before reaching the Service Networking API.

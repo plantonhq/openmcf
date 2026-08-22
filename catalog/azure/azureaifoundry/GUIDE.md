@@ -35,9 +35,17 @@ surface differs in ways that matter to a composer:
   arms -- hub outbound rules are managed from the Foundry portal/API;
   azurerm models no children for them.
 - Soft-delete behaves exactly like the workspace: the ghost holds the
-  name; `az ml workspace list --archived` shows it; the provider
-  purges on destroy when the `machine_learning.
-  purge_soft_deleted_workspace_on_destroy` features flag is on.
+  name until purged. Both Planton modules enable the provider's
+  `machine_learning.purge_soft_deleted_workspace_on_destroy` features
+  flag, so a Planton destroy purges the ghost and the name frees
+  immediately (proven live: a dual-engine cycle recreated the same
+  fixed name minutes after the first engine's destroy). Know the
+  listing boundary: NO CLI or REST API lists ghosts -- `az ml
+  workspace list` has no soft-delete flag and Resource Graph indexes
+  active resources only. The Azure portal's "Recently deleted" view
+  (Azure Machine Learning service page, per region) is the one
+  listing surface, and purging a ghost left by an outside-Planton
+  delete happens there too.
 
 ## high_business_impact_enabled is sent only when true
 

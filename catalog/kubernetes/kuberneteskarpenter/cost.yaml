@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskarpenter
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: controller.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Chart default 2 -- an active leader plus a warm standby, spread across zones. Both pods reserve the declared resources; extra replicas are failover insurance, not horizontal capacity.
+    - field_path: controller.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller container's requests are what each replica reserves. Unset, the chart applies NO requests or limits (upstream leaves the choice to the operator; 1 CPU / 1Gi is the commonly documented starting point for large clusters).
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: The overlay merges LAST and can override any modeled value, including controller replicas and resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the NODES Karpenter launches are not this component's footprint: every machine it provisions bills at the cloud provider's instance rates, and those economics ride the KubernetesKarpenterNodePool resources that declare the fleet"
+    - the helm_values overlay merges last and can change any of the above
+  notes: "This component installs the provisioning ENGINE -- a small controller Deployment whose cost is the share of the cluster it reserves. What the engine DOES is the real money: it launches and terminates cloud instances to fit pending pods, and that spend rides KubernetesKarpenterNodePool (the fleet's shape and ceilings) and KubernetesKarpenterEc2NodeClass (the machine template) at the cloud provider's rates. An installation without a NodePool provisions nothing and spends nothing beyond this controller's reservation."

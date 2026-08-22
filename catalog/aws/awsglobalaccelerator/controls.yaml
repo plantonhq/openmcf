@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsglobalaccelerator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The accelerator routes traffic and stores no customer data at rest; flow logs persist in the destination S3 bucket under that component's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A Layer-4 service -- it accelerates TCP/UDP flows without terminating or originating TLS; payload encryption is end-to-end between clients and the endpoint resources (ALB, NLB, EC2) behind it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The product IS two publicly announced anycast addresses -- a fixed public entry point is its purpose, and no private mode exists. enabled=false stops routing but is a maintenance dial (the addresses stay assigned), not an access-control posture.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: listeners
+      evidence:
+        type: spec_default
+        reference: Listeners define the ports and protocols the accelerator accepts traffic on -- every deployment declares its ingress surface explicitly (at least one listener is required, each with explicit port ranges and protocol).
+      notes: Source-level filtering lives on the endpoint resources' security groups; setting client_ip_preservation_enabled on ALB/EC2 endpoints keeps real client IPs visible to those group rules.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every accelerator is protected by AWS Shield Standard by default -- always-on network flow monitoring with automated in-line DDoS mitigation at the edge.
+      notes: WAFv2 cannot associate with an accelerator (the WAF service reference authorizes AssociateWebACL for ALBs, API Gateway, AppSync, Cognito, App Runner, and Verified Access -- not Global Accelerator); HTTP-layer protection belongs on the ALB endpoints behind it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the accelerator exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The accelerator runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own -- it forwards Layer-4 flows to endpoints that own their protocols.
+    - control_id: audit-logging
+      status: configurable
+      field_path: flow_logs
+      evidence:
+        type: spec_default
+        reference: Unset (or enabled=false) means no flow logs; enabling publishes traffic flow logs to the named S3 bucket. Both modules always send the explicit disabled state, so removing the block genuinely turns logging off.
+      notes: The 02-multi-region-production preset enables it. The bucket must grant Global Accelerator write permission.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Global Accelerator publishes accelerator metrics (new and active flows, processed bytes, healthy/unhealthy endpoint counts) to CloudWatch automatically; this cannot be disabled.
+      notes: Metrics are homed in us-west-2 -- the service's control-plane region -- regardless of where the endpoints live.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless traffic director -- no data to back up. The configuration is declarative and re-creatable, though recreation assigns NEW static IP addresses (see deletion-protection).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The two static IPv4 addresses are served from independent network zones -- isolated infrastructure units analogous to Availability Zones -- and the service continuously health-checks endpoints and instantly reroutes traffic to healthy ones. Neither behavior can be disabled.
+      notes: Cross-REGION redundancy is the configurable layer above -- multiple endpoint groups per listener; the 02-multi-region-production preset splits 60/40 between us-east-1 and eu-west-1 with tightened health checks.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag. The real blast radius is the static IP addresses -- deleting the accelerator forfeits them permanently (AWS recommends IAM/tag-based permissions to limit who may delete). The provider's disable-before-delete sequence is required plumbing, not protection.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the global edge fleet; no customer-visible patch surface exists.

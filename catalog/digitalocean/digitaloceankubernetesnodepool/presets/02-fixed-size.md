@@ -1,26 +1,20 @@
-# Fixed-Size System Node Pool
+# Fixed-Size Dedicated Pool
 
-This preset creates a fixed-size node pool dedicated to system workloads (ingress controllers, monitoring agents, cluster add-ons). It uses a Kubernetes taint to prevent application pods from scheduling on these nodes, ensuring system components have guaranteed resources.
+This preset adds a fixed two-node pool reserved for system workloads: a `NoSchedule` taint keeps ordinary pods off the nodes, and a matching label lets system components target them explicitly.
 
 ## When to Use
 
-- Dedicated pool for cluster infrastructure (ingress-nginx, cert-manager, monitoring)
-- Workload isolation where system pods must not compete with application pods
-- Stable, predictable capacity requirements
+- Isolating system components (ingress controllers, observability agents, operators) from application churn
+- Workloads that need a stable node count rather than autoscaling
+- Any pool whose pods should be placed by explicit toleration + selector, never by default scheduling
 
 ## Key Configuration Choices
 
-- **Fixed size** (`nodeCount: 2`) -- no autoscaling. System workloads have predictable resource needs.
-- **Taint** (`dedicated=system:NoSchedule`) -- prevents application pods from scheduling unless they explicitly tolerate this taint.
-- **System label** (`labels: {workload: system}`) -- used with `nodeAffinity` to target system deployments.
-- **Smaller instances** (`size: s-2vcpu-4gb`) -- system workloads are typically lighter than application workloads.
+- **Fixed node count** (`nodeCount: 2`, no `autoScale`) -- the pool holds exactly two nodes; scale it by editing the count.
+- **Taint + label pairing** (`dedicated=system:NoSchedule` with `workload: system`) -- pods need a matching toleration to land here AND a nodeSelector to prefer it; the taint alone keeps everyone else out. The taint's `effect` must be spelled exactly as Kubernetes does (`NoSchedule`, `PreferNoSchedule`, `NoExecute`).
+- **Cluster reference** (`cluster.valueFrom`) -- resolves the owning cluster's UUID from a `DigitalOceanKubernetesCluster` resource's outputs at deploy time.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<cluster-name>` | Name of the parent DOKS cluster | `DigitalOceanKubernetesCluster` resource `metadata.name` |
-
-## Related Presets
-
-- **01-autoscaling-production** -- Use instead for application workloads requiring dynamic scaling
+- `metadata.name` / `nodePoolName` -- your pool's name (unique within the cluster).
+- `cluster.valueFrom.name` -- the name of your `DigitalOceanKubernetesCluster` resource (or replace the block with `value: <the cluster UUID>` for a cluster created outside Planton).

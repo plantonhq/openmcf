@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awswafwebacl
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWS WAF
+      sku_meter: web ACL monthly fee
+      pricing_unit: months
+      description: Fixed monthly fee (prorated hourly) for each web ACL, accruing from creation whether or not any resource associates it.
+  cost_drivers:
+    - field_path: rules
+      sku_meter: rule monthly fee
+      pricing_unit: months
+      impact: Every top-level rule bills a monthly fee (prorated hourly) -- and a managed rule group or rule-group reference counts as exactly ONE rule regardless of how many rules it contains inside.
+    - field_path: rules.statement.managed_rule_group
+      sku_meter: intelligent-threat managed rule group subscriptions
+      pricing_unit: months
+      impact: Referencing an intelligent-threat pack -- Bot Control, Account Takeover Prevention, Account Creation Fraud Prevention, or anti-DDoS -- adds that pack's monthly subscription plus per-request analysis fees on top of its rule fee. The AWS core protection packs (Common, SQLi, KnownBadInputs, IP reputation, Anonymous IP) carry no subscription at all.
+    - field_path: logging
+      sku_meter: vended log delivery
+      pricing_unit: GB
+      impact: Request logs bill at the destination (CloudWatch vended-log ingestion, S3, or Firehose) per byte delivered; the logging filter block is the cost lever -- keeping only records where WAF acted cuts the volume on high-traffic ACLs.
+    - field_path: association_config
+      sku_meter: request fees
+      pricing_unit: requests
+      impact: Raising a body-inspection limit above the 16 KB default adds a per-million-request surcharge for each additional 16 KB analyzed.
+  free_tier: WAF includes 500 MB of CloudWatch Logs (Standard and Infrequent Access) and vended-logs ingestion per 1 million WAF requests. When the paid Bot Control pack is enabled, its Common level includes the first 10 million requests per month free and its Targeted level the first 1 million.
+  estimate_exclusions:
+    - requests processed bill per million and follow traffic; the per-million rate steps upward when the ACL's rules exceed 1,500 WCUs
+    - CAPTCHA attempts and challenge responses bill per use when rules carry those actions
+    - intelligent-threat packs add per-request analysis fees on the traffic they inspect (a scope-down statement is the lever)
+    - log delivery beyond the free allowance bills at the destination
+  notes: "The committed bill quantizes cleanly: one web-ACL fee plus one rule fee per top-level rule, both prorated hourly. Which resources the ACL protects never changes its own bill -- association is the protected resource's setting, and each protected resource's traffic feeds the same per-million request meter."

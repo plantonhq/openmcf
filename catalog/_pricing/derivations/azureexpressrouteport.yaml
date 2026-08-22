@@ -1,0 +1,102 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureExpressRoutePort manifest's spec values into metered quantities
+# and price choices -- the flat monthly port-pair fee, chosen by
+# bandwidth and billing type. The meter is priced by the peering
+# FACILITY'S pricing zone, not the ARM region: the book pins Zone 1
+# (North America and most of Europe, where the catalog's example
+# facility vocabulary lives), a stated assumption each basis carries.
+# Port sizes and billing types no committed preset consumes are
+# refusals rather than dead book entries. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/azureexpressrouteport.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureexpressrouteport
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: zone-1
+  refusals:
+    - when:
+        - field_path: bandwidth_in_gbps
+          op: not_equals
+          value: "10"
+        - field_path: bandwidth_in_gbps
+          op: not_equals
+          value: "100"
+      reason: ARM offers ExpressRoute Direct ports at 10 or 100 Gbps at real peering locations (the API accepts any positive integer, so the spec documents rather than validates the vocabulary) -- a port size outside the published ladder has no list price to commit to
+    - when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "10"
+        - field_path: billing_type
+          op: equals
+          value: UNLIMITED_DATA
+      reason: the 10 Gbps unlimited-data port meter is not in the price book -- no committed preset deploys it (unlimited billing multiplies the port fee severalfold and pays off only at sustained high utilization), and a book entry nothing consumes would go stale unverified
+    - when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "100"
+        - field_path: billing_type
+          op: equals
+          value: METERED_DATA
+      reason: the 100 Gbps metered-data port meter is not in the price book -- no committed preset deploys it, and a book entry nothing consumes would go stale unverified
+    - when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "100"
+        - field_path: billing_type
+          op: is_unset
+      reason: an unspecified billing type deploys METERED_DATA (ARM's default), and the 100 Gbps metered-data port meter is not in the price book -- no committed preset deploys it
+  lines:
+    - sku_meter: Direct port pair
+      applies_when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "10"
+        - field_path: billing_type
+          op: equals
+          value: METERED_DATA
+      quantity:
+        - constant: "1"
+      price_slug: expressroute-direct-10gbps-metered-port-zone1
+      basis: one port pair x the 10 Gbps metered monthly fee -- ARM provisions the dual physical links as ONE billed pair, charged in full from creation whether or not the cross-connect exists; the fee is keyed to the peering facility's pricing zone, and Zone 1 (North America and most of Europe, home of the catalog's example facility vocabulary) is the stated assumption
+    - sku_meter: Direct port pair
+      applies_when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "10"
+        - field_path: billing_type
+          op: is_unset
+      quantity:
+        - constant: "1"
+      price_slug: expressroute-direct-10gbps-metered-port-zone1
+      basis: an unspecified billing type deploys METERED_DATA (ARM's default) -- one port pair x the 10 Gbps metered monthly fee, Zone 1 assumed as above
+    - sku_meter: Direct port pair
+      applies_when:
+        - field_path: bandwidth_in_gbps
+          op: equals
+          value: "100"
+        - field_path: billing_type
+          op: equals
+          value: UNLIMITED_DATA
+      quantity:
+        - constant: "1"
+      price_slug: expressroute-direct-100gbps-unlimited-port-zone1
+      basis: one port pair x the 100 Gbps unlimited-data monthly fee -- the flat rate that removes per-GB egress metering from every circuit on the port; Zone 1 assumed as above
+  exclusions:
+    - text: circuits carved from the port bill on their own components -- Premium circuit add-ons carry a monthly fee, and on metered ports the circuits' outbound traffic bills per GB
+    - text: the physical cross-connect and colocation charges are contracted with the facility operator, outside Azure entirely
+    - text: MACsec key reads bill as Key Vault operations on the referenced vault's component
+  notes:
+    - text: The port fee is priced by the peering location's zone (Zone 1 through Zone 4) -- facilities outside Zone 1 bill higher list rates on the SAME meters, and no committed mapping from facility name to zone exists in the manifest, which is why the zone rides as a stated assumption rather than a lookup.
+    - text: MACsec, link admin state, issued authorizations, and the managed identity add no meters -- the port pair fee is the whole committed bill.
+    - applies_when:
+        - field_path: billing_type
+          op: equals
+          value: UNLIMITED_DATA
+      text: Billing type is the one major dial that is NOT fixed at creation -- Azure allows switching a port between metered and unlimited in place, so the committed fee can be re-tuned as utilization data accumulates.

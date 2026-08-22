@@ -1,0 +1,61 @@
+# Cost derivation: the machine-executable rules turning any AzureFirewall
+# manifest's spec values into metered quantities and price choices -- the
+# always-on deployment-hour meter at the tier's rate. Per-GB data
+# processing is the variable half and rides the exclusions; BASIC and
+# PREMIUM tiers and the AZFW_HUB deployment model are refusals until a
+# committed preset consumes their meters. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/azurefirewall.yaml; a server-side estimator evaluates the
+# same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurefirewall
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: AZFW_HUB
+      reason: a Virtual WAN hub firewall bills the Secured Virtual Hub deployment and data-processing meters -- distinct meters not in the price book (list rates equal the standalone ones today, but the identity differs and no committed preset deploys the hub model)
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: BASIC
+      reason: the BASIC tier's deployment and data-processing meters are not in the price book -- no committed preset deploys the SMB-scale tier, and a book entry nothing consumes would go stale unverified
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: PREMIUM
+      reason: the PREMIUM tier's deployment meter is not in the price book -- no committed preset deploys the TLS-inspection tier, and a book entry nothing consumes would go stale unverified
+  lines:
+    - sku_meter: firewall deployment hours
+      applies_when:
+        - field_path: sku_tier
+          op: equals
+          value: STANDARD
+      quantity:
+        - hours_in_month: true
+      price_slug: azure-firewall-standard-deployment-eastus
+      basis: a STANDARD firewall bills its flat deployment fee every hour it exists (x 730), regardless of scale -- Azure autoscales the underlying instances without changing this meter, and availability zones add nothing
+    - sku_meter: firewall deployment hours
+      applies_when:
+        - field_path: sku_tier
+          op: is_unset
+      quantity:
+        - hours_in_month: true
+      price_slug: azure-firewall-standard-deployment-eastus
+      basis: an unspecified tier deploys STANDARD (the spec's documented default), billing the same flat deployment fee every hour (x 730)
+  exclusions:
+    - text: data processing bills every GB the firewall inspects at the tier's per-GB rate -- the variable half of every firewall bill, following traffic
+    - text: the referenced public IPs bill hourly on their own components
+    - text: the attached AzureFirewallPolicy carries its own billing rules on its own component
+    - text: prescaled capacity units are an opt-in reservation configured outside this spec; by default the firewall bills no capacity-unit charges
+  notes:
+    - text: Zone redundancy is free on Azure Firewall -- spanning availability zones changes availability posture, not the deployment meter.

@@ -1,6 +1,6 @@
 ---
 title: "Terraform Parity"
-description: "Measured parity of the CLOUDFLARE catalog against the pinned Terraform provider"
+description: "Measured parity of the Cloudflare catalog against the pinned Terraform provider"
 icon: "check-circle"
 order: 90
 ---
@@ -12,7 +12,7 @@ order: 90
      parameters: provider=cloudflare ga-schema=cloudflare
      Regenerate: make generate-provider-parity-report -->
 
-# CLOUDFLARE Terraform Parity
+# Cloudflare Terraform Parity
 
 This catalog is **built for 100% Terraform parity**: every configurable
 argument of the pinned Terraform provider is representable through a kind,

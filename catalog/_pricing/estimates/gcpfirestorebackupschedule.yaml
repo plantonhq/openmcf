@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpfirestorebackupschedule
+spec:
+  presets:
+    - preset: 01-daily-short-retention
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - daily backups kept 7 days settle at roughly 7 database-sized copies billing per GiB-month at the backup-data rate -- each copy sized exactly as the database was when taken, so an empty database backs up to almost nothing
+        - backup data has no free quota, even when the database itself lives inside Firestore's free tier
+        - the database's own operations and storage bill on GcpFirestoreDatabase; a restore bills $0.20 per GiB when run
+      notes: Zero committed at creation -- the schedule is a free control-plane object; the meter follows the size of the database it copies.
+    - preset: 02-weekly-long-retention
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - weekly Sunday backups kept 14 weeks (the maximum) settle at roughly 14 database-sized copies billing per GiB-month at the backup-data rate
+        - composing this archive schedule beside the daily preset on the same database is the intended pattern -- the two standing counts add
+        - the database's own operations and storage bill on GcpFirestoreDatabase
+      notes: Zero committed at creation -- the 14-week retention is a multiplier armed by the manifest; it starts costing when the database holds data worth archiving.

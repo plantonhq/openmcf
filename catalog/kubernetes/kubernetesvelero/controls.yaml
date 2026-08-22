@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesvelero
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: backup_storage.s3.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset, backups rest under the object store's own at-rest encryption -- the major clouds (S3, GCS, Azure Blob) encrypt by default with provider-managed keys, while an S3-compatible store's posture is that store's own. kms_key_id selects server-side KMS encryption for backups in real S3.
+      notes: The 03-minio-self-contained preset's at-rest posture is whatever the in-cluster MinIO provides.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: backup_storage.s3.kms_key_id
+      evidence:
+        type: spec_default
+        reference: kms_key_id (id, alias, or ARN) encrypts S3 backups with a customer-managed KMS key. For GCS and Azure Blob, customer-managed keys are configured on the bucket or storage account itself, outside this spec.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The cloud object-store endpoints Velero writes to (S3, GCS, Azure Blob) are HTTPS, and backup_storage.s3.ca_cert verifies self-signed S3-compatible endpoints. Inside the cluster, Velero talks to the Kubernetes API over its TLS endpoint.
+      notes: An http:// s3_url sends backup bytes in cluster-network plaintext -- the 03-minio-self-contained preset does exactly that for its in-cluster MinIO; use https with ca_cert where that matters.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the Velero server accepts no inbound traffic beyond its in-cluster metrics endpoint; it only dials OUT to the Kubernetes API and the object store.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no ingress surface to restrict -- Velero is driven through velero.io custom resources (Backup, Restore, Schedule), which are Kubernetes API operations governed by the cluster's RBAC.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Velero serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every operation -- taking a backup, running a restore, editing a schedule -- is a velero.io custom-resource operation, governed by the target cluster's Kubernetes RBAC.
+      notes: "The chart binds Velero's own ServiceAccount to the cluster-admin ClusterRole by default: backing up and restoring EVERY resource type requires cluster-wide read and write. That grant is the product's nature -- scope who may create velero.io resources instead."
+    - control_id: workload-identity
+      status: configurable
+      field_path: backup_storage.s3.irsa_role_arn
+      evidence:
+        type: spec_default
+        reference: Each backend arm carries a keyless posture -- s3.irsa_role_arn (EKS IRSA), gcs.workload_identity_service_account_email (GKE Workload Identity), azure_blob.workload_identity_client_id (AKS Workload Identity) -- annotating Velero's service account so backups reach the store without stored keys. The alternative arms materialize static credentials into a Secret.
+      notes: The 01-eks-s3-irsa and 02-gke-gcs-workload-identity presets are keyless; 03-minio-self-contained uses static MinIO keys by necessity (no cloud identity to federate).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Velero exposes no authentication path of its own -- object-store credentials are the keyless-vs-static-keys choice (see workload-identity), and CEL guards forbid setting both postures at once.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Backup and restore operations are velero.io custom-resource operations, captured by the target cluster's Kubernetes audit policy. The server's own logs stream to stdout (server.log_level, server.log_format) for the cluster's log collector.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: prometheus.enabled defaults to true -- Velero serves backup successes, failures, durations, and validation results on its /metrics endpoint; prometheus.service_monitor adds operator-based scrape discovery.
+      notes: DR you cannot observe is DR you cannot trust -- alert on velero_backup_last_success_timestamp, not just failures.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: backup_storage is REQUIRED -- Velero without a storage location backs up nothing, so every install has a store. Backup records survive uninstall (Helm never deletes crds/-directory CRDs and crds.cleanup_on_uninstall defaults false), the bucket's objects are never touched, and location sync re-imports whatever the store holds -- restorable even into a fresh cluster.
+      notes: This component IS the cluster's backup-and-recovery arm. All three presets ship a nightly schedule; server.restore_only_mode is the DR-standby posture for a second cluster reading the same store.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: server.default_backup_ttl
+      evidence:
+        type: spec_default
+        reference: Velero's default TTL is 720h (30 days); default_backup_ttl changes the install-wide default and each schedule's ttl overrides it per schedule. Expired backups are garbage-collected from the store on the server.garbage_collection_frequency cadence.
+      notes: All three presets set ttl 720h on their nightly schedule.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Velero server is a single-replica Deployment by design (one installation per cluster; the release name is fixed to "velero") -- there is no replica seam. A brief server outage delays backups; it loses nothing. Cross-cluster resilience is the store itself plus a DR-standby cluster in server.restore_only_mode.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: crds.cleanup_on_uninstall
+      evidence:
+        type: spec_default
+        reference: Default false -- uninstalling removes the Velero pods but leaves the CRDs and every Backup/Restore/Schedule/BackupStorageLocation record in the cluster, and the stored objects in the bucket are never touched. true is the explicit destructive opt-in (upstream reserves it for CI systems), deleting every backup record with the release.
+      notes: All three presets keep the default -- backup records outlive the component.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: The chart version is pinned (default "12.1.0", shipping Velero 1.18) -- upgrades are deliberate pin changes that re-run the release. crds.upgrade_on_install (default true) runs the chart's CRD-upgrade job so the pinned CRDs stay current across chart upgrades, which Helm alone never does.
+      notes: All three presets pin the default and keep upgrade_on_install.

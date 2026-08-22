@@ -1,0 +1,123 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesaltinityoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.altinity_operator -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.altinity_operator -- the operator ServiceAccount, the credentials Secret (created unconditionally, with the documented defaults when operator_credentials is unset), the <name>-metrics ClusterIP Service (while metrics.enabled, the default), and the operator configuration ConfigMaps (the etc/confd/usersd/templatesd/keeper-templatesd files families).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's operator Deployment (named exactly the fullname, which the modules pin to metadata.name), running the operator container and the metrics-exporter sidecar.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's default RBAC posture (rbac.namespaceScoped false) grants the operator cluster-wide rights to manage ClickHouseInstallation/ClickHouseKeeperInstallation resources and their children (StatefulSets, Services, ConfigMaps, Secrets, PVCs) in every watched namespace -- an operator chart's RBAC is among the widest in the catalog. Rendered by helm_release.altinity_operator unless spec.namespace_scoped_rbac is true.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The namespace-scoped RBAC alternative -- rendered instead of the cluster-wide pair when spec.namespace_scoped_rbac is true (chart rbac.namespaceScoped).
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+        cluster_scoped: true
+        provenance: derived
+        notes: The four CRDs ship in the chart's crds/ directory (Helm installs them on first install; skip_crds stays false in both modules) and the crdHook pre-install/pre-upgrade job server-side-applies them on every install and upgrade. No delete -- Helm never deletes crds/ CRDs on uninstall, which is the deliberate keep-on-uninstall posture.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's crdHook pre-install/pre-upgrade hook Job (while crd_hook.enabled, the default true) that applies CRD schema changes; Helm creates and cleans it up around each install and upgrade.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's ServiceMonitor -- rendered only when spec.service_monitor_enabled is true, and requires the Prometheus Operator CRDs on the cluster.

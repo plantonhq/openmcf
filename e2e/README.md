@@ -341,6 +341,48 @@ holding a frontend in the fixture subnet) blocks the entire reverse teardown
 chain behind it. Destroying a stack whose update failed is safe; it removes
 whatever was actually created.
 
+### Scenario-declared data-plane setup (the SETUP phase)
+
+Some scenarios need an asset that no catalog kind can create because it is
+DATA-PLANE CONTENT inside a fixture, not a control-plane object -- the first
+user: Azure ML refuses to provision a managed online deployment without a
+registered model, and a model registration is a file upload into the fixture
+workspace, unreachable by any fixture manifest. Such a scenario declares a
+setup script:
+
+```yaml
+metadata:
+  annotations:
+    planton.dev/e2e-setup-script: "catalog/azure/<kind>/e2e/scenarios/minimal.setup.sh"
+```
+
+The filename MUST end in `.setup.sh`. The repo's blanket `*.sh` gitignore would otherwise leave the script only on the machine that wrote it; a matching exception tracks `catalog/**/e2e/scenarios/*.setup.sh`. A different suffix is an untracked file and a broken lane on every fresh checkout.
+
+The runner executes it as the `SETUP` phase -- after DEPENDENCIES-UP and
+reference resolution (the fixtures the script seeds into exist), before
+VALIDATE (a seeding failure stops the lane before any component deploy). The
+script runs via bash from the repo root, once per engine lane, inheriting the
+process environment (cloud CLI logins, the harness's `ARM_*`/`PLANTON_E2E_*`
+exports) plus `E2E_RUN_ID` (engine-scoped) and `E2E_SCENARIO`. A non-zero
+exit fails the lane; the dependency chain still tears down.
+
+Rules that keep the seam honest:
+
+- **Control-plane objects never enter here.** Anything a catalog kind can
+  create must keep entering through registry prerequisites or the
+  `e2e-prerequisites` annotation -- those paths carry the teardown and
+  orphan-sweep guarantees a script dodges.
+- **Seed ONLY into fixture-owned resources.** There is deliberately no
+  teardown pair: everything the script creates must die with the fixture
+  chain at DEPENDENCIES-DOWN, or the zero-orphan sweep is lying.
+- **Idempotent per lane** (an in-lane retry may re-run it), and any remote
+  artifact it fetches is pinned (commit SHA + checksum) so the lane's inputs
+  cannot drift under it.
+- **Bash 3.2 portable.** The runner invokes `bash`, and macOS ships 3.2 --
+  no associative arrays (`declare -A`), no `mapfile`. A `set -u` script
+  that uses `[MLmodel]=` as an array key dies as "unbound variable"
+  before any fetch (live-caught on the first SETUP-phase lane).
+
 ### Bare polymorphic references need an explicit `kind:` in scenario valueFrom
 
 Reference resolution determines the referenced kind from the `valueFrom.kind`
@@ -633,6 +675,25 @@ but two P2S lanes sharing a fixture hub must run SEQUENTIALLY, and a
 wedged gateway teardown blocks the hub's P2S slot AND the hub's own
 deletion until swept.
 
+### Long-running Azure components (ML managed online deployments)
+
+A managed online deployment provisions a real VM (no scale-to-zero).
+Measured live (one Standard_F2s_v2, eastus, both engines): create
+**17-18 minutes**, delete **~6 minutes**. The lane also pays the
+fixture workspace chain plus a fixture endpoint (~10-12 min up,
+~8 min down) and a SETUP-phase model registration (~20 s). A
+single-engine lane totals **~42-44 minutes**; budget `-timeout=90m`
+per engine. The instance bills from provisioning to destroy.
+
+Azure's MFE can answer the create LRO with `InternalServerError`
+("Internal error. Please see troubleshooting guide") in under a
+minute -- `percentComplete: 0`, no field detail. The same body
+succeeds on retry (and succeeded on the other engine minutes
+earlier). Treat that 500 as a transient service fault: wait out
+the failed lane's teardown, retry once, do not debug the module.
+A second identical 500 is the finding (quota, image-build, or a
+real body defect) and gets its own recorded boundary.
+
 ### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
 
 The proof workflow flips a component's profile `pending_proof` -> `green`
@@ -882,6 +943,43 @@ validates. When such a rejection surfaces, front-load it as a spec CEL
 record the contract in the component docs -- the next component in the
 same service family should check for sibling "managed by the parent"
 exclusions up front.
+
+### Create-only fields the provider never reads back make blind imports plan a REPLACE
+
+A provider's Read function is not guaranteed to populate every argument
+it accepts at create -- some create-only inputs (a snapshot's
+`source_resource_id`/`source_uri` at the azurerm v5 pin is the
+live-caught case) are simply never set from the ARM response. On the
+normal apply path nothing surfaces: the value persists in state from
+the apply, so even the IDEMPOTENCY re-plan stays clean. The blind
+import round-trip is the ONLY gate that catches it: a fresh import
+holds a null for the field, the config supplies a value, and when the
+field is ForceNew the post-import plan proposes destroy+create -- which
+the round-trip oracle rightly refuses (replaces always fail; declared
+tolerances cover in-place updates only). The remedy is NEVER a
+tolerance: make the field create-time-only as a CONTRACT -- lifecycle
+`ignore_changes` in BOTH engines, the spec field comment rewritten to
+teach that edits are ignored and a new capture is a new resource, and
+the kind's GUIDE carrying the operational judgment. For artifact-class
+kinds (snapshots, images) this is also the safer contract: a ForceNew
+source edit would silently DELETE the artifact and recapture from
+current state. Check the provider's Read function (does it `d.Set` the
+field?) the moment a round-trip reports a replace on a create-only
+argument.
+
+The SECRET sub-class takes the OPPOSITE remedy. When the never-read-back
+ForceNew field is a write-only SECRET (first live case: a container
+group's secure environment variables), `ignore_changes` is wrong --
+rotating the secret is SUPPOSED to replace the resource, and ignoring it
+turns rotation into a silent no-op. There the truth is that a
+secret-bearing config can only plan a one-time replace after any import;
+the secret-bearing SCENARIO opts out of the round-trip with the
+reason-carrying `planton.dev/e2e-import-roundtrip-skip` annotation, the
+recipes keep proving on the kind's secret-free scenarios, and the kind's
+docs teach the one-time convergence replace after adoption. Choose by
+asking "should editing this field replace the resource?" -- no
+(immutable creation history) means ignore_changes; yes (rotatable
+secret) means the annotation.
 
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
@@ -1816,18 +1914,9 @@ scenario is as simple as dropping a YAML file into the component's
    `pkg/e2e/profile/discover.go` so the CI matrix regex matches it
 6. The CI workflow picks up the new component automatically from the profile
 
-> **A prerequisite-only kind still needs steps 3 and 5 to be provable.** A
-> kind consumed by other kinds' chains gets deployed and verified as a
-> FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it
-> easy to believe it is covered -- but fixture duty proves another kind's
-> lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/`
-> (`DiscoverTestScenarios` returns nil when the directory is absent, and the
-> runner then skips), the canonical `e2e/manifest.yaml` is a documented
-> example and offline-plan fixture that never runs live, and a missing
-> `Test{Kind}_{Provisioner}` pair means a `-run` filter silently matches
-> zero tests. First caught on a kind whose only live exercise for weeks was
-> as a chained VIP fixture: its profile claimed testability while no lane
-> could ever run it.
+> **A kind with scenarios, a verifier, and a `pending_proof` profile is still unrunnable without step 5.** Shipping `e2e/scenarios/`, a registered verifier, and an import map is not enough: `go test -run 'Test{Kind}_...'` matches zero tests until the two `Test{Kind}_{Pulumi,Terraform}` wrappers exist in the provider's `e2e/{provider}/{provider}_test.go`. First caught on a kind whose only live exercise for weeks was as a chained VIP fixture; caught again on a wave-closing kind that shipped the full offline bar (scenarios, verifier, profile) and omitted only the two wrappers -- `discover` listed it `pending_proof` while no `-run` filter could ever start a lane. A BUILD.bazel `srcs` miss on a new verifier file is the sibling class (gazelle-managed -- run `make gazelle`, never hand-edit). The cheap structural fix is an offline gate that diffs each provider's tier-1 profiles against its test-entry list the same way `TestCatalogFixtureIntegrity` guards prerequisite chains; that spans every provider harness, so it is a framework proposal, not a mid-proof edit. Until it exists, the authoring checklist's step 5 is load-bearing: grep the test file for the kind name before enqueueing.
+>
+> A prerequisite-only kind still needs steps 3 and 5 to be provable. A kind consumed by other kinds' chains gets deployed and verified as a FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it easy to believe it is covered -- but fixture duty proves another kind's lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/` (`DiscoverTestScenarios` returns nil when the directory is absent, and the runner then skips), and the canonical `e2e/manifest.yaml` is a documented example and offline-plan fixture that never runs live.
 
 ## Adding a New Provider
 
@@ -1954,6 +2043,96 @@ owns two responsibilities beyond wiring verifiers:
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
   timeouts accordingly.
+- **ML workspaces are the same soft-delete class, with two extra twists.**
+  Destroy is a soft delete (the name stays reserved) unless the provider
+  features flag `machine_learning.purge_soft_deleted_workspace_on_destroy`
+  is on -- the provider default is OFF (unlike Key Vault, which defaults
+  ON). Both Planton workspace modules enable the flag (Terraform in the
+  kind's `provider.tf`; Pulumi via `pulumiazureprovider.GetWithFeatures`).
+  There is no CLI or REST listing of ML ghosts (`az ml workspace list`
+  has no `--archived` / soft-delete flag; Resource Graph indexes active
+  resources only). The portal's Azure Machine Learning "Recently deleted"
+  view is the one listing surface. Dual-engine lanes with a fixed name
+  prove the purge: the second engine recreates the same name after the
+  first engine's destroy. An interrupted run can still strand a ghost;
+  purge it with `az ml workspace delete --name … --resource-group … --yes --permanently-delete`.
+  First `az ml` on a machine without the `ml` extension hangs forever on
+  a dynamic-install prompt no non-interactive shell can answer -- install
+  it explicitly (`az extension add --name ml`) before any sweep.
+  The class covers the whole workspace FAMILY: AI Foundry hubs and
+  projects are ML workspaces at ARM (kind "Hub" / "Project") and ghost
+  the same way. The hub resource honors the purge features flag (the
+  hub module enables it, dual-engine fixed-name recreate proven); the
+  PROJECT resource has NO purge seam -- its delete never consults the
+  flag, so setting it in a project module is a silent no-op. Measured
+  live: a project ghost does not block recreating the same name (the
+  hub's purge sweeps its children's ghosts); a stranded standalone
+  project ghost, should one ever surface, is a portal-only purge.
+- **Recovery Services protected-item deletes are asynchronous BEYOND the
+  engine's poller, and can silently never land.** Measured live (session 055,
+  VM protection): after a `pulumi destroy` the provider reported successful,
+  ARM reads kept answering 200 on the item for minutes (a smoke item has ZERO
+  recovery points, so a landed delete removes it outright -- the 14-day
+  soft-delete ghost class only applies to items WITH recovery points). One
+  run went further: the provider's DeleteThenPoll returned success while the
+  vault ran NO DeleteBackupData job at all -- the item survived ACTIVE, still
+  policy-attached, indefinitely. A surviving active item then wedges the whole
+  teardown chain: the policy delete fails `BMSUserErrorPolicyObjectInUse`, the
+  vault delete fails `BMSUserErrorVaultDeletionNotAllowed`, and the resource
+  group destroy hangs until the test binary's timeout panics (eating the
+  stage summary). The absence bar these verifiers use: a bounded poll (10
+  min) where 404 is absent, a 200 with
+  `properties.isScheduledForDeferredDelete: true` is ALSO absent (the azurerm
+  provider's own ghost bar), and an item still active at the deadline fails
+  honestly. Manual recovery for the dropped-delete flake:
+  `az backup protection disable --delete-backup-data true --yes` with
+  FRIENDLY names (`--container-name <vm-name> --item-name <vm-name>` -- the
+  full semicolon container ID fails `BMSUserErrorContainerNameIncorrectFormat`
+  from the CLI) lands in seconds, then vault and RG delete normally. The
+  orphan sweep owns the recycle-bin listing (`az backup item list
+  --backup-management-type AzureIaaSVM` on any surviving vault); the modules
+  deliberately leave the provider's `recover_soft_deleted_backup_protected_vm`
+  feature off (silently adopting ghost recovery points is not smoke-lane
+  behavior). The FILE-SHARE sibling measured the same read-lag class
+  (session 056: VERIFY-CLN saw a 200 seconds after a clean destroy; the item
+  cleared before the registration's unregister, which succeeded) -- both
+  protected-item verifiers now share the bounded-poll absence bar.
+- **A registered storage account's DoNotDelete lock blocks deleting its
+  SHARES, and prerequisite ORDER is the fix.** Azure Backup locks a storage
+  account while it is registered with a vault (AzureBackupContainerStorageAccount);
+  the lock's scope covers children, so deleting ANY file share in the account
+  -- protected or not -- fails `ScopeLocked` naming the account. Measured
+  live (session 056): the protected-file-share lane's teardown deleted the
+  share fixture BEFORE unregistering (destroy reverses deploy order, and the
+  registration was listed first in the kind's registry prerequisites) and
+  409-looped for 11 minutes. The fix is the prerequisite ORDER on
+  `AzureBackupProtectedFileShare` -- the share lists BEFORE the registration,
+  so teardown unregisters first (lock released), then deletes the share; the
+  reorder is commented in `cloud_resource_kind.proto` as load-bearing. The
+  general rule: when a prerequisite kind LOCKS another prerequisite's
+  resources while alive (registrations, guards, attachments), the locking
+  kind must list LAST among its siblings so it dies first.
+- **A workspace managed VNet (approved-outbound + provision-on-creation)
+  is a new medium-slow AND fragile class.** Create of the workspace object
+  is ~1 min; adding the managed VNet plus a private-endpoint outbound
+  rule stretches create to ~20 min and then destroy 409-loops
+  (`privateEndpointConnectionProxies/validate` failing, workspace delete
+  returning `InternalServerError` / 409) for 40+ minutes without the
+  workspace ever leaving `Succeeded`. Even without the PE rule, ARM can
+  roll the workspace back mid-create (`Bad request to get identity
+  secret: The workspace identity has been deleted`). The smoke lane
+  therefore proves the workspace OBJECT on the default network; the
+  managed-network arm stays offline-proven. Size timeouts at 90 min if
+  you re-open that arm, and do not debug a 409-loop as a module defect.
+- **Application Insights leaves an "Application Insights Smart Detection"
+  action group in the resource group after the Insights component is
+  deleted.** The Azure provider's default
+  `prevent_deletion_if_contains_resources = true` then refuses to delete
+  the group. Planton's Azure resource-group modules flip that flag off
+  so destroy means ARM-delete the group (the same contract as
+  `az group delete`). Do not "fix" this by deleting the action group
+  from a sweep script and leaving the flag on -- the next Insights
+  fixture will plant it again.
 - **Some ARM resources have no true delete — destroy flips a state field and the
   object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
   An Azure Storage encryption scope is the canonical case: "delete" PATCHes

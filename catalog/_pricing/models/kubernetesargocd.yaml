@@ -1,0 +1,36 @@
+# Estimate model: the authored capacity footprints of this cluster-capacity
+# component's presets. A hand model instead of a capacity derivation because
+# the spec's HPA semantics switch the instance multiplier: when
+# server.autoscaling or repo_server.autoscaling is enabled the `replicas`
+# field is IGNORED (the module renders the HPA and drops replicas -- the HPA
+# owns the count), so the steady-state floor is min_replicas x the declared
+# resources, not replicas x resources. The derivation grammar cannot express
+# a conditional instance count, and a mechanical "replicas x ..." basis
+# understates any preset that autoscales above 1 -- so each preset's
+# footprint is stated by hand at its true floor. Cluster-capacity components
+# carry no priced lines -- the dollar value of the reservation is the target
+# cluster's node economics. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesargocd
+spec:
+  # Presets 01-dev-gitops and 02-team-sso-rbac declare no resources anywhere
+  # and this chart ships no default requests or limits, so their manifests
+  # state no reservation -- they are honestly omitted (the same shape the
+  # generator produces for a no-reservation preset), with the situation
+  # disclosed in the component's cost profile.
+  presets:
+    - preset: 03-scaled-platform
+      capacity_footprint:
+        cpu_requests: 2500m
+        memory_requests: 3584Mi
+        memory_limits: 4Gi
+        basis: "1 controller x (1 CPU / 2Gi requests, 4Gi memory limit) + 2 server replicas at the HPA floor x (250m CPU / 256Mi requests) + 2 repo-server replicas at the HPA floor x (500m CPU / 512Mi requests) -- no CPU limits declared, and only the controller declares a memory limit"
+      exclusions:
+        - the server and repo server scale on HPAs -- this footprint states their min_replicas floors (2 each); runtime scaling can reach 5 server and 6 repo-server replicas, each new replica adding its full declared resources
+        - the redis.ha arm replaces the bundled Redis pod with the redis-ha subchart -- a Sentinel cluster of 3 Redis replicas plus HAProxy pods at chart-default sizing this spec does not model, with a REQUIRED anti-affinity needing 3+ schedulable worker nodes
+        - the ApplicationSet controller, notifications controller and Dex run unsized at chart defaults -- the chart ships no default requests or limits, so those pods schedule unbounded and reserve nothing
+        - "helm_values merges LAST over the typed rendering and can override modeled values, including per-component resources and replicas -- this footprint describes the spec's declaration"
+        - the dollar value of this capacity is the target cluster's node economics
+      notes: controller replicas are SHARDS across target clusters, not load-balanced copies -- this preset runs one, sized for the whole reconciliation load.

@@ -1,0 +1,58 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscodebuildproject
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: environment.compute_type
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: The compute type sets the per-minute rate for every on-demand EC2 build (rounded up to the whole minute); the largest types cost tens of times the smallest, GPU and Windows families carry their own premium rate tables, and the Mac types exist only through reserved fleets.
+    - field_path: environment.type
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: The platform family selects the meter itself -- Lambda environment types (LINUX_LAMBDA_CONTAINER, ARM_LAMBDA_CONTAINER) bill per SECOND with no minute rounding, the cheapest shape for short builds, while EC2-based types bill per minute.
+    - field_path: environment.fleet_arn
+      sku_meter: reserved capacity instance minutes
+      pricing_unit: instance-minutes
+      impact: Joining a reserved fleet moves this project's builds off per-minute on-demand rates -- the fleet's instances bill per instance-minute from provisioning to termination (60-minute minimum, 24-hour minimum for Mac) whether or not builds run, and that spend lives on the fleet, outside this manifest.
+    - field_path: environment.docker_server
+      sku_meter: Docker image server duration
+      pricing_unit: seconds
+      impact: The persistent Docker image server bills per second by its compute type from the moment the feature is enabled -- the active rate runs while building and through the up-to-1-hour idle cooldown, then a lower cache-at-rest rate takes over once the server stops, continuing until the feature is DISABLED, not until builds stop. Configuring this block commits an around-the-clock meter on an otherwise per-build project.
+    - field_path: build_timeout
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: The timeout is the per-build spend ceiling -- a hung build bills every minute until this cap kills it (AWS default 60 minutes).
+    - field_path: concurrent_build_limit
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: Capping concurrency caps the burst rate of billed minutes when a webhook storm or batch fan-out triggers many builds at once.
+    - field_path: build_batch_config
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: Batch builds fan one StartBuildBatch call out into many child builds, each billing its own minutes at its own compute type; restrictions.maximum_builds_allowed and restrictions.compute_types_allowed are the caps on how far one trigger can multiply the bill.
+    - field_path: logs_config.cloudwatch_logs
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Build logs stream to CloudWatch Logs at standard ingestion rates -- verbose builds pay by the gigabyte.
+    - field_path: cache
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: An S3 cache stores dependency and layer archives in the referenced bucket between builds -- storage and request charges bill on that AwsS3Bucket, usually repaying themselves in shortened billed build minutes.
+    - field_path: artifacts
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Build artifacts land in the referenced S3 bucket, billing storage and requests on that component; encryption with a customer key adds KMS request charges.
+  free_tier: The first 100 build minutes each month on general1.small or arm1.small (on-demand EC2) and the first 6,000 build seconds on the 1GB Lambda compute types are free -- permanent allotments that do not expire with the 12-month AWS free-tier term. Reserved capacity, sandboxes, and the Docker image server have no free tier.
+  estimate_exclusions:
+    - build volume and duration are entirely workload-driven -- a project with no builds and no docker_server bills nothing
+    - the Docker image server, once enabled, bills per second continuously (active or cache-at-rest) until the feature is disabled
+    - reserved-fleet capacity referenced through environment.fleet_arn bills on the fleet, not this project
+    - artifact and cache storage, log ingestion, and KMS encryption bill on the referenced S3, CloudWatch, and KMS resources
+    - data transfer out of the build (dependency pulls are free in; pushes bill per GB)
+  notes: "A project's existence is free -- the bill is build minutes times the compute type's rate, which makes the environment block the whole cost story. The two shape-changers hide there: fleet_arn moves builds onto reserved capacity that bills per instance-minute around the clock ON THE FLEET (a deliberately separate resource this spec only references), and docker_server starts a per-second meter on THIS project that keeps running -- the active rate while building and through the idle cooldown, a lower cache-at-rest rate after the server stops -- until the feature is turned off. None of the four shipped presets commits either arm. Lambda compute types flip billing to per-second and suit sub-minute builds; the timeout and concurrency caps are the guardrails that bound worst-case spend."

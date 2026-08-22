@@ -1,0 +1,58 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ce_anomaly_monitor:
+    mappings:
+      # The monitor's display name is an explicit spec field (names
+      # legally carry spaces metadata.name cannot).
+      - arg: name
+        spec: spec.monitor_name
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_ce_anomaly_subscription:
+    specRoot: spec.subscriptions
+    mappings:
+      # The provider's singular subscriber block carries the entry's
+      # subscribers list.
+      - arg: subscriber
+        spec: spec.subscriptions.subscribers
+      # The threshold tree's tag leaf is singular in the spec (the
+      # provider names the block "tags") at every level of the leveled
+      # tree; dimension and cost_category names already match.
+      - arg: threshold_expression.tags
+        spec: spec.subscriptions.threshold_expression.tag
+      - arg: threshold_expression.and.tags
+        spec: spec.subscriptions.threshold_expression.and.tag
+      - arg: threshold_expression.or.tags
+        spec: spec.subscriptions.threshold_expression.or.tag
+      - arg: threshold_expression.not.tags
+        spec: spec.subscriptions.threshold_expression.not.tag
+    exclusions:
+      # The fold's parent linkage: the module binds every subscription
+      # to the monitor it rides, never a user-facing field.
+      - arg: monitor_arn_list
+        reason: module-wired parent linkage (the folded subscription always binds its own monitor)
+      # The monitor resource carries no account scoping, so a
+      # subscription targeting a DIFFERENT account than its monitor is
+      # not a coherent fold surface.
+      - arg: account_id
+        reason: cross-account subscription scoping -- the monitor resource has no account argument, so the folded subscription always rides the deploying account; revisit on a management-account demand signal
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+specExclusions:
+  # Cost Explorer is an account-global service: neither consumed
+  # resource carries a region argument. The spec's region drives only
+  # the provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- Cost Explorer is account-global and neither consumed resource has a region argument

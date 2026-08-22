@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureservicebusdisasterrecoveryconfig
+spec:
+  azure:
+    groups:
+      - purpose: ManageDisasterRecoveryConfig
+        actions:
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/read
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/write
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/delete
+        provenance: derived
+        notes: Covers azurerm_servicebus_namespace_disaster_recovery_config -- create the pairing under the primary namespace (parsed from primary_namespace_id), poll it to the Succeeded provisioning state, read/refresh, and destroy; after deleting, the provider polls Get until the config returns 404.
+      - purpose: BreakAndReleasePairing
+        actions:
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/breakPairing/action
+          - Microsoft.ServiceBus/namespaces/disasterrecoveryconfigs/checkNameAvailability/action
+        provenance: derived
+        notes: The provider's lifecycle choreography beyond plain CRUD -- changing partner_namespace_id break-pairs before re-pairing, destroy break-pairs before deleting, and after deletion the provider polls the namespace-scoped name-availability check until Azure releases the alias name. Spellings match Azure's operation inventory (lowercase disasterrecoveryconfigs on the name-availability action).
+      - purpose: ReadAliasKeys
+        actions:
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/authorizationRules/listkeys/action
+        provenance: derived
+        notes: On every read the provider lists keys through the pairing's authorization-rule path -- the rule named by alias_authorization_rule_id, or the namespace's built-in RootManageSharedAccessKey when unset -- to surface the alias connection strings and keys as sensitive outputs. Returns data-plane credentials but is itself a management-plane POST action.

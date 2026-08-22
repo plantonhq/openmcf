@@ -10,6 +10,10 @@ Creating the protection registers the VM and nothing more -- the item sits in `I
 
 Destroying this resource stops protection AND deletes the backup data (the engines' defaults, kept deliberately -- a binding whose destroy silently strands paid storage would be worse). Two escape hatches, both engine-level features rather than spec fields: `vm_backup_stop_protection_and_retain_data_on_destroy` keeps the data and stops backups; the `suspend` variant keeps the data under an immutable vault's rules. And remember the vault's own guard: it refuses to delete while protected items remain -- teardown order is protections first, vault last.
 
+## Destroy can report success before -- or without -- the delete landing
+
+The protection delete is asynchronous beyond what the IaC engines poll: after a destroy the engine reports successful, the item can keep answering reads for minutes, and in a measured case the vault ran no delete job at all -- the item survived active indefinitely while the destroy exited clean. A surviving active item then blocks its policy's delete (`BMSUserErrorPolicyObjectInUse`) and the vault's delete (`BMSUserErrorVaultDeletionNotAllowed`). If a teardown wedges this way, disable protection by hand -- `az backup protection disable --delete-backup-data true --yes` with the friendly VM name for both `--container-name` and `--item-name` (the full semicolon container ID fails from the CLI) -- and the rest of the chain deletes normally.
+
 ## Soft delete holds backup data for 14 days after deletion
 
 Deleting protection soft-deletes the recovery points -- they hold vault storage (unbilled) and the VM's registration for 14 days. Re-protecting the same VM inside that window collides with the ghost: the provider recovers it automatically only when its `recover_soft_deleted_backup_protected_vm` feature is on; otherwise undelete manually (`az backup protection undelete`) or wait out the window.

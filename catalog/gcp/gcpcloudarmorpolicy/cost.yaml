@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudarmorpolicy
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Networking
+      sku_meter: security policy months
+      pricing_unit: policy-months
+      description: Under Cloud Armor Standard (the pay-as-you-go default for projects with no Cloud Armor Enterprise enrollment), every security policy bills a flat monthly fee from creation, whether or not any backend attaches it.
+    - service_name: Networking
+      sku_meter: security policy rule months
+      pricing_unit: rule-months
+      description: Each rule in the policy bills a flat monthly fee under Cloud Armor Standard -- the rule count is committed by the manifest, not by traffic.
+  cost_drivers:
+    - field_path: rules
+      sku_meter: security policy rule months
+      pricing_unit: rule-months
+      impact: Every entry in the rules list -- including the mandatory priority-2147483647 default rule -- is one monthly rule fee. A policy created with an empty list gets the API's automatic default allow-all rule instead.
+    - field_path: type
+      sku_meter: request inspections
+      pricing_unit: requests
+      impact: CLOUD_ARMOR (the default) policies inspect requests through global external load balancers at the globally-scoped per-million-request rate; the CLOUD_ARMOR_EDGE and CLOUD_ARMOR_INTERNAL_SERVICE variants' rates are not published on the Standard price sheet this catalog pins.
+    - field_path: adaptive_protection_config.rule_visibility
+      sku_meter: Cloud Armor Enterprise enrollment
+      pricing_unit: months
+      impact: PREMIUM rule visibility is a Cloud Armor Enterprise capability -- it requires the project's paid Enterprise enrollment (subscription plus per-GiB data processing fees), an account-level commitment outside this manifest. STANDARD visibility works under the pay-as-you-go tier.
+  free_tier: ""
+  estimate_exclusions:
+    - request inspections -- every request evaluated by the policy bills per million under Cloud Armor Standard and follows traffic no manifest can know
+    - reCAPTCHA evaluations -- rules that redirect to or evaluate reCAPTCHA bill under the separate reCAPTCHA pricing model
+  notes: "Pricing tier is a PROJECT property invisible to this manifest: a project enrolled in Cloud Armor Enterprise pays a subscription and per-GiB data processing fees while its policies, rules, and requests bill $0.00. This profile prices Cloud Armor Standard, the default for unenrolled projects. GCP refuses to delete a policy while a backend service still attaches it."

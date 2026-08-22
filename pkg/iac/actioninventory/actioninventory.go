@@ -21,9 +21,43 @@
 // price books' immutable versioned offer documents, the reference serves
 // latest-only URLs, so each service records the retrieval date and the
 // index's own modification stamp instead of claiming an immutability the
-// source does not offer. Providers without a machine-readable inventory
-// arm are exempt from existence checking (their structural validation
-// lives in pkg/iac/permissions) -- exemption is stated here, never silent.
+// source does not offer. The reference also publishes, per action, the
+// resource types the action can be scoped to; actions publishing NONE are
+// evaluated by IAM against Resource "*" only, and the snapshot records
+// them (non_scopable_actions) so the scopability gate can refuse the
+// quietest least-privilege mistake: a statement scoped to an ARN pattern
+// its own actions can never match, which reads tighter than required and
+// denies at runtime instead.
+//
+// Azure is the second arm, read from ARM's provider-operations metadata
+// (the inventory behind `az provider operation list`). Azure separates
+// management-plane operations from data-plane operations (a role
+// definition's `actions` vs `dataActions`), and the permissions schema
+// mirrors that split -- so the snapshot records each plane separately and
+// the gate holds each manifest field to ITS plane: an operation on the
+// wrong plane is a modeling error, not just a typo. ARM publishes no
+// modification stamp for the inventory, so Azure services carry only the
+// retrieval date -- provenance never claims a fact the source does not
+// offer.
+//
+// GCP is the third arm, read from IAM's testable-permissions inventory
+// (the list behind `gcloud iam list-testable-permissions`). GCP
+// permissions are flat dotted names ("container.clusters.create"); the
+// snapshot keys them by their service segment (the part before the first
+// dot) with the remainder as the action, and like ARM the API publishes
+// no modification stamp. The inventory is SCOPE-TYPED -- a permission is
+// listed only under the resource types it can be tested on, so
+// permissions that authorize exclusively on organizations/folders
+// (resourcemanager.projects.create) or billing accounts
+// (billing.resourceAssociations.create) never appear in a
+// project-anchored query -- so the fetcher queries the project, an
+// organization, and a billing-account scope and unions the results;
+// permissions a provider enforces but publishes under NO scope (Cloud
+// Run's domainmappings family) stay teachable only in manifest notes,
+// exactly as before. Providers without a machine-readable inventory
+// arm (kubernetes) are exempt from existence checking (their structural
+// validation lives in pkg/iac/permissions) -- exemption is stated here,
+// never silent.
 package actioninventory
 
 import (
@@ -40,6 +74,14 @@ import (
 // directory.
 const AwsFileName = "aws.yaml"
 
+// AzureFileName is the Azure inventory snapshot's name inside this
+// package's directory.
+const AzureFileName = "azure.yaml"
+
+// GcpFileName is the GCP inventory snapshot's name inside this package's
+// directory.
+const GcpFileName = "gcp.yaml"
+
 // Inventory is one provider's committed action-inventory snapshot.
 type Inventory struct {
 	// Provider is the catalog provider directory name (e.g. "aws").
@@ -52,21 +94,39 @@ type Inventory struct {
 type Service struct {
 	// Prefix is the service's action-name prefix in the provider's own
 	// vocabulary -- for AWS, the IAM prefix before the colon in
-	// "lambda:CreateFunction".
+	// "lambda:CreateFunction"; for Azure, the ARM namespace before the
+	// first slash in "Microsoft.Network/dnsZones/read".
 	Prefix string `yaml:"prefix"`
 	// SourceURL is the provider inventory document the actions were read
 	// from. The URL serves latest-only content; provenance is the URL plus
 	// the dates below, never a claim of immutability.
 	SourceURL string `yaml:"source_url"`
 	// SourceModified is the provider's own last-modified date for this
-	// service's inventory document (UTC, date-only), read from the
-	// inventory index at fetch time.
-	SourceModified string `yaml:"source_modified"`
+	// service's inventory document (UTC, date-only), when the source
+	// publishes one (AWS's reference index does; ARM does not). Empty
+	// means the source offers no stamp -- provenance never invents one.
+	SourceModified string `yaml:"source_modified,omitempty"`
 	// RetrievedOn is the date this service's actions were fetched (UTC).
 	RetrievedOn string `yaml:"retrieved_on"`
 	// Actions are the action names the provider defines for this service,
-	// sorted, without the service prefix.
+	// sorted, without the service prefix. For Azure these are the
+	// management-plane operations (a role definition's `actions`).
 	Actions []string `yaml:"actions"`
+	// NonScopableActions is the subset of Actions whose provider
+	// reference declares NO resource types. IAM evaluates such actions
+	// against Resource "*" only: an ARN-scoped grant NEVER matches them,
+	// so a policy statement that looks tighter than the provider supports
+	// silently denies at runtime -- the scopability gate holds every
+	// statement carrying one of these to exactly the "*" resource. Sorted;
+	// every entry must also appear in Actions. Only providers whose
+	// reference publishes per-action resource types (AWS's service
+	// reference) populate it.
+	NonScopableActions []string `yaml:"non_scopable_actions,omitempty"`
+	// DataActions are the provider's data-plane operation names for this
+	// service, sorted, without the service prefix. Only providers that
+	// split planes (Azure) populate it; a manifest's data_actions are held
+	// to THIS list, never to Actions.
+	DataActions []string `yaml:"data_actions,omitempty"`
 }
 
 // LoadAws reads and strictly parses the committed AWS inventory snapshot
@@ -74,7 +134,27 @@ type Service struct {
 // unique non-empty action lists) so gate results can never depend on
 // snapshot ordering accidents.
 func LoadAws(dir string) (*Inventory, error) {
-	raw, err := os.ReadFile(path.Join(dir, AwsFileName))
+	// AWS's reference index publishes a modification stamp, so AWS
+	// services must carry one.
+	return load(dir, AwsFileName, "aws", true)
+}
+
+// LoadAzure reads and strictly parses the committed Azure inventory
+// snapshot under the same structural invariants. ARM publishes no
+// modification stamp, so Azure services carry only the retrieval date.
+func LoadAzure(dir string) (*Inventory, error) {
+	return load(dir, AzureFileName, "azure", false)
+}
+
+// LoadGcp reads and strictly parses the committed GCP inventory snapshot
+// under the same structural invariants. The IAM inventory publishes no
+// modification stamp, so GCP services carry only the retrieval date.
+func LoadGcp(dir string) (*Inventory, error) {
+	return load(dir, GcpFileName, "gcp", false)
+}
+
+func load(dir, fileName, provider string, requireSourceModified bool) (*Inventory, error) {
+	raw, err := os.ReadFile(path.Join(dir, fileName))
 	if err != nil {
 		return nil, err
 	}
@@ -82,38 +162,52 @@ func LoadAws(dir string) (*Inventory, error) {
 	decoder.KnownFields(true)
 	inv := &Inventory{}
 	if err := decoder.Decode(inv); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", AwsFileName, err)
+		return nil, fmt.Errorf("parse %s: %w", fileName, err)
 	}
-	if inv.Provider != "aws" {
-		return nil, fmt.Errorf("%s: provider is %q, want \"aws\"", AwsFileName, inv.Provider)
+	if inv.Provider != provider {
+		return nil, fmt.Errorf("%s: provider is %q, want %q", fileName, inv.Provider, provider)
 	}
 	if len(inv.Services) == 0 {
-		return nil, fmt.Errorf("%s: no services -- run `make generate-action-inventory`", AwsFileName)
+		return nil, fmt.Errorf("%s: no services -- run `make generate-action-inventory`", fileName)
 	}
 	seen := map[string]bool{}
 	for i, svc := range inv.Services {
-		if svc.Prefix == "" || svc.SourceURL == "" || svc.SourceModified == "" || svc.RetrievedOn == "" {
-			return nil, fmt.Errorf("%s: service %q: prefix, source_url, source_modified, and retrieved_on are all required", AwsFileName, svc.Prefix)
+		if svc.Prefix == "" || svc.SourceURL == "" || svc.RetrievedOn == "" {
+			return nil, fmt.Errorf("%s: service %q: prefix, source_url, and retrieved_on are all required", fileName, svc.Prefix)
+		}
+		if requireSourceModified && svc.SourceModified == "" {
+			return nil, fmt.Errorf("%s: service %q: prefix, source_url, source_modified, and retrieved_on are all required", fileName, svc.Prefix)
 		}
 		if seen[svc.Prefix] {
-			return nil, fmt.Errorf("%s: duplicate service prefix %q", AwsFileName, svc.Prefix)
+			return nil, fmt.Errorf("%s: duplicate service prefix %q", fileName, svc.Prefix)
 		}
 		seen[svc.Prefix] = true
 		if i > 0 && inv.Services[i-1].Prefix > svc.Prefix {
-			return nil, fmt.Errorf("%s: services not sorted at %q", AwsFileName, svc.Prefix)
+			return nil, fmt.Errorf("%s: services not sorted at %q", fileName, svc.Prefix)
 		}
-		if len(svc.Actions) == 0 {
-			return nil, fmt.Errorf("%s: service %q has no actions", AwsFileName, svc.Prefix)
+		if len(svc.Actions) == 0 && len(svc.DataActions) == 0 {
+			return nil, fmt.Errorf("%s: service %q has no actions", fileName, svc.Prefix)
 		}
-		for j, action := range svc.Actions {
-			if action == "" {
-				return nil, fmt.Errorf("%s: service %q has an empty action", AwsFileName, svc.Prefix)
+		if err := checkActionList(fileName, svc.Prefix, "actions", svc.Actions); err != nil {
+			return nil, err
+		}
+		if err := checkActionList(fileName, svc.Prefix, "data_actions", svc.DataActions); err != nil {
+			return nil, err
+		}
+		if err := checkActionList(fileName, svc.Prefix, "non_scopable_actions", svc.NonScopableActions); err != nil {
+			return nil, err
+		}
+		// The subset invariant: a non-scopable entry that is not a
+		// published action would let the scopability gate reason about a
+		// name the existence gate never admitted.
+		if len(svc.NonScopableActions) > 0 {
+			published := make(map[string]bool, len(svc.Actions))
+			for _, action := range svc.Actions {
+				published[action] = true
 			}
-			if j > 0 {
-				if prev := svc.Actions[j-1]; prev == action {
-					return nil, fmt.Errorf("%s: service %q duplicates action %q", AwsFileName, svc.Prefix, action)
-				} else if prev > action {
-					return nil, fmt.Errorf("%s: service %q actions not sorted at %q", AwsFileName, svc.Prefix, action)
+			for _, action := range svc.NonScopableActions {
+				if !published[action] {
+					return nil, fmt.Errorf("%s: service %q non_scopable_actions entry %q is not in actions", fileName, svc.Prefix, action)
 				}
 			}
 		}
@@ -121,12 +215,41 @@ func LoadAws(dir string) (*Inventory, error) {
 	return inv, nil
 }
 
+// checkActionList enforces one plane's list invariants: no empties, no
+// duplicates, sorted.
+func checkActionList(fileName, prefix, plane string, actions []string) error {
+	for j, action := range actions {
+		if action == "" {
+			return fmt.Errorf("%s: service %q has an empty action in %s", fileName, prefix, plane)
+		}
+		if j > 0 {
+			if prev := actions[j-1]; prev == action {
+				return fmt.Errorf("%s: service %q duplicates action %q in %s", fileName, prefix, action, plane)
+			} else if prev > action {
+				return fmt.Errorf("%s: service %q %s not sorted at %q", fileName, prefix, plane, action)
+			}
+		}
+	}
+	return nil
+}
+
 // ServiceActions returns the snapshot's action list for a service prefix,
 // or nil when the snapshot does not cover the service.
 func (inv *Inventory) ServiceActions(prefix string) []string {
+	if svc := inv.Lookup(prefix); svc != nil {
+		return svc.Actions
+	}
+	return nil
+}
+
+// Lookup returns the snapshot's service for a prefix, or nil when the
+// snapshot does not cover it. Callers that must tell "service not
+// covered" apart from "covered but empty on one plane" (the Azure gate)
+// use this instead of ServiceActions.
+func (inv *Inventory) Lookup(prefix string) *Service {
 	for i := range inv.Services {
 		if inv.Services[i].Prefix == prefix {
-			return inv.Services[i].Actions
+			return &inv.Services[i]
 		}
 	}
 	return nil
@@ -204,13 +327,33 @@ func Render(inv *Inventory) string {
 	for _, svc := range services {
 		b.WriteString("  - prefix: " + svc.Prefix + "\n")
 		b.WriteString("    source_url: " + svc.SourceURL + "\n")
-		b.WriteString("    source_modified: \"" + svc.SourceModified + "\"\n")
+		if svc.SourceModified != "" {
+			b.WriteString("    source_modified: \"" + svc.SourceModified + "\"\n")
+		}
 		b.WriteString("    retrieved_on: \"" + svc.RetrievedOn + "\"\n")
-		b.WriteString("    actions:\n")
-		actions := append([]string(nil), svc.Actions...)
-		sort.Strings(actions)
-		for _, action := range actions {
-			b.WriteString("      - " + action + "\n")
+		if len(svc.Actions) > 0 {
+			b.WriteString("    actions:\n")
+			actions := append([]string(nil), svc.Actions...)
+			sort.Strings(actions)
+			for _, action := range actions {
+				b.WriteString("      - " + action + "\n")
+			}
+		}
+		if len(svc.NonScopableActions) > 0 {
+			b.WriteString("    non_scopable_actions:\n")
+			nonScopable := append([]string(nil), svc.NonScopableActions...)
+			sort.Strings(nonScopable)
+			for _, action := range nonScopable {
+				b.WriteString("      - " + action + "\n")
+			}
+		}
+		if len(svc.DataActions) > 0 {
+			b.WriteString("    data_actions:\n")
+			dataActions := append([]string(nil), svc.DataActions...)
+			sort.Strings(dataActions)
+			for _, action := range dataActions {
+				b.WriteString("      - " + action + "\n")
+			}
 		}
 	}
 	return b.String()

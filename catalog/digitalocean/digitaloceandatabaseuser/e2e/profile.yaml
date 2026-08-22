@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceandatabaseuser
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` is a plain user on the PostgreSQL
+  # cluster registry prerequisite proving the lifecycle and the
+  # (cluster_id, user_name) identity outputs; `mysql-auth` proves the
+  # MySQL-only auth-plugin argument on a MySQL manifest-path fixture (that
+  # lane deploys TWO clusters -- the registry prerequisite plus the MySQL
+  # fixture -- so it dominates the lane time at ~2x cluster creates).
+  # Deliberately not in the live lanes: kafka_acls / opensearch_acls (the
+  # kafka fixture is the program's most expensive class -- 3-node minimum
+  # -- and opensearch was deferred with it on the cluster kind; the ACL
+  # arms ride whichever proof session first pays for those fixtures).
+  # User operations themselves are seconds; cluster fixtures (~5 min each,
+  # ~$0.02/hour) dominate.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 40

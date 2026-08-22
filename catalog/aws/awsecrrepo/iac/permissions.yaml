@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsecrrepo
+spec:
+  aws:
+    statements:
+      - sid: ManageRepository
+        actions:
+          - ecr:CreateRepository
+          - ecr:DeleteRepository
+          - ecr:DescribeRepositories
+          - ecr:PutImageTagMutability
+          - ecr:PutImageScanningConfiguration
+          - ecr:TagResource
+          - ecr:UntagResource
+          - ecr:ListTagsForResource
+        resources:
+          - arn:aws:ecr:*:*:repository/*
+        provenance: derived
+        notes: Covers aws_ecr_repository / ecr.Repository. Tag mutability (including the exclusion filters) and scan-on-push are in-place updates via their own Put actions; the encryption configuration is create-time (ForceNew), so no update action exists for it -- changing it replaces the repository through Delete+Create. force_delete rides the same ecr:DeleteRepository call (a force flag, not a separate action). Every ECR action here takes resource-level scoping on the repository ARN per the service reference -- including DescribeRepositories, unusual for a Describe API.
+      - sid: ManageLifecyclePolicy
+        actions:
+          - ecr:PutLifecyclePolicy
+          - ecr:GetLifecyclePolicy
+          - ecr:DeleteLifecyclePolicy
+        resources:
+          - arn:aws:ecr:*:*:repository/*
+        provenance: derived
+        notes: Covers aws_ecr_lifecycle_policy / ecr.LifecyclePolicy -- the folded 1:1 satellite rendered from spec.lifecycle_rules. Put is create AND update (the policy is a whole-document replace); Get serves plan/refresh; Delete fires when the last rule is removed from the spec. All three scope to the repository ARN.
+      - sid: ManageRepositoryPolicy
+        actions:
+          - ecr:SetRepositoryPolicy
+          - ecr:GetRepositoryPolicy
+          - ecr:DeleteRepositoryPolicy
+        resources:
+          - arn:aws:ecr:*:*:repository/*
+        provenance: derived
+        notes: Covers aws_ecr_repository_policy / ecr.RepositoryPolicy -- the folded resource-based access policy from spec.repository_policy. The write action is Set (not Put), ECR's own naming for the whole-document policy replace. All three scope to the repository ARN.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:CreateGrant
+          - kms:RetireGrant
+          - kms:DescribeKey
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Exercised only when encryption_type is KMS or KMS_DSSE. At creation ECR validates the key with DescribeKey and installs grants with CreateGrant so the service can encrypt and decrypt layers; at deletion it retires those grants -- and the RetireGrant call authorizes against the DELETING principal, so destroy fails without it. ECR's encryption documentation names exactly these three actions for the creating/deleting principal; even the AWS-managed aws/ecr key path (KMS with no kms_key_id) needs kms:RetireGrant at destroy. With the default AES256 this statement is never used.

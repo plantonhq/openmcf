@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverFirewall
+metadata:
+  name: threat-detection
+spec:
+  region: us-east-1
+  rules:
+    - name: alert-dga
+      priority: 100
+      action: ALERT
+      dnsThreatProtection: DGA
+      confidenceThreshold: HIGH
+    - name: alert-tunneling
+      priority: 200
+      action: ALERT
+      dnsThreatProtection: DNS_TUNNELING
+      confidenceThreshold: HIGH
+  vpcAssociations:
+    - name: app-vpc
+      vpcId:
+        valueFrom:
+          kind: AwsVpc
+          name: app-vpc
+          fieldPath: status.outputs.vpc_id
+      priority: 300

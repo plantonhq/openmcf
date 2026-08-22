@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceancdn.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/digitaloceancdn/v1alpha1/outputs.proto";
+import "catalog/digitalocean/digitaloceancdn/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// digital-ocean-cdn
+message DigitalOceanCdn {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'digital-ocean.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanCdn'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  DigitalOceanCdnSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  DigitalOceanCdnStatus status = 5;
+}
+
+// digital-ocean-cdn status
+message DigitalOceanCdnStatus {
+  //stack-outputs
+  //  digital-ocean-cdn stack-outputs
+  DigitalOceanCdnStackOutputs outputs = 1;
+}

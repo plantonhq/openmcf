@@ -76,10 +76,3 @@ module "remote_users_gw" {
 - The provider cannot CLEAR `dns_servers` once set (its update path
   skips empty lists) -- removing servers requires replacing the
   gateway.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/p2sVpnGateways/write` plus read on the hub and VPN
-server configuration -- held via Network Contributor, Contributor, or
-Owner on the resource group.

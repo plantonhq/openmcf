@@ -1,12 +1,19 @@
 # Minimal AzureMachineLearningOnlineDeployment scenario: one small
-# managed instance on the fixture endpoint, model-less by design. The
-# ARM contract marks model, environment, and code all OPTIONAL for a
-# managed deployment; whether the SERVICE accepts a bare deployment at
-# provisioning is itself this lane's proof point -- if ARM rejects it,
-# the lane records the boundary and the queue's watch-list carries the
-# fallback (a minimal registered model as a scenario-declared fixture),
-# never a silent skip. The endpoint fixture rides the registry
-# prerequisite chain (workspace -> endpoint -> this).
+# managed instance serving a tiny MLflow model on the fixture endpoint.
+#
+# A model is REQUIRED live: the ARM schema marks model, environment,
+# and code all optional (BYOC images embed their model), but the
+# SERVICE rejects a model-less managed create synchronously --
+# Status=400 Code="BadRequest" Message="The request is invalid.", no
+# field detail (live-proven boundary). The model is seeded by the
+# SETUP-phase script below (Microsoft's canonical ~750 B sklearn
+# sample, registered into the fixture workspace as an MLflow model);
+# no environment and no code are set, so the lane also proves the
+# no-code-deployment path -- Azure builds the serving container from
+# the model's own conda.yaml. The subscription-scoped model ID
+# composes through the harness's exported subscription variable (the
+# E2E_ENV token below) because a committed manifest must not hardcode
+# one account's identifier.
 #
 # The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
 # stable -- prerequisite FK resolution keys off them): deployment names
@@ -28,6 +35,7 @@ metadata:
     e2e-component: azuremachinelearningonlinedeployment
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-setup-script: "catalog/azure/azuremachinelearningonlinedeployment/e2e/scenarios/minimal.setup.sh"
   tags:
     - planton-e2e
 spec:
@@ -38,6 +46,7 @@ spec:
   region: eastus
   instanceType: Standard_F2s_v2
   instanceCount: 1
+  model: /subscriptions/${E2E_ENV:PLANTON_E2E_AZURE_SUBSCRIPTION_ID}/resourceGroups/planton-oss-e2e-azure-fixture-rg/providers/Microsoft.MachineLearningServices/workspaces/planton-oss-e2e-fixture-mlw/models/planton-oss-e2e-sklearn/versions/1
   tags:
     e2e-suite: azure
     purpose: smoke

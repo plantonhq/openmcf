@@ -1,0 +1,83 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsCloudwatchAlarm manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awscloudwatchalarm.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Prices live in
+# the provider's price book (../pricebook/). Simple-metric alarms price
+# exactly (one metric, one flat monthly fee, resolution chosen by period);
+# metric-math and PromQL alarms refuse honestly, per their reasons below.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awscloudwatchalarm
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: metric_queries
+          op: is_set
+      reason: Metric-math alarms bill per metric analyzed, and the billed metric count lives inside the repeated metric_queries entries -- only queries that retrieve a metric bill, expressions do not. The engine can count queries, not billed metrics, so a committed charge cannot be truthfully computed from the manifest.
+    - when:
+        - field_path: evaluation_criteria
+          op: is_set
+      reason: PromQL alarms bill under their own rate class (the offer's CW:PromQLAlarmMonitorUsage usage type), which is not carried in the price book.
+  lines:
+    - sku_meter: alarm metrics
+      applies_when:
+        - field_path: metric_name
+          op: is_set
+        - field_path: period
+          op: not_equals
+          value: "10"
+        - field_path: period
+          op: not_equals
+          value: "20"
+        - field_path: period
+          op: not_equals
+          value: "30"
+      quantity:
+        - constant: "1"
+      price_slug: cloudwatch-standard-alarm-metric-us-east-1
+      basis: one simple-metric alarm watches exactly one metric and bills one flat alarm-metric month at the standard-resolution rate -- the spec's period validation makes any non-sub-minute period a multiple of 60; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+    - sku_meter: high-resolution alarm metrics
+      applies_when:
+        - field_path: metric_name
+          op: is_set
+        - field_path: period
+          op: equals
+          value: "10"
+      quantity:
+        - constant: "1"
+      price_slug: cloudwatch-highres-alarm-metric-us-east-1
+      basis: a 10-second period makes this a high-resolution alarm -- one metric watched, one flat alarm-metric month at the high-resolution rate; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+    - sku_meter: high-resolution alarm metrics
+      applies_when:
+        - field_path: metric_name
+          op: is_set
+        - field_path: period
+          op: equals
+          value: "20"
+      quantity:
+        - constant: "1"
+      price_slug: cloudwatch-highres-alarm-metric-us-east-1
+      basis: a 20-second period makes this a high-resolution alarm -- one metric watched, one flat alarm-metric month at the high-resolution rate; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+    - sku_meter: high-resolution alarm metrics
+      applies_when:
+        - field_path: metric_name
+          op: is_set
+        - field_path: period
+          op: equals
+          value: "30"
+      quantity:
+        - constant: "1"
+      price_slug: cloudwatch-highres-alarm-metric-us-east-1
+      basis: a 30-second period makes this a high-resolution alarm -- one metric watched, one flat alarm-metric month at the high-resolution rate; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+  exclusions:
+    - text: alarm, OK, and insufficient-data actions bill on their targets -- SNS topics referenced by the action fields carry their own AwsSnsTopic cost
+  notes:
+    - text: The alarm fee is flat and committed at creation -- evaluation_periods, datapoints_to_alarm, and how often the alarm fires never move it.

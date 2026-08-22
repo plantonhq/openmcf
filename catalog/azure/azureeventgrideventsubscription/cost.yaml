@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate quantities: a subscription is free to HOLD -- Microsoft's Basic
+# tier has no meter for the subscription object -- and everything it does
+# cost is operations (delivery attempts, billable filter evaluations)
+# billed on the SOURCE topic or domain's meter at traffic volumes no
+# manifest can predict.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgrideventsubscription
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: destination
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Every delivery attempt to the chosen handler is one billed operation at 0.60 USD per million past the source's monthly free grant -- and a failing webhook multiplies the count, since each retry is another attempt on the meter."
+    - field_path: advanced_filter
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Conditional: filtering on the event's data payload is one of the operations Microsoft bills -- each advanced-filter evaluation counts, even for events the filter rejects. Event-type matching (included_event_types) is the free way to narrow when types suffice."
+    - field_path: subject_filter
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Asymmetric by Microsoft's own pricing FAQ: subject-BEGINS-with filtering is free, subject-ENDS-with filtering bills as an operation per evaluation -- prefix conventions in subjects are literally cheaper than suffix ones."
+    - field_path: dead_letter
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Conditional: rejected events that require dead-lettering bill as delivery operations, and every parked event becomes a blob whose storage bills on the destination storage account's own component. Without dead_letter, exhausted events vanish free of charge -- the money saved is the data lost."
+    - field_path: retry_policy
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "The cost governor for unreliable handlers: Azure's defaults retry up to 30 times over 1440 minutes, each attempt a billed operation -- capping max_delivery_attempts caps how many times one undeliverable event can re-bill before dead-lettering or dropping."
+  estimate_exclusions:
+    - "delivery attempts, advanced-filter evaluations, subject-ends-with evaluations, and dead-letter deliveries all bill the SOURCE topic or domain's Basic operations meter at 0.60 USD per million past its monthly 100,000-operation free grant, counted in 64 KB units -- volumes only the source's traffic determines"
+    - "retries against failing destinations bill per attempt, up to the retry policy's cap (Azure's default: 30 attempts over 1440 minutes)"
+    - "dead-lettered events land blob storage and write-operation charges on the dead-letter storage account's own component"
+    - "the destination's own economics -- Function executions, Service Bus operations, Event Hub throughput, queue transactions -- bill on the destination components, not here"
+  notes: "The subscription is the routing instruction of a metered pattern: free to create, free to hold, free to leave idle -- Azure has no meter for the subscription object itself. Every charge it shapes is an operation on the source's meter (this component and its source split one meter's economics: publishes on the source's side, deliveries and billable filters on this side) or a downstream charge on the destination. The billing conditionals worth knowing by name: advanced filtering bills, subject-ends-with bills, dead-lettering bills the delivery and the blobs -- while event-type matching and subject-begins-with filtering are free by Microsoft's pricing FAQ. Rates are eastus retail, retrieved 2026-08-18 from the Azure Retail Prices API and the Event Grid pricing page."

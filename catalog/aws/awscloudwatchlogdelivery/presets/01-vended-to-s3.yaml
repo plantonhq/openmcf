@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogDelivery
+metadata:
+  name: cloudfront-access-logs
+spec:
+  region: us-east-1
+  vended:
+    source:
+      name: cf-access-logs
+      logType: ACCESS_LOGS
+      resourceArn:
+        valueFrom:
+          kind: AwsCloudFront
+          name: my-distribution
+          fieldPath: status.outputs.distribution_arn
+    destinations:
+      - name: access-log-archive
+        destinationResourceArn:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: my-log-archive
+            fieldPath: status.outputs.bucket_arn
+        outputFormat: parquet
+    deliveries:
+      - name: to-archive
+        destinationName: access-log-archive
+        s3Configuration:
+          enableHiveCompatiblePath: true
+          suffixPath: cloudfront

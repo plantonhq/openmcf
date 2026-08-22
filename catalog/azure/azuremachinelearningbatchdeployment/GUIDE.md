@@ -6,6 +6,10 @@ Judgment that saves real time when running batch deployments. The field referenc
 
 Creating, updating, or keeping a batch deployment costs nothing: compute provisions when a JOB runs and scales back down after. This inverts the online deployment's economics (a standing VM from create to destroy). The corollary: there is no reason to delete batch deployments aggressively -- keep the last known-good recipe around as an instant rollback target behind the same endpoint.
 
+## A model-type recipe needs both a model and a compute -- at create, not at job time
+
+The ARM schema marks every recipe property optional, but the service validates a Model-type create synchronously: a recipe naming neither a model nor a compute is rejected with `400 Code="UserError"` listing `ModelConfiguration.ModelReference` and `ComputeConfiguration.ComputeId`, each "'...' must not be empty." (live-proven; the spec's validation now catches this before Azure does). This differs from the online sibling in a useful way: the batch validator NAMES the missing fields, the online one answers a bare "The request is invalid." Only a `pipelineComponent` recipe legitimately omits both -- the component carries its own steps and compute.
+
 ## Size against the compute pool, not against hope
 
 `resources.instanceCount` is how many nodes each JOB requests, and ARM accepts any positive number -- the real ceiling is the compute cluster's `max_node_count`, checked only at job time. A recipe asking for 8 nodes on a 4-node pool deploys cleanly and then every job queues half its work. When jobs sit in "queued" longer than they run, compare these two numbers first.

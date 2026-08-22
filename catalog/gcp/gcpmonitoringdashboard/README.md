@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the dashboard is created (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/monitoring.dashboardEditor` or broader.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 
 ## Deploy
 

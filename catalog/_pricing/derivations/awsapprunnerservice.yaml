@@ -1,0 +1,96 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsAppRunnerService manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsapprunnerservice.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Prices live in
+# the provider's price book (../pricebook/). The committed floor is
+# provisioned-instance MEMORY multiplied by the auto-scaling minimum: when a
+# manifest references an AwsAppRunnerAutoScalingConfiguration, that minimum
+# lives on the referenced component, so the refusal rule below fires on the
+# reference's presence -- pricing such a manifest at the account-default
+# floor of 1 would be knowably wrong (the catalog preset wiring that
+# reference does so precisely for a 2+ warm-instance posture); its committed
+# floor is priced at composition time, when a surface sees both components.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsapprunnerservice
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: auto_scaling_configuration_arn
+          op: is_set
+      reason: the committed floor of provisioned instances lives on the referenced AwsAppRunnerAutoScalingConfiguration (its min_size) and is invisible in this manifest -- the honest estimate happens at composition time, when both components are visible
+  lines:
+    - sku_meter: provisioned instance memory
+      quantity:
+        - field_value:
+            field_path: memory
+            default_when_unset: "2048"
+        - constant: "0.0009765625"
+        - hours_in_month: true
+      price_lookup:
+        service_name: AWS App Runner
+        pricing_unit: GB-hours
+        attributes:
+          - key: meter
+            constant: provisioned-memory
+      basis: one provisioned instance (the account-default auto-scaling minimum of 1, stated because no auto scaling configuration is referenced) x the configured memory in MB (provider default 2048) x 1/1024 to GB x 730 hours
+    - sku_meter: automatic deployment fee
+      applies_when:
+        - field_path: auto_deployments_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: AWS App Runner
+        pricing_unit: months
+        attributes:
+          - key: meter
+            constant: automatic-deployment
+      basis: one fixed automatic-deployment fee per service per month while auto_deployments_enabled is true, independent of how many deployments run
+  exclusions:
+    - text: active instance vCPU and memory usage follows request traffic and concurrency -- from zero (the provisioned instance idle) up to the default auto-scaling maximum of 25 running around the clock
+    - applies_when:
+        - field_path: is_publicly_accessible
+          op: is_unset
+      text: data transfer out to the internet
+    - applies_when:
+        - field_path: is_publicly_accessible
+          op: equals
+          value: "true"
+      text: data transfer out to the internet
+    - applies_when:
+        - field_path: is_publicly_accessible
+          op: is_set
+        - field_path: is_publicly_accessible
+          op: equals
+          value: "false"
+      text: the interface VPC endpoint carrying the VPC Ingress Connection bills hourly and per GB on its own AwsVpcEndpoint component
+    - applies_when:
+        - field_path: is_publicly_accessible
+          op: is_set
+        - field_path: is_publicly_accessible
+          op: equals
+          value: "false"
+      text: data transfer within and out of the VPC
+    - applies_when:
+        - field_path: code_source
+          op: is_set
+      text: build minutes bill per minute for every build App Runner runs from the connected repository and follow deployment frequency
+  notes:
+    - text: Provisioned (warm) instances bill memory only; vCPU starts billing the moment an instance actively serves requests -- which is why the committed line carries GB-hours and no vCPU-hours. Custom domains and the managed TLS certificates App Runner issues for them are free.
+    - applies_when:
+        - field_path: is_publicly_accessible
+          op: is_set
+        - field_path: is_publicly_accessible
+          op: equals
+          value: "false"
+      text: The private service (is_publicly_accessible false) is reachable only through the VPC Ingress Connection; App Runner itself adds no charge for the connection -- the endpoint carrying it bills as its own component.

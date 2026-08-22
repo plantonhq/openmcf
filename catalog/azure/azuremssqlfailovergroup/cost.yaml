@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremssqlfailovergroup
+spec:
+  billing_model: free
+  free_tier: The failover group itself -- the listener DNS names, the failover policy, and the grouping of databases -- never bills. Azure has no meter for failover groups, failovers cost nothing to trigger, and Microsoft charges no data-transfer fee for the geo-replication traffic the group generates between primary and secondaries (the Azure SQL pricing page states active geo-replication data transfer carries no additional charge).
+  notes: "The real spend is the DATABASES the group coordinates: adding a database (database_ids) makes Azure create and continuously run a geo-secondary of it on EVERY partner server, and each geo-secondary bills as its own AzureMssqlDatabase at the same rate as a primary with the same configuration -- a one-database group with one partner roughly doubles that database's spend, and each additional partner server adds another full copy. The logical servers referenced by server_id and partner_servers are AzureMssqlServer, itself free; the failover policy, grace minutes, and read-only endpoint toggle are free configuration."

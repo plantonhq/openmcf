@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcertmanagerdnsauthorization
+spec:
+  billing_model: free
+  free_tier: A DNS authorization carries no meter -- Certificate Manager's pricing bills certificates per month, TLS connections for large-key certificates, and mTLS connections, and a DNS authorization is none of those. It is proof-of-domain-control metadata (the exported CNAME validation record) that costs nothing at any count, in any location, for any domain.
+  notes: "No field of this spec buys anything, but the authorization exists to feed two things that DO bill. The certificates it validates are GcpCertManagerCert resources, each counting toward Certificate Manager's per-project certificate meter (first 100 free, then per-certificate monthly rates) -- the authorization is free plumbing for that metered object. And the CNAME validation record the authorization exports must live in a DNS zone: hosting it on Cloud DNS rides GcpDnsZone's monthly zone fee and per-query rates (the record itself is free), while an external DNS host bills on its own terms. Nothing about the authorization -- type, location, deletion policy -- ever appears on an invoice."

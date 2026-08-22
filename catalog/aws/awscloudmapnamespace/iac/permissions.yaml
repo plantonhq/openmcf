@@ -1,0 +1,77 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudmapnamespace
+spec:
+  aws:
+    statements:
+      - sid: CreateNamespaces
+        actions:
+          - servicediscovery:CreateHttpNamespace
+          - servicediscovery:CreatePrivateDnsNamespace
+          - servicediscovery:CreatePublicDnsNamespace
+        resources:
+          - "*"
+        provenance: derived
+        notes: All three namespace create actions are NON-SCOPABLE per the service reference, so the wildcard is the narrowest possible scope. Exactly one fires per manifest -- the type picks between aws_service_discovery_http_namespace, aws_service_discovery_private_dns_namespace, and aws_service_discovery_public_dns_namespace.
+      - sid: ManageNamespace
+        actions:
+          - servicediscovery:GetNamespace
+          - servicediscovery:UpdateHttpNamespace
+          - servicediscovery:UpdatePrivateDnsNamespace
+          - servicediscovery:UpdatePublicDnsNamespace
+          - servicediscovery:DeleteNamespace
+          - servicediscovery:GetOperation
+        resources:
+          - arn:aws:servicediscovery:*:*:namespace/*
+          - arn:aws:servicediscovery:*:*:service/*
+        provenance: derived
+        notes: GetNamespace serves every plan/refresh; the Update* actions apply description changes on DNS namespaces (an HTTP namespace's description change REPLACES it at the provider despite UpdateHttpNamespace existing); DeleteNamespace tears down. GetOperation polls Cloud Map's async operations (namespace and instance mutations return operation ids) and scopes to both resource types.
+      - sid: ManageServicesAndInstances
+        actions:
+          - servicediscovery:CreateService
+          - servicediscovery:GetService
+          - servicediscovery:UpdateService
+          - servicediscovery:DeleteService
+          - servicediscovery:RegisterInstance
+          - servicediscovery:DeregisterInstance
+          - servicediscovery:GetInstance
+          - servicediscovery:ListInstances
+        resources:
+          - arn:aws:servicediscovery:*:*:namespace/*
+          - arn:aws:servicediscovery:*:*:service/*
+        provenance: derived
+        notes: Covers aws_service_discovery_service (one per services entry; CreateService authorizes against the namespace AND service per the service reference) and aws_service_discovery_instance (one per static instances entry -- RegisterInstance/DeregisterInstance/GetInstance/ListInstances all scope to the service ARN).
+      - sid: TagCloudMapResources
+        actions:
+          - servicediscovery:TagResource
+          - servicediscovery:UntagResource
+          - servicediscovery:ListTagsForResource
+        resources:
+          - "*"
+        provenance: derived
+        notes: The namespace and each service are tagged (tags = local.aws_tags). All three tag actions are NON-SCOPABLE per the service reference -- an ARN-scoped grant would be a runtime DENY -- so the wildcard is the narrowest possible scope.
+      - sid: Route53ForDnsNamespaces
+        actions:
+          - route53:CreateHostedZone
+          - route53:GetHostedZone
+          - route53:DeleteHostedZone
+          - route53:ChangeResourceRecordSets
+          - route53:GetChange
+          - route53:ListHostedZonesByName
+        resources:
+          - "*"
+        provenance: derived
+        notes: Needed only for PRIVATE_DNS / PUBLIC_DNS types -- Cloud Map creates, populates, and deletes the namespace's Route 53 hosted zone ON THE CALLER'S AUTHORITY (AWS's own AWSCloudMapFullAccess managed policy pairs exactly this Route 53 set with the servicediscovery actions). Zone ids are cloud-generated and ListHostedZonesByName/GetChange are unscopable in practice, so the wildcard is the honest scope; HTTP namespaces never exercise this statement.
+      - sid: DescribeVpcForPrivateDns
+        actions:
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Needed only for PRIVATE_DNS -- the service validates the paired vpc_id at namespace creation (also part of AWSCloudMapFullAccess). NON-SCOPABLE per the EC2 service reference.

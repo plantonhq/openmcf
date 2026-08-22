@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureservicebussubscription
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Service Bus encrypts all message data at rest with Microsoft-managed keys unconditionally -- the messages a subscription holds pending delivery rest on the namespace's encrypted storage with no opt-out and no subscription-level knob.
+      notes: Upgrading to customer-managed keys is a PREMIUM namespace-level configuration on the AzureServiceBusNamespace kind, not a subscription choice.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys are a NAMESPACE-level configuration on PREMIUM -- the parent AzureServiceBusNamespace applies BYOK encryption to every entity in it; the subscription spec has no key surface of its own.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Consumers connect to the NAMESPACE endpoint ({namespace}.servicebus.windows.net), where TLS is enforced and the minimum TLS version is configured -- the subscription exposes no transport surface of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure is the namespace's posture (public network access, private endpoints, IP rules); the subscription has no endpoint of its own to expose or hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets and private endpoints -- namespace-level posture, not a subscription field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Service Bus is an AMQP/HTTPS messaging endpoint fronted by Azure's service fabric; no WAF attachment point exists on a subscription.
+    - control_id: rbac
+      status: not_applicable
+      notes: The subscription declares no access rules of its own, and unlike queues and topics it is not an independent grant scope -- receiving through it is authorized by "Azure Service Bus Data Receiver" granted at the parent topic's or namespace's scope (AzureRoleAssignment), or by a topic-scoped SAS rule (AzureServiceBusAuthorizationRule with topic_id). Both are separate kinds carrying their own posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The subscription holds no credentials and runs no workloads; consumer access goes keyless by granting Entra identities data-plane roles at the parent topic's scope via AzureRoleAssignment instead of SAS rules.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The SAS-versus-Entra decision is the namespace's local_auth_enabled switch -- disabling it kills SAS keys namespace-wide. The subscription has no authentication toggle of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Runtime and operational audit logs (diagnostic settings) are configured on the NAMESPACE as separate resources; control-plane changes to the subscription and its rules land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Service Bus metrics (active and dead-lettered message counts, incoming/outgoing messages) are published at the namespace level with per-entity dimensions; diagnostic-setting export is namespace-scoped configuration outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Undelivered messages live in the subscription only until consumed or expired -- Azure offers no service-side backup or restore for them, replacing the subscription (its name is ForceNew) resets the read position and loses them, and the namespace's geo-DR pairing replicates the subscription's DEFINITION but never its messages. Dead-lettering preserves failed deliveries for inspection, which is delivery-failure handling, not backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); default_message_ttl bounds how long undelivered messages live, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy is the namespace's posture -- a Service Bus namespace in an availability-zone region replicates across zones, and every subscription inherits that placement; the subscription has no zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a subscription (Azure resource locks are subscription-side governance outside the manifest). The status field gates traffic (DISABLED, RECEIVE_DISABLED) but not deletion -- and deleting the subscription drops its undelivered messages.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Service Bus brokers, filter engine, and storage; no customer-visible patch surface exists.

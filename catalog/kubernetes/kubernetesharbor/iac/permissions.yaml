@@ -1,0 +1,83 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesharbor
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.harbor -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The module-owned credential Secrets created BEFORE the release (admin auth, the internal credential set, and the conditional redis/storage auth Secrets carrying declared external credentials), plus the chart-rendered per-component Secrets. Every internal credential is generated per-install -- the chart's documented defaults never ship.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.harbor -- per-component Services (including the exposure Service named after this resource), configuration ConfigMaps, and the registry artifact and jobservice job-log PVCs. The internal database, Redis, and Trivy volumes are StatefulSet-template PVCs created by the cluster, not applied by the runner.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's Deployments (core, portal, registry with its registryctl container, jobservice, nginx, and the exporter when metrics are enabled) and StatefulSets (Trivy, plus the internal database and Redis when those arms are active).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Only when metrics.service_monitor_enabled is true -- the chart renders a ServiceMonitor, requiring the Prometheus Operator CRDs on the cluster.

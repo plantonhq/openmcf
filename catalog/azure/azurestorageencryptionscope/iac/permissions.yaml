@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurestorageencryptionscope
+spec:
+  azure:
+    groups:
+      - purpose: ManageEncryptionScope
+        actions:
+          - Microsoft.Storage/storageAccounts/encryptionScopes/read
+          - Microsoft.Storage/storageAccounts/encryptionScopes/write
+        provenance: derived
+        notes: Covers azurerm_storage_encryption_scope -- create, read/refresh, key-source and key updates, and destroy, all on the account's encryptionScopes child endpoint (the module parses storage_account_id client-side and performs no account read or key-vault call; Azure validates key_vault_key_id server-side, and the wrap/unwrap access it demands belongs to the ACCOUNT's identity, not the deploying principal). There is deliberately no delete action -- ARM has no true delete for scopes, so the inventory carries none and the provider's destroy is a write that PATCHes the scope's state to Disabled.

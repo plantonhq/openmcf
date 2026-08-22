@@ -22,7 +22,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** to host the family (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/eventarc.admin`.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 - **Region**: Eventarc Advanced serves a [subset of regions](https://cloud.google.com/eventarc/docs/locations) — the API rejects unsupported ones at create time.
 
 ## Deploy

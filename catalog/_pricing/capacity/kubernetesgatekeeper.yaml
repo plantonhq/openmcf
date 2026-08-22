@@ -1,0 +1,40 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesGatekeeper manifest's spec values into the capacity
+# footprint it reserves from its target cluster. Gatekeeper runs two
+# fixed pod classes -- the webhook controller-manager (spec.replicas,
+# default 3: the webhook sits on the admission write path and ships HA
+# by default) and the always-single-replica audit controller. The
+# policies it enforces are separate resources costing engine CPU and
+# memory, never new pods. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesgatekeeper
+spec:
+  workloads:
+    - label: controller-manager replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "3"
+    - label: audit controller
+      resources_path: audit.resources
+      instances:
+        constant: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the chart's lifecycle hook Jobs (namespace labeling, webhook probe, CRD upgrade) are ephemeral -- capacity only while running"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this footprint states the spec's declaration"
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the controller-manager declares no resources -- the CHART then applies its own defaults (100m CPU request, 512Mi memory limit per pod), a reservation this manifest-value footprint cannot state"
+    - applies_when:
+        - field_path: audit.resources
+          op: is_unset
+      text: "the audit controller declares no resources -- the CHART then applies its own defaults (100m CPU request, 512Mi memory limit), a reservation this manifest-value footprint cannot state"

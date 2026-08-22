@@ -1,0 +1,55 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremssqlelasticpool
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: SQL Database
+      sku_meter: pool compute
+      pricing_unit: vCore-hours
+      description: A vCore pool (GP_/BC_/HS_) bills its provisioned vCores by the hour from creation regardless of how many databases it holds or how busy they are.
+    - service_name: SQL Database
+      sku_meter: pool eDTUs
+      pricing_unit: eDTU-days
+      description: A DTU pool (BasicPool/StandardPool/PremiumPool) bills its provisioned eDTU capacity per day, with a capacity-matched storage allowance included in the rate.
+    - service_name: SQL Database
+      sku_meter: SQL Server license
+      pricing_unit: vCore-hours
+      description: vCore pools add a per-vCore-hour pay-as-you-go SQL license meter on top of compute unless license_type BASE_PRICE (Azure Hybrid Benefit) brings your own license; DTU pool rates already include licensing.
+    - service_name: SQL Database
+      sku_meter: pool storage
+      pricing_unit: GB-months
+      description: vCore pools bill the provisioned pool storage cap (max_size_gb) per GB-month whether used or empty, at the tier's rate.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: pool compute
+      pricing_unit: vCore-hours
+      impact: The tier decision -- General Purpose vCores are the baseline rate, Business Critical roughly doubles them for local SSD and built-in replicas, and the DTU pools swap the whole model to bundled per-eDTU-day pricing.
+    - field_path: capacity
+      sku_meter: pool compute
+      pricing_unit: vCore-hours
+      impact: The direct multiplier -- vCores for vCore pools, eDTUs for DTU pools; doubling capacity doubles the compute or eDTU line.
+    - field_path: max_size_gb
+      sku_meter: pool storage
+      pricing_unit: GB-months
+      impact: On vCore pools the provisioned cap is the storage bill; unset lets Azure apply the SKU default, which still bills. On DTU pools the capacity's included allowance covers storage up to the ladder amount, and raising the cap beyond it bills extra per GB.
+    - field_path: license_type
+      sku_meter: SQL Server license
+      pricing_unit: vCore-hours
+      impact: BASE_PRICE (Azure Hybrid Benefit) removes the per-vCore SQL license meter from vCore pools; unset defaults to LicenseIncluded, which pays it every hour.
+    - field_path: zone_redundant
+      sku_meter: pool compute
+      pricing_unit: vCore-hours
+      impact: Business Critical and Premium pools spread their existing replicas across zones at no extra cost; General Purpose zone redundancy bills an uplifted compute meter.
+    - field_path: high_availability_replica_count
+      sku_meter: pool compute
+      pricing_unit: vCore-hours
+      impact: Hyperscale pools only -- each readable HA replica bills the same per-vCore compute again.
+  estimate_exclusions:
+    - point-in-time-restore backup storage beyond the free allowance follows the member databases' churn and retention settings
+    - network egress follows client placement
+  notes: "The pool is the billing unit and its member databases are free riders: a database with sku_name ElasticPool bills nothing itself. The economics are a reservation -- the pool's provisioned capacity bills always-on whether one database or five hundred share it, which is exactly the point: many small databases with non-overlapping peaks cost one pool instead of many provisioned databases."

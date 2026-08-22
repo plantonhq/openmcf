@@ -1,0 +1,58 @@
+# Least-privilege permissions for the official kubernetestrino modules
+# (iac/tf and iac/pulumi -- behaviorally equivalent). Derived from the
+# resources the modules create directly plus everything the pinned trino
+# chart (trinodb, 1.42.2) renders inside the Helm release.
+# Schema: catalog/componentpermissions/v1.
+apiVersion: catalog.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetestrino
+spec:
+  kubernetes:
+    rules:
+      - api_groups: [""]
+        resources: ["namespaces"]
+        verbs: ["get", "create", "update", "patch", "delete"]
+        cluster_scoped: true
+        provenance: derived
+        notes: kubernetes_namespace_v1.trino -- rendered only when spec.create_namespace is true; otherwise the module only needs get on the existing namespace.
+      - api_groups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The module writes two Secrets -- kubernetes_secret_v1.auth (<name>-auth, the generated admin password plus the htpasswd-format password.db the chart mounts) and kubernetes_secret_v1.internal (<name>-internal, the internal-communication shared secret). Referenced Secrets (catalog passwords, extra_env_from_secret, the HTTPS keystore, bring-your-own password.db and groups files) are wired as env secretKeyRef or chart secretMounts and never read or copied by the module.
+      - api_groups: [""]
+        resources: ["services", "configmaps", "serviceaccounts"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered inside helm_release.trino -- the coordinator and worker Services (ClusterIP by default, type from spec.service.type), the properties ConfigMaps (config.properties per node role, the catalogs, the schemas volume, plus access-control rules / resource-groups / session-properties ConfigMaps when those spec fields are set), and the release ServiceAccount.
+      - api_groups: [""]
+        resources: ["pods", "pods/log", "events"]
+        verbs: ["get", "list", "watch"]
+        provenance: derived
+        notes: Read-only -- the Helm provider's wait/atomic rollout (helm_release.trino sets wait, atomic, cleanup_on_fail, 900s timeout) tracks coordinator and worker readiness and surfaces failure events; the modules never create bare pods.
+      - api_groups: ["apps"]
+        resources: ["deployments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The chart renders exactly two Deployments -- the coordinator and the worker fleet. Config changes roll them automatically via checksum annotations.
+      - api_groups: ["autoscaling"]
+        resources: ["horizontalpodautoscalers"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.workers.hpa is set (the autoscaling_block) -- one HPA on the worker Deployment with the declared max and CPU/memory utilization targets.
+      - api_groups: ["keda.sh"]
+        resources: ["scaledobjects"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.workers.keda is set (the keda_block) -- requires the KEDA operator CRDs on the cluster; the spec's oneof guarantees HPA and KEDA never render together.
+      - api_groups: ["monitoring.coreos.com"]
+        resources: ["servicemonitors"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.metrics.service_monitor_enabled is true -- coordinator and worker ServiceMonitors for the Prometheus operator; CEL requires metrics.enabled alongside.
+      - api_groups: ["networking.k8s.io"]
+        resources: ["networkpolicies"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.network_policy_enabled is true -- the chart's NetworkPolicy admitting intra-cluster Trino traffic plus declared extra ingress. The helm_values overlay can widen the chart's object surface beyond this profile; overlay users own the extra permissions.

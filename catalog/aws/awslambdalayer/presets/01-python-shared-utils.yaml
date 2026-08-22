@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLambdaLayer
+metadata:
+  name: shared-python-utils
+spec:
+  region: us-east-1
+  code:
+    bucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: build-artifacts
+        fieldPath: status.outputs.bucket_id
+    key: layers/shared-python-utils.zip
+  description: Shared Python utilities (logging, tracing, config)
+  compatibleRuntimes:
+    - python3.13
+    - python3.12
+  compatibleArchitectures:
+    - x86_64
+    - arm64
+  licenseInfo: Apache-2.0

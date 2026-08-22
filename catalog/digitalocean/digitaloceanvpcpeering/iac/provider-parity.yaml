@@ -1,0 +1,18 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The provider takes an unordered set of VPC ids with no cardinality rule
+# in its schema, but the API requires exactly two -- the spec models two
+# named references so any other cardinality is unrepresentable. Both map
+# onto vpc_ids, exactly the modules' pair assembly.
+resources:
+  digitalocean_vpc_peering:
+    mappings:
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.peering_name
+        arg: name
+      - spec: spec.vpc_1
+        arg: vpc_ids
+      - spec: spec.vpc_2
+        arg: vpc_ids

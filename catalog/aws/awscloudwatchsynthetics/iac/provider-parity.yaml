@@ -1,0 +1,80 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_synthetics_canary:
+    specRoot: spec.canary
+    mappings:
+      # The canary rides the instance's provider connection.
+      - arg: region
+        spec: spec.region
+      # The artifact location's bucket half (see specExclusions for the
+      # prefix half - one provider arg, two spec homes, assembled by the
+      # modules as "s3://bucket/prefix").
+      - arg: artifact_s3_location
+        spec: spec.canary.artifact_bucket
+      # The code bundle is a typed message.
+      - arg: s3_bucket
+        spec: spec.canary.code.s3_bucket
+      - arg: s3_key
+        spec: spec.canary.code.s3_key
+      - arg: s3_version
+        spec: spec.canary.code.s3_version
+      # The retry wrapper flattens onto the schedule.
+      - arg: schedule.retry_config.max_retries
+        spec: spec.canary.schedule.max_retries
+      # The artifact-encryption wrapper flattens onto the canary.
+      - arg: artifact_config.s3_encryption.encryption_mode
+        spec: spec.canary.artifact_encryption_mode
+      - arg: artifact_config.s3_encryption.kms_key_arn
+        spec: spec.canary.artifact_encryption_kms_key_arn
+    exclusions:
+      # The canary's identity is metadata.name (the canary charset is
+      # metadata.name-compatible).
+      - arg: name
+        reason: wired from metadata.name (the kind's identity) -- renames replace the canary
+      # Local file paths are not declarative-manifest material; the
+      # S3-staged code arm covers the same capability (the AwsLambda
+      # idiom - stage small bundles inline through an AwsS3ObjectSet).
+      - arg: zip_file
+        reason: local-file upload path superseded by the S3 code arm -- manifests are declarative, code stages through a bucket
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_synthetics_group:
+    specRoot: spec.groups
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_synthetics_group_association:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Each group name in the joins list renders one association.
+      - arg: group_name
+        spec: spec.group_names
+    exclusions:
+      # The fold's parent linkage: the module wires the association to
+      # the instance's own canary.
+      - arg: canary_arn
+        reason: module-wired parent linkage (the folded association always joins this instance's canary)
+specExclusions:
+  # The prefix half of artifact_s3_location (the bucket half carries
+  # the mapping) - the modules assemble "s3://bucket/prefix".
+  - field: spec.canary.artifact_prefix
+    reason: second home of artifact_s3_location -- the modules assemble the provider's single location string from bucket + prefix
+  # The owned-groups arm renders aws_synthetics_group entries; the
+  # group's one argument (name) is the entry itself.
+  - field: spec.groups.name
+    reason: the fold key and the group's name argument in one -- consumed by aws_synthetics_group's name

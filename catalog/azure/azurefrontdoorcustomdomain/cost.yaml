@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefrontdoorcustomdomain
+spec:
+  billing_model: free
+  free_tier: The custom domain itself -- the hostname it proves ownership of, the DNS-zone watch, and the TLS configuration -- never bills. Azure's managed certificate (the MANAGED_CERTIFICATE default) is issued, hosted, and auto-rotated free of charge.
+  notes: "No field of this spec buys anything: the domain is configuration on the Front Door PROFILE it references (profile_id), and the profile is where Front Door billing lives -- a base fee per its own SKU plus requests and egress, a separate catalog kind. With CUSTOMER_CERTIFICATE the referenced AzureFrontDoorSecret is also free; the Key Vault that actually holds the certificate bills as its own resource."

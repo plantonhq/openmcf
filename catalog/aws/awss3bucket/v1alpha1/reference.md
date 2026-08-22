@@ -1741,6 +1741,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockInvocationLogging | `spec.s3.bucketName` | `status.outputs.bucket_id` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].s3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsCloudTrail | `spec.s3BucketName` | `status.outputs.bucket_id` |
+| AwsCloudwatchSynthetics | `spec.canary.artifactBucket` | `status.outputs.bucket_id` |
+| AwsCloudwatchSynthetics | `spec.canary.code.s3Bucket` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.cache.location` | `status.outputs.bucket_id` |
@@ -1751,6 +1753,7 @@ Fields on other kinds that can point at this resource:
 | AwsConfigRecorder | `spec.deliveryChannel.s3BucketName` | `status.outputs.bucket_id` |
 | AwsDynamodb | `spec.importTable.s3Bucket` | `status.outputs.bucket_id` |
 | AwsEcsTaskDefinition | `spec.volumes[].s3files.fileSystemArn` | `status.outputs.bucket_arn` |
+| AwsEventBridgePipe | `spec.logConfiguration.s3.bucketName` | `status.outputs.bucket_id` |
 | AwsGlobalAccelerator | `spec.flowLogs.s3Bucket` | `status.outputs.bucket_id` |
 | AwsGuardDuty | `spec.publishingDestination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsGuardDutyMalwareProtectionPlan | `spec.s3BucketName` | `status.outputs.bucket_id` |
@@ -1765,9 +1768,11 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.snowflake.s3Config.bucketArn` | `status.outputs.bucket_arn` |
 | AwsKinesisFirehose | `spec.iceberg.s3Config.bucketArn` | `status.outputs.bucket_arn` |
 | AwsLambda | `spec.s3.bucket` | `status.outputs.bucket_id` |
+| AwsLambdaLayer | `spec.code.bucket` | `status.outputs.bucket_id` |
 | AwsMskCluster | `spec.logging.s3.bucket` | `status.outputs.bucket_id` |
 | AwsMwaaEnvironment | `spec.sourceBucketArn` | `status.outputs.bucket_arn` |
 | AwsNlb | `spec.accessLogs.bucket` | `status.outputs.bucket_id` |
+| AwsPrivateCa | `spec.revocation.crl.s3BucketName` | `status.outputs.bucket_id` |
 | AwsS3Bucket | `spec.replication.rules[].destination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsS3Bucket | `spec.logging.targetBucket` | `status.outputs.bucket_id` |
 | AwsS3Bucket | `spec.analyticsConfigurations[].export.bucketArn` | `status.outputs.bucket_arn` |

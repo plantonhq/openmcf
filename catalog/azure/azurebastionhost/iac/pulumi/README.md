@@ -24,7 +24,3 @@ Creates an Azure Bastion host -- the managed jump service that opens RDP/SSH ses
 - **A Premium host without a public IP deploys PRIVATE-ONLY** (reachable only from connected networks) -- surfaced in the `private_only_enabled` output.
 - **Billing starts at provisioning** (~10-minute creates): hourly per SKU, plus per-scale-unit on Standard/Premium. Developer is free.
 - **Engine parity**: the classic SDK v6.38.0 carries the FULL azurerm v5 surface for this kind -- zero parity exceptions.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Network/bastionHosts/*` plus join permissions on the subnet and public IP (Network Contributor on the resource group covers all three).

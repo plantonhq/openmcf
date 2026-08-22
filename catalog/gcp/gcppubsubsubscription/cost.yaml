@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcppubsubsubscription
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: bigquery_config
+      sku_meter: BigQuery subscription throughput
+      pricing_unit: TiB
+      impact: BigQuery delivery bills $50/TiB for reading from the subscription and writing to the table -- a premium over the $40/TiB of pull/push, with NO first-10-GiB free allotment -- in exchange for a managed pipeline with no consumer to run. BigQuery storage on the written rows bills on the table's component.
+    - field_path: cloud_storage_config
+      sku_meter: Cloud Storage subscription throughput
+      pricing_unit: TiB
+      impact: Cloud Storage delivery bills $50/TiB for reading from the subscription and writing objects, with NO first-10-GiB free allotment; the written objects then bill storage (and later retrieval) on the bucket's component. The max_bytes/max_duration/max_messages batching knobs shape object count, not the throughput rate.
+    - field_path: retain_acked_messages
+      sku_meter: message storage
+      pricing_unit: GiB-months
+      impact: Retaining acknowledged messages bills $0.27/GiB-month for everything delivered and kept in the window -- Google's pricing page calls per-subscription acked retention the MOST expensive retention mechanism, because each subscription pays for its own copy while topic-level retention serves all subscriptions once.
+    - field_path: message_retention_duration
+      sku_meter: message storage
+      pricing_unit: GiB-months
+      impact: Unacknowledged backlog older than 1 day bills $0.27/GiB-month when the window exceeds a day (default 7 days, max 31) -- a healthy consumer that acks within 24 hours pays nothing, so this meter is effectively an alarm bell priced per GiB. No charge for backlog the topic already retains.
+    - field_path: message_transforms
+      sku_meter: single message transform data processing
+      pricing_unit: TiB
+      impact: Each JavaScript UDF transform bills $40/TiB on the LARGER of the input and output message size; an AI inference transform bills $60/TiB plus the model's own charges -- applied per delivery to THIS consumer, on top of the delivery throughput itself.
+    - field_path: filter
+      sku_meter: message delivery
+      pricing_unit: TiB
+      impact: Messages that fail the filter are auto-acknowledged and never delivered, but Google still charges throughput on their actual bytes (the 1 KB request minimum is waived, and no data-transfer fees apply) -- a filter saves consumer compute and transfer, not delivery fees.
+  estimate_exclusions:
+    - pull and push delivery bill as Message Delivery at $40/TiB after the billing account's first 10 GiB each calendar month (Google's stated free allotment) -- an idle subscription with no traffic bills nothing
+    - backlog and retained-message storage follow traffic and consumer health; delivery to subscribers in another region adds inter-region data-transfer fees billed to this subscription's project
+    - the topic's publish side bills on the topic's project (cross-project billing follows the resource)
+  notes: "A subscription is a delivery contract with no meter of its own: creating and holding it, dead-letter and retry policies, ordering, and exactly-once delivery all cost nothing at rest. The delivery method sets the rate card -- pull and push at $40/TiB with the monthly 10 GiB free allotment, BigQuery and Cloud Storage export at $50/TiB with none -- and storage bills only for retained acked messages, snapshots, or backlog older than a day. Messages diverted by dead_letter_policy land on the dead-letter topic and flow onward as ordinary traffic on that topic's and its subscriptions' own components. One quiet lifecycle behavior worth knowing: an inactive subscription is auto-deleted after 31 days by default (expiration_policy), which also ends its storage meter."

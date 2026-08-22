@@ -6,40 +6,68 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// volume provisions the Block Storage Volume itself and exports its ID.
+// volume provisions the block storage volume and exports its outputs.
+//
+// Attachment to Droplets is a property of the Droplet (its volume_ids list),
+// never of the volume. Size can only be EXPANDED after creation -- the
+// provider rejects a shrink at plan time. Every other argument is create-only
+// and replaces the volume when changed.
 func volume(
 	ctx *pulumi.Context,
 	locals *Locals,
 	digitalOceanProvider *digitalocean.Provider,
 ) (*digitalocean.Volume, error) {
+	spec := locals.DigitalOceanVolume.Spec
 
-	// 1. Build the resource arguments straight from the proto fields.
 	volumeArgs := &digitalocean.VolumeArgs{
-		Name:   pulumi.String(locals.DigitalOceanVolume.Spec.VolumeName),
-		Region: pulumi.String(locals.DigitalOceanVolume.Spec.Region.String()),
-		Size:   pulumi.Int(int(locals.DigitalOceanVolume.Spec.SizeGib)),
+		Name:   pulumi.String(spec.VolumeName),
+		Region: pulumi.String(spec.Region.String()),
+		Size:   pulumi.Int(int(spec.SizeGib)),
 	}
 
-	// Optional fields.
-	if locals.DigitalOceanVolume.Spec.Description != "" {
-		volumeArgs.Description = pulumi.StringPtr(locals.DigitalOceanVolume.Spec.Description)
+	// Create-only at the current provider pin: a description change REPLACES
+	// the volume.
+	if spec.Description != "" {
+		volumeArgs.Description = pulumi.StringPtr(spec.Description)
 	}
 
-	if locals.DigitalOceanVolume.Spec.SnapshotId != "" {
-		volumeArgs.SnapshotId = pulumi.StringPtr(locals.DigitalOceanVolume.Spec.SnapshotId)
+	// When set, the volume is created from the snapshot, inheriting its
+	// region and minimum size. Create-only, never reported back by the API.
+	if spec.SnapshotId != "" {
+		volumeArgs.SnapshotId = pulumi.StringPtr(spec.SnapshotId)
 	}
 
-	if len(locals.DigitalOceanVolume.Spec.Tags) > 0 {
-		volumeArgs.Tags = pulumi.ToStringArray(locals.DigitalOceanVolume.Spec.Tags)
+	// Formatting happens once at creation via the NON-deprecated
+	// initial_filesystem_type argument (the SDK's FilesystemType maps to the
+	// deprecated attribute and conflicts with it). The enum value names ARE
+	// the strings the provider expects; unformatted stays unset.
+	if fsType := spec.FilesystemType.String(); fsType != "unformatted" {
+		volumeArgs.InitialFilesystemType = pulumi.StringPtr(fsType)
+		// The label only means anything when a filesystem is being formatted.
+		if spec.InitialFilesystemLabel != "" {
+			volumeArgs.InitialFilesystemLabel = pulumi.StringPtr(spec.InitialFilesystemLabel)
+		}
 	}
 
-	// Filesystem type (omit when unformatted).
-	fsType := locals.DigitalOceanVolume.Spec.FilesystemType.String()
-	if fsType != "unformatted" {
-		volumeArgs.FilesystemType = pulumi.StringPtr(fsType)
+	// User tags plus the standard Planton labels rendered as "key:value"
+	// tags — the exact set the Terraform module applies.
+	tagSet := map[string]bool{}
+	var tagInputs pulumi.StringArray
+	for _, t := range spec.Tags {
+		if !tagSet[t] {
+			tagSet[t] = true
+			tagInputs = append(tagInputs, pulumi.String(t))
+		}
 	}
+	for k, v := range locals.DigitalOceanLabels {
+		t := k + ":" + v
+		if !tagSet[t] {
+			tagSet[t] = true
+			tagInputs = append(tagInputs, pulumi.String(t))
+		}
+	}
+	volumeArgs.Tags = tagInputs
 
-	// 2. Create the Volume.
 	createdVolume, err := digitalocean.NewVolume(
 		ctx,
 		"volume",
@@ -50,8 +78,10 @@ func volume(
 		return nil, errors.Wrap(err, "failed to create digitalocean volume")
 	}
 
-	// 3. Export stack output.
+	// Stack outputs -- exactly the DigitalOceanVolumeStackOutputs contract,
+	// from the SDK's real field names (the urn output is VolumeUrn).
 	ctx.Export(OpVolumeId, createdVolume.ID())
+	ctx.Export(OpUrn, createdVolume.VolumeUrn)
 
 	return createdVolume, nil
 }

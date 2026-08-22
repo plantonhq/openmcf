@@ -14,7 +14,7 @@ This directory contains the Pulumi implementation for deploying a Cloud Run doma
    gcloud auth application-default login
    ```
 5. **A verified domain**: the provisioning identity must have verified domain ownership (Search Console / `gcloud domains verify`) — GCP rejects the create otherwise
-6. **IAM permissions**: `roles/run.admin` (or broader) on the target project
+6. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs -- including why domain mappings need more than any Cloud Run role grants
 
 ## Directory Structure
 

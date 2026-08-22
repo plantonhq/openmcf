@@ -1,0 +1,36 @@
+# Canonical AwsCostCategory example (hack/dev manifest and refgen
+# Example source): a "Cost Center" category with an expression rule, a
+# tag-inherited rule, a default value, and a proportional split of
+# shared platform costs.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostCategory
+metadata:
+  name: cost-center
+  id: cost-center
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  categoryName: Cost Center
+  defaultValue: shared
+  rules:
+    - value: platform
+      rule:
+        or:
+          - dimension:
+              key: SERVICE
+              values:
+                - Amazon Elastic Compute Cloud - Compute
+          - tag:
+              key: team
+              values:
+                - platform
+    - type: INHERITED_VALUE
+      inheritedValue:
+        dimensionName: TAG
+        dimensionKey: team
+  splitChargeRules:
+    - source: shared
+      targets:
+        - platform
+      method: PROPORTIONAL

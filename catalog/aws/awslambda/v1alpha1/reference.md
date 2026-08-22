@@ -1205,6 +1205,12 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.graphql.auth.lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.additionalAuthProviders[].lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.functions[].syncConfig.lambdaConflictHandlerArn` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.resolvers[].syncConfig.lambdaConflictHandlerArn` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.events.authProviders[].lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.datasources[].lambda.functionArn` | `status.outputs.function_arn` |
 | AwsBedrockAgent | `spec.promptOverride.overrideLambda` | `status.outputs.function_arn` |
 | AwsBedrockAgent | `spec.actionGroups[].executor.lambda` | `status.outputs.function_arn` |
 | AwsBedrockAgentCoreEvaluation | `spec.evaluators[].codeBased.lambdaArn` | `status.outputs.function_arn` |

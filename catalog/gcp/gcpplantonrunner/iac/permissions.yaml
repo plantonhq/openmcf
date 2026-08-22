@@ -1,0 +1,50 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpplantonrunner
+spec:
+  gcp:
+    groups:
+      - purpose: EnableRunApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling run.googleapis.com on the target project so a fresh project works on the first deploy. disable_on_destroy is false in both modules -- tearing down one runner must never disable the API for everything else -- so the disable permission is never needed.
+      - purpose: ManageRuntimeServiceAccount
+        permissions:
+          - iam.serviceAccounts.create
+          - iam.serviceAccounts.get
+          - iam.serviceAccounts.delete
+        provenance: derived
+        notes: Covers google_service_account -- the dedicated permissionless runtime account created ONLY when spec.service_account is unset (a referenced account is never created or mutated); get is needed for refresh of the module-owned account.
+      - purpose: ActAsRuntimeServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Cloud Run's deployment-permissions contract requires iam.serviceAccounts.actAs on the service identity for every create or update of google_cloud_run_v2_service -- on the module-created runtime account or the referenced spec.service_account, whichever the service runs as. There is no shape of this component that escapes the requirement.
+      - purpose: ManageTokenSecret
+        permissions:
+          - secretmanager.secrets.create
+          - secretmanager.secrets.get
+          - secretmanager.secrets.delete
+          - secretmanager.versions.add
+          - secretmanager.versions.access
+          - secretmanager.secrets.setIamPolicy
+          - secretmanager.secrets.getIamPolicy
+        provenance: derived
+        notes: Covers google_secret_manager_secret (the "<metadata.name>-token" secret with automatic replication) plus its google_secret_manager_secret_version -- versions.add writes the token, versions.access reads it back during refresh (the value is spec material, so the provider round-trips it). setIamPolicy/getIamPolicy cover google_secret_manager_secret_iam_member -- the one secretAccessor grant to the runtime service account, placed ON the module-owned secret, never on the referenced account.
+      - purpose: ManageRunnerService
+        permissions:
+          - run.services.create
+          - run.services.get
+          - run.services.update
+          - run.services.delete
+          - run.operations.get
+        provenance: derived
+        notes: Covers google_cloud_run_v2_service -- create, read/refresh, in-place updates (template, scaling, env, resources), and destroy of the always-on runner service. Service mutations on the Cloud Run Admin API v2 return long-running operations the provider polls, which authorize as run.operations.get.

@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskafkaui
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a console pod carrying the declared resource requests. The console is stateless -- replicas are an availability measure, and one console observes many Kafka clusters, so more clusters do not mean more pods.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per console pod -- the capacity is claimed whether anyone is browsing topics or not. Limits set the burst ceiling.
+    - field_path: service_type
+      sku_meter: cloud load balancer
+      impact: The default ClusterIP creates nothing billable; LoadBalancer provisions a cloud load balancer billed by the provider hosting the cluster. Prefer ClusterIP plus a composed Ingress or Gateway.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "a LoadBalancer service_type provisions a provider-billed load balancer whose price is the hosting cloud's, not this catalog's"
+    - "the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica count -- this profile describes the spec's declaration"
+  notes: "This component creates no cloud SKU of its own by default -- its cost is the share of the cluster its console pods reserve, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x requests. The Kafka clusters, schema registries, and Connect clusters the console observes carry their own footprints on their own resources."

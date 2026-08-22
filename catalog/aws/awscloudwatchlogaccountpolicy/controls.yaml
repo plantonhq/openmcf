@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An account policy stores no customer data -- its document is CloudWatch Logs control-plane metadata held inside AWS's own service infrastructure. The log data it governs rests (encrypted) in the log groups, which carry their own posture on AwsCloudwatchLogGroup.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); the account-policy API exposes no KMS surface. Log-group CMK encryption is the AwsCloudwatchLogGroup component's kms_key_id.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy terminates no connections. The only wire traffic involving it -- PutAccountPolicy, DescribeAccountPolicies, DeleteAccountPolicy management calls -- rides AWS API endpoints, which serve exclusively over TLS as provider-wide behavior, not per-policy configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An account policy has no network endpoint to expose -- it is a regional configuration document AWS applies to log groups server-side. Nothing about it is reachable, publicly or otherwise.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the policy has no addresses or ports, only an IAM-authorized management API.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every operation on an account policy is IAM-authorized, and AWS deliberately gates it as an administrator capability: PutAccountPolicy additionally demands the policy type's own permission (logs:PutDataProtectionPolicy, logs:PutSubscriptionFilter, logs:PutTransformer, logs:PutIndexPolicy, or logs:PutMetricExtractionPolicy alongside logs:PutAccountPolicy per the API reference), so a principal cannot set an account-wide policy of a type it was never granted."
+      notes: For DATA_PROTECTION policies AWS layers a second RBAC surface over the data itself -- masked findings stay masked unless the reader holds logs:Unmask.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A policy runs no workload and holds no credentials. Where a document names an IAM role (a subscription-filter policy's delivery role), CloudWatch Logs assumes it with short-lived credentials as fixed service plumbing, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudWatch Logs has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Every PutAccountPolicy, DescribeAccountPolicies, and DeleteAccountPolicy call is recorded by AWS CloudTrail as account-level posture, not per-policy configuration.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: policy_document
+      evidence:
+        type: spec_default
+        reference: "A DATA_PROTECTION document's Audit statement can route sensitive-data findings to CloudWatch Logs, Firehose, or S3 through its FindingsDestination -- a security-signal export the operator opts into per statement. The pii-masking preset pins an empty FindingsDestination: detection runs, but findings feed no external monitoring pipeline until the document names one."
+      notes: The other policy types export nothing of their own; a METRIC_EXTRACTION document derives CloudWatch metrics from log fields, which is observability plumbing for the LOG DATA rather than signals about this policy object.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A policy holds no data to back up -- it is declarative configuration fully re-creatable from the manifest; re-applying the document restores identical behavior.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is a regional control-plane object CloudWatch Logs stores and applies across its own multi-AZ infrastructure -- there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for account policies. Deleting one simply stops the account-wide behavior; per-log-group policies of the same type (data protection, subscription filter) remain in effect, softening the blast radius of an accidental delete.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A policy is a pure configuration object with no software to patch; the engines that execute it (masking, indexing, transformation) are AWS-operated service internals.

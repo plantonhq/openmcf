@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsautoscalinggroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The group stores no data of its own -- it is a fleet orchestrator. What the launched instances encrypt at rest (EBS volumes, their keys) is declared in the referenced AwsLaunchTemplate's block device mappings, deliberately outside this manifest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest lives here to key (see enc-at-rest). One adjacency worth knowing -- when the launch template's volumes use a customer-managed KMS key, that key's policy must admit the group's service-linked role, and service_linked_role_arn exists precisely to select a custom-suffix role for granular per-team key grants.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The group terminates no connections -- its wire traffic is Auto Scaling management calls on AWS API endpoints, which serve exclusively over TLS as provider behavior. What the instances' workloads encrypt in transit is decided inside them, not by any field here.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group itself carries no network endpoint. Whether its instances are internet-reachable is decided by the subnets they land in (this spec only names which subnets), the launch template's network interface settings, and the security groups -- all referenced components' territory.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering is security-group territory, and security groups attach through the referenced AwsLaunchTemplate -- this spec has no ingress field by design, matching AWS's model where the group never carries network filters.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A fleet orchestrator offers no WAF attachment point; request filtering is composed on the load balancer in front of the referenced target groups, never on the group resource.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, update, or delete the group is governed by IAM permissions on the Auto Scaling API -- account-level posture outside this spec and the modules. The only principals the spec carries are roles the service assumes (see workload-identity), not access grants on the group.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: service_linked_role_arn
+      evidence:
+        type: provider_default
+        reference: EC2 Auto Scaling manages the fleet exclusively through a service-linked role (the account default AWSServiceRoleForAutoScaling when this field is unset) that only autoscaling.amazonaws.com can assume -- launching, terminating, registering with load balancers, all through short-lived role credentials with no static-credential path.
+      notes: The identity code ON the instances uses is the launch template's instance profile, composed on the referenced AwsLaunchTemplate. Lifecycle hooks with an SNS/SQS notification target carry their own role_arn the service assumes to publish.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The group exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. Instance-level access posture (IMDSv2, SSH keys) is launch-template territory.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec carries no audit dial. Every management call against the group lands in CloudTrail as account-level posture, and because the service acts through a service-linked role, the actions Auto Scaling takes on the account's behalf (launches, terminations) are CloudTrail-visible too.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: enabled_metrics
+      evidence:
+        type: spec_default
+        reference: Unset publishes no group-level metrics; listing them (GroupInServiceInstances, GroupDesiredCapacity, and the rest, including warm-pool variants) enables one-minute CloudWatch group metrics at no charge. Per-instance metrics flow to CloudWatch independently as EC2 behavior.
+      notes: notifications adds SNS delivery of launch/terminate events and their failures -- the simplest fleet-lifecycle observability; scaling policies' alarms watch the metrics that matter to capacity.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The group holds no data to back up -- instances are cattle, recreated from the referenced launch template at any moment (health replacement does exactly that continuously). State that must survive an instance belongs in external stores those instances write to, outside this manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnets
+      evidence:
+        type: spec_default
+        reference: The subnets field IS the zonal spread -- subnets in two or more availability zones make the group launch and continuously rebalance capacity across those zones, replacing capacity from healthy zones when one is impaired. A single-subnet group concentrates the whole fleet in one zone.
+      notes: capacity_distribution_strategy tunes the strictness (balanced-best-effort launches elsewhere when a zone is impaired; balanced-only waits), and the AZRebalance process in suspended_processes can pause rebalancing during maintenance.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for groups -- deleting the group terminates its instances, and force_delete only skips the graceful drain. protect_from_scale_in shields individual instances from SCALING decisions, not the group from deletion. Since instances are recreated from the template, the irreversible loss on delete is capacity, not data.
+    - control_id: managed-patching
+      status: configurable
+      field_path: instance_refresh
+      evidence:
+        type: spec_default
+        reference: Unset means fleet software only changes when instances happen to be replaced; an instance_refresh block turns every launch template change (new AMI, new user data) into a rolling, health-bounded replacement of the whole fleet -- the group's managed channel for patches and upgrades, with checkpoints, alarm watching, and auto-rollback available.
+      notes: max_instance_lifetime_seconds adds the time-based guarantee -- no instance outlives the bound, so fleets converge onto the template's current AMI even without a triggering change.

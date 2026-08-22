@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAnomalyDetector
+metadata:
+  name: error-anomalies
+spec:
+  region: us-east-1
+  detectorName: error-anomalies
+  logGroupArns:
+    - valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: worker-logs
+        fieldPath: status.outputs.log_group_arn
+  enabled: true
+  evaluationFrequency: ONE_HOUR
+  filterPattern: "?ERROR ?WARN"
+  anomalyVisibilityTime: 90

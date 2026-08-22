@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsnlb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The load balancer stores no customer data at rest; it forwards Layer-4 connections. TLS certificates live in ACM and attach through listeners (AwsLbListener), a separate kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: TLS termination is owned by listeners (AwsLbListener), which attach to this load balancer and carry ports, TLS policy, and certificates. This spec carries no TLS surface of its own -- NLB listeners only forward, and routing is purely by port/protocol.
+    - control_id: no-public-access
+      status: configurable
+      field_path: internal
+      evidence:
+        type: spec_default
+        reference: internal defaults to false (internet-facing with public DNS); setting internal=true makes the load balancer reachable only inside the VPC. Immutable at creation.
+      notes: The 01-internal and 03-private-link-hardened presets enable it. Changing the scheme replaces the load balancer.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_groups
+      evidence:
+        type: spec_default
+        reference: When security_groups is omitted, the NLB accepts all traffic on configured listener ports -- no default group is attached (unlike ALB); attaching explicit groups filters inbound traffic to exactly the declared ports and sources.
+      notes: Attaching a group is a one-way door -- once attached, AWS never allows removing the last one. The 03-private-link-hardened preset attaches an explicit group and additionally enforces group rules on PrivateLink traffic (enforce_security_group_inbound_rules_on_private_link_traffic).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Layer-4 load balancer with no request-filtering surface -- the spec exposes no web ACL field, and WAF-style request inspection applies to Layer-7 traffic, which NLB does not terminate.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the load balancer exposes no authentication plane of its own -- routing attaches through listener kinds.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The load balancer runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; TLS protocol floors (legacy-cipher refusal) are owned by listener TLS policies (AwsLbListener).
+    - control_id: audit-logging
+      status: configurable
+      field_path: access_logs
+      evidence:
+        type: spec_default
+        reference: Unset means access logging is off; configuring access_logs delivers entries to the named S3 bucket. NLB access logs capture only TLS-listener traffic -- plain TCP/UDP flows are not logged (an AWS limitation the spec itself states).
+      notes: The bucket must carry the ELB log-delivery bucket policy or delivery fails silently. The 03-private-link-hardened preset enables access logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Elastic Load Balancing reports NLB metrics (flows, processed bytes, target health) to CloudWatch automatically whenever traffic flows through the load balancer -- there is no opt-in and no way to disable it; metrics are simply absent when no traffic flows.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless traffic router -- no data to back up. The configuration itself is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_mappings
+      evidence:
+        type: spec_validation
+        reference: subnet_mappings requires at least one mapping (min_items=1), each placing a node in one Availability Zone -- a single-zone NLB is representable, and adding mappings spans zones. AWS recommends at least two, per the spec's own guidance.
+      notes: The 02-static-ip-internet-facing and 03-private-link-hardened presets place nodes in two Availability Zones.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: delete_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, AWS refuses to delete the load balancer until protection is lifted.
+      notes: The 02-static-ip-internet-facing and 03-private-link-hardened presets enable it. Deleting an NLB silently orphans every listener attached to it, and any Elastic IPs pinned to it start billing as unattached -- the spec doc recommends protection for production.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the load balancer fleet; no customer-visible patch surface exists.

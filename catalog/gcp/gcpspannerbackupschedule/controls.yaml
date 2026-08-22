@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpspannerbackupschedule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every backup the schedule creates is encrypted at rest -- USE_DATABASE_ENCRYPTION (the default when encryption_config is omitted) inherits the database's posture, and even GOOGLE_DEFAULT_ENCRYPTION is Google-managed encryption; no unencrypted state exists.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption_config
+      evidence:
+        type: spec_validation
+        reference: CUSTOMER_MANAGED_ENCRYPTION selects explicit CMEK for the backups, and the cmek_requires_exactly_one_key_shape CEL rule forces exactly one key shape -- kms_key_name for regional configurations, kms_key_names (one per region) for multi-region. A CMEK database's backups also get CMEK implicitly via USE_DATABASE_ENCRYPTION.
+      notes: Preset 03 encrypts its year-long archive copies with an explicit key instead of inheriting the database's posture.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Schedule management and backup operations run entirely through Google's Spanner API over TLS; backup bytes never traverse a customer-visible network path.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Neither the schedule nor the backups it creates have a network endpoint; both are reachable only through the IAM-gated Spanner API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists; access control is entirely IAM, and network-source restriction of the Spanner API is a VPC Service Controls perimeter decision at the project level.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The schedule serves no HTTP traffic; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Schedule management authorizes against IAM spanner.backupSchedules.* permissions and the backups themselves against spanner.backups.* -- restoring a backup into a database is a separately authorized act, not implied by reading the schedule.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The schedule runs no workloads and holds no credentials; Spanner's own service executes the cadence, and callers authenticate with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Spanner API; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Schedule create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner publishes backup storage usage among its instance metrics to Cloud Monitoring without configuration, so the standing cost and existence of backups is observable per instance.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: cron
+      evidence:
+        type: spec_validation
+        reference: cron is required -- every schedule declares an explicit cadence (every 12 hours, daily, weekly, or monthly, evaluated in UTC) on which Spanner creates restorable backups of the referenced database.
+      notes: This component IS the automated-backup control for Spanner databases. A database commonly carries two schedules side by side (daily incremental plus weekly full); backups survive deletion of both the schedule and the database, living until their retention expires.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: retention_duration
+      evidence:
+        type: spec_validation
+        reference: retention_duration is required and validated as a seconds duration -- retention is always an explicit, reviewable choice, up to 366 days, and changes apply to backups created after the change.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Backup placement follows the parent instance's configuration automatically -- Google's backup pricing includes every replica of the configuration -- and the schedule has no failure-domain field of its own.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the schedule is removed and the cadence stops); PREVENT makes destroy fail -- the guard for a cadence a recovery objective depends on; ABANDON unmanages the schedule while it keeps creating backups.
+      notes: No deletion lever touches backups already taken -- they are immutable to this resource's lifecycle and persist until their retention expires, which is what makes destroying the parent instance fail unless its force_destroy is set.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The schedule executes inside Google's fully managed Spanner service; no software surface, version, or channel exists on the resource to patch.

@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesrabbitmq
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Every RabbitMQ node carries the declared resources and its own data volume -- a 3-node quorum cluster reserves three times the capacity of a single node. Sizing is a one-way door -- the operator does not support scaling down.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per node. Empty means the operator's own defaults apply (requests 1 CPU / 2Gi, limits 2 CPU / 2Gi) -- a real reservation even when the manifest declares nothing.
+    - field_path: disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every node provisions its own data volume of this size (queues, quorum-queue Raft logs, the metadata store) -- 10Gi when unset (the operator default). PVCs cannot shrink; plan for growth.
+    - field_path: ephemeral
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: True runs every node on emptyDir -- no persistent volumes are provisioned at all, and every queue, message, and user vanishes with each pod restart. Throwaway dev clusters only.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the operator's default container resources (1 CPU / 2Gi requests) apply when the manifest declares none -- a reservation a manifest-time estimate cannot see
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x (requests + data volume). The RabbitMQ Cluster Operator that reconciles this resource is a separate component (KubernetesRabbitMqOperator) with its own footprint -- one operator serves every cluster on the Kubernetes cluster."

@@ -1,0 +1,9 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: web-production
+spec:
+  projectName: web-production
+  description: Production web workloads
+  purpose: Web Application
+  environment: production

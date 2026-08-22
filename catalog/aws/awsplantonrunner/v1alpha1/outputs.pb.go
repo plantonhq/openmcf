@@ -56,11 +56,16 @@ type AwsPlantonRunnerStackOutputs struct {
 	// referenced task_role when one was supplied, else the
 	// permissionless role created with the appliance).
 	TaskRoleArn string `protobuf:"bytes,8,opt,name=task_role_arn,json=taskRoleArn,proto3" json:"task_role_arn,omitempty"`
-	// The ARN of the secret holding the runner's credentials document.
-	CredentialsSecretArn string `protobuf:"bytes,9,opt,name=credentials_secret_arn,json=credentialsSecretArn,proto3" json:"credentials_secret_arn,omitempty"`
+	// The ARN of the Secrets Manager secret holding the runner token. The
+	// ECS agent injects it at task start; the token authorizes joining and
+	// is never the runner's identity.
+	TokenSecretArn string `protobuf:"bytes,9,opt,name=token_secret_arn,json=tokenSecretArn,proto3" json:"token_secret_arn,omitempty"`
 	// The AWS region the runner was deployed in. Echoed so downstream
 	// tooling and verifiers can target the correct region.
-	Region        string `protobuf:"bytes,10,opt,name=region,proto3" json:"region,omitempty"`
+	Region string `protobuf:"bytes,10,opt,name=region,proto3" json:"region,omitempty"`
+	// The name the runner registers itself under with the control plane --
+	// the value shown by `planton runner list` the moment it joins.
+	RunnerName    string `protobuf:"bytes,11,opt,name=runner_name,json=runnerName,proto3" json:"runner_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -151,9 +156,9 @@ func (x *AwsPlantonRunnerStackOutputs) GetTaskRoleArn() string {
 	return ""
 }
 
-func (x *AwsPlantonRunnerStackOutputs) GetCredentialsSecretArn() string {
+func (x *AwsPlantonRunnerStackOutputs) GetTokenSecretArn() string {
 	if x != nil {
-		return x.CredentialsSecretArn
+		return x.TokenSecretArn
 	}
 	return ""
 }
@@ -165,11 +170,18 @@ func (x *AwsPlantonRunnerStackOutputs) GetRegion() string {
 	return ""
 }
 
+func (x *AwsPlantonRunnerStackOutputs) GetRunnerName() string {
+	if x != nil {
+		return x.RunnerName
+	}
+	return ""
+}
+
 var File_catalog_aws_awsplantonrunner_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsplantonrunner_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsplantonrunner/v1alpha1/outputs.proto\x12)dev.planton.aws.awsplantonrunner.v1alpha1\"\xa5\x03\n" +
+	"3catalog/aws/awsplantonrunner/v1alpha1/outputs.proto\x12)dev.planton.aws.awsplantonrunner.v1alpha1\"\xba\x03\n" +
 	"\x1cAwsPlantonRunnerStackOutputs\x12\x1f\n" +
 	"\vservice_arn\x18\x01 \x01(\tR\n" +
 	"serviceArn\x12!\n" +
@@ -180,10 +192,12 @@ const file_catalog_aws_awsplantonrunner_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x0elog_group_name\x18\x05 \x01(\tR\flogGroupName\x12*\n" +
 	"\x11security_group_id\x18\x06 \x01(\tR\x0fsecurityGroupId\x12,\n" +
 	"\x12execution_role_arn\x18\a \x01(\tR\x10executionRoleArn\x12\"\n" +
-	"\rtask_role_arn\x18\b \x01(\tR\vtaskRoleArn\x124\n" +
-	"\x16credentials_secret_arn\x18\t \x01(\tR\x14credentialsSecretArn\x12\x16\n" +
+	"\rtask_role_arn\x18\b \x01(\tR\vtaskRoleArn\x12(\n" +
+	"\x10token_secret_arn\x18\t \x01(\tR\x0etokenSecretArn\x12\x16\n" +
 	"\x06region\x18\n" +
-	" \x01(\tR\x06regionB\xe3\x02\n" +
+	" \x01(\tR\x06region\x12\x1f\n" +
+	"\vrunner_name\x18\v \x01(\tR\n" +
+	"runnerNameB\xe3\x02\n" +
 	"-com.dev.planton.aws.awsplantonrunner.v1alpha1B\fOutputsProtoP\x01Z[github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1;awsplantonrunnerv1alpha1\xa2\x02\x04DPAA\xaa\x02)Dev.Planton.Aws.Awsplantonrunner.V1alpha1\xca\x02)Dev\\Planton\\Aws\\Awsplantonrunner\\V1alpha1\xe2\x025Dev\\Planton\\Aws\\Awsplantonrunner\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Aws::Awsplantonrunner::V1alpha1b\x06proto3"
 
 var (

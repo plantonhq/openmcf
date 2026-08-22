@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpiamcustomrole
+spec:
+  gcp:
+    groups:
+      - purpose: ManageCustomRole
+        permissions:
+          - iam.roles.create
+          - iam.roles.get
+          - iam.roles.update
+          - iam.roles.delete
+          - iam.roles.undelete
+        provenance: derived
+        notes: Covers google_project_iam_custom_role (Pulumi projects.IAMCustomRole) -- the modules' only resource. create, read/refresh, in-place updates (title, description, stage, permissions; role_id and project are ForceNew), and the soft delete on destroy. get also runs BEFORE create (the provider checks whether role_id names a soft-deleted role), and undelete plus update is the provider's native convergence path when re-creating over a soft-deleted ID -- both modules document that flow. All five grants are project-scoped on the role's project, a strict subset of roles/iam.roleAdmin (which additionally carries iam.roles.list, tag-binding actions, and two resourcemanager read permissions the modules never call). Neither module declares a google_project_service, so no serviceusage permissions are needed. Do not confuse this list with spec.permissions -- those strings are the role's CONTENT (what it will grant once bound), never something the deploying principal itself needs to hold.

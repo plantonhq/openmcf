@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsapprunnervpcconnector
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPC connector stores no data -- it is a managed egress path from App Runner services into VPC subnets.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists (see enc-at-rest), so no key choice arises.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The connector carries whatever protocol the App Runner service speaks to its VPC targets -- whether that hop is TLS is the application's and the targets' decision, with no lever here.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The connector IS the private-egress lever -- it routes App Runner services' outbound traffic to VPC resources through ENIs inside your subnets, so databases and caches they depend on never need public exposure. The connector itself has no public endpoint at any configuration.
+      notes: The services' own inbound exposure (public URL versus private ingress) is decided on the AwsAppRunnerService component; the connector governs only the outbound path.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_validation
+        reference: The spec requires at least one security group, and those groups are the connector's network identity -- target security groups admit ingress from exactly these groups, restricting who may reach the private databases and caches to services on this connector.
+      notes: The security-group-to-security-group handshake is tighter than CIDR rules. Groups are immutable on a connector revision -- changing them creates a replacement revision.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The connector carries no HTTP request surface -- WAF attaches (if at all) to the App Runner services' inbound side, not to this egress path.
+    - control_id: rbac
+      status: not_applicable
+      notes: The connector has no principal-facing surface; which services may reference it is governed by IAM on App Runner actions -- account-level posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The connector runs no workloads and holds no credentials; the services using it carry their own instance roles.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The connector authenticates nothing -- there is no auth path here, legacy or otherwise.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations on the connector land in CloudTrail as account-level posture; it produces no data-plane logs of its own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The connector has no CloudWatch metric dimension; traffic through it appears in the services' metrics and whatever the targets record.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest; no data lives here.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_validation
+        reference: The spec requires at least one subnet, and the subnets chosen decide which Availability Zones the services' VPC egress can flow through -- a single subnet ties private connectivity to one zone's health, while spreading subnets across zones keeps egress available through a zone failure.
+      notes: Subnets are immutable on a connector revision; widening AZ coverage means a replacement revision and re-pointing services.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for VPC connectors.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The connector's networking fabric is fully AWS-managed with no customer-visible software to patch.

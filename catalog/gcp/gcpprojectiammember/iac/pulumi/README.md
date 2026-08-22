@@ -15,7 +15,7 @@ The grant is ADDITIVE: it merges one (role, member[, condition]) pair into the p
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/resourcemanager.projectIamAdmin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

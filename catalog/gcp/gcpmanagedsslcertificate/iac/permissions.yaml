@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpmanagedsslcertificate
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageSslCertificate
+        permissions:
+          - compute.sslCertificates.create
+          - compute.sslCertificates.get
+          - compute.sslCertificates.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_managed_ssl_certificate -- create, read/refresh, and destroy, with compute.globalOperations.get for polling the operations create and delete return. GCP defines NO compute.sslCertificates.update permission (verified against IAM's testable-permissions inventory, which lists only create/get/delete plus list and tag permissions for the family) -- the resource is fully immutable in the API, so every change is a delete-and-recreate authorized by the create and delete permissions, never an update.

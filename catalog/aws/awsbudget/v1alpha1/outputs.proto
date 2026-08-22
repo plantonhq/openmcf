@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbudget.v1alpha1;
+
+// AwsBudgetStackOutputs captures the observable state of the budget
+// after apply.
+message AwsBudgetStackOutputs {
+  // The budget's name (with the account ID, the provider's import ID:
+  // "account_id:budget_name").
+  string budget_name = 1;
+
+  // The budget's ARN.
+  string budget_arn = 2;
+
+  // The account the budget belongs to (the deploying account unless
+  // spec.account_id targeted a member account).
+  string account_id = 3;
+
+  // AWS-generated action IDs keyed by action name (each action
+  // imports as "account_id:action_id:budget_name").
+  map<string, string> action_ids = 4;
+}

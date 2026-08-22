@@ -26,10 +26,14 @@ type DigitalOceanLoadBalancerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier (UUID) of the created DigitalOcean Load Balancer.
 	LoadBalancerId string `protobuf:"bytes,1,opt,name=load_balancer_id,json=loadBalancerId,proto3" json:"load_balancer_id,omitempty"`
-	// The public IP address assigned to the Load Balancer.
+	// The public IPv4 address assigned to the Load Balancer.
 	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
-	// The DNS name for the Load Balancer (if applicable).
-	DnsName       string `protobuf:"bytes,3,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
+	// The uniform resource name (URN) of the Load Balancer, usable with
+	// DigitalOcean project resources.
+	Urn string `protobuf:"bytes,4,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The IPv6 address of the Load Balancer, populated when network_stack is
+	// DUALSTACK.
+	Ipv6          string `protobuf:"bytes,5,opt,name=ipv6,proto3" json:"ipv6,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -78,9 +82,16 @@ func (x *DigitalOceanLoadBalancerStackOutputs) GetIp() string {
 	return ""
 }
 
-func (x *DigitalOceanLoadBalancerStackOutputs) GetDnsName() string {
+func (x *DigitalOceanLoadBalancerStackOutputs) GetUrn() string {
 	if x != nil {
-		return x.DnsName
+		return x.Urn
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerStackOutputs) GetIpv6() string {
+	if x != nil {
+		return x.Ipv6
 	}
 	return ""
 }
@@ -89,11 +100,12 @@ var File_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_outputs_proto pr
 
 const file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/digitalocean/digitaloceanloadbalancer/v1alpha1/outputs.proto\x12:dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1\"{\n" +
+	"Dcatalog/digitalocean/digitaloceanloadbalancer/v1alpha1/outputs.proto\x12:dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1\"\x96\x01\n" +
 	"$DigitalOceanLoadBalancerStackOutputs\x12(\n" +
 	"\x10load_balancer_id\x18\x01 \x01(\tR\x0eloadBalancerId\x12\x0e\n" +
-	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x19\n" +
-	"\bdns_name\x18\x03 \x01(\tR\adnsNameB\xd1\x03\n" +
+	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x10\n" +
+	"\x03urn\x18\x04 \x01(\tR\x03urn\x12\x12\n" +
+	"\x04ipv6\x18\x05 \x01(\tR\x04ipv6J\x04\b\x03\x10\x04R\bdns_nameB\xd1\x03\n" +
 	">com.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1B\fOutputsProtoP\x01Ztgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1;digitaloceanloadbalancerv1alpha1\xa2\x02\x04DPDD\xaa\x02:Dev.Planton.Digitalocean.Digitaloceanloadbalancer.V1alpha1\xca\x02:Dev\\Planton\\Digitalocean\\Digitaloceanloadbalancer\\V1alpha1\xe2\x02FDev\\Planton\\Digitalocean\\Digitaloceanloadbalancer\\V1alpha1\\GPBMetadata\xea\x02>Dev::Planton::Digitalocean::Digitaloceanloadbalancer::V1alpha1b\x06proto3"
 
 var (

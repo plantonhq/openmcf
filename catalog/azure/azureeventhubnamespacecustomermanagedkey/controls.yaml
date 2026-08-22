@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhubnamespacecustomermanagedkey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Every instance of this kind strengthens at-rest encryption -- the namespace's event data is already encrypted with Microsoft-managed keys unconditionally, and applying this configuration re-keys it under the customer's Key Vault keys; infrastructure_encryption_enabled optionally adds a second encryption layer beneath them.
+      notes: The lifecycle is add-only by Azure's contract -- once applied, encryption can never fall back to a weaker state (removal requires replacing the namespace itself; the provider's delete is a deliberate no-op).
+    - control_id: enc-at-rest-cmk
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Customer-managed keys are this kind's entire effect -- key_vault_key_ids is required (1-10 Key Vault keys, defaulting to versionless references so vault-side rotation propagates automatically), and Azure applies them across the namespace the moment the resource is created. There is no off position.
+      notes: The platform contract is real -- CMK requires single-tenant capacity (PREMIUM tier or a dedicated cluster); Azure rejects the encryption patch on multi-tenant BASIC/STANDARD namespaces. The keys' vault must have purge protection enabled.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: This kind touches only at-rest encryption; transport posture (TLS enforcement, minimum version) belongs to the parent AzureEventHubNamespace.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration has no endpoint; network exposure is the namespace's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets; this kind adds no reachable surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at an encryption configuration; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture. The vault-side grant this kind depends on (wrap/unwrap for the unwrapping identity, e.g. Key Vault Crypto Service Encryption User) is composed as an AzureRoleAssignment, a separate kind.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Key unwrapping always authenticates through a managed identity -- never a stored credential. Unset user_assigned_identity_id means the namespace's system-assigned identity unwraps the keys; setting it switches to a user-assigned identity that must already be attached via the namespace's identity block. No static-secret path exists in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the namespace's SAS-versus-Entra switch is unrelated to how Azure unwraps encryption keys.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Applying or changing the encryption configuration lands in the Azure Activity Log as subscription-level posture; the service's wrap/unwrap calls against the vault are auditable in the VAULT's diagnostic logs, a separate kind's posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An encryption configuration emits no metrics; key-usage and key-expiry signals surface through the Key Vault's monitoring, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up here. The critical durability concern is the KEYS -- losing them makes the namespace's data unrecoverable, which is why the spec requires the vault to carry purge protection and why key backup posture belongs to the AzureKeyVault kind.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The configuration is namespace metadata with no zonal footprint; availability posture belongs to the namespace and the key vault it references.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Deletion is a deliberate NO-OP by Azure's add-only contract -- destroying this resource changes nothing on the namespace, because CMK cannot be unconfigured; there is nothing a protection flag could protect beyond what the platform already refuses.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the encryption machinery and its Key Vault integration; no customer-visible patch surface exists.

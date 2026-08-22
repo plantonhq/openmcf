@@ -1,0 +1,62 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesTempo manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetestempo.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Single-binary Tempo:
+# one pod class, each replica carrying the declared resources and its
+# own volume (all trace blocks with local storage, only the WAL with
+# an object-storage backend). Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetestempo
+spec:
+  workloads:
+    - label: tempo
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+      volumes:
+        - label: data
+          size_path: disk_size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+    - applies_when:
+        - field_path: storage.s3
+          op: is_set
+      text: trace blocks live in the S3-compatible backend -- stored bytes and requests are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), outside this cluster's capacity
+    - applies_when:
+        - field_path: storage.gcs
+          op: is_set
+      text: trace blocks live in Google Cloud Storage -- stored bytes and requests are billed by GCS, outside this cluster's capacity
+    - applies_when:
+        - field_path: storage.azure
+          op: is_set
+      text: trace blocks live in Azure Blob Storage -- stored bytes and requests are billed by Azure, outside this cluster's capacity
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the chart applies no default requests or limits -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set resources for any real deployment
+    - applies_when:
+        - field_path: ephemeral
+          op: is_set
+      text: ephemeral replicas run on emptyDir (the chart's own default posture) -- no persistent volume is provisioned, so any disk_size value (including the platform-stamped 10Gi default) reserves nothing
+    - applies_when:
+        - field_path: ephemeral
+          op: is_unset
+        - field_path: disk_size
+          op: is_unset
+      text: this component provisions a 10Gi volume per replica by default (diverging from the chart's emptyDir) even without a declared disk_size -- a reservation this footprint cannot count
+    - applies_when:
+        - field_path: tempo_query_enabled
+          op: is_set
+      text: the tempo-query sidecar adds a container to every pod whose resources are not typed on this spec -- consumption this footprint cannot count

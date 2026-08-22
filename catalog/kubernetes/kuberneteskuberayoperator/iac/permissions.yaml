@@ -1,0 +1,105 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskuberayoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.kuberay_operator -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces. Namespaces listed in watch_namespaces are never created by the module or the chart.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.kuberay_operator -- the operator ServiceAccount and the metrics Service (port 8080, while metrics_enabled, the default). The modules re-pin the chart's hardcoded fullname/name/serviceAccount ("kuberay-operator") to this resource's name so instances stay distinguishable.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The single-replica operator Deployment applied by helm_release.kuberay_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's default RBAC posture (empty watch_namespaces = watch every namespace) grants the operator rights to create head and worker pods, Services, and autoscaling updates for Ray clusters cluster-wide -- an operator chart's RBAC is among the widest in the catalog. Rendered by helm_release.kuberay_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders -- the leader-election Role/RoleBinding in the installation namespace (the "-leader-election" suffix is the longest derived child name, the reason for the 47-character resource-name budget), and the per-namespace reconcile RBAC scoped to the watch_namespaces list in the fenced posture.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.service_monitor_enabled is true. The monitoring.coreos.com CRDs must already exist on the cluster (deploy KubernetesKubePrometheusStack first) -- the install FAILS without them.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+        cluster_scoped: true
+        provenance: derived
+        notes: "The three ray.io CRDs (rayclusters, rayjobs, rayservices) ship in the chart's Helm-native crds/ directory: installed on FIRST install only, never upgraded or deleted by Helm -- hence no update/patch/delete. The CRDs are large (~1MB each) and install server-side. CRD updates across chart upgrades are a deliberate manual apply outside this module."

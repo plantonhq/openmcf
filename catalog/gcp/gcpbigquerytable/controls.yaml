@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpbigquerytable
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery encrypts all stored table data at rest with Google-managed keys by default; encryption cannot be disabled.
+      notes: External tables hold their bytes in the source system (e.g. Cloud Storage, which is also encrypted by default); the table object stores only configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset inherits the containing dataset's default key (or Google-managed encryption); naming a Cloud KMS key encrypts this table with it. Immutable -- changing the key recreates the table.
+      notes: No preset enables a table-level key. The BigQuery service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key -- a prerequisite outside this component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All access to table data and metadata goes through Google's BigQuery API endpoints over TLS; no plaintext access path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The table has no exposure surface of its own -- who can reach its data is decided by the containing dataset's authoritative ACL and project IAM, assessed on GcpBigQueryDataset. Table-scoped IAM bindings are deliberately not modeled catalog-wide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists on a table; access arrives through the IAM-gated BigQuery API, and network-source restriction of that API is a VPC Service Controls perimeter decision at the project level.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The table serves no HTTP application traffic; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every read, write, and metadata operation authorizes against IAM bigquery.* permissions granted at the project, dataset, or table level; no non-IAM access path exists.
+      notes: The authorized-view pattern (preset 02 plus the dataset's access entries) exposes filtered slices without granting readers any role on the raw data.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The table runs no workloads and holds no credentials; callers authenticate to the BigQuery API with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated BigQuery API. view.use_legacy_sql selects a SQL dialect, not an authentication path.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally, and BigQuery writes Data Access audit logs by default -- queries and reads against the table are logged without configuration.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery publishes storage and query metrics to Cloud Monitoring without configuration, and INFORMATION_SCHEMA views expose per-table storage, partition, and job detail queryably.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every native table is covered by BigQuery time travel automatically -- point-in-time recovery over the containing dataset's window (GCP default 168 hours), with fail-safe retention for 7 further days.
+      notes: The window length is the dataset's max_time_travel_hours, not a table field. Logical views and external tables hold no data of their own to recover. Table snapshots for longer horizons are separate resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The recovery window is configured on the containing GcpBigQueryDataset (max_time_travel_hours, 48-168 hours) and applies to every table in it; no table-level retention field exists.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery automatically maintains replicas of stored table data across multiple availability zones within the dataset's location; no customer action or field enables it.
+      notes: table_replication_info replicates a materialized view across datasets -- a data-distribution feature, not the zone-redundancy this control asks about.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to true on both engines -- a destroy fails until the field is explicitly set false, the guard for tables holding real data.
+      notes: deletion_policy layers on top -- PREVENT fails the destroy before deletion_protection is consulted, ABANDON removes the table from management without deleting it (bypassing the guard by never attempting a delete). Presets 02 and 03 set deletion_protection false deliberately -- views and external tables hold no data of their own.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery is a fully managed, serverless service -- Google operates and patches the storage and query fleet; no version, channel, or maintenance surface exists on the table.

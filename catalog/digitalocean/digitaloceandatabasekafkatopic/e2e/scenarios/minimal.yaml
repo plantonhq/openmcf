@@ -1,0 +1,28 @@
+# Minimal DigitalOceanDatabaseKafkaTopic: cluster + name only. DigitalOcean
+# creates 3 partitions and 2 replicas (the API defaults) with the server's
+# default per-topic config. Proves the create/verify/destroy lifecycle and
+# the (cluster_id, topic_name) identity outputs on the shared Kafka
+# fixture (the annotation below -- the registry prerequisite installs a
+# PostgreSQL cluster, which Kafka topics cannot live on).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaTopic
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasekafkatopic-min
+  id: planton-oss-e2e-digitaloceandatabasekafkatopic-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasekafkatopic
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/digitalocean/digitaloceandatabasekafkatopic/e2e/fixtures/kafka-cluster.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitalocean-kafka-fixture
+      fieldPath: status.outputs.cluster_id
+  topicName: pltn-e2e-dokft-min

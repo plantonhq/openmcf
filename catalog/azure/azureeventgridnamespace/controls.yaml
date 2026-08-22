@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgridnamespace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Event Grid encrypts everything it writes to disk -- retained events on namespace topics, queued MQTT session state -- with Microsoft-managed keys on every namespace; Microsoft's security baseline lists platform-key encryption at rest as enabled by default with Microsoft holding configuration responsibility.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Microsoft's security baseline for Event Grid states customer-managed-key encryption is not supported for the service, and neither the provider surface nor this spec carries a key configuration -- retained data is encrypted with Microsoft-managed keys only.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every endpoint the namespace exposes requires TLS -- HTTPS for CloudEvents publish and pull delivery, MQTTS on ports 8883 and 443 for the broker (client certificates ride the mutual-TLS handshake) -- and Microsoft's security baseline lists in-transit encryption as enabled by default; no plaintext listener exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Azure's default is true (public regional hostnames for HTTP and MQTT); setting it false removes public reachability so clients connect only through private endpoints -- and the inbound IP rules are ignored while access is disabled, because there is no public edge left to filter.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: inbound_ip_rules
+      evidence:
+        type: spec_default
+        reference: Empty means any internet source may reach the public endpoints; listing IPv4 CIDRs (up to 128) restricts them to those ranges. Azure's rule action on this resource is Allow-only -- each entry IS an admit rule -- and rules only take effect while public_network_access_enabled is true.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The namespace's data plane speaks CloudEvents over HTTPS and MQTT over TLS, protected by authentication and network scoping; no WAF or request-filtering attachment point exists for an eventing/MQTT endpoint.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management operations on the namespace are authorized by Azure RBAC unconditionally, and the data plane honors Entra role assignments (EventGrid Data Sender for publishing, the TopicSpaces publisher/subscriber roles for MQTT) on every namespace -- no spec field has to enable role-based access.
+      notes: Namespace and namespace-topic access keys coexist with RBAC on the HTTP path; MQTT clients never authenticate with keys (certificates or Entra tokens only).
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Any workload holding a managed identity can publish and consume with short-lived Entra tokens on every namespace -- HTTP publishing accepts Entra bearer tokens, and the MQTT broker accepts Entra JWT authentication -- so the keyless client path is always on.
+      notes: The spec's own identity block is the NAMESPACE's outbound identity (identity-based delivery from namespace-topic subscriptions, MQTT routing into a protected custom topic), not the client path.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Azure's namespace API carries a disableLocalAuth switch that retires access-key publishing, but the provider does not expose it at v5, so this spec has no field to configure -- key-based HTTP publishing remains available alongside Entra tokens. The MQTT broker never accepts keys regardless (client certificates, Entra JWTs, or custom JWTs only).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the namespace to the Azure Activity Log unconditionally -- who changed capacity, who rewrote the inbound rules, who deleted. Data-plane and MQTT diagnostic categories flow to Azure Monitor through the namespace's diagnostic-settings surface.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The namespaces resource type carries its own Azure Monitor metric definitions -- request counts, MQTT connection and throughput metrics publish for every namespace without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The namespace is a broker with bounded windows, not a backed-up store -- namespace topics retain events for delivery up to 7 days and MQTT sessions survive disconnects for at most 8 hours (maximum_session_expiry_in_hours), after which data ages out by design. Nothing is restorable from backup; durability belongs to the systems events are delivered into.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain. Event retention is a per-topic delivery window on AzureEventgridNamespaceTopic and session expiry is an MQTT dial in this spec -- streaming windows, not backup policies.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: In regions with availability zones, Event Grid resources are zone-redundant automatically -- event data is replicated across three zones with automatic failover, at no extra cost, and no spec field controls it because Microsoft offers no dial.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Event Grid API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); deleting the namespace deletes every namespace topic and the MQTT broker state inside it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The namespace is fully managed PaaS -- Microsoft patches and upgrades the eventing and MQTT infrastructure behind it; the spec exposes no version or maintenance surface because none exists.

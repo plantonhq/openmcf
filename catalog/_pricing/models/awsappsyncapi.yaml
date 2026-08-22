@@ -1,0 +1,38 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: an AppSync API's existence
+# is free on both arms, every meter (GraphQL operations, real-time updates,
+# Events operations, connection-minutes) bills only as traffic happens, and
+# neither preset pins the provisioned cache -- the one block that would
+# commit hourly spend. Stated in exclusions, never padded into fabricated
+# dollars. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsappsyncapi
+spec:
+  presets:
+    - preset: 01-graphql-dynamodb-api
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - this preset prices the GRAPHQL arm -- queries and mutations bill $4.00 per million operations from the first request once the 12-month free-tier TRIAL (250,000 operations per month) expires or is exhausted; volume is workload-driven and invisible to the manifest
+        - the schema declares queries and mutations only (no subscriptions), so the real-time update and connection-minute meters stay dormant unless the schema grows a subscription type
+        - no cache is pinned -- the preset's prose merely suggests a SMALL cache and itself warns it bills per hour ($0.044/hour on existence); adding graphql.cache would flip this manifest to committed hourly spend
+        - data transfer out bills at EC2 data transfer rates on top of the operations meter
+        - the DynamoDB backend bills on the referenced AwsDynamodb component, and the data source's IAM role is free on the referenced AwsIamRole
+      notes: Zero committed cost -- commitment-absence, not a free service. The API, its resolvers, and its data source bill nothing at rest; the operations meter starts with the first authenticated query.
+    - preset: 02-events-realtime-channels
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - this preset prices the EVENTS arm -- every operation bills $1.00 per million, and AWS counts inbound publishes, outbound broadcasts, handler invocations, client connections, subscription requests, and WebSocket pings as operations, metered per 5 KB of payload
+        - connected clients additionally bill $0.08 per million connection-minutes for as long as browsers stay on the WebSocket
+        - "the chat namespace's inline code handler adds one operation per published event it filters -- a handler on a busy channel doubles that channel's publish-side metering, per AWS's own pricing example"
+        - the 12-month free-tier TRIAL covers 250,000 real-time updates and 600,000 connection-minutes per month; after expiry every operation bills from the first connect
+        - the API key authenticates browsers but is itself free; data transfer out bills at EC2 data transfer rates
+      notes: Zero committed cost -- commitment-absence, not a free service. An Events API with no connected clients bills nothing; the meter starts with the first WebSocket connect, and cost scales with fan-out (every broadcast to every subscriber is an operation).

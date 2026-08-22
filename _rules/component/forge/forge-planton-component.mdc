@@ -1063,6 +1063,38 @@ The class carries THREE corollaries, all verified live:
    as a REQUIRED posture rather than offering a one-shot
    self-signed arm.
 
+**A FIRST-PARTY chart's staged CRD comes from the PUBLISHED package at
+the pin, never from the source tree.** When the catalog models software
+this organization itself ships, the working tree's CRD routinely runs
+AHEAD of the last published chart (unreleased schema changes committed
+between cuts). A CRD staged from the tree then advertises fields the
+pinned chart's operator does not implement — the API server ACCEPTS what
+the controller silently ignores, the worst failure shape, behind every
+green offline gate. `helm pull <oci-ref> --version <pin> --untar` and
+stage from that package; re-stage from the NEW published package when
+the pin bumps. The same discipline decides which schema era the typed
+spec may claim LIVE proof for: diff the published CRD's field set
+against the spec, and keep any spec field the published schema would
+prune OUT of the live scenarios (offline hack manifests carry it) until
+a published line admits it.
+
+**An operator's DESTROY contract is read from its controller source,
+never assumed from a sibling kind's posture.** Operators split into two
+teardown classes: finalizer-processed (the controller holds the CR's
+deletion open and unwinds components itself — deletion HANGS without a
+running operator) and owner-reference garbage collection (children carry
+ownerReferences; Kubernetes GC completes teardown with or without the
+operator). The classes invert the destroy-ordering story, the delete
+timeout's meaning, the absence verifier's design (one-shot vs polled
+drain), and whether cluster-scoped satellites strand (a namespaced owner
+NEVER garbage-collects a cluster-scoped dependent — those need the
+operator's own janitor or an honest residue note). Grep the controller
+for `Finalizer`/`DeletionTimestamp` before writing any destroy prose,
+verifier, or ordering guidance; a sibling kind's posture is evidence
+about that sibling only (caught in review: destroy guidance authored on
+a finalizer-based sibling's contract against a GC-based operator — every
+claim inverted).
+
 **Two chart-audit probes that only fail LIVE — run them at the pin,
 before any design lands.** (1) HEAD every DEFAULT image reference's
 registry manifest: chart defaults can point at registries that no longer

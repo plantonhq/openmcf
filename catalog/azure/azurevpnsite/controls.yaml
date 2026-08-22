@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevpnsite
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPN site is branch description held by Azure's network control plane; it stores no customer data at rest (link addresses, ASNs, and address CIDRs are network metadata).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The site carries no traffic -- it DESCRIBES tunnel endpoints; the IPsec encryption of the tunnels themselves is negotiated by the hub's VPN gateway and the connection that references this site's links, separate kinds.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The site has no reachable surface -- the public IPs and FQDNs in its links belong to YOUR branch devices; recording them here exposes nothing.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict; what Azure routes toward the branch is exactly the declared address_cidrs (or BGP-learned routes), a routing contract rather than an ingress filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the site exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The site runs no workloads and holds no credentials of its own (tunnel pre-shared keys live on the connection, a separate kind).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Site creation, link changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; tunnel and connection logs are the VPN gateway's diagnostic posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An address-book entry emits no metrics; tunnel health and throughput ride the gateway and connection.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative description -- nothing to back up; the manifest recreates the site (connections pin links by ARM ID, so recreating a CONNECTED site means re-pointing the connection, worth sequencing deliberately).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: links
+      evidence:
+        type: spec_default
+        reference: Branch-side path redundancy is declared here -- a site with two links (two ISPs, each its own public endpoint and optional BGP speaker) is what enables a two-tunnel active-active connection -- the connection's vpn_links each pin to one of this site's links by ARM ID, so the redundant paths exist only if the site describes them.
+      notes: This is redundancy of the BRANCH's connectivity; the Azure-side gateway instances and hub carry their own availability posture as separate kinds. A single-link site is a single tunnel path -- honest and common for small branches.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a VPN site (Azure resource locks are subscription-side governance outside the manifest); Azure requires the connections pointing at a site to be gone before it deletes, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Virtual WAN control plane that stores the site and the gateways that consume it are Microsoft-operated infrastructure; no customer-visible patch surface exists on the Azure side (the branch VPN device the site describes is yours to patch).

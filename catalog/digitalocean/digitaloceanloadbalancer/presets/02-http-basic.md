@@ -1,29 +1,18 @@
-# Simple HTTP Load Balancer
+# HTTP Load Balancer (explicit Droplets)
 
-This preset creates a basic HTTP load balancer that forwards port 80 traffic to backend Droplets on port 8080. Uses explicit droplet IDs for targeting. Health checks ensure only healthy backends receive traffic. No SSL—suitable for development, staging, or internal services.
+This preset creates a regional HTTP load balancer forwarding port 80 to port 8080 on two named Droplets. No TLS. Suitable for development, staging, or an internal service sitting behind a CDN.
 
 ## When to Use
 
-- Development or staging environments where HTTPS is not required
-- Internal services behind a private load balancer
-- Explicit control over which Droplets are in the pool (vs tag-based)
-- Simple HTTP applications
+- HTTP-only environments
+- Explicit Droplet membership (as opposed to tag-based)
+- A first balancer while a certificate is still being issued
 
 ## Key Configuration Choices
 
-- **HTTP only** (`entryPort: 80`, `entryProtocol: http`) -- no TLS; use behind a CDN or reverse proxy for production HTTPS.
-- **Explicit droplet IDs** (`dropletIds`) -- list Droplet IDs or references; mutually exclusive with `dropletTag`. Use references to `DigitalOceanDroplet` for IaC.
-- **Port 8080** (`targetPort: 8080`) -- common app port; change to match your application.
-- **Health check** (`path: /health`) -- backends must respond 2xx; ensure your app exposes this endpoint.
-- **VPC required** (`vpc`) -- load balancer must be in the same VPC as Droplets.
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<vpc-id>` | UUID of the target VPC | DigitalOcean VPC console or `DigitalOceanVpc` status outputs |
-| `<droplet-id-1>`, `<droplet-id-2>` | Droplet IDs to attach | DigitalOcean console or `DigitalOceanDroplet` status outputs |
-| `nyc3` | Target DigitalOcean region slug | Must match the VPC's region |
+- **HTTP to HTTP** (`entryPort: 80`, `targetPort: 8080`) -- no certificate required.
+- **Explicit Droplets** -- `dropletIds` references two `DigitalOceanDroplet` resources. Mutually exclusive with `dropletTag`.
+- **VPC** -- a reference to a `DigitalOceanVpc`. The Droplets should live in the same VPC.
 
 ## Related Presets
 

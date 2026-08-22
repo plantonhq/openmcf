@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpiamoauthclient
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The client stores no customer data -- the registration and its server-generated secrets are control-plane metadata Google holds on its own encrypted IAM infrastructure; the manifest never carries a secret value.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The OAuth flows this registration enables -- authorization, token exchange, refresh -- run exclusively against Google's TLS-only OAuth and IAM endpoints; the client has no plaintext listener to configure.
+      notes: Whether the application's own redirect endpoint (allowed_redirect_uris) serves HTTPS is that application's posture; the Google side of every flow is TLS end to end.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The registration exposes no endpoint of its own. Google's OAuth endpoints are inherently public; what gates misuse is possession of the server-generated client secret plus the allowed_redirect_uris allowlist, assessed as OAuth-layer controls rather than network exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists on an OAuth client registration. The analogous restriction here is OAuth-layer, not network-layer -- allowed_redirect_uris pins where authorization results may land, and allowed_scopes caps what a token may request.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The registration serves no requests; Google's OAuth endpoints are Google's own edge, with no WAF surface exposed on this resource.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every mutation of the client and its credentials authorizes against the project-scoped iam.oauthClients and iam.oauthClientCredentials families -- the contents of roles/iam.oauthClientAdmin; the resource has no separate data plane to govern.
+      notes: Reading a credential's secret value requires the same management-plane access -- the secret surfaces only through this resource's client_secret output, so IAM on the deploying project is the whole access story.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The client is not a workload identity -- it is the registration through which workforce-federated USERS obtain short-lived Google Cloud access tokens, which is workforce federation's whole point (no synced accounts, no long-lived user keys). The confidential client itself authenticates with a server-generated secret; its rotation story is the credentials list (add a second credential, cut consumers over, remove the first).
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      field_path: allowed_grant_types
+      evidence:
+        type: spec_validation
+        reference: The allowed_grant_types validation admits exactly AUTHORIZATION_CODE_GRANT and REFRESH_TOKEN_GRANT -- Google's IAM API defines exactly these two, so legacy OAuth grants (implicit, resource-owner password) are unrepresentable in the spec and unsupported by the service.
+      notes: The disabled flag is the reversible kill switch -- flipping it stops new authorizations without deleting the registration.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Client and credential create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the registration. Sign-in and token-exchange visibility belongs to the workforce pool's audit logging (including opt-in detailed audit logging on the pool provider), a different resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The registration emits no operational metrics and the spec has no logging or monitoring surface; OAuth flow telemetry surfaces through the workforce pool's logging, not through this resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The registration is declarative configuration fully re-creatable from source control. Secret values are not restorable by design -- a lost secret is replaced by creating a new credential entry, never recovered.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the ~30-day soft-delete window on deleted clients is fixed by GCP, not configurable here.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM's OAuth surface is Google's globally replicated control plane. The location field ("global" is the documented home for workforce OAuth clients) is a namespace, not a failure-domain choice.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the client and every credential are deleted -- one switch governs both, since credentials have no life apart from the client); PREVENT makes destroy fail outright; ABANDON unmanages everything while it keeps working in GCP.
+      notes: Deleting the client fails closed for its consumers -- applications can no longer complete OAuth flows -- and the client ID stays reserved for the ~30-day soft-delete window, so an accidental delete cannot be papered over by instant re-creation. PREVENT is the guard for a client live apps depend on; disabled=true is the softer, reversible stop.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the IAM control plane serving the OAuth surface is Google's own infrastructure with no version or channel exposed on this resource.

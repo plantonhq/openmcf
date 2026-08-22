@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakermodelregistry
+spec:
+  billing_model: free
+  free_tier: "A model package group -- the SageMaker Model Registry's unit of organization -- carries no meter anywhere on SageMaker AI's published price sheet. The pricing page's dimensions are instance usage, storage, data processing, model deployment, and MLOps features (Pipelines and Model Monitor are the ones it names); registering, versioning, approving, and sharing model packages is catalog bookkeeping AWS never bills. A group holding a thousand registered versions costs the same as an empty one: nothing."
+  notes: "No field of this spec buys anything: the description and the cross-account resource_policy are control-plane configuration on a named shell. Even the model package VERSIONS that training pipelines register into the group are free registry entries -- what costs money is what they point at and what they become: the model artifacts bill as S3 storage on their owning buckets, the training and pipeline runs that produce versions bill their own compute (AwsSagemakerPipeline routes those meters), and a version deployed to serving bills through AwsSagemakerModel definitions behind an AwsSagemakerEndpoint. Nothing about the registry itself ever appears on an invoice."

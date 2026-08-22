@@ -1,0 +1,60 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsebssnapshot
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Elastic Block Store
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      description: Every snapshot bills storage per GB-month of the data it actually holds, from creation until deletion ($0.05 per GB-month standard tier in us-east-1, from the EBS pricing page). The committed DOLLAR amount is decided by the source, not this manifest -- the first snapshot of a volume stores that volume's written blocks, incrementals store only changed blocks, a copy stores the source snapshot's data, an import stores the disk image.
+  cost_drivers:
+    - field_path: volume_id
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: The volume arm's meter follows the SOURCE volume's written blocks at snapshot time -- likely far less than the volume's provisioned size (EBS never stores empty blocks), and unknowable from this manifest.
+    - field_path: copy_from
+      sku_meter: inter-region data transfer
+      pricing_unit: GB
+      impact: A cross-region copy bills one-time data transfer for every GB replicated, then the copy bills standard snapshot storage in the destination region for its full stored size -- both quantities the source snapshot's, invisible here.
+    - field_path: copy_from.completion_duration_minutes
+      sku_meter: time-based snapshot copy
+      pricing_unit: GB
+      impact: Time-boxing a same-region copy switches it to Time-based Copy billing -- a one-time per-GB fee whose rate rises as the promised completion window shrinks (the EBS pricing page's examples run $0.010 per GB at 8 hours up to $0.016 per GB at 1 hour).
+    - field_path: import_from
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: The import arm's meter follows the disk image's data volume -- staged in S3 (billing that bucket separately) and unknowable from this manifest.
+    - field_path: storage_tier
+      sku_meter: archive snapshot storage
+      pricing_unit: GB-months
+      impact: "archive drops the rate ~75% ($0.0125 vs $0.05 per GB-month in us-east-1) but changes the shape of the bill: an archived snapshot is a FULL copy (never incremental), carries a 90-day minimum (early deletion bills the remaining days), and must be restored -- $0.03 per GB retrieval -- before any volume can use it."
+    - field_path: temporary_restore_days
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: A temporary restore bills the retrieval fee plus standard-tier storage for the restored copy for the chosen days -- while the archived copy keeps billing archive storage the whole time.
+    - field_path: permanent_restore
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: A permanent restore bills the retrieval fee once and moves the snapshot back to the standard rate -- the archive copy is not retained.
+    - field_path: fast_restore_availability_zones
+      sku_meter: fast snapshot restore
+      pricing_unit: DSU-hours
+      impact: The priciest dial on this kind -- fast snapshot restore bills $0.75 per Data-Services-Unit-hour (us-east-1) PER LISTED ZONE, around the clock while enabled, about $547.50 a month for every zone in this list. Billed per minute with a one-hour minimum.
+    - field_path: region
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: Snapshot storage, archive, retrieval, and FSR rates are all published per region; for the copy arm this field is the DESTINATION region the new snapshot bills in.
+  free_tier: "No permanent free allowance exists for snapshots. The AWS Free Tier's 1 GB of snapshot storage is an account-signup program (free plan or credits, time-boxed), not part of the permanent price structure."
+  estimate_exclusions:
+    - the committed GB-month quantity is the source's data volume (volume written blocks, source snapshot size, or disk image size) -- real committed spend whose magnitude no arm of this manifest can state, so the derivation refuses rather than printing a guess
+    - archive early deletion (before 90 days) bills the remaining retention days; archive retrieval bills $0.03 per GB per restore
+    - cross-region copies bill inter-region data transfer per GB; time-boxed copies bill the Time-based Copy per-GB premium
+    - fast snapshot restore bills per DSU-hour per zone from enable to disable, one-hour minimum
+    - a customer-managed KMS key on the copy or import arm bills its monthly fee and per-request charges on the referenced AwsKmsKey component
+    - sharing via share_with_account_ids is itself free -- volumes grantees create from the snapshot bill in THEIR accounts
+  notes: "Incremental economics cut both ways: routine snapshots of a slowly-changing volume are cheap because only changed blocks store, but deleting a mid-chain snapshot only saves the blocks no OTHER snapshot references -- AWS re-parents shared blocks, so the bill often barely moves. Archive semantics differ: every archived snapshot is a full copy at the cheaper rate with a 90-day minimum. This component is always_on -- the meter starts at creation and deleting the snapshot is the only off switch -- but every committed dollar is source-determined, which is why the derivation refuses estimates instead of inventing sizes."

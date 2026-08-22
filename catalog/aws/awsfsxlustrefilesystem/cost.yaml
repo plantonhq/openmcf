@@ -1,0 +1,72 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon FSx
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      description: Provisioned-capacity file systems (SSD and HDD storage classes) bill for every provisioned GiB from creation, full or empty; the per-GB rate follows the deployment type and throughput tier.
+    - service_name: Amazon FSx
+      sku_meter: Intelligent-Tiering provisioned throughput
+      pricing_unit: MiBps-months
+      description: INTELLIGENT_TIERING file systems carry no provisioned storage; their committed baseline is the absolute throughput capacity, billed per MBps-month from creation regardless of traffic.
+  cost_drivers:
+    - field_path: storage_capacity_gib
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      impact: Every provisioned GiB bills monthly whether data fills it or not. Capacity only grows in place, never shrinks -- and growth on SCRATCH_1 replaces the file system.
+    - field_path: deployment_type
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      impact: Scratch types share one flat rate (SCRATCH_2 gives strictly better burst throughput for the same price as SCRATCH_1); persistent types price by throughput tier and add backup capability. ForceNew.
+    - field_path: storage_type
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      impact: SSD prices per provisioned GiB by throughput tier; HDD is the cheapest per TiB; INTELLIGENT_TIERING removes the provisioned-storage bill entirely and replaces it with usage-billed tier storage plus a committed throughput and read-cache bill. ForceNew.
+    - field_path: per_unit_storage_throughput
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      impact: The throughput tier multiplies the per-GB storage rate -- on PERSISTENT_2 SSD the 1000 MB/s/TiB tier costs over four times the 125 tier for the same capacity.
+    - field_path: drive_cache_type
+      sku_meter: provisioned Lustre storage
+      pricing_unit: GB-months
+      impact: READ provisions an SSD cache sized to 20% of HDD capacity, folded into a higher per-GB rate (0.041 vs 0.025 at the 12 MB/s/TiB tier in us-east-1).
+    - field_path: throughput_capacity
+      sku_meter: Intelligent-Tiering provisioned throughput
+      pricing_unit: MiBps-months
+      impact: INTELLIGENT_TIERING's dominant committed charge -- every provisioned MB/s bills monthly, and the minimum step is 4000 MB/s.
+    - field_path: data_read_cache_configuration
+      sku_meter: Intelligent-Tiering SSD read cache
+      pricing_unit: GB-months
+      impact: The provisioned SSD read cache bills per GB-month. USER_PROVISIONED pins the size in the manifest; PROPORTIONAL_TO_THROUGHPUT_CAPACITY lets AWS size it from throughput, so the charge exists but its magnitude is not stated by the spec; NO_CACHE removes it.
+    - field_path: metadata_configuration
+      sku_meter: provisioned Metadata IOPS
+      pricing_unit: IOPS-months
+      impact: USER_PROVISIONED metadata IOPS bill monthly -- on SSD/HDD storage only the IOPS above the allowance included with storage capacity, on INTELLIGENT_TIERING the full provisioned amount.
+    - field_path: automatic_backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Any non-zero retention starts accruing incremental backup storage per GB-month; longer retention on a churning file system accumulates more billed backup data.
+    - field_path: skip_final_backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Setting it to false takes a final backup on deletion that outlives the file system and keeps billing per GB-month until deleted separately.
+    - field_path: log_configuration
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Data-repository event logging bills ingestion and storage to the destination CloudWatch log group, not to the file system.
+  estimate_exclusions:
+    - Intelligent-Tiering tier storage (Frequent, Infrequent, and Archive Instant Access) bills per GB-month of data actually stored, plus a monitoring-and-automation meter on all tiered bytes
+    - Intelligent-Tiering read and write requests bill per operation
+    - the AWS-sized read cache under PROPORTIONAL_TO_THROUGHPUT_CAPACITY bills per GB-month at a size the manifest does not state
+    - metadata IOPS provisioned above the allowance included with SSD/HDD storage capacity bill per IOPS-month; the included allowance scales with capacity
+    - backup storage bills per GB-month of incremental backup data actually retained
+    - data transfer across Availability Zones or out of the region is traffic-dependent
+    - CloudWatch Logs ingestion for data-repository events bills to the log group
+  notes: Provisioned storage (or, for INTELLIGENT_TIERING, provisioned throughput and read cache) bills every hour from creation regardless of use -- the meters follow what is provisioned, not what is read or written. LZ4 compression shrinks consumed bytes but never the provisioned-capacity bill; on INTELLIGENT_TIERING it directly reduces the usage-billed tier storage. EFA/GPUDirect support carries no meter of its own.

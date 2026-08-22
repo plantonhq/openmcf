@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureservicebussubscription
+spec:
+  billing_model: free
+  free_tier: The subscription and its filter rules never bill. A subscription is an entity inside a topic inside a Service Bus NAMESPACE, and Azure meters everything at the namespace level; creating more subscriptions or rules adds nothing to the bill, and Service Bus does not charge for the storage undelivered messages occupy.
+  notes: "The real spend lives on the AzureServiceBusNamespace at the root of topic_id, a separate catalog kind: per-million operations plus the hourly base charge and brokered connections on STANDARD, or the flat daily messaging-unit rate on PREMIUM (topics do not exist on BASIC). Subscriptions do shape the operation count on STANDARD -- one message published to the topic bills the send plus one delivery operation per matching subscription, so wide fan-out multiplies the namespace's operation meter without anything billing here; filter rules, sessions, and dead-lettering dials are free configuration."

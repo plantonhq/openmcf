@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerappjob
+spec:
+  azure:
+    groups:
+      - purpose: ManageContainerAppJob
+        actions:
+          - Microsoft.App/jobs/read
+          - Microsoft.App/jobs/write
+          - Microsoft.App/jobs/delete
+        provenance: derived
+        notes: "Covers azurerm_container_app_job / containerapp.NewJob -- create with the full template and trigger payload, refresh, in-place updates (template, triggers, secrets, registries, identity, tags), and destroy. The Microsoft.App namespace is absent from the committed action inventory snapshot; these operation names are verified against Microsoft's provider-operations documentation (learn.microsoft.com/azure/role-based-access-control/permissions/compute, microsoft.app section, retrieved 2026-08-18)."
+      - purpose: ReadJobSecrets
+        actions:
+          - Microsoft.App/jobs/listsecrets/action
+        provenance: derived
+        notes: "The jobs GET omits secret values, so azurerm's Read and Update paths call ListSecrets to reconcile the secret block (container_app_job_resource.go calls client.ListSecrets in both); pulumi-azure is bridged from azurerm and shares the behavior. Needed on every refresh, not just when secrets change."
+      - purpose: JoinManagedEnvironment
+        actions:
+          - Microsoft.App/managedEnvironments/read
+          - Microsoft.App/managedEnvironments/join/action
+        provenance: derived
+        notes: "The modules never call the environment API -- the resolved container_app_environment_id rides the job payload -- but ARM authorizes placing the job into the REFERENCED environment with join/action on the environment's scope at create time (service-side; the built-in Container Apps Jobs Contributor role carries exactly this grant for the same reason)."
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the job payload, service-side; the modules only pass the resolved identity IDs. Identity strings referenced by secrets, registries, and scale rules must already be attached in the identity block, so they add no separate grant."

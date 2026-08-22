@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsssmdocument
+spec:
+  aws:
+    statements:
+      - sid: ManageDocument
+        actions:
+          - ssm:CreateDocument
+          - ssm:DescribeDocument
+          - ssm:GetDocument
+          - ssm:UpdateDocument
+          - ssm:UpdateDocumentDefaultVersion
+          - ssm:DeleteDocument
+        resources:
+          - arn:aws:ssm:*:*:document/*
+        provenance: derived
+        notes: Covers aws_ssm_document / ssm.Document. Create carries the content, type, format, target type, version label, and attachment sources; a content change flows through UpdateDocument and the provider then promotes the new version with UpdateDocumentDefaultVersion. DescribeDocument and GetDocument together serve every plan/refresh (Describe for metadata, Get for the body). All six actions scope to the document ARN per the service reference.
+      - sid: ShareDocument
+        actions:
+          - ssm:ModifyDocumentPermission
+          - ssm:DescribeDocumentPermission
+        resources:
+          - arn:aws:ssm:*:*:document/*
+        provenance: derived
+        notes: "Covers the share_with_account_ids arm: ModifyDocumentPermission adds and removes account shares (AWS applies them in batches of 20; the \"All\" entry publishes the document publicly), and DescribeDocumentPermission reads the share list back on refresh. Both scope to the document ARN. AWS refuses DeleteDocument while shares remain, so destroy of a shared document unshares first through this same permission."
+      - sid: TagDocument
+        actions:
+          - ssm:AddTagsToResource
+          - ssm:RemoveTagsFromResource
+          - ssm:ListTagsForResource
+        resources:
+          - arn:aws:ssm:*:*:document/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to many SSM resource types; only the document ARN format is needed here.

@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredataprotectionbackupvault
+spec:
+  azure:
+    groups:
+      - purpose: ManageVault
+        actions:
+          - Microsoft.DataProtection/backupVaults/read
+          - Microsoft.DataProtection/backupVaults/write
+          - Microsoft.DataProtection/backupVaults/delete
+          - Microsoft.DataProtection/backupVaults/operationResults/read
+        provenance: derived
+        notes: Covers both module resources -- azurerm_data_protection_backup_vault (create, read/refresh, in-place soft-delete/immutability/CRR/tag updates, destroy) and azurerm_data_protection_backup_vault_customer_managed_key, which rewrites the SAME vault object's security settings (backupVaults/write; its delete is a documented provider no-op). operationResults/read covers ARM's asynchronous-operation polling of the vault's long-running create and update. The delete workaround -- polling past Azure's premature delete response until the vault name is actually free -- does NOT go through operation results; the provider's custom poller repeatedly GETs the vault itself until it returns not-found, which backupVaults/read already covers. Backup Contributor on the resource group covers the group. CMK additionally needs wrap/unwrap on the Key Vault key for the VAULT's system-assigned identity -- a data-plane grant to the vault, not to the deploying principal.

@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgePipe
+metadata:
+  name: orders-pipe
+spec:
+  region: us-east-1
+  description: Move order events from intake to processing
+  source:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: orders-intake
+      fieldPath: status.outputs.queue_arn
+  sourceParameters:
+    filterCriteria:
+      filters:
+        - pattern: '{"body":{"type":["order"]}}'
+    sqs:
+      batchSize: 10
+      maximumBatchingWindowInSeconds: 5
+  target:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: orders-processing
+      fieldPath: status.outputs.queue_arn
+  targetParameters:
+    inputTemplate: '{"orderId": <$.body.orderId>, "receivedAt": <aws.pipes.event.ingestion-time>}'
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: orders-pipe-exec
+      fieldPath: status.outputs.role_arn
+  desiredState: RUNNING

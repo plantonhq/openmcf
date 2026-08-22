@@ -1,39 +1,56 @@
-# Overview
+# DigitalOcean Function
 
-The **Azure Azure AKS Cluster API Resource** provides a consistent and standardized interface for deploying and managing Azure Kubernetes Service (AKS) clusters within our infrastructure. This resource simplifies the orchestration of Kubernetes clusters on Azure, allowing users to run containerized applications at scale without the complexity of manual setup and configuration.
+## Overview
 
-## Purpose
+**DigitalOceanFunction** deploys serverless functions as an App Platform application with a single functions component. DigitalOcean's Terraform provider has no standalone Functions resource; both Pulumi and Terraform create `digitalocean_app`.
 
-We developed this API resource to streamline the deployment and management of AKS clusters on Azure. By offering a unified interface, it reduces the complexity involved in setting up Kubernetes environments on Azure, enabling users to:
+Runtime, memory, timeout, entrypoint, and cron schedules are **not** on this spec. They live in the repo's `project.yml` (inside `sourceDirectory`). App Platform reads that file at deploy time. Putting those knobs on the spec would silently do nothing.
 
-- **Easily Deploy Azure AKS Clusters**: Quickly provision AKS clusters with minimal configuration.
-- **Customize Cluster Settings**: Configure cluster parameters such as credentials and environment settings.
-- **Integrate Seamlessly**: Utilize existing Azure credentials and integrate with other Azure services.
-- **Focus on Applications**: Allow developers to concentrate on deploying applications rather than managing infrastructure.
+## When to use this kind vs DigitalOceanApp
 
-## Key Features
+Use **DigitalOceanFunction** when the functions component is the whole app. Use **DigitalOceanApp** `spec.functions` when functions should share an app with services, workers, or static sites.
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying open-source software, microservices, and cloud infrastructure.
-- **Simplified Deployment**: Automates the provisioning of AKS clusters, including resource groups and network configurations.
-- **Flexible Configuration**: Supports specifying Azure credentials and integrating with existing environments.
-- **Scalability**: Leverages Azure AKS to manage Kubernetes clusters that can scale to meet application demands.
-- **Integration**: Works seamlessly with other Azure services and infrastructure components.
+## Sources
 
-## Use Cases
+Set exactly one:
 
-- **Container Orchestration**: Deploy and manage containerized applications using Kubernetes on Azure.
-- **Microservices Architecture**: Run microservices workloads with the flexibility and scalability of Kubernetes.
-- **Hybrid Deployments**: Integrate on-premises Kubernetes deployments with cloud-based AKS clusters.
-- **Development and Testing**: Provide scalable and consistent environments for development and testing purposes.
+- **git** — public HTTPS clone URL. Use this when the DigitalOcean account has no linked GitHub/GitLab/Bitbucket connection.
+- **github / gitlab / bitbucket** — `owner/repo` plus branch. `deployOnPush` needs the matching VCS connection.
 
-## Future Enhancements
+Functions are git-only. There is no container-image source.
 
-As this resource is currently in a partial implementation phase, future updates will include:
+`sourceDirectory` is required. It is the directory that contains `project.yml` and the packages tree (for the official hello-world sample, that is `packages`).
 
-- **Advanced Configuration Options**: Support for node pools, networking policies, and access controls.
-- **Enhanced Security Features**: Integration with Azure Active Directory and security policies for cluster management.
-- **Monitoring and Logging**: Improved support for cluster monitoring and logging using Azure Monitor and other tools.
-- **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+## Example
+
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFunction
+metadata:
+  name: hello
+spec:
+  functionName: hello
+  region: nyc3
+  git:
+    repoCloneUrl: https://github.com/digitalocean/sample-functions-nodejs-helloworld.git
+    branch: master
+  sourceDirectory: packages
+```
+
+## Stack outputs
+
+| Output | Description |
+|--------|-------------|
+| `function_id` | App Platform app UUID that hosts the functions component. Used to import `digitalocean_app`. |
+| `https_endpoint` | Public HTTPS URL of the functions HTTP endpoint. |
+| `default_hostname` | Default `ondigitalocean.app` hostname. |
+
+## Infrastructure as Code
+
+- [Pulumi module](./iac/pulumi/README.md)
+- [Terraform module](./iac/tf/README.md)
+
+How `project.yml` works, and why runtime is not on the spec, is in [GUIDE.md](./GUIDE.md). Field-by-field schema is in [v1alpha1/reference.md](./v1alpha1/reference.md).
 
 ---
 

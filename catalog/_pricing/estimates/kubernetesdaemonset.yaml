@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesdaemonset
+spec:
+  presets:
+    - preset: 01-log-collector
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 128Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: "per node: 50m CPU / 128Mi memory requests, 500m CPU / 512Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows; the preset's control-plane toleration widens the set onto control-plane nodes too
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-node-monitor
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 64Mi
+        cpu_limits: 250m
+        memory_limits: 256Mi
+        basis: "per node: 50m CPU / 64Mi memory requests, 250m CPU / 256Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows; the preset's control-plane toleration widens the set onto control-plane nodes too
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 03-hardened-agent
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 64Mi
+        cpu_limits: 200m
+        memory_limits: 256Mi
+        basis: "per node: 50m CPU / 64Mi memory requests, 200m CPU / 256Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows
+        - the dollar value of this capacity is the target cluster's node economics

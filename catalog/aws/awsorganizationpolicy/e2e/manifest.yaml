@@ -1,0 +1,29 @@
+# Canonical AwsOrganizationPolicy example (hack/dev manifest and
+# refgen Example source): a deny-guardrail SCP attached to the
+# organization root and one OU. Literal target IDs stand in for
+# composed references so the offline `tofu plan` renders both
+# attachments.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationPolicy
+metadata:
+  name: deny-leave-organization
+  id: deny-leave-organization
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  policyName: Deny Leaving The Organization
+  type: SERVICE_CONTROL_POLICY
+  description: Blocks member accounts from leaving the organization on their own.
+  content:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DenyLeave
+        Effect: Deny
+        Action: organizations:LeaveOrganization
+        Resource: "*"
+  attachments:
+    - targetId:
+        value: r-e2e1
+    - targetId:
+        value: ou-e2e1-workload1

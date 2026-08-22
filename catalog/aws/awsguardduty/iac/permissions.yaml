@@ -1,0 +1,115 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsguardduty
+spec:
+  aws:
+    statements:
+      - sid: CreateDetector
+        actions:
+          - guardduty:CreateDetector
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_guardduty_detector / guardduty.Detector creation. The service reference lists no resource types for CreateDetector -- the detector ID does not exist until the call returns -- so the wildcard is the narrowest possible scope. Every other detector operation below is scoped.
+      - sid: ManageDetector
+        actions:
+          - guardduty:GetDetector
+          - guardduty:UpdateDetector
+          - guardduty:DeleteDetector
+        resources:
+          - arn:aws:guardduty:*:*:detector/*
+        provenance: derived
+        notes: Detector lifecycle AND the protection-plan surface -- aws_guardduty_detector_feature / guardduty.DetectorFeature has no API of its own; Create and Update of a feature are the same UpdateDetector patch, and GetDetector reads features back on every refresh (a feature's delete is a server-side no-op, so destroy needs nothing extra). All three actions authorize on the detector ARN per the service reference.
+      - sid: ManageFilters
+        actions:
+          - guardduty:CreateFilter
+          - guardduty:GetFilter
+          - guardduty:UpdateFilter
+          - guardduty:DeleteFilter
+        resources:
+          - arn:aws:guardduty:*:*:detector/*/filter/*
+        provenance: derived
+        notes: Covers aws_guardduty_filter / guardduty.Filter. Unlike the other GuardDuty creates, CreateFilter IS resource-scopable -- the caller names the filter, so the ARN is known at create time and the service reference authorizes all four actions on the filter ARN format.
+      - sid: CreateListsAndDestination
+        actions:
+          - guardduty:CreateIPSet
+          - guardduty:CreateThreatIntelSet
+          - guardduty:CreatePublishingDestination
+        resources:
+          - "*"
+        provenance: derived
+        notes: The creates for trusted IP lists, threat intel lists, and the S3 findings destination carry no resource types in the service reference (their IDs are minted by the call, unlike a filter's caller-chosen name), so the wildcard is the narrowest possible scope. Their read/update/delete siblings ARE scopable -- granted narrowly below.
+      - sid: ManageLists
+        actions:
+          - guardduty:GetIPSet
+          - guardduty:UpdateIPSet
+          - guardduty:DeleteIPSet
+          - guardduty:GetThreatIntelSet
+          - guardduty:UpdateThreatIntelSet
+          - guardduty:DeleteThreatIntelSet
+        resources:
+          - arn:aws:guardduty:*:*:detector/*/ipset/*
+          - arn:aws:guardduty:*:*:detector/*/threatintelset/*
+        provenance: derived
+        notes: Covers aws_guardduty_ipset / aws_guardduty_threatintelset reads on every refresh plus in-place updates (name, location, format, activate) and destroy. Each action authorizes on its own list-type ARN format under the detector. GuardDuty itself must ALSO be able to read the list files at their S3 locations -- that read is the service's, granted bucket-policy-side on the referenced bucket, not a runner permission.
+      - sid: ManagePublishingDestination
+        actions:
+          - guardduty:DescribePublishingDestination
+          - guardduty:UpdatePublishingDestination
+          - guardduty:DeletePublishingDestination
+        resources:
+          - arn:aws:guardduty:*:*:detector/*/publishingdestination/*
+        provenance: derived
+        notes: Covers aws_guardduty_publishing_destination / guardduty.PublishingDestination after create. AWS validates at create time that the destination bucket's policy and the KMS key policy already grant guardduty.amazonaws.com -- those grants are the referenced AwsS3Bucket / AwsKmsKey components' contracts, so the runner needs no s3 or kms grants here.
+      - sid: TagResources
+        actions:
+          - guardduty:TagResource
+          - guardduty:UntagResource
+          - guardduty:ListTagsForResource
+        resources:
+          - arn:aws:guardduty:*:*:detector/*
+          - arn:aws:guardduty:*:*:detector/*/filter/*
+          - arn:aws:guardduty:*:*:detector/*/ipset/*
+          - arn:aws:guardduty:*:*:detector/*/threatintelset/*
+        provenance: derived
+        notes: Tag-on-create plus tag reconciliation and the tag read on every refresh for the four taggable resources this component tags -- detector, filters, IP sets, threat intel sets. The publishing destination is deliberately untagged (tag changes force its replacement in the provider), and the feature patches, organization surface, and members accept no tags at all.
+      - sid: ManageOrganizationSurface
+        actions:
+          - guardduty:EnableOrganizationAdminAccount
+          - guardduty:DisableOrganizationAdminAccount
+          - guardduty:ListOrganizationAdminAccounts
+          - guardduty:UpdateOrganizationConfiguration
+          - guardduty:DescribeOrganizationConfiguration
+        resources:
+          - "*"
+        provenance: derived
+        notes: The ADMIN-side organization surface, exercised only when the spec sets organization. Enable/Disable cover the delegation act (aws_guardduty_organization_admin_account, read back via ListOrganizationAdminAccounts); Update/DescribeOrganizationConfiguration carry BOTH the org configuration resource and every org feature resource (features are a parameter of the same API). None of the five actions takes resource-level scoping per the service reference, so the wildcard is the narrowest possible scope. Delegation succeeds only from the organization's MANAGEMENT account with GuardDuty trusted access enabled organization-side -- an account-global prerequisite, not a module call -- and the org configuration's delete is a server-side no-op, so destroy leaves the posture as last applied.
+      - sid: ManageMembers
+        actions:
+          - guardduty:CreateMembers
+          - guardduty:GetMembers
+          - guardduty:InviteMembers
+          - guardduty:DisassociateMembers
+          - guardduty:DeleteMembers
+          - guardduty:UpdateMemberDetectors
+          - guardduty:GetMemberDetectors
+        resources:
+          - "*"
+        provenance: derived
+        notes: The ADMIN-side member surface, exercised only when the spec lists members. Create/Get carry the member records, InviteMembers fires only for invite=true entries (the non-Organizations flow), and destroy disassociates before deleting. UpdateMemberDetectors/GetMemberDetectors carry the per-member feature overrides (aws_guardduty_member_detector_feature). No member action takes resource-level scoping per the service reference, so the wildcard is the narrowest possible scope.
+      - sid: AcceptInvitation
+        actions:
+          - guardduty:ListInvitations
+          - guardduty:AcceptAdministratorInvitation
+          - guardduty:GetAdministratorAccount
+          - guardduty:DisassociateFromAdministratorAccount
+        resources:
+          - "*"
+        provenance: derived
+        notes: The MEMBER-side surface, exercised only when accept_invitation_from_account_id is set -- these grants belong in the MEMBER account's runner, never the administrator's. The provider polls ListInvitations for the pending invite, accepts it with AcceptAdministratorInvitation, reads the relationship back through GetAdministratorAccount on refresh, and disassociates on destroy. These are the current action names (the Master-named twins are the deprecated aliases). None takes resource-level scoping per the service reference, so the wildcard is the narrowest possible scope.

@@ -1,0 +1,3 @@
+name: awsroute53resolverendpoint
+runtime: go
+description: Pulumi module to manage a Route 53 Resolver endpoint with in-line forwarding rules and VPC associations

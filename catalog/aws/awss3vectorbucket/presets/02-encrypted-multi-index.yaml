@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3VectorBucket
+metadata:
+  name: semantic-store
+spec:
+  region: us-east-1
+  encryption:
+    sseType: aws:kms
+    kmsKeyArn:
+      value: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  indexes:
+    - name: docs-titan
+      dimension: 1024
+      distanceMetric: cosine
+      nonFilterableMetadataKeys:
+        - chunk_text
+    - name: code-small
+      dimension: 256
+      distanceMetric: cosine
+      nonFilterableMetadataKeys:
+        - snippet

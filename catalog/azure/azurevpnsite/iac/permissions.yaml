@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevpnsite
+spec:
+  azure:
+    groups:
+      - purpose: ManageVpnSite
+        actions:
+          - Microsoft.Network/vpnsites/read
+          - Microsoft.Network/vpnsites/write
+          - Microsoft.Network/vpnsites/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_site -- create, read/refresh, in-place updates (links, CIDRs, device metadata, O365 policy, tags; name/region/resource_group/virtual_wan_id are ForceNew), and destroy. Held via Network Contributor, Contributor, or Owner on the resource group. The referenced Virtual WAN ID is passed through and validated by ARM server-side. (Azure's operation catalog publishes these names as "Microsoft.Network/vpnsites/*"; ARM operation matching is case-insensitive.)

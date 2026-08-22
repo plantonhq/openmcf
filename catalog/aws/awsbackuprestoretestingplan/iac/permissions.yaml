@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  aws:
+    statements:
+      - sid: ManageRestoreTestingPlan
+        actions:
+          - backup:CreateRestoreTestingPlan
+          - backup:GetRestoreTestingPlan
+          - backup:UpdateRestoreTestingPlan
+          - backup:DeleteRestoreTestingPlan
+        resources:
+          - arn:aws:backup:*:*:restore-testing-plan:*
+        provenance: derived
+        notes: Covers aws_backup_restore_testing_plan / backup.RestoreTestingPlan -- create, refresh reads, in-place schedule and recovery-point-selection updates, and destroy. All four actions authorize on the restoreTestingPlan ARN format (arn:...:restore-testing-plan:${RestoreTestingPlanName}-${RestoreTestingPlanId}) per the service reference.
+      - sid: ManageSelections
+        actions:
+          - backup:CreateRestoreTestingSelection
+          - backup:GetRestoreTestingSelection
+          - backup:UpdateRestoreTestingSelection
+          - backup:DeleteRestoreTestingSelection
+        resources:
+          - arn:aws:backup:*:*:restore-testing-plan:*
+        provenance: derived
+        notes: Covers the folded aws_backup_restore_testing_selection / backup.RestoreTestingSelection resources (one per spec.selections entry). Unlike backup-PLAN selections, restore testing selections have a real update path. All four actions authorize on the PLAN's ARN -- the service reference maps selection operations to the restoreTestingPlan resource, and no selection ARN format exists.
+      - sid: ManageTags
+        actions:
+          - backup:TagResource
+          - backup:UntagResource
+          - backup:ListTags
+        resources:
+          - arn:aws:backup:*:*:restore-testing-plan:*
+        provenance: derived
+        notes: TagResource rides CreateRestoreTestingPlan for the module's identity tags and serves later tag reconciliation; ListTags backs every refresh. All three list the restoreTestingPlan resource type in the service reference, so they stay ARN-scoped.
+      - sid: PassRolesToRestoreTesting
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateRestoreTestingSelection and UpdateRestoreTestingSelection pass each selection's iam_role_arn to restore-testing.backup.amazonaws.com -- the service principal that runs the test restores -- per the service reference's API-to-IAM mapping. Add an iam:PassedToService=restore-testing.backup.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment.

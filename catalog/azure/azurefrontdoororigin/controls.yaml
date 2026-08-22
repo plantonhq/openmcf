@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoororigin
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The origin is edge-routing configuration; it stores no customer data at rest. Data lives on the backend it points at, a separate catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: certificate_name_check_enabled
+      evidence:
+        type: spec_default
+        reference: Default true -- Front Door validates that the origin's TLS certificate matches the host name it connects with; disabling it accepts ANY valid certificate from the origin, opening the origin leg to man-in-the-middle. Azure requires it enabled when private_link is configured.
+      notes: Whether the origin leg uses TLS at all is the route's forwarding_protocol (HTTPS_ONLY keeps it encrypted even for HTTP clients) -- a separate kind. This origin contributes the certificate-identity check on that leg.
+    - control_id: no-public-access
+      status: configurable
+      field_path: private_link
+      evidence:
+        type: spec_default
+        reference: Unset means Front Door reaches the origin over the public internet; configuring private_link connects through a private endpoint on the target resource instead, so the backend can disable public access entirely. PREMIUM profiles only, and the target's owner must approve the pending private-endpoint connection before traffic flows.
+      notes: The 'public access' in question is the BACKEND's -- the origin object itself is never reachable. Pairing private_link with the backend's own public-access-off posture is what closes the internet path.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The origin accepts no inbound traffic of its own -- it describes where Front Door connects OUT to. Locking the backend down to Front Door traffic is the backend's posture (private_link here, or the backend's own network rules), and client-side ingress filtering lives in the WAF attached via an AzureFrontDoorSecurityPolicy.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF enforcement is attached at the domain/endpoint level by an AzureFrontDoorSecurityPolicy -- separate kinds; the origin sits behind the edge, not in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the origin exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The origin runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; request access logs are the Front Door profile's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The origin publishes no metrics of its own; origin health and latency metrics ride the Front Door profile, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless edge configuration -- nothing to back up; the manifest recreates the origin declaratively (a Private Link origin's connection must be re-approved by the target's owner).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the origin's configuration is enforced from Microsoft's worldwide edge fleet with no single-zone failure mode of its own. Redundancy ACROSS backends (priority tiers, weights) is the origin group's load balancing; the backend's own zonal posture belongs to its kind.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an origin (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that connects to the origin; no customer-visible patch surface exists on this resource.

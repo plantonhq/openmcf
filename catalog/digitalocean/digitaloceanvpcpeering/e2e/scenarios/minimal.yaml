@@ -1,0 +1,32 @@
+# Minimal DigitalOceanVpcPeering -- also the kind's total create surface
+# (name + the two VPCs; only the name is mutable). vpc_1 references the
+# kind's registry-prerequisite VPC (the shared install fixture); vpc_2
+# references the scenario-declared EXTRA VPC instance (the annotation
+# below) -- the catalog's first dual-fixture scenario of the same kind.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpcPeering
+metadata:
+  name: planton-oss-e2e-digitaloceanvpcpeering-min
+  id: planton-oss-e2e-digitaloceanvpcpeering-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanvpcpeering
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/digitalocean/digitaloceanvpcpeering/e2e/fixtures/second-vpc.yaml"
+  tags:
+    - planton-e2e
+spec:
+  peeringName: pltn-e2e-dovpcp-min
+  vpc_1:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  vpc_2:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpcpeering-second-vpc
+      fieldPath: status.outputs.vpc_id

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: vended.source
+      sku_meter: vended log data delivered
+      pricing_unit: GB
+      impact: The source is the tap -- every GB the wrapped resource's service vends through this pipeline bills on tiered per-GB delivery rates ($0.50 per GB for the first 10 TB, stepping down to $0.05 per GB past 50 TB in the pricing page's example), and a resource that produces nothing delivers nothing and bills nothing.
+    - field_path: vended.deliveries
+      sku_meter: vended log data delivered
+      pricing_unit: GB
+      impact: "Each delivery is one (source, destination-type) pair, and each pair meters the full delivered volume separately by destination -- AWS bills S3 delivery as {region}-S3-Egress-Bytes and Firehose delivery as {region}-FH-Egress-Bytes line items. Fanning one source out to S3 AND Firehose pays the per-GB rate twice, once per delivery."
+    - field_path: vended.destinations.output_format
+      sku_meter: Apache Parquet format conversion
+      pricing_unit: GB
+      impact: Choosing parquet at an S3 destination adds a per-GB format-conversion charge on top of the delivery meter (the pricing page's vended-logs notes call out "optional format conversion charges (e.g., Apache Parquet format conversion)" for S3 destinations) -- the columnar convenience for Athena is a second meter over the same bytes.
+  free_tier: "Every object this component creates -- sources, destinations, deliveries, and the legacy cross-account destination -- is free at rest; only flowing GB bill. The per-GB delivery meters carry service-specific permanent allowances, not trials: the pricing page's notes grant 500 bytes of delivery per AWS WAF request, 750 bytes per CloudFront request, and 50 KB per MediaTailor ad insertion at no additional charge, with only overages billing."
+  estimate_exclusions:
+    - delivered GB is entirely producer-driven -- the same manifest costs nothing behind an idle CloudFront distribution and real money behind a busy one, on tiers from $0.50 down to $0.05 per GB
+    - S3 destinations layer destination-side charges on top of delivery -- object storage and requests bill on the referenced AwsS3Bucket, and a parquet output_format adds the per-GB conversion meter
+    - Firehose destinations add Firehose's own per-GB ingestion charges on the referenced delivery stream component
+    - CloudWatch Logs destinations make the receiving log group bill its own storage (and its access class's meters) on AwsCloudwatchLogGroup
+    - an XRAY destination hands events to X-Ray, whose own trace meters bill outside this component
+    - the cross-account arm's objects are free -- forwarded events bill on the referenced AwsKinesisStream's shard and ingestion meters, at a volume the SENDING accounts' subscription filters control, invisible to this manifest
+    - SSE-KMS on a destination bucket bills KMS requests on the referenced key component
+  notes: "This component is pure plumbing, and plumbing is free until water flows: a source wrapping a silent resource, a destination nobody delivers to, and the joins between them all sit at $0. The bill starts when the producing service vends -- per-GB, tiered by monthly volume, metered once per delivery so multi-destination fan-out multiplies it -- and lands as CloudWatch delivery line items even when logs go straight to S3 or Firehose. The classic surprise is destination stacking: a CloudFront-to-S3 parquet pipeline pays delivery per GB, parquet conversion per GB, and S3 storage on the bucket, three meters on one byte stream. The legacy cross-account destination inverts the model -- its object is free and stays free; the spend it enables lives wholly on the Kinesis stream behind it."

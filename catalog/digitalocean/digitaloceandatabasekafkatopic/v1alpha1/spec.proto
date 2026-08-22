@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasekafkatopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseKafkaTopicSpec models the full
+// digitalocean_database_kafka_topic resource surface: a topic on a
+// DigitalOcean managed Kafka cluster, with the complete per-topic
+// configuration block.
+//
+// Topic creation is asynchronous on DigitalOcean's side (the API may
+// acknowledge before the topic is queryable); partition count and
+// replication factor and every config leaf update in place. DigitalOcean
+// never reports the partition count back after async partition changes, so
+// imports and drift checks treat it as configuration-only.
+message DigitalOceanDatabaseKafkaTopicSpec {
+  // The Kafka database cluster to create the topic in. Use a literal
+  // cluster UUID or a reference to a DigitalOceanDatabaseCluster resource
+  // (the cluster must run the kafka engine -- DigitalOcean rejects topic
+  // calls on other engines). Changing it replaces the topic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the Kafka topic. Unique within the cluster; the name IS the
+  // topic's API identity. Changing it replaces the topic and drops the old
+  // topic's messages.
+  string topic_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // (Optional) Number of partitions for the topic, 3 to 2048. When unset,
+  // DigitalOcean creates 3. Updates apply in place, but Kafka only ever
+  // ADDS partitions -- lowering the count is rejected by the API. Partition
+  // changes apply asynchronously and DigitalOcean does not report the live
+  // count back, so a grown count is invisible to drift detection.
+  optional int32 partition_count = 3 [
+    (buf.validate.field).int32.gte = 3,
+    (buf.validate.field).int32.lte = 2048
+  ];
+
+  // (Optional) Replication factor for the topic, at least 2. The ceiling is
+  // the cluster's node count (API-enforced). When unset, DigitalOcean
+  // creates 2 replicas. Updates apply in place.
+  optional int32 replication_factor = 4 [(buf.validate.field).int32.gte = 2];
+
+  // (Optional) Per-topic Kafka configuration. Every leaf is optional; an
+  // unset leaf defers to the Kafka server default, which DigitalOcean
+  // reports back after create. NOTE: when this message is present, the
+  // provider seeds cleanup_policy to "compact_delete" unless the leaf says
+  // otherwise -- set cleanup_policy explicitly to avoid surprises.
+  DigitalOceanDatabaseKafkaTopicConfig config = 5;
+}
+
+// Per-topic Kafka configuration, mirroring the provider's config block leaf
+// for leaf. DigitalOcean's API carries 64-bit tunables, so the numeric
+// leaves are modeled with real integer types here; string rendering for the
+// wire is an IaC-module detail. All leaves update in place.
+message DigitalOceanDatabaseKafkaTopicConfig {
+  // (Optional) Log cleanup policy. One of delete (discard old segments),
+  // compact (keep the latest value per key), or compact_delete (both).
+  string cleanup_policy = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "delete",
+        "compact",
+        "compact_delete"
+      ]
+    }
+  ];
+
+  // (Optional) Final compression type for the topic. "producer" retains
+  // whatever compression the producer used; "uncompressed" disables
+  // compression.
+  string compression_type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "snappy",
+        "gzip",
+        "lz4",
+        "producer",
+        "uncompressed",
+        "zstd"
+      ]
+    }
+  ];
+
+  // (Optional) How long (ms) delete tombstone markers are retained on
+  // compacted topics.
+  optional uint64 delete_retention_ms = 3;
+
+  // (Optional) Delay (ms) before deleting a segment file from the
+  // filesystem.
+  optional uint64 file_delete_delay_ms = 4;
+
+  // (Optional) Number of messages accumulated on a partition before an
+  // fsync is forced.
+  optional uint64 flush_messages = 5;
+
+  // (Optional) Maximum time (ms) a message is kept in memory before an
+  // fsync is forced.
+  optional uint64 flush_ms = 6;
+
+  // (Optional) Interval (bytes) at which entries are added to the offset
+  // index.
+  optional uint64 index_interval_bytes = 7;
+
+  // (Optional) Maximum time (ms) a message remains ineligible for
+  // compaction.
+  optional uint64 max_compaction_lag_ms = 8;
+
+  // (Optional) Largest record batch size (bytes) the topic accepts.
+  optional uint64 max_message_bytes = 9;
+
+  // (Optional) Whether the broker may down-convert messages for consumers
+  // on older message-format versions. Unset defers to the Kafka server
+  // default.
+  optional bool message_down_conversion_enable = 10;
+
+  // (Optional) Message format version the broker appends with. Consumers on
+  // older versions may not understand newer formats; once raised it should
+  // not be lowered. Values are the exact Kafka version tokens DigitalOcean
+  // accepts (case-sensitive).
+  string message_format_version = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "0.8.0",
+        "0.8.1",
+        "0.8.2",
+        "0.9.0",
+        "0.10.0",
+        "0.10.0-IV0",
+        "0.10.0-IV1",
+        "0.10.1",
+        "0.10.1-IV0",
+        "0.10.1-IV1",
+        "0.10.1-IV2",
+        "0.10.2",
+        "0.10.2-IV0",
+        "0.11.0",
+        "0.11.0-IV0",
+        "0.11.0-IV1",
+        "0.11.0-IV2",
+        "1.0",
+        "1.0-IV0",
+        "1.1",
+        "1.1-IV0",
+        "2.0",
+        "2.0-IV0",
+        "2.0-IV1",
+        "2.1",
+        "2.1-IV0",
+        "2.1-IV1",
+        "2.1-IV2",
+        "2.2",
+        "2.2-IV0",
+        "2.2-IV1",
+        "2.3",
+        "2.3-IV0",
+        "2.3-IV1",
+        "2.4",
+        "2.4-IV0",
+        "2.4-IV1",
+        "2.5",
+        "2.5-IV0",
+        "2.6",
+        "2.6-IV0",
+        "2.7",
+        "2.7-IV0",
+        "2.7-IV1",
+        "2.7-IV2",
+        "2.8",
+        "2.8-IV0",
+        "2.8-IV1",
+        "3.0",
+        "3.0-IV0",
+        "3.0-IV1",
+        "3.1",
+        "3.1-IV0",
+        "3.2",
+        "3.2-IV0",
+        "3.3",
+        "3.3-IV0",
+        "3.3-IV1",
+        "3.3-IV2",
+        "3.3-IV3",
+        "3.4",
+        "3.4-IV0",
+        "3.5",
+        "3.5-IV0",
+        "3.5-IV1",
+        "3.5-IV2",
+        "3.6",
+        "3.6-IV0",
+        "3.6-IV1",
+        "3.6-IV2"
+      ]
+    }
+  ];
+
+  // (Optional) Maximum allowed difference (ms) between the broker's clock
+  // and a message's timestamp; messages outside it are rejected when
+  // message_timestamp_type is create_time.
+  optional int64 message_timestamp_difference_max_ms = 12;
+
+  // (Optional) Which timestamp is stored on messages: the producer's
+  // create_time or the broker's log_append_time.
+  string message_timestamp_type = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "create_time",
+        "log_append_time"
+      ]
+    }
+  ];
+
+  // (Optional) Minimum ratio of dirty (uncompacted) log to total log before
+  // the log compactor considers the partition, 0.0 to 1.0.
+  optional double min_cleanable_dirty_ratio = 14 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 1
+  ];
+
+  // (Optional) Minimum time (ms) a message remains uncompacted.
+  optional uint64 min_compaction_lag_ms = 15;
+
+  // (Optional) Minimum number of in-sync replicas that must acknowledge a
+  // write when the producer uses acks=all. This is the config block's only
+  // leaf the provider defaults locally (to 1) instead of reading the server
+  // value back -- leaving it unset always writes 1, even if the server was
+  // tuned differently out-of-band.
+  optional int32 min_insync_replicas = 16 [(buf.validate.field).int32.gte = 1];
+
+  // (Optional) Preallocate a file on disk when creating a new log segment.
+  // Unset defers to the Kafka server default.
+  optional bool preallocate = 17;
+
+  // (Optional) Maximum size (bytes) a partition retains before old segments
+  // are discarded; -1 means no size limit.
+  optional int64 retention_bytes = 18;
+
+  // (Optional) Maximum time (ms) a log is retained before old segments are
+  // discarded; -1 means no time limit.
+  optional int64 retention_ms = 19;
+
+  // (Optional) Segment file size (bytes); retention and compaction always
+  // act on whole segments.
+  optional uint64 segment_bytes = 20;
+
+  // (Optional) Size (bytes) of the index mapping offsets to file positions,
+  // preallocated per segment.
+  optional uint64 segment_index_bytes = 21;
+
+  // (Optional) Maximum random jitter (ms) subtracted from segment_ms to
+  // avoid thundering-herd segment rolling.
+  optional uint64 segment_jitter_ms = 22;
+
+  // (Optional) Maximum time (ms) before the log rolls to a new segment even
+  // if the segment is not full.
+  optional uint64 segment_ms = 23;
+}

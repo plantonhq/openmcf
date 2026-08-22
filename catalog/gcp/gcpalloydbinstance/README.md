@@ -13,7 +13,7 @@ When you deploy a GcpAlloydbInstance resource, Planton provisions:
 
 - **An existing AlloyDB cluster** — referenced via `cluster` (a [GcpAlloydbCluster](/docs/catalog/gcp/gcpalloydbcluster) resource or a literal cluster resource path)
 - **For READ_POOL** — a healthy PRIMARY instance on the cluster (bundled with GcpAlloydbCluster or otherwise)
-- **GCP credentials** with AlloyDB admin permissions on the project
+- **GCP credentials** for the deploying principal — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set
 
 ## Quick Start
 

@@ -1,0 +1,69 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurerediscache
+spec:
+  presets:
+    - preset: 01-standard-entra
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: shard count (1 unless Premium clustering sets it) x 730 hours at the tier-and-size rate -- Microsoft's listed rate covers the tier's full node complement, so no per-node multiplication applies
+          list_unit_price: "0.138"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Standard_C1_Cache' and meterName eq 'C1 Cache' and productName eq 'Azure Redis Cache Standard' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "100.7400"
+      total_list_cost: "100.7400"
+      exclusions:
+        - network egress follows client placement
+    - preset: 02-premium-enterprise
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: shard count (1 unless Premium clustering sets it) x 730 hours at the tier-and-size rate -- Microsoft's listed rate covers the tier's full node complement, so no per-node multiplication applies
+          list_unit_price: "0.555"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Premium_P1_Cache' and meterName eq 'P1 Cache' and productName eq 'Azure Redis Cache Premium' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "1215.4500"
+      total_list_cost: "1215.4500"
+      exclusions:
+        - RDB snapshot storage and transactions bill on the persistence storage account's own component
+        - data transfer between availability zones for the cache's replication traffic follows write volume
+        - network egress follows client placement
+    - preset: 03-development
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: shard count (1 unless Premium clustering sets it) x 730 hours at the tier-and-size rate -- Microsoft's listed rate covers the tier's full node complement, so no per-node multiplication applies
+          list_unit_price: "0.022"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Basic_C0_Cache' and meterName eq 'C0 Cache' and productName eq 'Azure Redis Cache Basic' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "16.0600"
+      total_list_cost: "16.0600"
+      exclusions:
+        - network egress follows client placement

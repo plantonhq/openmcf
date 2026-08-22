@@ -25,8 +25,3 @@ spec:
           - Microsoft.Network/publicIPPrefixes/join/action
         provenance: derived
         notes: Covers the public-IP and prefix association resources -- attaching an address or prefix the gateway does not own demands join on it; the provider also reads each referenced resource.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the gateway in it.

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchlogaccountpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AwsCloudwatchLogAccountPolicySpec defines one CloudWatch Logs
+// account-level policy: a policy document AWS applies account-wide in
+// the region, to every log group (or the subset selection_criteria
+// narrows to). One policy object exists per (name, type) pair - two
+// instances sharing both would fight over one AWS object.
+//
+// The five policy types carry different documents: DATA_PROTECTION
+// masks sensitive data account-wide; SUBSCRIPTION_FILTER forwards
+// matching events account-wide; FIELD_INDEX declares indexed fields;
+// TRANSFORMER rewrites events at ingest; METRIC_EXTRACTION derives
+// metrics from log fields. The document's schema is the policy type's
+// own - AWS validates it server-side at Put time.
+message AwsCloudwatchLogAccountPolicySpec {
+  // The AWS region the policy applies in (account policies are
+  // per-region objects). Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The policy's name in AWS. Together with policy_type it is the
+  // object's identity - changing either replaces the policy. The
+  // provider imports the pair as "policy_name:policy_type".
+  string policy_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // Which account-wide capability this policy configures. Changing the
+  // type replaces the policy.
+  string policy_type = 3 [(buf.validate.field).string = {
+    in: [
+      "DATA_PROTECTION_POLICY",
+      "SUBSCRIPTION_FILTER_POLICY",
+      "FIELD_INDEX_POLICY",
+      "TRANSFORMER_POLICY",
+      "METRIC_EXTRACTION_POLICY"
+    ]
+  }];
+
+  // The policy document, in the chosen type's own JSON schema (the
+  // CloudWatch Logs console's per-type editor shows the exact shape;
+  // for DATA_PROTECTION it is the data-protection statement document,
+  // for SUBSCRIPTION_FILTER a {destination_arn, filter_pattern, ...}
+  // object, and so on). AWS validates it server-side; the engines diff
+  // it semantically so formatting never causes drift.
+  google.protobuf.Struct policy_document = 4 [(buf.validate.field).required = true];
+
+  // Narrows which log groups the policy applies to, in AWS's selection
+  // syntax (e.g. "LogGroupNamePrefix IN [\"my-service\"]" - the exact
+  // grammar each policy type documents). Unset applies account-wide.
+  // Changing it replaces the policy. The provider's scope argument is
+  // deliberately not modeled: ALL is its only legal value at the pin,
+  // so the modules pin it (a recorded exclusion).
+  string selection_criteria = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}

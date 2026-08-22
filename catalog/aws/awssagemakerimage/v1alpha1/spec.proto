@@ -64,7 +64,9 @@ message AwsSagemakerImageVersion {
   // move freely between versions and update in place.
   repeated string aliases = 2 [(buf.validate.field).repeated = {
     unique: true
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // The image bundles Horovod (distributed training).

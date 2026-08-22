@@ -12,7 +12,7 @@ This directory contains the Terraform/OpenTofu implementation for deploying an E
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/eventarc.admin` on the target project
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 5. **Region**: Eventarc Advanced serves a subset of regions — the API rejects unsupported ones at create time
 
 ## Module Files

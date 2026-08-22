@@ -4,35 +4,43 @@ Deploy [Planton Runner](https://github.com/plantonhq/planton) to any Kubernetes 
 
 The Planton Runner is an agent that connects to the Planton control plane via a secure
 mTLS reverse tunnel to execute cloud operations and IaC workflows on behalf of your
-organization. It authenticates to the control plane using a ServiceAccount API key
-embedded in the credentials file.
+organization. The chart carries a **runner token**: on first boot the runner presents it
+to the control plane's public join door, registers itself under its name, and receives
+its own individually revocable identity. The token only ever authorizes joining -- it is
+never the runner's identity, and one token can enroll many runners, each with its own
+identity.
 
 ## Prerequisites
 
 - Kubernetes 1.24+
 - Helm 3.x
-- A registered runner with generated credentials (via `planton runner generate-credentials`)
+- A runner token for your organization (`planton runner token create <token-name>` --
+  the secret is shown exactly once)
 
 ## Quick Start
 
 The chart is published to GitHub Container Registry as an OCI artifact:
 
 ```bash
-# Install the runner with your credentials file
-helm install my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
+# Install a runner named after the release; it enrolls itself on first boot
+helm install prod-a oci://ghcr.io/plantonhq/charts/planton-runner \
   --namespace planton-runner \
   --create-namespace \
-  --set-file credentials.content=~/.planton/org/<org>/runner/<slug>/credentials.json
+  --set enrollment.token=prt_...
 ```
+
+The runner registers itself as `prod-a` (the release name) and appears in your
+organization's Runners list the moment it joins. Set `enrollment.runnerName` to use a
+name different from the release name.
 
 ## Installation
 
 ### Via `planton runner deploy` (recommended)
 
-The Planton CLI automates Helm repository setup, values generation, and installation:
+The Planton CLI automates target selection, values generation, and installation:
 
 ```bash
-planton runner deploy <runner-name>
+planton runner deploy <runner-name> --token prt_...
 ```
 
 ### Manual Helm install
@@ -41,38 +49,52 @@ planton runner deploy <runner-name>
 helm install my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
   --namespace planton-runner \
   --create-namespace \
-  --set-file credentials.content=/path/to/credentials.json
+  --set enrollment.token=prt_...
+```
+
+For a self-hosted or local control plane, also set the join endpoint:
+
+```bash
+  --set enrollment.endpoint=planton.example.com:443
 ```
 
 ### Using an existing Kubernetes Secret
 
-If you manage the credentials Secret externally (e.g., via sealed-secrets, external-secrets,
-or a GitOps pipeline), reference it instead of providing the content directly:
+If you manage the token Secret externally (e.g., via sealed-secrets, external-secrets,
+or a GitOps pipeline), reference it instead of providing the token directly:
 
 ```bash
 # Create the Secret yourself
-kubectl create secret generic runner-creds \
+kubectl create secret generic runner-token \
   --namespace planton-runner \
-  --from-file=credentials.json=/path/to/credentials.json
+  --from-literal=token=prt_...
 
 # Install the chart referencing the existing Secret
 helm install my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
   --namespace planton-runner \
-  --set credentials.existingSecret=runner-creds
+  --set enrollment.existingSecret=runner-token
 ```
 
 ## Configuration
 
-### Credentials
+### Enrollment
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `credentials.content` | Raw JSON content of the RunnerCredentials file | `""` |
-| `credentials.existingSecret` | Name of a pre-existing Secret containing the credentials | `""` |
-| `credentials.existingSecretKey` | Key within the existing Secret | `"credentials.json"` |
+| `enrollment.token` | The runner token (`prt_` prefixed) that authorizes joining | `""` |
+| `enrollment.runnerName` | The name the runner registers itself under | Release name |
+| `enrollment.endpoint` | Control-plane gRPC endpoint (host:port) to join | Runner's hosted default (`api.live.planton.ai:443`) |
+| `enrollment.existingSecret` | Name of a pre-existing Secret holding the token | `""` |
+| `enrollment.existingSecretKey` | Key within the existing Secret | `"token"` |
 
-Either `credentials.content` or `credentials.existingSecret` must be provided. If neither
-is set, the chart will fail at render time with an error.
+Either `enrollment.token` or `enrollment.existingSecret` must be provided. If neither
+is set, the chart fails at render time with an error.
+
+Re-enrollment is safe by design: a pod recreated without its identity volume simply
+re-joins, and the same token re-admits its own runner with a fresh key. A DIFFERENT
+token can never take over an existing runner's name -- that join is refused (token
+lineage). Revoking a token never touches the runners it admitted; each keeps its own
+identity, individually revocable.
 
 ### Runner
 
@@ -80,17 +102,22 @@ is set, the chart will fail at render time with an error.
 |-----------|-------------|---------|
 | `runner.port` | gRPC server port (CloudOps routes via tunnel to this port) | `50051` |
 | `runner.logLevel` | Log level: debug, info, warn, error | `"info"` |
-| `runner.executionMode` | Execution mode: grpc, temporal, dual | `"grpc"` |
+| `runner.executionMode` | Execution mode: auto, grpc, temporal, dual | `"auto"` |
 
-### Temporal
+`auto` derives the mode from the identity document the runner receives when it
+enrolls (a Temporal address means `dual`). Set an explicit mode only to override.
 
-These settings are only relevant when `runner.executionMode` is `temporal` or `dual`.
-The environment variables are only injected into the pod when `temporal.address` is set.
+### Temporal (override lane)
+
+The identity document the runner receives at enrollment already carries the
+instance's runner-reachable Temporal coordinates -- these values exist only to point
+the worker somewhere else. The environment variables are only injected into the pod
+when `temporal.address` is set.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `temporal.address` | Temporal server address (host:port) | `""` |
-| `temporal.namespace` | Temporal namespace | `"default"` |
+| `temporal.address` | Temporal server address (host:port) override | `""` |
+| `temporal.namespace` | Temporal namespace override | `"default"` |
 | `temporal.maxConcurrency` | Maximum concurrent Temporal activities | `10` |
 
 ### Build capability
@@ -103,9 +130,8 @@ checks a registered build connection reports.
 Prerequisites:
 
 - **Tekton Pipelines** installed on the cluster.
-- `runner.executionMode` set to `temporal` or `dual` (the build worker is a
-  Temporal worker; the chart fails at render time if builds are enabled in
-  `grpc` mode).
+- `runner.executionMode` left at `auto` (or set to `temporal`/`dual`); the chart
+  fails at render time if builds are enabled with an explicit `grpc` mode.
 - Exactly **one** build-capable runner per watched Tekton namespace (the build
   log streamer is a singleton; the chart already pins one replica).
 
@@ -113,8 +139,7 @@ Prerequisites:
 helm install my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
   --namespace planton-runner \
   --create-namespace \
-  --set-file credentials.content=/path/to/credentials.json \
-  --set runner.executionMode=dual \
+  --set enrollment.token=prt_... \
   --set build.enabled=true \
   --set build.tektonNamespace=build-pipelines
 ```
@@ -183,31 +208,31 @@ The runner makes only **outbound** connections. No Ingress or public Service is 
 
 ```
 Runner Pod (your cluster)
-  ├─ mTLS tunnel ──► runner-tunnel.planton.live:443  (tunnel server)
-  └─ gRPC + TLS  ──► api.planton.live:443            (control plane API)
+  ├─ join + gRPC + TLS ──► control plane API  (enrollment, secrets, variables)
+  └─ mTLS tunnel       ──► tunnel server      (cloud operations requests)
 ```
 
-The runner maintains a persistent reverse tunnel through which the Planton control plane
-sends cloud operations requests. It also makes authenticated gRPC calls to the control
-plane API to resolve secrets and variables at runtime.
+On first boot the runner joins the control plane with its token and receives its
+identity document -- the runner's identity, mTLS certificates, API key, and endpoint
+configuration, minted server-side and delivered only to the runner. It persists the
+document on the pod's writable identity volume (`/var/lib/planton-runner`), so
+container restarts reuse it; a recreated pod re-joins. The runner then maintains a
+persistent reverse tunnel through which the Planton control plane sends cloud
+operations requests, and makes authenticated gRPC calls to the control plane API to
+resolve secrets and variables at runtime.
 
 With builds enabled there is one additional, **cluster-internal** listener: Tekton posts
 pipeline CloudEvents to the runner's webhook through the chart's ClusterIP Service. No
 Ingress and no public exposure — the traffic never leaves the cluster.
 
-### Credentials File
-
-The credentials file is a JSON document generated by the control plane's
-`generateCredentials` RPC. It contains the runner's identity, mTLS certificates,
-API key, and endpoint configuration in a single file. The chart stores this as a
-Kubernetes Secret and mounts it into the pod at `/etc/planton/credentials/credentials.json`.
-
 ### Automatic Rollouts
 
-When the chart manages the credentials Secret (i.e., `credentials.existingSecret` is not
-set), the Deployment includes a `checksum/credentials` annotation that forces a pod rollout
-whenever the credentials content changes. When using an existing Secret, you are responsible
-for triggering rollouts (e.g., via `kubectl rollout restart`).
+When the chart manages the token Secret (i.e., `enrollment.existingSecret` is not
+set), the Deployment includes a `checksum/token` annotation that forces a pod rollout
+whenever the token changes. When using an existing Secret, you are responsible for
+triggering rollouts (e.g., via `kubectl rollout restart`). The deployment strategy is
+`Recreate`: two live pods under one runner name would revoke each other's keys, so
+the old pod terminates before the new one starts and re-joins.
 
 ## Verification
 
@@ -218,21 +243,43 @@ kubectl -n planton-runner get pods
 kubectl -n planton-runner logs -l app.kubernetes.io/name=planton-runner
 ```
 
+The runner also appears in your organization's Runners list (`planton runner list`)
+the moment it joins.
+
 ## Upgrading
 
-To update the credentials or configuration:
+Image or configuration upgrades do not need the token again -- Helm keeps the release's
+values:
 
 ```bash
 helm upgrade my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
   --namespace planton-runner \
-  --set-file credentials.content=/path/to/new-credentials.json
+  --reuse-values \
+  --set image.tag=v1.2.3
 ```
+
+To rotate to a NEW token (e.g. after revoking the old one), upgrade with the new value:
+
+```bash
+helm upgrade my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
+  --namespace planton-runner \
+  --reuse-values \
+  --set enrollment.token=prt_...
+```
+
+Note: a runner can only be re-admitted by the token that admitted it. If that token is
+revoked, reset the runner's enrollment first (`planton runner reset-enrollment <name>`)
+so the next join re-admits it under the new token.
 
 ## Uninstalling
 
 ```bash
 helm uninstall my-runner --namespace planton-runner
 ```
+
+Uninstalling removes the pod and its identity volume. The runner's registration and
+identity remain in your organization (delete the runner from the console or CLI to
+revoke them).
 
 ---
 

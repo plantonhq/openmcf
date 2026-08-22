@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	azuremachinelearningworkspacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremachinelearningworkspace/v1alpha1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
+	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/machinelearning"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -12,8 +13,17 @@ func Resources(ctx *pulumi.Context, stackInput *azuremachinelearningworkspacev1a
 	locals := initializeLocals(ctx, stackInput)
 
 	// Build the Azure provider from the stack input via the shared builder, which resolves
-	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
-	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
+	// the right credential mechanism (static client secret, keyless web identity, or ambient
+	// chain). The machine_learning features flag makes destroy purge the soft-delete ghost
+	// that would otherwise keep holding the workspace NAME (the provider default leaves it);
+	// a soft-delete recovery window is not part of this module's contract -- mirrors the
+	// Terraform module's provider features block.
+	azureProvider, err := pulumiazureprovider.GetWithFeatures(ctx, stackInput.ProviderConfig,
+		azure.ProviderFeaturesArgs{
+			MachineLearning: azure.ProviderFeaturesMachineLearningArgs{
+				PurgeSoftDeletedWorkspaceOnDestroy: pulumi.Bool(true),
+			},
+		})
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}
@@ -36,8 +46,9 @@ func Resources(ctx *pulumi.Context, stackInput *azuremachinelearningworkspacev1a
 	// application insights) and an optional container registry; all
 	// four attachments are ForceNew. The spec's CEL contracts already
 	// enforce the provider's code-level rules. Deletion is a SOFT
-	// delete: the ghost keeps holding the workspace name until purged
-	// (the provider's machine_learning features flag).
+	// delete at the service: the provider purges the name-holding ghost
+	// because this module enables the machine_learning features flag
+	// at provider construction above.
 	workspaceArgs := &machinelearning.WorkspaceArgs{
 		Name:              pulumi.String(spec.Name),
 		Location:          pulumi.String(spec.Region),
@@ -47,10 +58,20 @@ func Resources(ctx *pulumi.Context, stackInput *azuremachinelearningworkspacev1a
 		KeyVaultId:            pulumi.String(spec.KeyVaultId.GetValue()),
 		StorageAccountId:      pulumi.String(spec.StorageAccountId.GetValue()),
 		HighBusinessImpact:    pulumi.Bool(spec.HighBusinessImpact),
-		// Requires the encryption block (spec CEL). ForceNew.
-		ServiceSideEncryptionEnabled: pulumi.Bool(spec.ServiceSideEncryptionEnabled),
-		V1LegacyModeEnabled:          pulumi.Bool(spec.V1LegacyModeEnabled),
-		Tags:                         pulumi.ToStringMap(locals.AzureTags),
+		V1LegacyModeEnabled:   pulumi.Bool(spec.V1LegacyModeEnabled),
+		Tags:                  pulumi.ToStringMap(locals.AzureTags),
+	}
+
+	// service_side_encryption_enabled is SENT ONLY WHEN TRUE: the
+	// provider pairs it with the encryption block via RequiredWith,
+	// which fires on any SPECIFIED value -- an explicit false without
+	// the block is rejected at validation ("all of
+	// encryption,service_side_encryption_enabled must be specified" --
+	// live-caught). Omitting it applies the provider default (false),
+	// and the spec CEL guarantees the encryption block is present
+	// whenever this is true. ForceNew.
+	if spec.ServiceSideEncryptionEnabled {
+		workspaceArgs.ServiceSideEncryptionEnabled = pulumi.Bool(true)
 	}
 
 	if spec.Identity != nil {

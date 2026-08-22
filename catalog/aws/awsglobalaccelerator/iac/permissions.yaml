@@ -1,0 +1,62 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsglobalaccelerator
+spec:
+  aws:
+    statements:
+      - sid: CreateAccelerator
+        actions:
+          - globalaccelerator:CreateAccelerator
+        resources:
+          - "*"
+        provenance: derived
+        notes: Create-side of aws_globalaccelerator_accelerator. The service reference lists NO resource types for CreateAccelerator (the ARN does not exist until the call returns), so the wildcard is the narrowest possible scope.
+      - sid: ManageAccelerator
+        actions:
+          - globalaccelerator:UpdateAccelerator
+          - globalaccelerator:UpdateAcceleratorAttributes
+          - globalaccelerator:DeleteAccelerator
+          - globalaccelerator:DescribeAccelerator
+          - globalaccelerator:DescribeAcceleratorAttributes
+        resources:
+          - arn:aws:globalaccelerator::*:accelerator/*
+        provenance: derived
+        notes: Covers aws_globalaccelerator_accelerator after creation -- enabled/IP-type updates, the always-materialized flow-log attributes call, the disable-then-delete destroy sequence, and the DEPLOYED-state polling after every change. Global Accelerator ARNs carry no region component.
+      - sid: TagAccelerator
+        actions:
+          - globalaccelerator:TagResource
+          - globalaccelerator:UntagResource
+          - globalaccelerator:ListTagsForResource
+        resources:
+          - arn:aws:globalaccelerator::*:accelerator/*
+          - arn:aws:globalaccelerator::*:attachment/*
+        provenance: derived
+        notes: The modules tag the accelerator (tag-on-create plus updates); the service reference authorizes the tagging actions against BOTH the accelerator and cross-account-attachment ARN formats, so both are granted.
+      - sid: ManageListeners
+        actions:
+          - globalaccelerator:CreateListener
+          - globalaccelerator:UpdateListener
+          - globalaccelerator:DeleteListener
+          - globalaccelerator:DescribeListener
+        resources:
+          - arn:aws:globalaccelerator::*:accelerator/*
+          - arn:aws:globalaccelerator::*:accelerator/*/listener/*
+        provenance: derived
+        notes: Covers aws_globalaccelerator_listener -- one per spec.listeners entry. CreateListener authorizes against the parent accelerator ARN; Update/Delete/Describe against the listener ARN.
+      - sid: ManageEndpointGroups
+        actions:
+          - globalaccelerator:CreateEndpointGroup
+          - globalaccelerator:UpdateEndpointGroup
+          - globalaccelerator:DeleteEndpointGroup
+          - globalaccelerator:DescribeEndpointGroup
+        resources:
+          - arn:aws:globalaccelerator::*:accelerator/*/listener/*
+          - arn:aws:globalaccelerator::*:accelerator/*/listener/*/endpoint-group/*
+        provenance: derived
+        notes: Covers aws_globalaccelerator_endpoint_group -- one per listener/endpoint-group pair. CreateEndpointGroup authorizes against the parent listener ARN; Update/Delete/Describe against the endpoint-group ARN. Endpoint registration (including cross-account attachment_arn endpoints) rides these same endpoint-group calls.

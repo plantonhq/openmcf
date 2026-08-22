@@ -1,0 +1,42 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lambda_layer_version:
+    mappings:
+      # The archive location nests under spec.code (the AwsLambda S3-code
+      # sibling shape).
+      - arg: s3_bucket
+        spec: spec.code.bucket
+      - arg: s3_key
+        spec: spec.code.key
+      - arg: s3_object_version
+        spec: spec.code.version
+    exclusions:
+      - arg: layer_name
+        reason: wired by the module from metadata.name -- the resource's identity comes from the manifest, never a second free-form field
+      - arg: filename
+        reason: local-filesystem code path -- module-inapplicable (modules run remote from the manifest author's machine; the S3 arm is the one declarative source)
+  aws_lambda_layer_version_permission:
+    mappings:
+      # Grants fold in as the spec.permissions list keyed by statement_id.
+      - arg: statement_id
+        spec: spec.permissions.statement_id
+      - arg: principal
+        spec: spec.permissions.principal
+      - arg: organization_id
+        spec: spec.permissions.organization_id
+      - arg: skip_destroy
+        spec: spec.permissions.skip_destroy
+    exclusions:
+      - arg: action
+        reason: one-value vocabulary -- lambda:GetLayerVersion is the only action AWS supports on layers; the modules pin it
+      - arg: layer_name
+        reason: wired by the module to the folded layer's own ARN -- a grant always shares THIS layer
+      - arg: version_number
+        reason: wired by the module to the folded layer's published version -- grants are per-version by AWS design

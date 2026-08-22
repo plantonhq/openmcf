@@ -1,0 +1,69 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpVertexAiDeployedIndex manifest's spec values into metered quantities
+# and price choices. The committed cost is the always-on serving floor:
+# min_replica_count nodes of the pinned machine type billing every hour
+# of the month -- the STATED assumption is a single-shard index (replicas
+# run per shard, and the shard count belongs to the referenced index, not
+# this manifest). Vertex-managed sizing (automatic_resources, or nothing)
+# is an honest refusal: Vertex picks the machine type and the rate is
+# unknowable from the manifest. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/gcpvertexaideployedindex.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpvertexaideployedindex
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: automatic_resources
+          op: is_set
+      reason: Vertex-managed sizing -- Vertex AI chooses the serving machine type behind automatic_resources, and that choice (so the per-node-hour rate) is invisible to the manifest; a committed number would be a guess.
+    - when:
+        - field_path: automatic_resources
+          op: is_unset
+        - field_path: dedicated_resources
+          op: is_unset
+      reason: With neither sizing arm set, GCP deploys with Vertex-managed automatic sizing -- the serving machine type is chosen by Vertex AI and invisible to the manifest, so the rate is unknowable.
+    - when:
+        - field_path: dedicated_resources
+          op: is_set
+        - field_path: dedicated_resources.machine_type
+          op: is_unset
+      reason: dedicated_resources without a machine_type leaves the serving machine type to the API's own default, which is not stated in the manifest -- the per-node-hour rate is unknowable, so a committed number would be a guess.
+  lines:
+    - sku_meter: index serving node hours
+      applies_when:
+        - field_path: dedicated_resources
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: dedicated_resources.min_replica_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Vertex AI
+        pricing_unit: hours
+        attributes:
+          - key: machine_type
+            from_field: dedicated_resources.machine_type
+          - key: workload
+            constant: vector-search-serving
+      basis: "min_replica_count serving nodes of the pinned machine type, every hour of the month, at the regional Vector Search node-hour rate. STATED assumption: a single-shard index -- replicas run per index shard, and the shard count is a property of the referenced GcpVertexAiIndex, invisible here; a multi-shard index multiplies this line by its shard count."
+  exclusions:
+    - text: autoscaling above the min-replica floor -- under query load the node count grows toward max_replica_count, each extra node billing the same hourly rate that query traffic alone decides
+    - text: shard multiplication -- a multi-shard index runs the replica set per shard, and the shard count belongs to the referenced GcpVertexAiIndex, not this manifest
+    - text: index building and update charges ($3.00 per GiB processed for batch builds, $0.45 per GiB for streaming inserts) -- they bill the GcpVertexAiIndex resource, not this deployment
+    - applies_when:
+        - field_path: enable_access_logging
+          op: equals
+          value: "true"
+      text: access-log ingestion -- private-endpoint query logs flow to Cloud Logging and bill per GiB ingested, following query traffic no manifest can know
+  notes:
+    - text: The meter starts when the deployment succeeds and stops only on undeploy -- destroy under deletion_policy DELETE undeploys, while ABANDON leaves the nodes serving and billing unmanaged in GCP. The index endpoint itself is free; the deployment's nodes are the entire bill.

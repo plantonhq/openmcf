@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53dnsrecord
+spec:
+  aws:
+    statements:
+      - sid: ManageRecordSet
+        actions:
+          - route53:ChangeResourceRecordSets
+        resources:
+          - arn:aws:route53:::hostedzone/*
+        provenance: derived
+        notes: The single write action behind aws_route53_record / route53.Record -- create, update, and delete are all ChangeResourceRecordSets batches against the owning zone. Route 53 ARNs carry no account or region segment. The grant can be narrowed beyond the zone ARN with the route53:ChangeResourceRecordSetsNormalizedRecordNames and ...RecordTypes condition keys -- per-record least privilege on a per-zone API.
+      - sid: ReadZoneAndRecords
+        actions:
+          - route53:GetHostedZone
+          - route53:ListResourceRecordSets
+        resources:
+          - arn:aws:route53:::hostedzone/*
+        provenance: derived
+        notes: Plan/refresh reads -- the providers resolve the zone (name normalization for the record's FQDN) with GetHostedZone and locate the managed record among the zone's sets with ListResourceRecordSets (records have no per-record read API). Both scope to the hosted-zone ARN.
+      - sid: WaitForChangeSync
+        actions:
+          - route53:GetChange
+        resources:
+          - arn:aws:route53:::change/*
+        provenance: derived
+        notes: After every ChangeResourceRecordSets, the providers poll the returned change batch until Route 53 reports INSYNC (propagated to the authoritative fleet). GetChange authorizes on the CHANGE ARN -- a different resource type from the zone, and the change ID is minted per request, so the wildcard is the practical scope.

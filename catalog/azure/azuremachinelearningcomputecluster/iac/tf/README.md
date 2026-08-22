@@ -34,4 +34,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.MachineLearningServices/workspaces/computes/*` on the workspace's resource group (Contributor covers it), plus regional vCPU quota for the chosen VM family.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action manifest the deploying principal needs.

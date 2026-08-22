@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetessolr
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - solr.apache.org
+        resources:
+          - solrclouds
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.solr_cloud (Pulumi module solr_cloud.go) -- the single SolrCloud custom resource this component renders. The Apache Solr Operator (a separate component, KubernetesSolrOperator) reconciles it into the node StatefulSet, Services, the bundled ZooKeeper ensemble, and the generated basic-auth Secret under its own service account -- the runner never touches those objects, and the modules create no Secret of their own.

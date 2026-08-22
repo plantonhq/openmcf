@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsdlmlifecyclepolicy
+spec:
+  # One scenario: a custom daily-snapshot policy targeting a tag
+  # nothing carries (the policy never fires - free), with a
+  # consumer-scoped DLM execution role. Seconds per lifecycle phase.
+  #
+  # Deliberately not exercised live:
+  #   - the DEFAULT_POLICY arm -- AWS allows ONE default policy per
+  #     resource type per region, so a lane-held default policy is an
+  #     account-global collision surface (the settings-singleton
+  #     class). Unblock: a serialized default-policy lane with the
+  #     Q38/Q43 account-global choreography.
+  #   - EVENT_BASED_POLICY -- reacting to shareSnapshot events needs
+  #     a second account sharing snapshots in. Unblock: a second
+  #     harness account.
+  #   - IMAGE_MANAGEMENT / cross-region copy / archive / FSR / share
+  #     rules -- schedule dials whose live proof means waiting for a
+  #     schedule to fire (hours) and paying for AMIs/copies; the
+  #     spec's rule CELs and the offline renders are the load-bearing
+  #     guards. Unblock: an owner-approved long-running lane.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q46
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

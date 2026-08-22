@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmemorydbacl
+spec:
+  billing_model: free
+  free_tier: A MemoryDB ACL is the attachment point between identities and clusters, and MemoryDB has no meter for it -- the service bills exactly three things, node-hours for cluster capacity, data written per GB, and snapshot storage per GB-month, and none of them count ACLs or the users in them.
+  notes: "No field of this spec buys anything: membership (user_names) is access-control configuration stored by the MemoryDB control plane, and membership edits -- the ACL's whole job as the single place an application's cluster access is granted or revoked -- are free operations. The real spend lives on the clusters this ACL attaches to: node-hours run continuously, every write bills per GB (the price of MemoryDB's durability log), and snapshots beyond the free allowance bill per GB-month, at identical rates whichever ACL is attached. The member users (AwsMemorydbUser) are equally free -- nothing on the access-control side of the graph meters."

@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpserviceconnectionpolicy
+spec:
+  gcp:
+    groups:
+      - purpose: EnableApis
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers the module's two google_project_service resources enabling networkconnectivity.googleapis.com (the control plane that owns the policy) and compute.googleapis.com (where the referenced network and subnets live). disable_on_destroy is false on both, so the disable permission is never needed.
+      - purpose: ManagePolicy
+        permissions:
+          - networkconnectivity.serviceConnectionPolicies.create
+          - networkconnectivity.serviceConnectionPolicies.get
+          - networkconnectivity.serviceConnectionPolicies.update
+          - networkconnectivity.serviceConnectionPolicies.delete
+          - networkconnectivity.operations.get
+        provenance: derived
+        notes: Covers google_network_connectivity_service_connection_policy -- create, read/refresh, in-place updates (psc_config contents, description, labels; location, network, service_class, and name are ForceNew), and destroy. Network Connectivity mutations return long-running operations the provider polls under networkconnectivity.operations.get. All five permissions verified present in IAM's testable-permissions inventory. The subnets and network are passed as resource paths, never mutated -- the endpoints later created in them are the connectivity automation's doing under Google-managed service agents, not this principal.

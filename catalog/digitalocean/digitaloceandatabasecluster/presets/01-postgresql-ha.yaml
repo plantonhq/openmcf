@@ -10,4 +10,13 @@ spec:
   sizeSlug: db-s-2vcpu-4gb
   nodeCount: 3
   vpc:
-    value: "<vpc-id>"
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: my-vpc
+      fieldPath: status.outputs.vpc_id
+  storageAutoscale:
+    enabled: true
+    thresholdPercent: 80
+  maintenanceWindow:
+    day: sunday
+    hour: "02:00"

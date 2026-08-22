@@ -15,7 +15,7 @@ A URL map is the routing brain of a global external Application Load Balancer â€
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.urlMaps.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 6. **A backend service** (or bucket) to reference as the default target â€” typically a `GcpBackendService` whose `self_link` you wire in
 
 ## Directory Structure

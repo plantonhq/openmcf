@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerregistry
+spec:
+  azure:
+    groups:
+      - purpose: ManageContainerRegistry
+        actions:
+          - Microsoft.ContainerRegistry/registries/read
+          - Microsoft.ContainerRegistry/registries/write
+          - Microsoft.ContainerRegistry/registries/delete
+        provenance: derived
+        notes: Covers azurerm_container_registry (tf main.tf) and containerservice.NewRegistry (pulumi module/main.go) -- create, refresh, in-place updates (SKU, network rules, policies, geo-replications, all properties of the one registry resource), and destroy. Geo-replications are inline blocks of the same resource, so no extra action is needed for them. Casing copied from pkg/iac/actioninventory/azure.yaml (Microsoft.ContainerRegistry).
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities (CMK encryption's unwrap identity being the concrete case) -- ARM checks assign/action on every identity referenced in the registry payload, service-side. Separately, the referenced identity itself (not the deployer) must hold get/wrapKey/unwrapKey on the Key Vault key's vault before create -- a vault-side data-plane grant on the identity, not a deployer permission.

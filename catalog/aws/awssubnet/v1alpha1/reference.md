@@ -393,6 +393,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockCustomModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.routes[].targetSubnetId` | `status.outputs.subnet_id` |
+| AwsCloudwatchSynthetics | `spec.canary.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsDocumentDb | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.subnetId` | `status.outputs.subnet_id` |
@@ -403,7 +404,10 @@ Fields on other kinds that can point at this resource:
 | AwsEksFargateProfile | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEksNodeGroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsElasticFileSystem | `spec.mountTargets[].subnetId` | `status.outputs.subnet_id` |
+| AwsEventBridgePipe | `spec.sourceParameters.selfManagedKafka.vpc.subnets` | `status.outputs.subnet_id` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.subnets` | `status.outputs.subnet_id` |
+| AwsEventBridgeScheduler | `spec.target.ecsParameters.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsFsxLustreFileSystem | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsFsxOntapFileSystem | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsFsxOntapFileSystem | `spec.preferredSubnetId` | `status.outputs.subnet_id` |
@@ -419,6 +423,8 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].subnetId` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.secondaryInterfaces[].secondarySubnetId` | `status.outputs.subnet_id` |
+| AwsManagedPrometheusScraper | `spec.sourceEks.subnetIds` | `status.outputs.subnet_id` |
+| AwsManagedPrometheusScraper | `spec.sourceVpc.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
@@ -426,15 +432,19 @@ Fields on other kinds that can point at this resource:
 | AwsMwaaEnvironment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNatGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsNeptuneCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsNetworkAcl | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNlb | `spec.subnetMappings[].subnetId` | `status.outputs.subnet_id` |
 | AwsOpenSearchDomain | `spec.vpcOptions.subnetIds` | `status.outputs.subnet_id` |
 | AwsPlantonRunner | `spec.subnets` | `status.outputs.subnet_id` |
 | AwsRdsCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRdsInstance | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRdsProxy | `spec.vpcSubnetIds` | `status.outputs.subnet_id` |
+| AwsRdsProxy | `spec.endpoints[].vpcSubnetIds` | `status.outputs.subnet_id` |
 | AwsRedisElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
+| AwsRoute53ResolverEndpoint | `spec.ipAddresses[].subnetId` | `status.outputs.subnet_id` |
 | AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerNotebookInstance | `spec.subnetId` | `status.outputs.subnet_id` |

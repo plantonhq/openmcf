@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslambdalayer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Lambda always encrypts files uploaded to it -- deployment packages and layer archives included -- inside its managed code storage; an unencrypted stored layer is not representable, and no spec surface exists to weaken it.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Layer storage exposes no customer-managed key surface -- Lambda's CMK options cover function environment variables and SnapStart, not layer archives. The SOURCE zip in S3 can sit under a CMK, but that is the referenced AwsS3Bucket's control.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Publishing, fetching, and sharing a layer all ride the HTTPS-only Lambda API, and Lambda's copy of the archive from S3 at publish time rides AWS's TLS service channels; no plaintext path to or from layer content exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: permissions
+      evidence:
+        type: spec_default
+        reference: With no permissions entries the layer version is usable only inside the owning account. Each grant is one resource-policy statement -- a 12-digit account id shares with exactly that account, and principal "*" WITHOUT organization_id makes the version fetchable by every AWS account; scoping the wildcard with organization_id keeps it org-internal (the 02 preset's shape).
+      notes: Even the widest grant exposes the layer only to authenticated AWS principals calling lambda:GetLayerVersion -- a layer has no endpoint and is never reachable from the anonymous internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a layer -- it is stored content with no inbound network surface. Who may fetch it is the resource-policy question covered by the permissions grants, not a network control.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a stored code archive.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every layer operation -- publish, read, delete, grant and revoke sharing -- is IAM-authorized against the layer or layer-version ARN, and cross-account use requires BOTH an explicit resource-policy grant on the version and IAM permission on the caller's side.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A layer runs no workload and holds no credentials -- it is inert code unpacked into /opt of the functions that attach it. Those functions authenticate to AWS through their own execution roles, a posture carried on the AwsLambda component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Lambda API has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable on a layer.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the layer -- PublishLayerVersion, DeleteLayerVersion, AddLayerVersionPermission, RemoveLayerVersionPermission -- is captured by CloudTrail unconditionally, so widening a share grant or deleting a version consumers depend on is always on the record.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A layer emits no runtime signals -- it has no executions, errors, or latency to measure. The CloudWatch metrics belong to the functions that attach it, on their own components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Layer versions are immutable at AWS -- there is no state to back up beyond the archive itself, whose source of truth is the build artifact in the referenced S3 bucket plus this manifest, which republishes deterministically (source_code_hash makes the publish content-addressed).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no component-owned backups there is no retention dial. How long old ARTIFACTS stay in the source bucket is that AwsS3Bucket's lifecycle policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A layer runs nothing, so there is nothing to replicate across zones for availability -- AWS stores the archive in Lambda's regional managed storage and serves it into function execution environments, whose availability posture belongs to the Lambda service and the attaching functions.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: skip_destroy
+      evidence:
+        type: spec_default
+        reference: Unset means destroying (or replacing) this resource deletes the published version. True keeps the version alive in AWS through destroy and replacement, so functions still pinning its exact ARN keep working -- the 02 preset turns it on for exactly that reason.
+      notes: This protects CONSUMERS rather than blocking the delete API -- AWS has no refuse-deletion flag for layers, and retained versions accumulate against the code-storage quota until cleaned up with DeleteLayerVersion.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is nothing for AWS to patch -- the archive's contents are the owner's build artifact, and versions are immutable by design. Shipping fixed dependencies means publishing a NEW version (any spec change does) and rolling consumers to its ARN.

@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureprivatelinkservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A NAT/forwarding configuration on Azure's software-defined network; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Private Link keeps consumer traffic on the Microsoft backbone but does not encrypt it -- TLS between consumers and the fronted service remains the workloads' responsibility. proxy_protocol_enabled adds source-IP metadata, not encryption.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A Private Link Service is reachable only through consumers' private endpoints over the Microsoft backbone -- it exposes no public IP and no internet listener by design; its NAT addresses are private IPs drawn from your own subnets (nat_ip_configurations).
+      notes: visibility_subscription_ids governs DISCOVERY, not reachability -- empty means only role-based access within your own tenant can find the service, subscription UUIDs widen it, and the "*" wildcard makes the alias publicly discoverable (connections still wait for approval unless auto-approved). Discoverability never opens an internet path.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: visibility_subscription_ids
+      evidence:
+        type: spec_default
+        reference: Empty (the default) leaves the service discoverable only by role-based access within your own tenant; listing subscription UUIDs (or "*") widens who can request a connection, and every private-endpoint connection waits in the manual-approval queue unless its subscription is listed in auto_approval_subscription_ids.
+      notes: Ingress is admitted per consumer connection -- the approval workflow is the gate, and auto_approval_subscription_ids entries must also be visible. Packet-level filtering on the fronted service stays with the backend's network security groups, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No internet-facing request path exists to filter -- traffic arrives only through approved private endpoints; request-level filtering for the fronted application belongs to the application's own tier.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access (including approving pending connections) is subscription/resource-group RBAC posture, not a component choice; the service exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The service runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes -- including connection approvals and rejections -- land in the Azure Activity Log as subscription-level posture; the spec carries no log-export field.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No field of this spec configures metrics export; observability wiring for the traffic path lives on the load balancer and backends, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless network configuration -- nothing to back up; the manifest recreates the service declaratively (consumers must then re-request their private-endpoint connections, and the new alias must be re-shared).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The service object is SDN configuration with no zone placement of its own -- the spec offers no zone field, and availability of the actual data path rides the Standard load balancer's frontends and the backends behind them, separate kinds with their own zonal posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a Private Link Service (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- Microsoft operates and patches the Private Link forwarding fabric that NATs consumer traffic; no customer-visible patch surface exists on this resource.

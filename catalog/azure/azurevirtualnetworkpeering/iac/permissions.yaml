@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualnetworkpeering
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualNetworkPeering
+        actions:
+          - Microsoft.Network/virtualNetworks/virtualNetworkPeerings/read
+          - Microsoft.Network/virtualNetworks/virtualNetworkPeerings/write
+          - Microsoft.Network/virtualNetworks/virtualNetworkPeerings/delete
+        provenance: derived
+        notes: "Covers azurerm_virtual_network_peering / network.VirtualNetworkPeering -- create as an ARM child of the LOCAL network (both modules derive the resource group and network name from the local network's ARM ID, never calling the network API), refresh, in-place flag and subnet-list updates, and destroy. Authorizes on the local network's scope. Typically held via Network Contributor, Contributor, or Owner -- the module README's original recommendation, migrated here."
+      - purpose: PeerRemoteNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/peer/action
+        provenance: derived
+        notes: "The modules never touch the remote network -- the resolved remote_virtual_network_id rides the peering payload -- but ARM authorizes joining to the REFERENCED network with peer/action on the REMOTE network's scope at create time (service-side). This is the consent mechanism that keeps a network from being peered to without its owner's authorization; in cross-subscription peerings the grant must exist in the remote subscription."

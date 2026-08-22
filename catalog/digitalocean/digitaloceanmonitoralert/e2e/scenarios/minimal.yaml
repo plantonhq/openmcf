@@ -1,0 +1,35 @@
+# Minimal DigitalOceanMonitorAlert: a droplet CPU alert with email
+# delivery, targeting one Droplet by REFERENCE. Droplet targeting is an
+# optional composition seam (a policy can target by tags instead), so the
+# fixture rides the e2e-prerequisites annotation and installs from that
+# kind's minimal scenario. Proves the lifecycle, the entities wiring, and
+# the alert_id output the verifier addresses the policy with.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: planton-oss-e2e-digitaloceanmonitoralert-min
+  id: planton-oss-e2e-digitaloceanmonitoralert-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanmonitoralert
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanDroplet"
+  tags:
+    - planton-e2e
+spec:
+  description: Planton E2E droplet CPU alert
+  metricType: v1/insights/droplet/cpu
+  compare: GreaterThan
+  value: 95
+  window: 5m
+  dropletIds:
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: planton-oss-e2e-digitaloceandroplet-min
+        fieldPath: status.outputs.droplet_id
+  alerts:
+    emails:
+      - e2e@planton.cloud

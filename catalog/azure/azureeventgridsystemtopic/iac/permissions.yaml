@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventgridsystemtopic
+spec:
+  azure:
+    groups:
+      - purpose: ManageSystemTopic
+        actions:
+          - Microsoft.EventGrid/systemTopics/read
+          - Microsoft.EventGrid/systemTopics/write
+          - Microsoft.EventGrid/systemTopics/delete
+        provenance: derived
+        notes: "Covers azurerm_eventgrid_system_topic / eventgrid.NewSystemTopic -- create with the create-only (source, topic_type) binding, refresh, in-place updates of identity and tags, and destroy. Typically held via EventGrid Contributor, Contributor, or Owner on the resource group. The principal ALSO needs read access on the SOURCE resource -- ARM authorizes binding the topic to the referenced source at create time, and the action's exact name follows the source's kind (e.g. Microsoft.Storage/storageAccounts/read for a storage-account source, Microsoft.Resources/subscriptions/resourceGroups/read for a resource-group source), so it cannot be enumerated here kind-by-kind. Migrated from the Pulumi module README's Required Permissions section. No listKeys grant exists or is needed -- a system topic has no access keys."

@@ -1,0 +1,83 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesplantonrunner
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.planton_runner (Pulumi twin namespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.runner_token (Pulumi twin tokenSecret) -- the <name>-token Secret materialized BEFORE the release; the chart receives its NAME through the enrollment values, never the token material. Also covers the release Secret Helm itself writes (sh.helm.release.v1.*) to store the release history through helm_release.planton_runner.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the runner's ServiceAccount the chart renders through helm_release.planton_runner.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the runner Deployment the chart renders through helm_release.planton_runner -- pinned to replicas 1 with a Recreate strategy, carrying the ephemeral identity volume and the health endpoints. The modules install with wait=false (the runner's readiness contract is its work queue, not pod liveness), so no pod-level reads are needed.
+      - api_groups:
+          - ""
+        resources:
+          - services
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the cluster-internal Service the chart renders for the runner's health port through helm_release.planton_runner. The helm_values overlay (spec.helm_values, merged last) can extend the chart's object surface beyond these rules generally; grants for such extensions ride the operator's review of the overlay, not this manifest.

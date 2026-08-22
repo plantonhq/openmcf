@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	azureprovider "github.com/plantonhq/planton/catalog/azure"
+	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildProviderArgs_NilConfig_Ambient(t *testing.T) {
-	args, err := buildProviderArgs(nil)
+	args, err := buildProviderArgs(nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, args)
 
@@ -30,7 +31,7 @@ func TestBuildProviderArgs_RunnerMode_IdentityCoordinatesOnly(t *testing.T) {
 		SubscriptionId: "33333333-3333-3333-3333-333333333333",
 	}
 
-	args, err := buildProviderArgs(cfg)
+	args, err := buildProviderArgs(cfg, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, pulumi.String("11111111-1111-1111-1111-111111111111"), args.ClientId)
@@ -49,7 +50,7 @@ func TestBuildProviderArgs_StaticCredentials(t *testing.T) {
 		SubscriptionId: "33333333-3333-3333-3333-333333333333",
 	}
 
-	args, err := buildProviderArgs(cfg)
+	args, err := buildProviderArgs(cfg, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, pulumi.String("11111111-1111-1111-1111-111111111111"), args.ClientId)
@@ -71,7 +72,7 @@ func TestBuildProviderArgs_WebIdentity_SetsInlineOidcToken(t *testing.T) {
 		},
 	}
 
-	args, err := buildProviderArgs(cfg)
+	args, err := buildProviderArgs(cfg, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, pulumi.Bool(true), args.UseOidc)
@@ -98,7 +99,7 @@ func TestBuildProviderArgs_WebIdentity_TakesPrecedenceOverStaleSecret(t *testing
 		},
 	}
 
-	args, err := buildProviderArgs(cfg)
+	args, err := buildProviderArgs(cfg, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, pulumi.Bool(true), args.UseOidc)
@@ -114,8 +115,36 @@ func TestBuildProviderArgs_WebIdentity_MissingToken_Errors(t *testing.T) {
 		WebIdentity:    &azureprovider.AzureWebIdentityProviderConfig{},
 	}
 
-	_, err := buildProviderArgs(cfg)
+	_, err := buildProviderArgs(cfg, nil)
 	assert.Error(t, err)
+}
+
+func TestBuildProviderArgs_NilFeatures_LeftUnset(t *testing.T) {
+	args, err := buildProviderArgs(nil, nil)
+	require.NoError(t, err)
+
+	assert.Nil(t, args.Features)
+}
+
+func TestBuildProviderArgs_Features_PassedThrough(t *testing.T) {
+	// The features block is a module-design input, orthogonal to credential dispatch:
+	// it must arrive on the args verbatim and leave the credential fields untouched.
+	features := azure.ProviderFeaturesArgs{
+		MachineLearning: azure.ProviderFeaturesMachineLearningArgs{
+			PurgeSoftDeletedWorkspaceOnDestroy: pulumi.Bool(true),
+		},
+	}
+	cfg := &azureprovider.AzureProviderConfig{
+		SubscriptionId: "33333333-3333-3333-3333-333333333333",
+	}
+
+	args, err := buildProviderArgs(cfg, features)
+	require.NoError(t, err)
+
+	assert.Equal(t, features, args.Features)
+	assert.Equal(t, pulumi.String("33333333-3333-3333-3333-333333333333"), args.SubscriptionId)
+	assert.Nil(t, args.ClientSecret)
+	assert.Nil(t, args.UseOidc)
 }
 
 func TestProviderResourceName(t *testing.T) {

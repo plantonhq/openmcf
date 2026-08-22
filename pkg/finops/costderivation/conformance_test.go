@@ -29,9 +29,10 @@ var decimalPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 //     equals the filename), the component ships a cost profile, and the
 //     component does NOT also ship a hand-authored estimate model -- a
 //     component's quantities have exactly one home.
-//  2. Cluster-capacity components carry no derivation: capacity
-//     footprints are per-preset facts the derivation standard does not
-//     yet express, and a monetary derivation for one would be dishonest.
+//  2. Cluster-capacity components carry no COST derivation: they price
+//     no meters, so their footprints derive through the capacity
+//     standard (ComponentCapacityDerivation) -- a monetary derivation
+//     for one would be dishonest.
 //  3. Every field path anywhere in the document (region binding,
 //     conditions, quantity factors, attribute bindings) resolves against
 //     the served version's compiled descriptors -- a schema rename that
@@ -87,7 +88,7 @@ func TestCostDerivationConformance(t *testing.T) {
 				t.Fatalf("the derived component must ship a cost profile: %v", err)
 			}
 			if profile.GetSpec().GetBillingModel() == costprofilev1.BillingModel_cluster_capacity {
-				t.Fatal("cluster-capacity components carry no derivation -- capacity footprints are per-preset facts this standard does not yet express")
+				t.Fatal("cluster-capacity components carry no COST derivation -- they price no meters; author a ComponentCapacityDerivation (catalog/_pricing/capacity/) instead")
 			}
 			meters := declaredMeters(profile)
 
@@ -243,17 +244,27 @@ func checkLineRule(
 }
 
 // checkConditions verifies each condition names a resolvable path, an op,
-// and the comparand exactly when the op compares.
+// and the comparand exactly when the op compares. Comparisons on
+// value-or-reference wrapper fields are refused outright: the engine
+// compares only the literal arm, so a manifest wiring the field by
+// reference would silently compare against "" -- an unknowable value must
+// never steer a comparison. Presence ops on wrappers are well-defined
+// (either arm populated reads set) and stay legal.
 func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor, conditions []*derivationv1.Condition) {
 	t.Helper()
 	for _, condition := range conditions {
-		if err := specpath.Validate(specDescriptor, condition.GetFieldPath()); err != nil {
+		terminal, err := specpath.Terminal(specDescriptor, condition.GetFieldPath())
+		if err != nil {
 			t.Errorf("condition: %v", err)
+			continue
 		}
 		switch condition.GetOp() {
 		case derivationv1.Condition_equals, derivationv1.Condition_not_equals:
 			if condition.GetValue() == "" {
 				t.Errorf("condition on %q compares against an empty value -- use is_unset for absence", condition.GetFieldPath())
+			}
+			if isReferenceCapable(terminal) {
+				t.Errorf("condition on %q compares a value-or-reference field -- a referenced value is unknowable at estimate time; restructure the rule or use a presence op", condition.GetFieldPath())
 			}
 		case derivationv1.Condition_is_set, derivationv1.Condition_is_unset:
 			if condition.GetValue() != "" {
@@ -263,6 +274,20 @@ func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor
 			t.Errorf("condition on %q has no op", condition.GetFieldPath())
 		}
 	}
+}
+
+// isReferenceCapable reports whether a field is the value-or-reference
+// wrapper shape: a non-repeated message carrying a scalar `value` field
+// beside at least one reference arm.
+func isReferenceCapable(field protoreflect.FieldDescriptor) bool {
+	if field.IsList() || field.IsMap() || field.Kind() != protoreflect.MessageKind {
+		return false
+	}
+	value := field.Message().Fields().ByName("value")
+	if value == nil || value.Kind() == protoreflect.MessageKind || value.IsList() || value.IsMap() {
+		return false
+	}
+	return field.Message().Fields().Len() > 1
 }
 
 // declaredMeters collects the sku_meter vocabulary a component's cost

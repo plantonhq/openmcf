@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcptargethttpproxy
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageTargetHttpProxy
+        permissions:
+          - compute.targetHttpProxies.create
+          - compute.targetHttpProxies.get
+          - compute.targetHttpProxies.delete
+          - compute.targetHttpProxies.setUrlMap
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_target_http_proxy -- create, read/refresh, destroy, and polling the global operation every mutation returns. url_map is the only mutable field and the provider repoints it through the dedicated setUrlMap RPC; every other change is delete-plus-create, so compute.targetHttpProxies.update is deliberately omitted.
+      - purpose: UseUrlMap
+        permissions:
+          - compute.urlMaps.use
+        provenance: derived
+        notes: A service-side check, not a module API call -- GCP's targetHttpProxies.insert reference documents that authorization requires compute.urlMaps.use on the referenced urlMap, so the deploying principal needs it on the URL map's project even though the module never touches the URL map API itself. The same check backs setUrlMap repoints.

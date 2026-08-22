@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefirewallpolicyrulecollectiongroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageFirewallPolicyRuleCollectionGroup
+        actions:
+          - Microsoft.Network/firewallPolicies/ruleCollectionGroups/read
+          - Microsoft.Network/firewallPolicies/ruleCollectionGroups/write
+          - Microsoft.Network/firewallPolicies/ruleCollectionGroups/delete
+        provenance: derived
+        notes: Covers azurerm_firewall_policy_rule_collection_group -- create, read/refresh, in-place rule and priority updates, and destroy. The group is an ARM child of the policy named in firewall_policy_id, so the permissions must be held at (or above) that policy's resource group; Network Contributor, Contributor, and Owner all carry them. The provider serializes concurrent writes to the same parent policy with in-process named locks -- no extra API call, so no permission on the policy itself is needed; referenced IP Group IDs are passed through and validated by ARM server-side.

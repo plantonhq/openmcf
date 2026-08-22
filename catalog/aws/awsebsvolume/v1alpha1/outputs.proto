@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsebsvolume.v1alpha1;
+
+// AwsEbsVolumeStackOutputs captures the observable state of the volume
+// after apply.
+message AwsEbsVolumeStackOutputs {
+  // The volume's id (vol-...) - what attachments, snapshots, and
+  // copies reference, and the provider's import ID.
+  string volume_id = 1;
+
+  // The volume's ARN.
+  string volume_arn = 2;
+
+  // The availability zone the volume actually lives in - notably
+  // useful for copies, which inherit the source's zone.
+  string availability_zone = 3;
+
+  // The volume's actual size in GiB - the snapshot's size when
+  // size_gb was left unset.
+  string size_gb = 4;
+
+  // When AWS created the volume (RFC3339).
+  string create_time = 5;
+}

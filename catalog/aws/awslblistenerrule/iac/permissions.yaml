@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslblistenerrule
+spec:
+  aws:
+    statements:
+      - sid: ManageListenerRule
+        actions:
+          - elasticloadbalancing:CreateRule
+          - elasticloadbalancing:ModifyRule
+          - elasticloadbalancing:SetRulePriorities
+          - elasticloadbalancing:DeleteRule
+          - elasticloadbalancing:AddTags
+          - elasticloadbalancing:RemoveTags
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:listener/app/*
+          - arn:aws:elasticloadbalancing:*:*:listener-rule/app/*
+        provenance: derived
+        notes: Covers aws_lb_listener_rule -- creation with conditions, the action chain, transforms, and tags; in-place updates of conditions, actions, and transforms (ModifyRule); priority changes through the dedicated re-prioritization API (SetRulePriorities); tagging; and deletion. The service reference authorizes CreateRule on the LISTENER ARN format (an under-scoped create denies provisioning) and the other actions on the listener-rule ARN format. Scoped to the app (ALB) formats only, because rules are an Application Load Balancer concept -- NLB listeners route purely by port/protocol and take no rules -- so the net formats the service reference also lists are never exercised by this module.
+      - sid: DescribeListenerRules
+        actions:
+          - elasticloadbalancing:DescribeRules
+          - elasticloadbalancing:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_lb_listener_rule during plan/refresh. Elastic Load Balancing Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

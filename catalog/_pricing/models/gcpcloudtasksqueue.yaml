@@ -1,0 +1,38 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpcloudtasksqueue
+spec:
+  presets:
+    - preset: 01-basic-queue
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - an empty queue bills nothing -- billable operations (every enqueue API call and every push delivery attempt, chunked at 32 KB) accrue only as producers add tasks, at $0.40 per million past the first 1 million free each month
+        - whatever compute serves the dispatched requests bills on its own component, and network costs apply to HTTP target dispatches
+      notes: Creation is free and existence is free -- Cloud Tasks meters operations, not queues, so the estimate is zero until traffic arrives.
+    - preset: 02-rate-limited-processing
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - operations follow enqueue volume -- the 500/second dispatch ceiling and 5-attempt retry budget bound how fast the $0.40-per-million operations meter can run, they commit nothing
+        - the 0.1 logging sampling ratio writes one Cloud Logging entry per 10 dispatches, billed on Cloud Logging's ingestion meter as traffic flows
+        - the processing service the queue dispatches to bills its own compute
+      notes: Rate limits and retry config are throughput and safety dials, not charges -- the zero is commitment-absence; a busy month's cost is entirely operation count.
+    - preset: 03-secure-cloud-run-target
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - operations accrue per enqueue and per authenticated dispatch (OIDC token minting adds no meter of its own), at $0.40 per million past the monthly free million, chunked at 32 KB
+        - full logging (sampling ratio 1.0) writes a Cloud Logging entry for every dispatch operation -- the deliberate observability spend of this preset, billed by ingested volume as traffic flows
+        - the Cloud Run service receiving the dispatches bills its own request-time compute
+      notes: Queue-level auth and routing change where dispatches land and how they authenticate, not what the queue costs -- zero committed at creation.

@@ -26,30 +26,6 @@ resources:
   - resource: aws_accessanalyzer_archive_rule
     disposition: model-planned
     reason: "judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in)"
-  - resource: aws_account_alternate_contact
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
-  - resource: aws_account_primary_contact
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
-  - resource: aws_account_region
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
-  - resource: aws_acmpca_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_certificate_authority
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_certificate_authority_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
   - resource: aws_alb
     disposition: excluded-deprecated
     reason: "legacy aws_alb* alias of the aws_lb* resource set already consumed by the load-balancer kinds"
@@ -215,42 +191,6 @@ resources:
   - resource: aws_appstream_user_stack_association
     disposition: deferred
     reason: "application-streaming vertical (AppStream); deferred pending demand"
-  - resource: aws_appsync_api
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_api_cache
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_api_key
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_channel_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_datasource
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_domain_name
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_domain_name_api_association
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_function
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_graphql_api
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_resolver
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_source_api_association
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_type
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
   - resource: aws_arcregionswitch_plan
     disposition: deferred
     reason: "Route 53 ARC region/zonal shift controls; deferred pending demand"
@@ -320,24 +260,9 @@ resources:
   - resource: aws_billing_view
     disposition: deferred
     reason: "billing views are console/reporting configuration; deferred pending demand"
-  - resource: aws_budgets_budget
-    disposition: model-planned
-    reason: "judged as a planned AwsBudget kind (budgets with actions)"
-  - resource: aws_budgets_budget_action
-    disposition: model-planned
-    reason: "judged as a planned AwsBudget kind (budgets with actions)"
-  - resource: aws_ce_anomaly_monitor
-    disposition: model-planned
-    reason: "judged as a planned AwsCostAnomalyMonitor kind (monitors with subscriptions)"
-  - resource: aws_ce_anomaly_subscription
-    disposition: model-planned
-    reason: "judged as a planned AwsCostAnomalyMonitor kind (monitors with subscriptions)"
   - resource: aws_ce_cost_allocation_tag
     disposition: model-planned
-    reason: "judged as a planned AwsCostCategory kind (cost categories with allocation tags)"
-  - resource: aws_ce_cost_category
-    disposition: model-planned
-    reason: "judged as a planned AwsCostCategory kind (cost categories with allocation tags)"
+    reason: "judged as a planned AwsCostAllocationTags account-settings kind: a per-tag-key account activation toggle (delete merely sets Inactive) with no schema edge to any cost category - folding it into the many-instance AwsCostCategory would make instances fight over one account object"
   - resource: aws_chatbot_slack_channel_configuration
     disposition: deferred
     reason: "chat-channel notification integrations (AWS Chatbot); deferred pending demand"
@@ -494,48 +419,12 @@ resources:
   - resource: aws_cloudwatch_contributor_managed_insight_rule
     disposition: deferred
     reason: "Contributor Insights rules; deferred pending demand"
-  - resource: aws_cloudwatch_dashboard
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchDashboard kind"
-  - resource: aws_cloudwatch_event_api_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
-  - resource: aws_cloudwatch_event_connection
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
   - resource: aws_cloudwatch_event_endpoint
     disposition: deferred
     reason: "EventBridge global endpoints (multi-region failover); deferred pending demand"
   - resource: aws_cloudwatch_event_permission
     disposition: composed
     reason: "per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements)"
-  - resource: aws_cloudwatch_log_account_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogAccountPolicy kind: an account-wide policy per type (data protection / subscription filter / field index / transformer) optionally scoped by selection criteria -- standalone account-scoped configuration, never a per-group satellite"
-  - resource: aws_cloudwatch_log_anomaly_detector
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogAnomalyDetector kind: one detector trains over a LIST of log groups (log_group_arn_list) -- multi-parent scope, not a single group's satellite (the CloudFront-companion class)"
-  - resource: aws_cloudwatch_log_delivery
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_destination_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_source
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_destination_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogResourcePolicy kind: account-scoped named policies that grant AWS services log-delivery permission (Route53 query logging, EventBridge, ...) -- standalone glue many kinds need; nothing in the catalog renders it today, so composed would overstate coverage"
   - resource: aws_cloudwatch_log_s3_table_integration_source
     disposition: deferred
     reason: "attaches a data source to an S3 Tables log INTEGRATION ARN whose parent integration has no provider resource (console/API-created) -- not log-group-scoped despite the former blanket; deferred until the S3 Tables integration surface is modelable end to end"
@@ -848,18 +737,6 @@ resources:
   - resource: aws_db_instance_automated_backups_replication
     disposition: model-planned
     reason: "judged as a planned AwsRdsAutomatedBackupsReplication kind -- the replication is created in the DESTINATION region, a cross-region lifecycle outside the single-region instance kind (the replica-key class)"
-  - resource: aws_db_proxy
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_default_target_group
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_target
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
   - resource: aws_db_snapshot
     disposition: deferred
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
@@ -953,9 +830,6 @@ resources:
   - resource: aws_directory_service_trust
     disposition: model-planned
     reason: "judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts)"
-  - resource: aws_dlm_lifecycle_policy
-    disposition: model-planned
-    reason: "DLM lifecycle policies fold into the planned AwsEbsSnapshot kind"
   - resource: aws_dms_certificate
     disposition: model-planned
     reason: "judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions)"
@@ -995,12 +869,6 @@ resources:
   - resource: aws_drs_replication_configuration_template
     disposition: deferred
     reason: "Elastic Disaster Recovery vertical; deferred pending demand"
-  - resource: aws_dsql_cluster
-    disposition: model-planned
-    reason: "judged as a planned AwsAuroraDsql kind (clusters with peering)"
-  - resource: aws_dsql_cluster_peering
-    disposition: model-planned
-    reason: "judged as a planned AwsAuroraDsql kind (clusters with peering)"
   - resource: aws_dx_bgp_peer
     disposition: model-planned
     reason: "judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers)"
@@ -1082,27 +950,9 @@ resources:
   - resource: aws_ebs_encryption_by_default
     disposition: model-planned
     reason: "account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind"
-  - resource: aws_ebs_fast_snapshot_restore
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_snapshot
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
   - resource: aws_ebs_snapshot_block_public_access
     disposition: model-planned
     reason: "account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind"
-  - resource: aws_ebs_snapshot_copy
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_snapshot_import
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_volume
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
-  - resource: aws_ebs_volume_copy
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
   - resource: aws_ec2_allowed_images_settings
     disposition: model-planned
     reason: "account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind"
@@ -1151,12 +1001,9 @@ resources:
   - resource: aws_ec2_local_gateway_route_table_vpc_association
     disposition: deferred
     reason: "Outposts local-gateway surface; deferred pending demand"
-  - resource: aws_ec2_managed_prefix_list
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrefixList kind (lists with entries)"
   - resource: aws_ec2_managed_prefix_list_entry
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrefixList kind (lists with entries)"
+    disposition: composed
+    reason: "identical payload to AwsManagedPrefixList's in-line entries list -- the provider's own docs warn the standalone entry resource and in-line entries overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_ec2_network_insights_access_scope
     disposition: deferred
     reason: "Network Insights analyses are imperative diagnostics, a poor declarative fit; deferred"
@@ -1232,27 +1079,6 @@ resources:
   - resource: aws_ec2_transit_gateway_vpc_attachment_accepter
     disposition: model-planned
     reason: "accepter-side half of a cross-account VPC attachment on a RAM-shared gateway -- runs in the sharing account's deployment scope, judged as a future AwsTransitGatewayVpcAttachmentAccepter kind alongside RAM-share modeling"
-  - resource: aws_ecr_account_setting
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_pull_through_cache_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_pull_time_update_exclusion
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_registry_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_registry_scanning_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_replication_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_repository_creation_template
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
   - resource: aws_ecrpublic_repository
     disposition: deferred
     reason: "public ECR gallery repositories; deferred pending demand"
@@ -1535,33 +1361,12 @@ resources:
   - resource: aws_grafana_workspace_service_account_token
     disposition: model-planned
     reason: "judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts)"
-  - resource: aws_iam_account_alias
-    disposition: model-planned
-    reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
-  - resource: aws_iam_account_password_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
-  - resource: aws_iam_group
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
-  - resource: aws_iam_group_membership
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
   - resource: aws_iam_group_policies_exclusive
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
-  - resource: aws_iam_group_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
-  - resource: aws_iam_group_policy_attachment
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamGroup already declares its full intended policy set"
   - resource: aws_iam_group_policy_attachments_exclusive
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
-  - resource: aws_iam_organizations_features
-    disposition: model-planned
-    reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
+    disposition: deferred
+    reason: "exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamGroup already declares its full intended policy set"
   - resource: aws_iam_outbound_web_identity_federation
     disposition: deferred
     reason: "human-credential MFA devices and outbound identity federation; deferred pending demand"
@@ -1574,12 +1379,6 @@ resources:
   - resource: aws_iam_role_policy_attachments_exclusive
     disposition: deferred
     reason: "exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set"
-  - resource: aws_iam_saml_provider
-    disposition: model-planned
-    reason: "judged as a planned AwsIamSamlProvider kind"
-  - resource: aws_iam_security_token_service_preferences
-    disposition: model-planned
-    reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
   - resource: aws_iam_server_certificate
     disposition: excluded-deprecated
     reason: "IAM-hosted certificates are legacy, superseded by ACM (covered by AwsCertManagerCert)"
@@ -1593,8 +1392,8 @@ resources:
     disposition: excluded-deprecated
     reason: "IAM-hosted certificates are legacy, superseded by ACM (covered by AwsCertManagerCert)"
   - resource: aws_iam_user_group_membership
-    disposition: model-planned
-    reason: "judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments)"
+    disposition: composed
+    reason: "the user<->group membership edge seen from the user side; AwsIamGroup's declarative users list covers the same edge group-centric (one declarative representation per relationship)"
   - resource: aws_iam_user_login_profile
     disposition: deferred
     reason: "human console-login credentials (PGP-encrypted passwords) -- the human-credential class alongside aws_iam_virtual_mfa_device; the catalog provisions machine identities; revisit on demand"
@@ -1847,12 +1646,6 @@ resources:
   - resource: aws_lambda_invocation
     disposition: deferred
     reason: "function invocation is an imperative operation, a poor declarative fit"
-  - resource: aws_lambda_layer_version
-    disposition: model-planned
-    reason: "judged as a planned AwsLambdaLayer kind (layer versions with permissions)"
-  - resource: aws_lambda_layer_version_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsLambdaLayer kind (layer versions with permissions)"
   - resource: aws_launch_configuration
     disposition: excluded-deprecated
     reason: "launch configurations are deprecated by AWS; launch templates (AwsLaunchTemplate) are the successor"
@@ -2120,15 +1913,12 @@ resources:
   - resource: aws_neptunegraph_graph
     disposition: deferred
     reason: "Neptune Analytics graphs; deferred pending demand"
-  - resource: aws_network_acl
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
   - resource: aws_network_acl_association
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
+    disposition: composed
+    reason: "identical payload to AwsNetworkAcl's in-line subnet_ids list -- the provider's own docs warn against mixing the standalone association with in-line subnet management, so the kind's single declarative owner is the in-line form"
   - resource: aws_network_acl_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
+    disposition: composed
+    reason: "identical payload to AwsNetworkAcl's in-line ingress/egress rules -- the provider's own docs warn the standalone rule resource and in-line rules overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_network_interface
     disposition: model-planned
     reason: "judged as a planned AwsNetworkInterface kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a standalone ENI lifecycle attachable across instances -- AwsEc2Instance consumes one by reference (primary_network_interface_id) and creates launch-scoped ones inline (secondary_network_interfaces), neither of which is the durable standalone ENI; the provider's own aws_instance.network_interface deprecation points at the attachment resource as the sanctioned companion"
@@ -2345,33 +2135,12 @@ resources:
   - resource: aws_opensearchserverless_vpc_endpoint
     disposition: model-planned
     reason: "the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids)"
-  - resource: aws_organizations_account
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationAccount kind"
   - resource: aws_organizations_aws_service_access
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_delegated_administrator
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_organization
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_organizational_unit
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationalUnit kind"
-  - resource: aws_organizations_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationPolicy kind (policies with attachments)"
-  - resource: aws_organizations_policy_attachment
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationPolicy kind (policies with attachments)"
-  - resource: aws_organizations_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
+    disposition: composed
+    reason: "covered by AwsOrganization's own aws_service_access_principals field (the organization resource's argument) -- the provider's docs warn that managing the same principal through this standalone resource AND the organization argument produces a perpetual diff, so the declarative home is the org spec (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence)"
   - resource: aws_organizations_tag
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
+    disposition: deferred
+    reason: "generated per-key tag escape hatch for Organizations objects created OUTSIDE IaC (e.g. Control Tower accounts); it does not honor ignore_tags and duplicates the native tags argument the catalog's kinds model on OU/account/policy/resource-policy -- the aws_dynamodb_tag imperative-helper class (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence)"
   - resource: aws_osis_pipeline
     disposition: deferred
     reason: "OpenSearch Ingestion pipelines; deferred pending demand"
@@ -2432,39 +2201,9 @@ resources:
   - resource: aws_pinpointsmsvoicev2_pool
     disposition: deferred
     reason: "End User Messaging SMS/voice channels; deferred pending demand"
-  - resource: aws_pipes_pipe
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgePipe kind"
   - resource: aws_placement_group
     disposition: model-planned
     reason: "judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one"
-  - resource: aws_prometheus_alert_manager_definition
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_anomaly_detector
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_query_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_rule_group_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_scraper
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_scraper_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_workspace
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_workspace_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
   - resource: aws_proxy_protocol_policy
     disposition: excluded-deprecated
     reason: "Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb)"
@@ -2711,36 +2450,9 @@ resources:
   - resource: aws_route53_resolver_dnssec_config
     disposition: model-planned
     reason: "per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens"
-  - resource: aws_route53_resolver_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
   - resource: aws_route53_resolver_firewall_config
     disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_domain_list
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule_group
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule_group_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_query_log_config
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations)"
-  - resource: aws_route53_resolver_query_log_config_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations)"
-  - resource: aws_route53_resolver_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
-  - resource: aws_route53_resolver_rule_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
+    reason: "per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens (re-judged out of AwsRoute53ResolverFirewall 2026-08-18: zero schema edge to rule groups, delete merely resets fail-open to DISABLED - the same per-VPC settings class as resolver_config and resolver_dnssec_config, and per-VPC state a rule group associable to many VPCs cannot own)"
   - resource: aws_route53_traffic_policy
     disposition: deferred
     reason: "Route 53 Traffic Flow policies are the legacy routing-policy path; deferred"
@@ -2807,9 +2519,6 @@ resources:
   - resource: aws_s3_account_public_access_block
     disposition: model-planned
     reason: "judged as a planned AwsS3AccountPublicAccessBlock kind"
-  - resource: aws_s3_directory_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone)"
   - resource: aws_s3control_access_grant
     disposition: model-planned
     reason: "judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies)"
@@ -2873,36 +2582,6 @@ resources:
   - resource: aws_s3outposts_endpoint
     disposition: deferred
     reason: "S3 on Outposts endpoints; deferred pending demand"
-  - resource: aws_s3tables_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket_replication
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_replication
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3vectors_index
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
-  - resource: aws_s3vectors_vector_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
-  - resource: aws_s3vectors_vector_bucket_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
   - resource: aws_sagemaker_algorithm
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -2972,12 +2651,6 @@ resources:
   - resource: aws_savingsplans_savings_plan
     disposition: deferred
     reason: "savings plans are a billing purchase commitment, not infrastructure"
-  - resource: aws_scheduler_schedule
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeScheduler kind (schedules with groups)"
-  - resource: aws_scheduler_schedule_group
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeScheduler kind (schedules with groups)"
   - resource: aws_schemas_discoverer
     disposition: deferred
     reason: "EventBridge schema registry content; deferred pending demand"
@@ -3071,21 +2744,6 @@ resources:
   - resource: aws_serverlessapplicationrepository_cloudformation_stack
     disposition: deferred
     reason: "Serverless Application Repository deployments are CloudFormation-mediated; contrary to catalog doctrine; deferred"
-  - resource: aws_service_discovery_http_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_instance
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_private_dns_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_public_dns_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_service
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
   - resource: aws_servicecatalog_budget_resource_association
     disposition: model-planned
     reason: "judged as a planned AwsServiceCatalogPortfolio kind (portfolios, shares, principal associations, constraints, budgets, tag options, service actions, organizations access)"
@@ -3239,9 +2897,6 @@ resources:
   - resource: aws_signer_signing_profile_permission
     disposition: deferred
     reason: "code-signing profiles and jobs; deferred pending demand"
-  - resource: aws_snapshot_create_volume_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
   - resource: aws_sns_platform_application
     disposition: deferred
     reason: "mobile-push platform applications and SMS preferences; deferred pending demand"
@@ -3377,15 +3032,6 @@ resources:
   - resource: aws_swf_domain
     disposition: excluded-deprecated
     reason: "SWF is superseded by Step Functions (covered by AwsStepFunction)"
-  - resource: aws_synthetics_canary
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
-  - resource: aws_synthetics_group
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
-  - resource: aws_synthetics_group_association
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
   - resource: aws_timestreaminfluxdb_db_cluster
     disposition: deferred
     reason: "time-series database vertical (Timestream); deferred pending demand"
@@ -3488,9 +3134,6 @@ resources:
   - resource: aws_verifiedpermissions_schema
     disposition: deferred
     reason: "fine-grained authorization stores (Verified Permissions); deferred pending demand"
-  - resource: aws_volume_attachment
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
   - resource: aws_vpc_block_public_access_exclusion
     disposition: model-planned
     reason: "judged as a planned AwsVpcBlockPublicAccess kind (the per-VPC/per-subnet exclusion arm of the regional block-public-access singleton)"
@@ -3563,15 +3206,9 @@ resources:
   - resource: aws_vpc_network_performance_metric_subscription
     disposition: deferred
     reason: "account-scoped AZ-pair network performance monitoring (aggregate-latency metric subscriptions between availability zones) -- never per-VPC surface; revisit on demand"
-  - resource: aws_vpc_peering_connection
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
-  - resource: aws_vpc_peering_connection_accepter
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
   - resource: aws_vpc_peering_connection_options
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
+    disposition: composed
+    reason: "identical payload to AwsVpcPeering's in-line DNS-resolution options on both arms -- the provider's own docs warn the standalone options resource and in-line options overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_vpc_route_server
     disposition: deferred
     reason: "VPC route servers; deferred pending demand"

@@ -1,0 +1,251 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMongoCluster manifest's spec values into metered quantities and
+# price choices -- each general-purpose tier's vCores per shard priced at
+# the per-vCore meter (the published per-node tier prices are exactly
+# vCores x that rate), multiplied by shard_count, plus provisioned
+# storage per GiB-month per shard, with the high-availability standby
+# doubling both (Microsoft runs one standby shard per primary with the
+# same compute and storage configuration). The Free tier honestly totals
+# 0.00 inside its sandbox walls. The estimate generator replays the
+# catalog presets through these rules; a server-side estimator evaluates
+# the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremongocluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: compute_tier
+          op: is_unset
+      reason: an unset compute_tier is delegated -- replica and restore clusters inherit the source cluster's tier, which is invisible in this manifest
+    - when:
+        - field_path: compute_tier
+          op: equals
+          value: M10
+      reason: the burstable M10 tier bills its own burstable-vCore meter, which is not yet in the price book -- pricing the general-purpose rate would misstate the bill
+    - when:
+        - field_path: compute_tier
+          op: equals
+          value: M20
+      reason: the burstable M20 tier bills its own burstable-vCore meter, which is not yet in the price book -- pricing the general-purpose rate would misstate the bill
+    - when:
+        - field_path: compute_tier
+          op: equals
+          value: M25
+      reason: the burstable M25 tier bills its own burstable-vCore meter, which is not yet in the price book -- pricing the general-purpose rate would misstate the bill
+    - when:
+        - field_path: storage_type
+          op: equals
+          value: PremiumSSDv2
+      reason: PremiumSSDv2 bills provisioned GiB plus separate IOPS and throughput dimensions that are not yet in the price book -- pricing the PremiumSSD rate alone would understate the bill
+  lines:
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M30
+      quantity:
+        - constant: "2"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M30 shard provisions 2 vCores, x shard_count shards x 730 hours -- the published per-node price is exactly the vCore count times the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M30
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "2"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 2 vCores x shard_count x 730 hours again
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M40
+      quantity:
+        - constant: "4"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M40 shard provisions 4 vCores, x shard_count shards x 730 hours at the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M40
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "4"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 4 vCores x shard_count x 730 hours again
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M50
+      quantity:
+        - constant: "8"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M50 shard provisions 8 vCores, x shard_count shards x 730 hours at the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M50
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "8"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 8 vCores x shard_count x 730 hours again
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M60
+      quantity:
+        - constant: "16"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M60 shard provisions 16 vCores, x shard_count shards x 730 hours at the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M60
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "16"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 16 vCores x shard_count x 730 hours again
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M80
+      quantity:
+        - constant: "32"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M80 shard provisions 32 vCores, x shard_count shards x 730 hours at the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M80
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "32"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 32 vCores x shard_count x 730 hours again
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M200
+      quantity:
+        - constant: "64"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: an M200 shard provisions 64 vCores, x shard_count shards x 730 hours at the general-purpose per-vCore meter
+    - sku_meter: shard compute
+      applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: M200
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - constant: "64"
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: mongo-cluster-gp-vcore-eastus
+      basis: high availability runs one standby shard per primary with the same compute configuration, billing the same 64 vCores x shard_count x 730 hours again
+    - sku_meter: shard storage
+      applies_when:
+        - field_path: compute_tier
+          op: not_equals
+          value: Free
+      quantity:
+        - field_value:
+            field_path: storage_size_in_gb
+        - field_value:
+            field_path: shard_count
+      price_slug: mongo-cluster-gp-storage-eastus
+      basis: every physical shard carries the same provisioned storage, so storage_size_in_gb x shard_count bills per GiB-month whether used or empty
+    - sku_meter: shard storage
+      applies_when:
+        - field_path: compute_tier
+          op: not_equals
+          value: Free
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      quantity:
+        - field_value:
+            field_path: storage_size_in_gb
+        - field_value:
+            field_path: shard_count
+      price_slug: mongo-cluster-gp-storage-eastus
+      basis: high availability runs one standby shard per primary with the same storage configuration, billing the same provisioned GiB again
+  exclusions:
+    - text: network egress follows client placement and cross-region replication topology
+  notes:
+    - applies_when:
+        - field_path: compute_tier
+          op: equals
+          value: Free
+      text: The Free tier bills nothing for the life of the cluster -- its retail meters are published at 0.00 -- within its sandbox walls of one free cluster per subscription, a single shard, and no zone-redundant high availability (limits this spec's validation also enforces).
+    - applies_when:
+        - field_path: high_availability_mode
+          op: equals
+          value: ZoneRedundantPreferred
+      text: High availability doubles the bill -- Microsoft's documentation states every primary shard gets a standby shard with the same compute and storage configuration, and both bill.
+    - text: Automated backups carry no separate charge -- Microsoft's pricing page states there is no additional cost for backups up to 35 days.

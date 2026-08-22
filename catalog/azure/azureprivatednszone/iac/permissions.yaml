@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatednszone
+spec:
+  azure:
+    groups:
+      - purpose: ManagePrivateDnsZone
+        actions:
+          - Microsoft.Network/privateDnsZones/read
+          - Microsoft.Network/privateDnsZones/write
+          - Microsoft.Network/privateDnsZones/delete
+        provenance: derived
+        notes: Covers azurerm_private_dns_zone / privatedns.NewZone -- create, refresh, in-place tag updates, and destroy. The zone's name is its ARM identity, so a rename is a delete-and-create needing all three. Typically held via Private DNS Zone Contributor, Contributor, or Owner on the resource group.
+      - purpose: ManageSoaRecord
+        actions:
+          - Microsoft.Network/privateDnsZones/SOA/read
+          - Microsoft.Network/privateDnsZones/SOA/write
+        provenance: derived
+        notes: Both engines surface the zone's Start of Authority through the zone resource, but ARM models SOA as a record set with its own operations -- the provider reads it on every refresh to populate the soa_record state (SOA/read, exercised even when the spec leaves soa_record unset) and writes it at create only when the spec customizes it (SOA/write). No other record-type operations are needed -- record sets are first-class components of their own, and the zone module never touches them.

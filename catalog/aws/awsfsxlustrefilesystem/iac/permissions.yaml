@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  aws:
+    statements:
+      - sid: ManageFileSystem
+        actions:
+          - fsx:CreateFileSystem
+          - fsx:UpdateFileSystem
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_fsx_lustre_file_system -- creation (deployment type, storage class, throughput, networking, root squash, logging, metadata IOPS, backup windows), in-place updates (capacity growth, throughput, compression, backup retention, maintenance window), and tag reconciliation. Every action authorizes on the file-system ARN format per the service reference; create-time tags flow inside CreateFileSystem itself.
+      - sid: RestoreAndDelete
+        actions:
+          - fsx:CreateFileSystemFromBackup
+          - fsx:DeleteFileSystem
+        resources:
+          - arn:aws:fsx:*:*:file-system/*
+          - arn:aws:fsx:*:*:backup/*
+        provenance: derived
+        notes: The service reference authorizes both actions on the backup ARN format in addition to file-system -- CreateFileSystemFromBackup runs whenever spec.backup_id restores from a backup, and DeleteFileSystem creates a final backup when skip_final_backup is false. Scoping to file-system alone would deny both paths.
+      - sid: DescribeFileSystems
+        actions:
+          - fsx:DescribeFileSystems
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_lustre_file_system during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_id selects a customer-managed key -- FSx validates the key and creates a grant against it during file-system creation using the caller's credentials. Both actions authorize on the key ARN format per the KMS service reference.

@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsiamaccountsettings
+spec:
+  aws:
+    statements:
+      - sid: ManageAccountAlias
+        actions:
+          - iam:CreateAccountAlias
+          - iam:DeleteAccountAlias
+          - iam:ListAccountAliases
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_iam_account_alias / iam.AccountAlias -- rendered only when account_alias is set. CreateAccountAlias serves create AND replace (an account holds exactly one alias, so applying replaces whatever alias existed), DeleteAccountAlias serves destroy and the replace's removal side, and ListAccountAliases is the read on every plan/refresh. All three actions are NON-SCOPABLE (the IAM service reference lists no resource types for them), so the wildcard is the narrowest possible scope -- an ARN-scoped grant here would be a runtime DENY.
+      - sid: ManagePasswordPolicy
+        actions:
+          - iam:UpdateAccountPasswordPolicy
+          - iam:GetAccountPasswordPolicy
+          - iam:DeleteAccountPasswordPolicy
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_iam_account_password_policy / iam.AccountPasswordPolicy -- rendered only when password_policy is set. UpdateAccountPasswordPolicy is AWS's single upsert (the policy is replaced whole on every apply, serving both create and update), GetAccountPasswordPolicy runs on every plan/refresh, and DeleteAccountPasswordPolicy implements destroy's reset-to-defaults semantics. All three actions are NON-SCOPABLE per the IAM service reference; the account itself is the only scope these APIs know.
+      - sid: ManageStsPreferences
+        actions:
+          - iam:SetSecurityTokenServicePreferences
+          - iam:GetAccountSummary
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_iam_security_token_service_preferences / iam.SecurityTokenServicePreferences -- rendered only when sts is set. SetSecurityTokenServicePreferences writes the global-endpoint token version (create and update; the resource's destroy is a provider no-op, so no delete action exists), and the provider reads the current version back through GetAccountSummary on every plan/refresh (the summary map carries globalEndpointTokenVersion -- there is no dedicated read API). Both actions are NON-SCOPABLE per the IAM service reference. The modules' caller-identity lookup (data.aws_caller_identity / aws.GetCallerIdentity) rides sts:GetCallerIdentity, which AWS grants unconditionally to every authenticated principal -- no statement needed.

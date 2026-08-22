@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanspaceskey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An access key stores no data of its own; bucket-side encryption is the DigitalOceanBucket kind's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The key is credential material, not a transport; Spaces endpoints the key authenticates against are HTTPS-only on the bucket side.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A key is not an endpoint; it exposes nothing to restrict. Bucket exposure is governed on the DigitalOceanBucket kind.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge.
+    - control_id: rbac
+      status: configurable
+      field_path: grants
+      evidence:
+        type: spec_default
+        reference: Per-bucket grants ARE the key's permission model -- read or readwrite scoped to named buckets. Validation enforces the pairing the provider silently drops (a permission outside read/readwrite/fullaccess upstream becomes an empty grant that authorizes nothing).
+      notes: Prefer per-bucket read/readwrite grants over a fullaccess grant, which covers every bucket in the account including future ones. A key with NO grants authorizes nothing -- the least-privilege zero state.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Spaces has no keyless / federated access path upstream -- S3-style access keys ARE the mechanism this kind manages; rotation is destroy-and-recreate (the key material is immutable).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No alternative auth protocol surface; S3-style signature auth is the only Spaces access path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-key usage or audit surface; account-level activity appears in the team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Keys emit no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The key is stateless configuration recreated by IaC -- but note the SECRET is write-once (returned only at creation), so a "restore" mints NEW credentials and consumers must be re-pointed.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Keys are account-global control-plane objects with no placement posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for keys. Deleting one immediately breaks every workload signing with it (documented in the GUIDE).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch.

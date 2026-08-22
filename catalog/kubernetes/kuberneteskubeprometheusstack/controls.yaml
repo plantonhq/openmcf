@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The stack's durable data -- Prometheus' TSDB and Alertmanager's notification state -- rests on PersistentVolumes whose encryption at rest is the storage class and CSI driver's property (selectable via prometheus.storage_class / alertmanager.storage_class, configured on the KubernetesStorageClass resource), not a seam of this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys ride the storage infrastructure that backs the volumes (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: The typed spec models no TLS surface for the scrape paths -- kubelet and API server scrapes are TLS by those endpoints' nature, while exporter scrapes (node-exporter, kube-state-metrics, workload monitors) cross the cluster's pod network in plaintext by default; per-exporter TLS is chart surface reached through the helm_values overlay. Everything that LEAVES the cluster -- remote_write -- is HTTPS to the declared destination URLs.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every UI and API stays ClusterIP -- the chart renders no external exposure; Grafana or Prometheus are exposed deliberately via first-class kinds (KubernetesIngress, Gateway API kinds) over the exported service handles.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface is rendered here -- exposure rides separate first-class kinds, and ingress restriction is examined on those components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The stack serves no public HTTP edge traffic from this component -- web application firewalls apply to whatever ingress kind eventually exposes Grafana, not here.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates a dedicated ServiceAccount per component, each bound to chart-rendered roles scoped to its function -- the operator manages its own custom resources, Prometheus holds read-only scrape discovery access, kube-state-metrics reads object state; nothing runs beyond its role.
+    - control_id: workload-identity
+      status: configurable
+      field_path: prometheus.remote_write
+      evidence:
+        type: spec_default
+        reference: Remote-write destinations authenticate keylessly by default where the platform allows it -- SigV4 with no declared keys signs as the pod's ambient IRSA identity (Amazon Managed Prometheus), and azure_ad uses the AKS managed identity; validation requires static SigV4 keys to come as a full pair, steering to keyless.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The stack exposes no weaker authentication path to disable -- Grafana's admin password is chart-generated randomly at first install (or supplied via grafana.admin_secret as a Secret reference), and remote-write basic-auth/bearer credentials are references to existing Secrets, never inline material.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Administrative changes to the stack and its custom resources are Kubernetes API operations, captured by the target cluster's audit policy; component logs stream to stdout for the cluster's log collector.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: This IS the cluster's monitoring stack, and it monitors itself by default -- the chart renders ServiceMonitors for the operator, Prometheus, and Alertmanager, the curated default_rules include their alert groups, and the always-firing Watchdog alert is the dead-man's-switch proving the pipeline is alive end to end.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: prometheus.remote_write
+      evidence:
+        type: spec_default
+        reference: The local TSDB is a retention-bounded working set on PVCs (it survives pod restarts, not deliberate deletion); durability beyond the cluster is remote_write -- shipping every sample to long-term backends (Grafana Cloud/Mimir, Amazon Managed Prometheus, Azure Monitor, Thanos Receive) as it is scraped.
+      notes: Grafana's own state is code-provisioned by default (dashboards and datasource arrive from the chart); grafana.storage adds a PVC only where people author dashboards by hand in this UI.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: prometheus.retention
+      evidence:
+        type: spec_default
+        reference: Samples are kept for prometheus.retention (default 10d) or until retention_size trims the TSDB, whichever comes first; alertmanager.retention (default 120h) bounds the notification state the same way.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: prometheus.replicas
+      evidence:
+        type: spec_default
+        reference: Prometheus defaults to 1 replica; 2 is the HA pair -- each replica scrapes and stores the full target set independently (duplication, not sharding), so either can serve queries alone. alertmanager.replicas gossip into one deduplicating notification cluster (3 is quorum-safe).
+      notes: The 03-production-sized preset runs 2 Prometheus and 2 Alertmanager replicas. Deduplicated long-term storage across replicas is the Thanos surface, reached via helm_values.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The monitoring.coreos.com CRDs ship in a subchart's crds/ directory -- Helm installs them once and never deletes them, so uninstalling the stack keeps every ServiceMonitor, PodMonitor, and PrometheusRule across the cluster.
+      notes: The TSDB and Alertmanager PVCs are operator-created StatefulSet volumes -- Helm does not garbage-collect them on uninstall, so metric history also survives until deliberately deleted. The release itself carries no deletion lock.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 87.19.1, pairing with Prometheus Operator v0.92.1); changing it re-runs the Helm release deliberately -- and because Helm never upgrades crds/-directory CRDs, upgrades across operator minors pair with crd_upgrade_job (a pre-upgrade hook that server-side-applies the new CRD bundle) or a manual CRD apply.

@@ -1,0 +1,37 @@
+# Dynamic DigitalOceanDropletAutoscalePool: utilization-scaled between one
+# and two members with the monitoring agent enabled (dynamic scaling
+# decides on agent-supplied CPU metrics). DigitalOcean provisions
+# min_instances at create, so this lane bills one droplet like the minimal
+# lane; the scale-up path itself needs sustained load and is a proof-lane
+# observation, not an assertion.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: planton-oss-e2e-digitaloceandropletautoscalepool-dynamic
+  id: planton-oss-e2e-digitaloceandropletautoscalepool-dynamic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandropletautoscalepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  poolName: pltn-e2e-dodasp-dyn-${E2E_RUN_ID}
+  dynamic:
+    minInstances: 1
+    maxInstances: 2
+    targetCpuUtilization: 0.7
+    cooldownMinutes: 5
+  dropletTemplate:
+    size: s-1vcpu-1gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    sshKeys:
+      - valueFrom:
+          kind: DigitalOceanSshKey
+          name: planton-oss-e2e-digitaloceansshkey-min
+          fieldPath: status.outputs.ssh_key_id
+    withDropletAgent: true

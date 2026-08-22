@@ -41,7 +41,10 @@ type AzureMachineLearningBatchEndpointStackOutputs struct {
 	// Microsoft Entra token).
 	ScoringUri string `protobuf:"bytes,3,opt,name=scoring_uri,json=scoringUri,proto3" json:"scoring_uri,omitempty"`
 	// The endpoint's OpenAPI (Swagger) document address -- the job
-	// submission request/response schema.
+	// submission request/response schema. EMPTY until a deployment
+	// serves behind the endpoint (live-measured on both engines: ARM
+	// returns "" for a deployment-less endpoint, unlike the online
+	// sibling whose swagger URI populates at create).
 	SwaggerUri string `protobuf:"bytes,4,opt,name=swagger_uri,json=swaggerUri,proto3" json:"swagger_uri,omitempty"`
 	// The principal (object) ID of the endpoint's system-assigned
 	// identity, when one is enabled -- what role grants bind to when

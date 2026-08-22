@@ -4,8 +4,8 @@
 #
 # AwsPlantonRunner is the Planton-internal runner APPLIANCE: a composite of
 # ten provider resources (ECS Fargate worker + IAM + secret + logs + security
-# group) whose spec deliberately models INTENT — placement, sizing, version,
-# execution mode, credentials — and not the underlying resources. Every
+# group) whose spec deliberately models INTENT — placement, sizing, version, the
+# runner token — and not the underlying resources. Every
 # consumed resource is module-shaped plumbing (the internal judgment); every
 # spec field drives one or more of those internal resources and is accounted
 # below. No resource here is user-configurable provider surface: adopters who
@@ -16,7 +16,7 @@ resources:
     internal: module-shaped appliance plumbing -- a dedicated single-service cluster hosting the runner; name and settings are module decisions
 
   aws_ecs_task_definition:
-    internal: module-shaped appliance plumbing -- the runner's Fargate task; spec.cpu/spec.memory size it, spec.image_repository + spec.runner_version compose its container image, spec.execution_mode selects the container command, spec.task_role wires its task role
+    internal: module-shaped appliance plumbing -- the runner's Fargate task; spec.cpu/spec.memory size it, spec.image_repository + spec.runner_version compose its container image, spec.task_role wires its task role
 
   aws_ecs_service:
     internal: module-shaped appliance plumbing -- the always-on runner service; spec.subnets/spec.security_groups/spec.assign_public_ip form its network configuration
@@ -34,10 +34,10 @@ resources:
     internal: module-shaped appliance plumbing -- the runner's log destination; spec.log_retention_days sets its retention, everything else is a module decision
 
   aws_secretsmanager_secret:
-    internal: module-shaped appliance plumbing -- the module-owned secret holding spec.credentials so the connection document never rides the task definition in plaintext
+    internal: module-shaped appliance plumbing -- the module-owned secret holding spec.token so the runner token never rides the task definition in plaintext
 
   aws_secretsmanager_secret_version:
-    internal: module-shaped appliance plumbing -- the credentials payload written into the module-owned secret
+    internal: module-shaped appliance plumbing -- the token payload written into the module-owned secret
 
   aws_security_group:
     internal: module-shaped appliance plumbing -- the egress-only fallback group used when spec.security_groups is not provided; rules are module decisions
@@ -61,10 +61,10 @@ specExclusions:
     reason: composes the internal aws_ecs_task_definition's container image tag
   - field: spec.image_repository
     reason: composes the internal aws_ecs_task_definition's container image repository
-  - field: spec.execution_mode
-    reason: selects the runner process's mode (temporal/dual/grpc) in the internal aws_ecs_task_definition's container command
-  - field: spec.credentials
-    reason: the Planton connection document, stored in the internal aws_secretsmanager_secret and injected into the task as a secret -- never a provider argument in plaintext
+  - field: spec.control_plane_endpoint
+    reason: the control-plane coordinate injected into the internal aws_ecs_task_definition's container environment -- never a provider argument
+  - field: spec.token
+    reason: the runner token, stored in the internal aws_secretsmanager_secret and injected into the task as a secret -- never a provider argument in plaintext
   - field: spec.task_role
     reason: wires the internal aws_ecs_task_definition's task role; when unset the module creates the internal runtime fallback aws_iam_role
   - field: spec.log_retention_days

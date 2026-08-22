@@ -24,7 +24,10 @@ message AzureMachineLearningBatchEndpointStackOutputs {
   string scoring_uri = 3;
 
   // The endpoint's OpenAPI (Swagger) document address -- the job
-  // submission request/response schema.
+  // submission request/response schema. EMPTY until a deployment
+  // serves behind the endpoint (live-measured on both engines: ARM
+  // returns "" for a deployment-less endpoint, unlike the online
+  // sibling whose swagger URI populates at create).
   string swagger_uri = 4;
 
   // The principal (object) ID of the endpoint's system-assigned

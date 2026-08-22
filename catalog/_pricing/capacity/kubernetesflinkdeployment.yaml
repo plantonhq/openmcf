@@ -1,0 +1,56 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesFlinkDeployment manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetesflinkdeployment.yaml; a server-side estimator
+# can evaluate the same rules against live manifests. The JobManager is
+# the coordinator (replicas beyond 1 are warm standbys); the TaskManagers
+# are the workers -- in native mode (the default) Flink requests one
+# worker per parallelism slot at the Flink default of one slot per
+# TaskManager, so the job's parallelism is the worker multiplier (a
+# taskmanager.numberOfTaskSlots entry packs more slots per worker and
+# divides the actual count -- see the notes). Durable state lives on
+# object storage, never on per-instance volumes.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesflinkdeployment
+spec:
+  workloads:
+    - label: JobManager
+      resources_path: job_manager.resources
+      instances:
+        field_value:
+          field_path: job_manager.replicas
+          default_when_unset: "1"
+    - label: TaskManager
+      resources_path: task_manager.resources
+      instances:
+        field_value:
+          field_path: job.parallelism
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: state.checkpoints_dir
+          op: is_set
+      text: object storage for checkpoints, savepoints, and HA metadata grows with the job's state size and checkpoint cadence; on a composed KubernetesSeaweedFs that capacity rides the SeaweedFS component's own footprint
+    - applies_when:
+        - field_path: job
+          op: is_unset
+      text: this is a SESSION cluster -- it runs no fixed TaskManagers, workers are requested on demand as jobs are submitted, and the stated worker reservation is the single-worker floor, not a committed count
+  notes:
+    - text: the TaskManager count is stated from the job's parallelism at one slot per TaskManager (the Flink default) -- a taskmanager.numberOfTaskSlots entry in flink_configuration packs N slots per worker and divides the actual worker count, so the stated worker reservation is the one-slot ceiling
+    - applies_when:
+        - field_path: task_manager.replicas
+          op: is_set
+      text: in standalone mode the fixed worker count is task_manager.replicas, not the parallelism-derived count stated here; native mode (the default) ignores the replicas field
+    - applies_when:
+        - field_path: job_manager.resources
+          op: is_unset
+      text: with job_manager.resources omitted the modules deploy the CR default of 1 CPU / 2Gi for the JobManager -- a reservation this footprint cannot see
+    - applies_when:
+        - field_path: task_manager.resources
+          op: is_unset
+      text: with task_manager.resources omitted the modules deploy the CR default of 1 CPU / 2Gi per TaskManager -- a reservation this footprint cannot see

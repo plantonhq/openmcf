@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsauroradsql.v1alpha1;
+
+// AwsAuroraDsqlStackOutputs captures the observable state of the
+// Aurora DSQL cluster after apply.
+message AwsAuroraDsqlStackOutputs {
+  // The AWS-generated cluster identifier - the provider's import ID.
+  string identifier = 1;
+
+  // The cluster's ARN - what a peer cluster's multi_region
+  // configuration references.
+  string cluster_arn = 2;
+
+  // The PostgreSQL connection host,
+  // "{identifier}.dsql.{region}.on.aws" - the chart-ready join key
+  // for application database hosts. (AWS exposes no endpoint
+  // attribute; both modules derive this documented DNS shape.)
+  string endpoint = 3;
+
+  // The VPC endpoint service name for private (PrivateLink)
+  // connectivity - create an interface VPC endpoint against it to
+  // reach the cluster without public egress.
+  string vpc_endpoint_service_name = 4;
+
+  // How the cluster is encrypted as AWS reports it
+  // (AWS_OWNED_KMS_KEY or CUSTOMER_MANAGED_KMS_KEY).
+  string encryption_type = 5;
+}

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpalloydbuser
+spec:
+  billing_model: free
+  free_tier: An AlloyDB user is a database identity on a cluster, and AlloyDB's pricing has no meter for identities -- the service bills instance compute (vCPU and memory per hour), the cluster's regional storage per GiB, backup storage, and network egress, and none of those dimensions count users. A cluster can hold one user or a hundred and the bill does not move.
+  notes: "No field of this spec buys anything: user_type, the password, and database_roles are access-control configuration stored by the AlloyDB control plane. The real spend lives on the parent cluster this identity logs into -- every instance bills vCPU-hours and memory-hours per node (a highly-available primary runs two nodes, a read pool up to twenty), the intelligent regional storage bills per GiB actually used and is shared across all instances, and continuous or on-demand backups bill per GiB beyond the seven days of included transaction logs. IAM authentication (ALLOYDB_IAM_USER) is likewise free -- tokens ride the caller's existing IAM identity, no meter attached."

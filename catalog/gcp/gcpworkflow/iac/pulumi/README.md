@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying a Cloud Workflow
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/workflows.editor` (or broader) on the target project; `iam.serviceAccounts.actAs` on the workflow's service account when one is set
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

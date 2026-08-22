@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesdaemonset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A node agent stores no data of its own -- HostPath mounts read the node's existing filesystems (logs, /proc, /sys), whose at-rest encryption is the node disk's property, owned by the cluster's node configuration.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data at rest of its own (see enc-at-rest), there is no key to manage; node-disk encryption keys are the cluster's node configuration.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The agent speaks whatever protocol it implements (shipping logs, serving metrics) -- the spec models no TLS seam. Transport encryption is the agent software's own configuration.
+    - control_id: no-public-access
+      status: configurable
+      field_path: pod.host_network
+      evidence:
+        type: spec_default
+        reference: The modules create no Service and no exposure infrastructure -- by default the agent is reachable only pod-to-pod inside the cluster network. Setting pod.host_network (or a per-port host_port) binds the agent to node IPs; whether those node IPs are internet-reachable is the cluster's network posture, not this spec's.
+      notes: The 02-node-monitor preset binds hostNetwork and hostPort 9100 for node-IP metrics scraping -- the standard node-exporter pattern; 01 and 03 expose nothing on node IPs.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The workload creates no ingress path to restrict. Network-source restriction for node-bound endpoints is owned by Kubernetes NetworkPolicies and the cluster's node firewall rules.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A node agent serves no edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset runs the agent as the namespace's default ServiceAccount, which carries no Kubernetes API permissions; setting it binds pods to a dedicated identity whose permissions are granted declaratively through KubernetesRbac resources -- many node agents (collectors, CNI components) need cluster-scoped reads, and those grants stay visible resources in the graph. The module itself never creates ServiceAccounts or RBAC objects.
+      notes: Management-plane access (the DaemonSet object itself) is governed by the target cluster's Kubernetes RBAC. The 03-hardened-agent preset references a dedicated KubernetesServiceAccount.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset means pods hold no cloud identity; referencing a KubernetesServiceAccount resource attaches an identity whose own workload_identity configuration federates to cloud APIs (EKS IRSA, GKE Workload Identity, AKS Workload Identity) without static credentials -- how a log shipper reaches a cloud sink keylessly.
+      notes: pod.automount_service_account_token=false additionally hardens agents that never call the Kubernetes API, as the 03-hardened-agent preset demonstrates.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec models no authentication protocol -- how the agent authenticates to its backends is the agent software's own configuration.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the DaemonSet and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. The agent's own logs stream to stdout for the cluster's log collector.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: pod.annotations
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; prometheus.io scrape annotations stamped on the pod template are the conventional discovery seam for cluster Prometheus stacks, and node-IP scraping through a host_port is the node-exporter pattern (the 02-node-monitor preset serves metrics on hostPort 9100). The agent must serve the metrics endpoint itself -- the module wires no exporter.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A node agent has no data of its own to back up -- its entire state is the declarative manifest, re-creatable by a redeploy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so no retention applies.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A DaemonSet runs exactly one pod on every matching node -- there is no replica count to spread. Zone coverage follows the cluster's own node topology; the agent is exactly as multi-zone as the fleet it runs on.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on DaemonSets; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The agent runs exactly the image the manifest pins -- there is no managed patch channel. Patch cadence is the image owner's build pipeline, with rollout safety governed by update_strategy (node-by-node rolling updates within max_unavailable/max_surge, or operator-driven OnDelete for maintenance-coordinated fleets).

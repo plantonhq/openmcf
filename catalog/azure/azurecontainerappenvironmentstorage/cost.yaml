@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerappenvironmentstorage
+spec:
+  billing_model: free
+  free_tier: The storage registration is a named pointer on the Container App Environment -- which Azure Files share, over which protocol, with which access mode -- that app and job volumes reference by storage_name. Microsoft.App environment storages carry no meter; registering and mounting through one never bills.
+  notes: "No field of this spec buys anything: storage_name, the environment reference, share_name, access_mode, and the SMB/NFS addressing are mount configuration the environment hands to workloads. The real spend lives in the AZURE FILES SHARE the registration points at -- capacity, transactions, and (for the NFS path) the premium FileStorage account bill through the AzureStorageShare / AzureStorageAccount kinds -- and in the ENVIRONMENT's plan running the apps and jobs that mount it."

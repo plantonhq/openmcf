@@ -1,11 +1,14 @@
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
-  name: my-system-pool
+  name: system-pool
 spec:
   nodePoolName: system-pool
   cluster:
-    value: "<cluster-name>"
+    valueFrom:
+      kind: DigitalOceanKubernetesCluster
+      name: my-doks-cluster
+      fieldPath: status.outputs.cluster_id
   size: s-2vcpu-4gb
   nodeCount: 2
   labels:
@@ -15,4 +18,4 @@ spec:
       value: system
       effect: NoSchedule
   tags:
-    - production
+    - env:production

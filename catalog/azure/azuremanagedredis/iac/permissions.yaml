@@ -25,8 +25,3 @@ spec:
           - Microsoft.Cache/redisEnterprise/databases/listKeys/action
         provenance: derived
         notes: Required only when access_keys_authentication_enabled is true and outputs export the keys -- keyless (Entra) instances never need it.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the cluster in it.

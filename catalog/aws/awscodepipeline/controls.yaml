@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscodepipeline
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every artifact an execution moves between stages rests encrypted in the artifact store's S3 bucket -- server-side encryption with the AWS-managed key when encryption_key_id is omitted. Neither the spec nor the CodePipeline API offers a plaintext-artifact path.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: artifact_stores.encryption_key_id
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS-managed key; referencing an AwsKmsKey encrypts pipeline artifacts with a customer-managed key you own and can revoke. Cross-region pipelines carry one store per region, each with its own key reference.
+      notes: Every action role that reads or writes artifacts then also needs kms:Decrypt / kms:GenerateDataKey on the referenced key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All interaction with a pipeline -- the CodePipeline API, source fetches through CodeConnections, artifact movement to and from S3 -- rides TLS; no plaintext transport option exists anywhere in the spec or the API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A pipeline has no network endpoint to expose -- it is operated entirely through the IAM-authorized AWS API, and executions are started by triggers, source changes, or authorized callers. There is no public/private toggle because there is nothing to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: With no listener or endpoint, ingress restriction has no meaning here -- who may start or approve executions is IAM policy on the calling principals, governed outside this manifest.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attachment point exists for a release orchestrator; nothing routes external requests to a pipeline. Git events arrive through CodeConnections, an AWS-operated channel outside this manifest.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, delete, StartPipelineExecution, PutApprovalResult -- is authorized by IAM unconditionally, and CodePipeline exposes stage- and action-level ARNs (pipeline/stage/action) so approval and retry rights can be granted per action, not just per pipeline.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required by the spec -- CodePipeline assumes the referenced service role for everything the pipeline does (artifact reads and writes, action dispatch), and per-action role_arn plus per-rule role_arn let individual steps run under narrower or cross-account roles. Short-lived assumed-role credentials are the only mechanism offered; no static-credential alternative exists.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: stages.actions.provider
+      evidence:
+        type: spec_default
+        reference: CodeStarSourceConnection sources authenticate through a CodeConnections connection with no stored token -- the modern path every preset uses. The legacy alternative the API still accepts is the ThirdParty GitHub (version 1) action, which authenticates with a stored OAuth token; choosing providers is choosing the authentication generation.
+      notes: V2 triggers only work with CodeStarSourceConnection sources, so the modern feature set structurally discourages the legacy action.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane and execution-control call -- who created the pipeline, who started an execution, who approved a gate, who retried a stage -- lands in CloudTrail unconditionally, and the service keeps per-execution history with action-level detail queryable through the API.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CodePipeline emits EventBridge events for every pipeline, stage, and action state change automatically -- no configuration in this spec or elsewhere is needed to observe execution flow, wire failure alarms, or drive downstream automation.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The pipeline is declarative configuration recreated from this manifest -- it stores no data of its own. Artifacts live in the referenced S3 buckets, whose durability is governed there. Stage-level on_failure ROLLBACK is deployment recovery (re-running the last successful state), not data backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no data store of its own there is no retention to configure here -- artifact retention lives on the referenced bucket components' lifecycle rules.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CodePipeline is a fully managed regional control plane AWS operates across the region's availability zones -- no zonal placement exists in the spec or the API, and no single-zone mode is offered.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the CodePipeline API nor this spec carries a deletion-protection flag -- DeletePipeline proceeds when authorized. The pipeline is recreated from the manifest, though execution history does not survive recreation.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the orchestration engine; no customer-visible patch surface exists. What runs INSIDE actions is patched on the action providers' own components.

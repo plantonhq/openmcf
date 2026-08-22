@@ -1,0 +1,3 @@
+name: awslambdalayer
+runtime: go
+description: Pulumi module to publish a Lambda layer version with in-line share grants

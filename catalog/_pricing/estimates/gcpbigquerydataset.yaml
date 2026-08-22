@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpbigquerydataset
+spec:
+  presets:
+    - preset: 01-basic-analytics
+      region_assumption: US
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an empty dataset bills nothing -- storage accrues per GiB-month at the US multi-region logical rate as tables load, dropping roughly 50% for tables or partitions unmodified past 90 days, with the first 10 GiB each month free
+        - queries against the dataset bill to the querying project -- on-demand per TiB scanned after the free monthly 1 TiB, or editions slot capacity
+        - streaming inserts and Storage API traffic follow the pipelines writing and reading
+      notes: Creation is free; the estimate is zero because the manifest commits no bytes, not because BigQuery storage is free.
+    - preset: 02-cmek-encrypted
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored bytes bill per GiB-month at the us-central1 PHYSICAL (compressed) rate as regulated data loads -- often cheaper than logical for compressible data, but time-travel and fail-safe copies bill too under PHYSICAL
+        - the CMEK key's version storage and per-operation charges bill on the referenced GcpKmsKey component
+        - queries bill to the querying project, per TiB scanned or via editions capacity
+      notes: Zero committed at creation -- PHYSICAL billing changes the storage rate card the first loaded byte meets, not the empty dataset's price.
+    - preset: 03-team-shared
+      region_assumption: US
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored bytes bill per GiB-month at the US multi-region logical rate as the team's tables load; long-term rates apply per table or partition after 90 unmodified days
+        - queries by the granted groups and the authorized view bill to whichever project runs them -- BigQuery charges the querier, not the data owner
+        - streaming inserts and Storage API traffic follow usage
+      notes: The ACL entries are free -- sharing costs nothing until someone stores or scans bytes, and scan charges land on the reader's project.

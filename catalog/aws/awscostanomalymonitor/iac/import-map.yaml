@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscostanomalymonitor
+spec:
+  # The monitor and each folded subscription import by their
+  # cloud-generated ARNs: the monitor's from the monitor_arn output,
+  # each subscription's BLIND from the module's subscription_arns map
+  # output, keyed by the subscription's spec name (the for_each key
+  # the enumerated address carries).
+  values:
+    - name: monitor_arn
+      derivations:
+        - from_stack_output: monitor_arn
+      where_to_find: >-
+        Cost Management console -> Cost Anomaly Detection -> Monitors,
+        or `aws ce get-anomaly-monitors` (MonitorArn).
+    - name: subscription_arn
+      derivations:
+        - from_stack_output_keyed_by_address: subscription_arns
+      where_to_find: >-
+        Cost Management console -> Cost Anomaly Detection -> Alert
+        subscriptions, or `aws ce get-anomaly-subscriptions`
+        (SubscriptionArn) -- one per spec.subscriptions entry, keyed
+        by the entry's name.

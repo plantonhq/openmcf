@@ -68,13 +68,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build CLI
-        run: go build -o /tmp/planton .
+      # The minimal validator binary, NOT the full CLI: same command, same
+      # engine, same verdicts (pkg/infrachart/validatecmd is the single
+      # implementation all mounts share), but without the pulumi/cloud SDKs
+      # in the build graph -- the full-CLI build spent 6-9 minutes here.
+      - name: Build chart validator
+        run: go build -o /tmp/chart-validator ./cmd/chart-validator
 
       - name: Validate all charts offline
         run: |
           if find charts -type f -name 'Chart.yaml' -not -path '*/build/*' | grep -q .; then
-            /tmp/planton chart validate --all charts/
+            /tmp/chart-validator --all charts/
           else
             echo "no charts in the tree; nothing to validate"
           fi

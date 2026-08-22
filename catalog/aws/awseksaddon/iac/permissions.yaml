@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseksaddon
+spec:
+  aws:
+    statements:
+      - sid: CreateAddon
+        actions:
+          - eks:CreateAddon
+        resources:
+          - arn:aws:eks:*:*:cluster/*
+          - arn:aws:eks:*:*:podidentityassociation/*
+        provenance: derived
+        notes: Create-time call of aws_eks_addon -- the service reference authorizes CreateAddon on the CLUSTER ARN (the add-on's own ARN does not exist yet) and, when spec.pod_identity_associations is set, on the podidentityassociation ARN format as well; both patterns are required or provisioning is denied.
+      - sid: ManageAddon
+        actions:
+          - eks:DescribeAddon
+          - eks:UpdateAddon
+          - eks:DeleteAddon
+          - eks:TagResource
+          - eks:UntagResource
+          - eks:ListTagsForResource
+        resources:
+          - arn:aws:eks:*:*:addon/*
+          - arn:aws:eks:*:*:podidentityassociation/*
+        provenance: derived
+        notes: Lifecycle of aws_eks_addon after creation, common to both source arms (the Pulumi module drives the same provider through the pulumi-aws bridge). Describe serves plan/refresh; Update changes version, configuration_values, conflict handling, and the IAM wiring in place (addon_name and namespace_config are create-time immutable and replace via Delete+Create); Tag/Untag/ListTags reconcile and read the platform's identity tags on the addon ARN (cluster/addon-name/uuid path -- the single trailing wildcard covers it). Update and Delete additionally authorize on the podidentityassociation ARN when associations are managed, so that pattern stays granted here too.
+      - sid: PassAddonRolesToEks
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Exercised only when the spec wires an IAM identity for the add-on's pods -- both modules submit service_account_role_arn (IRSA; role trusts the cluster's OIDC provider) and/or pod_identity_associations[].role_arn (EKS Pod Identity; role trusts pods.eks.amazonaws.com), and CreateAddon/UpdateAddon validate the caller may pass them. An add-on with neither field passes no roles and never exercises this statement. Narrow the resource to the deployment's add-on role ARNs (or naming convention) once fixed; a PassedToService condition should name pods.eks.amazonaws.com for Pod Identity roles (eks.amazonaws.com receives the IRSA-arm role).

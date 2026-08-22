@@ -1,0 +1,201 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsFsxLustreFileSystem manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsfsxlustrefilesystem.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Storage rates
+# are selected by the manifest's own values (storage class, throughput tier,
+# HDD read-cache decision) through the price book's attribute identities.
+# Prices live in the provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: backup_id
+          op: is_set
+      reason: A file system restored from a backup inherits its storage capacity and most settings from the backup, which the manifest does not state -- the committed storage charge cannot be derived honestly
+  lines:
+    - sku_meter: provisioned Lustre storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: SCRATCH_1
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_slug: fsx-lustre-scratch-ssd-storage-us-east-1
+      basis: every provisioned GiB of SCRATCH_1 storage bills monthly, full or empty; scratch is unreplicated ephemeral SSD and the flat scratch rate is the whole committed bill -- every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: provisioned Lustre storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: SCRATCH_2
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_slug: fsx-lustre-scratch-ssd-storage-us-east-1
+      basis: every provisioned GiB of SCRATCH_2 storage bills monthly at the same flat scratch rate as SCRATCH_1 (the burst-throughput upgrade is free); assumed us-east-1 since the presets pin region as a placeholder
+    - sku_meter: provisioned Lustre storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: PERSISTENT_1
+        - field_path: storage_type
+          op: equals
+          value: SSD
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            constant: SSD
+          - key: per_unit_storage_throughput
+            from_field: per_unit_storage_throughput
+            assumption_when_unset: "50"
+      basis: every provisioned GiB of PERSISTENT_1 SSD storage bills monthly at the rate of its throughput tier (50, 100, or 200 MB/s/TiB -- assumed the 50 floor when the manifest does not state it), at the us-east-1 rate since the presets pin region as a placeholder
+    - sku_meter: provisioned Lustre storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: PERSISTENT_2
+        - field_path: storage_type
+          op: equals
+          value: SSD
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            constant: SSD
+          - key: per_unit_storage_throughput
+            from_field: per_unit_storage_throughput
+            assumption_when_unset: "125"
+      basis: every provisioned GiB of PERSISTENT_2 SSD storage bills monthly at the rate of its throughput tier (125, 250, 500, or 1000 MB/s/TiB -- assumed the 125 floor when the manifest does not state it), at the us-east-1 rate since the presets pin region as a placeholder
+    - sku_meter: provisioned Lustre storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: PERSISTENT_1
+        - field_path: storage_type
+          op: equals
+          value: HDD
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            constant: HDD
+          - key: per_unit_storage_throughput
+            from_field: per_unit_storage_throughput
+            assumption_when_unset: "12"
+          - key: drive_cache_type
+            from_field: drive_cache_type
+      basis: every provisioned GiB of PERSISTENT_1 HDD storage bills monthly at the rate of its throughput tier (12 or 40 MB/s/TiB -- assumed the 12 floor when the manifest does not state it); drive_cache_type READ selects the higher rate that folds in the SSD read cache sized to 20% of capacity; assumed us-east-1 since the presets pin region as a placeholder
+    - sku_meter: Intelligent-Tiering provisioned throughput
+      applies_when:
+        - field_path: storage_type
+          op: equals
+          value: INTELLIGENT_TIERING
+      quantity:
+        - field_value:
+            field_path: throughput_capacity
+      price_slug: fsx-lustre-intelligent-tiering-throughput-us-east-1
+      basis: INTELLIGENT_TIERING provisions no storage capacity -- its committed baseline is throughput_capacity, billed per MBps-month from creation regardless of traffic, at the us-east-1 rate since the presets pin region as a placeholder
+    - sku_meter: Intelligent-Tiering SSD read cache
+      applies_when:
+        - field_path: data_read_cache_configuration.sizing_mode
+          op: equals
+          value: USER_PROVISIONED
+      quantity:
+        - field_value:
+            field_path: data_read_cache_configuration.size_gib
+      price_slug: fsx-lustre-intelligent-tiering-ssd-read-cache-us-east-1
+      basis: the user-provisioned SSD read cache bills for every provisioned GiB per month, at the us-east-1 rate since the presets pin region as a placeholder
+    - sku_meter: provisioned Metadata IOPS
+      applies_when:
+        - field_path: storage_type
+          op: equals
+          value: INTELLIGENT_TIERING
+        - field_path: metadata_configuration.iops
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: metadata_configuration.iops
+      price_slug: fsx-lustre-metadata-iops-us-east-1
+      basis: on the Intelligent-Tiering storage class the full user-provisioned metadata IOPS figure bills per IOPS-month (there is no storage-scaled included allowance because there is no provisioned storage), at the us-east-1 rate since the presets pin region as a placeholder
+  exclusions:
+    - applies_when:
+        - field_path: storage_type
+          op: equals
+          value: INTELLIGENT_TIERING
+      text: Intelligent-Tiering tier storage bills per GB-month of data actually stored in the Frequent, Infrequent, and Archive Instant Access tiers, plus a monitoring-and-automation meter on all tiered bytes -- entirely data-dependent
+    - applies_when:
+        - field_path: storage_type
+          op: equals
+          value: INTELLIGENT_TIERING
+      text: read and write requests to Intelligent-Tiering storage bill per operation -- entirely traffic-dependent
+    - applies_when:
+        - field_path: data_read_cache_configuration.sizing_mode
+          op: equals
+          value: PROPORTIONAL_TO_THROUGHPUT_CAPACITY
+      text: the SSD read cache bills per GB-month, but under proportional sizing AWS derives the cache size from the provisioned throughput -- the manifest does not state the billed quantity
+    - applies_when:
+        - field_path: metadata_configuration.iops
+          op: is_set
+        - field_path: storage_type
+          op: not_equals
+          value: INTELLIGENT_TIERING
+      text: user-provisioned metadata IOPS on SSD/HDD storage bill per IOPS-month only above the allowance included with storage capacity -- the billable excess depends on the capacity-scaled allowance and is not stated here
+    - applies_when:
+        - field_path: automatic_backup_retention_days
+          op: not_equals
+          value: "0"
+      text: backup storage bills per GB-month of incremental backup data actually retained -- churn across the retention window drives it
+    - applies_when:
+        - field_path: skip_final_backup
+          op: equals
+          value: "false"
+      text: the final backup taken on deletion outlives the file system and keeps billing per GB-month until deleted separately
+    - applies_when:
+        - field_path: log_configuration
+          op: is_set
+      text: CloudWatch Logs ingestion and storage for data-repository events bill to the destination log group, not the file system
+    - text: data transfer across Availability Zones or out of the region is traffic-dependent
+  notes:
+    - applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: SCRATCH_2
+      text: SCRATCH_2 costs exactly what SCRATCH_1 costs -- the burst-throughput upgrade is free, which is why the spec recommends it over the legacy type.
+    - applies_when:
+        - field_path: data_compression_type
+          op: equals
+          value: LZ4
+      text: LZ4 compression shrinks consumed bytes but never the provisioned-capacity bill; on Intelligent-Tiering it directly reduces the usage-billed tier storage.
+    - applies_when:
+        - field_path: efa_enabled
+          op: equals
+          value: "true"
+      text: EFA/GPUDirect support carries no meter of its own -- the cost impact is that it pins per_unit_storage_throughput at creation.
+    - applies_when:
+        - field_path: storage_type
+          op: equals
+          value: HDD
+      text: The HDD read-cache rate already includes the SSD cache sized to 20% of storage capacity -- there is no separate cache line.

@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpspannerbackupschedule
+spec:
+  gcp:
+    groups:
+      - purpose: EnableSpannerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling spanner.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageBackupSchedule
+        permissions:
+          - spanner.backupSchedules.create
+          - spanner.backupSchedules.delete
+          - spanner.backupSchedules.get
+          - spanner.backupSchedules.update
+        provenance: derived
+        notes: Covers google_spanner_backup_schedule -- create with cadence, retention, backup type, and encryption; get for read/refresh; update for the mutable fields (cron, retention_duration, encryption_config); delete on destroy. The backups the schedule creates are made by Spanner's own service on the cadence, not by the runner -- no spanner.backups.* permission is exercised by the modules.

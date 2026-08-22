@@ -1,0 +1,54 @@
+---
+description: Terminology reference and protobuf-leakage guardrail for planton.ai documentation. For the full source verification discipline and three-tier source truth model, use @update-planton-ai-docs from the planton monorepo.
+alwaysApply: false
+---
+
+# Docs Terminology and Source Guardrails
+
+This rule provides the terminology reference table and protobuf-leakage guardrail specific to planton.ai/docs content. The complete source verification discipline, three-tier source truth model, and collaboration calibration live in the planton monorepo's documentation rules and are loaded via `@update-planton-ai-docs`.
+
+## Terminology Reference
+
+Use user-facing terms consistently across all documentation. These terms come from what users see in the CLI, web console, and YAML configurations.
+
+| Use This | Not This | Notes |
+|----------|----------|-------|
+| Planton | Planton, Planton | Branding changed; all docs use "Planton" |
+| Cloud Resource | Lego Block, legoblock | "Lego Block" is internal UI naming only |
+| Deployment Component (catalog item) | Cloud Resource Kind | User browses a catalog of Deployment Components |
+| connection | credential | Except when describing the credential object itself |
+| Secrets Manager | Config Manager | User-facing product name |
+| Infrastructure (section) | Infra Hub | Section names use user-oriented vocabulary |
+| CI/CD (section) | Service Hub | Section names use user-oriented vocabulary |
+| Connections (section) | Connect | Matches the web console sidebar label |
+| Operations (section) | Cloud Ops | Section names use user-oriented vocabulary |
+
+## Protobuf Leakage Guardrail
+
+Internal identifiers do not belong in user-facing documentation prose unless the user directly writes or reads them.
+
+**Never use in prose:**
+- Message type names: `CloudResourceSpec`, `ServicePipelineConfiguration`, `InfraChartParam`
+- Field names in running text (acceptable inside YAML code blocks where users type them)
+- Enum value names: `DEPLOYMENT_TARGET_KUBERNETES`, `BUILD_METHOD_BUILDPACKS`
+- RPC method names: `CreateCloudResource`, `GetService`, `ListPipelines`
+
+**Acceptable:**
+- `apiVersion` and `kind` in YAML manifests users author
+- CLI flag names users type (`--env`, `--org`)
+- Values that appear in CLI output users read
+- YAML field names inside code blocks
+
+Translate internal identifiers into plain language: "deployment target" not `DeploymentTarget`, "cloud resource" not `CloudResource`.
+
+## Where the Full Strategy Lives
+
+The complete documentation source verification discipline is in the planton monorepo:
+
+- **Three-tier source truth model** (code, ADRs, changelogs) — `@01-assume-planton-ai-docs-writer-persona`
+- **Cardinal rule** (no speculation, every claim traced to source code) — `@01-assume-planton-ai-docs-writer-persona`
+- **Collaboration calibration** (when to write vs when to ask) — `@01-assume-planton-ai-docs-writer-persona`
+- **IP protection rules** (Runner, Connect) — `@01-assume-planton-ai-docs-writer-persona`
+- **Source code paths** (protobuf, backend, CLI, web console) — `@00-understand-planton-ai-docs-ecosystem`
+
+All loaded automatically via `@update-planton-ai-docs`.

@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpkmskeyiammember
+spec:
+  gcp:
+    groups:
+      - purpose: ManageCryptoKeyIamGrant
+        permissions:
+          - cloudkms.cryptoKeys.getIamPolicy
+          - cloudkms.cryptoKeys.setIamPolicy
+        provenance: derived
+        notes: "Covers google_kms_crypto_key_iam_member (Pulumi kms.CryptoKeyIAMMember) -- the provider implements the additive grant as a read-modify-write of the key's IAM policy: getIamPolicy on create, every refresh, and destroy; setIamPolicy on create (merging the pair in) and destroy (subtracting exactly it). Both permissions authorize on the key itself and are satisfied by a grant on the key, its ring, or its project; roles/cloudkms.admin, the role the READMEs recommend, carries them. State the privilege honestly: setIamPolicy writes the key's WHOLE policy, so a runner holding it can grant any principal use of the key -- including itself -- which on a CMEK key is the power to read everything the key protects; scope the runner's grant to exactly the keys it manages. The modules create nothing else and make no other API calls (no service enablement, no client-config lookup)."

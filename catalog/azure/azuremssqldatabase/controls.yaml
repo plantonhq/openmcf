@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremssqldatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: transparent_data_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: Transparent Data Encryption defaults to true (the spec pins Azure's own default), encrypting data files, logs, and backups with a service-managed key; setting it false is a deliberate opt-out.
+      notes: All three presets leave TDE at its encrypted default.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: transparent_data_encryption_key_vault_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the database inherits the server's key (service-managed unless the server sets a CMK); setting a Key Vault key here gives THIS database its own customer-managed TDE protector, unwrapped through the identities in user_assigned_identity_ids, with automatic re-encryption on rotation when the rotation flag rides along.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure SQL Database only accepts TLS-encrypted TDS connections; the encryption handshake is not a database-level dial and cannot be disabled from this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure is a property of the logical server the database rides on (its AzureMssqlServer component carries the public-access and private-endpoint posture); the database has no endpoint of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Client allowlisting (firewall rules, VNet rules) lives on the logical server component; a database inherits the server's ingress surface and offers no narrowing field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A SQL endpoint is protected by TLS, authentication, and the server's network scoping rather than a WAF; no request-filtering attachment point exists on a database.
+    - control_id: rbac
+      status: not_applicable
+      notes: Authentication modes (SQL logins, Entra administrators, Entra-only enforcement) are configured on the logical server; inside the database, access is governed by data-plane GRANTs outside this manifest. Management-plane access is always Azure RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Workload identities authenticate through the server's Entra configuration (an AzureMssqlServer concern); the database spec carries identities only as CMK key-unwrap principals, not as a client-auth surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Password (SQL) authentication is enabled or retired at the logical-server scope; the database exposes no authentication fields.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management actions on the database land in the Azure Activity Log unconditionally. SQL audit trails (auditingSettings) are configured at the server or database scope outside this spec's fields.
+      notes: threat_detection_policy adds Defender alerting for anomalous access, which complements but does not replace audit logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every database publishes DTU/vCore utilization, storage, deadlock, and session metrics to Azure Monitor without configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Automated backups (full, differential, transaction log) with point-in-time restore inside the retention window are always on; create_mode POINT_IN_TIME_RESTORE and RESTORE (dropped databases) are the spec's recovery paths.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: short_term_retention_policy
+      evidence:
+        type: spec_default
+        reference: Unset keeps Azure's 7-day point-in-time window; the block extends it to 35 days and tunes the differential cadence, while long_term_retention_policy keeps weekly/monthly/yearly full backups for years and storage_account_type picks the backup storage redundancy.
+      notes: The 01-general-purpose preset keeps 14 days plus 12-week/12-month long-term retention.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zone_redundant
+      evidence:
+        type: spec_default
+        reference: Defaults to false (single-zone); true spreads the database's replicas across availability zones on Premium, Business Critical, Hyperscale, and zone-capable General Purpose regions. On Hyperscale, read_replica_count provisions the readable HA replicas zone redundancy rides on.
+      notes: The 03-hyperscale-replicas preset pairs zone_redundant with two readable replicas and zone-redundant backup storage.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the ARM database API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); restore of a dropped database inside the retention window (create_mode RESTORE) is the recovery path.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure SQL Database is an evergreen PaaS -- Microsoft applies engine patches and upgrades continuously; maintenance_configuration_name steers when disruptive maintenance may happen, never whether patching occurs.

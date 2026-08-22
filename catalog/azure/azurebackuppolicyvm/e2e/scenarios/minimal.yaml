@@ -7,10 +7,11 @@
 # prerequisite -- keep it fixture-safe: plain daily shape, fixed name
 # (policy names are vault-scoped; nothing soft-holds them).
 #
-# The hourly window, tiering, and instant-restore arms are
-# offline-proven this wave (rendered and inspected in the offline tofu
-# plan) -- one policy object proves the create/read/destroy loop; a
-# second policy shape would re-prove the same ARM collection.
+# Instant restore is set explicitly to 2 days: V2 defaults it to 7,
+# and Azure rejects Instant RP that is not strictly less than vaulted
+# daily retention (BMSUserErrorInstantRPRetentionExceedsVaultedRetention
+# -- a V2 policy with daily count 7 and instant unset is undeployable).
+# The hourly window and tiering arms stay offline-proven this wave.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureBackupPolicyVm
 metadata:
@@ -37,6 +38,7 @@ spec:
   backup:
     frequency: Daily
     time: "23:30"
+  instantRestoreRetentionDays: 2
   retentionDaily:
     count: 7
   retentionWeekly:

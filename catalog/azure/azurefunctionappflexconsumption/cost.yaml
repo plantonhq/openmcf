@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefunctionappflexconsumption
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Functions
+      sku_meter: always ready baseline
+      pricing_unit: GB-seconds
+      description: "Every always_ready instance bills its provisioned memory at the baseline rate (0.000004 USD per GB-second in eastus) around the clock while idle -- the app's only standing cost, and it exists the moment an always_ready pool is declared. One warm 2048 MB instance is 2 GB x 2,628,000 seconds ~ 21.02 USD a month before it executes anything. An app with no always_ready pools has no baseline: the function app object, and the FC1 plan hosting it, are free at rest."
+  cost_drivers:
+    - field_path: always_ready
+      sku_meter: always ready baseline
+      pricing_unit: GB-seconds
+      impact: "The committed-spend dial: each named pool's instance_count adds warm instances that bill baseline GB-seconds 24/7 (and the dearer execution rate, 0.000016 USD/GB-second in eastus, while actually running functions). Cold-start elimination is bought by the month, not the request."
+    - field_path: instance_memory_in_mb
+      sku_meter: always ready baseline
+      pricing_unit: GB-seconds
+      impact: "Every GB-second meter scales linearly with the chosen instance size (512, 2048, or 4096 MB; unset deploys 2048): doubling memory doubles the baseline floor AND the per-execution-second cost of every instance, warm or on-demand."
+    - field_path: maximum_instance_count
+      sku_meter: on demand execution time
+      pricing_unit: GB-seconds
+      impact: "The scale-out ceiling caps the worst-hour bill: at most max instances x instance memory GB-seconds accrue per second of full fan-out (2.6e-05 USD/GB-second on demand in eastus). Lowering it trades burst capacity for a harder spend bound."
+    - field_path: http_concurrency
+      sku_meter: on demand execution time
+      pricing_unit: GB-seconds
+      impact: "Higher per-instance concurrency packs more requests onto each instance before Azure scales out -- fewer instance-seconds for the same traffic, at the price of per-request headroom. An efficiency dial, not a meter of its own."
+  free_tier: "The subscription's monthly Flex Consumption free grant -- 250,000 executions and 100,000 GB-seconds -- applies to the ON-DEMAND meters only (the pricing page's own footnote); always-ready baseline, always-ready execution time, and always-ready executions have no free grant."
+  estimate_exclusions:
+    - "on-demand usage follows traffic: execution time bills 0.000026 USD/GB-second and executions 0.40 USD per million in eastus past the free grant, unknowable from any manifest"
+    - "always-ready instances bill the execution-time rate (0.000016 USD/GB-second) instead of baseline for the seconds they actually run functions, and always-ready executions bill 0.40 USD per million from the first execution -- both follow traffic"
+    - "the deployment storage account behind storage_container_endpoint, the Application Insights resource behind the connection string, and any VNet the app integrates with bill on their own components"
+    - "the FC1 service plan object itself carries no meter -- billing rides the apps on it"
+  notes: "Flex Consumption is serverless with an optional purchased floor: on-demand instances bill only while executing, and the always_ready block converts cold-start elimination into committed GB-seconds. The billing-class call rides on the committed presets -- two of the three pin an always_ready http pool, so the component is hybrid, not pure usage. All rates read from the Azure Retail Prices API (eastus, serviceName 'Functions', productName 'Flex Consumption') and Microsoft's Functions pricing page on 2026-08-18."

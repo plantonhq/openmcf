@@ -1,0 +1,16 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: my-kafka
+spec:
+  clusterName: my-kafka
+  engine: kafka
+  engineVersion: "3.5"
+  region: nyc3
+  sizeSlug: db-s-2vcpu-2gb
+  nodeCount: 3
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: my-vpc
+      fieldPath: status.outputs.vpc_id

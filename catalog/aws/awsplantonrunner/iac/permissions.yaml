@@ -1,0 +1,121 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsplantonrunner
+spec:
+  aws:
+    statements:
+      - sid: ManageTokenSecret
+        actions:
+          - secretsmanager:CreateSecret
+          - secretsmanager:DeleteSecret
+          - secretsmanager:DescribeSecret
+          - secretsmanager:GetSecretValue
+          - secretsmanager:PutSecretValue
+          - secretsmanager:UpdateSecret
+          - secretsmanager:GetResourcePolicy
+          - secretsmanager:TagResource
+          - secretsmanager:UntagResource
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:*
+        provenance: derived
+        notes: Covers aws_secretsmanager_secret plus its aws_secretsmanager_secret_version -- creation with a zero-day recovery window, the version write (PutSecretValue) and read-back (GetSecretValue) during refresh, description/metadata updates, and tagging. The secret name is "<metadata.name>-token" with an AWS-appended random suffix, so the ARN cannot be narrowed further in a static grant.
+      - sid: ManageIamRoles
+        actions:
+          - iam:CreateRole
+          - iam:DeleteRole
+          - iam:GetRole
+          - iam:TagRole
+          - iam:UntagRole
+          - iam:AttachRolePolicy
+          - iam:DetachRolePolicy
+          - iam:PutRolePolicy
+          - iam:GetRolePolicy
+          - iam:DeleteRolePolicy
+          - iam:ListRolePolicies
+          - iam:ListAttachedRolePolicies
+          - iam:ListInstanceProfilesForRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Covers the execution role (always created, with the AmazonECSTaskExecutionRolePolicy attachment and an inline secret-read policy scoped to the one token secret) and the permissionless runtime role created only when spec.task_role is unset. ListInstanceProfilesForRole rides the provider's role-deletion path.
+      - sid: PassRolesToEcsTasks
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: RegisterTaskDefinition passes two roles to ecs-tasks.amazonaws.com -- the module-created execution role and the runtime role (module-created or the referenced spec.task_role). Narrow the resource to the deployment's role naming convention where one exists.
+      - sid: ManageLogGroup
+        actions:
+          - logs:CreateLogGroup
+          - logs:DeleteLogGroup
+          - logs:PutRetentionPolicy
+          - logs:ListTagsForResource
+          - logs:TagResource
+          - logs:UntagResource
+        resources:
+          - arn:aws:logs:*:*:log-group:/ecs/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_log_group -- the modules name the group "/ecs/<metadata.name>", so the grant is scoped to that namespace. Retention is set explicitly from spec.log_retention_days.
+      - sid: DescribeLogGroups
+        actions:
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of the log group during plan/refresh. DescribeLogGroups supports no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: ManageSecurityGroup
+        actions:
+          - ec2:CreateSecurityGroup
+          - ec2:DeleteSecurityGroup
+          - ec2:AuthorizeSecurityGroupEgress
+          - ec2:RevokeSecurityGroupEgress
+          - ec2:CreateTags
+        resources:
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_security_group -- the outbound-only group (permissive egress, no ingress rules). CreateSecurityGroup authorizes on both the security-group and vpc ARN formats per the service reference; CreateTags applies the identity tags at creation.
+      - sid: DescribeNetworking
+        actions:
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeSecurityGroupRules
+          - ec2:DescribeSubnets
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: The data.aws_subnet lookup that derives the VPC from the first referenced subnet, plus the security-group read-side during plan/refresh. EC2 Describe APIs support no resource-level scoping.
+      - sid: ManageEcs
+        actions:
+          - ecs:CreateCluster
+          - ecs:DeleteCluster
+          - ecs:DescribeClusters
+          - ecs:RegisterTaskDefinition
+          - ecs:CreateService
+          - ecs:UpdateService
+          - ecs:DeleteService
+          - ecs:DescribeServices
+          - ecs:TagResource
+          - ecs:UntagResource
+          - ecs:ListTagsForResource
+        resources:
+          - arn:aws:ecs:*:*:cluster/*
+          - arn:aws:ecs:*:*:service/*/*
+          - arn:aws:ecs:*:*:task-definition/*:*
+        provenance: derived
+        notes: Covers the dedicated aws_ecs_cluster, the Fargate aws_ecs_task_definition, and the aws_ecs_service with desired count one. The service ARN format nests the cluster name (service/<cluster>/<service>) and the task-definition format carries a revision suffix -- both wildcarded accordingly.
+      - sid: ReadTaskDefinitions
+        actions:
+          - ecs:DescribeTaskDefinition
+          - ecs:DeregisterTaskDefinition
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-back and deregistration of the task definition during refresh and destroy. Both actions support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

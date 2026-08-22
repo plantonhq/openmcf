@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53healthcheck
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A health check stores no customer data -- it is probe configuration evaluated by AWS's checker fleet; results are transient state.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: check_type
+      evidence:
+        type: spec_default
+        reference: check_type selects the probe transport -- HTTPS and HTTPS_STR_MATCH probe the endpoint over TLS (enable_sni defaults to true for HTTPS checks with fqdn set, satisfying name-based virtual hosting); HTTP, HTTP_STR_MATCH, and TCP probe in cleartext.
+      notes: HTTPS probing is a billed optional health check feature. CALCULATED, CLOUDWATCH_METRIC, and RECOVERY_CONTROL checks probe nothing, so no transport applies.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The check is a prober, not an endpoint -- there is nothing to reach. Inversely, endpoint checks REQUIRE the monitored target to be reachable from the public internet; CLOUDWATCH_METRIC is the spec's documented pattern for health-checking private resources the checker fleet cannot reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists on the check itself. The monitored endpoint's security groups must admit Route 53's checker fleet -- an ingress decision on that component, not this one.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-filtering attachment point exists on a health check.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the health check exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The check runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; probes are anonymous availability requests by design.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the check (CreateHealthCheck, UpdateHealthCheck, DeleteHealthCheck) is a CloudTrail management event, recorded by default.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Route 53 publishes every health check's status metrics to CloudWatch (in us-east-1, where health-check metrics live) automatically; this cannot be disabled.
+      notes: measure_latency adds endpoint latency measurement and graphs -- a billed optional feature. invert_healthcheck and disabled shape the reported state; a disabled check reports always-healthy, the documented maintenance-window switch.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless probe configuration -- declarative and re-creatable from the manifest; no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: Endpoint probes originate from Route 53's global checker fleet (all eight checker regions by default), and the spec requires at least 3 checker regions when the regions list is customized (regions_min_three, AWS's minimum for reliable quorum) -- a single-location prober is unrepresentable.
+      notes: CALCULATED, CLOUDWATCH_METRIC, and RECOVERY_CONTROL checks probe nothing; their availability is the Route 53 control plane's own redundancy.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Route 53 offers no deletion-protection switch on health checks. Deleting a check that DNS records still reference leaves those records without health gating -- the composition risk lives on the referencing record kinds.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the checker fleet; no customer-visible patch surface exists.

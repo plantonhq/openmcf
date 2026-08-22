@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockflow
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: definition.nodes.prompt
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: Every prompt node runs model inference on each flow invocation -- input and output tokens bill at the named model's published per-1M rate (an inference-profile reference prices at the underlying model's rate). The flow adds no fee; which models the prompt nodes name IS the price of every run.
+    - field_path: definition.nodes.agent
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: An agent node hands the payload to a Bedrock agent, whose orchestration fans one input into several model calls (pre-processing, tool loops, post-processing) -- the token multiplication happens on that agent's spend surface, triggered once per flow run that reaches this node.
+    - field_path: definition.nodes.knowledge_base
+      sku_meter: knowledge-base retrieval queries
+      pricing_unit: queries
+      impact: Each run through this node embeds the query (embedding-model tokens) and searches the vector store, which bills on the referenced AwsBedrockKnowledgeBase's backing component. Setting model_id adds a generation call on top -- retrieved chunks plus query become input tokens at that model's rate.
+    - field_path: definition.nodes.lambda_function
+      sku_meter: Lambda invocation requests
+      pricing_unit: requests
+      impact: Every run through this node invokes the referenced AwsLambda, which bills requests and GB-seconds on its own component -- a flow run costs one invocation per Lambda node it passes through.
+    - field_path: definition.nodes.lex
+      sku_meter: Amazon Lex bot requests
+      pricing_unit: requests
+      impact: Each run through this node sends the input to the named Lex bot alias, and Lex bills per request on its own service meters -- a per-classification toll the flow pays every time this branch executes.
+    - field_path: definition.nodes.retrieval
+      sku_meter: S3 requests
+      pricing_unit: requests
+      impact: A retrieval node reads from the referenced AwsS3Bucket on every run -- GET requests and data transfer bill on that bucket's component, in proportion to flow invocations.
+    - field_path: definition.nodes.storage
+      sku_meter: S3 requests
+      pricing_unit: requests
+      impact: A storage node writes flow output to the referenced AwsS3Bucket on every run -- PUT requests and the accumulating object storage bill on that bucket's component.
+  free_tier: "No permanent free tier exists on the meters a flow's nodes start -- Bedrock on-demand inference has no free allotment. The flow OBJECT is free at rest: AWS's own docs say \"Pricing for Amazon Bedrock Flows is dependent on the resources that you use\" -- creating the flow, its node graph, versions, and aliases carries no charge, which is commitment-absence, not a trial."
+  estimate_exclusions:
+    - run volume is entirely workload-driven -- the same graph costs nothing un-invoked and real money under traffic, and each run bills every node the execution path touches
+    - per-token rates belong to the models the prompt and knowledge-base nodes name; the flow manifest sees the model IDs but the token volume only exists at runtime
+    - guardrails pinned on prompt or knowledge-base nodes meter text units per enabled policy type at the rates on each referenced AwsBedrockGuardrail
+    - an agent node's real spend fans out on the referenced agent's own cost surface -- orchestration token multiplication invisible to this manifest
+    - Lambda, Lex, and S3 node executions bill on their referenced components (AwsLambda requests and duration, Lex per-request, AwsS3Bucket requests and storage)
+    - inline-code nodes publish no meter of their own on the Bedrock pricing page
+  notes: "A flow is plumbing, not a product with its own meter: AWS prices Flows entirely by the resources the nodes invoke, so the graph's shape is the bill's shape. Two identical-looking flows can cost wildly different amounts -- one routes everything through a micro model, the other through a frontier model with a knowledge-base generation step -- and the Condition node makes cost path-dependent: a run that takes the cheap branch bills only that branch's nodes. Estimate per-run cost by walking each path and summing the nodes' meters, then multiply by expected invocations; the flow object, its versions, and its aliases never appear on the invoice."

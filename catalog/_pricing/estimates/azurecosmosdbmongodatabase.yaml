@@ -1,0 +1,56 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurecosmosdbmongodatabase
+spec:
+  presets:
+    - preset: 01-dedicated-collection-throughput
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a pure-namespace database commits nothing itself -- collections that provision dedicated throughput bill on their own AzureCosmosdbMongoCollection manifests, and on a serverless account the account bills consumed request units per million
+        - consumed storage bills per GB-month (0.25 USD in eastus at list) on the collections' documents plus indexes and follows what the applications write
+        - backup storage beyond the account's free allowance bills per the account's backup posture
+      notes: "Single-region assumption: shared RU/s and storage bill again in every region the ACCOUNT replicates to (and at the multi-region-write rate when enabled) -- the region topology lives on the AzureCosmosdbAccount manifest, invisible here, so these rules price one region at eastus list rates. A free-tier account additionally discounts its first 1,000 RU/s and 25 GB account-wide; estimates price list rates without that discount."
+    - preset: 02-shared-autoscale
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Cosmos DB
+          sku_meter: autoscale throughput RU/s
+          pricing_unit: 100-RU/s-hours
+          pricing_quantity: "2920"
+          quantity_basis: the committed autoscale floor is 10% of the ceiling, billed per 100 RU/s (hence x 0.001) x 730 hours at the 1.5x autoscale rate -- Azure bills each hour's highest scaled-to RU/s and never below the floor, so this is the spend the manifest commits at zero traffic
+          list_unit_price: "0.012"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and meterName eq 'AP1 100 RUs' and productName eq 'Azure Cosmos DB autoscale' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "35.0400"
+      total_list_cost: "35.0400"
+      exclusions:
+        - hours where traffic scales the shared budget above the 10% floor bill the same autoscale meter up to the full ceiling -- the estimate prices the committed floor, and the ceiling is 10x it
+        - consumed storage bills per GB-month (0.25 USD in eastus at list) on the collections' documents plus indexes and follows what the applications write
+        - backup storage beyond the account's free allowance bills per the account's backup posture
+      notes: "Single-region assumption: shared RU/s and storage bill again in every region the ACCOUNT replicates to (and at the multi-region-write rate when enabled) -- the region topology lives on the AzureCosmosdbAccount manifest, invisible here, so these rules price one region at eastus list rates. A free-tier account additionally discounts its first 1,000 RU/s and 25 GB account-wide; estimates price list rates without that discount."
+    - preset: 03-serverless
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a pure-namespace database commits nothing itself -- collections that provision dedicated throughput bill on their own AzureCosmosdbMongoCollection manifests, and on a serverless account the account bills consumed request units per million
+        - consumed storage bills per GB-month (0.25 USD in eastus at list) on the collections' documents plus indexes and follows what the applications write
+        - backup storage beyond the account's free allowance bills per the account's backup posture
+      notes: "Single-region assumption: shared RU/s and storage bill again in every region the ACCOUNT replicates to (and at the multi-region-write rate when enabled) -- the region topology lives on the AzureCosmosdbAccount manifest, invisible here, so these rules price one region at eastus list rates. A free-tier account additionally discounts its first 1,000 RU/s and 25 GB account-wide; estimates price list rates without that discount."

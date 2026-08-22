@@ -1,0 +1,58 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteskafka
+spec:
+  presets:
+    - preset: 01-dev-single-node
+      capacity_footprint:
+        cpu_requests: "0"
+        memory_requests: "0"
+        cpu_limits: "0"
+        memory_limits: "0"
+        persistent_storage: 10Gi
+        basis: 1 dual-role node (pool dual, 1 replica) with no declared CPU or memory requests or limits + 1 x 10Gi data volume -- the pool's resources field is deliberately empty in this dev preset, so the manifest reserves storage only
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the node pool declares no CPU or memory resources -- the broker pod's runtime consumption is real but unreserved, as is the default-enabled entity operator pod's
+    - preset: 02-production-three-broker
+      capacity_footprint:
+        cpu_requests: 7500m
+        memory_requests: 30Gi
+        cpu_limits: "15"
+        memory_limits: 30Gi
+        persistent_storage: 3060Gi
+        basis: controller pool 3 nodes x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 3 x 20Gi volumes, plus broker pool 3 nodes x (2 CPU / 8Gi memory requests, 4 CPU / 8Gi limits) + 3 x (500Gi + 500Gi) JBOD volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the entity operator and Kafka Exporter pods run without declared resources in this preset -- real consumption, no reservation
+    - preset: 03-aws-external-loadbalancer
+      capacity_footprint:
+        cpu_requests: 7500m
+        memory_requests: 30Gi
+        cpu_limits: "15"
+        memory_limits: 30Gi
+        persistent_storage: 1560Gi
+        basis: controller pool 3 nodes x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 3 x 20Gi volumes, plus broker pool 3 nodes x (2 CPU / 8Gi memory requests, 4 CPU / 8Gi limits) + 3 x 500Gi volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the loadbalancer listener provisions four AWS Network Load Balancers (bootstrap plus one per broker), billed on the AWS account outside the cluster's capacity
+        - the entity operator pod runs without declared resources -- real consumption, no reservation
+    - preset: 04-scram-app-cluster
+      capacity_footprint:
+        cpu_requests: 4500m
+        memory_requests: 18Gi
+        cpu_limits: "9"
+        memory_limits: 18Gi
+        persistent_storage: 660Gi
+        basis: controller pool 3 nodes x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 3 x 20Gi volumes, plus broker pool 3 nodes x (1 CPU / 4Gi memory requests, 2 CPU / 4Gi limits) + 3 x 200Gi volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the entity operator pod runs without declared resources -- real consumption, no reservation

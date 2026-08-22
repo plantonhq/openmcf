@@ -1,0 +1,281 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpComputeInstance manifest's spec values into metered quantities and
+# price choices. The machine type picks the family's per-vCPU and per-GiB
+# rates (the documented vCPU count and memory of each pinned type are the
+# quantity constants -- shared-core E2 types bill their documented
+# fractional vCPU); the reshaped pd-balanced boot disk bills per
+# GiB-month and never stops with the VM. Spot, FLEX_START, and
+# reservation-bound provisioning carry no committed on-demand rate --
+# exclusions, never guessed numbers. Machine types outside the pinned set
+# refuse. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/gcpcomputeinstance.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcomputeinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: zone
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: machine_type
+          op: not_equals
+          value: e2-medium
+        - field_path: machine_type
+          op: not_equals
+          value: e2-standard-2
+        - field_path: machine_type
+          op: not_equals
+          value: n2-standard-4
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      reason: the machine type's on-demand rate is not pinned in the price book (only e2-medium, e2-standard-2, and n2-standard-4 are) -- pricing an unpinned or custom shape would be a guess wearing a dollar sign
+    - when:
+        - field_path: boot_disk.source_disk
+          op: is_unset
+        - field_path: boot_disk.type
+          op: not_equals
+          value: pd-balanced
+      reason: the boot disk's type is not pd-balanced (an unset type defaults server-side to pd-standard), and only the pd-balanced capacity rate is pinned in the price book
+    - when:
+        - field_path: scratch_disks
+          op: is_set
+      reason: each local-SSD scratch disk bills its provisioned capacity per unit (375 GB, or 3000 GB on Z3) at a rate the price book does not carry, and per-element sizes inside the repeated list cannot be resolved -- an estimate without them would understate a committed charge
+    - when:
+        - field_path: guest_accelerators
+          op: is_set
+      reason: each attached GPU bills hourly at per-model rates the price book does not carry, and per-element type/count inside the repeated list cannot be resolved -- the accelerators usually outweigh the VM itself
+    - when:
+        - field_path: boot_disk.provisioned_iops
+          op: is_set
+      reason: provisioned IOPS on a hyperdisk boot volume bills monthly for the amount above the included baseline, a subtraction these rules cannot compute
+    - when:
+        - field_path: boot_disk.provisioned_throughput
+          op: is_set
+      reason: provisioned throughput on a hyperdisk boot volume bills monthly for the amount above the included baseline, a subtraction these rules cannot compute
+  lines:
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-medium
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: e2-medium is a shared-core type billed at its documented 1.0 fractional vCPU (2 vCPUs exposed to the guest) x 730 hours at the E2 per-vCPU rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-medium
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: e2-medium carries 4 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-2
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: e2-standard-2 carries 2 vCPUs x 730 hours at the E2 per-vCPU rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-2
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: e2-standard-2 carries 8 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2-standard-4
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: n2-instance-core-us-central1
+      basis: n2-standard-4 carries 4 vCPUs x 730 hours at the N2 per-vCPU rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2-standard-4
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+        - field_path: desired_status
+          op: not_equals
+          value: TERMINATED
+        - field_path: desired_status
+          op: not_equals
+          value: SUSPENDED
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: n2-instance-ram-us-central1
+      basis: n2-standard-4 carries 16 GB of memory (the 4 GB-per-vCPU standard ratio) x 730 hours at the N2 per-GiB rate
+    - sku_meter: boot disk storage
+      applies_when:
+        - field_path: boot_disk.source_disk
+          op: is_unset
+        - field_path: boot_disk.type
+          op: equals
+          value: pd-balanced
+      quantity:
+        - field_value:
+            field_path: boot_disk.size_gb
+      price_slug: balanced-pd-capacity-us-central1
+      basis: the reshaped boot disk's size (boot_disk.size_gb) at the pd-balanced rate, billing from creation full or empty and continuing while the VM is stopped
+  exclusions:
+    - applies_when:
+        - field_path: boot_disk.source_disk
+          op: is_unset
+        - field_path: boot_disk.size_gb
+          op: equals
+          value: "0"
+      text: the boot disk's size comes from the image or snapshot, invisible in this manifest -- its GiB-month charge is excluded
+    - applies_when:
+        - field_path: boot_disk.source_disk
+          op: is_set
+      text: the boot disk is a pre-created GcpComputeDisk referenced by self link, with its own cost profile and estimate
+    - applies_when:
+        - field_path: attached_disks
+          op: is_set
+      text: attached data disks are first-class GcpComputeDisk resources with their own estimates
+    - applies_when:
+        - field_path: scheduling.provisioning_model
+          op: equals
+          value: SPOT
+      text: running hours bill the fluctuating Spot market rate below the on-demand ceiling -- no committed instance rate exists, and preemption can end the run at any time
+    - applies_when:
+        - field_path: scheduling.provisioning_model
+          op: equals
+          value: FLEX_START
+      text: FLEX_START capacity bills Dynamic Workload Scheduler discounted rates for a bounded run that starts when capacity is available -- not a committed always-on charge
+    - applies_when:
+        - field_path: scheduling.provisioning_model
+          op: equals
+          value: RESERVATION_BOUND
+      text: compute bills through the specific reservation this VM consumes, purchased outside this manifest
+    - applies_when:
+        - field_path: desired_status
+          op: equals
+          value: SUSPENDED
+      text: a suspended VM stops the vCPU and memory meters but bills its persisted memory image as storage, a quantity the manifest does not carry
+    - text: external IPv4 usage bills hourly per interface holding an access config while the VM runs -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+    - text: OS license premiums for premium images (Windows Server, RHEL, SLES) bill on top of the machine rate; the catalog presets pin license-free Debian
+    - text: network egress and disk snapshots follow the workload's behavior
+  notes:
+    - applies_when:
+        - field_path: scheduling.provisioning_model
+          op: equals
+          value: SPOT
+      text: Spot has no committed list price -- the market sets the hourly rate under the published on-demand ceiling, which is why this estimate carries no vCPU or memory line.
+    - applies_when:
+        - field_path: desired_status
+          op: equals
+          value: TERMINATED
+      text: The manifest parks the VM at TERMINATED -- compute meters are stopped and only the disks bill until desired_status starts it again.
+    - text: Priced at on-demand rates for the machine type's documented vCPU and memory. The estimate assumes the VM runs all 730 hours; stopping it stops the compute meters but every disk keeps billing.

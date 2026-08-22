@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpserviceaccountiammember
+spec:
+  billing_model: free
+  free_tier: "Google's Identity and Access Management pricing page states it in one sentence: all use of the Identity and Access Management API is free of charge. This resource is exactly that -- one additive (role, member[, condition]) entry in a service account's IAM policy -- so creating it, holding it, evaluating it on every impersonation or token-mint request, and attaching an IAM Condition to it costs nothing at any grant count."
+  notes: "No field on this spec starts a meter. The real spend lives behind the grant, not in it: what the member DOES once it can impersonate, mint tokens as, or deploy as the account bills on the resources that account then touches -- a workloadIdentityUser grant to a GitHub repository is free, the Cloud Run revisions that pipeline deploys are not. Grant creation and removal land in Admin Activity audit logs, stored free in the non-deletable _Required bucket; removal is free and revokes the access path the moment the pair is subtracted. The service account being granted on is itself a free sibling resource (GcpServiceAccount) with its own cost profile."

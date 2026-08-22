@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpaddress
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An address reservation stores no data -- it is a control-plane claim on an IP number. There is nothing to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data, no key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The reservation carries no traffic -- packets flow through whatever VM, load balancer, or NAT gateway later holds the IP, and transport encryption is that resource's posture.
+    - control_id: no-public-access
+      status: configurable
+      field_path: address_type
+      evidence:
+        type: spec_default
+        reference: The default (EXTERNAL) reserves a public IPv4; INTERNAL reserves a private address from your subnetwork that can never receive internet traffic.
+      notes: Reserving a public IP exposes nothing by itself -- nothing answers on it until some resource attaches it. Presets 02 and 03 are INTERNAL; 01 is the external NAT/ingress shape.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No listener, no firewall attachment point -- ingress scoping belongs to the resource that eventually holds the IP and to VPC firewall rules.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A WAF fronts the load balancer that may hold this IP, not the reservation itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Reserving, attaching (compute.addresses.use), and releasing the address are all governed by Compute Engine IAM permissions -- no principal can consume the reservation without IAM saying so.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: An address holds no identity and calls no APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface exists beyond IAM.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the reservation (reserve, label, release) lands in Cloud Audit Logs' Admin Activity stream unconditionally.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A reservation emits no metrics -- there is no data plane to measure. Traffic metrics belong to the resource holding the IP; the reservation's observables are inventory and audit logs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- the reservation is one API call to re-create. The unrecoverable part is the IP number itself; once released it returns to Google's pool, which is deletion-protection's territory, not backup's.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional address is a control-plane object with no zonal footprint -- it has no instance to fail over. Availability is the holding resource's concern.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Default ("" = DELETE) releases the IP on destroy -- and a released static IP returns to Google's pool where anyone can claim it, breaking every DNS record and allowlist pinned to it. PREVENT fails the destroy; ABANDON keeps the reservation alive outside management.
+      notes: For an address, deletion protection IS the data protection -- the number is the asset.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here.

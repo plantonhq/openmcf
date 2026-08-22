@@ -56,7 +56,4 @@ and `spec` variables matching the generated `variables.tf`.
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Search/searchServices/*` on
-the resource group (Contributor covers it). Shared private links
-additionally need `Microsoft.Search/searchServices/sharedPrivateLinkResources/*`
-and read access on the target resource.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

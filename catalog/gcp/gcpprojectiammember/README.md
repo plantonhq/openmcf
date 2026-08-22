@@ -14,7 +14,7 @@ Nothing else in the policy is read as owned or modified — grants made by other
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId`
-- **IAM permissions** — `roles/resourcemanager.projectIamAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - **The role and the member must exist** — reference a GcpIamCustomRole and/or GcpServiceAccount, or use literal values
 
 ## Quick Start

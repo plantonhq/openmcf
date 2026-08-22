@@ -1,23 +1,69 @@
+# Example DigitalOceanFirewall manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- a web-tier firewall: HTTPS from everywhere, SSH from a
+# management network only, ping allowed, all outbound open. No targeting
+# (attach Droplets later by tag or by reference).
+#
+# Document 2 -- a database-tier firewall targeting Droplets by literal ID
+# and by tag: inbound only from the app tier's tag and a private CIDR,
+# outbound restricted to DNS and package mirrors over HTTPS.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
-  name: first-firewall                 # Kubernetes object name
+  name: example-dofw-web
 spec:
-  name: first-firewall                 # DigitalOcean firewall name
+  firewallName: web-tier-firewall
   inboundRules:
-    - protocol: tcp
-      portRange: "80"
-      sourceAddresses:
-        - "0.0.0.0/0"                # allow HTTP from anywhere
     - protocol: tcp
       portRange: "443"
       sourceAddresses:
-        - "0.0.0.0/0"                # allow HTTPS from anywhere
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: tcp
+      portRange: "22"
+      sourceAddresses:
+        - 203.0.113.0/24
+    - protocol: icmp
+      sourceAddresses:
+        - 0.0.0.0/0
   outboundRules:
     - protocol: tcp
-      portRange: "1-65535"
+      portRange: all
       destinationAddresses:
-        - "0.0.0.0/0"                # allow all outbound traffic
-  dropletIds: []
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: udp
+      portRange: all
+      destinationAddresses:
+        - 0.0.0.0/0
+        - ::/0
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFirewall
+metadata:
+  name: example-dofw-db
+spec:
+  firewallName: db-tier-firewall
+  dropletIds:
+    - value: "123456789"
   tags:
-    - planton
+    - db-tier
+  inboundRules:
+    - protocol: tcp
+      portRange: "5432"
+      sourceTags:
+        - app-tier
+    - protocol: tcp
+      portRange: "5432"
+      sourceAddresses:
+        - 10.10.0.0/16
+  outboundRules:
+    - protocol: udp
+      portRange: "53"
+      destinationAddresses:
+        - 0.0.0.0/0
+    - protocol: tcp
+      portRange: "443"
+      destinationAddresses:
+        - 0.0.0.0/0

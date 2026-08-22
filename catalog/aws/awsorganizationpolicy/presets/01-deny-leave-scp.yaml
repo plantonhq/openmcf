@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationPolicy
+metadata:
+  name: deny-leave-scp
+spec:
+  region: <aws-region>
+  policyName: Deny Leaving The Organization
+  type: SERVICE_CONTROL_POLICY
+  description: Blocks member accounts from leaving the organization on their own.
+  content:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DenyLeave
+        Effect: Deny
+        Action: organizations:LeaveOrganization
+        Resource: "*"
+  attachments:
+    - targetId:
+        valueFrom:
+          kind: AwsOrganization
+          name: <organization-resource-name>
+          fieldPath: status.outputs.root_id

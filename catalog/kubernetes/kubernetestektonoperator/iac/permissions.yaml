@@ -1,0 +1,99 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources plus the
+# pinned v0.80.0 release manifest's document census, cited in notes) until
+# the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetestektonoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubectl_manifest.namespace -- the release manifest's FIXED tekton-operator namespace (its name is baked into the manifest's own cross-references), applied first and deleted last, with the delete blocking until the namespace is fully gone so re-installs never race the terminating namespace.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubectl_manifest.crds -- the manifest's 14 operator.tekton.dev CRDs. Unlike the Helm-based operator kinds, these ARE documents of the applied bundle and DELETE with the resource; the modules delete them FIRST, while the operator Deployments still run, so the operator can process the TektonInstallerSet finalizers the drain triggers (verified live -- deleting both in one pass wedges tektoninstallersets in Terminating).
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+          - configmaps
+          - secrets
+          - services
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Manifest documents applied by kubectl_manifest.tekton_operator -- 1 ServiceAccount, 6 ConfigMaps (tekton-config-defaults applied PATCHED with AUTOINSTALL_COMPONENTS=false so the KubernetesTekton declaration stays the single owner of the cluster's TektonConfig), the webhook certificate Secret (populated and rotated by the webhook itself at runtime), and 2 ClusterIP Services (per the v0.80.0 document census).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The manifest's two Deployments -- the operator (both containers patched with spec.operator_image/operator_resources) and the webhook (patched with spec.webhook_image/webhook_resources); node_selector, tolerations, and image_pull_secrets patch both pod specs.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The manifest's six ClusterRole/ClusterRoleBinding pairs -- the lifecycle manager's cluster-wide component-management RBAC, applied verbatim (v0.80.0 document census).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The manifest's single namespaced Role/RoleBinding pair in the tekton-operator namespace (v0.80.0 document census). The webhook's admission registrations are NOT manifest documents -- the knative-style webhook creates and maintains them at RUNTIME under the operator's own identity, so the runner needs no admissionregistration permissions.

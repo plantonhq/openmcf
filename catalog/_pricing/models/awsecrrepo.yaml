@@ -1,0 +1,43 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: an empty
+# repository bills nothing, every preset uses free AES256 encryption, and
+# storage and data transfer meters start only when images land and get
+# pulled -- stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsecrrepo
+spec:
+  presets:
+    - preset: 01-production-immutable
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - image storage bills per GB-month as CI/CD pushes accumulate; the immutable-with-exclusion policy keeps one image per release, so the lifecycle rules (expire untagged after 7 days, keep the most recent 100) are the only brake on growth
+        - data transfer out bills per GB on cross-region and internet pulls; in-region pulls to EC2, ECS, Fargate, and Lambda are free
+        - AES256 encryption is free; no KMS request meter exists on this preset
+        - push-time basic scanning (scan_on_push) carries no meter -- the scanning that bills is enhanced scanning through Amazon Inspector, an account-level setting outside this spec
+      notes: Zero committed cost -- an empty repository is registry configuration, and the storage meter starts with the first pushed image. New accounts get 500 MB/month of private storage free for the first year.
+    - preset: 02-development
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - image storage bills per GB-month; the aggressive lifecycle rules (expire untagged after 3 days, keep only 20 images) and mutable tags keep the dev footprint small but the meter still follows push volume
+        - data transfer out bills per GB on cross-region and internet pulls; in-region pulls to AWS compute are free
+        - AES256 encryption is free; no KMS request meter exists on this preset
+      notes: Zero committed cost -- force_delete and the tight retention window are cleanup posture, not rate changes; the repository idles free until images arrive.
+    - preset: 03-archive-cost-tiering
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - image storage bills per GB-month by storage class -- standard for active images, the cheaper archive rate once the 90-day since-last-pull transition rule moves them, until the 365-day archive deletion rule removes them
+        - pulling an archived image restores it transparently with a retrieval delay; the pull itself bills data transfer out per GB when it crosses region or internet boundaries
+        - AES256 encryption is free; no KMS request meter exists on this preset
+      notes: Zero committed cost -- the archive tiering policy changes what stored gigabytes cost, not whether anything is committed; every meter waits for the first push.

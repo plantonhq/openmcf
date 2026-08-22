@@ -1,0 +1,38 @@
+# A deny-guardrail SCP attached to the OU fixture (the prerequisite
+# chain deploys organization -> OU), proving the structured content
+# document, the typed attachment, and the identity tag map. The OU is
+# empty, so the deny affects nothing while attached. ~$0: policies are
+# free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationPolicy
+metadata:
+  name: planton-oss-e2e-awsopol
+  id: planton-oss-e2e-awsopol
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsorganizationpolicy
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsOrganizationalUnit"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policyName: Planton E2E Deny Leave Guardrail
+  type: SERVICE_CONTROL_POLICY
+  description: E2E guardrail - blocks member accounts from leaving the organization.
+  content:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DenyLeave
+        Effect: Deny
+        Action: organizations:LeaveOrganization
+        Resource: "*"
+  attachments:
+    - targetId:
+        valueFrom:
+          kind: AwsOrganizationalUnit
+          name: planton-oss-e2e-awsopol-ou
+          fieldPath: status.outputs.ou_id

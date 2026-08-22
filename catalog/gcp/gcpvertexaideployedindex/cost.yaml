@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvertexaideployedindex
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Vertex AI
+      sku_meter: index serving node hours
+      pricing_unit: hours
+      description: From the moment the deployment succeeds, its serving replicas bill per node-hour around the clock at the machine type's regional Vector Search rate -- min_replica_count nodes per index shard, whether or not any query arrives.
+  cost_drivers:
+    - field_path: dedicated_resources.machine_type
+      sku_meter: index serving node hours
+      pricing_unit: hours
+      impact: Picks the per-node-hour rate (e.g. e2-standard-16 in us-central1 bills $0.7504672 per hour -- about $548 per node-month). Which types are valid depends on the referenced index's shard size. Immutable.
+    - field_path: dedicated_resources.min_replica_count
+      sku_meter: index serving node hours
+      pricing_unit: hours
+      impact: The always-on floor -- this many nodes PER INDEX SHARD run continuously. Replicas cannot scale to zero; two is the minimum for an SLA. Mutable in place.
+    - field_path: dedicated_resources.max_replica_count
+      sku_meter: index serving node hours
+      pricing_unit: hours
+      impact: The autoscaling ceiling -- under query load the node count grows toward it, each extra node billing the same hourly rate. Bounds the worst-case serving spend. Mutable in place.
+    - field_path: automatic_resources.min_replica_count
+      sku_meter: index serving node hours
+      pricing_unit: hours
+      impact: The always-on floor for Vertex-managed sizing -- but the machine type (and so the hourly rate) is chosen by Vertex AI and invisible to the manifest.
+    - field_path: location
+      sku_meter: index serving node hours
+      impact: Node-hour rates are regional -- the same machine type prices differently across Vector Search regions.
+    - field_path: enable_access_logging
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: When true, private-endpoint access logs flow to Cloud Logging and bill per GiB ingested; volume follows query traffic.
+  free_tier: ""
+  estimate_exclusions:
+    - autoscaling above the min-replica floor -- extra nodes follow query load no manifest can know
+    - shard multiplication -- replicas run per index shard, and the shard count is a property of the referenced GcpVertexAiIndex
+    - index building and update charges ($3.00 per GiB processed; $0.45 per GiB for streaming inserts) -- they bill the GcpVertexAiIndex resource, not this deployment
+    - access-log ingestion volume when enable_access_logging is true
+  notes: "Undeploying (destroy under DELETE) stops the node-hour meter; deletion_policy ABANDON leaves the deployment serving -- and billing -- unmanaged in GCP. The index endpoint itself is free; all the money is in this deployment's nodes."

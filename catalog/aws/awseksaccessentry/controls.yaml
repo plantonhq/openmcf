@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseksaccessentry
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An access entry stores no customer data -- its principal mapping and policy associations are EKS control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); EKS exposes no KMS surface on access entries (the cluster's secrets-encryption key choice belongs to AwsEksCluster).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: An access entry terminates no connections of its own. The Kubernetes API traffic it authorizes rides the cluster's TLS-only API endpoint, and the EKS management calls that manage the entry ride AWS API endpoints -- both provider behavior, not per-entry settings.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The entry has no network endpoint to expose -- whether the cluster's Kubernetes API is publicly reachable is the cluster's endpoint-access configuration on AwsEksCluster. The entry only decides what an authenticated principal may do once connected.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; API-endpoint source restrictions (public-access CIDRs, private-only endpoints) belong to the cluster.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An access entry receives no HTTP requests of its own -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: policy_associations
+      evidence:
+        type: spec_default
+        reference: This component IS a role-based access control surface -- it exists to grant one IAM principal Kubernetes API access with exactly bounded authority. policy_associations attach AWS-managed EKS access policies (AmazonEKSViewPolicy through ...ClusterAdminPolicy) scoped to the whole cluster or to named namespaces (with trailing-* wildcards), expressing least privilege with no in-cluster RBAC objects; kubernetes_groups instead maps the principal onto group names the operator's own (Cluster)RoleBindings reference. An entry with neither authenticates the principal but authorizes nothing.
+      notes: "AWS keys entries on (cluster, principal), one entry per principal, both create-time immutable -- so grants are enumerable per principal. The spec refuses the reserved system: group prefix and keeps groups/username/associations off node-type entries, mirroring AWS's runtime rules. The cluster must have API authentication enabled (authentication_mode API or API_AND_CONFIG_MAP), a prerequisite owned by AwsEksCluster."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The entry grants access TO the cluster, in the IAM-to-Kubernetes direction -- principals authenticate with short-lived SigV4-signed tokens from their IAM credentials, never static client certificates, but that is the access-entry model itself rather than a configurable posture here. Workload-to-AWS identity (IRSA, Pod Identity) is cluster and workload configuration, outside this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The access entry IS the modern replacement for the legacy aws-auth ConfigMap mapping, but this spec cannot disable that legacy path -- whether CONFIG_MAP authentication remains available is the cluster's authentication_mode choice on AwsEksCluster. Within the entry there is no protocol or credential negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Management calls against the entry are recorded by AWS CloudTrail, and the principal's in-cluster actions land in the Kubernetes audit log when the cluster's control-plane logging enables it -- both outside this spec. Worth knowing -- leaving user_name empty keeps AWS's session-templated default for roles, which preserves the session name per action in those audit logs; overriding it trades that fidelity for a fixed name.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: EKS publishes no metrics per access entry; authentication and authorization activity surfaces through the cluster's control-plane logs, which belong to AwsEksCluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An access entry holds no data to back up -- it is declarative configuration fully re-creatable from the manifest; groups, username, and associations all update in place.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A control-plane authorization object with no zonal placement -- it lives in the EKS control plane, whose multi-AZ operation is AWS's own posture on the cluster.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for access entries. Deleting one revokes the principal's access immediately -- for the cluster-creator's auto-created entry that can mean locking yourself out, an operational caution rather than a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An access entry is a pure authorization object with no software to patch.

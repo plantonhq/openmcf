@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpplantonrunner.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpplantonrunner/v1alpha1/outputs.proto";
+import "catalog/gcp/gcpplantonrunner/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// GcpPlantonRunner is a standing Planton runner appliance hosted in your
+// GCP project: an always-on worker that executes deploy operations and
+// cloud operations from inside your network perimeter, making private
+// endpoints (most notably private GKE control planes) deployable and
+// operable with an outbound-only network posture. It is born with a
+// runner token, registers itself with the control plane on first boot,
+// and receives its own individually revocable identity.
+message GcpPlantonRunner {
+  // api-version must be set to "gcp.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "gcp.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, always "GcpPlantonRunner".
+  string kind = 2 [(buf.validate.field).string.const = 'GcpPlantonRunner'];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration defining where the runner lives,
+  // how big it is, which build it runs, and the token it joins with.
+  GcpPlantonRunnerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  GcpPlantonRunnerStatus status = 5;
+}
+
+// GcpPlantonRunnerStatus describes the status fields for a runner
+// appliance resource.
+message GcpPlantonRunnerStatus {
+  // outputs captures the outputs returned by Pulumi/Terraform after
+  // provisioning.
+  GcpPlantonRunnerStackOutputs outputs = 1;
+}

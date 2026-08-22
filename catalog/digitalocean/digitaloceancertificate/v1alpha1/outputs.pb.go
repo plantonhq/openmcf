@@ -21,12 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanCertificateStackOutputs captures the relevant outputs after provisioning a DigitalOcean certificate.
+// DigitalOceanCertificateStackOutputs captures the relevant outputs after provisioning a
+// DigitalOcean certificate.
 type DigitalOceanCertificateStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// certificate_id is the unique identifier of the certificate in DigitalOcean (UUID).
+	// certificate_id is the certificate's resource identifier, which at the current provider pin
+	// is the certificate NAME, not a UUID: a Let's Encrypt certificate's UUID rotates on every
+	// auto-renewal, so DigitalOcean addresses certificates by their stable name. Resources that
+	// reference certificates (e.g. load balancer forwarding rules) consume this output.
 	CertificateId string `protobuf:"bytes,1,opt,name=certificate_id,json=certificateId,proto3" json:"certificate_id,omitempty"`
 	// expiry_rfc3339 is the expiration timestamp of the certificate in RFC 3339 format.
+	// For Let's Encrypt certificates this moves forward on every auto-renewal.
 	ExpiryRfc3339 string `protobuf:"bytes,2,opt,name=expiry_rfc3339,json=expiryRfc3339,proto3" json:"expiry_rfc3339,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

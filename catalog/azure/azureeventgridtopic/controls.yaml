@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgridtopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Events the topic holds in flight (Basic-tier retry retention, up to 24 hours) are encrypted at rest with Microsoft-managed keys unconditionally -- no configuration stores them in plaintext."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Event Grid Basic resources offer no customer-managed-key surface -- at-rest encryption is Microsoft-keyed with nothing to configure at any level. A topic is a router, not a store: durable copies of events live on the delivery destinations, which carry their own CMK postures."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Publishers POST to the topic's HTTPS-only endpoint, and Event Grid refuses non-HTTPS webhook destinations on delivery -- both legs of the transit are TLS by service contract."
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: "The default (true, matching Azure) leaves the topic's publish endpoint reachable from the internet, gated by authentication; setting false restricts publishing to private endpoints only (and inbound_ip_rules are ignored while disabled)."
+      notes: "Neither preset sets it false -- 02-locked-down-topic keeps the public endpoint but allowlists publisher CIDRs. The topic's name is a public DNS hostname either way."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: inbound_ip_rules
+      evidence:
+        type: spec_default
+        reference: "Empty means no IP restriction -- any authenticated publisher on the internet may POST. Up to 128 IPv4 CIDR ranges allowlist the publishers; rules take effect only while public_network_access_enabled is true (Azure's rule action is Allow-only on this resource)."
+      notes: "The 02-locked-down-topic preset restricts publishing to a declared egress CIDR."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The publish endpoint is a Microsoft-managed ingestion API with no WAF attachment point -- request filtering for it is Microsoft's to run. The customer-side perimeter is authentication plus inbound_ip_rules (see restricted-ingress)."
+    - control_id: rbac
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: "The management plane is Azure RBAC unconditionally. The data plane defaults to access keys ALONGSIDE Microsoft Entra ID (true, Azure's default); setting false forces every publisher through Entra role assignments (EventGrid Data Sender on the topic) -- the keys still exist but stop working."
+      notes: "The 02-locked-down-topic preset runs Entra-only publishing. Grant publishers the data-sender role BEFORE flipping the switch -- it takes effect immediately."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset means the topic has no platform identity and identity-secured delivery targets are unreachable; SYSTEM_ASSIGNED (or USER_ASSIGNED) lets event DELIVERY and dead-lettering authenticate as the topic with short-lived Entra tokens instead of destination connection strings or SAS."
+      notes: "The 02-locked-down-topic preset carries a system-assigned identity; grant it on delivery destinations before wiring subscriptions."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: "Access-key (SAS) publishing is the static-credential path -- a leaked key publishes until rotated. Azure's default keeps it enabled; setting false disables key authentication entirely, leaving only Entra ID."
+      notes: "The 02-locked-down-topic preset disables keys. The key pair still exists (and the outputs still export it) -- disabled means rejected at the door, not deleted."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management-plane action on the topic -- create, rule change, key regeneration, delete -- lands in the Azure Activity Log unconditionally."
+      notes: "Data-plane logs (publish failures, delivery failures) exist as diagnostic log categories that need a diagnostic setting outside this spec."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The topic publishes platform metrics to Azure Monitor automatically -- publish successes and failures, unmatched events, advanced-filter evaluations -- with no configuration and no opt-out."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "A topic is a router, not a store -- events are transient (delivered or expired within the retry window), so there is nothing to back up; durable copies live on the delivery destinations. The safety net for undeliverable events is subscription-side dead-lettering, owned by AzureEventgridEventSubscription. The topic's own configuration is redeployable from this manifest."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery); retry and expiry windows are event-subscription settings, not topic state."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Event Grid is zone-redundant automatically in regions with availability zones -- Microsoft spreads the service and in-flight event data across zones with no configuration surface and no opt-out (Azure reliability documentation for Event Grid)."
+      notes: "Zone-redundant is not region-redundant -- a topic is a single-region resource whose name embeds the region; cross-region resilience is composed with a second topic and publisher-side failover."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Event Grid API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the topic takes its event subscriptions (and its globally unique DNS name frees immediately -- another party can claim it)."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed PaaS -- Microsoft operates, patches, and scales the ingestion and delivery fleet; no customer-visible patch surface exists."

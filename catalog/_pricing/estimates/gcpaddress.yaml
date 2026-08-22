@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpaddress
+spec:
+  presets:
+    - preset: 01-external-nat-ip
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: reserved external IPv4
+          pricing_unit: IP-hours
+          pricing_quantity: "730"
+          quantity_basis: one static external IPv4 x 730 hours at the reserved-but-unattached rate -- the reservation's own committed charge, and its worst case
+          list_unit_price: "0.01"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - the attached-state discount -- in use on a standard VM the IP bills ~$0.005/hr and on a Spot VM ~$0.0025/hr instead of the idle rate, and assigned to a forwarding rule it is free; what holds the IP lives outside this manifest
+        - network egress through the address follows the traffic of whatever resource holds it, at that resource's network-tier rates
+      notes: Priced at the reserved-idle rate ($0.01/hr) because that is the only state the manifest itself commits to. Attaching the IP to a VM roughly halves the rate; putting it on a forwarding rule -- a static IP's most common job -- zeroes it.
+    - preset: 02-internal-lb-vip
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - network egress through the address follows the traffic of whatever resource holds it, at that resource's network-tier rates
+      notes: An INTERNAL reservation draws a private address from your subnetwork and never bills, whatever its purpose -- this estimate is genuinely zero. Priced at the reserved-idle rate ($0.01/hr) because that is the only state the manifest itself commits to. Attaching the IP to a VM roughly halves the rate; putting it on a forwarding rule -- a static IP's most common job -- zeroes it.
+    - preset: 03-internal-gce-endpoint
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - network egress through the address follows the traffic of whatever resource holds it, at that resource's network-tier rates
+      notes: An INTERNAL reservation draws a private address from your subnetwork and never bills, whatever its purpose -- this estimate is genuinely zero. Priced at the reserved-idle rate ($0.01/hr) because that is the only state the manifest itself commits to. Attaching the IP to a VM roughly halves the rate; putting it on a forwarding rule -- a static IP's most common job -- zeroes it.

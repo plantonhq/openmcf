@@ -1,0 +1,49 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudwatch_event_connection:
+    specRoot: spec.connection
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The auth wrapper flattens: the spec's arm structure IS the auth
+      # choice, so auth_parameters.* maps one level up.
+      - arg: auth_parameters.api_key
+        spec: spec.connection.api_key
+      - arg: auth_parameters.basic
+        spec: spec.connection.basic
+      - arg: auth_parameters.oauth
+        spec: spec.connection.oauth
+      # OAuth's one-member client_parameters wrapper flattens onto the
+      # oauth arm.
+      - arg: auth_parameters.oauth.client_parameters.client_id
+        spec: spec.connection.oauth.client_id
+      - arg: auth_parameters.oauth.client_parameters.client_secret
+        spec: spec.connection.oauth.client_secret
+      - arg: auth_parameters.invocation_http_parameters
+        spec: spec.connection.invocation_http_parameters
+      # The two private-endpoint homes get intention-revealing names.
+      - arg: auth_parameters.connectivity_parameters.resource_parameters.resource_configuration_arn
+        spec: spec.connection.private_authorization_endpoint.resource_configuration_arn
+      - arg: invocation_connectivity_parameters.resource_parameters.resource_configuration_arn
+        spec: spec.connection.private_invocation_endpoint.resource_configuration_arn
+    exclusions:
+      # Derived: exactly one auth arm is set (spec CEL), so the type and
+      # the credentials can never disagree.
+      - arg: authorization_type
+        reason: derived by the modules from whichever auth arm is configured -- a separate field could contradict the credentials
+  aws_cloudwatch_event_api_destination:
+    specRoot: spec.destination
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Own-XOR-existing: the owned connection wires its created ARN;
+      # the spec field carries the external half.
+      - arg: connection_arn
+        spec: spec.destination.connection_arn

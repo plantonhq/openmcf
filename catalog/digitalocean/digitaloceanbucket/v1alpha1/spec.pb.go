@@ -9,6 +9,7 @@ package digitaloceanbucketv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	digitalocean "github.com/plantonhq/planton/catalog/digitalocean"
+	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -70,19 +71,51 @@ func (DigitalOceanBucketAccessControl) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket.
+// DigitalOceanBucketSpec models the full surface of the
+// digitalocean_spaces_bucket resource plus the per-bucket settings
+// satellites whose lifecycle is identical to the bucket's -- CORS
+// configuration, bucket policy, and access logging -- which the
+// provisioners manage as part of this kind.
 type DigitalOceanBucketSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// bucket name (DNS-compatible, 3–63 chars)
+	// Bucket name. Must be DNS-compatible (lowercase letters, digits,
+	// hyphens; 3-63 characters) and unique within the region.
 	BucketName string `protobuf:"bytes,1,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
-	// region slug (datacenter location for the bucket)
+	// (Optional) Region slug for the bucket. When unset, the provider applies
+	// its own default (nyc3). Spaces is available in a subset of DigitalOcean
+	// regions; the CEL below lists the Spaces-capable slugs by their enum
+	// numbers: nyc3=1, sfo3=2, fra1=3, sgp1=4, lon1=5, tor1=6, blr1=7, ams3=8,
+	// sfo2=11, syd1=12, atl1=13 (nyc1/nyc2 have no Spaces). Changing the
+	// region replaces the bucket.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// access control setting for the bucket (private or public-read)
+	// Access control (canned ACL) for the bucket itself: private (default) or
+	// public-read. Per-object ACLs and finer grants are the policy's job.
 	AccessControl DigitalOceanBucketAccessControl `protobuf:"varint,3,opt,name=access_control,json=accessControl,proto3,enum=dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketAccessControl" json:"access_control,omitempty"`
-	// enable versioning for the bucket (disabled by default)
+	// Enable object versioning. Once enabled, Spaces versioning can never be
+	// removed -- flipping this back to false suspends it, keeping existing
+	// versions.
 	VersioningEnabled bool `protobuf:"varint,4,opt,name=versioning_enabled,json=versioningEnabled,proto3" json:"versioning_enabled,omitempty"`
-	// tags to apply to the bucket (must be unique)
-	Tags          []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	// (Optional) When true, the provisioner empties the bucket -- deleting
+	// every object AND every object version -- before destroying it. DANGER:
+	// this makes destroy irreversible for the bucket's data; leave false for
+	// buckets holding anything you cannot lose.
+	ForceDestroy bool `protobuf:"varint,6,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// (Optional) Object lifecycle rules: expire current or noncurrent object
+	// versions and abort stale multipart uploads automatically to control
+	// storage cost.
+	LifecycleRules []*DigitalOceanBucketLifecycleRule `protobuf:"bytes,7,rep,name=lifecycle_rules,json=lifecycleRules,proto3" json:"lifecycle_rules,omitempty"`
+	// (Optional) CORS rules letting browser applications on other origins
+	// read the bucket. Managed through the provider's standalone CORS
+	// configuration resource (the bucket's inline cors_rule argument is
+	// deprecated at the pinned provider and does no drift detection).
+	CorsRules []*DigitalOceanBucketCorsRule `protobuf:"bytes,8,rep,name=cors_rules,json=corsRules,proto3" json:"cors_rules,omitempty"`
+	// (Optional) Bucket policy as a JSON document (S3 policy grammar, e.g.
+	// IP-restricted or key-scoped access). The provider validates the JSON at
+	// plan time and normalizes whitespace/key order when reading it back.
+	Policy string `protobuf:"bytes,9,opt,name=policy,proto3" json:"policy,omitempty"`
+	// (Optional) Access logging: deliver S3-style access logs for this bucket
+	// to another bucket.
+	Logging       *DigitalOceanBucketLogging `protobuf:"bytes,10,opt,name=logging,proto3" json:"logging,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -145,25 +178,460 @@ func (x *DigitalOceanBucketSpec) GetVersioningEnabled() bool {
 	return false
 }
 
-func (x *DigitalOceanBucketSpec) GetTags() []string {
+func (x *DigitalOceanBucketSpec) GetForceDestroy() bool {
 	if x != nil {
-		return x.Tags
+		return x.ForceDestroy
+	}
+	return false
+}
+
+func (x *DigitalOceanBucketSpec) GetLifecycleRules() []*DigitalOceanBucketLifecycleRule {
+	if x != nil {
+		return x.LifecycleRules
 	}
 	return nil
+}
+
+func (x *DigitalOceanBucketSpec) GetCorsRules() []*DigitalOceanBucketCorsRule {
+	if x != nil {
+		return x.CorsRules
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketSpec) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketSpec) GetLogging() *DigitalOceanBucketLogging {
+	if x != nil {
+		return x.Logging
+	}
+	return nil
+}
+
+// DigitalOceanBucketLifecycleRule expires objects automatically. A rule
+// scopes to the whole bucket or a key prefix and carries at least one
+// action (expiration, noncurrent-version expiration, or multipart-upload
+// abort) -- a rule with no action does nothing.
+type DigitalOceanBucketLifecycleRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// (Optional) Unique rule identifier, at most 255 characters. When
+	// omitted, the provider generates one.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// (Optional) Object key prefix limiting the rule's scope (e.g. "logs/").
+	// Empty applies the rule to every object. The provider warns when the
+	// prefix starts with "/" -- Spaces keys do not begin with a slash.
+	Prefix string `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	// Whether the rule is active. Required so a rule is never silently
+	// inert: enabled: false keeps a rule staged but off, and must be said
+	// explicitly.
+	Enabled *bool `protobuf:"varint,3,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// (Optional) Days after initiation when incomplete multipart uploads are
+	// aborted and their parts removed.
+	AbortIncompleteMultipartUploadDays uint32 `protobuf:"varint,4,opt,name=abort_incomplete_multipart_upload_days,json=abortIncompleteMultipartUploadDays,proto3" json:"abort_incomplete_multipart_upload_days,omitempty"`
+	// (Optional) Expiration of current object versions.
+	Expiration *DigitalOceanBucketLifecycleExpiration `protobuf:"bytes,5,opt,name=expiration,proto3" json:"expiration,omitempty"`
+	// (Optional) Expiration of noncurrent object versions (only meaningful on
+	// versioned buckets).
+	NoncurrentVersionExpiration *DigitalOceanBucketLifecycleNoncurrentVersionExpiration `protobuf:"bytes,6,opt,name=noncurrent_version_expiration,json=noncurrentVersionExpiration,proto3" json:"noncurrent_version_expiration,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *DigitalOceanBucketLifecycleRule) Reset() {
+	*x = DigitalOceanBucketLifecycleRule{}
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanBucketLifecycleRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanBucketLifecycleRule) ProtoMessage() {}
+
+func (x *DigitalOceanBucketLifecycleRule) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanBucketLifecycleRule.ProtoReflect.Descriptor instead.
+func (*DigitalOceanBucketLifecycleRule) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetAbortIncompleteMultipartUploadDays() uint32 {
+	if x != nil {
+		return x.AbortIncompleteMultipartUploadDays
+	}
+	return 0
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetExpiration() *DigitalOceanBucketLifecycleExpiration {
+	if x != nil {
+		return x.Expiration
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketLifecycleRule) GetNoncurrentVersionExpiration() *DigitalOceanBucketLifecycleNoncurrentVersionExpiration {
+	if x != nil {
+		return x.NoncurrentVersionExpiration
+	}
+	return nil
+}
+
+// DigitalOceanBucketLifecycleExpiration says when current object versions
+// expire. The provider sends exactly one trigger (date wins over days, days
+// over the delete-marker flag), so the spec requires exactly one.
+type DigitalOceanBucketLifecycleExpiration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// (Optional) Absolute expiration date in YYYY-MM-DD form (interpreted as
+	// midnight UTC).
+	Date string `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"`
+	// (Optional) Days after object creation when the object expires.
+	Days uint32 `protobuf:"varint,2,opt,name=days,proto3" json:"days,omitempty"`
+	// (Optional) On versioned buckets: remove expired object delete markers
+	// that have no noncurrent versions left.
+	ExpiredObjectDeleteMarker bool `protobuf:"varint,3,opt,name=expired_object_delete_marker,json=expiredObjectDeleteMarker,proto3" json:"expired_object_delete_marker,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *DigitalOceanBucketLifecycleExpiration) Reset() {
+	*x = DigitalOceanBucketLifecycleExpiration{}
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanBucketLifecycleExpiration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanBucketLifecycleExpiration) ProtoMessage() {}
+
+func (x *DigitalOceanBucketLifecycleExpiration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanBucketLifecycleExpiration.ProtoReflect.Descriptor instead.
+func (*DigitalOceanBucketLifecycleExpiration) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DigitalOceanBucketLifecycleExpiration) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketLifecycleExpiration) GetDays() uint32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+func (x *DigitalOceanBucketLifecycleExpiration) GetExpiredObjectDeleteMarker() bool {
+	if x != nil {
+		return x.ExpiredObjectDeleteMarker
+	}
+	return false
+}
+
+// DigitalOceanBucketLifecycleNoncurrentVersionExpiration permanently deletes
+// noncurrent object versions after the given number of days.
+type DigitalOceanBucketLifecycleNoncurrentVersionExpiration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Days after an object version becomes noncurrent when it is deleted.
+	Days          uint32 `protobuf:"varint,1,opt,name=days,proto3" json:"days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanBucketLifecycleNoncurrentVersionExpiration) Reset() {
+	*x = DigitalOceanBucketLifecycleNoncurrentVersionExpiration{}
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanBucketLifecycleNoncurrentVersionExpiration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanBucketLifecycleNoncurrentVersionExpiration) ProtoMessage() {}
+
+func (x *DigitalOceanBucketLifecycleNoncurrentVersionExpiration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanBucketLifecycleNoncurrentVersionExpiration.ProtoReflect.Descriptor instead.
+func (*DigitalOceanBucketLifecycleNoncurrentVersionExpiration) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DigitalOceanBucketLifecycleNoncurrentVersionExpiration) GetDays() uint32 {
+	if x != nil {
+		return x.Days
+	}
+	return 0
+}
+
+// DigitalOceanBucketCorsRule is one CORS rule on the bucket, in the
+// standalone CORS-configuration resource's shape (a superset of the
+// deprecated inline block: it adds expose_headers and a per-rule id).
+type DigitalOceanBucketCorsRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// HTTP methods the rule allows (e.g. GET, HEAD, PUT).
+	AllowedMethods []string `protobuf:"bytes,1,rep,name=allowed_methods,json=allowedMethods,proto3" json:"allowed_methods,omitempty"`
+	// Origins allowed to make cross-origin requests (e.g.
+	// "https://example.com"; "*" allows every origin).
+	AllowedOrigins []string `protobuf:"bytes,2,rep,name=allowed_origins,json=allowedOrigins,proto3" json:"allowed_origins,omitempty"`
+	// (Optional) Request headers the rule allows in preflight.
+	AllowedHeaders []string `protobuf:"bytes,3,rep,name=allowed_headers,json=allowedHeaders,proto3" json:"allowed_headers,omitempty"`
+	// (Optional) Response headers browsers are allowed to read.
+	ExposeHeaders []string `protobuf:"bytes,4,rep,name=expose_headers,json=exposeHeaders,proto3" json:"expose_headers,omitempty"`
+	// (Optional) Rule identifier, at most 255 characters.
+	Id string `protobuf:"bytes,5,opt,name=id,proto3" json:"id,omitempty"`
+	// (Optional) Seconds browsers may cache the preflight response.
+	MaxAgeSeconds uint32 `protobuf:"varint,6,opt,name=max_age_seconds,json=maxAgeSeconds,proto3" json:"max_age_seconds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanBucketCorsRule) Reset() {
+	*x = DigitalOceanBucketCorsRule{}
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanBucketCorsRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanBucketCorsRule) ProtoMessage() {}
+
+func (x *DigitalOceanBucketCorsRule) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanBucketCorsRule.ProtoReflect.Descriptor instead.
+func (*DigitalOceanBucketCorsRule) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DigitalOceanBucketCorsRule) GetAllowedMethods() []string {
+	if x != nil {
+		return x.AllowedMethods
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketCorsRule) GetAllowedOrigins() []string {
+	if x != nil {
+		return x.AllowedOrigins
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketCorsRule) GetAllowedHeaders() []string {
+	if x != nil {
+		return x.AllowedHeaders
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketCorsRule) GetExposeHeaders() []string {
+	if x != nil {
+		return x.ExposeHeaders
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketCorsRule) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketCorsRule) GetMaxAgeSeconds() uint32 {
+	if x != nil {
+		return x.MaxAgeSeconds
+	}
+	return 0
+}
+
+// DigitalOceanBucketLogging delivers S3-style access logs for this bucket
+// to another bucket in the same region.
+type DigitalOceanBucketLogging struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bucket that receives the access logs. Accepts a bucket name
+	// directly or a reference to another DigitalOceanBucket resource
+	// (resolved from its bucket_id output -- a Spaces bucket's id IS its
+	// name). Logging a bucket to itself works but compounds: reads of the
+	// logs generate more logs.
+	TargetBucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=target_bucket,json=targetBucket,proto3" json:"target_bucket,omitempty"`
+	// Prefix for the log object keys (e.g. "logs/").
+	TargetPrefix  string `protobuf:"bytes,2,opt,name=target_prefix,json=targetPrefix,proto3" json:"target_prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanBucketLogging) Reset() {
+	*x = DigitalOceanBucketLogging{}
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanBucketLogging) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanBucketLogging) ProtoMessage() {}
+
+func (x *DigitalOceanBucketLogging) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanBucketLogging.ProtoReflect.Descriptor instead.
+func (*DigitalOceanBucketLogging) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DigitalOceanBucketLogging) GetTargetBucket() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetBucket
+	}
+	return nil
+}
+
+func (x *DigitalOceanBucketLogging) GetTargetPrefix() string {
+	if x != nil {
+		return x.TargetPrefix
+	}
+	return ""
 }
 
 var File_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/digitalocean/digitaloceanbucket/v1alpha1/spec.proto\x124dev.planton.digitalocean.digitaloceanbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\x81\x03\n" +
+	";catalog/digitalocean/digitaloceanbucket/v1alpha1/spec.proto\x124dev.planton.digitalocean.digitaloceanbucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x85\t\n" +
 	"\x16DigitalOceanBucketSpec\x12N\n" +
 	"\vbucket_name\x18\x01 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\n" +
-	"bucketName\x12L\n" +
-	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12|\n" +
+	"bucketName\x12\xf7\x01\n" +
+	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\xb0\x01\xbaH\xac\x01\xba\x01\xa5\x01\n" +
+	"\rspaces_region\x12fregion must be a Spaces-capable slug: ams3, atl1, blr1, fra1, lon1, nyc3, sfo2, sfo3, sgp1, syd1, tor1\x1a,this in [1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13]\xd8\x01\x01R\x06region\x12|\n" +
 	"\x0eaccess_control\x18\x03 \x01(\x0e2U.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketAccessControlR\raccessControl\x12-\n" +
-	"\x12versioning_enabled\x18\x04 \x01(\bR\x11versioningEnabled\x12\x1c\n" +
-	"\x04tags\x18\x05 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tags*?\n" +
+	"\x12versioning_enabled\x18\x04 \x01(\bR\x11versioningEnabled\x12#\n" +
+	"\rforce_destroy\x18\x06 \x01(\bR\fforceDestroy\x12~\n" +
+	"\x0flifecycle_rules\x18\a \x03(\v2U.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleRuleR\x0elifecycleRules\x12y\n" +
+	"\n" +
+	"cors_rules\x18\b \x03(\v2P.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketCorsRuleB\b\xbaH\x05\x92\x01\x02\x10dR\tcorsRules\x12\x16\n" +
+	"\x06policy\x18\t \x01(\tR\x06policy\x12i\n" +
+	"\alogging\x18\n" +
+	" \x01(\v2O.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLoggingR\alogging:\xc4\x01\xbaH\xc0\x01\x1a\xbd\x01\n" +
+	"\x19satellites_require_region\x12Ccors_rules, policy, and logging require region to be set explicitly\x1a[(size(this.cors_rules) == 0 && this.policy == '' && !has(this.logging)) || this.region != 0J\x04\b\x05\x10\x06R\x04tags\"\x8a\x04\n" +
+	"\x1fDigitalOceanBucketLifecycleRule\x12\x18\n" +
+	"\x02id\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x02id\x12\x16\n" +
+	"\x06prefix\x18\x02 \x01(\tR\x06prefix\x12%\n" +
+	"\aenabled\x18\x03 \x01(\bB\x06\xbaH\x03\xc8\x01\x01H\x00R\aenabled\x88\x01\x01\x12R\n" +
+	"&abort_incomplete_multipart_upload_days\x18\x04 \x01(\rR\"abortIncompleteMultipartUploadDays\x12{\n" +
+	"\n" +
+	"expiration\x18\x05 \x01(\v2[.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleExpirationR\n" +
+	"expiration\x12\xb0\x01\n" +
+	"\x1dnoncurrent_version_expiration\x18\x06 \x01(\v2l.dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleNoncurrentVersionExpirationR\x1bnoncurrentVersionExpirationB\n" +
+	"\n" +
+	"\b_enabled\"\xfa\x02\n" +
+	"%DigitalOceanBucketLifecycleExpiration\x121\n" +
+	"\x04date\x18\x01 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x152\x13^\\d{4}-\\d{2}-\\d{2}$R\x04date\x12\x12\n" +
+	"\x04days\x18\x02 \x01(\rR\x04days\x12?\n" +
+	"\x1cexpired_object_delete_marker\x18\x03 \x01(\bR\x19expiredObjectDeleteMarker:\xc8\x01\xbaH\xc4\x01\x1a\xc1\x01\n" +
+	"\x16expiration_exactly_one\x12>set exactly one of date, days, or expired_object_delete_marker\x1ag(this.date != '' ? 1 : 0) + (this.days > 0u ? 1 : 0) + (this.expired_object_delete_marker ? 1 : 0) == 1\"X\n" +
+	"6DigitalOceanBucketLifecycleNoncurrentVersionExpiration\x12\x1e\n" +
+	"\x04days\x18\x01 \x01(\rB\n" +
+	"\xbaH\a\xc8\x01\x01*\x02(\x01R\x04days\"\x94\x02\n" +
+	"\x1aDigitalOceanBucketCorsRule\x121\n" +
+	"\x0fallowed_methods\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedMethods\x121\n" +
+	"\x0fallowed_origins\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedOrigins\x12'\n" +
+	"\x0fallowed_headers\x18\x03 \x03(\tR\x0eallowedHeaders\x12%\n" +
+	"\x0eexpose_headers\x18\x04 \x03(\tR\rexposeHeaders\x12\x18\n" +
+	"\x02id\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x02id\x12&\n" +
+	"\x0fmax_age_seconds\x18\x06 \x01(\rR\rmaxAgeSeconds\"\xcb\x01\n" +
+	"\x19DigitalOceanBucketLogging\x12\x80\x01\n" +
+	"\rtarget_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x89'\x92\xd4a\x18status.outputs.bucket_idR\ftargetBucket\x12+\n" +
+	"\rtarget_prefix\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ftargetPrefix*?\n" +
 	"\x1fDigitalOceanBucketAccessControl\x12\v\n" +
 	"\aPRIVATE\x10\x00\x12\x0f\n" +
 	"\vPUBLIC_READ\x10\x01B\xa4\x03\n" +
@@ -182,20 +650,32 @@ func file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDescGZI
 }
 
 var file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanBucketAccessControl)(0), // 0: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketAccessControl
-	(*DigitalOceanBucketSpec)(nil),       // 1: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec
-	(digitalocean.DigitalOceanRegion)(0), // 2: dev.planton.digitalocean.DigitalOceanRegion
+	(DigitalOceanBucketAccessControl)(0),                           // 0: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketAccessControl
+	(*DigitalOceanBucketSpec)(nil),                                 // 1: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec
+	(*DigitalOceanBucketLifecycleRule)(nil),                        // 2: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleRule
+	(*DigitalOceanBucketLifecycleExpiration)(nil),                  // 3: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleExpiration
+	(*DigitalOceanBucketLifecycleNoncurrentVersionExpiration)(nil), // 4: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleNoncurrentVersionExpiration
+	(*DigitalOceanBucketCorsRule)(nil),                             // 5: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketCorsRule
+	(*DigitalOceanBucketLogging)(nil),                              // 6: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLogging
+	(digitalocean.DigitalOceanRegion)(0),                           // 7: dev.planton.digitalocean.DigitalOceanRegion
+	(*v1.StringValueOrRef)(nil),                                    // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	7, // 0: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
 	0, // 1: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.access_control:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketAccessControl
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 2: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.lifecycle_rules:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleRule
+	5, // 3: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.cors_rules:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketCorsRule
+	6, // 4: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketSpec.logging:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLogging
+	3, // 5: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleRule.expiration:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleExpiration
+	4, // 6: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleRule.noncurrent_version_expiration:type_name -> dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLifecycleNoncurrentVersionExpiration
+	8, // 7: dev.planton.digitalocean.digitaloceanbucket.v1alpha1.DigitalOceanBucketLogging.target_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_init() }
@@ -203,13 +683,14 @@ func file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_init() {
 	if File_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceanbucket_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

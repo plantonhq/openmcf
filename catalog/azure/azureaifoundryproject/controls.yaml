@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureaifoundryproject
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The project stores through the HUB's attached key vault and storage account and carries no storage attachments of its own -- at-rest posture is inherited from the AzureAiFoundry hub, a separate kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No per-project CMK dial exists -- when the hub's encryption block is set, its customer-managed key covers the project too (the service even flips the project's high-business-impact flag true when hub encryption applies). Hub posture, separate kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: All interaction with the project -- Foundry portal, SDK, ARM -- rides Azure's TLS-only endpoints, platform posture rather than a component choice; the spec carries no transport toggle.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The project inherits the hub's network posture -- public access, private endpoints, and the managed network are hub settings with no per-project override in this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface of its own to restrict (see no-public-access); the hub owns the network story.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path of its own exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Per-team access is governed by Azure RBAC grants scoped to the project workspace (the whole point of splitting teams into projects) -- posture assigned outside this manifest; the spec carries no access-policy surface.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The optional identity block gives the project its own managed identity -- most projects use SYSTEM_ASSIGNED so per-project data grants can be scoped to the one team, keylessly; USER_ASSIGNED (paired with primary_user_assigned_identity) brings identities whose grants are composed before the project exists.
+      notes: Left unset, the project leans on the hub's identity posture; no stored credential exists in any flavor.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The project exposes no alternative authentication path to disable -- portal and API access are Entra ID throughout; auth modes of model endpoints created inside it are those kinds' posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations land in the Azure Activity Log automatically as subscription-level posture. high_business_impact_enabled REDUCES the diagnostic data Microsoft itself collects from the project -- the privacy dial for sensitive teams, fixed at creation.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The project publishes telemetry through the HUB's Application Insights attachment (when set) -- hub posture, separate kind; no per-project telemetry attachment exists in this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The project object is team-scoping metadata recreated declaratively; artifacts rest in the hub's storage account, whose backup posture is its own kind's. As an ML-workspace-class resource, deletion is soft -- a purgeable ghost holds the name until purged.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The project control plane is a Microsoft-operated regional service with no customer zonal dial; availability of model deployments is those kinds' posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a project (Azure resource locks are subscription-side governance outside the manifest); soft delete cushions accidental loss without refusing deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Foundry project service -- portal, API surface, inherited managed network -- is Microsoft-operated and patched; no customer-visible patch surface exists on the project object itself.

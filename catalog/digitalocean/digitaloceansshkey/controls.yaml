@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceansshkey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The resource stores a PUBLIC key -- non-secret material by definition; the private half never leaves the operator's machine and never touches DigitalOcean.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No secret data at rest (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A registered key has no endpoints and serves no traffic.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network surface; the key is account metadata consumed by droplets at create time.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: DigitalOcean SSH keys carry no permission model of their own; which droplets trust the key is decided by each droplet's ssh_keys list at create time.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: SSH public keys ARE credential material for host login; no keyless / federated alternative exists for droplet SSH access upstream.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: DigitalOcean accepts any OpenSSH public key and enforces no algorithm floor through this resource; choosing modern key types (ed25519) is an authoring decision the docs recommend, not a spec-enforceable control.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-key audit surface; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Keys emit no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The key is metadata recreated by IaC from the spec's public_key -- the source of truth is the manifest, not DigitalOcean.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Account metadata with no placement or availability posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for SSH keys. Deleting a key never touches droplets created with it (they keep it in authorized_keys) -- the GUIDE covers rotation semantics.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch; a key runs no software.

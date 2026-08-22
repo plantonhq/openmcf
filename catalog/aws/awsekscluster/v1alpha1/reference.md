@@ -456,6 +456,7 @@ Fields on other kinds that can point at this resource:
 | AwsEksFargateProfile | `spec.clusterName` | `status.outputs.name` |
 | AwsEksNodeGroup | `spec.clusterName` | `status.outputs.name` |
 | AwsIamOidcProvider | `spec.url` | `status.outputs.oidc_issuer_url` |
+| AwsManagedPrometheusScraper | `spec.sourceEks.clusterArn` | `status.outputs.cluster_arn` |
 
 ## See Also
 

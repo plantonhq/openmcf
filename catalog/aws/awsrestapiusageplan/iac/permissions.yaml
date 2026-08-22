@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrestapiusageplan
+spec:
+  aws:
+    statements:
+      - sid: ManageUsagePlanAndKeys
+        actions:
+          - apigateway:GET
+          - apigateway:POST
+          - apigateway:PATCH
+          - apigateway:PUT
+          - apigateway:DELETE
+        resources:
+          - arn:aws:apigateway:*::/usageplans
+          - arn:aws:apigateway:*::/usageplans/*
+          - arn:aws:apigateway:*::/apikeys
+          - arn:aws:apigateway:*::/apikeys/*
+          - arn:aws:apigateway:*::/tags/*
+        provenance: derived
+        notes: Covers aws_api_gateway_usage_plan, aws_api_gateway_api_key, and aws_api_gateway_usage_plan_key (tf) / apigateway.UsagePlan, apigateway.ApiKey, and apigateway.UsagePlanKey (pulumi). API Gateway authorizes by HTTP verb against resource paths -- POST on /usageplans and /apikeys creates, PATCH updates plans and keys in place, and plan memberships are POST/DELETE on /usageplans/{id}/keys (covered by the /usageplans/* pattern). The Tags resource authorizes GET/PUT/DELETE; PUT serves only tagging here.

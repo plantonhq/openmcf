@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureroleassignment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A role assignment is authorization metadata held by Azure Resource Manager; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The assignment carries no traffic of its own; all interaction with it flows through ARM's TLS-only management API, which is platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A grant record has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS an RBAC grant -- it cannot be deployed without expressing one. scope (where), role_definition_name or role_definition_id (what), and principal_id (who) are the required coordinates of every assignment, and the condition field narrows the grant further with an ABAC expression. Creating one requires Microsoft.Authorization/roleAssignments/write at the target scope, so RBAC also governs who may mint grants.
+      notes: Least privilege is a scope choice -- the spec documents preferring the narrowest scope (the one vault, not the subscription) because permissions inherit downward.
+    - control_id: workload-identity
+      status: configurable
+      field_path: principal_id
+      evidence:
+        type: spec_default
+        reference: principal_id defaults to referencing an AzureUserAssignedIdentity's principal_id output -- the composition grants permissions to a managed identity that authenticates with platform-issued tokens instead of stored credentials. Passing a literal object ID (a user, group, or externally managed service principal) opts out of that keyless default.
+      notes: The assignment itself authenticates nobody; it decides WHO holds the permission, and the spec's default steers that choice toward keyless managed identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The assignment exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation and deletion of assignments land in the Azure Activity Log automatically as subscription-level posture; the spec's description field aids later access reviews but no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A grant record emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless authorization configuration -- nothing to back up; the manifest recreates the grant declaratively (the spec's name field can even pin the GUID so the recreated assignment keeps its ARM ID).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An assignment has no runtime footprint with a zonal failure mode; ARM's authorization store is replicated by Microsoft as platform infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a role assignment (Azure resource locks are subscription-side governance outside the manifest); deleting one revokes access and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The authorization engine that stores and evaluates assignments is Microsoft-operated ARM infrastructure; no customer-visible patch surface exists.

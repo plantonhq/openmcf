@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurepublicipprefix
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A prefix is an address reservation, not a store -- it holds no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The reservation carries no traffic of its own -- transport encryption is decided by the resources that attach addresses drawn from it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Reserving publicly routable address space is the product. The reservation itself is inert -- nothing is reachable until an address is drawn (AzurePublicIp) and attached, and each of those attachments carries its own exposure decision.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The prefix has no traffic surface to filter. Addresses drawn from it are Standard SKU -- secure by default, closed to inbound until a network security group on the attached resource allows it -- and that posture lives on the drawn addresses and their NSGs, not here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists on a reservation; WAF composition happens on the HTTP-aware tiers fronted by the drawn addresses.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the prefix exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The prefix runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes (creation, tag edits, deletion) land in the Azure Activity Log as subscription-level posture; the reservation sees no access events of its own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A reservation emits no runtime signals -- traffic and DDoS telemetry belong to the drawn addresses and the resources they attach to. What the prefix offers instead is inventory visibility (which of its addresses are given out), a management-plane read, not a metric stream.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- but recreation is NOT recovery here. Deleting the prefix returns the actual range to Microsoft's pool, and a recreated prefix gets a DIFFERENT range, invalidating every partner allowlist built on the old one. The durable-range path is BYOIP (custom_ip_prefix_id), where the range is owned outside Azure's pool.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: '["1","2","3"] anchors the range zone-redundantly (the production default posture, and what every committed preset pins); a single entry pins one zone; empty leaves the choice to Azure. Fixed at creation; drawn addresses inherit the prefix''s zone posture.'
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists, but Azure structurally refuses to delete a prefix while any of its addresses are in use by public IPs or NAT gateway associations -- the blast radius (losing an allowlisted range forever) is gated by having to free every address first. Azure resource locks remain the subscription-side option.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates the address infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhubnamespace
+spec:
+  azure:
+    groups:
+      - purpose: ManageNamespace
+        actions:
+          - Microsoft.EventHub/namespaces/read
+          - Microsoft.EventHub/namespaces/write
+          - Microsoft.EventHub/namespaces/Delete
+        provenance: derived
+        notes: Covers azurerm_eventhub_namespace (and the Pulumi module's eventhub.EventHubNamespace) -- create, read/refresh, in-place updates (sku within BASIC/STANDARD, capacity, auto-inflate, identity, local auth, public network access, tags), and destroy. The delete action's capital D is the provider operation's own published spelling.
+      - purpose: ConfigureNetworkRuleSets
+        actions:
+          - Microsoft.EventHub/namespaces/networkrulesets/read
+          - Microsoft.EventHub/namespaces/networkrulesets/write
+        provenance: derived
+        notes: Required only when network_rule_sets is declared -- the provider folds the firewall into the namespace resource but writes it as its own ARM child (the namespace's default rule set) in a separate operation after the namespace create, and reads it back on refresh. Removing the block rewrites an open rule set; no delete action exists for the child.
+      - purpose: ReadRootSasCredentials
+        actions:
+          - Microsoft.EventHub/namespaces/authorizationRules/read
+          - Microsoft.EventHub/namespaces/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Both modules surface the root rule's (RootManageSharedAccessKey) connection strings and keys as this kind's sensitive outputs -- the provider reads the rule and lists its keys on every refresh. With a keyless posture (local_authentication_enabled false) the keys stop being usable credentials but the provider still reads them.
+      - purpose: AttachUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity.user_assigned_identity_ids attaches user-assigned identities. A SERVICE-side need -- the provider only carries the identity IDs in the namespace payload, and Azure checks assign on each referenced identity's own scope when the namespace write attaches it.
+      - purpose: AdmitServiceEndpointSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/joinViaServiceEndpoint/action
+        provenance: derived
+        notes: Required only when network_rule_sets.virtual_network_rules admits subnets. A SERVICE-side need -- the provider only carries the subnet IDs in the rule set payload, and Azure checks joinViaServiceEndpoint on each admitted subnet's own scope when the rule is written.

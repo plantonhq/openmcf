@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  azure:
+    groups:
+      - purpose: ManageAzureEndpoints
+        actions:
+          - Microsoft.Network/trafficManagerProfiles/azureEndpoints/read
+          - Microsoft.Network/trafficManagerProfiles/azureEndpoints/write
+          - Microsoft.Network/trafficManagerProfiles/azureEndpoints/delete
+        provenance: derived
+        notes: Covers azurerm_traffic_manager_azure_endpoint / network.TrafficManagerAzureEndpoint -- materialized only when the spec's azure variant is set (the spec guarantees exactly one variant, so exactly one typed group below is exercised per manifest). Endpoints are children of the referenced profile, so these actions authorize on the profile's scope; the modules never touch the profile resource itself. Every action in this manifest is contained in the built-in Network Contributor role (and Contributor/Owner) on the profile's resource group.
+      - purpose: ManageExternalEndpoints
+        actions:
+          - Microsoft.Network/trafficManagerProfiles/externalEndpoints/read
+          - Microsoft.Network/trafficManagerProfiles/externalEndpoints/write
+          - Microsoft.Network/trafficManagerProfiles/externalEndpoints/delete
+        provenance: derived
+        notes: Covers azurerm_traffic_manager_external_endpoint / network.TrafficManagerExternalEndpoint -- the external variant. The target is a raw DNS name or IP, so there is no referenced Azure resource for ARM to cross-check service-side.
+      - purpose: ManageNestedEndpoints
+        actions:
+          - Microsoft.Network/trafficManagerProfiles/nestedEndpoints/read
+          - Microsoft.Network/trafficManagerProfiles/nestedEndpoints/write
+          - Microsoft.Network/trafficManagerProfiles/nestedEndpoints/delete
+        provenance: derived
+        notes: Covers azurerm_traffic_manager_nested_endpoint / network.TrafficManagerNestedEndpoint -- the nested variant, whose target is a CHILD profile's ARM ID passed in the payload. The write authorizes on the PARENT profile's scope; ARM's composition rules (the child must not use MultiValue routing) are validated service-side at apply.

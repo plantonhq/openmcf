@@ -3,18 +3,24 @@ kind: ComponentE2EProfile
 metadata:
   name: azurebackupprotectedfileshare
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. The lane rides the group's deepest fixture
-  # chain -- resource group, vault, storage account, file share, the
-  # container REGISTRATION, and the file-share policy (its minimal
-  # smoke doubling as install manifest) -- and the protect/unprotect
-  # operations sit in the provider's 80-minute timeout class (normal
-  # runs are minutes; the budget covers the class). Destroy leaves the
-  # backup data to vault soft delete (always on) -- the queue
-  # watch-list leads with whether the held item delays the fixture
-  # registration's unregister at teardown.
+  # PROVEN live on both engines (proof session, 2026-08-18): `minimal`
+  # (the fixture share under the policy smoke, wired through the
+  # fixture registration's echoed output) -- Pulumi 20m15s (deploy
+  # 1m41, destroy 1m25), Terraform 15m44s incl. a 13s blind import
+  # round-trip with a no-differences re-plan; the group's deepest
+  # fixture chain dominates (~8-9 min each way). The FIRST lane caught
+  # the ScopeLocked ordering defect live: teardown deleted the fixture
+  # share while the registration's DoNotDelete lock still covered the
+  # account -- fixed by reordering the kind's registry prerequisites
+  # (share BEFORE registration; commented load-bearing in
+  # cloud_resource_kind.proto). The soft-delete watch item resolved
+  # clean: a smoke item has zero recovery points, so the delete lands
+  # outright and the unregister minutes later succeeded; the verifier
+  # shares the VM sibling's bounded-poll absence bar for the measured
+  # async read lag. Protect/unprotect sit in the provider's 80-minute
+  # timeout class (normal runs are minutes; the budget covers the
+  # class).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 120

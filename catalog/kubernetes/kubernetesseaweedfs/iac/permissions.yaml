@@ -1,0 +1,48 @@
+# Least-privilege permissions for the official kubernetesseaweedfs modules
+# (iac/tf and iac/pulumi -- behaviorally equivalent). Derived from the
+# resources the modules create directly plus everything the pinned
+# seaweedfs chart (seaweedfs.github.io/seaweedfs/helm, default 4.40.0)
+# renders inside the Helm release. Schema: catalog/componentpermissions/v1.
+apiVersion: catalog.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesseaweedfs
+spec:
+  kubernetes:
+    rules:
+      - api_groups: [""]
+        resources: ["namespaces"]
+        verbs: ["get", "create", "update", "patch", "delete"]
+        cluster_scoped: true
+        provenance: derived
+        notes: kubernetes_namespace_v1.seaweedfs -- rendered only when spec.create_namespace is true; otherwise the module only needs get on the existing namespace.
+      - api_groups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The module writes kubernetes_secret_v1.admin_auth (<name>-admin-auth, the generated console credentials) when spec.admin.enabled is true without an existing Secret; the chart materializes the <name>-s3-secret S3 credential pair (generated once, kept on uninstall). Referenced Secrets (s3.existing_config_secret, admin.existing_auth_secret) are consumed by name and never read or copied by the module.
+      - api_groups: [""]
+        resources: ["services", "configmaps", "serviceaccounts", "persistentvolumeclaims"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered inside helm_release.seaweedfs -- per-tier Services (<name>-master, <name>-volume, <name>-filer, <name>-s3 on 8333, <name>-admin, plus headless variants), configuration ConfigMaps, ServiceAccounts, and the per-pod data PVCs (every tier maps to PersistentVolumeClaims by this kind's design -- via StatefulSet volumeClaimTemplates and standalone claims).
+      - api_groups: [""]
+        resources: ["pods", "pods/log", "events"]
+        verbs: ["get", "list", "watch"]
+        provenance: derived
+        notes: Read-only -- the Helm provider's wait/atomic rollout (helm_release.seaweedfs sets wait, atomic, cleanup_on_fail, 600s timeout) tracks the three-tier cold start plus the bucket-creation hook and surfaces failure events; the modules never create bare pods.
+      - api_groups: ["apps"]
+        resources: ["statefulsets", "deployments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered workloads -- the master, volume, and filer tiers run as StatefulSets (per-pod PVCs); the dedicated S3 gateway (spec.s3.dedicated) and the admin console (spec.admin.enabled) render as Deployments.
+      - api_groups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The chart's post-install/post-upgrade hook Job creates the buckets declared in spec.s3.buckets (idempotently -- removing an entry never deletes a bucket or its data).
+      - api_groups: ["monitoring.coreos.com"]
+        resources: ["servicemonitors"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.service_monitor_enabled is true -- one ServiceMonitor per enabled tier; requires the Prometheus Operator CRDs. The helm_values overlay can widen the chart's object surface beyond this profile (SFTP, the maintenance worker, cert-manager mTLS resources, COSI); overlay users own the extra permissions.

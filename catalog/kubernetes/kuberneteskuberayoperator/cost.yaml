@@ -1,0 +1,19 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskuberayoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator runs as a single controller pod; these values are what the scheduler reserves for it. Empty does NOT mean unbounded -- the chart ships real default limits (100m CPU / 512Mi memory; Kubernetes defaults requests to the limits when only limits are declared). Upstream sizes ~500MB per 500 managed Ray pods -- large Ray fleets need explicit resources scaled with fleet size.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the Ray clusters this operator reconciles -- head and worker pods, their volumes -- reserve their own capacity on their KubernetesRayCluster resources, never this footprint"
+    - "a batch_scheduler integration (volcano, yunikorn, scheduler-plugins) requires that scheduler ALREADY RUNNING on the cluster -- its capacity belongs to its own install; the operator only emits scheduling directives"
+    - the helm_values overlay merges last and can override the modeled values, including resources
+  notes: "This component installs the ENGINE, not the Ray clusters: its footprint is the single operator pod. Ray clusters are the many-per-cluster workload, declared through KubernetesRayCluster resources, each carrying its own capacity footprint. The chart-default operator resources make the honest manifest-time statement a hand-computed footprint: the declared resources, or the chart defaults when omitted."

@@ -414,6 +414,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreTools | `spec.codeInterpreters[].network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
 | AwsBedrockCustomModel | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsClientVpn | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsCloudwatchSynthetics | `spec.canary.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.environment.dockerServer.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsDocumentDb | `spec.securityGroupIds` | `status.outputs.security_group_id` |
@@ -423,7 +424,10 @@ Fields on other kinds that can point at this resource:
 | AwsEksCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEksNodeGroup | `spec.remoteAccess.sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsElasticFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEventBridgePipe | `spec.sourceParameters.selfManagedKafka.vpc.securityGroups` | `status.outputs.security_group_id` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
+| AwsEventBridgeScheduler | `spec.target.ecsParameters.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsFsxLustreFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsFsxOntapFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsFsxOpenzfsFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
@@ -434,6 +438,8 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsLaunchTemplate | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].securityGroupIds` | `status.outputs.security_group_id` |
+| AwsManagedPrometheusScraper | `spec.sourceEks.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsManagedPrometheusScraper | `spec.sourceVpc.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemcachedElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemorydbCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMskCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
@@ -446,11 +452,14 @@ Fields on other kinds that can point at this resource:
 | AwsRdsCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRdsInstance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRdsInstance | `spec.options[].vpcSecurityGroupMemberships` | `status.outputs.security_group_id` |
+| AwsRdsProxy | `spec.vpcSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsRdsProxy | `spec.endpoints[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedisElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftCluster | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsRoute53ResolverEndpoint | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |

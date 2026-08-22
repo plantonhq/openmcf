@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. A pipeline definition is free to hold;
+# the meters spin when a trigger (or a manual/debug run) executes it --
+# every meter below bills on the Azure Data Factory V2 service against
+# the factory, priced by which integration runtime class the run
+# executes on. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredatafactorypipeline
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: activities_json
+      sku_meter: orchestration activity runs
+      pricing_unit: 1,000 activity runs
+      impact: "Every triggered execution bills one orchestration run PER ACTIVITY in this array, then each activity's own execution meter on top: copy activities bill data movement per DIU-hour, lookups and metadata/delete activities bill pipeline-activity execution per hour, Databricks/stored-procedure/HDInsight activities bill external-activity execution per hour, and Execute Data Flow activities bill data-flow vCore-hours (8-vCore minimum cluster). More activities per run and more runs per month scale the bill linearly."
+    - field_path: data_factory_id
+      sku_meter: integration runtime rate class
+      pricing_unit: ""
+      impact: "The factory this pipeline lives in decides WHICH rate card its runs bill: activities executing on the plain Azure integration runtime, the managed-VNet integration runtime, or a self-hosted integration runtime each carry their own orchestration and execution rates (managed-VNet pipeline-activity hours are orders of magnitude above the plain Azure rate; self-hosted orchestration runs bill higher per 1,000 than cloud). The pipeline manifest selects no rate itself -- the linked services and runtimes its activities use do."
+    - field_path: concurrency
+      sku_meter: orchestration activity runs
+      pricing_unit: ""
+      impact: "A throttle, not a meter: capping concurrent runs (1-50) queues overlapping executions instead of running them in parallel, bounding how fast run-driven charges can accrue -- it changes when runs bill, never whether."
+  estimate_exclusions:
+    - orchestration activity runs bill per 1,000 runs (activity runs, trigger executions, and debug runs) at the executing integration runtime class's rate
+    - copy activities bill data movement per DIU-hour (Azure and managed-VNet runtimes) or per hour (self-hosted)
+    - pipeline activities (Lookup, Get Metadata, Delete, schema operations) bill execution time per hour on the integration runtime
+    - external pipeline activities (Databricks, stored procedure, HDInsight, and the rest of Azure's external list) bill managed-orchestration time per hour while the linked service does the work
+    - Execute Data Flow activities bill data-flow execution per vCore-hour on an 8-vCore-minimum cluster, on the factory
+    - Data Factory operations bill on the factory -- read/write per 50,000 entity operations (authoring this pipeline included) and monitoring per 50,000 run records retrieved
+    - a pipeline with NO trigger association and ZERO runs for a full month bills Azure's inactive-pipeline fee (0.80 USD per month at East US rates) -- one run or one trigger binding clears it
+    - copies that egress an Azure datacenter add outbound data transfer at bandwidth rates, a separate line item
+  notes: "The definition itself never appears on the invoice -- zero runs is (near) zero cost, with one deliberate wrinkle: Azure charges an inactive-pipeline fee (0.80 USD/month, East US, retrieved 2026-08-18 from the Retail Prices API) for a pipeline that sits a whole month with no trigger and no runs, so an abandoned definition is not quite free. Everything else is run-driven and bills against the parent AzureDataFactory at the rate class of the integration runtime each activity executes on -- the same pipeline costs differently in a managed-VNet factory than a plain one. Rates verified live from Microsoft's Data Factory data-pipeline pricing page and the Retail Prices API (serviceName 'Azure Data Factory v2', eastus) on 2026-08-18."

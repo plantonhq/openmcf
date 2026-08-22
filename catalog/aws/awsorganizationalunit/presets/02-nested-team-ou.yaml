@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationalUnit
+metadata:
+  name: nested-team-ou
+spec:
+  region: <aws-region>
+  ouName: Payments Team
+  parentId:
+    valueFrom:
+      kind: AwsOrganizationalUnit
+      name: <parent-ou-resource-name>
+      fieldPath: status.outputs.ou_id

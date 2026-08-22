@@ -1,0 +1,3 @@
+name: awsdlmlifecyclepolicy
+runtime: go
+description: Pulumi module to manage an AWS Data Lifecycle Manager policy

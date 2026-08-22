@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitorscheduledqueryalert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule is a configuration object -- a KQL query, a threshold, and action-group references. It stores no customer data; the logs it queries live in the referenced workspace, encrypted there under that component's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest). The one adjacent surface -- alert state routed to customer-managed storage -- is what workspace_alerts_storage_enabled verifies access to, and the storage account itself is composed outside this manifest.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The rule exposes no endpoint and accepts no connections -- query execution happens inside Azure Monitor's pipeline against the workspace. Notification delivery security is the action group's territory on its own component.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Nothing to reach -- the rule has no network surface, public or private; it is reachable only as an ARM object through the management plane.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict; the rule queries the workspace service-side on its schedule.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a WAF to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the rule -- create, edit the query or thresholds, disable, delete -- is authorized by Azure RBAC unconditionally (Monitoring Contributor to manage, Monitoring Reader to view).
+      notes: The query's own data access is separately governed -- see workload-identity for running it under an explicit Entra identity instead of the alert service's built-in access.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the alert service's built-in access runs the query; SYSTEM_ASSIGNED (or USER_ASSIGNED identities) runs it under a managed Entra identity with only the workspace permissions explicitly granted -- required when the workspace enforces Entra-only query access, and the least-privilege posture for cross-resource queries.
+      notes: None of the presets attach an identity -- they query their own workspace through the service's built-in access.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable; the query path's strengthening story is the managed identity (see workload-identity).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane change to the rule lands in the Azure Activity Log unconditionally, and every fired alert instance is recorded in Azure Monitor's alert history.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The rule IS monitoring integration -- it exports log conditions into alert notifications on a schedule. Its firing state is visible in the Azure Monitor alerts blade with no configuration.
+      notes: The component's purpose-control. auto_mitigation_enabled (default false, matching Azure) decides whether alerts self-resolve; mute_actions_after_alert_duration is the noise dial -- both shape signal quality, neither weakens the integration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration -- recovery is redeployment from this manifest; there is no data to back up. Alert history lives in Azure Monitor's own store, outside the rule.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Monitor's scheduled-query pipeline is a regional platform service Microsoft operates redundantly; the rule is an ARM object with no zone placement to configure.
+      notes: The rule is regional by design -- it must live in its workspace's region, so its availability story follows the workspace's region, not a zone choice here.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the scheduled-query-rules API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The operational safeguard the spec DOES offer is enabled=false -- pausing beats deleting during maintenance.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed platform service -- Microsoft operates and patches the query-evaluation pipeline; no customer-visible patch surface exists.

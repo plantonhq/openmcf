@@ -1,0 +1,89 @@
+# Full-surface hack manifest for the offline plan/preview proofs — every
+# typed field exercised with realistic values. DELIBERATELY NOT a live
+# scenario yet: `build` and `prerequisites.tekton_pipelines` postdate the
+# currently published operator chart's CRD, which would silently PRUNE
+# them — a live lane would then "pass" while proving nothing about those
+# fields. When the published chart line carries the post-CloudNativePG
+# schema, promote this shape into e2e/scenarios/ (sized to the lane's
+# single-node cluster) so the full surface earns a live proof.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.40-selfhosted-preview
+  license:
+    secret_key_ref:
+      name: planton-license
+      key: key
+  storage:
+    storage_class_name: gp3
+    size: 20Gi
+  database:
+    postgresql:
+      replicas: 2
+      storage_size: 20Gi
+    redis:
+      storage_size: 2Gi
+  ingress:
+    enabled: true
+    hostname: planton.example.com
+    ingress_class_name: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: 64m
+    tls:
+      issuer:
+        name: letsencrypt
+        kind: ClusterIssuer
+  gateway:
+    local_port: 8080
+  identity:
+    realm: planton
+    admin_email: admin@example.com
+  bootstrap:
+    organization:
+      slug: acme
+      name: Acme Corp
+    environment:
+      slug: production
+      name: Production
+    admins:
+      - platform-team@example.com
+    iac_provisioner: tofu
+    secret_backend:
+      type: platform
+  runner:
+    enabled: true
+    storage_size: 4Gi
+    service_account_annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner
+  build:
+    enabled: true
+  vault:
+    enabled: true
+    init_mode: auto
+    storage_size: 2Gi
+  components:
+    authorization:
+      enabled: true
+    search:
+      enabled: true
+      mode: standalone
+      storage_size: 10Gi
+      zookeeper:
+        replicas: 1
+        storage_size: 5Gi
+    graph:
+      enabled: true
+      storage_size: 10Gi
+  prerequisites:
+    postgres_operator: auto
+    solr_operator: auto
+    tekton_pipelines: auto
+  control_plane:
+    replicas: 1
+  console:
+    replicas: 1

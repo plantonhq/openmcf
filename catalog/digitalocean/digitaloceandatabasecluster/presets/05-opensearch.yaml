@@ -1,0 +1,15 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: my-opensearch
+spec:
+  clusterName: my-opensearch
+  engine: opensearch
+  engineVersion: "2"
+  region: nyc3
+  sizeSlug: db-s-2vcpu-4gb
+  nodeCount: 1
+  storageGib: 100
+  maintenanceWindow:
+    day: saturday
+    hour: "03:00"

@@ -31,4 +31,4 @@ Exactly one of, per the spec's variant:
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.DataProtection/backupVaults/backupInstances/*` on the vault's resource group (Contributor covers it) -- distinct from the VAULT IDENTITY's datasource grants above, which must also exist.
+The deploying principal's exact grant set is cataloged in [`../permissions.yaml`](../permissions.yaml) -- note it is distinct from the VAULT IDENTITY's datasource grants above, which must also exist.

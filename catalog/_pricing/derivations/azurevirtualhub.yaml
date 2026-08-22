@@ -1,0 +1,64 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVirtualHub manifest's spec values into metered quantities and
+# price choices -- the Standard hub's hourly deployment fee. A hub in a
+# Basic WAN bills no hub meter at all (Microsoft's own statement), so
+# the BASIC arm prices to zero with the spend located honestly in the
+# gateway kinds. Two shapes refuse: route maps move the hub onto a
+# dearer deployment meter not pinned in the price book, and a routing
+# infrastructure unit floor above the included 2 bills the EXCESS units
+# -- a subtraction these rules cannot express. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/azurevirtualhub.yaml; a server-side estimator evaluates
+# the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevirtualhub
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: route_maps
+          op: is_set
+      reason: a hub carrying route maps bills the dearer route-maps/third-party-integration deployment meter INSTEAD of the base hub meter -- that meter is not pinned in the price book (no committed preset deploys route maps), and pricing the base meter for such a hub would understate every hour
+    - when:
+        - field_path: virtual_router_auto_scale_min_capacity
+          op: is_set
+        - field_path: virtual_router_auto_scale_min_capacity
+          op: not_equals
+          value: "2"
+      reason: the hub fee includes the router's default 2 routing infrastructure units, and a higher floor bills only the units ABOVE that included baseline -- an excess these rules cannot subtract, so a committed figure would either omit the extra units or double-count the included ones
+  lines:
+    - sku_meter: Standard hub deployment
+      applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+      quantity:
+        - hours_in_month: true
+      price_slug: vwan-standard-hub-unit-eastus
+      basis: one Standard hub x 730 hours at the Standard Hub Unit rate -- this arm covers sku STANDARD and an unspecified sku, which deploys STANDARD (ARM's default)
+  exclusions:
+    - applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+      text: hub data processing bills per GB for VNet-to-VNet traffic transiting the router, and the router autoscales -- and bills -- routing infrastructure units above the included 2 when traffic demands it
+    - text: gateways created on the hub (site-to-site VPN, point-to-site VPN, ExpressRoute) are their own kinds billing scale units and connection units
+    - applies_when:
+        - field_path: routing_intent
+          op: is_set
+      text: the Azure Firewall the routing intent steers traffic through bills its secured-hub deployment and data-processing meters on its own component
+    - text: hub-to-hub and inter-region flows bill standard inter-region data-transfer rates
+  notes:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: BASIC
+      text: A hub in a Basic WAN carries no base fee and no data-processing fee -- Microsoft's own statement -- so this estimate totals zero not because the topology is free but because the Basic hub's real spend lives entirely in the site-to-site VPN gateway's scale and connection units, billed on that gateway's own component.
+    - text: Custom route tables, static routes, and BGP peerings with NVAs carry no meters of their own -- the price list publishes none.

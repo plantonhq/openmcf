@@ -1,0 +1,3 @@
+name: awsorganizationalunit
+runtime: go
+description: Pulumi module to manage an AWS Organizations organizational unit

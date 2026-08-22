@@ -1,0 +1,3 @@
+name: awscloudmapnamespace
+runtime: go
+description: Pulumi module to manage a Cloud Map namespace with in-line services and statically registered instances

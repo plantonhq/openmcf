@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceandropletautoscalepool
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. Two scenarios riding the SshKey install fixture (the
+  # registry prerequisite): `minimal` (static, ONE member) and `dynamic`
+  # (min 1 / max 2 on a CPU target, agent enabled). BILLING: each lane
+  # runs one real member droplet (~$0.009/hr smallest size) while it
+  # lives; create waits for the pool AND every member to reach active (up
+  # to 15 minutes upstream), hence the widened timeout.
+  # DESTROY DESTROYS THE MEMBERS (the API's only delete is the dangerous
+  # variant) -- the zero-orphan sweep is doubly binding: an orphaned pool
+  # keeps real droplets billing. Watch items for the proof lane: the
+  # template's image reads back as a numeric id (the provider persists the
+  # configured slug -- import tolerance recorded); the dynamic lane's
+  # scale-up needs sustained load (observation, not assertion); template
+  # and scaling edits are in-place update arms the six-phase runner cannot
+  # exercise (recorded deferrals).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

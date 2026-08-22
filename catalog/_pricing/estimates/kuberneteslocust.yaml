@@ -1,0 +1,39 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteslocust
+spec:
+  presets:
+    - preset: 01-web-load-test
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 512Mi
+        cpu_limits: "2"
+        memory_limits: 1Gi
+        basis: 2 workers x (500m CPU / 256Mi memory requests, 1 CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the stack reserves its capacity continuously while deployed, tests running or not -- tear it down between test campaigns to release it
+        - the load the workers generate lands on load_test.target_host -- the target's capacity and cost under test are its own
+      notes: the chart applies no default requests or limits to the master -- undeclared resources genuinely reserve nothing schedulable; size the master for real tests, since it aggregates stats from every worker
+    - preset: 02-headless-ci
+      capacity_footprint:
+        cpu_requests: "2"
+        memory_requests: 1Gi
+        cpu_limits: "4"
+        memory_limits: 2Gi
+        basis: 4 workers x (500m CPU / 256Mi memory requests, 1 CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the stack reserves its capacity continuously while deployed, tests running or not -- tear it down between test campaigns to release it
+        - the load the workers generate lands on load_test.target_host -- the target's capacity and cost under test are its own
+      notes: the chart applies no default requests or limits to the master -- undeclared resources genuinely reserve nothing schedulable; size the master for real tests, since it aggregates stats from every worker

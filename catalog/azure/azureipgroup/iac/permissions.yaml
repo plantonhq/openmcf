@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureipgroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageIpGroup
+        actions:
+          - Microsoft.Network/ipGroups/read
+          - Microsoft.Network/ipGroups/write
+          - Microsoft.Network/ipGroups/delete
+        provenance: derived
+        notes: Covers azurerm_ip_group -- create, read/refresh, in-place updates (cidrs, tags), and destroy. Held via Network Contributor, Contributor, or narrower custom roles.

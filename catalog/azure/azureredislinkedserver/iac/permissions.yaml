@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureredislinkedserver
+spec:
+  azure:
+    groups:
+      - purpose: ManageLinkedServer
+        actions:
+          - Microsoft.Cache/redis/linkedServers/read
+          - Microsoft.Cache/redis/linkedServers/write
+          - Microsoft.Cache/redis/linkedServers/delete
+        provenance: derived
+        notes: Covers azurerm_redis_linked_server -- create the link as a child of the primary cache (name and resource group parsed from target_redis_cache_id) and poll its Get until replication is established, read/refresh, and destroy, after which the provider polls Get until the link fully vanishes so an immediate re-link does not collide. The caches themselves are never read -- both sides are passed through by ID/name, so no Microsoft.Cache/redis/read grant is needed.

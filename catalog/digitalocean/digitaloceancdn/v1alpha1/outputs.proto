@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceancdn.v1alpha1;
+
+// DigitalOceanCdnStackOutputs captures the key outputs after provisioning a
+// CDN endpoint.
+message DigitalOceanCdnStackOutputs {
+  // UUID of the CDN endpoint (the resource's API identity and its import
+  // id).
+  string cdn_id = 1;
+
+  // The fully-qualified domain name the CDN serves content from (for
+  // example "my-bucket.nyc3.cdn.digitaloceanspaces.com"). Point CNAME
+  // records at this host when fronting it with a custom domain.
+  string endpoint = 2;
+}

@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpkmskeyiammember
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The grant stores no customer data -- it is one (role, member) entry in the crypto key's IAM policy, control-plane metadata Google holds on its own encrypted infrastructure. The key material itself belongs to the GcpKmsKey resource.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists here to key -- but this component is the authorization edge CMEK runs on. Granting roles/cloudkms.cryptoKeyEncrypterDecrypter to a consuming service's agent on exactly one key is what makes that service's CMEK posture work; the CMEK stance itself is assessed on the encrypted resource and the key, not on this grant.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy entry terminates no connections -- it is consulted inside IAM's authorization checks, never on a wire the operator configures.
+    - control_id: no-public-access
+      status: configurable
+      field_path: member
+      evidence:
+        type: spec_validation
+        reference: The modules' member-format validation deliberately admits allUsers and allAuthenticatedUsers as grantable members alongside the identity-scoped formats, so public exposure is always an explicit, reviewable value in the manifest -- never a default or a side effect.
+      notes: "member is the public-exposure lever for the key: allUsers or allAuthenticatedUsers paired with a usage role would let the internet (or any Google-authenticated account) drive cryptographic operations with the key -- on the key owner's bill. On a KMS key there is no legitimate public-grant shape; treat any such value as a finding."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network path exists to restrict -- IAM authorization on the key is identity-based, not source-based. Network-level control of who can reach Cloud KMS endpoints is VPC Service Controls territory, configured outside this resource.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The grant receives no inbound traffic; there is no request path for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS role-based access control on the key -- the additive grant assigns exactly one role to one member, and managing the grant itself authorizes against cloudkms.cryptoKeys.setIamPolicy and getIamPolicy on the target key; no unauthenticated management path exists.
+      notes: Key-scoped grants are the least-privilege shape -- IAM also flows DOWN onto the key from its key ring and project, so a ring- or project-level grant silently covers every key beneath it; prefer this resource when different keys have different consumers.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates through a grant -- it consumes identities as grantees and issues no credentials. The canonical grantee is a Google service agent (serviceAccount:service-<project_number>@...), itself a platform-issued identity; the principal:// formats let federated keyless workloads receive key access the same way.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The grant carries no authentication path to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create and destroy is a SetIamPolicy call on the crypto key, landing in Cloud Audit Logs (Admin Activity) unconditionally -- Google's Cloud Audit Logs overview states Admin Activity logs are always written and cannot be configured, excluded, or disabled.
+      notes: Admin Activity records changes TO the key's policy (with the etag output usable for correlation); logging of the member's actual encrypt/decrypt calls is the key's Data Access audit configuration, disabled by default and enabled on the key's project.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A single policy entry emits no metrics and has no export knob; Cloud KMS publishes its metrics on key and operation dimensions, which belong to the key resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The grant is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The key's IAM policy is control-plane metadata Google replicates as part of the platform; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither GCP nor this spec offers a deletion-protection flag for an IAM grant -- every field is immutable and destroy subtracts exactly this (role, member[, condition]) pair. The blast radius is bigger than it looks: revoking a CMEK service agent's grant does not delete any data, but the consuming service immediately loses the ability to decrypt what the key protects -- an availability outage on data that still exists. Plan removals as deliberately as key destruction."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; IAM's evaluation engine and Cloud KMS's control plane are Google's own infrastructure, patched as part of the platform.

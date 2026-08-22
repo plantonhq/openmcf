@@ -1,0 +1,53 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsathenaworkgroup
+spec:
+  presets:
+    - preset: 01-basic-sql-workgroup
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - SQL queries bill per TB scanned with a 10 MB minimum per query, charged on successful and cancelled queries alike -- Athena publishes no free allotment
+        - result sets written to the configured S3 location bill storage and requests on that bucket, and nothing cleans them up unless the bucket's lifecycle rules do
+        - AWS Glue Data Catalog requests bill at Glue's rates when queries resolve tables through it
+      notes: Zero committed cost -- an idle workgroup is a free container of settings; the meter starts with the first query's first scanned byte.
+    - preset: 02-encrypted-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - queries bill per TB scanned as they run; the enforced 10 GiB bytes_scanned_cutoff_per_query cancels any query that would scan past the limit, capping the worst single-query bill rather than starting a meter
+        - SSE-KMS result encryption bills the KMS key's requests on the key's own component -- Athena adds no encryption rate
+        - result sets bill S3 storage and requests on the configured results bucket
+      notes: Zero committed cost -- encryption and the scan cutoff are posture and brakes, not rates; spend still follows query volume alone.
+    - preset: 03-spark-workgroup
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the wired execution role swaps the meter to Apache Spark -- sessions bill per DPU-hour while the driver and workers run, clocked by session lifetime rather than data scanned
+        - the customer-content KMS key bills its requests on the key's own component
+        - notebook results written to the configured S3 location bill on that bucket
+      notes: Zero committed cost -- a Spark-enabled workgroup with no sessions running bills nothing; the DPU-hour meter starts when a notebook opens a session and runs until it closes.
+    - preset: 04-managed-results-zero-bucket
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - queries bill per TB scanned as they run, capped per query by the enforced 10 GiB scan cutoff
+        - AWS-managed result storage carries no meter of its own -- results live in AWS-owned storage for 24 hours at no published charge, so this preset has no result-bucket S3 spend at all
+        - AWS Glue Data Catalog requests bill at Glue's rates when queries resolve tables through it
+      notes: Zero committed cost -- managed results remove even the adjacent S3 bill, leaving scan volume as the only meter, and it starts with the first query.

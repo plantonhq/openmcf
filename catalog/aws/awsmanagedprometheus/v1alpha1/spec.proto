@@ -1,0 +1,253 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprometheus.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsManagedPrometheusSpec defines one Amazon Managed Prometheus (AMP)
+// workspace with its folded satellites: the workspace configuration
+// (retention and label-set series limits), workspace logging, the
+// alert manager definition, name-keyed rule group namespaces, query
+// logging, the workspace resource policy, and alias-keyed anomaly
+// detectors.
+//
+// Scrapers are deliberately NOT here - an AMP scraper can target
+// CloudWatch with zero AMP workspaces, so it is its own kind
+// (AwsManagedPrometheusScraper) that references this workspace's ARN.
+//
+// Two AWS contracts worth knowing before editing: the workspace ALIAS
+// can never be unset once set (AWS offers no un-alias - both engines
+// replace the workspace), and the workspace CONFIGURATION persists
+// after destroy (AWS has no delete API for it - the settings-retention
+// class; removing the block leaves the last-applied retention/limits
+// in place).
+message AwsManagedPrometheusSpec {
+  // Rule namespace names key the for_each entries in both engines.
+  option (buf.validate.message).cel = {
+    id: "spec.rule_namespace_names_unique"
+    message: "rule_group_namespaces entries must have unique names"
+    expression: "this.rule_group_namespaces.map(n, n.name).unique()"
+  };
+  // Detector aliases key the for_each entries in both engines.
+  option (buf.validate.message).cel = {
+    id: "spec.anomaly_detector_aliases_unique"
+    message: "anomaly_detectors entries must have unique aliases"
+    expression: "this.anomaly_detectors.map(d, d.alias).unique()"
+  };
+
+  // The AWS region the workspace lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The workspace's display alias. AWS CONTRACT: once set, an alias
+  // can be changed but never unset - clearing this field replaces the
+  // workspace. Leave it unset only if you never want one.
+  string alias = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Customer-managed KMS key encrypting the workspace's metric data.
+  // Reference an AwsKmsKey key_arn output or pass a literal ARN.
+  // Changing it replaces the workspace.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Workspace event logging to a CloudWatch log group (workspace
+  // lifecycle events, rule evaluation failures).
+  AwsManagedPrometheusLogging logging = 4;
+
+  // The workspace configuration: retention and per-label-set series
+  // limits. AWS CONTRACT: this object is created via update and has NO
+  // delete - removing the block leaves the last-applied values in
+  // place (destroy is a no-op at AWS).
+  AwsManagedPrometheusWorkspaceConfiguration configuration = 5;
+
+  // The workspace's alert manager definition - the alertmanager.yml
+  // document (SNS is the one supported receiver). Strictly one per
+  // workspace.
+  string alert_manager_definition = 6 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Recording/alerting rule files, one AWS rule-groups namespace per
+  // entry, keyed by name.
+  repeated AwsManagedPrometheusRuleGroupNamespace rule_group_namespaces = 7;
+
+  // Query logging: which queries (above a QSP threshold) are logged
+  // and where.
+  AwsManagedPrometheusQueryLogging query_logging = 8;
+
+  // The workspace's resource policy - the IAM document granting other
+  // principals/accounts access to this workspace. The provider's
+  // revision_id concurrency token is deliberately not modeled (a
+  // state-managed apply-behavior knob, meaningless as declarative
+  // config).
+  google.protobuf.Struct resource_policy = 9;
+
+  // Metric anomaly detectors, keyed by alias. Random Cut Forest is
+  // AWS's only detection algorithm today; each entry's PromQL query
+  // selects what the model watches.
+  repeated AwsManagedPrometheusAnomalyDetector anomaly_detectors = 10;
+}
+
+// AwsManagedPrometheusLogging sends workspace events to CloudWatch
+// Logs.
+message AwsManagedPrometheusLogging {
+  // The receiving log group. Reference an AwsCloudwatchLogGroup
+  // log_group_arn output or pass a literal group ARN. AWS requires
+  // the ":*" wildcard suffix on this ARN; the log group resource
+  // exports the bare ARN - both engines append ":*" when absent, so
+  // wire the natural output and never hand-craft the suffix.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+}
+
+// AwsManagedPrometheusWorkspaceConfiguration is the workspace's
+// retention/limits configuration (persists after destroy - see the
+// spec comment).
+message AwsManagedPrometheusWorkspaceConfiguration {
+  // Label sets key the per-set limits.
+  option (buf.validate.message).cel = {
+    id: "configuration.limit_label_sets_nonempty"
+    message: "each limits_per_label_set entry needs at least one label in label_set"
+    expression: "this.limits_per_label_set.all(l, l.label_set.size() > 0)"
+  };
+
+  // How many days ingested metrics are kept (at least 1). Unset keeps
+  // AWS's default (150 days).
+  optional int32 retention_period_in_days = 1 [(buf.validate.field).int32.gte = 1];
+
+  // How far out-of-order samples may arrive and still be ingested, in
+  // seconds (0-600). Unset keeps AWS's default.
+  optional int32 out_of_order_time_window_in_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 600
+  }];
+
+  // How far behind NOW rule queries evaluate, in seconds (0-86400) -
+  // headroom for slow-arriving samples. Unset keeps AWS's default.
+  optional int32 rule_query_offset_in_seconds = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 86400
+  }];
+
+  // Active-series limits per label set (e.g. cap series where
+  // {team="ingest"}). Each entry pairs a label set with its
+  // max_series.
+  repeated AwsManagedPrometheusLabelSetLimit limits_per_label_set = 4;
+}
+
+// AwsManagedPrometheusLabelSetLimit caps active series for one label
+// set.
+message AwsManagedPrometheusLabelSetLimit {
+  // The labels identifying the series population (all must match).
+  map<string, string> label_set = 1;
+
+  // The active-series cap for that population (0 blocks ingestion for
+  // the set entirely).
+  int64 max_series = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+// AwsManagedPrometheusRuleGroupNamespace is one rule-groups file in
+// the workspace.
+message AwsManagedPrometheusRuleGroupNamespace {
+  // The namespace's name (its identity within the workspace -
+  // renaming replaces it). Also the key for the outputs map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // The rule-groups document - standard Prometheus rules YAML
+  // ("groups:" with recording/alerting rules), exactly what you would
+  // put in a rules file on self-managed Prometheus.
+  string data = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsManagedPrometheusQueryLogging logs expensive queries.
+message AwsManagedPrometheusQueryLogging {
+  // Where logged queries land. AWS accepts multiple destinations.
+  repeated AwsManagedPrometheusQueryLoggingDestination destinations = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsManagedPrometheusQueryLoggingDestination is one query-log
+// destination with its noise filter.
+message AwsManagedPrometheusQueryLoggingDestination {
+  // The receiving log group. Reference an AwsCloudwatchLogGroup
+  // log_group_arn output or pass a literal group ARN (both engines
+  // append the ":*" suffix AWS requires when absent).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // Only queries whose Query Samples Processed meet this threshold
+  // are logged (0 logs everything).
+  int64 qsp_threshold = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+// AwsManagedPrometheusAnomalyDetector is one metric anomaly detector
+// on the workspace.
+message AwsManagedPrometheusAnomalyDetector {
+  // The detector's alias (its display identity and the outputs-map
+  // key).
+  string alias = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // The PromQL query selecting the series the model watches (e.g.
+  // "sum(rate(http_requests_total[5m]))").
+  string query = 2 [(buf.validate.field).string.min_len = 1];
+
+  // How often the detector evaluates, in seconds. Unset keeps AWS's
+  // default.
+  optional int32 evaluation_interval_in_seconds = 3 [(buf.validate.field).int32.gte = 1];
+
+  // Labels attached to the detector's anomaly results.
+  map<string, string> labels = 4;
+
+  // Random Cut Forest sample size (at least 256). Unset keeps AWS's
+  // default. RCF is AWS's only detection algorithm today; these knobs
+  // tune it.
+  optional int32 sample_size = 5 [(buf.validate.field).int32.gte = 256];
+
+  // Random Cut Forest shingle size (at least 2). Unset keeps AWS's
+  // default.
+  optional int32 shingle_size = 6 [(buf.validate.field).int32.gte = 2];
+
+  // Suppress anomalies within a band ABOVE the expected value.
+  AwsManagedPrometheusIgnoreNearExpected ignore_near_expected_from_above = 7;
+
+  // Suppress anomalies within a band BELOW the expected value.
+  AwsManagedPrometheusIgnoreNearExpected ignore_near_expected_from_below = 8;
+
+  // What the model does when samples are missing: MARK_AS_ANOMALY
+  // flags the gap, SKIP evaluates nothing.
+  string missing_data_action = 9 [(buf.validate.field).string = {
+    in: [
+      "MARK_AS_ANOMALY",
+      "SKIP"
+    ]
+  }];
+}
+
+// AwsManagedPrometheusIgnoreNearExpected is a suppression band around
+// the expected value - an absolute amount or a ratio, never both.
+message AwsManagedPrometheusIgnoreNearExpected {
+  option (buf.validate.message).cel = {
+    id: "ignore_near_expected.amount_xor_ratio"
+    message: "set exactly one of amount and ratio"
+    expression: "has(this.amount) != has(this.ratio)"
+  };
+
+  // The band as an absolute value (>= 0).
+  optional double amount = 1 [(buf.validate.field).double.gte = 0];
+
+  // The band as a ratio of the expected value (>= 0, e.g. 0.1 for
+  // 10%).
+  optional double ratio = 2 [(buf.validate.field).double.gte = 0];
+}

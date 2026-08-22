@@ -1,0 +1,117 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetessignoz
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.signoz (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The modules create no Secret of their own -- the ClickHouse password and the SMTP password are read from EXISTING Secrets the manifest references (the modules always wire existingSecret, so the chart's inline-password Secret never renders) -- but the Helm release stores its state in namespace-scoped release Secrets the runner must manage.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.signoz (Pulumi helmv3.NewRelease) -- the pinned chart (0.133.0) renders the server and collector Services, the collector's config ConfigMap, ServiceAccounts for the server, the collector and the schema migrator, and the server's state PVC through the StatefulSet's volumeClaimTemplate. The release installs with wait, so the runner also reads pods to confirm readiness.
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workloads -- the single-replica SigNoz server StatefulSet and the collector Deployment (spec.otel_collector.replicas). Nothing ClickHouse-related installs -- the modules pin the chart's bundled database off as a constant of the design.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The pinned chart renders a ClusterRole and ClusterRoleBinding for the collector UNCONDITIONALLY in this component's rendering (the chart's otelCollector.clusterRole.create default is true and the modules never change it) -- the ClusterRole grants get/list/watch on pods, namespaces and nodes plus replicasets and jobs (the k8sattributes processor's metadata enrichment), so the runner's principal must be able to create that grant (hold the granted permissions or the escalate verb, per Kubernetes RBAC escalation rules).
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the telemetry-store schema migrator -- Jobs the chart renders by default (telemetryStoreMigrator.enabled is the chart's true default) that run the ClickHouse schema migrations on install and upgrade.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the collector's HPA -- rendered only when spec.otel_collector.autoscaling.enabled is true (the 02-production preset scales the collector between 2 and 8 replicas).

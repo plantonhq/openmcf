@@ -7,91 +7,354 @@ import "catalog/digitalocean/region.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 import "shared/options/options.proto";
 
-// DigitalOceanKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on DigitalOcean.
-// It focuses on essential parameters for a production-grade cluster, following the 80/20 principle to expose only the most commonly used settings.
+// DigitalOceanKubernetesClusterSpec models the full digitalocean_kubernetes_cluster
+// resource surface: version/region/VPC placement, the inline default node pool
+// (with labels, taints, tags, and autoscaling), HA control plane, surge and auto
+// upgrades, maintenance policy, control-plane firewall, pod/service/worker
+// subnets, isolated workers, SSO, cluster-autoscaler tuning, registry
+// integration, kubeconfig expiry, destroy-time cleanup, and the managed addon
+// toggles (routing agent, GPU device plugins and DRA drivers, RDMA, CoreDNS
+// autoscaler, P2P OCI registry).
+//
+// Additional node pools beyond the inline default pool are separate
+// DigitalOceanKubernetesNodePool resources.
 message DigitalOceanKubernetesClusterSpec {
-  // The name of the Kubernetes cluster. This will be the cluster's identifier in DigitalOcean.
-  // Constraints: Must be unique per account. (A maximum length or character set may be enforced by DigitalOcean, e.g., alphanumeric and hyphens.)
+  // The provider rejects configs carrying both the AMD device plugin and the
+  // AMD DRA driver (ConflictsWith); failing at validation is cheaper than at
+  // apply.
+  option (buf.validate.message).cel = {
+    id: "amd_gpu_plugin_xor_dra"
+    message: "amd_gpu_device_plugin and amd_gpu_dra_driver are mutually exclusive"
+    expression: "!has(this.amd_gpu_device_plugin) || !has(this.amd_gpu_dra_driver)"
+  };
+
+  // Same mutual exclusion for the NVIDIA pair.
+  option (buf.validate.message).cel = {
+    id: "nvidia_gpu_plugin_xor_dra"
+    message: "nvidia_gpu_device_plugin and nvidia_gpu_dra_driver are mutually exclusive"
+    expression: "!has(this.nvidia_gpu_device_plugin) || !has(this.nvidia_gpu_dra_driver)"
+  };
+
+  // Retired fields. disable_surge_upgrade inverted the provider's
+  // surge_upgrade; maintenance_window collapsed the maintenance_policy block
+  // into a "day=HH:MM" string; control_plane_firewall_allowed_ips dropped the
+  // block's required enabled leaf. Their numbers and names must never be
+  // reused with a different meaning.
+  reserved 7, 8, 10;
+  reserved "disable_surge_upgrade", "maintenance_window", "control_plane_firewall_allowed_ips";
+
+  // A human-readable name for the Kubernetes cluster. This name is the
+  // cluster's identifier in DigitalOcean.
   string cluster_name = 1 [(buf.validate.field).required = true];
 
-  // The DigitalOcean region where the cluster will be created.
-  // Determines where the cluster's control plane and nodes are provisioned.
+  // The DigitalOcean region where the cluster's control plane and nodes are
+  // provisioned. Cannot be changed after creation.
   DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
 
-  // The Kubernetes version to use for the cluster (semantic versioning).
-  // Must be a supported version on DigitalOcean (e.g., 1.22+).
-  // Example: "1.26.3"
+  // The Kubernetes version slug to create the cluster at, e.g. "1.33.1-do.3"
+  // or a prefix like "1.33". This is the creation pin: patch upgrades ride
+  // auto_upgrade, and both provisioners ignore later drift on this field
+  // because DigitalOcean recreates the whole cluster when the configured
+  // version is lower than the live one.
   string kubernetes_version = 3 [(buf.validate.field).required = true];
 
-  // Reference to the DigitalOcean VPC where the cluster's control plane will reside.
-  // This must be an existing VPC in the same region. The cluster consumes the VPC's
-  // ID (a DigitalOcean UUID), so a reference resolves to the DigitalOceanVpc's
-  // exported vpc_id output rather than its metadata name.
+  // Reference to the DigitalOcean VPC where the cluster will reside. The
+  // cluster consumes the VPC's ID (a DigitalOcean UUID), so a reference
+  // resolves to the DigitalOceanVpc's exported vpc_id output rather than its
+  // metadata name. Cannot be changed after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
-  // Whether to enable a highly available control plane for the cluster.
-  // If true, the cluster is created with a High Availability control plane (multiple masters for increased uptime, additional cost).
-  // Default: false.
+  // Whether to run a highly available control plane (multiple replicas,
+  // additional cost). HA is one-way: once enabled it cannot be turned off.
+  // Unset sends an explicit false, which is deliberate: newer DOKS versions
+  // default HA on server-side, and an explicit false keeps the cheaper
+  // single-replica control plane unless HA is asked for.
   bool highly_available = 5 [(dev.planton.shared.options.recommended_default) = "false"];
 
-  // Whether to enable automatic patch upgrades for the cluster.
-  // If true, the cluster will automatically upgrade to new patch releases of Kubernetes when available.
+  // Whether the cluster automatically upgrades to new patch releases inside
+  // the maintenance window. Minor/major upgrades are never automatic.
   bool auto_upgrade = 6;
 
-  // Whether to disable surge upgrades for the cluster.
-  // If false(default), cluster upgrades will temporarily provision extra nodes to minimize downtime during updates.
-  bool disable_surge_upgrade = 7;
-
-  // Scheduled maintenance window for cluster updates (format: "day=HH:MM" or "any=HH:MM").
-  // Examples: "sunday=02:00" or "any=00:00"
-  // If not specified, DigitalOcean will apply updates at any time.
-  string maintenance_window = 8;
-
-  // Whether to enable DigitalOcean Container Registry (DOCR) integration.
-  // If true, automatically creates imagePullSecrets in the cluster for pulling private images from DOCR.
-  // Default: false.
+  // Whether to integrate the account's DigitalOcean Container Registry
+  // (DOCR): pulls from the private registry work cluster-wide without
+  // imagePullSecrets. This is an account-level association the API never
+  // reports back, so it survives as configuration only.
   bool registry_integration = 9;
 
-  // List of allowed IP addresses (CIDR notation) for control plane firewall.
-  // Restricts Kubernetes API server access to specified IPs for security.
-  // If empty, API server is publicly accessible (not recommended for production).
-  // Example: ["203.0.113.5/32", "198.51.100.0/24"]
-  repeated string control_plane_firewall_allowed_ips = 10;
+  // Tags applied to the cluster in DigitalOcean, in addition to the standard
+  // Planton labels both provisioners always apply. Never include
+  // "terraform:default-node-pool" -- the provider manages that tag itself to
+  // mark the inline pool.
+  repeated string tags = 11 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
 
-  // A list of tags to apply to the cluster.
-  // Tags help organize and identify the cluster within DigitalOcean.
-  repeated string tags = 11;
-
-  // Reference to the default node pool for the cluster.
+  // The cluster's inline default node pool. Its name is synthesized by the
+  // provisioners; additional pools are separate DigitalOceanKubernetesNodePool
+  // resources.
   DigitalOceanKubernetesClusterDefaultNodePool default_node_pool = 12 [(buf.validate.field).required = true];
+
+  // Whether upgrades temporarily provision surge nodes to minimize downtime.
+  // DigitalOcean defaults this ON, so unset defers to that default; set it to
+  // false only to explicitly disable surge upgrades.
+  optional bool surge_upgrade = 13 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // (Optional) Weekly window in which DigitalOcean applies automatic
+  // maintenance and auto-upgrades. When unset, DigitalOcean picks a window.
+  DigitalOceanKubernetesClusterMaintenancePolicy maintenance_policy = 14;
+
+  // (Optional) Firewall in front of the cluster's public API server endpoint.
+  // When unset, the API server accepts connections from anywhere.
+  DigitalOceanKubernetesClusterControlPlaneFirewall control_plane_firewall = 15;
+
+  // (Optional) CIDR block for pod IPs. When unset, DigitalOcean assigns one.
+  // Cannot be changed after creation.
+  string cluster_subnet = 16 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ip_with_prefixlen = true
+  ];
+
+  // (Optional) CIDR block for service ClusterIPs. When unset, DigitalOcean
+  // assigns one. Cannot be changed after creation.
+  string service_subnet = 17 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ip_with_prefixlen = true
+  ];
+
+  // (Optional) UUID of the DigitalOcean-managed subnet to place worker nodes
+  // in. Literal only: worker subnets are DigitalOcean-assigned network
+  // slices, not a Planton-managed kind. Cannot be changed after creation.
+  string worker_subnet_uuid = 18;
+
+  // (Optional) Whether worker nodes are blocked from public internet access
+  // (control plane connectivity is routed internally). Cannot be changed
+  // after creation.
+  bool isolated_workers = 19;
+
+  // (Optional) When true, destroying the cluster also deletes the load
+  // balancers, volumes, and volume snapshots it created. DANGEROUS and
+  // destroy-time only: it never affects the running cluster, and the API
+  // never reports it back.
+  bool destroy_all_associated_resources = 20;
+
+  // (Optional) Validity of the provisioner-fetched kubeconfig credentials in
+  // seconds. 0 (unset) means DigitalOcean's 7-day default.
+  uint32 kubeconfig_expire_seconds = 21;
+
+  // (Optional) Tuning for the DigitalOcean-managed cluster-autoscaler.
+  DigitalOceanKubernetesClusterAutoscalerConfiguration cluster_autoscaler_configuration = 22;
+
+  // (Optional) OpenID Connect single sign-on for the cluster's Kubernetes
+  // API.
+  DigitalOceanKubernetesClusterSso sso = 23;
+
+  // (Optional) The DigitalOcean routing agent, required for some advanced
+  // networking features. Unset leaves the addon at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle routing_agent = 24;
+
+  // (Optional) Peer-to-peer OCI registry mirror addon for faster image pulls
+  // across nodes. Unset leaves the addon at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle p2p_oci_registry_plugin = 25;
+
+  // (Optional) AMD GPU device plugin addon (mutually exclusive with the AMD
+  // DRA driver). Unset leaves the addon at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle amd_gpu_device_plugin = 26;
+
+  // (Optional) AMD GPU dynamic-resource-allocation driver addon (mutually
+  // exclusive with the AMD device plugin). Unset leaves the addon at
+  // DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle amd_gpu_dra_driver = 27;
+
+  // (Optional) AMD GPU device metrics exporter addon. Unset leaves the addon
+  // at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle amd_gpu_device_metrics_exporter_plugin = 28;
+
+  // (Optional) NVIDIA GPU device plugin addon (mutually exclusive with the
+  // NVIDIA DRA driver). Unset leaves the addon at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle nvidia_gpu_device_plugin = 29;
+
+  // (Optional) NVIDIA GPU dynamic-resource-allocation driver addon (mutually
+  // exclusive with the NVIDIA device plugin). Unset leaves the addon at
+  // DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle nvidia_gpu_dra_driver = 30;
+
+  // (Optional) RDMA shared device plugin addon for high-performance
+  // networking on supported GPU droplets. Unset leaves the addon at
+  // DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle rdma_shared_device_plugin = 31;
+
+  // (Optional) CoreDNS horizontal autoscaler addon. Unset leaves the addon
+  // at DigitalOcean's default.
+  DigitalOceanKubernetesClusterFeatureToggle coredns_autoscaler = 32;
 }
 
-// DigitalOcean Kubernetes Cluster Default Node Pool
+// DigitalOceanKubernetesClusterDefaultNodePool is the cluster's inline
+// default node pool. Changing its size (or gpu_partition_mode) REPLACES THE
+// ENTIRE CLUSTER -- the provider force-news the cluster resource, not just
+// the pool. Size a default pool once and grow with additional
+// DigitalOceanKubernetesNodePool resources instead.
 message DigitalOceanKubernetesClusterDefaultNodePool {
-  // The slug identifier for the Droplet size to use for each node (e.g., "s-4vcpu-8gb").
-  // This defines the CPU and memory of the nodes in the pool.
+  // DigitalOcean requires the autoscaler bounds to be coherent when
+  // autoscaling is on; the API rejects them late, this rejects them early.
+  option (buf.validate.message).cel = {
+    id: "autoscale_bounds"
+    message: "auto_scale requires min_nodes >= 1 and max_nodes >= min_nodes"
+    expression: "!this.auto_scale || (this.min_nodes >= 1u && this.max_nodes >= this.min_nodes)"
+  };
+
+  // The slug identifier for the Droplet size of each node (e.g.
+  // "s-2vcpu-4gb"). Changing it replaces the whole cluster.
   string size = 1 [(buf.validate.field).required = true];
 
-  // The number of nodes to provision in the pool.
-  // Must be at least 1. If auto_scale is enabled, this acts as the initial desired node count.
+  // The number of nodes in the pool. With auto_scale enabled this is the
+  // initial count; the live count then drifts freely between min_nodes and
+  // max_nodes without producing configuration diffs.
   uint32 node_count = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gt = 0
   ];
 
-  // Enable auto-scaling for this node pool.
-  // If true, the platform will manage node count between min_nodes and max_nodes.
+  // Whether DigitalOcean's cluster-autoscaler manages this pool's node count
+  // between min_nodes and max_nodes.
   bool auto_scale = 3;
 
-  // Minimum number of nodes when auto-scaling is enabled.
-  // Required if auto_scale is true.
+  // Minimum node count when auto_scale is enabled.
   uint32 min_nodes = 4;
 
-  // Maximum number of nodes when auto-scaling is enabled.
-  // Required if auto_scale is true.
+  // Maximum node count when auto_scale is enabled.
   uint32 max_nodes = 5;
+
+  // (Optional) Kubernetes labels applied to every node in the pool, in
+  // addition to the standard Planton labels both provisioners always apply.
+  map<string, string> labels = 6;
+
+  // (Optional) Kubernetes taints applied to every node in the pool.
+  repeated DigitalOceanKubernetesClusterNodePoolTaint taints = 7;
+
+  // (Optional) DigitalOcean tags applied to the pool's Droplets, in addition
+  // to the cluster's tags.
+  repeated string tags = 8 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
+
+  // (Optional) GPU partitioning mode for AMD GPU Droplet sizes. Changing it
+  // replaces the whole cluster.
+  string gpu_partition_mode = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AMD_PARTITION_MODE_SPX_NPS1",
+        "AMD_PARTITION_MODE_DPX_NPS2"
+      ]
+    }
+  ];
+}
+
+// DigitalOceanKubernetesClusterNodePoolTaint is a Kubernetes taint applied
+// to every node in the pool.
+message DigitalOceanKubernetesClusterNodePoolTaint {
+  // Taint key, e.g. "dedicated".
+  string key = 1 [(buf.validate.field).required = true];
+
+  // (Optional) Taint value, e.g. "gpu-workloads". Kubernetes allows
+  // valueless taints, so empty is legal; the provisioners always send the
+  // value (possibly empty), which is all the provider's required leaf asks.
+  string value = 2;
+
+  // Taint effect. One of NoSchedule, PreferNoSchedule, NoExecute
+  // (case-sensitive, exactly as Kubernetes spells them).
+  string effect = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "NoSchedule",
+        "PreferNoSchedule",
+        "NoExecute"
+      ]
+    }
+  ];
+}
+
+// DigitalOceanKubernetesClusterMaintenancePolicy is the weekly slot in which
+// DigitalOcean applies automatic maintenance and auto-upgrades. The window's
+// duration is determined by DigitalOcean, not configurable.
+message DigitalOceanKubernetesClusterMaintenancePolicy {
+  // Day of the week, or "any" to let DigitalOcean pick the day.
+  // Case-insensitive.
+  string day = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^(?i)(any|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$"
+  ];
+
+  // Start of the window in UTC, 24-hour "HH:MM", for example "02:00".
+  string start_time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+  ];
+}
+
+// DigitalOceanKubernetesClusterControlPlaneFirewall restricts which source
+// addresses may reach the cluster's public Kubernetes API endpoint.
+message DigitalOceanKubernetesClusterControlPlaneFirewall {
+  // Whether the firewall is enforced. Keeping enabled explicit (rather than
+  // inferring it from a non-empty address list) allows staging rules while
+  // disabled and matches the provider's block, whose enabled leaf is
+  // required. optional gives the bool presence so an explicit false is valid.
+  optional bool enabled = 1 [(buf.validate.field).required = true];
+
+  // Source addresses allowed to reach the API server, as plain IPs or CIDR
+  // blocks. The provider validates nothing here; catching a typo before
+  // apply beats a lockout after.
+  repeated string allowed_addresses = 2 [(buf.validate.field).repeated.items.cel = {
+    id: "ip_or_cidr"
+    message: "must be an IP address or CIDR block"
+    expression: "this.isIp() || this.isIpPrefix()"
+  }];
+}
+
+// DigitalOceanKubernetesClusterAutoscalerConfiguration tunes the
+// DigitalOcean-managed cluster-autoscaler's scale-down behavior.
+message DigitalOceanKubernetesClusterAutoscalerConfiguration {
+  // (Optional) Node utilization fraction (0.0-1.0) below which a node is
+  // eligible for scale-down. Optional so an unset value defers to
+  // DigitalOcean's default rather than sending 0.
+  optional double scale_down_utilization_threshold = 1 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 1
+  ];
+
+  // (Optional) How long a node must stay unneeded before scale-down, as a Go
+  // duration string, e.g. "1m30s".
+  string scale_down_unneeded_time = 2;
+
+  // (Optional) Expander strategies the autoscaler uses to pick which pool to
+  // grow, in priority order (e.g. "least-waste", "random", "priority").
+  repeated string expanders = 3;
+}
+
+// DigitalOceanKubernetesClusterSso configures OpenID Connect single sign-on
+// for the cluster's Kubernetes API.
+message DigitalOceanKubernetesClusterSso {
+  // Whether SSO is enabled. optional gives the bool presence so an explicit
+  // false is valid.
+  optional bool enabled = 1 [(buf.validate.field).required = true];
+
+  // (Optional) Whether SSO is mandatory for all cluster access.
+  bool required = 2;
+
+  // (Optional) OIDC issuer URL of the identity provider.
+  string issuer_url = 3;
+
+  // (Optional) OAuth client ID registered with the identity provider.
+  string client_id = 4;
+}
+
+// DigitalOceanKubernetesClusterFeatureToggle switches a DigitalOcean-managed
+// cluster addon on or off. Leaving the parent field unset is meaningfully
+// different from enabled: false -- unset defers to DigitalOcean's own default
+// for that addon, while a set message asserts the desired state.
+message DigitalOceanKubernetesClusterFeatureToggle {
+  // Whether the addon is enabled. optional gives the bool presence so an
+  // explicit false (assert OFF) is valid, not just true.
+  optional bool enabled = 1 [(buf.validate.field).required = true];
 }

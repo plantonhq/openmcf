@@ -340,6 +340,25 @@ func volumeBody(v *kubernetesprovider.VolumeMount) map[string]interface{} {
 			pvc["readOnly"] = true
 		}
 		volume["persistentVolumeClaim"] = pvc
+	case v.GetServiceAccountToken() != nil:
+		// Kubelet-rotated, audience-bound ServiceAccount tokens ride the
+		// "projected" volume type in the Kubernetes API.
+		path := v.GetServiceAccountToken().GetPath()
+		if path == "" {
+			path = "token"
+		}
+		token := map[string]interface{}{
+			"audience": v.GetServiceAccountToken().GetAudience(),
+			"path":     path,
+		}
+		if v.GetServiceAccountToken().GetExpirationSeconds() > 0 {
+			token["expirationSeconds"] = int(v.GetServiceAccountToken().GetExpirationSeconds())
+		}
+		volume["projected"] = map[string]interface{}{
+			"sources": []interface{}{map[string]interface{}{
+				"serviceAccountToken": token,
+			}},
+		}
 	}
 	return volume
 }

@@ -1,0 +1,71 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsiamuser
+spec:
+  aws:
+    statements:
+      - sid: ManageUser
+        actions:
+          - iam:CreateUser
+          - iam:GetUser
+          - iam:UpdateUser
+          - iam:DeleteUser
+          - iam:PutUserPermissionsBoundary
+          - iam:DeleteUserPermissionsBoundary
+          - iam:TagUser
+          - iam:UntagUser
+          - iam:ListUserTags
+        resources:
+          - arn:aws:iam::*:user/*
+        provenance: derived
+        notes: Covers aws_iam_user / iam.User -- creation with name, path, boundary, and tags; in-place updates including UpdateUser for the rename and path moves the spec allows; and deletion. IAM ARNs carry no region, and user/* spans custom paths because '*' matches path separators. All user APIs authorize on the user ARN alone.
+      - sid: ManageUserPolicyWiring
+        actions:
+          - iam:AttachUserPolicy
+          - iam:DetachUserPolicy
+          - iam:ListAttachedUserPolicies
+          - iam:PutUserPolicy
+          - iam:GetUserPolicy
+          - iam:DeleteUserPolicy
+          - iam:ListUserPolicies
+        resources:
+          - arn:aws:iam::*:user/*
+        provenance: derived
+        notes: Covers aws_iam_user_policy_attachment / iam.UserPolicyAttachment (managed-policy attach and detach, reconciled per entry) and aws_iam_user_policy / iam.UserPolicy (inline policies). The List actions are the read-side during plan/refresh and the force_destroy sweep. Every action authorizes on the USER ARN, not the policy ARN.
+      - sid: ManageAccessKeys
+        actions:
+          - iam:CreateAccessKey
+          - iam:UpdateAccessKey
+          - iam:DeleteAccessKey
+          - iam:ListAccessKeys
+        resources:
+          - arn:aws:iam::*:user/*
+        provenance: derived
+        notes: Covers aws_iam_access_key / iam.AccessKey -- the one key minted unless disable_access_keys is set, the in-place Active/Inactive status flip (UpdateAccessKey), the read-side (ListAccessKeys, which is also how the provider verifies status), and deletion. Access-key APIs authorize on the owning user's ARN.
+      - sid: ForceDestroyCredentialSweep
+        actions:
+          - iam:GetLoginProfile
+          - iam:DeleteLoginProfile
+          - iam:ListMFADevices
+          - iam:DeactivateMFADevice
+          - iam:DeleteVirtualMFADevice
+          - iam:ListSSHPublicKeys
+          - iam:DeleteSSHPublicKey
+          - iam:ListSigningCertificates
+          - iam:DeleteSigningCertificate
+          - iam:ListServiceSpecificCredentials
+          - iam:DeleteServiceSpecificCredential
+          - iam:ListGroupsForUser
+          - iam:RemoveUserFromGroup
+        resources:
+          - arn:aws:iam::*:user/*
+          - arn:aws:iam::*:mfa/*
+          - arn:aws:iam::*:group/*
+        provenance: derived
+        notes: The force_destroy delete path in both providers enumerates and removes credentials and memberships created OUTSIDE the resource -- console login profile, MFA devices, SSH public keys, signing certificates, service-specific credentials, and group memberships -- before DeleteUser can succeed. Most of these authorize on the user ARN, but DeleteVirtualMFADevice authorizes on the mfa ARN and RemoveUserFromGroup authorizes on the GROUP ARN, so all three formats are required (an under-scoped grant would strand teardown exactly when force_destroy promises it succeeds).

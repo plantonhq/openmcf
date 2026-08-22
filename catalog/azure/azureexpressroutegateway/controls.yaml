@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureexpressroutegateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The gateway stores no customer data -- it is a managed packet-forwarding appliance whose only state is ARM configuration. The one secret it can carry, a circuit authorization key, is held by Azure's control plane (never returned on reads), not on any disk this manifest governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- neither the expressRouteGateways API nor this spec carries a customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A security reviewer should hear this plainly -- traffic through this gateway is NOT encrypted by it. ExpressRoute private peering is deliberately unencrypted private transit (isolation comes from the dedicated circuit, not cryptography), and the expressRouteGateways API offers no encryption surface to configure, so there is no toggle for this profile to govern. Encryption is composed elsewhere when required -- an IPsec tunnel over the circuit via the hub's VPN gateway, or MACsec on ExpressRoute Direct ports.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway lives inside the Virtual WAN hub and terminates only private-peering traffic from circuits explicitly connected to it -- Azure assigns it no public IP and exposes no internet listener, and no field of the API can create one.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Traffic enters the hub through this gateway only from circuit peerings a connection explicitly joins -- ARM accepts a connection only for a provisioned circuit, and a circuit in another subscription additionally requires an authorization key its owner issued. There is no open forwarding path; allow_non_virtual_wan_traffic (off by ARM's default) widens which NETWORKS may ride the gateway, not who may connect a circuit.
+      notes: Route maps and route-table association on each connection's routing block can constrain which prefixes the joined circuit may exchange with the WAN.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A private-circuit on-ramp is not an HTTP surface -- there is no request stream for a web application firewall to filter and no WAF attachment point on the expressRouteGateways API.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the gateway and its connections -- create, rescale, join a circuit, delete -- is authorized by Azure RBAC unconditionally, and joining a circuit is additionally authorized against the CIRCUIT's scope (join/action, or an owner-issued authorization key across subscriptions). The gateway has no data-plane credential of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no customer workloads and calls no cloud APIs on the customer's behalf -- there is no identity block on the expressRouteGateways API and nothing here that could hold a credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The gateway carries no authentication choices -- there is no protocol negotiation, no shared secret, and no legacy path to disable; circuit membership is authorized by Azure RBAC or owner-issued authorization keys, both current mechanisms.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the gateway and its connections lands in the Azure Activity Log unconditionally -- who created it, who changed the scale units, who joined which circuit, who deleted it.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Platform metrics for the gateway (bits per second toward the WAN, packet counts, CPU of the underlying instances) flow to Azure Monitor for every Virtual WAN ExpressRoute gateway with no configuration -- ARM registers metric definitions on the expressRouteGateways resource type itself.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the gateway is regenerable configuration, restored by redeploying the manifest; circuit route exchange re-establishes live over BGP, never from a restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Instance placement is Azure-managed and exposes no zone surface -- the expressRouteGateways API has no zones field and no availability knob to configure or neglect. Microsoft's own performance guidance shows the managed redundancy at work -- gateways at 2 or more scale units maintain their aggregate throughput through maintenance operations (only a single-scale-unit gateway can see slight variation) -- but that resilience is Microsoft's to operate, not this manifest's to select.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the expressRouteGateways API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deletion is ordered bottom-up (connections, then gateway, then hub) -- an ARM constraint the runner's reverse teardown handles, not a protection toggle.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway is a fully managed appliance -- Microsoft owns the instances' operating system, patch cadence, and upgrades, and exposes no version or maintenance surface to configure or neglect.

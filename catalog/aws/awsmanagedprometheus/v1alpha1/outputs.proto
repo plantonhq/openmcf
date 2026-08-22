@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprometheus.v1alpha1;
+
+// AwsManagedPrometheusStackOutputs captures the observable state of
+// the workspace and its satellites after apply.
+message AwsManagedPrometheusStackOutputs {
+  // The workspace's ID (the provider's import ID for the workspace
+  // and most satellites).
+  string workspace_id = 1;
+
+  // The workspace's ARN - what scrapers and remote-write clients
+  // reference.
+  string workspace_arn = 2;
+
+  // The workspace's Prometheus-compatible query/remote-write
+  // endpoint URL.
+  string prometheus_endpoint = 3;
+
+  // Rule-groups namespace ARNs keyed by namespace name (each
+  // namespace imports by its ARN).
+  map<string, string> rule_group_namespace_arns = 4;
+
+  // AWS-generated anomaly detector IDs keyed by detector alias (each
+  // detector imports as "detector_id,workspace_id").
+  map<string, string> anomaly_detector_ids = 5;
+
+  // Anomaly detector ARNs keyed by detector alias.
+  map<string, string> anomaly_detector_arns = 6;
+}

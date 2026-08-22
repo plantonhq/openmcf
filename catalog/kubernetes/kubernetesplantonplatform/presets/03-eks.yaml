@@ -1,0 +1,30 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.40-selfhosted-preview
+  storage:
+    # gp3 over the legacy gp2 default; requires the EBS CSI driver (an
+    # EKS managed addon with its own IAM identity — NOT installed by the
+    # platform; a driverless default class leaves every volume Pending
+    # and the operator's status says so).
+    storage_class_name: gp3
+  ingress:
+    enabled: true
+    hostname: planton.example.com
+    ingress_class_name: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      # ACM terminates TLS at the load balancer — no in-cluster
+      # certificate, so no `tls` block here.
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:123456789012:certificate/REPLACE
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+  runner:
+    # IRSA: the runner deploys to AWS with a role, never stored keys.
+    service_account_annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner

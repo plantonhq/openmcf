@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying a Compute Engine
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/compute.admin` (or narrower instance-group/instance-template roles) on the target project; `iam.serviceAccounts.actAs` on the template's service account when one is set
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

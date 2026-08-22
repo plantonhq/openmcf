@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetestekton
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Tekton's state -- pipelines, runs, their statuses -- lives as custom resources in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Pipeline artifacts ride per-run workspaces (PVCs or object stores declared by each run), not this installation.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption and each run's workspace storage, owned elsewhere.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: pipeline.cloud_events_sink_url
+      evidence:
+        type: spec_default
+        reference: Component-to-component traffic stays inside the cluster over the API server's TLS and in-cluster Services. The one outbound seam this spec models is the cluster-global CloudEvents sink -- an https:// URL encrypts every run lifecycle event to the receiver; http:// ships them plaintext.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Nothing the operator installs is externally exposed -- the Dashboard's Service stays ClusterIP (exposure is a deliberate composition through KubernetesIngress or Gateway API kinds over the exported service handle).
+      notes: The Dashboard has NO built-in authentication -- never expose it without an authenticating layer in front, and prefer dashboard.readonly=true anywhere humans browse it (a writable dashboard hands pipeline-execution power to anyone who reaches it).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress seam exists on this spec -- every installed Service is in-cluster only, and exposure or network fencing is composed through separate resources (Ingress/Gateway kinds, NetworkPolicies).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The installation serves no HTTP edge traffic of its own; if the Dashboard is later exposed through a composed ingress, edge protection belongs to that resource.
+    - control_id: rbac
+      status: configurable
+      field_path: pipeline.default_service_account
+      evidence:
+        type: spec_default
+        reference: Empty means TaskRun/PipelineRun pods run as each namespace's "default" ServiceAccount (Tekton's default). Point it at a dedicated account to give run pods a deliberate identity; trigger.default_service_account does the same for EventListener pods. Runs may still declare their own per-run accounts.
+      notes: The Tekton components' own RBAC is installed by the operator as part of each component's payload. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pipeline.default_service_account
+      evidence:
+        type: spec_default
+        reference: Pointing the default run ServiceAccount at a cloud-annotated account (EKS IRSA, GKE Workload Identity) gives pipeline pods keyless registry and cloud access; the alternative is credential Secrets injected by Tekton's creds-init (see pipeline.features.disable_creds_init).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: pipeline.features.require_git_ssh_secret_known_hosts
+      evidence:
+        type: spec_default
+        reference: Tekton's default (false) accepts Git SSH Secrets without a known_hosts entry -- fetches are man-in-the-middle-able. Setting true refuses such Secrets cluster-wide.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation is a Kubernetes API operation on Tekton CRs, captured by the target cluster's audit policy. Tekton Chains (installed on basic/all unless chain.disabled) signs provenance attestations for completed runs -- supply-chain evidence, distinct from an API audit trail.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: pipeline.metrics
+      evidence:
+        type: spec_default
+        reference: Unset keeps Tekton's defaults (namespace-level granularity, histogram durations) on the operator-managed config-observability surface. The fields tune TaskRun/PipelineRun metric granularity and duration types -- taskrun-level cardinality can overwhelm Prometheus on busy clusters.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The installation's desired state IS this manifest -- re-applying it reinstalls identically -- and run history is disposable by design (the pruner deletes it on schedule). Pipeline definitions live where teams declare them (their own manifests or repos), not in this resource.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery). The pruner's keep/keep_since is run-history retention -- an operational cleanup policy, not a backup retention policy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: pipeline.performance.replicas
+      evidence:
+        type: spec_default
+        reference: Empty runs 1 pipelines controller. Tekton's HA story is replicas WITH buckets -- extra replicas shard reconcile work only when buckets matches (replicas without buckets add nothing). Spreading pods across zones rides placement and the cluster's topology.
+      notes: The 02-pipelines-engine preset runs 2 replicas with 2 buckets.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the operator offers a deletion-protection flag on the TektonConfig. Deleting this resource makes the operator tear down EVERY installed component AND the operator-created target namespace (verified live) -- the modules block on that teardown (15-minute delete timeout). Never point target_namespace at a namespace carrying anything else.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Component versions ride the KubernetesTektonOperator's pinned release -- this spec deliberately has no version field, so a manifest cannot drift the installed components away from the TektonConfig surface the catalog models. Upgrades arrive as catalog updates to the operator's pin.

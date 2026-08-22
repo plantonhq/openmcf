@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvertexaiindexendpoint
+spec:
+  billing_model: free
+  free_tier: A Vector Search index endpoint with no index deployed onto it costs nothing -- Google's Vector Search pricing consists of node-hours for each VM used to host a DEPLOYED index, plus per-GiB charges for building and updating indexes, and an endpoint that hosts no deployment runs no VMs. The endpoint object itself -- the connectivity choice (public, VPC-peered, or PSC), the display name, the CMEK binding -- carries no meter on any arm.
+  notes: "The real spend arrives when an INDEX IS DEPLOYED onto this endpoint through GcpVertexAiDeployedIndex -- from that moment, every serving replica bills node-hours for its machine type around the clock, query traffic or not, until the index is undeployed. The indexes themselves add their own meters that never touch this endpoint. Batch index builds and updates bill per GiB of data processed, and streaming-update inserts bill per GiB ingested (with compaction rebuilds billed at the batch rate). Nothing in this spec scales any of that -- the connectivity arms are equally chargeless, and kms_key_name changes who holds the key, not what the replicas cost. Beware the ABANDON deletion_policy: the endpoint leaves management but its deployed indexes keep serving -- and keep billing node-hours."

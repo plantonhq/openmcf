@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpspannerinstance
+spec:
+  gcp:
+    groups:
+      - purpose: EnableSpannerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling spanner.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageInstance
+        permissions:
+          - spanner.instances.create
+          - spanner.instances.get
+          - spanner.instances.update
+          - spanner.instances.delete
+          - spanner.instanceOperations.get
+        provenance: derived
+        notes: "Covers google_spanner_instance -- create, read/refresh, in-place updates (capacity, edition, autoscaling, default backup schedule), and destroy. Spanner separates operation polling into its own permission family: instance mutations return long-running operations the provider polls as spanner.instanceOperations.get (verified in IAM's testable-permissions inventory alongside the spanner.instances.* set), not under the instance's own get."

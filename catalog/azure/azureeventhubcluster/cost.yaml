@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventhubcluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Event Hubs
+      sku_meter: dedicated capacity units
+      pricing_unit: hours
+      description: Every capacity unit bills by the hour from the moment the cluster exists -- single-tenant capacity sold as CU-hours whether or not any namespace sits on it, at the most expensive rate in the Event Hubs family.
+  cost_drivers:
+    - field_path: capacity_units
+      sku_meter: dedicated capacity units
+      pricing_unit: hours
+      impact: The only sizing dial -- each CU adds another full CU-hour rate around the clock (the modules compose the ARM sku "Dedicated_{n}" from this count; unset deploys 1, Azure's entry size). Scaling updates in place.
+    - field_path: region
+      sku_meter: dedicated capacity units
+      pricing_unit: hours
+      impact: CU-hour rates vary by region.
+  estimate_exclusions:
+    - event data retained beyond the included window bills per GB-month on the Dedicated Extended Retention meter, following event volume and per-hub retention settings
+    - network egress follows consumer placement
+  notes: "The CU-hour is the whole committed bill: namespaces placed on the cluster (via dedicated_cluster_id) draw on its capacity instead of carrying their own throughput meters, which is why many namespaces sharing one cluster is the economic point of the kind. Azure forbids deleting a cluster for 4 hours after creation, so even the shortest-lived cluster pays at least four CU-hours."

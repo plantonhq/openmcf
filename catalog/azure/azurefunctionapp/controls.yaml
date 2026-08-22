@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefunctionapp
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The app's own state is configuration (app settings, connection strings) encrypted at rest by the App Service platform; its code and runtime files live in the required storage binding -- an AzureStorageAccount whose always-on Azure Storage encryption cannot be disabled."
+      notes: "The storage account's own control profile carries the fuller data-at-rest story (CMK, infrastructure encryption) -- it is a first-class referenced component, not part of this manifest."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "The function app exposes no CMK surface of its own; customer-managed keys for the code and state belong to the referenced AzureStorageAccount's customer_managed_key block."
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: https_only
+      evidence:
+        type: spec_default
+        reference: "Defaults to true in this spec (deliberately stronger than Azure's API default of false) -- plaintext HTTP redirects to HTTPS; site_config.minimum_tls_version floors the accepted TLS version at 1.2 when unset, with TLS 1.3 and a minimum cipher suite available above it."
+      notes: "All three presets keep https_only true; site_config.ftps_state unset deploys DISABLED, closing the plaintext-FTP deployment path too."
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: "Defaults to true -- the app answers on its public {name}.azurewebsites.net endpoint. Setting it false removes public reachability; traffic then arrives only through private endpoints, with virtual_network_subnet_id carrying the app's OUTBOUND traffic into the VNet."
+      notes: "No preset disables it; the 03-enterprise preset keeps the endpoint public but gates it with a DENY-by-default IP allow-list."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: site_config.ip_restrictions
+      evidence:
+        type: spec_default
+        reference: "Empty means all sources may reach the endpoint; declared rules filter by IP range, Azure service tag, or subnet, evaluated in priority order, with site_config.ip_restriction_default_action DENY flipping the set into an allow-list. The SCM (Kudu) site is filtered separately unless scm_use_main_ip_restriction shares the rules."
+      notes: "The 03-enterprise preset allow-lists two corporate CIDRs with default DENY and extends the same rules to the SCM site."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "WAF fronting (Front Door, Application Gateway) attaches in front of the app as separate components. What THIS spec contributes is the lock: an ip_restrictions rule on the AzureFrontDoor.Backend service tag with an x_azure_fdid header filter pins the app to one Front Door profile, so traffic cannot bypass the edge (and its WAF) by hitting the default hostname directly."
+    - control_id: rbac
+      status: not_applicable
+      notes: "Management access is subscription/resource-group Azure RBAC posture, not a component choice. The app's data plane is its own HTTP surface -- access there is governed by Easy Auth (auth_settings_v2), function keys, and network rules, none of which are Azure RBAC."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset means no managed identity. Configuring SYSTEM_ASSIGNED or USER_ASSIGNED gives function code short-lived Entra tokens for Azure APIs, and the spec wires the keyless paths end to end: storage_uses_managed_identity for the runtime storage binding, site_config.container_registry_use_managed_identity for image pulls, key_vault_reference_identity_id for Key Vault references in app settings."
+      notes: "The 02-docker preset uses SYSTEM_ASSIGNED for keyless ACR pulls; the 03-enterprise preset adds the keyless storage binding (the identity needs Storage Blob Data Owner and Storage Queue Data Contributor on the account)."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: webdeploy_publish_basic_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: "Defaults to true (Azure's own default): username/password publishing works over Web Deploy, and ftp_publish_basic_authentication_enabled separately governs the FTP credential. Setting both false closes every basic-auth deployment path and forces identity-based deployment."
+      notes: "The 03-enterprise preset disables both. The exported site_credential outputs stop working once basic-auth publishing is off -- expected, that is the point."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "HTTP and function-execution audit trails require an Azure Monitor diagnostic setting routing the site's log categories -- a separate resource, not a field of this spec. Administrative changes always land in the Azure Activity Log as subscription-level posture."
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: application_insights_connection_string
+      evidence:
+        type: spec_default
+        reference: "Unset means no APM; setting the connection string (by reference to an AzureApplicationInsights output) has Azure configure the app to send requests, dependencies, exceptions, and traces to Application Insights -- Microsoft's recommended monitoring path for Functions."
+      notes: "Presets 01 and 03 wire Application Insights. site_config.health_check_path adds the liveness probe that evicts unhealthy instances -- all presets set it."
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup
+      evidence:
+        type: spec_default
+        reference: "Unset means no scheduled backups. The block schedules snapshots of the app's content and configuration to a SAS-referenced storage container; Azure rejects the feature on Consumption and Basic plans at apply time (Standard tier or above)."
+      notes: "No preset enables it -- function code is typically redeployable from CI/CD, and durable state lives in the storage account and downstream data stores, each with its own backup posture."
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup.schedule.retention_period_days
+      evidence:
+        type: spec_default
+        reference: "Each backup is retained this many days before deletion (default 30; 0 keeps backups indefinitely), with keep_at_least_one_backup preserving the last copy past expiry."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone redundancy is a PLAN property in the App Service model -- the referenced AzureServicePlan's zone_balancing_enabled spreads the plan's instances across availability zones, and every app on the plan inherits that placement. Nothing on the app object chooses zones."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the App Service sites API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The app's name is its identity -- recreation reclaims the same hostname only while the name remains unclaimed."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The App Service platform patches the hosting OS and the language runtime stacks for every app, and functions_extension_version's default '~4' pins the Functions host to a major version while receiving Microsoft's minor updates automatically."
+      notes: "Docker apps shift the runtime half of this onto themselves: Microsoft still patches the host below the container, but the image's contents (base image, dependencies) are patched by whoever builds the image."

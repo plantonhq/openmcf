@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurenetworkwatcherflowlog
+spec:
+  azure:
+    groups:
+      - purpose: ManageFlowLog
+        actions:
+          - Microsoft.Network/networkWatchers/flowLogs/read
+          - Microsoft.Network/networkWatchers/flowLogs/write
+          - Microsoft.Network/networkWatchers/flowLogs/delete
+          - Microsoft.Network/networkWatchers/configureFlowLog/action
+          - Microsoft.Network/networkWatchers/queryFlowLogStatus/action
+        provenance: derived
+        notes: Covers azurerm_network_watcher_flow_log / network.NewNetworkWatcherFlowLog -- create/update/delete of the flow log as a child of the regional Network Watcher (the auto-created "NetworkWatcher_{region}" singleton in "NetworkWatcherRG" unless the spec addresses a self-managed watcher), plus the configure and status-query actions Microsoft's own Network Watcher RBAC documentation lists alongside the three child operations. Held at the watcher's scope; Network Contributor carries them. Roles guidance migrated from the module READMEs -- Network Contributor plus Storage Account Contributor cover a raw flow log; Traffic Analytics estates typically add Log Analytics Contributor on the workspace.
+      - purpose: ReadTargetResource
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/networkInterfaces/read
+        provenance: derived
+        notes: Read on the REFERENCED target (whichever of the three scopes target_resource_id addresses -- the spec rejects retired NSG targets) -- the flow-log payload carries the target's ARM ID and the service validates it against the caller's access; Microsoft's Traffic Analytics permission list additionally names the target reads explicitly. Grant the one matching the manifest's target scope.
+      - purpose: FetchStorageSas
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+          - Microsoft.Storage/storageAccounts/listServiceSas/action
+          - Microsoft.Storage/storageAccounts/listAccountSas/action
+          - Microsoft.Storage/storageAccounts/listkeys/action
+        provenance: derived
+        notes: On the REFERENCED storage account's scope (storage_account_id) -- Microsoft's Network Watcher RBAC documentation requires the SAS- and key-listing actions so flow-log configuration can arrange the platform's secure write access to the account; Storage Account Contributor carries them. The lowercase "listkeys" spelling is ARM's own inventory string. Remember the create-time side effect this authorizes -- the flow log writes a lifecycle-management rule that OVERWRITES the account's existing rules.
+      - purpose: WireTrafficAnalytics
+        actions:
+          - Microsoft.Insights/DataCollectionRules/Read
+          - Microsoft.Insights/DataCollectionRules/Write
+          - Microsoft.Insights/DataCollectionRules/Delete
+          - Microsoft.Insights/DataCollectionEndpoints/Read
+          - Microsoft.Insights/DataCollectionEndpoints/Write
+          - Microsoft.Insights/DataCollectionEndpoints/Delete
+          - Microsoft.OperationalInsights/workspaces/read
+          - Microsoft.OperationalInsights/workspaces/sharedkeys/action
+        provenance: derived
+        notes: "Exercised only when the traffic_analytics block is set -- Microsoft's Network Watcher RBAC documentation requires, on top of the flow-log actions: read and the shared-keys action on the referenced Log Analytics workspace, and read/write/delete on Azure Monitor data collection rules and endpoints, because Traffic Analytics creates and manages NWTA-prefixed DCR/DCE resources in the workspace's resource group (delete covers disabling Traffic Analytics and destroying the flow log). Raw-file manifests never need this group. Microsoft.OperationalInsights is absent from the committed action-inventory snapshot; both workspace action names were verified against Microsoft's live Network Watcher RBAC documentation on 2026-08-18."

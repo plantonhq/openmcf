@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatednsresolver
+spec:
+  azure:
+    groups:
+      - purpose: ManageDnsResolver
+        actions:
+          - Microsoft.Network/dnsResolvers/read
+          - Microsoft.Network/dnsResolvers/write
+          - Microsoft.Network/dnsResolvers/delete
+        provenance: derived
+        notes: Covers azurerm_private_dns_resolver / privatedns.NewResolver -- create anchored to the virtual network, refresh, tag updates (the only in-place update the API allows), and destroy. Typically held via Network Contributor, Contributor, or Owner on the resource group, which also carries the join grants below.
+      - purpose: ManageInboundEndpoints
+        actions:
+          - Microsoft.Network/dnsResolvers/inboundEndpoints/read
+          - Microsoft.Network/dnsResolvers/inboundEndpoints/write
+          - Microsoft.Network/dnsResolvers/inboundEndpoints/delete
+        provenance: derived
+        notes: One ARM child resource per inbound_endpoints entry (keyed by endpoint name, so siblings survive edits) -- azurerm_private_dns_resolver_inbound_endpoint and its Pulumi twin create, refresh (the effective private IP outputs are read back from each endpoint), replace on edit, and destroy them. Both providers poll reads after delete until the endpoint is verifiably gone, so read persists through destroys.
+      - purpose: ManageOutboundEndpoints
+        actions:
+          - Microsoft.Network/dnsResolvers/outboundEndpoints/read
+          - Microsoft.Network/dnsResolvers/outboundEndpoints/write
+          - Microsoft.Network/dnsResolvers/outboundEndpoints/delete
+        provenance: derived
+        notes: Same shape as the inbound side -- one child resource per outbound_endpoints entry, keyed by name, with the same delete-polling reality. The forwarding rulesets that bind these endpoints are a separate component with its own manifest.
+      - purpose: JoinVirtualNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+          - Microsoft.Network/virtualNetworks/join/action
+        provenance: derived
+        notes: The modules never call the network API -- the resolved virtual_network_id rides the resolver payload -- but ARM authorizes anchoring the resolver to the REFERENCED network with join/action on the network's scope at create time (service-side). This is also where Azure enforces the one-resolver-per-network limit.
+      - purpose: JoinEndpointSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Each endpoint occupies its own dedicated subnet, passed as a resolved ID in the endpoint payload -- ARM authorizes occupying it with subnets/join/action on each SUBNET's scope, service-side. The subnet's delegation to Microsoft.Network/dnsResolvers is subnet-side state validated at deploy time, not an RBAC grant -- it lives on the referenced AzureSubnet component.

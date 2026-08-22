@@ -23,7 +23,9 @@ import (
 	awsapprunnerobservabilityconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerobservabilityconfiguration/v1alpha1"
 	awsapprunnerservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerservice/v1alpha1"
 	awsapprunnervpcconnectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnervpcconnector/v1alpha1"
+	awsappsyncapiv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsappsyncapi/v1alpha1"
 	awsathenaworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsathenaworkgroup/v1alpha1"
+	awsauroradsqlv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsauroradsql/v1alpha1"
 	awsautoscalinggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsautoscalinggroup/v1alpha1"
 	awsbackupframeworkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupframework/v1alpha1"
 	awsbackupplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupplan/v1alpha1"
@@ -52,14 +54,22 @@ import (
 	awsbedrockmodelaccessv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockmodelaccess/v1alpha1"
 	awsbedrockpromptv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprompt/v1alpha1"
 	awsbedrockprovisionedthroughputv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprovisionedthroughput/v1alpha1"
+	awsbudgetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbudget/v1alpha1"
 	awscertmanagercertv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscertmanagercert/v1alpha1"
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
+	awscloudmapnamespacev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudmapnamespace/v1alpha1"
 	awscloudtrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtrail/v1alpha1"
 	awscloudtraileventdatastorev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtraileventdatastore/v1alpha1"
 	awscloudwatchalarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchalarm/v1alpha1"
 	awscloudwatchcompositealarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchcompositealarm/v1alpha1"
+	awscloudwatchdashboardv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchdashboard/v1alpha1"
+	awscloudwatchlogaccountpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogaccountpolicy/v1alpha1"
+	awscloudwatchloganomalydetectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloganomalydetector/v1alpha1"
+	awscloudwatchlogdeliveryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogdelivery/v1alpha1"
 	awscloudwatchloggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloggroup/v1alpha1"
+	awscloudwatchlogresourcepolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogresourcepolicy/v1alpha1"
+	awscloudwatchsyntheticsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchsynthetics/v1alpha1"
 	awscodebuildprojectv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodebuildproject/v1alpha1"
 	awscodepipelinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodepipeline/v1alpha1"
 	awscognitoidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitoidentityprovider/v1alpha1"
@@ -70,9 +80,15 @@ import (
 	awsconfigconformancepackv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigconformancepack/v1alpha1"
 	awsconfigrecorderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrecorder/v1alpha1"
 	awsconfigrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrule/v1alpha1"
+	awscostanomalymonitorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostanomalymonitor/v1alpha1"
+	awscostcategoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostcategory/v1alpha1"
+	awsdlmlifecyclepolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdlmlifecyclepolicy/v1alpha1"
 	awsdocumentdbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdocumentdb/v1alpha1"
 	awsdynamodbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdynamodb/v1alpha1"
+	awsebssnapshotv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebssnapshot/v1alpha1"
+	awsebsvolumev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebsvolume/v1alpha1"
 	awsec2instancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsec2instance/v1alpha1"
+	awsecrregistrysettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrregistrysettings/v1alpha1"
 	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
 	awsecsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecscluster/v1alpha1"
 	awsecsservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecsservice/v1alpha1"
@@ -88,8 +104,11 @@ import (
 	awselasticacheusergroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticacheusergroup/v1alpha1"
 	awselasticfilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticfilesystem/v1alpha1"
 	awselasticipv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1"
+	awseventbridgeapidestinationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgeapidestination/v1alpha1"
 	awseventbridgebusv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgebus/v1alpha1"
+	awseventbridgepipev1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgepipe/v1alpha1"
 	awseventbridgerulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgerule/v1alpha1"
+	awseventbridgeschedulerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgescheduler/v1alpha1"
 	awsfsxdatarepositoryassociationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxdatarepositoryassociation/v1alpha1"
 	awsfsxlustrefilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxlustrefilesystem/v1alpha1"
 	awsfsxontapfilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxontapfilesystem/v1alpha1"
@@ -104,10 +123,13 @@ import (
 	awshttpapidomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapidomain/v1alpha1"
 	awshttpapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapigateway/v1alpha1"
 	awshttpapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapivpclink/v1alpha1"
+	awsiamaccountsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamaccountsettings/v1alpha1"
+	awsiamgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamgroup/v1alpha1"
 	awsiaminstanceprofilev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiaminstanceprofile/v1alpha1"
 	awsiamoidcproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamoidcprovider/v1alpha1"
 	awsiampolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiampolicy/v1alpha1"
 	awsiamrolev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
+	awsiamsamlproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamsamlprovider/v1alpha1"
 	awsiamuserv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamuser/v1alpha1"
 	awsinternetgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsinternetgateway/v1alpha1"
 	awskinesisfirehosev1alpha1 "github.com/plantonhq/planton/catalog/aws/awskinesisfirehose/v1alpha1"
@@ -116,10 +138,14 @@ import (
 	awskmskeyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awskmskey/v1alpha1"
 	awslambdav1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambda/v1alpha1"
 	awslambdaeventsourcemappingv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambdaeventsourcemapping/v1alpha1"
+	awslambdalayerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambdalayer/v1alpha1"
 	awslaunchtemplatev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslaunchtemplate/v1alpha1"
 	awslblistenerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistener/v1alpha1"
 	awslblistenerrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistenerrule/v1alpha1"
 	awslbtargetgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslbtargetgroup/v1alpha1"
+	awsmanagedprefixlistv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprefixlist/v1alpha1"
+	awsmanagedprometheusv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheus/v1alpha1"
+	awsmanagedprometheusscraperv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheusscraper/v1alpha1"
 	awsmemcachedelasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemcachedelasticache/v1alpha1"
 	awsmemorydbaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemorydbacl/v1alpha1"
 	awsmemorydbclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemorydbcluster/v1alpha1"
@@ -129,12 +155,19 @@ import (
 	awsmwaaenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmwaaenvironment/v1alpha1"
 	awsnatgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnatgateway/v1alpha1"
 	awsneptuneclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsneptunecluster/v1alpha1"
+	awsnetworkaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnetworkacl/v1alpha1"
 	awsnlbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnlb/v1alpha1"
 	awsopensearchdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchdomain/v1alpha1"
 	awsopensearchserverlesscollectionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchserverlesscollection/v1alpha1"
+	awsorganizationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganization/v1alpha1"
+	awsorganizationaccountv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationaccount/v1alpha1"
+	awsorganizationalunitv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationalunit/v1alpha1"
+	awsorganizationpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationpolicy/v1alpha1"
 	awsplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1"
+	awsprivatecav1alpha1 "github.com/plantonhq/planton/catalog/aws/awsprivateca/v1alpha1"
 	awsrdsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1"
 	awsrdsinstancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
+	awsrdsproxyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsproxy/v1alpha1"
 	awsrediselasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrediselasticache/v1alpha1"
 	awsredshiftclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftcluster/v1alpha1"
 	awsredshiftserverlessnamespacev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftserverlessnamespace/v1alpha1"
@@ -145,9 +178,15 @@ import (
 	awsrestapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapivpclink/v1alpha1"
 	awsroute53dnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53dnsrecord/v1alpha1"
 	awsroute53healthcheckv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53healthcheck/v1alpha1"
+	awsroute53resolverendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverendpoint/v1alpha1"
+	awsroute53resolverfirewallv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverfirewall/v1alpha1"
+	awsroute53resolverquerylogv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverquerylog/v1alpha1"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
 	awss3bucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
+	awss3directorybucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3directorybucket/v1alpha1"
 	awss3objectsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1"
+	awss3tablebucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3tablebucket/v1alpha1"
+	awss3vectorbucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3vectorbucket/v1alpha1"
 	awssagemakerdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1"
 	awssagemakerendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerendpoint/v1alpha1"
 	awssagemakerfeaturegroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerfeaturegroup/v1alpha1"
@@ -179,6 +218,7 @@ import (
 	awstransitgatewayvpcattachmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awstransitgatewayvpcattachment/v1alpha1"
 	awsvpcv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1"
 	awsvpcendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpcendpoint/v1alpha1"
+	awsvpcpeeringv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpcpeering/v1alpha1"
 	awswafipsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafipset/v1alpha1"
 	awswafregexpatternsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafregexpatternset/v1alpha1"
 	awswafwebaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1"
@@ -310,6 +350,7 @@ import (
 	azurenetworkinterfacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkinterface/v1alpha1"
 	azurenetworksecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworksecuritygroup/v1alpha1"
 	azurenetworkwatcherflowlogv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkwatcherflowlog/v1alpha1"
+	azureplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureplantonrunner/v1alpha1"
 	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
 	azureprivatednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsrecord/v1alpha1"
@@ -432,21 +473,37 @@ import (
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
 	cloudflarezonesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonesettings/v1alpha1"
 	cloudflarezonetlssettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonetlssettings/v1alpha1"
-	digitaloceanappplatformservicev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanappplatformservice/v1alpha1"
+	digitaloceanappv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanapp/v1alpha1"
 	digitaloceanbucketv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1"
+	digitaloceancdnv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancdn/v1alpha1"
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
 	digitaloceancontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancontainerregistry/v1alpha1"
 	digitaloceandatabaseclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasecluster/v1alpha1"
+	digitaloceandatabaseconnectionpoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseconnectionpool/v1alpha1"
+	digitaloceandatabasedbv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasedb/v1alpha1"
+	digitaloceandatabasefirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasefirewall/v1alpha1"
+	digitaloceandatabasekafkaschemav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkaschema/v1alpha1"
+	digitaloceandatabasekafkatopicv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkatopic/v1alpha1"
+	digitaloceandatabasereplicav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasereplica/v1alpha1"
+	digitaloceandatabaseuserv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseuser/v1alpha1"
 	digitaloceandnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnsrecord/v1alpha1"
 	digitaloceandnszonev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnszone/v1alpha1"
 	digitaloceandropletv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandroplet/v1alpha1"
+	digitaloceandropletautoscalepoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandropletautoscalepool/v1alpha1"
 	digitaloceanfirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanfirewall/v1alpha1"
 	digitaloceanfunctionv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanfunction/v1alpha1"
 	digitaloceankubernetesclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetescluster/v1alpha1"
 	digitaloceankubernetesnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1"
 	digitaloceanloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1"
+	digitaloceanmonitoralertv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanmonitoralert/v1alpha1"
+	digitaloceanprojectv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanproject/v1alpha1"
+	digitaloceanreservedipv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanreservedip/v1alpha1"
+	digitaloceanspaceskeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanspaceskey/v1alpha1"
+	digitaloceansshkeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceansshkey/v1alpha1"
+	digitaloceanuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanuptimecheck/v1alpha1"
 	digitaloceanvolumev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvolume/v1alpha1"
 	digitaloceanvpcv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1"
+	digitaloceanvpcpeeringv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpcpeering/v1alpha1"
 	gcpaddressv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpaddress/v1alpha1"
 	gcpalloydbclusterv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbcluster/v1alpha1"
 	gcpalloydbinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbinstance/v1alpha1"
@@ -513,6 +570,7 @@ import (
 	gcpmonitoringnotificationchannelv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringnotificationchannel/v1alpha1"
 	gcpmonitoringslov1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringslo/v1alpha1"
 	gcpmonitoringuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringuptimecheck/v1alpha1"
+	gcpplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpplantonrunner/v1alpha1"
 	gcpprojectv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpproject/v1alpha1"
 	gcpprojectiammemberv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpprojectiammember/v1alpha1"
 	gcppubsubschemav1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcppubsubschema/v1alpha1"
@@ -629,6 +687,9 @@ import (
 	kubernetesperconamongooperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamongooperator/v1alpha1"
 	kubernetesperconamysqloperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamysqloperator/v1alpha1"
 	kubernetespersistentvolumeclaimv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespersistentvolumeclaim/v1alpha1"
+	kubernetesplantonoperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonoperator/v1alpha1"
+	kubernetesplantonplatformv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonplatform/v1alpha1"
+	kubernetesplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonrunner/v1alpha1"
 	kubernetespoddisruptionbudgetv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1"
 	kubernetespostgresv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespostgres/v1alpha1"
 	kubernetespriorityclassv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespriorityclass/v1alpha1"
@@ -703,7 +764,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration: &awsapprunnerobservabilityconfigurationv1alpha1.AwsAppRunnerObservabilityConfiguration{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:                    &awsapprunnerservicev1alpha1.AwsAppRunnerService{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1alpha1.AwsAppRunnerVpcConnector{},
+	cloudresourcekind.CloudResourceKind_AwsAppSyncApi:                          &awsappsyncapiv1alpha1.AwsAppSyncApi{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1alpha1.AwsAthenaWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsAuroraDsql:                          &awsauroradsqlv1alpha1.AwsAuroraDsql{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1alpha1.AwsAutoScalingGroup{},
 	cloudresourcekind.CloudResourceKind_AwsBackupFramework:                     &awsbackupframeworkv1alpha1.AwsBackupFramework{},
 	cloudresourcekind.CloudResourceKind_AwsBackupPlan:                          &awsbackupplanv1alpha1.AwsBackupPlan{},
@@ -732,14 +795,22 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess:                  &awsbedrockmodelaccessv1alpha1.AwsBedrockModelAccess{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockPrompt:                       &awsbedrockpromptv1alpha1.AwsBedrockPrompt{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockProvisionedThroughput:        &awsbedrockprovisionedthroughputv1alpha1.AwsBedrockProvisionedThroughput{},
+	cloudresourcekind.CloudResourceKind_AwsBudget:                              &awsbudgetv1alpha1.AwsBudget{},
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:                     &awscertmanagercertv1alpha1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},
+	cloudresourcekind.CloudResourceKind_AwsCloudMapNamespace:                   &awscloudmapnamespacev1alpha1.AwsCloudMapNamespace{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrail:                          &awscloudtrailv1alpha1.AwsCloudTrail{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrailEventDataStore:            &awscloudtraileventdatastorev1alpha1.AwsCloudTrailEventDataStore{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1alpha1.AwsCloudwatchAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:            &awscloudwatchcompositealarmv1alpha1.AwsCloudwatchCompositeAlarm{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchDashboard:                 &awscloudwatchdashboardv1alpha1.AwsCloudwatchDashboard{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogAccountPolicy:          &awscloudwatchlogaccountpolicyv1alpha1.AwsCloudwatchLogAccountPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogAnomalyDetector:        &awscloudwatchloganomalydetectorv1alpha1.AwsCloudwatchLogAnomalyDetector{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogDelivery:               &awscloudwatchlogdeliveryv1alpha1.AwsCloudwatchLogDelivery{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:                  &awscloudwatchloggroupv1alpha1.AwsCloudwatchLogGroup{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogResourcePolicy:         &awscloudwatchlogresourcepolicyv1alpha1.AwsCloudwatchLogResourcePolicy{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchSynthetics:                &awscloudwatchsyntheticsv1alpha1.AwsCloudwatchSynthetics{},
 	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:                    &awscodebuildprojectv1alpha1.AwsCodeBuildProject{},
 	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                        &awscodepipelinev1alpha1.AwsCodePipeline{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider:             &awscognitoidentityproviderv1alpha1.AwsCognitoIdentityProvider{},
@@ -750,9 +821,15 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsConfigConformancePack:               &awsconfigconformancepackv1alpha1.AwsConfigConformancePack{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRecorder:                      &awsconfigrecorderv1alpha1.AwsConfigRecorder{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRule:                          &awsconfigrulev1alpha1.AwsConfigRule{},
+	cloudresourcekind.CloudResourceKind_AwsCostAnomalyMonitor:                  &awscostanomalymonitorv1alpha1.AwsCostAnomalyMonitor{},
+	cloudresourcekind.CloudResourceKind_AwsCostCategory:                        &awscostcategoryv1alpha1.AwsCostCategory{},
+	cloudresourcekind.CloudResourceKind_AwsDlmLifecyclePolicy:                  &awsdlmlifecyclepolicyv1alpha1.AwsDlmLifecyclePolicy{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1alpha1.AwsDocumentDb{},
 	cloudresourcekind.CloudResourceKind_AwsDynamodb:                            &awsdynamodbv1alpha1.AwsDynamodb{},
+	cloudresourcekind.CloudResourceKind_AwsEbsSnapshot:                         &awsebssnapshotv1alpha1.AwsEbsSnapshot{},
+	cloudresourcekind.CloudResourceKind_AwsEbsVolume:                           &awsebsvolumev1alpha1.AwsEbsVolume{},
 	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                         &awsec2instancev1alpha1.AwsEc2Instance{},
+	cloudresourcekind.CloudResourceKind_AwsEcrRegistrySettings:                 &awsecrregistrysettingsv1alpha1.AwsEcrRegistrySettings{},
 	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                             &awsecrrepov1alpha1.AwsEcrRepo{},
 	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                          &awsecsclusterv1alpha1.AwsEcsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsEcsService:                          &awsecsservicev1alpha1.AwsEcsService{},
@@ -768,8 +845,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsElasticIp:                           &awselasticipv1alpha1.AwsElasticIp{},
 	cloudresourcekind.CloudResourceKind_AwsElasticacheUser:                     &awselasticacheuserv1alpha1.AwsElasticacheUser{},
 	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:                &awselasticacheusergroupv1alpha1.AwsElasticacheUserGroup{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeApiDestination:           &awseventbridgeapidestinationv1alpha1.AwsEventBridgeApiDestination{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                      &awseventbridgebusv1alpha1.AwsEventBridgeBus{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgePipe:                     &awseventbridgepipev1alpha1.AwsEventBridgePipe{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:                     &awseventbridgerulev1alpha1.AwsEventBridgeRule{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeScheduler:                &awseventbridgeschedulerv1alpha1.AwsEventBridgeScheduler{},
 	cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation:        &awsfsxdatarepositoryassociationv1alpha1.AwsFsxDataRepositoryAssociation{},
 	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:                 &awsfsxlustrefilesystemv1alpha1.AwsFsxLustreFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem:                  &awsfsxontapfilesystemv1alpha1.AwsFsxOntapFileSystem{},
@@ -784,10 +864,13 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                       &awshttpapidomainv1alpha1.AwsHttpApiDomain{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                      &awshttpapigatewayv1alpha1.AwsHttpApiGateway{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                      &awshttpapivpclinkv1alpha1.AwsHttpApiVpcLink{},
+	cloudresourcekind.CloudResourceKind_AwsIamAccountSettings:                  &awsiamaccountsettingsv1alpha1.AwsIamAccountSettings{},
+	cloudresourcekind.CloudResourceKind_AwsIamGroup:                            &awsiamgroupv1alpha1.AwsIamGroup{},
 	cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile:                  &awsiaminstanceprofilev1alpha1.AwsIamInstanceProfile{},
 	cloudresourcekind.CloudResourceKind_AwsIamOidcProvider:                     &awsiamoidcproviderv1alpha1.AwsIamOidcProvider{},
 	cloudresourcekind.CloudResourceKind_AwsIamPolicy:                           &awsiampolicyv1alpha1.AwsIamPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsIamRole:                             &awsiamrolev1alpha1.AwsIamRole{},
+	cloudresourcekind.CloudResourceKind_AwsIamSamlProvider:                     &awsiamsamlproviderv1alpha1.AwsIamSamlProvider{},
 	cloudresourcekind.CloudResourceKind_AwsIamUser:                             &awsiamuserv1alpha1.AwsIamUser{},
 	cloudresourcekind.CloudResourceKind_AwsInternetGateway:                     &awsinternetgatewayv1alpha1.AwsInternetGateway{},
 	cloudresourcekind.CloudResourceKind_AwsKinesisFirehose:                     &awskinesisfirehosev1alpha1.AwsKinesisFirehose{},
@@ -796,10 +879,14 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsKmsKey:                              &awskmskeyv1alpha1.AwsKmsKey{},
 	cloudresourcekind.CloudResourceKind_AwsLambda:                              &awslambdav1alpha1.AwsLambda{},
 	cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping:            &awslambdaeventsourcemappingv1alpha1.AwsLambdaEventSourceMapping{},
+	cloudresourcekind.CloudResourceKind_AwsLambdaLayer:                         &awslambdalayerv1alpha1.AwsLambdaLayer{},
 	cloudresourcekind.CloudResourceKind_AwsLaunchTemplate:                      &awslaunchtemplatev1alpha1.AwsLaunchTemplate{},
 	cloudresourcekind.CloudResourceKind_AwsLbListener:                          &awslblistenerv1alpha1.AwsLbListener{},
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1alpha1.AwsLbListenerRule{},
 	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                       &awslbtargetgroupv1alpha1.AwsLbTargetGroup{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrefixList:                   &awsmanagedprefixlistv1alpha1.AwsManagedPrefixList{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrometheus:                   &awsmanagedprometheusv1alpha1.AwsManagedPrometheus{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrometheusScraper:            &awsmanagedprometheusscraperv1alpha1.AwsManagedPrometheusScraper{},
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:                &awsmemcachedelasticachev1alpha1.AwsMemcachedElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbAcl:                         &awsmemorydbaclv1alpha1.AwsMemorydbAcl{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:                     &awsmemorydbclusterv1alpha1.AwsMemorydbCluster{},
@@ -809,12 +896,19 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:                     &awsmwaaenvironmentv1alpha1.AwsMwaaEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsNatGateway:                          &awsnatgatewayv1alpha1.AwsNatGateway{},
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                      &awsneptuneclusterv1alpha1.AwsNeptuneCluster{},
+	cloudresourcekind.CloudResourceKind_AwsNetworkAcl:                          &awsnetworkaclv1alpha1.AwsNetworkAcl{},
 	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1alpha1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1alpha1.AwsOpenSearchDomain{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection:      &awsopensearchserverlesscollectionv1alpha1.AwsOpenSearchServerlessCollection{},
+	cloudresourcekind.CloudResourceKind_AwsOrganization:                        &awsorganizationv1alpha1.AwsOrganization{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationAccount:                 &awsorganizationaccountv1alpha1.AwsOrganizationAccount{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationPolicy:                  &awsorganizationpolicyv1alpha1.AwsOrganizationPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationalUnit:                  &awsorganizationalunitv1alpha1.AwsOrganizationalUnit{},
 	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1alpha1.AwsPlantonRunner{},
+	cloudresourcekind.CloudResourceKind_AwsPrivateCa:                           &awsprivatecav1alpha1.AwsPrivateCa{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1alpha1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1alpha1.AwsRdsInstance{},
+	cloudresourcekind.CloudResourceKind_AwsRdsProxy:                            &awsrdsproxyv1alpha1.AwsRdsProxy{},
 	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:                    &awsrediselasticachev1alpha1.AwsRedisElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:                     &awsredshiftclusterv1alpha1.AwsRedshiftCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:         &awsredshiftserverlessnamespacev1alpha1.AwsRedshiftServerlessNamespace{},
@@ -825,9 +919,15 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRestApiVpcLink:                      &awsrestapivpclinkv1alpha1.AwsRestApiVpcLink{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:                    &awsroute53dnsrecordv1alpha1.AwsRoute53DnsRecord{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:                  &awsroute53healthcheckv1alpha1.AwsRoute53HealthCheck{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverEndpoint:             &awsroute53resolverendpointv1alpha1.AwsRoute53ResolverEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverFirewall:             &awsroute53resolverfirewallv1alpha1.AwsRoute53ResolverFirewall{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverQueryLog:             &awsroute53resolverquerylogv1alpha1.AwsRoute53ResolverQueryLog{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                         &awsroute53zonev1alpha1.AwsRoute53Zone{},
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1alpha1.AwsS3Bucket{},
+	cloudresourcekind.CloudResourceKind_AwsS3DirectoryBucket:                   &awss3directorybucketv1alpha1.AwsS3DirectoryBucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                         &awss3objectsetv1alpha1.AwsS3ObjectSet{},
+	cloudresourcekind.CloudResourceKind_AwsS3TableBucket:                       &awss3tablebucketv1alpha1.AwsS3TableBucket{},
+	cloudresourcekind.CloudResourceKind_AwsS3VectorBucket:                      &awss3vectorbucketv1alpha1.AwsS3VectorBucket{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:                     &awssagemakerdomainv1alpha1.AwsSagemakerDomain{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerEndpoint:                   &awssagemakerendpointv1alpha1.AwsSagemakerEndpoint{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerFeatureGroup:               &awssagemakerfeaturegroupv1alpha1.AwsSagemakerFeatureGroup{},
@@ -859,6 +959,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment:         &awstransitgatewayvpcattachmentv1alpha1.AwsTransitGatewayVpcAttachment{},
 	cloudresourcekind.CloudResourceKind_AwsVpc:                                 &awsvpcv1alpha1.AwsVpc{},
 	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                         &awsvpcendpointv1alpha1.AwsVpcEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsVpcPeering:                          &awsvpcpeeringv1alpha1.AwsVpcPeering{},
 	cloudresourcekind.CloudResourceKind_AwsWafIpSet:                            &awswafipsetv1alpha1.AwsWafIpSet{},
 	cloudresourcekind.CloudResourceKind_AwsWafRegexPatternSet:                  &awswafregexpatternsetv1alpha1.AwsWafRegexPatternSet{},
 	cloudresourcekind.CloudResourceKind_AwsWafWebAcl:                           &awswafwebaclv1alpha1.AwsWafWebAcl{},
@@ -993,6 +1094,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNetworkInterface:                          &azurenetworkinterfacev1alpha1.AzureNetworkInterface{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:                      &azurenetworksecuritygroupv1alpha1.AzureNetworkSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkWatcherFlowLog:                     &azurenetworkwatcherflowlogv1alpha1.AzureNetworkWatcherFlowLog{},
+	cloudresourcekind.CloudResourceKind_AzurePlantonRunner:                             &azureplantonrunnerv1alpha1.AzurePlantonRunner{},
 	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsRecord:                          &azureprivatednsrecordv1alpha1.AzurePrivateDnsRecord{},
@@ -1121,21 +1223,37 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_DigitalOceanAppPlatformService: &digitaloceanappplatformservicev1alpha1.DigitalOceanAppPlatformService{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:             &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:        &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:  &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:    &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:          &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:            &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:            &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:           &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:           &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:  &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool: &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:       &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:             &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanApp:                    &digitaloceanappv1alpha1.DigitalOceanApp{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:                 &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanCdn:                    &digitaloceancdnv1alpha1.DigitalOceanCdn{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:            &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:      &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:        &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseConnectionPool: &digitaloceandatabaseconnectionpoolv1alpha1.DigitalOceanDatabaseConnectionPool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseDb:             &digitaloceandatabasedbv1alpha1.DigitalOceanDatabaseDb{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseFirewall:       &digitaloceandatabasefirewallv1alpha1.DigitalOceanDatabaseFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaSchema:    &digitaloceandatabasekafkaschemav1alpha1.DigitalOceanDatabaseKafkaSchema{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaTopic:     &digitaloceandatabasekafkatopicv1alpha1.DigitalOceanDatabaseKafkaTopic{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseReplica:        &digitaloceandatabasereplicav1alpha1.DigitalOceanDatabaseReplica{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseUser:           &digitaloceandatabaseuserv1alpha1.DigitalOceanDatabaseUser{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:              &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:                &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:                &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDropletAutoscalePool:   &digitaloceandropletautoscalepoolv1alpha1.DigitalOceanDropletAutoscalePool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:               &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:               &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:      &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool:     &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:           &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanMonitorAlert:           &digitaloceanmonitoralertv1alpha1.DigitalOceanMonitorAlert{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanProject:                &digitaloceanprojectv1alpha1.DigitalOceanProject{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanReservedIp:             &digitaloceanreservedipv1alpha1.DigitalOceanReservedIp{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanSpacesKey:              &digitaloceanspaceskeyv1alpha1.DigitalOceanSpacesKey{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanSshKey:                 &digitaloceansshkeyv1alpha1.DigitalOceanSshKey{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanUptimeCheck:            &digitaloceanuptimecheckv1alpha1.DigitalOceanUptimeCheck{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:                 &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                    &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpcPeering:             &digitaloceanvpcpeeringv1alpha1.DigitalOceanVpcPeering{},
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
@@ -1205,6 +1323,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpMonitoringNotificationChannel:       &gcpmonitoringnotificationchannelv1alpha1.GcpMonitoringNotificationChannel{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringSlo:                       &gcpmonitoringslov1alpha1.GcpMonitoringSlo{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringUptimeCheck:               &gcpmonitoringuptimecheckv1alpha1.GcpMonitoringUptimeCheck{},
+	cloudresourcekind.CloudResourceKind_GcpPlantonRunner:                       &gcpplantonrunnerv1alpha1.GcpPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                             &gcpprojectv1alpha1.GcpProject{},
 	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:                    &gcpprojectiammemberv1alpha1.GcpProjectIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubSchema:                        &gcppubsubschemav1alpha1.GcpPubSubSchema{},
@@ -1324,6 +1443,9 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1alpha1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1alpha1.KubernetesPerconaMysqlOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim:       &kubernetespersistentvolumeclaimv1alpha1.KubernetesPersistentVolumeClaim{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonOperator:             &kubernetesplantonoperatorv1alpha1.KubernetesPlantonOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonPlatform:             &kubernetesplantonplatformv1alpha1.KubernetesPlantonPlatform{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonRunner:               &kubernetesplantonrunnerv1alpha1.KubernetesPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget:         &kubernetespoddisruptionbudgetv1alpha1.KubernetesPodDisruptionBudget{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1alpha1.KubernetesPostgres{},
 	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1alpha1.KubernetesPriorityClass{},

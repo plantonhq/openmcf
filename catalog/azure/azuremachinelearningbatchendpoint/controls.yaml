@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningbatchendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The endpoint is a routing object and stores no data; job inputs and outputs rest in the workspace's datastores and storage account, separate kinds with their own at-rest posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); CMK for workspace-held metadata is the workspace's encryption posture.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The endpoint's data plane is the HTTPS scoring URI (properties.scoringUri, the module's exported job-submission surface) and its control plane is ARM -- both TLS-only Azure endpoints with no plaintext mode to enable.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The batch ARM surface carries NO publicNetworkAccess property of its own (the spec documents this explicitly) -- reachability of batch scoring is governed entirely by the parent WORKSPACE's network settings, that kind's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No source filter exists on the endpoint; network scoping rides the workspace's public-access toggle and private endpoints, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class surface exists for the batch submission URI; front it with a gateway if edge filtering is required, separate kinds.
+    - control_id: rbac
+      status: enforced_by_default
+      field_path: auth_mode
+      evidence:
+        type: spec_default
+        reference: Every job submission authenticates with a Microsoft Entra token and is authorized by Azure RBAC at the workspace scope -- AADToken is the ONLY mode the batch service accepts, and the spec's vocabulary encodes exactly that (unspecified applies AADToken).
+      notes: Jobs then run under the INVOKER's Entra identity plus the compute cluster's managed identity, so per-caller authorization carries through the whole batch data path.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The identity block is optional BY DESIGN here -- batch jobs run under the invoker's Entra token plus the COMPUTE pool's managed identity, so the endpoint's own identity sits outside the batch data path (the spec records this as a deliberate divergence from the online endpoint). Set SYSTEM_ASSIGNED or user-assigned identities when organizational convention grants roles to the endpoint object itself.
+      notes: Either way, no static credential exists anywhere on this surface -- the service rejects Key auth outright.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      field_path: auth_mode
+      evidence:
+        type: spec_default
+        reference: The batch service REJECTS the weaker modes the shared ARM enum advertises -- Key (static keys that never expire) and AMLToken both fail with "AuthMode must be 'AADToken'" -- and the spec's allowlist encodes the service's real contract, making the legacy paths unexpressable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log automatically as subscription-level posture; job-level audit trails ride the workspace and its Application Insights, separate kinds.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The endpoint publishes no metrics of its own; job telemetry flows through the workspace's required Application Insights attachment, that kind's posture.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing configuration -- nothing to back up; the manifest recreates the endpoint declaratively (the default-deployment pointer is re-set once deployments exist).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A routing object with no runtime footprint of its own; job resilience is the compute pool's and deployment's posture, separate kinds.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a batch endpoint (Azure resource locks are subscription-side governance outside the manifest); deleting one removes the submission address and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The batch scoring service that accepts submissions and orchestrates jobs is Microsoft-operated Azure Machine Learning infrastructure; no customer-visible patch surface exists on the endpoint object.

@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgrideventsubscription
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Events awaiting delivery or retry under this subscription are held by Event Grid encrypted at rest with Microsoft-managed keys unconditionally."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Event Grid Basic resources offer no customer-managed-key surface. Durable copies of events live on the delivery and dead-letter destinations, whose CMK postures are their own components' controls."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: "The webhook arm refuses non-HTTPS URLs by spec validation (event_subscription_webhook_https), mirroring Event Grid's own contract; the six Azure-service arms (Functions, Event Hubs, Service Bus, storage queues, hybrid connections) deliver over TLS-encrypted Azure channels by service contract."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "A subscription is a routing rule with no endpoint of its own -- nothing about it is reachable, publicly or otherwise. Exposure lives at the ends: the source topic's network posture and the destination's, each on its own component."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "No ingress surface exists to restrict (see no-public-access); what the subscription controls is which EVENTS flow, through filters -- a routing concern, not a network one."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No request surface to filter. The webhook destination it delivers TO may sit behind a WAF -- that is the handler's posture on the handler's component."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Creating, updating, and deleting a subscription are management-plane calls authorized by Azure RBAC on the source scope unconditionally; the subscription exposes no key-based or anonymous path of its own."
+      notes: "Webhook destinations can additionally demand Entra authentication from Event Grid (active_directory_tenant_id / active_directory_app_id_or_uri on the webhook arm) so the handler can verify who is calling."
+    - control_id: workload-identity
+      status: configurable
+      field_path: delivery_identity
+      evidence:
+        type: spec_default
+        reference: "Unset delivers as the Event Grid service principal (or destination keys where used); naming the source topic's managed identity delivers with short-lived Entra tokens instead -- required for destinations with shared keys disabled. dead_letter_identity applies the same contract to the dead-letter write."
+      notes: "The identity must already exist ON the source topic and hold the destination's data-plane role (Storage Queue Data Message Sender, Azure Service Bus Data Sender) BEFORE the subscription names it -- sequence the role assignment first, or creation and first delivery fail. Neither preset uses one."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The subscription has no authentication paths of its own to strengthen or disable; delivery authentication posture is the delivery_identity choice (see workload-identity), and the source's key policy is the source component's control."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management-plane action on the subscription -- create, filter change, destination change, delete -- lands in the Azure Activity Log unconditionally."
+      notes: "Delivery-failure logs exist as diagnostic categories on the SOURCE topic and on the subscription's own diagnostic settings, outside this spec."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Event Grid publishes per-subscription platform metrics automatically -- matched events, delivery successes and failures, dead-lettered events, destination processing latency -- with no configuration and no opt-out."
+    - control_id: backup-recovery
+      status: configurable
+      field_path: dead_letter
+      evidence:
+        type: spec_default
+        reference: "Unset means events that exhaust their retries are DROPPED -- gone without a trace; configuring dead_letter parks them as blobs in a storage container instead, recoverable for replay. For in-flight event data, this is the only recovery surface the platform offers."
+      notes: "Both presets configure dead-lettering -- the production-grade default for at-least-once processing. The subscription's own configuration is redeployable from this manifest."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "Dead-lettered blobs live under the destination storage account's lifecycle rules -- retention is that component's policy; the subscription has no retention knob of its own (retry_policy bounds delivery attempts, not storage)."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Event Grid is zone-redundant automatically in regions with availability zones -- delivery and retry state ride the platform's redundancy with no configuration surface and no opt-out (Azure reliability documentation for Event Grid)."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Event Grid API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the subscription silently stops delivery -- events keep publishing on the source and simply stop arriving anywhere."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed PaaS -- Microsoft operates and patches the delivery fleet; no customer-visible patch surface exists."

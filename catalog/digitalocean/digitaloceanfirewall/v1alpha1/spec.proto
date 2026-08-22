@@ -3,74 +3,191 @@ syntax = "proto3";
 package dev.planton.digitalocean.digitaloceanfirewall.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
 
-// DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall.
+// DigitalOceanFirewallSpec models the full `digitalocean_firewall` surface: a
+// named rule set (inbound and/or outbound) applied to Droplets directly by ID
+// or indirectly by Droplet tag. Every argument the provider accepts is
+// representable here; rule sources and destinations can name other Planton
+// resources (Droplets, load balancers, Kubernetes clusters) as references
+// instead of hand-copied IDs, so firewalls compose in infra charts.
 message DigitalOceanFirewallSpec {
-  // Name of the firewall for identification (must be unique per account/project).
-  string name = 1 [
+  // DigitalOcean requires every firewall to carry at least one rule in either
+  // direction; an empty rule set is rejected at plan time by the provider.
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_rule"
+    message: "at least one inbound_rule or outbound_rule must be specified"
+    expression: "size(this.inbound_rules) > 0 || size(this.outbound_rules) > 0"
+  };
+
+  // Retired field. droplet_ids was a list of raw numeric Droplet IDs with no
+  // way to reference a DigitalOceanDroplet resource. Its number must never be
+  // reused with a different meaning; the field returns below as a list of
+  // references that also accepts literal numeric IDs.
+  reserved 4;
+
+  // Name of the firewall. Must be unique per account. The API accepts up to
+  // 255 characters of letters, numbers, colons, dashes, and underscores.
+  string firewall_name = 1 [
+    (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255
   ];
 
-  // Inbound rules: traffic allowed *to* Droplets on specific ports from specified sources.
+  // Inbound rules: traffic allowed *to* the protected Droplets. Traffic not
+  // matched by any inbound rule is dropped (DigitalOcean firewalls are
+  // default-deny for configured directions).
   repeated DigitalOceanFirewallInboundRule inbound_rules = 2;
 
-  // Outbound rules: traffic allowed *from* Droplets on specific ports to specified destinations.
+  // Outbound rules: traffic allowed *from* the protected Droplets to the
+  // configured destinations.
   repeated DigitalOceanFirewallOutboundRule outbound_rules = 3;
 
-  // The Droplet IDs to which this firewall is applied (max 10).
-  // These Droplets will have the firewall's rules enforced.
-  repeated int64 droplet_ids = 4;
+  // (Optional) Droplet tag names this firewall applies to: any Droplet
+  // carrying one of these tags is protected, and membership follows the tag
+  // automatically as Droplets come and go. DigitalOcean creates tags
+  // implicitly when first referenced. The API documents a maximum of 5 tags
+  // per firewall (enforced server-side, not by the provider). Tag values are
+  // case-insensitive for set membership.
+  repeated string tags = 5 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
 
-  // The names of Droplet tags to which this firewall is applied (max 5).
-  // Any Droplet with these tags will be protected by this firewall.
-  repeated string tags = 5;
+  // (Optional) Droplets this firewall applies to, as literal numeric Droplet
+  // IDs or references to DigitalOceanDroplet resources. The API documents a
+  // maximum of 10 Droplets per firewall (enforced server-side). For dynamic
+  // membership prefer tags, which track Droplets automatically.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef droplet_ids = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
+  ];
 }
 
-// Definition of an inbound (ingress) firewall rule.
+// An inbound (ingress) firewall rule. At least one source of any kind should
+// be set; a rule with no sources matches nothing.
 message DigitalOceanFirewallInboundRule {
-  // "tcp", "udp", or "icmp". Required.
-  string protocol = 1 [(buf.validate.field).string.min_len = 1];
+  // The provider requires a port range for tcp and udp rules (icmp has no
+  // ports). "all" is accepted as shorthand for every port.
+  option (buf.validate.message).cel = {
+    id: "inbound_rule.port_range_required"
+    message: "port_range is required when protocol is tcp or udp"
+    expression: "this.protocol == 'icmp' || this.port_range != ''"
+  };
 
-  // Ports to allow (e.g., "80", "8000-9000", or "1-65535"; empty or "1-65535" means all ports for tcp/udp).
+  // Retired fields. source_droplet_ids was a list of raw numeric IDs;
+  // source_kubernetes_ids and source_load_balancer_uids were plain strings.
+  // Their numbers must never be reused with a different meaning; the fields
+  // return below as reference lists that also accept literal values.
+  reserved 4, 6, 7;
+
+  // The traffic protocol this rule matches.
+  string protocol = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "tcp",
+        "udp",
+        "icmp"
+      ]
+    }
+  ];
+
+  // Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+  // Required for tcp/udp; omit for icmp (the provider drops any port_range
+  // set on an icmp rule when it reads state back). Note the read-back
+  // normalization: the API reports "all ports" as port 0, which the provider
+  // writes back as the literal string "all" — so "1-65535" reads back as
+  // "all" after apply. Prefer writing "all" to avoid a permanent diff.
   string port_range = 2;
 
-  // IPv4 or IPv6 addresses or CIDR ranges (e.g., "192.0.2.0/24", "0.0.0.0/0").
-  repeated string source_addresses = 3;
+  // IPv4/IPv6 addresses or CIDR ranges traffic is allowed from
+  // (e.g. "192.0.2.0/24", "0.0.0.0/0", "::/0").
+  repeated string source_addresses = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
 
-  // IDs of Droplets from which traffic is allowed.
-  repeated int64 source_droplet_ids = 4;
+  // Droplet tag names; traffic from any Droplet carrying one of these tags
+  // is allowed. Tag values are case-insensitive for set membership.
+  repeated string source_tags = 5 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
 
-  // Names of Droplet tags; any Droplet with these tags is allowed.
-  repeated string source_tags = 5;
+  // Droplets traffic is allowed from, as literal numeric Droplet IDs or
+  // references to DigitalOceanDroplet resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_droplet_ids = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
+  ];
 
-  // IDs of Kubernetes clusters from which traffic is allowed.
-  repeated string source_kubernetes_ids = 6;
+  // Kubernetes cluster IDs traffic is allowed from, as literal UUIDs or
+  // references to DigitalOceanKubernetesCluster resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_kubernetes_ids = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanKubernetesCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
 
-  // IDs of Load Balancers from which traffic is allowed.
-  repeated string source_load_balancer_uids = 7;
+  // Load balancer UIDs traffic is allowed from, as literal UUIDs or
+  // references to DigitalOceanLoadBalancer resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_load_balancer_uids = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_id"
+  ];
 }
 
-// Definition of an outbound (egress) firewall rule.
+// An outbound (egress) firewall rule. Mirrors the inbound rule shape with
+// destination_* names.
 message DigitalOceanFirewallOutboundRule {
-  // "tcp", "udp", or "icmp". Required.
-  string protocol = 1 [(buf.validate.field).string.min_len = 1];
+  // The provider requires a port range for tcp and udp rules (icmp has no
+  // ports). "all" is accepted as shorthand for every port.
+  option (buf.validate.message).cel = {
+    id: "outbound_rule.port_range_required"
+    message: "port_range is required when protocol is tcp or udp"
+    expression: "this.protocol == 'icmp' || this.port_range != ''"
+  };
 
-  // Ports to allow (format as in inbound rules; required for tcp/udp).
+  // Retired fields. destination_droplet_ids was a list of raw numeric IDs;
+  // destination_kubernetes_ids and destination_load_balancer_uids were plain
+  // strings. Their numbers must never be reused with a different meaning; the
+  // fields return below as reference lists that also accept literal values.
+  reserved 4, 6, 7;
+
+  // The traffic protocol this rule matches.
+  string protocol = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "tcp",
+        "udp",
+        "icmp"
+      ]
+    }
+  ];
+
+  // Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+  // Required for tcp/udp; omit for icmp. The same read-back normalization as
+  // inbound rules applies: the API reports "all ports" as "all".
   string port_range = 2;
 
-  // IPv4/IPv6 addresses or CIDRs to which traffic is allowed.
-  repeated string destination_addresses = 3;
+  // IPv4/IPv6 addresses or CIDR ranges traffic is allowed to
+  // (e.g. "0.0.0.0/0", "::/0").
+  repeated string destination_addresses = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
 
-  // IDs of Droplets to which traffic is allowed.
-  repeated int64 destination_droplet_ids = 4;
+  // Droplet tag names; traffic to any Droplet carrying one of these tags is
+  // allowed. Tag values are case-insensitive for set membership.
+  repeated string destination_tags = 5 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
 
-  // Names of Droplet tags whose members are allowed destinations.
-  repeated string destination_tags = 5;
+  // Droplets traffic is allowed to, as literal numeric Droplet IDs or
+  // references to DigitalOceanDroplet resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef destination_droplet_ids = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
+  ];
 
-  // IDs of Kubernetes clusters to which traffic is allowed.
-  repeated string destination_kubernetes_ids = 6;
+  // Kubernetes cluster IDs traffic is allowed to, as literal UUIDs or
+  // references to DigitalOceanKubernetesCluster resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef destination_kubernetes_ids = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanKubernetesCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
 
-  // IDs of Load Balancers which are allowed as destinations.
-  repeated string destination_load_balancer_uids = 7;
+  // Load balancer UIDs traffic is allowed to, as literal UUIDs or references
+  // to DigitalOceanLoadBalancer resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef destination_load_balancer_uids = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_id"
+  ];
 }

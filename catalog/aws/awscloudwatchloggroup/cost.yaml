@@ -1,0 +1,52 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchloggroup
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: log_group_class
+      sku_meter: log data ingestion
+      pricing_unit: GB
+      impact: The class keys the ingestion rate -- STANDARD carries the full rate and full feature set; INFREQUENT_ACCESS ingests at half the Standard rate (storage and Insights rates are identical across the two classes) but gives up metric filters, subscription filters, and transformers; DELIVERY is a restricted pass-through class for delivering AWS Lambda logs onward to S3 or Firehose, with retention fixed by AWS at two days and none of the rich Logs features.
+    - field_path: retention_in_days
+      sku_meter: log storage
+      pricing_unit: GB-months
+      impact: Retention decides how long stored (compressed) bytes keep billing -- the default 0 never expires anything, so an unbounded group's storage line only ever grows. This is the single most-forgotten dial on the spec.
+    - field_path: metric_filters
+      sku_meter: custom metrics
+      pricing_unit: metric-months
+      impact: Every metric a filter publishes bills at CloudWatch's custom-metric monthly rate, prorated by the hour it is actually written.
+    - field_path: metric_filters.transformation.dimensions
+      sku_meter: custom metrics
+      pricing_unit: metric-months
+      impact: CloudWatch treats every unique dimension-value combination as a separate billed metric -- a filter with a high-cardinality dimension quietly multiplies one metric into hundreds.
+    - field_path: subscription_filters
+      sku_meter: destination ingestion
+      pricing_unit: GB
+      impact: Matched events stream to the destination in real time, and the destination bills its own ingestion -- Kinesis shard throughput, Firehose per-GB, or Lambda invocations plus duration -- on those referenced components, at full matched volume.
+    - field_path: data_protection_policy
+      sku_meter: data protection scanning
+      pricing_unit: GB
+      impact: Every ingested GB is scanned for sensitive data at the per-GB data-protection rate -- a meter that tracks the group's full ingestion volume for as long as the policy is attached.
+    - field_path: transformer
+      sku_meter: log storage
+      pricing_unit: GB-months
+      impact: Transformation itself is included in the Standard-class ingestion price -- but storage bills on the POST-transformation event size, which can exceed the original (parsed fields add structure), so a transformer can quietly raise the storage line.
+    - field_path: field_index_policy
+      sku_meter: Logs Insights data scanned
+      pricing_unit: GB
+      impact: The one driver that points DOWN -- Insights queries bill per GB scanned, and indexed fields let queries filtering on them skip events that cannot match, shrinking the scanned (billed) volume.
+  free_tier: The AWS Free Tier covers 5 GB of log data per month across ingestion, archive storage, and Logs Insights query scanning, plus 1,800 minutes of Live Tail usage per month.
+  estimate_exclusions:
+    - ingested volume is entirely workload-driven -- an idle log group bills nothing
+    - Logs Insights query spend is per GB scanned and follows who queries, not what the manifest configures
+    - subscription destinations (Kinesis, Firehose, Lambda) bill on their own referenced components
+    - AWS services delivering vended logs into groups bill tiered delivery rates on top of this profile
+    - the customer-managed KMS key referenced by kms_key_id bills on its own component
+    - Live Tail sessions beyond the free 1,800 minutes bill per minute
+    - alarms built on filter-generated metrics bill on their own alarm components
+  notes: "Ingestion dominates a log group's bill -- the per-GB ingest rate is more than an order of magnitude above the per-GB-month storage rate (which also bills compressed bytes), so the cheapest log is the one never sent, and the second cheapest rides INFREQUENT_ACCESS at half the ingest price when nothing needs metric or subscription filters. The two silent multipliers are retention (default: forever) and dimension cardinality on metric filters. A data protection policy is the one opt-in that re-bills the ENTIRE ingest stream -- per-GB scanning on top of per-GB ingestion. Pre-created log streams add no meter of their own."

@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsorganizationpolicy
+spec:
+  # An Organizations policy under live E2E: one SCP lane with a
+  # structured deny document attached to the (empty) OU fixture,
+  # proving content serialization, the enabled-policy-type dependency,
+  # the attachment composite, and detach-then-delete destroy ordering.
+  # The twelve sibling policy types ride the same two resources - the
+  # SCP is representative.
+  #
+  # Deliberately not exercised (beyond the deferral):
+  # - root and account attachment targets -- same resource, same
+  #   composite; the OU target is representative (and an account
+  #   target needs the permanently-deferred member-account kind);
+  # - skip_destroy -- deliberately unmodeled (the recorded
+  #   apply-behavior exclusion class).
+  #
+  # Verification is DescribePolicy keyed on policy_id
+  # (ListTargetsForPolicy for attachment coherence).
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision (2026-08-16, the standing org-wall
+    class): policies require a management account with ALL features
+    and the policy type enabled on the organization - the shared test
+    account is deliberately standalone/non-org. The kind is
+    offline-proven (green tofu plan + pulumi preview per engine).
+    Unblock: an owner reversal to the transient-organization posture
+    or a dedicated org-capable test account.
+  timeout_minutes: 20

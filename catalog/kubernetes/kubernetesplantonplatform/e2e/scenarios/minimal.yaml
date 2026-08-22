@@ -1,0 +1,19 @@
+# The zero-config platform: a namespace and a version — the whole platform
+# boots from exactly this, reachable over port-forward with the first
+# console visitor becoming the admin. This shape is valid against EVERY
+# PlantonPlatform schema era, so it is the lane proven against the
+# published chart line. The version pins the newest image line whose four
+# app images are all anonymously pullable.
+#
+# The full platform boot (databases, identity, control plane, console,
+# vault, runner) takes ~10-15 minutes on an emulated-amd64 kind cluster —
+# the profile's timeout accounts for it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.40-selfhosted-preview

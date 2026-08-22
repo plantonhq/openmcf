@@ -32,4 +32,19 @@ enum DigitalOceanRegion {
 
   // amsterdam 3
   ams3 = 8 [(dev.planton.shared.options.display_label) = "Amsterdam"];
+
+  // new york 1
+  nyc1 = 9 [(dev.planton.shared.options.display_label) = "New York 1"];
+
+  // new york 2
+  nyc2 = 10 [(dev.planton.shared.options.display_label) = "New York 2"];
+
+  // san francisco 2
+  sfo2 = 11 [(dev.planton.shared.options.display_label) = "San Francisco 2"];
+
+  // sydney 1
+  syd1 = 12 [(dev.planton.shared.options.display_label) = "Sydney"];
+
+  // atlanta 1
+  atl1 = 13 [(dev.planton.shared.options.display_label) = "Atlanta"];
 }

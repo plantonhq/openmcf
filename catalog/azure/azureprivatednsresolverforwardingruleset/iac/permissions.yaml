@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatednsresolverforwardingruleset
+spec:
+  azure:
+    groups:
+      - purpose: ManageRuleset
+        actions:
+          - Microsoft.Network/dnsForwardingRulesets/read
+          - Microsoft.Network/dnsForwardingRulesets/write
+          - Microsoft.Network/dnsForwardingRulesets/delete
+        provenance: derived
+        notes: Covers azurerm_private_dns_resolver_dns_forwarding_ruleset -- create, read/refresh, in-place endpoint-list and tag updates, and destroy. Held via Network Contributor on the resource group, or a narrower custom role.
+      - purpose: ManageForwardingRules
+        actions:
+          - Microsoft.Network/dnsForwardingRulesets/forwardingRules/read
+          - Microsoft.Network/dnsForwardingRulesets/forwardingRules/write
+          - Microsoft.Network/dnsForwardingRulesets/forwardingRules/delete
+        provenance: derived
+        notes: Covers azurerm_private_dns_resolver_forwarding_rule, one instance per spec.forwarding_rules entry (keyed by rule name); rules are ARM children of the ruleset.
+      - purpose: BindOutboundEndpoints
+        actions:
+          - Microsoft.Network/dnsResolvers/outboundEndpoints/join/action
+        provenance: derived
+        notes: The ruleset references the resolver's outbound endpoints by ARM ID (spec.outbound_endpoint_ids); ARM authorizes such cross-resource references through the endpoint's join action. The provider itself never calls the outbound-endpoint API -- it only carries the IDs in the ruleset payload -- so no endpoint read is needed. Verified against the live Microsoft.Network operation inventory.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrestapidomain
+spec:
+  billing_model: free
+  free_tier: A REST API custom domain name carries no meter -- the AWS price list for API Gateway (offer AmazonApiGateway) meters API calls and caching, and nothing in it counts domain names, base path mappings, or access associations. This holds for all three endpoint types, including EDGE, where AWS fronts the domain with a managed CloudFront distribution at no separate charge.
+  notes: "The real spend flows through the domain rather than to it: requests reaching the mapped REST APIs bill on those API components' per-million request meter, and stage caching bills there too. A PRIVATE domain is reached only through interface VPC endpoints, and those endpoints bill PrivateLink hourly and per-GB rates on their own component -- the closest thing to an always-on charge in this picture, and it attaches to the endpoint, not the domain. The ACM certificate referenced is free in its default form (Amazon-issued, non-exportable public -- the AwsCertManagerCert fact sheet covers the exceptions); certificate material uploaded through uploaded_certificate is stored by API Gateway at no charge. A mutual-TLS truststore is an ordinary S3 object, and Route 53 alias queries bill on the hosted zone."

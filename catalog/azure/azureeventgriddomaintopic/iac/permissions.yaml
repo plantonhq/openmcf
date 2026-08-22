@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventgriddomaintopic
+spec:
+  azure:
+    groups:
+      - purpose: ManageDomainTopic
+        actions:
+          - Microsoft.EventGrid/domains/topics/read
+          - Microsoft.EventGrid/domains/topics/write
+          - Microsoft.EventGrid/domains/topics/delete
+        provenance: derived
+        notes: Covers azurerm_eventgrid_domain_topic -- create under the domain (parsed from domain_id into resource group and domain name), read/refresh, and destroy; everything is create-only, so no in-place updates exist. Held via EventGrid Contributor or narrower custom roles, matching the module README's prose.

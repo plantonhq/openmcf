@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAccountPolicy
+metadata:
+  name: pii-masking
+spec:
+  region: us-east-1
+  policyName: pii-masking
+  policyType: DATA_PROTECTION_POLICY
+  policyDocument:
+    Name: pii-masking
+    Version: "2021-06-01"
+    Statement:
+      - Sid: audit
+        DataIdentifier:
+          - arn:aws:dataprotection::aws:data-identifier/EmailAddress
+          - arn:aws:dataprotection::aws:data-identifier/CreditCardNumber
+        Operation:
+          Audit:
+            FindingsDestination: {}
+      - Sid: redact
+        DataIdentifier:
+          - arn:aws:dataprotection::aws:data-identifier/EmailAddress
+          - arn:aws:dataprotection::aws:data-identifier/CreditCardNumber
+        Operation:
+          Deidentify:
+            MaskConfig: {}

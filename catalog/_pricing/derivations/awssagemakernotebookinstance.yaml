@@ -1,0 +1,57 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsSagemakerNotebookInstance manifest's spec values into metered
+# quantities and price choices. The notebook bills its instance_type's
+# hourly notebook rate while InService plus its ML storage volume per
+# GB-month for as long as it exists -- both priced here, with the
+# instance-hour rate selected by the manifest's own instance_type through
+# the price book's attribute identities. The committed figure reads the
+# always-on billing model literally: the notebook is InService from
+# creation, so it assumes a full month running -- stopping it outside
+# working hours is the savings lever, and no manifest field expresses a
+# schedule. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awssagemakernotebookinstance.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awssagemakernotebookinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  lines:
+    - sku_meter: notebook instance hours
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon SageMaker
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: notebook
+          - key: instance_type
+            from_field: instance_type
+      basis: one notebook instance x 730 hours at the instance_type's notebook rate -- the always-on reading of a bill that actually pauses whenever the instance is stopped
+    - sku_meter: notebook ML storage
+      quantity:
+        - field_value:
+            field_path: volume_size_gb
+            default_when_unset: "5"
+      price_slug: sagemaker-notebook-volume-gb-month-us-west-2
+      basis: the ML storage volume (volume_size_gb, the AWS default 5 GB when the manifest does not size it) billed per GB-month for as long as the instance exists, stopped or running
+  exclusions:
+    - text: hours while the instance is stopped bill no instance-hours -- the estimate assumes 24x7 InService because no manifest field expresses a run schedule
+    - text: data transfer out of the region and to the internet follows whatever the notebook's code moves
+    - applies_when:
+        - field_path: lifecycle_config
+          op: is_set
+      text: CloudWatch Logs ingestion for Jupyter and lifecycle-script logs follows log volume
+    - text: AWS resources the notebook's code creates through its execution role bill on their own
+  notes:
+    - text: Estimated at the always-on reading of an always-on billing model -- the notebook runs the full month unless someone stops it; stopping is the savings lever, and the storage line keeps billing even then.
+    - applies_when:
+        - field_path: default_code_repository
+          op: is_set
+      text: Cloning the code repositories adds no charge of its own.

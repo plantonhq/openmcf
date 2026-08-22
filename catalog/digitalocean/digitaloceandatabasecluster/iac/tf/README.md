@@ -1,279 +1,69 @@
-# DigitalOcean Database Cluster - Terraform Module
+# DigitalOcean Database Cluster -- Terraform Module
 
-This Terraform module provisions and manages fully-managed database clusters on DigitalOcean using the official `digitalocean` provider.
+Deploys a `digitalocean_database_cluster` from a `DigitalOceanDatabaseCluster` spec: every engine DigitalOcean offers, node topology, VPC placement, custom storage (the provider's bare-MiB string, converted from the spec's GiB), storage autoscale, maintenance window, backup-restore provisioning, engine-conditional tuning, project placement, and tags. Provider pin is `~> 2.99`.
 
-## Overview
+`variables.tf` is generated (`planton tofu generate-variables DigitalOceanDatabaseCluster`). Do not hand-edit it. The API token lives in `credentials.tf`.
 
-The module implements Planton's `DigitalOceanDatabaseCluster` protobuf spec, providing a declarative interface for deploying PostgreSQL, MySQL, Redis, and MongoDB clusters.
-
-## Module Structure
-
-```
-iac/tf/
-├── variables.tf    # Input variable definitions
-├── locals.tf       # Local value transformations
-├── main.tf         # Database cluster resource
-├── outputs.tf      # Output exports
-├── provider.tf     # Provider configuration
-└── README.md       # This file
-```
+Users, logical databases, connection pools, replicas, firewall rules, and per-engine config parameters are separate DigitalOcean resources, not part of this module.
 
 ## Prerequisites
 
-- **Terraform**: Version 1.0 or later
-- **DigitalOcean API Token**: Set via environment variable `DIGITALOCEAN_TOKEN`
-- **DigitalOcean Provider**: Version 2.x (auto-downloaded)
+- OpenTofu or Terraform 1.5+
+- DigitalOcean API token (`digitalocean_token`)
 
-## Quick Start
+## Usage
 
-### 1. Set Up Environment
-
-```bash
-cd catalog/digitalocean/digitaloceandatabasecluster/iac/tf
-export DIGITALOCEAN_TOKEN="your-digitalocean-api-token"
-```
-
-### 2. Create Configuration
-
-**Development PostgreSQL:**
 ```hcl
-module "dev_postgres" {
+module "database_cluster" {
   source = "./path/to/module"
 
   metadata = {
-    name = "dev-postgres"
-    env  = "development"
+    name = "app-db"
   }
 
   spec = {
-    cluster_name                = "dev-postgres"
-    engine                      = "postgres"
-    engine_version              = "16"
-    region                      = "nyc3"
-    size_slug                   = "db-s-1vcpu-1gb"
-    node_count                  = 1
-    enable_public_connectivity  = true
-  }
-}
-```
-
-**Production PostgreSQL (HA):**
-```hcl
-module "prod_postgres" {
-  source = "./path/to/module"
-
-  metadata = {
-    name = "prod-postgres"
-    org  = "acme-corp"
-    env  = "production"
-  }
-
-  spec = {
-    cluster_name               = "prod-postgres"
-    engine                     = "postgres"
-    engine_version             = "16"
-    region                     = "nyc3"
-    size_slug                  = "db-s-4vcpu-8gb"
-    node_count                 = 3
-    vpc = {
-      value = "vpc-12345678"
+    cluster_name   = "app-db"
+    engine         = "pg"
+    engine_version = "16"
+    region         = "nyc3"
+    size_slug      = "db-s-2vcpu-4gb"
+    node_count     = 3
+    vpc            = "b5648f9e-a28a-4760-bb87-b2fad07ae295"
+    storage_gib    = 100
+    maintenance_window = {
+      day  = "sunday"
+      hour = "02:00"
     }
-    storage_gib                = 200
-    enable_public_connectivity = false
-  }
-}
-```
-
-### 3. Deploy
-
-```bash
-terraform init
-terraform plan
-terraform apply
-```
-
-### 4. Retrieve Outputs
-
-```bash
-terraform output cluster_id
-terraform output host
-terraform output -json | jq '.connection_uri.value'
-```
-
-## Module Variables
-
-### `metadata` (Required)
-
-Resource metadata.
-
-### `spec` (Required)
-
-Database cluster specification:
-
-```hcl
-spec = {
-  cluster_name                = string  # Unique name (max 64 chars)
-  engine                      = string  # "postgres", "mysql", "redis", "mongodb"
-  engine_version              = string  # Major or major.minor (e.g., "16", "8.0")
-  region                      = string  # DigitalOcean region
-  size_slug                   = string  # Node size (db-s-2vcpu-4gb, etc.)
-  node_count                  = number  # 1-3 nodes
-  vpc                         = optional(object({ value = string }))
-  storage_gib                 = optional(number)
-  enable_public_connectivity  = optional(bool, false)
-}
-```
-
-## Module Outputs
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `cluster_id` | string | DigitalOcean cluster UUID |
-| `connection_uri` | string (sensitive) | Full connection string |
-| `private_uri` | string (sensitive) | VPC-private connection string |
-| `host` | string | Public hostname |
-| `private_host` | string | VPC-private hostname |
-| `port` | number | Database port |
-| `database_name` | string | Default database name |
-| `username` | string (sensitive) | Admin username |
-| `password` | string (sensitive) | Admin password |
-
-## Engine-Specific Notes
-
-### PostgreSQL
-
-**DigitalOcean API**: Uses "pg" as engine slug (module handles conversion).
-
-**Critical Requirements:**
-- ✅ Enable PgBouncer connection pool for production (separate resource)
-- ✅ Connection limits are severe: 97 for 4GB RAM cluster
-
-**Example with Connection Pool:**
-```hcl
-module "postgres_cluster" {
-  # ... cluster config
-}
-
-resource "digitalocean_database_connection_pool" "app_pool" {
-  cluster_id = module.postgres_cluster.cluster_id
-  name       = "app-pool"
-  mode       = "transaction"
-  size       = 25
-  db_name    = module.postgres_cluster.database_name
-  user       = module.postgres_cluster.username
-}
-```
-
-### MySQL
-
-**Notes:**
-- No SUPER privileges (cannot install plugins)
-- Limited mysqldump access
-- Use DigitalOcean backup system for migrations
-
-### Redis
-
-**Notes:**
-- Redis 7+ is actually Valkey (SSPL licensing)
-- No Redis Cluster mode (single-instance only)
-- Use for caching, not primary storage
-
-### MongoDB
-
-**Notes:**
-- Replica sets only (no sharding)
-- Max 3 nodes
-- Suitable for moderate-scale document stores
-
----
-
-## Production Best Practices
-
-### High Availability
-
-```hcl
-spec = {
-  node_count = 3  # Primary + 2 standbys for maximum HA
-}
-```
-
-### VPC Networking
-
-```hcl
-spec = {
-  vpc = { value = var.vpc_uuid }
-  enable_public_connectivity = false  # Force private connections
-}
-```
-
-### Storage Planning
-
-```hcl
-spec = {
-  storage_gib = 200  # Plan for 6-12 months growth
-}
-```
-
-**Note**: Storage can only increase, never decrease.
-
-### Firewall Configuration
-
-```hcl
-resource "digitalocean_database_firewall" "cluster" {
-  cluster_id = module.cluster.cluster_id
-
-  rule {
-    type  = "vpc"
-    value = var.vpc_uuid  # Allow entire VPC
+    storage_autoscale = {
+      enabled           = true
+      threshold_percent = 80
+    }
   }
 
-  rule {
-    type  = "tag"
-    value = "app-servers"  # Tag-based access
-  }
+  digitalocean_token = var.digitalocean_token
+}
+
+output "host" {
+  value = module.database_cluster.host
 }
 ```
 
----
+## Outputs
 
-## Troubleshooting
+Exactly the kind's stack-output contract, identical to the Pulumi module:
 
-### Issue: "cluster name already exists"
+| Output | Description |
+|--------|-------------|
+| `cluster_id` | The cluster UUID (import id for `digitalocean_database_cluster`) |
+| `connection_uri` | Full public connection URI (sensitive) |
+| `host` / `port` | Public connection endpoint |
+| `database_user` / `database_password` | Default user credentials (sensitive) |
+| `private_host` / `private_uri` | Private-network endpoint (URI sensitive) |
+| `database_name` | Default database name |
+| `ui_host` / `ui_port` / `ui_uri` / `ui_database` / `ui_user` / `ui_password` | OpenSearch Dashboards details (OpenSearch only; URI/password sensitive) |
 
-**Solution**: Choose a unique name or delete existing cluster:
-```bash
-doctl databases list
-doctl databases delete <cluster-uuid>
-```
+## Behavior notes
 
-### Issue: Cluster stuck in "creating" state
-
-**Cause**: Normal provisioning takes 10-15 minutes.
-
-**Solution**: Wait for completion. Check status:
-```bash
-doctl databases get $(terraform output -raw cluster_id)
-```
-
-### Issue: Connection refused
-
-**Cause**: Firewall rules not configured.
-
-**Solution**: Add VPC CIDR or tags to firewall:
-```hcl
-resource "digitalocean_database_firewall" "allow_vpc" {
-  cluster_id = module.cluster.cluster_id
-  rule {
-    type  = "vpc"
-    value = "vpc-uuid-here"
-  }
-}
-```
-
----
-
-## Further Reading
-
-- **Component Overview**: See [../../README.md](../../README.md)
-- **Terraform Provider Docs**: [digitalocean_database_cluster](https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs/resources/database_cluster)
-
+- `sql_mode` and `eviction_policy` are passed only when set; the provider rejects them at plan time on engines they don't apply to (the spec's validation rules prevent that pairing earlier).
+- `storage_size_mib` is only rendered when `storage_gib` is set, so growing `size_slug` without a custom storage value correctly adopts the new slug's default disk.
+- Changing `engine_version` performs an in-place major upgrade; changing `region` performs a live migration. See the kind [GUIDE](../../GUIDE.md).

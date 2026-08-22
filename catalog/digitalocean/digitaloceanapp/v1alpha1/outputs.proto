@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanapp.v1alpha1;
+
+// Outputs of a deployed App Platform application. Names match across
+// Terraform and Pulumi.
+message DigitalOceanAppStackOutputs {
+  // App UUID. Used to import the digitalocean_app resource.
+  string app_id = 1;
+  // Default ondigitalocean.app hostname assigned by the platform.
+  string default_hostname = 2;
+  // Public URL, including https://. This is a custom domain when one is
+  // configured as PRIMARY, otherwise the default hostname.
+  string live_url = 3;
+  // Live domain hostname without scheme.
+  string live_domain = 4;
+  // UUID of the currently live deployment.
+  string active_deployment_id = 5;
+}

@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiamuser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user stores no customer data -- its identity record and policy documents are IAM control-plane metadata held inside AWS's own service infrastructure. The access-key secret this component mints is delivered once through the platform's sensitive-output channel; where the operator stores it afterward is outside this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for users.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A user terminates no connections of its own. The only wire traffic involving it -- IAM management calls and SigV4-signed requests made with its access key -- happens on AWS API endpoints, which serve exclusively over TLS as account-wide provider behavior, not per-user configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user has no network endpoint to expose. Its real exposure surface is the long-lived access key -- an identity risk governed by the key-lifecycle fields (see no-legacy-auth), not a network one.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a user is an identity object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A user receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: managed_policy_arns
+      evidence:
+        type: spec_default
+        reference: The user IS a principal in AWS role-based access control -- what it may do is exactly the union of the managed policies attached here, the inline_policies embedded in it, and nothing more. An empty spec grants nothing; every permission is an explicit declaration. The permissions_boundary field caps the maximum the user can ever do -- effective permissions are the intersection of boundary and policies -- which matters most on a principal whose credentials never expire.
+      notes: Attachments reconcile individually in both modules -- adding or removing an entry attaches or detaches just that policy without touching the user. Least-privilege quality is the operator's; attaching AdministratorAccess validates just as well as a scoped grant.
+    - control_id: workload-identity
+      status: configurable
+      field_path: disable_access_keys
+      evidence:
+        type: spec_default
+        reference: This component is the deliberate exception to keyless identity -- by default it mints one long-lived access key, because external CI without OIDC federation, legacy tooling, and break-glass access are exactly the cases short-lived federated credentials cannot cover. Setting disable_access_keys keeps the identity keyless for console-only or externally-keyed users.
+      notes: Workloads that CAN federate should use AwsIamRole's oidc_trust against an AwsIamOidcProvider instead of this kind -- a role's credentials expire in hours, a user's key works until rotated. The spec's own documentation says to prefer roles wherever possible.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: access_key_status
+      evidence:
+        type: spec_default
+        reference: The long-lived access key is the weaker path this control watches, and the spec makes its lifecycle explicit -- access_key_status flips the key between Active and Inactive in place (an Inactive key keeps its id and secret but AWS rejects every request signed with it), which is the standard rotation lever, and disable_access_keys prevents the key from existing at all.
+      notes: Neither module ever creates a console login profile, so no password authentication path exists through this component -- the access key is the only credential it can mint, and force_destroy (default off) refuses to silently destroy credentials created outside the resource.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. IAM management calls and every API request signed with the user's key are recorded by AWS CloudTrail as account-level posture, not per-user configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics per user; credential reports and access-key last-used data are account-level IAM features outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A user holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. A re-created access key is a NEW credential (AWS cannot restore a deleted secret), which is rotation, not restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- AWS replicates user definitions across its own infrastructure, and the user's credentials work in every region with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for users. With force_destroy at its default (false), deletion does fail while out-of-band credentials exist (console login profiles, extra access keys, MFA devices, SSH keys, signing certificates) -- a dependency guard that surfaces them, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A user is a pure configuration object with no software to patch.

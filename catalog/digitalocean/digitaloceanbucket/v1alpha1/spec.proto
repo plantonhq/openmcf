@@ -4,10 +4,31 @@ package dev.planton.digitalocean.digitaloceanbucket.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "catalog/digitalocean/region.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
 
-// DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket.
+// DigitalOceanBucketSpec models the full surface of the
+// digitalocean_spaces_bucket resource plus the per-bucket settings
+// satellites whose lifecycle is identical to the bucket's -- CORS
+// configuration, bucket policy, and access logging -- which the
+// provisioners manage as part of this kind.
 message DigitalOceanBucketSpec {
-  // bucket name (DNS-compatible, 3–63 chars)
+  // Retired field: tags (5) mapped to nothing -- Spaces buckets are not
+  // taggable through the provider. The number and name can never return
+  // with different meanings.
+  reserved 5;
+  reserved "tags";
+
+  // The per-bucket settings satellites are separate provider resources
+  // whose region argument is required, so they cannot inherit the
+  // provider's bucket-region default.
+  option (buf.validate.message).cel = {
+    id: "satellites_require_region"
+    message: "cors_rules, policy, and logging require region to be set explicitly"
+    expression: "(size(this.cors_rules) == 0 && this.policy == '' && !has(this.logging)) || this.region != 0"
+  };
+
+  // Bucket name. Must be DNS-compatible (lowercase letters, digits,
+  // hyphens; 3-63 characters) and unique within the region.
   string bucket_name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
@@ -15,21 +36,167 @@ message DigitalOceanBucketSpec {
     (buf.validate.field).string.max_len = 63
   ];
 
-  // region slug (datacenter location for the bucket)
-  DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
+  // (Optional) Region slug for the bucket. When unset, the provider applies
+  // its own default (nyc3). Spaces is available in a subset of DigitalOcean
+  // regions; the CEL below lists the Spaces-capable slugs by their enum
+  // numbers: nyc3=1, sfo3=2, fra1=3, sgp1=4, lon1=5, tor1=6, blr1=7, ams3=8,
+  // sfo2=11, syd1=12, atl1=13 (nyc1/nyc2 have no Spaces). Changing the
+  // region replaces the bucket.
+  DigitalOceanRegion region = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "spaces_region"
+      message: "region must be a Spaces-capable slug: ams3, atl1, blr1, fra1, lon1, nyc3, sfo2, sfo3, sgp1, syd1, tor1"
+      expression: "this in [1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13]"
+    }
+  ];
 
-  // access control setting for the bucket (private or public-read)
+  // Access control (canned ACL) for the bucket itself: private (default) or
+  // public-read. Per-object ACLs and finer grants are the policy's job.
   DigitalOceanBucketAccessControl access_control = 3;
 
-  // enable versioning for the bucket (disabled by default)
+  // Enable object versioning. Once enabled, Spaces versioning can never be
+  // removed -- flipping this back to false suspends it, keeping existing
+  // versions.
   bool versioning_enabled = 4;
 
-  // tags to apply to the bucket (must be unique)
-  repeated string tags = 5 [(buf.validate.field).repeated.unique = true];
+  // (Optional) When true, the provisioner empties the bucket -- deleting
+  // every object AND every object version -- before destroying it. DANGER:
+  // this makes destroy irreversible for the bucket's data; leave false for
+  // buckets holding anything you cannot lose.
+  bool force_destroy = 6;
+
+  // (Optional) Object lifecycle rules: expire current or noncurrent object
+  // versions and abort stale multipart uploads automatically to control
+  // storage cost.
+  repeated DigitalOceanBucketLifecycleRule lifecycle_rules = 7;
+
+  // (Optional) CORS rules letting browser applications on other origins
+  // read the bucket. Managed through the provider's standalone CORS
+  // configuration resource (the bucket's inline cors_rule argument is
+  // deprecated at the pinned provider and does no drift detection).
+  repeated DigitalOceanBucketCorsRule cors_rules = 8 [(buf.validate.field).repeated.max_items = 100];
+
+  // (Optional) Bucket policy as a JSON document (S3 policy grammar, e.g.
+  // IP-restricted or key-scoped access). The provider validates the JSON at
+  // plan time and normalizes whitespace/key order when reading it back.
+  string policy = 9;
+
+  // (Optional) Access logging: deliver S3-style access logs for this bucket
+  // to another bucket.
+  DigitalOceanBucketLogging logging = 10;
 }
 
 // Supported access control settings for a bucket.
 enum DigitalOceanBucketAccessControl {
   PRIVATE = 0;
   PUBLIC_READ = 1;
+}
+
+// DigitalOceanBucketLifecycleRule expires objects automatically. A rule
+// scopes to the whole bucket or a key prefix and carries at least one
+// action (expiration, noncurrent-version expiration, or multipart-upload
+// abort) -- a rule with no action does nothing.
+message DigitalOceanBucketLifecycleRule {
+  // (Optional) Unique rule identifier, at most 255 characters. When
+  // omitted, the provider generates one.
+  string id = 1 [(buf.validate.field).string.max_len = 255];
+
+  // (Optional) Object key prefix limiting the rule's scope (e.g. "logs/").
+  // Empty applies the rule to every object. The provider warns when the
+  // prefix starts with "/" -- Spaces keys do not begin with a slash.
+  string prefix = 2;
+
+  // Whether the rule is active. Required so a rule is never silently
+  // inert: enabled: false keeps a rule staged but off, and must be said
+  // explicitly.
+  optional bool enabled = 3 [(buf.validate.field).required = true];
+
+  // (Optional) Days after initiation when incomplete multipart uploads are
+  // aborted and their parts removed.
+  uint32 abort_incomplete_multipart_upload_days = 4;
+
+  // (Optional) Expiration of current object versions.
+  DigitalOceanBucketLifecycleExpiration expiration = 5;
+
+  // (Optional) Expiration of noncurrent object versions (only meaningful on
+  // versioned buckets).
+  DigitalOceanBucketLifecycleNoncurrentVersionExpiration noncurrent_version_expiration = 6;
+}
+
+// DigitalOceanBucketLifecycleExpiration says when current object versions
+// expire. The provider sends exactly one trigger (date wins over days, days
+// over the delete-marker flag), so the spec requires exactly one.
+message DigitalOceanBucketLifecycleExpiration {
+  option (buf.validate.message).cel = {
+    id: "expiration_exactly_one"
+    message: "set exactly one of date, days, or expired_object_delete_marker"
+    expression: "(this.date != '' ? 1 : 0) + (this.days > 0u ? 1 : 0) + (this.expired_object_delete_marker ? 1 : 0) == 1"
+  };
+
+  // (Optional) Absolute expiration date in YYYY-MM-DD form (interpreted as
+  // midnight UTC).
+  string date = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}$"
+  ];
+
+  // (Optional) Days after object creation when the object expires.
+  uint32 days = 2;
+
+  // (Optional) On versioned buckets: remove expired object delete markers
+  // that have no noncurrent versions left.
+  bool expired_object_delete_marker = 3;
+}
+
+// DigitalOceanBucketLifecycleNoncurrentVersionExpiration permanently deletes
+// noncurrent object versions after the given number of days.
+message DigitalOceanBucketLifecycleNoncurrentVersionExpiration {
+  // Days after an object version becomes noncurrent when it is deleted.
+  uint32 days = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+}
+
+// DigitalOceanBucketCorsRule is one CORS rule on the bucket, in the
+// standalone CORS-configuration resource's shape (a superset of the
+// deprecated inline block: it adds expose_headers and a per-rule id).
+message DigitalOceanBucketCorsRule {
+  // HTTP methods the rule allows (e.g. GET, HEAD, PUT).
+  repeated string allowed_methods = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Origins allowed to make cross-origin requests (e.g.
+  // "https://example.com"; "*" allows every origin).
+  repeated string allowed_origins = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // (Optional) Request headers the rule allows in preflight.
+  repeated string allowed_headers = 3;
+
+  // (Optional) Response headers browsers are allowed to read.
+  repeated string expose_headers = 4;
+
+  // (Optional) Rule identifier, at most 255 characters.
+  string id = 5 [(buf.validate.field).string.max_len = 255];
+
+  // (Optional) Seconds browsers may cache the preflight response.
+  uint32 max_age_seconds = 6;
+}
+
+// DigitalOceanBucketLogging delivers S3-style access logs for this bucket
+// to another bucket in the same region.
+message DigitalOceanBucketLogging {
+  // The bucket that receives the access logs. Accepts a bucket name
+  // directly or a reference to another DigitalOceanBucket resource
+  // (resolved from its bucket_id output -- a Spaces bucket's id IS its
+  // name). Logging a bucket to itself works but compounds: reads of the
+  // logs generate more logs.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Prefix for the log object keys (e.g. "logs/").
+  string target_prefix = 2 [(buf.validate.field).required = true];
 }

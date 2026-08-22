@@ -1,0 +1,267 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpCloudComposerEnvironment manifest's spec values into metered
+# quantities and price choices. The committed cost is the hourly
+# environment fee (size x resilience) plus the always-on workload
+# allocations -- scheduler replicas, the single web server, triggerer
+# replicas, and workers at the autoscaling floor -- each billed on
+# Composer's allocated-capacity meters (per mCPU-hour, GiB-hour of
+# memory, GiB-hour of storage). Worker capacity above the floor is the
+# usage arm and rides the exclusions. These rules price Composer 2
+# image versions; Composer 3 bills Data Compute Units instead, so every
+# Composer 3 signal the spec carries (empty image_version resolving to
+# the latest image, network attachments, private-environment flags, a
+# DAG processor block) refuses honestly. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/gcpcloudcomposerenvironment.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcloudcomposerenvironment
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: software_config.image_version
+          op: is_unset
+      reason: an empty image_version rides the latest stable image, which today is Composer 3 -- an environment billed in Data Compute Units this price book does not carry; pin a composer-2 image version for a priceable manifest
+    - when:
+        - field_path: node_config.composer_network_attachment
+          op: is_set
+      reason: a PSC network attachment is Composer 3 networking, and Composer 3 environments bill Data Compute Unit meters this price book does not carry
+    - when:
+        - field_path: enable_private_environment
+          op: equals
+          value: "true"
+      reason: enable_private_environment is a Composer 3 flag, and Composer 3 environments bill Data Compute Unit meters this price book does not carry
+    - when:
+        - field_path: enable_private_builds_only
+          op: equals
+          value: "true"
+      reason: enable_private_builds_only is a Composer 3 flag, and Composer 3 environments bill Data Compute Unit meters this price book does not carry
+    - when:
+        - field_path: workloads_config.dag_processor
+          op: is_set
+      reason: a DAG processor block is Composer 3 sizing, and Composer 3 environments bill Data Compute Unit meters this price book does not carry
+    - when:
+        - field_path: workloads_config
+          op: is_unset
+      reason: with no workloads block, Composer sizes scheduler, web server, and workers from per-size defaults that are invisible in this manifest -- the committed compute cannot be read here
+    - when:
+        - field_path: workloads_config.scheduler
+          op: is_set
+        - field_path: workloads_config.scheduler.count
+          op: equals
+          value: "0"
+      reason: the scheduler replica count is unset, and Composer chooses a per-size default invisible in this manifest
+    - when:
+        - field_path: environment_size
+          op: equals
+          value: ENVIRONMENT_SIZE_EXTRA_LARGE
+      reason: the extra-large environment fee is not carried by the price book
+    - when:
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_MEDIUM
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_LARGE
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_EXTRA_LARGE
+        - field_path: resilience_mode
+          op: equals
+          value: HIGH_RESILIENCE
+      reason: the small highly-resilient environment fee is not carried by the price book
+    - when:
+        - field_path: environment_size
+          op: equals
+          value: ENVIRONMENT_SIZE_MEDIUM
+        - field_path: resilience_mode
+          op: not_equals
+          value: HIGH_RESILIENCE
+      reason: the medium standard-resilience environment fee is not carried by the price book
+    - when:
+        - field_path: environment_size
+          op: equals
+          value: ENVIRONMENT_SIZE_LARGE
+        - field_path: resilience_mode
+          op: not_equals
+          value: HIGH_RESILIENCE
+      reason: the large standard-resilience environment fee is not carried by the price book
+  lines:
+    # --- environment fee: size x resilience variants ---
+    - sku_meter: environment fee
+      applies_when:
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_MEDIUM
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_LARGE
+        - field_path: environment_size
+          op: not_equals
+          value: ENVIRONMENT_SIZE_EXTRA_LARGE
+        - field_path: resilience_mode
+          op: not_equals
+          value: HIGH_RESILIENCE
+      quantity:
+        - hours_in_month: true
+      price_slug: composer-env-fee-small-us-central1
+      basis: the small standard-resilience environment fee, billed every hour of the month (SMALL is also the provider default when environment_size is unset)
+    - sku_meter: environment fee
+      applies_when:
+        - field_path: environment_size
+          op: equals
+          value: ENVIRONMENT_SIZE_MEDIUM
+        - field_path: resilience_mode
+          op: equals
+          value: HIGH_RESILIENCE
+      quantity:
+        - hours_in_month: true
+      price_slug: composer-env-fee-medium-resilient-us-central1
+      basis: the medium highly-resilient environment fee, billed every hour of the month
+    - sku_meter: environment fee
+      applies_when:
+        - field_path: environment_size
+          op: equals
+          value: ENVIRONMENT_SIZE_LARGE
+        - field_path: resilience_mode
+          op: equals
+          value: HIGH_RESILIENCE
+      quantity:
+        - hours_in_month: true
+      price_slug: composer-env-fee-large-resilient-us-central1
+      basis: the large highly-resilient environment fee, billed every hour of the month
+    # --- scheduler: always-on replicas ---
+    - sku_meter: workload vCPU
+      quantity:
+        - field_value:
+            field_path: workloads_config.scheduler.cpu
+        - constant: "1000"
+        - field_value:
+            field_path: workloads_config.scheduler.count
+        - hours_in_month: true
+      price_slug: composer-compute-mcpu-us-central1
+      basis: scheduler vCPUs x 1000 (the meter bills per milli-vCPU) x replica count x 730 hours -- allocated capacity, billed whether or not DAGs run
+    - sku_meter: workload memory
+      quantity:
+        - field_value:
+            field_path: workloads_config.scheduler.memory_gb
+        - field_value:
+            field_path: workloads_config.scheduler.count
+        - hours_in_month: true
+      price_slug: composer-compute-memory-us-central1
+      basis: scheduler memory GiB x replica count x 730 hours of allocated capacity
+    - sku_meter: workload storage
+      quantity:
+        - field_value:
+            field_path: workloads_config.scheduler.storage_gb
+        - field_value:
+            field_path: workloads_config.scheduler.count
+        - hours_in_month: true
+      price_slug: composer-compute-storage-us-central1
+      basis: scheduler storage GiB per replica x replica count x 730 hours of allocated capacity
+    # --- web server: always exactly one ---
+    - sku_meter: workload vCPU
+      quantity:
+        - field_value:
+            field_path: workloads_config.web_server.cpu
+        - constant: "1000"
+        - hours_in_month: true
+      price_slug: composer-compute-mcpu-us-central1
+      basis: web server vCPUs x 1000 (per milli-vCPU) x 730 hours -- the web server always runs exactly one instance
+    - sku_meter: workload memory
+      quantity:
+        - field_value:
+            field_path: workloads_config.web_server.memory_gb
+        - hours_in_month: true
+      price_slug: composer-compute-memory-us-central1
+      basis: web server memory GiB x 730 hours of allocated capacity
+    - sku_meter: workload storage
+      quantity:
+        - field_value:
+            field_path: workloads_config.web_server.storage_gb
+        - hours_in_month: true
+      price_slug: composer-compute-storage-us-central1
+      basis: web server storage GiB x 730 hours of allocated capacity
+    # --- triggerer: always-on replicas, no storage dimension ---
+    - sku_meter: workload vCPU
+      quantity:
+        - field_value:
+            field_path: workloads_config.triggerer.cpu
+        - constant: "1000"
+        - field_value:
+            field_path: workloads_config.triggerer.count
+        - hours_in_month: true
+      price_slug: composer-compute-mcpu-us-central1
+      basis: triggerer vCPUs x 1000 (per milli-vCPU) x replica count x 730 hours; a count of 0 disables the triggerer and emits nothing
+    - sku_meter: workload memory
+      quantity:
+        - field_value:
+            field_path: workloads_config.triggerer.memory_gb
+        - field_value:
+            field_path: workloads_config.triggerer.count
+        - hours_in_month: true
+      price_slug: composer-compute-memory-us-central1
+      basis: triggerer memory GiB x replica count x 730 hours of allocated capacity
+    # --- workers at the autoscaling floor: the committed baseline ---
+    - sku_meter: workload vCPU
+      quantity:
+        - field_value:
+            field_path: workloads_config.worker.cpu
+        - constant: "1000"
+        - field_value:
+            field_path: workloads_config.worker.min_count
+        - hours_in_month: true
+      price_slug: composer-compute-mcpu-us-central1
+      basis: worker vCPUs x 1000 (per milli-vCPU) x the autoscaling floor (min_count) x 730 hours -- the committed worker capacity; scaling above the floor is usage and rides the exclusions
+    - sku_meter: workload memory
+      quantity:
+        - field_value:
+            field_path: workloads_config.worker.memory_gb
+        - field_value:
+            field_path: workloads_config.worker.min_count
+        - hours_in_month: true
+      price_slug: composer-compute-memory-us-central1
+      basis: worker memory GiB x min_count x 730 hours at the autoscaling floor
+    - sku_meter: workload storage
+      quantity:
+        - field_value:
+            field_path: workloads_config.worker.storage_gb
+        - field_value:
+            field_path: workloads_config.worker.min_count
+        - hours_in_month: true
+      price_slug: composer-compute-storage-us-central1
+      basis: worker storage GiB x min_count x 730 hours at the autoscaling floor
+  exclusions:
+    - applies_when:
+        - field_path: workloads_config.worker
+          op: is_set
+      text: worker compute above the min_count floor -- workers autoscale toward max_count with queued task load, and every scaled-up worker bills its full CPU, memory, and storage allocation on the same meters while it runs
+    - text: managed database storage grows with task history, XComs, and DAG count, billed per GiB-month
+    - text: the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
+    - text: network egress follows traffic and destination
+    - applies_when:
+        - field_path: recovery_config.enabled
+          op: equals
+          value: "true"
+      text: scheduled snapshots accumulate in the named Cloud Storage location, billed at storage rates by size and cadence
+    - applies_when:
+        - field_path: workloads_config.triggerer
+          op: is_unset
+      text: no triggerer block is declared -- if Composer's per-version defaults run one, its allocation bills the same meters but is invisible in this manifest
+  notes:
+    - text: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+    - applies_when:
+        - field_path: workloads_config.worker
+          op: is_set
+        - field_path: workloads_config.worker.min_count
+          op: equals
+          value: "0"
+      text: The worker floor reads zero (min_count unset or explicitly 0), so no committed worker compute is priced -- Composer's actual floor default, if higher, bills more than this estimate.

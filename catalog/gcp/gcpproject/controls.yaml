@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpproject
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A project stores no data of its own -- it is the resource-hierarchy container other resources live in. At-rest encryption is each contained resource's posture, examined on its own catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data store here means no key decision (see enc-at-rest). CMEK choices belong to the resources created inside the project, each on its own spec.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A project terminates no connections -- it has no endpoint, only the Resource Manager management API, which is Google's TLS-only API surface like every other control-plane call.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A project is not network-addressable; nothing can reach it from any network. Public exposure is decided per resource inside the project.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict (see no-public-access); ingress scoping belongs to the networks, firewalls, and services created inside.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A resource-hierarchy container has no Layer-7 entry point for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management action on the project and every resource inside it is governed by Cloud IAM -- there is no non-IAM path to a GCP project. The spec deliberately bundles NO grants; each grant composes as a first-class GcpProjectIamMember resource, one additive binding at a time.
+      notes: Keeping grants out of this spec is itself the safety property -- a project manifest can never silently clobber another team's IAM policy.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A project runs no workloads and holds no credentials of its own; keyless identity is a posture of the workloads and service accounts created inside it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Resource Manager admits no legacy or weaker authentication path to disable -- project access is IAM-authenticated API access, full stop.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Project lifecycle operations (create, update, move, shutdown) and IAM policy changes are Admin Activity audit-log entries, which Google captures unconditionally -- Admin Activity logging cannot be disabled at any configuration level.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A project emits no runtime metrics of its own -- it is the SCOPE Cloud Monitoring organizes metrics under, while the resources inside export the actual signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A project holds no data to back up; it is declarative configuration re-creatable from the manifest. The 30-day pending-deletion window after a shutdown (see deletion-protection) is a recovery grace period, not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the project level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A project is a global logical container with no zonal footprint -- zone redundancy is decided by each resource deployed inside it.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- destroy shuts the project down into a 30-day pending-deletion window during which it can be restored. PREVENT makes any destroying plan fail before touching the project; ABANDON removes it from management while it lives on unmanaged.
+      notes: The 01-standard-production preset sets PREVENT -- foundation projects should not ride along with a stack teardown. Deleted project IDs stay reserved for up to 30 days, so even a completed deletion cannot be silently impersonated by a recreate.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A project is pure configuration on Google's control plane -- there is no software of its own to patch.

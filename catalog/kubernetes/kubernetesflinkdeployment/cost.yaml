@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesflinkdeployment
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: task_manager.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: Each TaskManager (worker) pod carries this reservation. Empty means the module renders the CR default of 1 CPU / 2Gi -- Flink's validator requires resource memory on both tiers, so the workers are never unbounded.
+    - field_path: job.parallelism
+      sku_meter: cluster CPU and memory reservations
+      impact: "In native mode (the default) Flink requests TaskManagers on demand from the job's parallelism: at one slot per TaskManager (the Flink default) the worker count IS the parallelism. A taskmanager.numberOfTaskSlots entry in flink_configuration packs N slots per worker and divides the count."
+    - field_path: task_manager.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The fixed worker count in standalone mode only -- native mode (the default) ignores it and sizes the worker fleet from the job's parallelism.
+    - field_path: job_manager.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The coordinator pod's reservation. Empty means the module renders the CR default of 1 CPU / 2Gi.
+    - field_path: job_manager.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: More than 1 runs warm-standby JobManagers (requires state.high_availability), each reserving the full JobManager resources.
+    - field_path: state
+      sku_meter: object storage for checkpoints and savepoints
+      pricing_unit: GB-months
+      impact: Checkpoints, savepoints, and HA recovery metadata accumulate on the configured object store; growth tracks the job's state size and checkpointing cadence, and savepoints persist until manually cleaned.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - object-store bytes for checkpoints, savepoints, and HA metadata grow with the job's state size and checkpoint cadence; on a composed KubernetesSeaweedFs that capacity rides the SeaweedFS component's own footprint
+    - a session cluster (job omitted) runs no fixed TaskManagers -- workers are requested on demand as jobs are submitted, so no manifest-time worker count exists
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its JobManager and TaskManager pods reserve, realized on the cluster's bill. The operator that reconciles this resource is a separate KubernetesFlinkOperator with its own footprint. An honest manifest-time statement for an application cluster is the capacity footprint: JobManagers x resources + parallelism-derived TaskManagers x resources."

@@ -8,7 +8,7 @@ This directory contains the Pulumi implementation for deploying an IAM deny poli
 
 1. **Pulumi CLI** installed (version 3.x or later)
 2. **Go** installed (version 1.21 or later)
-3. **Org-level IAM permissions**: creating deny policies requires `roles/iam.denyAdmin` granted at the ORGANIZATION, even for project-attached policies
+3. **IAM permissions**: the deploying principal's permissions are listed in [`../permissions.yaml`](../permissions.yaml) — they must be granted at the ORGANIZATION level, even for project-attached policies
 4. **GCP Credentials** configured:
    ```bash
    gcloud auth application-default login

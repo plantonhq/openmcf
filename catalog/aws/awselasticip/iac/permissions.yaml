@@ -1,0 +1,63 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awselasticip
+spec:
+  aws:
+    statements:
+      - sid: ManageAddress
+        actions:
+          - ec2:AllocateAddress
+          - ec2:ReleaseAddress
+        resources:
+          - arn:aws:ec2:*:*:elastic-ip/*
+          - arn:aws:ec2:*:*:ipv4pool-ec2/*
+          - arn:aws:ec2::*:ipam-pool/*
+        provenance: derived
+        notes: Covers aws_eip allocation and teardown. AllocateAddress authorizes against every ARN format the allocation can draw from per the service reference -- the elastic-ip itself, the BYOIP pool (ipv4pool-ec2) when spec.public_ipv4_pool is set, and the IPAM pool when spec.ipam_pool_id is set. The ipam-pool ARN format carries no region segment.
+      - sid: AssociateAddress
+        actions:
+          - ec2:AssociateAddress
+          - ec2:DisassociateAddress
+        resources:
+          - arn:aws:ec2:*:*:elastic-ip/*
+          - arn:aws:ec2:*:*:instance/*
+          - arn:aws:ec2:*:*:network-interface/*
+        provenance: derived
+        notes: Covers the association half of aws_eip -- created only when spec.instance or spec.network_interface is set, and re-run in place when the target changes. AssociateAddress authorizes against the address AND the target (instance or network interface) per the service reference, so all three ARN formats are in scope.
+      - sid: ManageReverseDns
+        actions:
+          - ec2:ModifyAddressAttribute
+          - ec2:ResetAddressAttribute
+        resources:
+          - arn:aws:ec2:*:*:elastic-ip/*
+        provenance: derived
+        notes: Covers aws_eip_domain_name -- created only when spec.reverse_dns_domain_name is set. Modify sets the PTR record; Reset clears it on destroy.
+      - sid: TagAddress
+        actions:
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:elastic-ip/*
+        provenance: derived
+        notes: Tag-on-create rides the AllocateAddress tag specification; later tag updates call CreateTags/DeleteTags directly. Scoped to the elastic-ip ARN -- the only resource type the module tags.
+      - sid: DescribeAddresses
+        actions:
+          - ec2:DescribeAddresses
+          - ec2:DescribeAddressesAttribute
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_eip and aws_eip_domain_name during plan/refresh (the provider reads the address and its domain-name attribute). EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ReadIpamPoolAllocations
+        actions:
+          - ec2:GetIpamPoolAllocations
+        resources:
+          - arn:aws:ec2::*:ipam-pool/*
+        provenance: derived
+        notes: Used only when spec.ipam_pool_id is set -- after ReleaseAddress the provider polls the IPAM pool's allocations until the released address disappears. The ipam-pool ARN format carries no region segment.

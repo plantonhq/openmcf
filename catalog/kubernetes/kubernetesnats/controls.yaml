@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesnats
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: JetStream's stream data rests on the PersistentVolumes the target cluster's storage class provisions; encryption at rest is a property of that storage, owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Unset serves plaintext; tls.secret_name serves the client listener (port 4222) over TLS from an existing kubernetes.io/tls Secret -- the cert-manager seam (issue a KubernetesCertificate and wire its secret here) -- and verify_clients adds mutual TLS.
+      notes: Websocket, cluster-route, and leafnode listener TLS ride the helm_values escape hatch (each listener has its own tls block in the chart).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The client Service defaults to ClusterIP -- in-cluster clients only. LoadBalancer or NodePort exposure is an explicit opt-in through service.type with the cloud's annotations.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may connect; access control is client authentication with subject-level permissions (see rbac) and Kubernetes NetworkPolicies composed as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A messaging system serves no HTTP edge traffic of its own -- web application firewalls do not apply. The websocket listener, when enabled, is exposed through composed first-class exposure kinds where edge concerns live.
+    - control_id: rbac
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: Unset means UNAUTHENTICATED -- any client that can reach the Service connects with full access (fine inside a trusted cluster network, never for anything reachable from outside). Declaring users (flat, or grouped into accounts for isolated subject namespaces) enables authentication with subject-level publish/subscribe permissions per user; passwords are module-generated and land only in the <name>-auth Secret.
+      notes: The 02-production preset declares a least-privilege orders-service user (publish/subscribe fenced to orders.>) beside a platform-admin; 01-dev deliberately runs unauthenticated.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component reaches no cloud APIs -- there is no object-store or other cloud surface to authenticate, so there is nothing to federate a workload identity for.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: With auth declared, unauthenticated connections are rejected outright unless no_auth_user deliberately maps them to a declared user's permissions -- the anonymous path exists only as an explicit, scoped opt-in. With auth unset, the server accepts unauthenticated connections (the spec's documented development posture).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- server logs stream to stdout for the cluster's log collector. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics
+      evidence:
+        type: spec_default
+        reference: The server's monitoring endpoint (port 8222) is always on in-pod; metrics.exporter_enabled adds the prometheus-nats-exporter sidecar (port 7777) and metrics.pod_monitor_enabled a PodMonitor for operator-based scraping (requires the Prometheus Operator CRDs).
+      notes: The 02-production preset enables both.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No backup mechanism is modeled -- JetStream's file store persists stream data on PersistentVolumes and replicated streams (R3) survive a server loss, but neither is a restorable backup archive. Volume snapshots are the cluster's storage-class concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: cluster
+      evidence:
+        type: spec_default
+        reference: Empty runs a single server; cluster.enabled runs a full mesh of replicas (default 3 -- the floor for replicated R3 streams, tolerating one server down through JetStream's RAFT groups).
+      notes: Spreading servers across zones needs the chart's affinity/topology fields through the helm_values escape hatch -- the typed scheduling block carries node_selector and tolerations only. The 02-production preset runs a 3-server cluster.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version defaults to the module's pin (2.14.2 -- the chart and nats-server move in version lockstep); upgrading is a deliberate act of changing the pin, which re-runs the release with the new chart.

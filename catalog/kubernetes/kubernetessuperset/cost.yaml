@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessuperset
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: web
+      sku_meter: cluster CPU and memory reservations
+      impact: Each web replica reserves the declared requests -- chart rendering and SQL Lab are memory-hungry, so size the web tier for analysts, not for idle. The tier is stateless and scales freely; an HPA (web.hpa) hands the replica count to the autoscaler.
+    - field_path: worker
+      sku_meter: cluster CPU and memory reservations
+      impact: Each Celery worker reserves the declared requests as standing capacity for async queries, thumbnails, and reports. Exists only when cache is set; worker.hpa hands the count to the autoscaler.
+    - field_path: cache
+      sku_meter: cluster CPU and memory reservations
+      impact: Declaring the cache turns on the async fleet posture -- workers by default, plus optional beat, flower, websockets, and MCP pods. The Redis-protocol store itself (a composed KubernetesValkey) is a separate component with its own footprint.
+    - field_path: beat
+      sku_meter: cluster CPU and memory reservations
+      impact: One singleton scheduler pod at chart-default sizing -- required for alerts, reports, and cache warmup to actually fire.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - HPAs on the web and worker tiers change replica counts at runtime between their declared bounds
+    - the beat, flower, websocket, and MCP pods (when enabled) and the init Job carry only chart-default sizing -- the spec models no resources for them
+    - the helm_values overlay merges last and can override any modeled value
+    - the metadata database and the composed Valkey cache are separate components whose capacity rides their own footprints
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: web replicas x requests + worker replicas x requests. Superset itself provisions no volumes -- all durable state lives in the metadata database and cache components."

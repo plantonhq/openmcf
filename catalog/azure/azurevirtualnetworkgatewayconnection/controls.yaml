@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualnetworkgatewayconnection
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A connection stores no customer data -- it is tunnel configuration on the managed gateway. Its one secret, the pre-shared key, is held by Azure's control plane (readable back only through the dedicated shared-key API), not on any storage this manifest governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- the connections API carries no customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: The IPSEC and VNET_TO_VNET arms are IKE-negotiated IPsec security associations -- encrypted end to end, with Azure's default proposal set unless ipsec_policy pins algorithms. The EXPRESS_ROUTE arm joins a circuit's private peering, which is NOT encrypted by default -- the connection offers no encryption toggle for it.
+      notes: Both presets are IPSEC connections; the 02 preset pins AES256/SHA256 with DH group 14 and PFS 2048. Encrypting ExpressRoute transit is composed elsewhere -- an IPsec tunnel over the circuit or MACsec on Direct ports.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The connection is not an endpoint -- it is the binding between a gateway and its far side. The internet-facing termination points are the gateway's public IPs, governed on the AzureVirtualNetworkGateway component; local_azure_ip_address_enabled can even keep a tunnel entirely on the gateway's private IP.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Each connection is pinned at creation to ONE declared far side -- the local network gateway's device address, a named peer gateway, or a circuit (ARM cannot repoint it; every far-side reference is ForceNew) -- so traffic enters the VNet only from that declared endpoint, after successful IKE negotiation on the IPsec arms.
+      notes: traffic_selector_policies can restrict a tunnel further to named local/remote CIDR pairs, and connection_mode can forbid the far side from initiating (INITIATOR_ONLY) or this side (RESPONDER_ONLY).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A tunnel is not an HTTP surface -- there is no request stream for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the connection -- create, retune, delete, and even reading the shared key (a separately authorized action) -- is authorized by Azure RBAC unconditionally. Tunnel establishment itself is authenticated by the pre-shared key, not by Azure identities.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A connection runs no workloads and calls no cloud APIs -- there is nothing here that could hold or replace a credential.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: connection_protocol
+      evidence:
+        type: spec_default
+        reference: Unspecified lets Azure apply its default, IKEv2; IKE_V1 exists only for legacy on-premises devices, and choosing it reopens the weaker legacy negotiation on this tunnel. Fixed at creation.
+      notes: Both presets ride the IKEv2 default. The other legacy arm lives gateway-side -- a POLICY_BASED gateway forces IKEv1 for everything it carries, examined on the AzureVirtualNetworkGateway component.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the connection lands in the Azure Activity Log unconditionally -- including shared-key reads and writes, which are their own authorized operations. Tunnel-level IKE diagnostics are opt-in via Azure Monitor diagnostic settings on the connection or its gateway, outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM registers metric definitions on the connections resource type itself (bandwidth, ingress/egress bytes), and the owning gateway's platform metrics dimension per tunnel -- no configuration required. This is where a Succeeded-but-Connecting tunnel is diagnosed from.
+      notes: Provisioned is not connected -- deployment success proves the parameters were valid; the metrics carry the negotiation's actual state.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the connection is regenerable configuration, restored by redeploying the manifest; the tunnel renegotiates live.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Redundancy is a gateway property, not a connection choice -- an active-active gateway terminates this one connection's tunnels on both always-live instances (custom_bgp_addresses exists precisely to pin each instance's BGP endpoint), and zone redundancy rides the gateway's AZ SKU. The connection object itself has no replica to configure; full path redundancy (two devices, two connections) is composed at the manifest level.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the connections API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Replacement is cheap by design -- seconds, no gateway rebuild, and the tunnel renegotiates.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A connection is configuration on the managed gateway -- it has no software surface of its own to patch; the gateway appliance's patching is Microsoft-managed and examined on the AzureVirtualNetworkGateway component.

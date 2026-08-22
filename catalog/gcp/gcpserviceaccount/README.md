@@ -15,7 +15,7 @@ When you deploy a GcpServiceAccount resource, Planton provisions:
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId`
-- **IAM permissions** — `roles/iam.serviceAccountAdmin` on the target project; `roles/resourcemanager.projectIamAdmin` if granting project roles; org-level IAM admin if granting org roles
+- **IAM permissions** — the deploying principal's permissions (per feature: account, optional key, project-role grants, org-role grants) are listed in [`iac/permissions.yaml`](iac/permissions.yaml)
 
 ## Quick Start
 

@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesvelero
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: deployment.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The Velero server is a single-replica Deployment; these requests are what it reserves. Unset, the chart applies NO requests or limits at all (upstream's documented starting point is 500m CPU / 128Mi memory requests) -- the pod schedules unbounded.
+    - field_path: fs_backup.deploy_node_agent
+      sku_meter: cluster CPU and memory reservations
+      impact: True deploys the node-agent as a DaemonSet -- ONE POD ON EVERY NODE in the cluster, each with privileged host-path mounts of the kubelet pod directory. Whatever the agent reserves multiplies by the cluster's node count, a number no manifest declares.
+    - field_path: fs_backup.node_agent_resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The node-agent container's PER-NODE reservation. Unset, the chart applies no requests or limits; kopia uploads are memory- and CPU-hungry during backup windows.
+    - field_path: backup_storage
+      sku_meter: object storage for backups
+      pricing_unit: GB-months
+      impact: Every backup ships resource manifests -- and volume data when fs-backup or snapshot data movement carries it -- to the configured S3, GCS, or Azure Blob store. Those bytes bill at the store provider's object-storage rates and grow with backup scope, cluster churn, and retention.
+    - field_path: schedules
+      sku_meter: object storage for backups
+      pricing_unit: GB-months
+      impact: Each schedule accumulates backups in the store until its ttl expires them (Velero default 720h = 30 days) -- a nightly schedule at the default TTL holds roughly 30 backups' bytes at steady state.
+    - field_path: volume_snapshots
+      sku_meter: volume snapshots
+      impact: Provider-native or CSI snapshots created during backups persist AT THE CLOUD PROVIDER and bill at its snapshot-storage rates until the backup's TTL garbage-collects them; default_snapshot_move_data relocates that data into the object store instead.
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: The overlay merges LAST and can override any modeled value, including server and node-agent resources and additional storage locations.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "no committed preset declares explicit resources, and the chart itself applies no server or node-agent requests/limits by default -- so no manifest-derived capacity footprint is generated"
+    - "PER-NODE: when fs_backup.deploy_node_agent is true (the 02 and 03 presets), the node-agent runs one pod on EVERY node -- its reservation multiplies by the cluster's node count, which no manifest knows"
+    - object-store bytes at the configured backend grow with backup scope, volume data, cluster churn, and schedule TTLs -- billed by the store's provider, not the cluster
+    - volume snapshots persist and bill at the cloud provider's snapshot-storage rates until garbage-collected
+    - the helm_values overlay merges last and can change any of the above
+  notes: "This component creates no cloud SKU of its own -- its pods reserve cluster capacity, realized on the cluster's bill. Its FUNCTION, though, is real spend elsewhere: backup bytes land in the configured object store and volume snapshots persist at the cloud provider, both billed at those providers' rates. The store outlives the component: backup records deliberately survive uninstall (crds.cleanup_on_uninstall defaults false), and the bucket's objects are never touched either way."

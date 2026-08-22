@@ -66,9 +66,8 @@ The module reads its configuration from the `GcpGkeWorkloadIdentityBindingStackI
 
 ## Required Permissions
 
-The identity running the module needs `roles/iam.serviceAccountAdmin` (or
-the narrower `iam.serviceAccounts.setIamPolicy`) on the target service
-account.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+permission set the deploying principal needs on the target service account.
 
 ## Implementation Notes
 

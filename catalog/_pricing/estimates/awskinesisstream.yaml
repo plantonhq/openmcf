@@ -1,0 +1,88 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awskinesisstream
+spec:
+  presets:
+    - preset: 01-on-demand-minimal
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Kinesis
+          sku_meter: on-demand stream hours
+          pricing_unit: stream-hours
+          pricing_quantity: "730"
+          quantity_basis: an ON_DEMAND stream bills a flat per-stream fee every hour of the month -- the committed part of a bill whose data charges follow traffic; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+          list_unit_price: "0.04"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "29.2000"
+      total_list_cost: "29.2000"
+      exclusions:
+        - data written and data read bill per GB and follow traffic entirely -- the usually dominant part of an on-demand bill
+        - enhanced fan-out consumers bill consumer-shard hours and retrieved GB on their own AwsKinesisStreamConsumer components
+      notes: Only the stream-hour fee is committed at manifest time; the real bill follows the data written and read.
+    - preset: 02-provisioned-encrypted
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Kinesis
+          sku_meter: extended retention shard hours
+          pricing_unit: shard-hours
+          pricing_quantity: "1460"
+          quantity_basis: retention beyond 24 hours adds the extended-retention surcharge on every shard-hour -- the spec validates any explicit retention to at least 24, so any other non-zero value is beyond a day; the surcharge covers data up to 7 days old, and priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+          list_unit_price: "0.02"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "29.2000"
+        - service_name: Amazon Kinesis
+          sku_meter: provisioned shard hours
+          pricing_unit: shard-hours
+          pricing_quantity: "1460"
+          quantity_basis: every open shard bills every hour of the month -- shard_count x 730 shard-hours; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+          list_unit_price: "0.015"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "21.9000"
+      total_list_cost: "51.1000"
+      exclusions:
+        - if retention_period_hours exceeds 168, data older than 7 days bills long-term storage per GB-month plus a per-GB retrieval charge when read back -- both data-volume-dependent
+        - PUT payload units bill per million units and follow write volume
+        - KMS request charges follow record volume, and a customer-managed key bills its monthly fee on its own AwsKmsKey component
+        - enhanced fan-out consumers bill consumer-shard hours and retrieved GB on their own AwsKinesisStreamConsumer components
+      notes: The committed floor is exact -- shards times hours, plus the retention surcharge. Traffic above shard capacity throttles rather than bills; resizing shard_count is the cost lever.
+    - preset: 03-production-analytics
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Kinesis
+          sku_meter: on-demand stream hours
+          pricing_unit: stream-hours
+          pricing_quantity: "730"
+          quantity_basis: an ON_DEMAND stream bills a flat per-stream fee every hour of the month -- the committed part of a bill whose data charges follow traffic; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+          list_unit_price: "0.04"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "29.2000"
+      total_list_cost: "29.2000"
+      exclusions:
+        - data written and data read bill per GB and follow traffic entirely -- the usually dominant part of an on-demand bill
+        - on-demand extended retention (data 1-7 days old) bills per GB-month on the data actually stored -- data-volume-dependent
+        - if retention_period_hours exceeds 168, data older than 7 days bills long-term storage per GB-month plus a per-GB retrieval charge when read back -- both data-volume-dependent
+        - enhanced shard-level metrics bill CloudWatch custom-metric charges per enabled metric per shard
+        - KMS request charges follow record volume, and a customer-managed key bills its monthly fee on its own AwsKmsKey component
+        - enhanced fan-out consumers bill consumer-shard hours and retrieved GB on their own AwsKinesisStreamConsumer components
+      notes: Only the stream-hour fee is committed at manifest time; the real bill follows the data written and read.

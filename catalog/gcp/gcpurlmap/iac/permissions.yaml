@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpurlmap
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageUrlMap
+        permissions:
+          - compute.urlMaps.create
+          - compute.urlMaps.get
+          - compute.urlMaps.update
+          - compute.urlMaps.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_url_map -- create, read/refresh, in-place updates (description, defaults, host rules, path matchers, tests are all mutable), destroy, and polling the global operation every mutation returns.
+      - purpose: UseReferencedBackends
+        permissions:
+          - compute.backendServices.use
+          - compute.backendBuckets.use
+        provenance: derived
+        notes: "Service-side checks, not module API calls -- GCP's urlMaps.insert reference documents that every backend target named in the map (default_service, path matcher defaults, path/route rule services, weighted_backend_services, request_mirror_policy, custom error services) authorizes with compute.backendServices.use or compute.backendBuckets.use on the referenced resource. Grant the one(s) matching what the map actually targets: backendBuckets.use is needed only when a bucket is a target (e.g. a custom error service or static-content path)."

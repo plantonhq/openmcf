@@ -1,0 +1,64 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesTemporal manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetestemporal.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Temporal runs four
+# server services (frontend, history, matching, worker) plus the Web UI,
+# each with its own replicas and resources seams; it provisions no
+# volumes -- every workflow's state lives in the database you declare.
+# num_history_shards is DATA partitioning baked into the schema, never a
+# pod count -- deliberately not bound.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetestemporal
+spec:
+  workloads:
+    - label: frontend replica
+      resources_path: services.frontend.resources
+      instances:
+        field_value:
+          field_path: services.frontend.replicas
+          default_when_unset: "1"
+    - label: history replica
+      resources_path: services.history.resources
+      instances:
+        field_value:
+          field_path: services.history.replicas
+          default_when_unset: "1"
+    - label: matching replica
+      resources_path: services.matching.resources
+      instances:
+        field_value:
+          field_path: services.matching.replicas
+          default_when_unset: "1"
+    - label: worker replica
+      resources_path: services.worker.resources
+      instances:
+        field_value:
+          field_path: services.worker.replicas
+          default_when_unset: "1"
+    - label: Web UI replica
+      resources_path: web_ui.resources
+      instances:
+        field_value:
+          field_path: web_ui.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: the admin-tools pod (on by default) and the schema-setup and namespace-creation Jobs carry only chart-default sizing -- the spec models no resources for them, and the Jobs are ephemeral (install/upgrade time)
+    - applies_when:
+        - field_path: internal_frontend_enabled
+          op: equals
+          value: "true"
+      text: the internal-frontend service runs at chart-default sizing -- the spec models no resources for it
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override any modeled value, including resources and replica counts -- this footprint states the typed spec's declaration
+    - text: the database is a separate component (nothing is bundled) -- workflow-state storage growth and connection pressure ride its own footprint -- and archival writes to external object storage
+  notes:
+    - text: Temporal provisions no volumes -- every workflow's state lives in the database you declare, so the footprint is purely compute reservations across the four server services and the Web UI
+    - text: num_history_shards is DATA partitioning baked into the schema at first install -- shard ownership distributes across the history replicas; it is never a pod count and is deliberately not bound

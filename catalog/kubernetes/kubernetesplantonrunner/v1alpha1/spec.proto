@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonrunner.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesPlantonRunnerSpec** declares a standing Planton runner on a
+ * Kubernetes cluster — an always-on worker that receives deploy operations
+ * from the Planton control plane and executes them from INSIDE the
+ * cluster's network. The module installs the official `planton-runner`
+ * Helm chart (OCI, ghcr.io/plantonhq/charts) as a real Helm release, so
+ * the deployed runner is byte-identical to a hand-installed one.
+ *
+ * Why it exists: some targets are reachable only from inside the network —
+ * the canonical case is a private service or a cluster API endpoint no
+ * hosted runner fleet can reach. Running the runner in the cluster makes
+ * those targets deployable and operable with zero inbound exposure: the
+ * runner only ever dials OUT to the control plane.
+ *
+ * ENROLLMENT IS TOKEN-FIRST: the runner is born with a runner TOKEN, never
+ * an identity. On first boot it presents the token to the control plane,
+ * registers ITSELF, and receives its own individually revocable identity;
+ * the identity persists on the pod's ephemeral volume, container restarts
+ * reuse it, and pod recreation re-joins with the same token (the token's
+ * lineage re-admits the runner it originally admitted — no other token
+ * can). The token lives in a module-created Kubernetes Secret; it never
+ * rides rendered chart values.
+ *
+ * EXACTLY ONE REPLICA, by design: a runner's identity is minted for one
+ * live instance — a second instance joining under the same name would
+ * revoke the first's key. The chart pins replicas to 1 with a Recreate
+ * strategy; scaling execution capacity means more runners (more resources
+ * of this kind), never more copies of this one.
+ */
+message KubernetesPlantonRunnerSpec {
+  /**
+   * The namespace to install the runner into. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the release is installed, and deleted with
+   * the resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The runner token that authorizes this runner to JOIN the control
+   * plane. Create one with `planton runner token create` (or in the
+   * console under Organization Settings → Runner Tokens); on Planton, the
+   * platform mints a token and writes it at exactly the managed-secret
+   * reference this field names before the infrastructure applies — there
+   * is no manual credential step. The token only gates joining and is
+   * never the runner's identity: the runner receives its own individually
+   * revocable identity when it registers itself on arrival, and revoking
+   * this token never touches runners it already admitted. This is a
+   * secret: supply it as a managed-secret reference, never inline
+   * plaintext; the module stores it in a Kubernetes Secret the chart
+   * reads by name.
+   */
+  string token = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  /**
+   * The name this runner registers itself under when it joins — how it
+   * appears in `planton runner list` and the console, and the name deploy
+   * operations are routed to. Defaults to "<env>-<metadata.name>" (or
+   * metadata.name outside an environment) — the same derivation the
+   * platform uses for records that reference this runner, so leave it
+   * unset unless you are deliberately adopting an existing enrollment.
+   * Re-deploying with the SAME name and the SAME token re-admits the
+   * runner (lost-disk recovery); a different token answers a closed door.
+   */
+  string runner_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "runner_name_format"
+      message: "runner name must be 1-63 characters: lowercase letters, digits, and hyphens, starting with a letter and ending with a letter or digit"
+      expression: "this.matches('^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * The control-plane endpoint the runner joins, as host:port. Leave
+   * unset for Planton's hosted control plane (the runner's built-in
+   * default); set it for a self-hosted instance (e.g.
+   * "planton.example.com:443"). This is the one bootstrap coordinate the
+   * join cannot deliver — everything else (work queue, tunnel, API
+   * endpoints) arrives in the join response.
+   */
+  string control_plane_endpoint = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "control_plane_endpoint_format"
+      message: "control plane endpoint must be host:port, e.g. \"planton.example.com:443\" — no scheme prefix"
+      expression: "this.matches('^[a-zA-Z0-9.-]+:[0-9]+$')"
+    }
+  ];
+
+  /**
+   * The runner build to deploy: an image tag of the official runner
+   * container image. "latest" tracks the newest release; pin a specific
+   * version tag for change control.
+   */
+  optional string runner_version = 6 [(dev.planton.shared.options.default) = "latest"];
+
+  /**
+   * The container image repository the runner is pulled from. Override
+   * only for air-gapped or mirrored registries hosting a copy of the
+   * official image; the digest-identical mirror is your responsibility.
+   */
+  optional string image_repository = 7 [(dev.planton.shared.options.default) = "ghcr.io/plantonhq/planton/runner"];
+
+  /**
+   * The planton-runner chart version to install. Defaults to the version
+   * this catalog release was validated against; pin a specific version
+   * only for change control. Versions below 0.4.0 predate token
+   * enrollment and are refused by the module.
+   */
+  string chart_version = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "chart_version_format"
+      message: "chart version must be an exact semver like \"0.4.0\" — ranges are not reproducible"
+      expression: "this.matches('^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$')"
+    }
+  ];
+
+  /**
+   * CPU/memory for the runner container. When omitted, the chart's own
+   * defaults apply (requests 100m/256Mi, limits 1/1Gi) — comfortable for
+   * the runner's control loops plus typical IaC operations. Size limits
+   * up for large stacks or high operation concurrency; memory pressure
+   * shows up as failed IaC operations mid-apply.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 9;
+
+  /**
+   * Enables the runner's build worker: the runner then also executes
+   * container-image build pipelines through Tekton on this cluster.
+   * Requires Tekton Pipelines to be installed.
+   */
+  KubernetesPlantonRunnerBuild build = 10;
+
+  /**
+   * Advanced escape hatch: raw Helm values YAML merged OVER the values
+   * this spec renders (Helm `-f` semantics: maps deep-merge with these
+   * overrides winning, lists replace). Use it for chart knobs the spec
+   * does not model (nodeSelector, tolerations, extra env) — never for
+   * secret material: the enrollment token is carried by the
+   * module-created Secret, and the enrollment block is re-pinned after
+   * the merge so an override can never move it into rendered values.
+   */
+  string helm_values = 11;
+}
+
+/**
+ * **KubernetesPlantonRunnerBuild** turns on the runner's Tekton build
+ * worker.
+ */
+message KubernetesPlantonRunnerBuild {
+  /**
+   * When true, the runner registers as a build worker and executes
+   * container-image build pipelines on this cluster.
+   */
+  bool enabled = 1;
+
+  /**
+   * The namespace Tekton build pipelines run in. Defaults to the
+   * runner's own namespace.
+   */
+  string tekton_namespace = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "tekton_namespace_format"
+      message: "tekton namespace must be a valid Kubernetes namespace name: lowercase letters, digits, and hyphens, at most 63 characters"
+      expression: "this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')"
+    }
+  ];
+}

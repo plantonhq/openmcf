@@ -15,7 +15,7 @@ No additional supporting resources (API enablement, networking connections, etc.
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId`
 - **Compute Engine API enabled** (`compute.googleapis.com`) on the target project
-- **IAM permissions** — `roles/compute.networkAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - **An existing VPC network** — required only for INTERNAL addresses (referenced via `network`)
 
 ## Quick Start

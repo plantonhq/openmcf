@@ -1,0 +1,9 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: planton-operator
+spec:
+  namespace:
+    value: planton-operator # the convention; only the manager lives here
+  create_namespace: true # the module creates (and owns) the namespace
+  chart_version: "0.7.1" # the catalog-validated pin — pin deliberately

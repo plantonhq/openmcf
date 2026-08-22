@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorruleset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule set is an edge delivery-policy document; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transit posture lives on the routes (supported_protocols, https_redirect_enabled, forwarding_protocol) and custom domains (certificate, cipher policy) -- separate kinds. A rule CAN express an HTTP-to-HTTPS upgrade (a url_redirect action with an HTTPS_ONLY protocol), but that is optional policy content, not a posture field of this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The rule set has no reachable surface of its own -- it is policy that routes attach; exposure is decided by the endpoint, routes, and domains, separate kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Rules can match on client addresses and geographies (remote_address conditions) and redirect or rewrite matched traffic, but the delivery-rule engine is content policy, not an access-control boundary -- ingress restriction lives in the WAF attached via an AzureFrontDoorSecurityPolicy, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF enforcement is attached by an AzureFrontDoorSecurityPolicy pairing an AzureFrontDoorFirewallPolicy with the profile's hostnames -- separate kinds. A rule set shapes delivery (redirects, rewrites, headers, cache overrides); it is not a request filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the rule set exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule set runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; request access logs are the Front Door profile's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The rule set publishes no metrics of its own; rule-match observability rides the Front Door profile's logs and metrics, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless edge configuration -- nothing to back up; the manifest recreates the set and its rules declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the set's rules are evaluated on Microsoft's worldwide edge fleet by design, with no single-zone or single-region failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a rule set (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that runs the rules engine; no customer-visible patch surface exists.

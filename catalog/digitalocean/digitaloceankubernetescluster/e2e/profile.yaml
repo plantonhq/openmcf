@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceankubernetescluster
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` is a one-node cluster on the
+  # cheapest DOKS-capable slug proving the create/verify/destroy lifecycle
+  # and the cluster_id / kubeconfig / api_server_endpoint outputs (named
+  # `minimal` so it doubles as the node-pool kind's cluster fixture);
+  # `hardened` proves the control-plane firewall, a maintenance policy,
+  # cluster-autoscaler tuning, the routing-agent addon, and a default pool
+  # with labels, a taint, tags, and autoscaling. Both ride the VPC registry
+  # prerequisite (the spec's vpc is REQUIRED, so the fixture is a registry
+  # edge, never a per-scenario annotation). Deliberately not in the live
+  # lanes: highly_available (HA control plane bills ~$40/month extra --
+  # prove after the cheap lanes are green), the Pulumi SDK v4.49.0 gap arms
+  # (sso, isolated_workers, worker_subnet_uuid, gpu_partition_mode, and the
+  # eight addon blocks beyond routing_agent -- Terraform wires them; Pulumi
+  # fails loudly if set), GPU node pools (GPU Droplets are the most
+  # expensive arm), registry_integration (needs a DOCR registry in the
+  # account), and destroy_all_associated_resources (a destroy-behavior flag
+  # that a test should never exercise against shared accounts). Clusters
+  # take ~5-10 minutes to create (the provider's create timeout class is 30
+  # minutes) and bill per node hourly; s-1vcpu-2gb is ~$0.018/hour, so a
+  # full two-scenario dual-engine sweep costs well under a dollar.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 40

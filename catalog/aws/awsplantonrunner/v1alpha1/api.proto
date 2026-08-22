@@ -11,7 +11,9 @@ import "shared/metadata.proto";
 // AWS network: an always-on worker that executes deploy operations and
 // cloud operations from inside the VPC, making private endpoints (most
 // notably private Kubernetes cluster APIs) deployable and operable with an
-// outbound-only network posture.
+// outbound-only network posture. It is born with a runner token, registers
+// itself with the control plane on first boot, and receives its own
+// individually revocable identity.
 message AwsPlantonRunner {
   // api-version must be set to "aws.planton.dev/v1alpha1".
   string api_version = 1 [(buf.validate.field).string.const = "aws.planton.dev/v1alpha1"];
@@ -24,7 +26,7 @@ message AwsPlantonRunner {
   dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
 
   // spec holds the core configuration defining where the runner lives,
-  // how big it is, which build it runs, and who it is.
+  // how big it is, which build it runs, and the token it joins with.
   AwsPlantonRunnerSpec spec = 4 [(buf.validate.field).required = true];
 
   // status holds runtime or post-deployment information.

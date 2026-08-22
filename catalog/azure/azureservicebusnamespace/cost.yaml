@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureservicebusnamespace
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Service Bus
+      sku_meter: Standard base charge
+      pricing_unit: months
+      description: A STANDARD namespace carries a flat monthly base charge that includes the first 13M operations and the first 1,000 brokered connections -- billed once per Azure subscription across ALL Standard namespaces, so the first Standard namespace pays it and every additional one rides free.
+    - service_name: Service Bus
+      sku_meter: messaging units
+      pricing_unit: hours
+      description: A PREMIUM namespace bills its dedicated messaging units by the hour from creation -- reserved compute and memory, so the meter runs around the clock regardless of traffic, and every operation is included in the MU rate.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: messaging units
+      pricing_unit: hours
+      impact: The tier ladder is the whole cost decision -- BASIC has no committed meter at all (pure per-million operations), STANDARD trades a small monthly base charge for topics/sessions/transactions with tiered per-million operations above the included 13M, and PREMIUM moves to dedicated messaging units at roughly two orders of magnitude more committed spend, with all operations included. Unspecified deploys STANDARD; moving into or out of PREMIUM replaces the namespace.
+    - field_path: capacity
+      sku_meter: messaging units
+      pricing_unit: hours
+      impact: PREMIUM's linear multiplier -- each messaging unit (1, 2, 4, 8, or 16) is a dedicated resource slice on the hourly meter. Azure bills a flat daily rate at the day's MAXIMUM MU count, so scaling down mid-day does not trim that day's bill; scaling updates in place.
+    - field_path: premium_messaging_partitions
+      sku_meter: messaging units
+      pricing_unit: hours
+      impact: Partitioning multiplies the bill -- Microsoft's price list states the number of messaging units is multiplied by the number of partitions, so 2 MUs across 2 partitions bill as 4. The layout is fixed at creation (ForceNew).
+  estimate_exclusions:
+    - BASIC and STANDARD operations bill per million (every API call -- send, receive, lock renewal, management -- counted per 64 KB of message data); STANDARD's tiered rates apply above the 13M/month included in the base charge, PREMIUM includes all operations in the MU rate
+    - STANDARD brokered connections (concurrent AMQP connections and HTTP long-polls) bill per prorated peak connection above the 1,000/month included across the subscription's Standard namespaces
+    - PREMIUM Geo-Replication, when configured, bills per GB replicated by zone -- and a geo-DR or replication pairing runs a second Premium namespace billed on its own component
+    - customer-managed-key encryption drives Key Vault operations billed on the referenced vault's own components
+    - network egress follows consumer placement
+  notes: "The namespace is the billing boundary for the whole Service Bus family: queues, topics, subscriptions, and SAS rules are free objects inside it, so the sku decides the bill's shape. BASIC is pure pay-per-use (no committed meter). STANDARD's committed spend is one flat base charge that Azure bills once per subscription -- not per namespace -- with operations above the included allowance riding tiered per-million meters. PREMIUM replaces all of it with dedicated messaging-unit hours: predictable latency and no per-operation charges, at reserved-capacity prices multiplied by both the MU count and the partition count."

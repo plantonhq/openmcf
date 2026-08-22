@@ -88,5 +88,5 @@ module "public_ip" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Network/publicIPAddresses/write`
-on the resource group -- held via Network Contributor, Contributor, or Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+action manifest the deploying credential needs.

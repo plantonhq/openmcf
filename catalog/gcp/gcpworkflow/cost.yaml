@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpworkflow
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: source_contents
+      sku_meter: workflow steps
+      pricing_unit: steps per 1,000
+      impact: The source IS the meter -- every executed step bills, in increments of 1,000. Internal steps (googleapis.com calls, *.run.app calls, variable assignments, conditionals, connector polling) bill $0.01 per 1,000 past the first 5,000 free each month; external steps (external APIs, Google Cloud resources behind CUSTOM domains, callback waits) bill $0.025 per 1,000 past the first 2,000 free. Retries in the source count -- each retry attempt is a fresh billed step.
+    - field_path: call_log_level
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: LOG_ALL_CALLS writes an entry per call and result to Cloud Logging, billed there by ingested volume -- the debugging setting with the highest log bill; the API default (errors only) and LOG_NONE keep the meter near zero.
+    - field_path: execution_history_level
+      sku_meter: workflow steps
+      impact: EXECUTION_HISTORY_DETAILED keeps step inputs and outputs for console debugging -- Google's Workflows pricing page publishes no separate meter for history detail (the price of the extra detail is not yet published), so the dial is operational, not a priced lever.
+    - field_path: crypto_key
+      sku_meter: Cloud KMS key operations
+      impact: CMEK routes every encrypt/decrypt of workflow definitions and execution data through the named key -- key-version storage and per-operation charges bill on the GcpKmsKey component's project.
+  estimate_exclusions:
+    - a deployed workflow bills nothing at rest -- steps accrue only when executions run, and Google meters executed steps only (internal and external tallied separately, each in 1,000-step increments past its monthly free allotment)
+    - whatever the steps invoke -- Cloud Run services, BigQuery jobs, Pub/Sub topics -- bills on those components
+    - Cloud Logging ingestion for call logs follows the call_log_level choice and execution volume
+    - beyond 100 million combined steps per month, Google says to contact sales
+  notes: "A workflow is orchestration source with a step meter: deploying it, holding revisions, and existing all cost nothing on the Workflows pricing page -- the bill is executed steps. The monthly free allotments (5,000 internal, 2,000 external, per Google's Free Tier table) bound the claim for light usage; they do not make the workflow free. One subtlety worth internalizing: a call to a Google Cloud service through a CUSTOM domain is an EXTERNAL step at 2.5x the internal rate -- the URL shape in source_contents, not the destination's ownership, decides the rate."

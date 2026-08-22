@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscognitoresourceserver
+spec:
+  billing_model: free
+  free_tier: A resource server is pool-attached OAuth configuration -- Amazon Cognito's meters count monthly active users (MAUs) on the user pool and successful token responses for machine-to-machine clients, and none of them count resource server objects or the scopes they define. Defining one API with one scope or a hundred APIs with a hundred scopes each adds nothing to the bill.
+  notes: "No field of this spec buys anything: the identifier, display name, and scope vocabulary are configuration Cognito stores in the pool's control plane. The real spend sits one step away on the parent AwsCognitoUserPool: human sign-ins bill as MAUs under the pool's pricing tier, and -- the meter this resource is closest to -- machine-to-machine clients using the client_credentials grant can ONLY request the custom scopes defined here, and every successful token response those clients obtain bills on the pool's M2M token-request meter (no free tier for M2M token requests; the app clients themselves are also free). Defining scopes creates no charge; tokens being MINTED against them is what bills, and that usage rides the requesting AwsCognitoUserPoolClient's traffic."

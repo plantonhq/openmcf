@@ -26,16 +26,38 @@ import (
 // re-imported and re-planned) -- the scheduled matrix enables it per lane.
 const ImportRoundTripEnvVar = "PLANTON_E2E_IMPORT_ROUNDTRIP"
 
+// ImportRoundTripSkipAnnotation opts ONE scenario out of the round-trip
+// phase; its value MUST state the reason (an empty value does not skip).
+// It exists for configs that STRUCTURALLY cannot round-trip to zero
+// changes no matter how correct the recipes are -- the first user: a
+// scenario carrying write-only ForceNew SECRETS (a container group's
+// secure environment variables), where a blind import necessarily lacks
+// the secret, the config supplies it, and the only plan is a replace --
+// which the oracle rightly refuses, and which ignore_changes must never
+// paper over because rotating such a secret is SUPPOSED to replace the
+// resource. The kind's recipes still enroll and still prove on its
+// secret-free scenarios; the skip is per scenario, reason-carrying, and
+// printed into the lane log so the record stays honest.
+const ImportRoundTripSkipAnnotation = "planton.dev/e2e-import-roundtrip-skip"
+
 // importRoundTripEnabled gates the phase: opted in, terraform engine (the
 // pulumi arm rides the same recipes once its lane lands), and the component
 // actually ships an import map. File presence is the recipes' single
 // enrollment signal everywhere -- this gate, the offline conformance guard,
 // and the platform's catalog bundler all key off the same import-map.yaml,
-// so a map cannot ship while dodging its checks.
+// so a map cannot ship while dodging its checks. A scenario-declared,
+// reason-carrying skip annotation (above) excludes ONE scenario.
 func importRoundTripEnabled(tc *provider.ComponentTestContext) bool {
-	return os.Getenv(ImportRoundTripEnvVar) == "1" &&
-		tc.Engine == "terraform" &&
-		importmap.HasComponentImportMap(tc.RepoRoot, tc.Provider, tc.Component)
+	if os.Getenv(ImportRoundTripEnvVar) != "1" ||
+		tc.Engine != "terraform" ||
+		!importmap.HasComponentImportMap(tc.RepoRoot, tc.Provider, tc.Component) {
+		return false
+	}
+	if reason, err := ManifestAnnotation(tc.ManifestPath, ImportRoundTripSkipAnnotation); err == nil && reason != "" {
+		fmt.Printf("  [import-rt] SKIP (scenario-declared): %s\n", reason)
+		return false
+	}
+	return true
 }
 
 // runImportRoundTrip is the machine proof that a component's import recipes

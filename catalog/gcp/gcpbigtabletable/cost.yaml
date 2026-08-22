@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbigtabletable
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: instance
+      sku_meter: table storage
+      pricing_unit: GiB-months
+      impact: The parent instance sets the rate card for every byte this table stores -- its clusters' storage type (SSD at $0.000232877/GiB-hour vs HDD at $0.000035616/GiB-hour in us-central1) and locations decide the per-GiB price, and each replicated cluster keeps and bills its own copy. The instance's node compute bills on that component, not here.
+    - field_path: column_families
+      sku_meter: table storage
+      pricing_unit: GiB-months
+      impact: The GC policy on each family is the cost brake -- Bigtable never deletes old cell versions without one, so an unbounded family accumulates every write forever, and Google bills the physical size of the table's data until compaction removes what the policy expires.
+    - field_path: change_stream_retention
+      sku_meter: table storage
+      pricing_unit: GiB-months
+      impact: Enabling change streams stores data change records at standard Bigtable storage rates for the retention window (1-7 days) -- Google's own rule of thumb is that a day of change records takes about 1.5x the storage of that day's writes, replicated to every cluster.
+    - field_path: automated_backup_policy.retention_period
+      sku_meter: standard backup storage
+      pricing_unit: GiB-months
+      impact: Each automated backup bills from creation until deletion at the standard backup rate ($0.000035616/GiB-hour in us-central1); retention_period divided by frequency sets how many backups coexist, so daily backups kept 3 days hold roughly three table-sized copies billing at once.
+  estimate_exclusions:
+    - stored bytes are the bill, and an empty table stores nothing -- storage accrues as workloads write, at the parent instance's SSD or HDD rate, once per replicated cluster
+    - node compute and replication traffic bill on the GcpBigtableInstance, not on this table
+    - network egress out of the region follows read traffic patterns
+  notes: "A table is a schema with a rate card: creation is free, and Bigtable bills the physical size of your tables and backups (Bigtable pricing page). The GC policies decide how long bytes keep billing; change streams and automated backups are the two table-level fields that open additional storage meters."

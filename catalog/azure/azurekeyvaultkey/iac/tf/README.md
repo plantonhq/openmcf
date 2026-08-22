@@ -5,10 +5,9 @@
 This Terraform module provisions a cryptographic key inside an Azure Key
 Vault using the `azurerm` provider. It creates a single
 `azurerm_key_vault_key` -- a DATA-PLANE object: the provider talks to the
-vault's `{name}.vault.azure.net` endpoint, not ARM, so the deploying
-credential needs key permissions on the vault ("Key Vault Administrator" or
-"Key Vault Crypto Officer" RBAC role, or key permissions in a legacy access
-policy) even if it owns the subscription.
+vault's `{name}.vault.azure.net` endpoint, not ARM, so creation fails with
+a 403 when the deploying credential lacks key permissions on the vault,
+even if it owns the subscription.
 
 Key material is immutable by design: type, size, and curve are fixed at
 creation; changing any of them replaces the key and every consumer
@@ -57,3 +56,8 @@ Key spec fields:
   keys on destroy so the name frees up immediately.
 - Once `expiration_date` is set it cannot be fully unset on the underlying
   key, even across delete/recreate (Azure restores purged names' state).
+
+## Required Permissions
+
+The deployer permissions this module needs are cataloged in
+[`../permissions.yaml`](../permissions.yaml).

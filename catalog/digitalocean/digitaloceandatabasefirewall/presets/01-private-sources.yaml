@@ -1,0 +1,14 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseFirewall
+metadata:
+  name: orders-postgres-firewall
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  ipRules:
+    - 10.10.0.0/16
+  tags:
+    - backend

@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackupframework
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: controls
+      sku_meter: backup evaluations
+      pricing_unit: evaluations
+      impact: Every control evaluates every in-scope resource on a recurring cadence, and each of those checks is one billed evaluation -- the control count is a straight multiplier on the monthly evaluation volume.
+    - field_path: controls.scope
+      sku_meter: backup evaluations
+      pricing_unit: evaluations
+      impact: Scope is the per-control quantity dial -- narrowing a control to specific resource IDs, types, or a tag shrinks how many resources it evaluates. Omitting scope evaluates everything the control applies to, account-wide in the region.
+  free_tier: AWS Backup Audit Manager publishes no free allotment -- the pricing page states pay only for what you use, with no minimums or upfront commitments.
+  estimate_exclusions:
+    - evaluation volume is fleet-driven -- it scales with how many backup resources (plans, vaults, recovery points) exist in the region, which the manifest cannot see
+    - every evaluation also records one AWS Config configuration item, billed separately by AWS Config at its own per-item rate, plus additional items whenever underlying backup resources change
+    - the ACTIVE AWS Config recorder the framework requires bills its own recording charges regardless of this framework
+    - the backup activity being audited (storage, copies, restores) bills on the AwsBackupPlan and vault components
+  notes: "The framework object is free -- the bill is its evaluations, and every evaluation is really two meters: a Backup Audit Manager evaluation billed by Backup, and a configuration item recorded by AWS Config billed by Config. AWS Config is not optional overhead but a hard prerequisite: without an ACTIVE recorder covering the backup resource types, the framework's deployment lands FAILED (visible in deployment_status, not as an apply error). Spend control is structural -- fewer controls, tighter scopes -- because the evaluation cadence itself is AWS-managed and carries no dial in this spec."

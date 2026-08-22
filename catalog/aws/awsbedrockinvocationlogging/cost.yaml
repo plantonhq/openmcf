@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockinvocationlogging
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: cloudwatch
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Every model invocation in the region writes a log event -- metadata plus request/response bodies up to 100 KB -- into the referenced log group, which meters ingestion and storage per GB on the AwsCloudwatchLogGroup component. Bedrock adds no delivery fee of its own; the log group's meters ARE this arm's cost, in direct proportion to model traffic.
+    - field_path: s3
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: The S3 arm delivers gzipped JSON batches that ACCUMULATE -- every month's model traffic adds to the archive, and the referenced AwsS3Bucket meters the PUT requests and the growing storage. Without a lifecycle rule on that bucket, this is the meter that only ever goes up.
+    - field_path: cloudwatch.large_data_delivery_s3
+      sku_meter: S3 requests
+      pricing_unit: requests
+      impact: Payloads over CloudWatch's 256 KB event cap spill into this bucket as individual objects -- one PUT per oversized invocation body, billed on the referenced AwsS3Bucket. Without this arm those payloads are truncated out of the CloudWatch stream, so it trades S3 requests for completeness.
+    - field_path: video_data_delivery_enabled
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Video is the heaviest payload class -- binary outputs bypass log events entirely and land as S3 objects. Left at AWS's default (enabled), a video-generating workload turns model traffic into fast-growing object storage; setting false drops the media while keeping the invocation records.
+    - field_path: embedding_data_delivery_enabled
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Embedding vectors are large relative to the text that produced them -- a batch-embedding workload logging full vectors multiplies ingested bytes well past what the prompt sizes suggest. Setting false keeps the invocation records without the vector payloads.
+  free_tier: "Bedrock itself never bills for invocation logging -- the Bedrock pricing page's complete meter list has no logging line, and enabling this configuration adds no Bedrock charge, permanently. Every dollar this component causes lands on the referenced destinations: CloudWatch Logs ingestion/storage on the log group, S3 requests/storage on the buckets. Those components' own free tiers (S3's and CloudWatch's always-free allotments) are theirs, not this manifest's."
+  estimate_exclusions:
+    - log volume is entirely model-traffic-driven -- this settings singleton captures EVERY invocation in the region, so its cost profile is the region's Bedrock usage times payload size, invisible to this manifest
+    - CloudWatch Logs ingestion and storage bill on the referenced AwsCloudwatchLogGroup, and its retention setting decides how long stored bytes keep billing
+    - S3 PUT requests and accumulating object storage bill on the referenced AwsS3Bucket, governed by that bucket's lifecycle rules
+    - each enabled data type (text, image, embedding, video -- all default enabled) widens what is delivered; image and video payloads land as individual S3 objects
+    - SSE-KMS on a destination bucket adds per-request KMS charges on the referenced AwsKmsKey
+  notes: "This is a settings singleton with no price tag of its own: AWS publishes no meter for Bedrock invocation logging, so the component's entire economic effect is the delivery volume it pushes into the destinations it references -- CloudWatch Logs bills ingestion per GB on the log group, S3 bills requests and storage on the bucket, and both scale with the region's model traffic, not with anything in this manifest. The cost conversation therefore happens on the destination components: the log group's retention and the bucket's lifecycle rules decide whether full-fidelity capture stays cheap observability or becomes a quietly compounding archive. Turning the configuration off (destroying it) stops all delivery instantly and costs nothing -- already-delivered logs keep billing storage where they landed."

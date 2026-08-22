@@ -1,0 +1,36 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudmapnamespace
+spec:
+  # Three scenarios covering the type union: private DNS (A + CNAME
+  # services, custom health, static instances - the chart story), HTTP
+  # (API-only service + attribute-only instance), and public DNS (the
+  # only home of Route 53 health checks and the WEIGHTED arm's live
+  # run). All ~$0: private/HTTP namespaces are free, the public zone
+  # deletes within the 12-hour no-bill window, and the one Route 53
+  # health check bills prorated cents.
+  #
+  # Watch: instance deregistration errors on already-gone instances
+  # (no NotFound tolerance upstream) - destroy order must run
+  # instances before services; and the private namespace's vpc never
+  # reads back (the "{namespace_id}:{vpc_id}" composite import is the
+  # blind round-trip's interesting arm).
+  #
+  # Deliberately not exercised live:
+  #   - alias_dns_name (Route 53 ALIAS to an ELB) -- needs a live load
+  #     balancer; the ALB fixture chain costs minutes and the arm is a
+  #     single attribute-map key. Unblock: fold into a future proof
+  #     session alongside an ALB-family lane.
+  #   - ec2_instance_id registration -- needs a live EC2 instance for
+  #     one derived attribute. Same unblock class.
+  #   - service force_destroy -- it deregisters runtime-registered
+  #     instances; nothing in a lane registers out-of-band, so the arm
+  #     would assert nothing. Config-verified offline.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q47
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

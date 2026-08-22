@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The profile stores no customer data -- it is a name, a description, and a model reference held as Bedrock control-plane metadata. Inference payloads flow THROUGH the profile and never persist in it; capturing them is the account-level invocation-logging component's business, on ITS destinations.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); application inference profiles expose no KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Invocations through the profile ride the HTTPS-only SigV4 bedrock-runtime endpoint, and AWS documents that cross-region routed traffic stays on the AWS network encrypted in transit between regions -- it never traverses the public internet.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every surface requires authentication: InvokeModel against the profile ARN and all management operations are IAM-authorized SigV4 calls. No anonymous or internet-open endpoint is representable."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a profile -- it is a routing handle inside a managed service; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The profile exposes no request-serving surface a WAF could front; callers reach it only through AWS's own API endpoints.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component is itself an IAM-scoping instrument -- the profile's own ARN is an InvokeModel resource, so grants can allow one application's principals exactly its profile and nothing else; Get/Delete and tagging scope to the application-inference-profile ARN per the bedrock service reference.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A profile runs no workload and references no execution role -- it is pure routing configuration; the identities that matter are the callers', governed by their own IAM principals.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication generation -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Profile lifecycle operations are management events CloudTrail records unconditionally, and cross-region routed invocations are logged by CloudTrail in the SOURCE region with the additionalEventData.inferenceRegion field naming where each request was actually processed.
+      notes: Full model input/output capture is the account-level AwsBedrockInvocationLogging component's job -- its log entries carry the profile ID in the modelId field, which is exactly the per-application attribution this component exists for.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Invocations through the profile land in the AWS/Bedrock CloudWatch namespace automatically (invocation counts, latency, token counts, errors), and the profile's ARN gives that traffic its own attributable identity -- with no field to enable.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The profile stores no unrecoverable state -- it is three fields of declarative configuration recreated from this manifest. Note every spec field is create-time-immutable, so recreation changes the ARN and pinned consumers must be re-pointed.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists by design -- nothing accumulates inside a profile to expire.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock is a regional managed service AWS operates across availability zones, and a cross-region source_arn widens routing further -- requests can be served from any region in the inherited profile, riding capacity around regional pressure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Profiles carry no deletion-protection flag. Deleting one invalidates its ARN for callers immediately, but the underlying model and the system-defined profiles it referenced are untouched -- recreation restores function under a NEW ARN.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates the routing layer and the model endpoints behind it; the profile exposes no runtime, version, or maintenance surface.

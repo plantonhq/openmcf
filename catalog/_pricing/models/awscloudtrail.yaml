@@ -1,0 +1,34 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: a trail's existence is
+# free, the first management-events copy is a permanent free allotment,
+# and every meter a preset switches on (Insights, data events) bills per
+# events delivered as activity happens -- stated in exclusions, never
+# padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awscloudtrail
+spec:
+  presets:
+    - preset: 01-compliance-audit-trail
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - as the account's first copy of ongoing management events, delivery to S3 is permanently free -- multi-region breadth within that one free copy costs nothing; only duplication across trails bills
+        - both Insights engines are enabled, and each bills per 100,000 management events analyzed -- two engines meter the same event stream twice, at a rate well above ordinary delivery, in proportion to account API activity
+        - S3 storage and requests for the delivered log files bill on the referenced AwsS3Bucket -- the real spend of a canonical audit trail
+      notes: Zero committed cost -- the trail and its free management copy bill nothing at rest; the Insights meters start with the account's own API call volume, which the manifest cannot see.
+    - preset: 02-s3-data-events-trail
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - matched S3 object writes bill as data events per 100,000 delivered from the first event -- the advanced selector's four field conditions (Data category, S3 object type, one bucket prefix, writes only) are the cost throttle keeping a busy account's object activity from billing wholesale
+        - object activity on a busy bucket dwarfs management volume -- the per-event rate is small, the event count is the risk
+        - S3 storage and requests for the delivered log files bill on the referenced AwsS3Bucket
+      notes: Zero committed cost -- data events carry no free allotment, so the zero is pure commitment-absence; the meter starts with the first object write in the scoped data-lake prefix.

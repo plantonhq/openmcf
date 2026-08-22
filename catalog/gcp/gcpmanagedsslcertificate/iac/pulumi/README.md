@@ -15,7 +15,7 @@ A Google-managed SSL certificate terminates TLS at a global external Application
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.sslCertificates.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

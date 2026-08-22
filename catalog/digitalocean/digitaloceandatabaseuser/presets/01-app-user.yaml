@@ -1,0 +1,11 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseUser
+metadata:
+  name: orders-service-user
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  userName: orders-service

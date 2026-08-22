@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchlogaccountpolicy.v1alpha1;
+
+// AwsCloudwatchLogAccountPolicyStackOutputs captures the observable
+// state of the account policy after apply.
+message AwsCloudwatchLogAccountPolicyStackOutputs {
+  // The policy's name.
+  string policy_name = 1;
+
+  // The policy's type - with the name, the provider's import ID
+  // ("policy_name:policy_type").
+  string policy_type = 2;
+}

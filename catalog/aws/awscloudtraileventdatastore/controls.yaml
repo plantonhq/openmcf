@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudtraileventdatastore
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Stored events are always encrypted at rest -- with kms_key_id unset they use an AWS-owned key; an unencrypted event data store is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-owned key; referencing a KMS key encrypts the store under a key you own and can revoke. The key policy must allow CloudTrail to use it, and changing the key after creation forces a replacement of the store.
+      notes: Losing (or revoking) the key makes the whole archive unreadable -- AWS recommends multi-region keys for multi-region stores so a regional key outage cannot strand queries.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The store is reached exclusively through CloudTrail's HTTPS API -- ingestion, Lake SQL queries, and management calls are all TLS; no plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The store is a regional AWS API resource, not a network-placed endpoint -- there is no network exposure to close. Every read and every query is IAM-authorized (see rbac).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface of its own (see no-public-access); what flows IN is decided by the advanced event selectors, which are capture scope, not network policy.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, query, delete -- is IAM-authorized on the store's ARN. On an organization store AWS locks modification to the management account or delegated CloudTrail administrator; member accounts cannot alter it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The store runs no user workload -- ingestion is CloudTrail's own service activity, and queries authenticate as whoever runs them. There is no credential surface in this manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudTrail Lake has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Operations on the store -- creation, retention changes, termination-protection changes, deletion -- are management events captured in CloudTrail's event history unconditionally, so changes to the audit archive are themselves audited.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The store IS the analysis surface -- Lake SQL and its dashboards query it directly -- and the spec carries no metric-export or alarm hook. Ingestion health is observable in the CloudTrail console, not through a manifest-configurable monitoring integration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Ingested events are immutable and AWS owns the store's durability -- the API offers no backup facility to configure. Deletion itself is soft (7 days in PENDING_DELETION before the purge), which is a grace window, not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set. retention_period_days (7-2555, default 2555) governs how long the LIVE events stay queryable -- data retention, not backup retention.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CloudTrail Lake is a regional managed service AWS operates across availability zones; the store has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: termination_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Unset means ENABLED (the AWS default) -- deletion is refused until this is explicitly set to false and applied. Teardown is deliberately two steps, and even then AWS holds the store in PENDING_DELETION for 7 days before the purge.
+      notes: The rare governance component where deletion protection is the default posture rather than an opt-in -- disabling it is the visible manifest act.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the ingestion, storage, and query engine; the store exposes no runtime, version, or maintenance surface.

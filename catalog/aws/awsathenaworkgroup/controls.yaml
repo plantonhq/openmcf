@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsathenaworkgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: enable_minimum_encryption_configuration
+      evidence:
+        type: spec_default
+        reference: Unset means query results land in the S3 output location however the query specifies -- possibly unencrypted; true enforces at least SSE_S3 on every result this workgroup writes, even for queries that request nothing. AWS-managed result storage (managed_query_results) is always encrypted, with an AWS-owned key when no key is supplied.
+      notes: result_configuration.encryption_option picks the concrete mode (SSE_S3, SSE_KMS, CSE_KMS) for the S3 result path; the guardrail here is what makes "no encryption" unrepresentable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: result_configuration.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means S3-managed (or AWS-owned) keys; SSE_KMS or CSE_KMS with this key encrypts query results under a key you own and can revoke.
+      notes: The workgroup's other stores take their own keys -- managed_query_results.kms_key (ARN-only) for AWS-managed result storage, customer_content_encryption_kms_key for Spark notebook content and session data, and the monitoring arms' kms_key fields for delivered logs.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Athena API -- query submission, result retrieval, workgroup management -- is HTTPS-only, and Athena's reads of S3 data ride AWS's TLS service channels; no plaintext query path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A workgroup exposes no endpoint -- queries enter through the regional Athena API under IAM authorization. Whether the result files (or the data being queried) are internet-reachable is the referenced buckets' posture, decided on those components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a workgroup; there is no inbound network surface to restrict. Network-scoping Athena API access is VPC-endpoint-policy territory, outside this manifest.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; a workgroup fronts an analytics API, not web traffic.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation AND every query submission is IAM-authorized on the workgroup's own ARN -- the workgroup is itself the access boundary Athena offers, letting each team be granted exactly its own workgroup and nothing else.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity_center
+      evidence:
+        type: spec_default
+        reference: Unset means queries run under whatever IAM principal submits them -- commonly a shared role that erases who actually asked. Enabling IAM Identity Center integration propagates the signed-in workforce identity through the query, and s3_access_grants then scopes result-bucket credentials to that identity (per-user result prefixes with create_user_level_prefix) instead of a role's static S3 permissions.
+      notes: Both identity_center values are create-time -- changing them replaces the workgroup. Spark workloads authenticate through the referenced execution_role with short-lived assumption, never static keys.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Athena has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workgroup management operations and query submissions are CloudTrail management events recorded unconditionally -- who changed the scan cutoff, who disabled enforcement, who ran queries in this workgroup.
+      notes: With identity_center enabled the trail names the actual workforce user behind each query instead of a shared role -- the audit upgrade that block exists for.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: publish_cloudwatch_metrics_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- per-query metrics (data scanned, execution time) publish to CloudWatch, making cost and performance trends alarmable per workgroup; false goes dark.
+      notes: The monitoring block adds log delivery -- CloudWatch Logs for searchable operational logs, S3 for cheap archive, Athena-managed storage for zero-setup retention -- each arm enabled by presence and freely combinable.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The workgroup stores configuration, not data -- it is recreated whole from the manifest. Query results are transient artifacts (24-hour retention in managed storage, bucket-lifecycle territory in S3), and the data being queried lives in S3 under its own components' durability.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: There is nothing backed up to retain -- AWS-managed result storage is fixed at 24 hours by AWS, and S3 result retention is the result bucket's lifecycle policy, configured on that component.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Athena is a serverless regional service AWS operates across availability zones -- query execution has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: The default (false) makes destroy FAIL while the workgroup still holds named queries or prepared statements -- accumulated analyst work blocks a casual teardown until force_destroy is deliberately set true, which sweeps them with the workgroup.
+      notes: The guard binds only when named queries or prepared statements exist; an empty workgroup deletes without resistance either way.
+    - control_id: managed-patching
+      status: configurable
+      field_path: selected_engine_version
+      evidence:
+        type: spec_default
+        reference: Unset (or AUTO, the default) hands engine upgrades to AWS -- queries always run the latest Athena engine with no maintenance window to manage; pinning a specific version holds query behavior stable across upgrades at the cost of owning the upgrade decision.
+      notes: The effective engine actually in use is reported in the effective_engine_version output either way; everything beneath the engine is serverless and AWS-patched unconditionally.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscostanomalymonitor
+spec:
+  billing_model: free
+  free_tier: "AWS Cost Anomaly Detection never bills -- no meter exists for monitors, subscriptions, the ML evaluation runs (roughly three times a day over net unblended cost), or the anomaly records they produce. AWS's Cloud Financial Management materials state the feature is available 'at no additional charge', and the CAD FAQ describes the default configuration as anomaly detection 'with no effort or cost'; since March 2023 AWS even auto-configures it free for new Cost Explorer accounts. DIMENSIONAL and CUSTOM shapes, any subscription count, any threshold -- all free. Permanent, not a trial."
+  notes: "Two real-money edges live NEXT to this free object, both routed off it. First, alert delivery: DAILY/WEEKLY email summaries are sent by AWS at no charge, but IMMEDIATE subscriptions publish to an SNS topic, and everything downstream of that publish -- the topic's fan-out to email, Slack/Chime webhooks via Amazon Q Developer, SQS, or Lambda -- bills the referenced AwsSnsTopic component and its subscribers under SNS pricing, not this monitor. Second, investigation: the AI-powered cost-investigation feature (Amazon Q root-cause analysis) is itself free, but when it queries an organization CloudTrail trail delivered to CloudWatch Logs it runs Logs Insights queries on your behalf, incurring standard per-GB-scanned charges on the log-group side. And the quiet third: an anomaly alert is by definition news about real spend already accruing on OTHER components -- the monitor is the smoke detector, never the fire. The monitor and its folded subscriptions carry the platform's standard tags for attribution, and nothing here changes with region: Cost Explorer is account-global, and the spec's region field is only the provider's API endpoint."

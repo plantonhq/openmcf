@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgeapidestination.v1alpha1;
+
+// AwsEventBridgeApiDestinationStackOutputs captures the observable
+// state of the connection and destination after apply.
+message AwsEventBridgeApiDestinationStackOutputs {
+  // The owned connection's ARN - what other instances' destinations
+  // and pipe/rule targets reference. Empty when the instance has no
+  // connection arm.
+  string connection_arn = 1;
+
+  // The Secrets Manager secret AWS created to hold the connection's
+  // credential values (the "events!connection/..." secret). AWS owns
+  // its lifecycle. Empty when the instance has no connection arm.
+  string connection_secret_arn = 2;
+
+  // The owned API destination's ARN - what EventBridge rule targets,
+  // pipes, and schedules invoke. Empty when the instance has no
+  // destination arm.
+  string api_destination_arn = 3;
+}

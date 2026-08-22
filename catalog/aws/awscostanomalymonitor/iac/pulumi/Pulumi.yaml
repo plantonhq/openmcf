@@ -1,0 +1,3 @@
+name: awscostanomalymonitor
+runtime: go
+description: Pulumi module to manage a Cost Explorer anomaly monitor and its alert subscriptions

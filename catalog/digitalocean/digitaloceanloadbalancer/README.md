@@ -1,39 +1,88 @@
-# Overview
+# DigitalOcean Load Balancer
 
-The **Azure Azure AKS Cluster API Resource** provides a consistent and standardized interface for deploying and managing Azure Kubernetes Service (AKS) clusters within our infrastructure. This resource simplifies the orchestration of Kubernetes clusters on Azure, allowing users to run containerized applications at scale without the complexity of manual setup and configuration.
+A DigitalOcean load balancer described once in a Planton manifest: regional and global types, sizing by slug or scaling units, forwarding rules with TLS termination or passthrough, health checks with full threshold tuning, cookie-based sticky sessions, backend targeting by Droplet references or tag, VPC and subnet placement, an LB-level firewall, HTTPS redirect, PROXY protocol, backend keepalive, idle-timeout, TLS cipher policy, project placement, bring-your-own-IP, and the global balancer's domains, target balancers, CDN, and regional failover.
 
-## Purpose
+## What this component models
 
-We developed this API resource to streamline the deployment and management of AKS clusters on Azure. By offering a unified interface, it reduces the complexity involved in setting up Kubernetes environments on Azure, enabling users to:
+The spec maps one-to-one onto DigitalOcean's load balancer:
 
-- **Easily Deploy Azure AKS Clusters**: Quickly provision AKS clusters with minimal configuration.
-- **Customize Cluster Settings**: Configure cluster parameters such as credentials and environment settings.
-- **Integrate Seamlessly**: Utilize existing Azure credentials and integrate with other Azure services.
-- **Focus on Applications**: Allow developers to concentrate on deploying applications rather than managing infrastructure.
+| Spec field | What it controls |
+|---|---|
+| `loadBalancerName` | The balancer's name in DigitalOcean (unique per account) |
+| `region` | Data-center region for REGIONAL / REGIONAL_NETWORK; forbidden for GLOBAL |
+| `type` | `REGIONAL` (default), `REGIONAL_NETWORK`, or `GLOBAL` |
+| `size` / `sizeUnit` | Capacity: three slugs (`lb-small`/`lb-medium`/`lb-large`) or 1–200 scaling units; mutually exclusive |
+| `vpc` | Optional VPC placement — a literal UUID or a reference to a `DigitalOceanVpc`; omit to use the region's default |
+| `forwardingRules` | Regional routing: entry/target port and protocol, optional TLS passthrough, certificate by name |
+| `glbSettings` | Global routing: target protocol/port, region priorities, failover threshold, CDN; mutually exclusive with `forwardingRules` |
+| `domains` | Domains that ingress a GLOBAL balancer |
+| `targetLoadBalancerIds` | Regional balancers a GLOBAL balancer routes to |
+| `healthCheck` | Backend probes (http/https/tcp) with interval, timeout, and thresholds |
+| `stickySessions` | Cookie affinity (`cookies` + name + TTL, or `none`) |
+| `dropletIds` / `dropletTag` | Backend membership; mutually exclusive |
+| `firewall` | Source allow/deny rules (`ip:` / `cidr:`) |
+| `redirectHttpToHttps` | Redirect port 80 to 443 |
+| `enableProxyProtocol` / `enableBackendKeepalive` | Connection behavior toward backends |
+| `httpIdleTimeoutSeconds` | Idle HTTP connection lifetime (0 = DigitalOcean's 60s default) |
+| `tlsCipherPolicy` | `DEFAULT` or `STRONG` |
+| `network` / `networkStack` | `EXTERNAL`/`INTERNAL` visibility and `IPV4`/`DUALSTACK`; create-only, never read back |
+| `projectId` | DigitalOcean project UUID (literal until the Project kind is forged) |
+| `subnetUuid` | DigitalOcean-managed subnet placement; requires `vpc` |
+| `ip` | Bring-your-own IP at create time |
 
-## Key Features
+## Quick start
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying open-source software, microservices, and cloud infrastructure.
-- **Simplified Deployment**: Automates the provisioning of AKS clusters, including resource groups and network configurations.
-- **Flexible Configuration**: Supports specifying Azure credentials and integrating with existing environments.
-- **Scalability**: Leverages Azure AKS to manage Kubernetes clusters that can scale to meet application demands.
-- **Integration**: Works seamlessly with other Azure services and infrastructure components.
+A regional HTTP balancer in an existing VPC, targeting every Droplet tagged `web`:
 
-## Use Cases
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanLoadBalancer
+metadata:
+  name: web-lb
+  org: acme-corp
+  env: prod
+spec:
+  loadBalancerName: web-lb
+  region: nyc3
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: app-network
+      fieldPath: status.outputs.vpc_id
+  forwardingRules:
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 8080
+      targetProtocol: http
+  healthCheck:
+    port: 8080
+    protocol: http
+    path: /health
+  dropletTag: web
+```
 
-- **Container Orchestration**: Deploy and manage containerized applications using Kubernetes on Azure.
-- **Microservices Architecture**: Run microservices workloads with the flexibility and scalability of Kubernetes.
-- **Hybrid Deployments**: Integrate on-premises Kubernetes deployments with cloud-based AKS clusters.
-- **Development and Testing**: Provide scalable and consistent environments for development and testing purposes.
+```shell
+planton apply -f web-lb.yaml
+```
 
-## Future Enhancements
+## Outputs
 
-As this resource is currently in a partial implementation phase, future updates will include:
+Both provisioners export the identical output set:
 
-- **Advanced Configuration Options**: Support for node pools, networking policies, and access controls.
-- **Enhanced Security Features**: Integration with Azure Active Directory and security policies for cluster management.
-- **Monitoring and Logging**: Improved support for cluster monitoring and logging using Azure Monitor and other tools.
-- **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+| Output | Description |
+|---|---|
+| `load_balancer_id` | The balancer UUID (import id for `digitalocean_loadbalancer`) |
+| `ip` | Public IPv4 address |
+| `urn` | `do:loadbalancer:<id>` |
+| `ipv6` | IPv6 address when `networkStack` is `DUALSTACK` |
+
+## Behavior worth knowing
+
+- **Certificates are identified by name**, not UUID. Let's Encrypt renewals rotate the UUID; `DigitalOceanCertificate.status.outputs.certificate_id` carries the stable name.
+- **`size` and `sizeUnit` are the cost knob.** `lb-small` equals 1 unit (~$12/month); `lb-medium` is 3; `lb-large` is 6. Past that, only `sizeUnit` (up to 200) applies.
+- **GLOBAL balancers have no region and no forwarding rules.** They route through `glbSettings`, `domains`, and `targetLoadBalancerIds`.
+- **`network`, `networkStack`, and `tlsCipherPolicy` are write-only.** The API never reports them back, so import leaves them empty and drift on them is invisible.
+- **Pulumi SDK v4.49.0 cannot express `subnetUuid` or BYOIP `ip`.** The Pulumi module fails loudly if they are set; Terraform wires them. See the [GUIDE](GUIDE.md).
 
 ---
 

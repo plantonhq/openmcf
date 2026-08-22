@@ -1,0 +1,99 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awselasticfilesystem
+spec:
+  aws:
+    statements:
+      - sid: CreateFileSystem
+        actions:
+          - elasticfilesystem:CreateFileSystem
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the create of aws_efs_file_system / efs.FileSystem. The service reference lists NO resource types for CreateFileSystem (the file system ID does not exist yet), so IAM evaluates it against Resource "*" -- an ARN-scoped grant would deny creation. Creation can be narrowed with the aws:RequestTag and elasticfilesystem:Encrypted condition keys instead of ARNs.
+      - sid: ManageFileSystem
+        actions:
+          - elasticfilesystem:DeleteFileSystem
+          - elasticfilesystem:DescribeFileSystems
+          - elasticfilesystem:UpdateFileSystem
+          - elasticfilesystem:UpdateFileSystemProtection
+          - elasticfilesystem:PutLifecycleConfiguration
+          - elasticfilesystem:DescribeLifecycleConfiguration
+          - elasticfilesystem:TagResource
+          - elasticfilesystem:UntagResource
+          - elasticfilesystem:ListTagsForResource
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: "The file system's read/update/delete surface. UpdateFileSystem serves throughput_mode and provisioned_throughput_in_mibps changes (AWS enforces a 24-hour cooldown); UpdateFileSystemProtection serves replication_overwrite_protection; PutLifecycleConfiguration is create, update, AND delete for the lifecycle policies (removal is a Put with an empty rule list -- there is no Delete API). TagResource also rides creation: tags-on-create triggers additional authorization on it. All of these take resource-level scoping on the file-system ARN per the service reference."
+      - sid: ManageMountTargets
+        actions:
+          - elasticfilesystem:CreateMountTarget
+          - elasticfilesystem:DeleteMountTarget
+          - elasticfilesystem:DescribeMountTargets
+          - elasticfilesystem:DescribeMountTargetSecurityGroups
+          - elasticfilesystem:ModifyMountTargetSecurityGroups
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_efs_mount_target / efs.MountTarget -- one per declared subnet. Mount-target actions authorize on the FILE SYSTEM's ARN (mount targets have no ARN of their own). Security-group changes on existing targets flow through ModifyMountTargetSecurityGroups rather than replacement.
+      - sid: MountTargetNetworkInterfaces
+        actions:
+          - ec2:CreateNetworkInterface
+          - ec2:DeleteNetworkInterface
+          - ec2:ModifyNetworkInterfaceAttribute
+        resources:
+          - arn:aws:ec2:*:*:network-interface/*
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:security-group/*
+        provenance: derived
+        notes: A mount target IS an elastic network interface, and the EFS API documents these EC2 companions as required of the caller -- EFS creates the ENI with the caller's permissions on CreateMountTarget, deletes it on DeleteMountTarget, and rewrites its security groups on ModifyMountTargetSecurityGroups. Create-time authorization spans the ENI, the target subnet, and the attached security groups, so all three ARN formats are scoped.
+      - sid: DescribeNetworking
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeNetworkInterfaces
+          - ec2:DescribeNetworkInterfaceAttribute
+        resources:
+          - "*"
+        provenance: derived
+        notes: The read-side EC2 companions the EFS API names for mount-target operations -- subnet resolution at create, ENI state during reads, and the interface's security groups behind DescribeMountTargetSecurityGroups. EC2 Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: ManageBackupPolicy
+        actions:
+          - elasticfilesystem:PutBackupPolicy
+          - elasticfilesystem:DescribeBackupPolicy
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_efs_backup_policy / efs.BackupPolicy for spec.backup_enabled. The resource has no true delete -- disabling backups is a Put with status DISABLED, so Put serves the whole lifecycle.
+      - sid: ManageFileSystemPolicy
+        actions:
+          - elasticfilesystem:PutFileSystemPolicy
+          - elasticfilesystem:DeleteFileSystemPolicy
+          - elasticfilesystem:DescribeFileSystemPolicy
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_efs_file_system_policy / efs.FileSystemPolicy for spec.policy. Put and Delete are Permissions-management-level actions -- this grant lets the runner rewrite who may mount the file system, which is exactly what deploying spec.policy means. bypass_policy_lockout_safety_check changes the request, not the required actions.
+      - sid: ManageReplication
+        actions:
+          - elasticfilesystem:CreateReplicationConfiguration
+          - elasticfilesystem:DeleteReplicationConfiguration
+          - elasticfilesystem:DescribeReplicationConfigurations
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_efs_replication_configuration / efs.ReplicationConfiguration for spec.replication. Replicating to a NEW destination has EFS create the destination file system with the caller's credentials, which the CreateFileSystem statement above already authorizes; replicating INTO an existing file system requires that destination's replication_overwrite_protection to be DISABLED. Deleting the replication stops sync but never deletes the destination.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:CreateGrant
+          - kms:DescribeKey
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Exercised only when kms_key_id (or replication.destination_kms_key_id) names a customer-managed key. EFS makes its KMS calls through a Forward Access Session USING THE CALLER'S CREDENTIALS -- CloudTrail shows kms:CreateGrant under the deploying principal's identity -- so both this policy and the key's own policy must allow the calls. With the AWS-managed aws/elasticfilesystem key this statement is never needed.

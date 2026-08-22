@@ -1,0 +1,31 @@
+# Canonical AwsManagedPrometheusScraper example (hack/dev manifest and
+# refgen Example source): an EKS-sourced scraper delivering to an AMP
+# workspace, with the scrape configuration left unset so the modules
+# resolve AWS's published default at deploy, plus component logging.
+# Literal values stand in for composed references so the offline
+# `tofu plan` renders every arm (including the default-configuration
+# data-source read).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheusScraper
+metadata:
+  name: platform-scraper
+  id: platform-scraper
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  alias: platform-scraper
+  sourceEks:
+    clusterArn:
+      value: arn:aws:eks:us-west-2:123456789012:cluster/platform
+    subnetIds:
+      - value: subnet-0a1b2c3d4e5f60001
+      - value: subnet-0a1b2c3d4e5f60002
+  ampWorkspaceArn:
+    value: arn:aws:aps:us-west-2:123456789012:workspace/ws-11111111-2222-3333-4444-555555555555
+  logging:
+    logGroupArn:
+      value: arn:aws:logs:us-west-2:123456789012:log-group:/amp/scraper
+    components:
+      - COLLECTOR
+      - EXPORTER

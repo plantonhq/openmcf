@@ -1,0 +1,25 @@
+# Reference manifest for DigitalOceanDatabaseFirewall -- protovalidate-
+# valid, embedded as the reference page's Example block, and the document
+# the offline tofu plan renders. Exercises all five typed rule lists (the
+# offline plan proves the full fan-out; live lanes prove the ip and droplet
+# arms).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseFirewall
+metadata:
+  name: orders-postgres-firewall
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  ipRules:
+    - 203.0.113.10
+    - 10.10.0.0/16
+  dropletIds:
+    - value: "123456789"
+  kubernetesClusterIds:
+    - value: bbbbbbbb-cccc-dddd-eeee-ffffffffffff
+  appIds:
+    - value: cccccccc-dddd-eeee-ffff-000000000000
+  tags:
+    - backend

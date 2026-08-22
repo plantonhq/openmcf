@@ -1,0 +1,25 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  presets:
+    - preset: 02-production
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "2"
+        memory_limits: 1Gi
+        basis: 2 controller replicas x (100m CPU / 256Mi memory requests, 1 CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the listener pods (one per declared runner scale set) and the ephemeral runner pods that scale with CI demand are created by this controller but are not its footprint -- that capacity rides the KubernetesGhaRunnerScaleSet resources

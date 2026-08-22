@@ -6,4 +6,6 @@ spec:
   name: my-registry
   subscriptionTier: professional
   region: nyc3
-  garbageCollectionEnabled: true
+  dockerCredentials:
+    write: true
+    expirySeconds: 2592000 # 30 days -- rotate by re-applying

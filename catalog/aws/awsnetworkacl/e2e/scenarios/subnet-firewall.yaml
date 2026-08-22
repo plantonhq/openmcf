@@ -1,0 +1,59 @@
+# A subnet firewall on the VPC/subnet fixtures: ordered allow/deny
+# rules across both directions - a deny rule (what security groups
+# cannot do), a named protocol ("tcp") AND a numeric one ("6") to
+# assert the provider's number normalization holds, an ICMP rule with
+# presence-typed type/code, and one subnet association (atomic
+# replace). Free at AWS.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsNetworkAcl
+metadata:
+  name: planton-oss-e2e-awsnacl-min
+  id: planton-oss-e2e-awsnacl-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsnetworkacl
+  annotations:
+    planton.dev/e2e: "true"
+    # The subnet fixture chain (subnet -> vpc) provides the association
+    # target; the registry prerequisite (AwsVpc) rides the same chain.
+    planton.dev/e2e-prerequisites: "AwsSubnet"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  ingress:
+    - ruleNo: 90
+      action: deny
+      protocol: "-1"
+      cidrBlock: 198.51.100.0/24
+    - ruleNo: 100
+      action: allow
+      protocol: tcp
+      cidrBlock: 0.0.0.0/0
+      fromPort: 443
+      toPort: 443
+    - ruleNo: 110
+      action: allow
+      protocol: icmp
+      cidrBlock: 10.0.0.0/16
+      icmpType: 8
+      icmpCode: 0
+  egress:
+    - ruleNo: 100
+      action: allow
+      protocol: "6"
+      cidrBlock: 0.0.0.0/0
+      fromPort: 1024
+      toPort: 65535
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awstransitgatewayroutetable
+spec:
+  billing_model: free
+  free_tier: A Transit Gateway route table carries no meter -- AWS's Transit Gateway pricing bills exactly two things, attachment-hours and data processing, and neither counts route tables. Creating one routing domain or twenty on the same gateway, filling them with static routes, propagations, prefix-list references, and blackholes, adds nothing to the bill; associations and default-table designations are equally chargeless pointer updates.
+  notes: "No field of this spec buys anything, but this table steers traffic whose meters live one component over. The Transit Gateway bills per ATTACHMENT-hour (about $0.05/hour each, charged to the account owning the attached VPC) and per GB of data processed through the gateway (about $0.02/GB, charged to the sender's attachment) -- that spend sits on the AwsTransitGatewayVpcAttachment entries this table associates and propagates, and on the gateway's traffic, never on the table. One routing decision made HERE does move money there: steering inter-spoke traffic through an inspection attachment makes every flow cross the gateway twice, doubling its per-GB processing. Blackhole routes are the cheapest entry in the whole topology -- dropped traffic processes nothing."

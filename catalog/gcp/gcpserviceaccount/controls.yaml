@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpserviceaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The account stores no customer data -- it is identity metadata on Google's encrypted IAM control plane. The one sensitive artifact is the optional user-managed key, whose private half exists only in the one-time creation response and the stack state (generate flow) or never leaves your custody at all (upload flow via public_key_data).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The account terminates no connections -- it is the identity workloads present, not a network endpoint. Token issuance and every authenticated API call ride Google's TLS-only endpoints as a property of those services, not of this resource.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: There is no endpoint to expose. The account's email is public-format by design; what matters is who may AUTHENTICATE as it (key custody, impersonation grants) and that is identity-layer posture, not network exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists on a service account -- nothing listens, so there are no sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The account serves no requests; there is no inbound traffic for a WAF or request filter to inspect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the account authorizes against the iam.serviceAccounts family (the heart of roles/iam.serviceAccountAdmin), and the account is ALSO itself an IAM-governed resource -- who may impersonate it or attach workloads to it is controlled by its own IAM policy (iam.serviceAccounts.actAs, getAccessToken), grantable down to the single account.
+      notes: The spec's role lists are additive member grants that never clobber other members' bindings; who may act AS this identity stays a separate, per-account IAM decision -- the two directions of RBAC never blur.
+    - control_id: workload-identity
+      status: configurable
+      field_path: user_managed_key
+      evidence:
+        type: spec_default
+        reference: The message's PRESENCE is the decision to create a static key; omitted -- the default -- means keyless, and the component's own contract says to prefer Workload Identity on GKE, attached identities on Cloud Run/Compute, impersonation, and federation, all of which authenticate this account with short-lived platform-issued tokens.
+      notes: When a key is unavoidable, the spec still grades the posture -- public_key_data (upload flow) keeps the private key in your custody so GCP never sees or returns key material, and keepers gives declarative rotation by replacing the key on any value change. key_base64 is a live credential; treat its appearance in outputs as the cost of the opt-out.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: user_managed_key.algorithm
+      evidence:
+        type: spec_default
+        reference: Empty defaults to GCP's KEY_ALG_RSA_2048; the spec admits KEY_ALG_RSA_1024 only as an explicitly labeled legacy choice ("weaker -- avoid for new keys"), and TYPE_PKCS12_FILE exists solely for legacy tooling that requires p12 (password "notasecret").
+      notes: Keyless accounts (the default) have no legacy path at all -- the weaker options only become reachable once a user-managed key is opted into.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Account create, update, disable, enable, and delete -- and every role grant the modules make -- land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the identity and its grants. What the account DOES shows up in the target services' audit logs under their own configuration, and authentication-level visibility (which key, from where) is IAM Data Access logging -- opt-in, project-wide, outside this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The account emits no operational metrics and the spec has no logging or monitoring surface. Usage hygiene signals (unused accounts, unused keys) come from IAM's activity analyzer and recommender at the project level, services this resource neither enables nor configures.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The account is declarative configuration fully re-creatable from source control; there is no data to back up. Recreation is not identity-preserving, though -- the new account gets the same email but a different unique_id, and bindings referencing the deleted account do not transfer.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a globally replicated control plane; the identity authenticates wherever its workloads run, with no failure-domain choice on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE; PREVENT makes destroy fail outright -- the guard rail for identities whose deletion would invalidate IAM bindings and workload attachments fleet-wide. The optional key carries its own user_managed_key.deletion_policy with the same DELETE/PREVENT choice.
+      notes: Deleting the account fails closed -- every workload authenticating as it loses access at once, and because recreation yields a different unique_id the old bindings never come back by themselves. The disabled flag is the staged path -- disable first, observe breakage, then delete.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the IAM control plane holding the identity is Google's own infrastructure with no version or channel exposed on this resource.

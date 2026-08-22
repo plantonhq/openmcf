@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualhubconnection
+spec:
+  azure:
+    groups:
+      - purpose: ManageHubConnection
+        actions:
+          - Microsoft.Network/virtualHubs/hubVirtualNetworkConnections/read
+          - Microsoft.Network/virtualHubs/hubVirtualNetworkConnections/write
+          - Microsoft.Network/virtualHubs/hubVirtualNetworkConnections/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_hub_connection / network.HubVirtualNetworkConnection -- create, refresh, in-place routing updates (association, propagation, route maps, static routes), and destroy. Every action in this manifest is contained in the built-in Network Contributor role (and Contributor/Owner), granted on both the hub's and the spoke's sides when they live in different resource groups.
+      - purpose: PeerSpokeVirtualNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/peer/action
+        provenance: derived
+        notes: The modules never call the VNet API -- they pass the resolved remote_virtual_network_id in the connection payload -- but Virtual WAN's control plane implements the attachment as a managed VNet peering, and ARM authorizes it with peer/action on the SPOKE VNet's scope at create (service-side; Microsoft's Virtual WAN roles-and-permissions reference lists it as the connection's referenced-resource permission).
+      - purpose: ReadReferencedHubRouting
+        actions:
+          - Microsoft.Network/virtualHubs/hubRouteTables/read
+          - Microsoft.Network/virtualHubs/routeMaps/read
+        provenance: derived
+        notes: Service-side reads on the hub routing resources the connection references -- ARM validates the associated and propagated route tables at write time (the default association targets the hub's built-in defaultRouteTable, so hubRouteTables/read is needed even with routing unset), and routeMaps/read applies only when inbound_route_map_id or outbound_route_map_id is set.

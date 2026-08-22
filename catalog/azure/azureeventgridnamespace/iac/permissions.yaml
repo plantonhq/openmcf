@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventgridnamespace
+spec:
+  azure:
+    groups:
+      - purpose: ManageNamespace
+        actions:
+          - Microsoft.EventGrid/namespaces/read
+          - Microsoft.EventGrid/namespaces/write
+          - Microsoft.EventGrid/namespaces/delete
+        provenance: derived
+        notes: Covers azurerm_eventgrid_namespace (and the Pulumi module's eventgrid.Namespace) -- create, read/refresh, in-place updates (capacity, public network access, inbound IP rules, identity, tags), and destroy. The MQTT topic-spaces configuration rides the namespace payload itself (it is not a child resource write, and the whole block is create-only -- changing it replaces the namespace), so no extra action is needed for it. The MQTT route topic is passed by resolved ARM id in that payload; Microsoft publishes no deployer-side permission requirement on the referenced topic -- the RUNTIME grant that lets routed messages reach a protected custom topic is composed on the namespace's own identity (EventGrid Data Sender), consumer-side, not here. Neither module reads the namespace's access keys (no key outputs), so listKeys is deliberately absent.
+      - purpose: AttachUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity.identity_ids attaches user-assigned identities (USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED). A SERVICE-side need -- the modules only carry the resolved identity IDs in the namespace payload, and Azure checks assign on each referenced identity's own scope when the namespace write attaches it.

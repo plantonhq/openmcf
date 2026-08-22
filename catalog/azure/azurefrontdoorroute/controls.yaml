@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorroute
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The route is edge-routing configuration; it stores no customer data at rest. Edge-cached response copies are transient delivery state inside Microsoft's managed edge, not a data store this spec governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: https_redirect_enabled
+      evidence:
+        type: spec_default
+        reference: Default true -- HTTP arriving at the edge is answered with a 301 redirect to HTTPS, so clients end up on TLS even when the route accepts both protocols (the standard production posture the spec documents).
+      notes: Two sibling fields complete the picture -- supported_protocols decides what the edge accepts at all, and forwarding_protocol governs the ORIGIN leg (HTTPS_ONLY keeps it encrypted even for HTTP clients; the deploy default MATCH_REQUEST mirrors the client; HTTP_ONLY sends plaintext and the spec steers it toward Private Link origins). Certificates and cipher policy live on the custom domain kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A route exists to serve public traffic -- it is the match-and-forward rule on a public endpoint. Which hostnames it answers on is link_to_default_domain plus custom_domain_ids, a serving choice rather than an exposure control.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress restriction at the edge lives in the WAF policy attached through an AzureFrontDoorSecurityPolicy -- separate kinds; the route's patterns_to_match select traffic to serve, not sources to trust.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF enforcement is attached at the domain/endpoint level by an AzureFrontDoorSecurityPolicy -- separate kinds; the route carries no request filter of its own.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the route exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The route runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; request access logs are the Front Door profile's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The route publishes no metrics of its own; request and cache metrics ride the Front Door profile, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless edge configuration -- nothing to back up; the manifest recreates the route declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the route's matching and forwarding run on Microsoft's worldwide edge fleet by design, with no single-zone or single-region failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a route (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that evaluates the route; no customer-visible patch surface exists.

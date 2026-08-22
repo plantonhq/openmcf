@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcoreruntime
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "AWS's AgentCore data-encryption documentation states it directly: data at rest is stored in DynamoDB and S3 and \"encrypted using AWS encryption solutions by default,\" under AWS owned KMS keys with no customer action required -- this covers the runtime's stored configuration and the deployed code artifact."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: This spec carries no customer-managed-key field, and AWS's key-management documentation lists CMK support for Memories and Gateways only -- agent runtimes are not on the list. The code bundle's SOURCE object can ride the referenced AwsS3Bucket's SSE-KMS posture, but the AgentCore-stored copy encrypts under AWS owned keys with no customer key surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS documents that all communication between customers and AgentCore, and between AgentCore and its downstream dependencies, is protected with TLS 1.2 or higher -- management, invocation, and the service's artifact reads all ride encrypted channels.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: With custom_jwt_authorizer omitted, the runtime accepts AWS IAM (SigV4) callers ONLY -- every invocation is an IAM-authorized API call scoped to the runtime and endpoint ARNs. Configuring the JWT authorizer swaps in OIDC-validated bearer tokens; there is no unauthenticated mode at all.
+      notes: resource_policy is the deliberate widening surface -- it grants OTHER accounts or services invoke permission on the runtime's own ARN, and both modules pin every statement's Resource to exactly that ARN.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens in your network -- agents are invoked through AWS's bedrock-agentcore service endpoints, IAM- or JWT-authorized, with no inbound network surface to restrict. The VPC arm (network.vpc_config) governs where SESSION network interfaces live for outbound reach to your private resources; its security groups shape session traffic, not who may invoke the runtime.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The runtime serves no requests a WAF could front -- invocation rides the bedrock-agentcore data-plane API, and the service reference publishes WebACL association actions only for the gateway kind, not for runtimes.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation and every invocation (InvokeAgentRuntime and its variants) is IAM-authorized, and the service reference scopes them to the runtime and runtime-endpoint ARN formats -- so resource-level policies can separate who deploys the agent from who may call each endpoint.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: role_arn is REQUIRED -- the AgentCore service assumes this role (it must trust bedrock-agentcore.amazonaws.com) to pull the ECR image or read the S3 code bundle, write logs, and make every AWS call the agent performs, all under short-lived assumed credentials. No long-lived credential ever enters the manifest; scoping the agent's blast radius means scoping this role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has two authentication paths -- SigV4-signed IAM requests and OIDC-validated JWTs; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All bedrock-agentcore control-plane operations on the runtime -- create, version-producing updates, endpoint changes, resource-policy writes, delete -- are management events CloudTrail records unconditionally in the account's event history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This kind exposes no telemetry hook of its own -- session traces, agent logs, and metrics ride AgentCore Observability into Amazon CloudWatch as an account-side enablement, configured and billed outside this manifest.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The runtime is configuration plus immutable versions, all recreatable from the manifest -- the code artifact's source of truth stays in the referenced AwsS3Bucket and container images in your ECR repository. Session state is ephemeral by design (session_storage scratch is wiped when the session ends); durable agent state belongs to AgentCore Memory or the EFS/S3 mounts, each with its own component posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Nothing here retains data over time -- sessions expire on the lifecycle timeouts and their scratch storage dies with them. Retention policy lives on the components that actually hold state (memory stores, EFS, S3).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: network.vpc_config.subnets
+      evidence:
+        type: spec_default
+        reference: PUBLIC network mode (preset 01) leaves session placement to AWS's managed multi-AZ pool. VPC mode attaches every session's network interfaces to the subnets you list -- listing subnets in one availability zone pins session capacity to that zone, so spanning the list across AZs is the HA lever this manifest holds.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "The runtime carries no deletion-protection flag. Deleting it removes the versions and endpoints and ends the serving URL immediately -- but nothing irreplaceable dies with it: the manifest recreates the configuration, and the artifacts persist in your bucket and registry."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS operates and patches the microVM isolation layer and, on the code path, supplies and maintains the managed base runtimes (PYTHON_3_10 through 3_14, NODE_22).
+      notes: "The container arm's interior is the classic caveat: AWS patches the platform under the image, but the image's own layers are yours to rebuild -- a stale base image redeploys stale, and only a new version with a rebuilt image fixes it."

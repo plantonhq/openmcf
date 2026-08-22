@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurekeyvaultkey
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Key Vault
+      sku_meter: HSM-protected key fee
+      pricing_unit: key-months
+      description: "An HSM-protected key (key_type RSA_HSM or EC_HSM, Premium-vault only) bills a flat monthly per-key fee -- 1.00 USD/month for RSA_HSM 2048 in eastus, 5.00 USD/month for the advanced types (RSA 3072/4096, ECC) at the first-250-keys tier -- charged whenever the key was used at least once in the prior 30 days, never prorated. Each stored VERSION that gets used counts as a separate key. Software-protected keys (RSA, EC) carry no per-key fee: the empty key object is free and every charge follows transactions."
+  cost_drivers:
+    - field_path: key_type
+      sku_meter: HSM-protected key fee
+      pricing_unit: key-months
+      impact: "The billing-class switch: RSA and EC bill per-transaction only (0.03 USD per 10,000 operations for RSA 2048; 0.15 per 10,000 for advanced types), while RSA_HSM and EC_HSM add the monthly per-key fee on top of the same transaction meters. Fixed at creation -- changing it replaces the key."
+    - field_path: key_size
+      sku_meter: advanced key operations
+      pricing_unit: 10K transactions
+      impact: "2048 is the baseline meter class; 3072 and 4096 move the key into the ADVANCED class -- transactions bill 0.15 instead of 0.03 USD per 10,000, and an HSM key's monthly fee jumps from 1.00 to 5.00 USD (first-250 tier). Curve-based (EC) keys are always advanced-class."
+    - field_path: rotation_policy
+      sku_meter: automated key rotation
+      pricing_unit: rotations
+      impact: "Each SCHEDULED rotation the automatic block fires bills 1.00 USD flat -- a deterministic, cadence-driven charge (P335D ~ 1.09 USD/year). Rotation also mints a new version: if consumers keep using the old version of an HSM key, both versions bill the monthly fee that cycle."
+  free_tier: "None. There is no free grant on Key Vault key operations, HSM key fees, or rotations; the HSM fee's only relief is its use-gating (an HSM key untouched for a full 30-day cycle bills nothing that cycle)."
+  estimate_exclusions:
+    - "transaction volume follows the key's consumers -- every wrap/unwrap, encrypt/decrypt, sign/verify, and management read is one operation (0.03 USD per 10,000 for RSA 2048, software or HSM; 0.15 per 10,000 for advanced types), unknowable from any manifest"
+    - "historical HSM key versions that consumers still touch each bill a full monthly key fee; steady-state single-active-version usage is the modeled floor"
+    - "the parent vault's own charges (it has none at rest; its meters are these) and the PREMIUM SKU prerequisite for _HSM keys are the AzureKeyVault component's posture"
+    - "Event Grid delivery of the near-expiry notifications rotation_policy raises bills on the Event Grid components, not here"
+  notes: "A key is a metered object, not a running service: software keys are pure usage (transactions), HSM keys buy hardware custody for a flat monthly fee per used key -- which is what flips this component to hybrid, since the committed preset 02-hsm-auto-rotating pins key_type RSA_HSM. The fee is use-gated (billed only if the key was used in the prior 30 days) but a live CMK is used by definition -- its consumers unwrap with it at every startup. All rates read from the Azure Retail Prices API (eastus, serviceName 'Key Vault') and Microsoft's Key Vault pricing page + FAQ on 2026-08-18."

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureaifoundry
+spec:
+  billing_model: free
+  free_tier: The AI Foundry hub is the shared foundation a company sets up once for its AI teams -- ARM-wise a Machine Learning workspace of kind "Hub", inheriting the ML workspace class's no-charge posture; Microsoft's Foundry pricing states the platform itself is free to use, with individual features billed at their own rates. The hub object, its identity, and its managed network carry no meter.
+  notes: "No field of this spec buys anything directly, but the hub is the doorway to two kinds of real spend, both separate catalog kinds. First, the companions it attaches: the required key vault and storage account, plus optional Application Insights and container registry, each bill at their own rates regardless of the hub. Second, what teams CONSUME through the hub's projects: model deployments (per-token serverless or per-hour managed compute), agent runs, and any attached AI services are where Foundry money actually goes. CMK encryption adds Key Vault key operations, posture spend on that kind."

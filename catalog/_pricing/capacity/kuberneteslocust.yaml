@@ -1,0 +1,66 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesLocust manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kuberneteslocust.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Two fixed workload
+# classes and no volumes (the stack is stateless): the master runs
+# exactly one replica (the chart's fixed shape -- the spec types no
+# master replica knob) carrying master.resources, and the worker fleet
+# multiplies workers.resources by the declared count. The worker count
+# carries NO assumed default: zero is a legal declared value (the
+# field's own floor, and the KEDA arm scales to zero), so a default
+# would silently overwrite an honest zero. Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteslocust
+spec:
+  workloads:
+    - label: master
+      resources_path: master.resources
+      instances:
+        constant: "1"
+    - label: worker
+      resources_path: workers.resources
+      instances:
+        field_value:
+          field_path: workers.replicas
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: the stack reserves its capacity continuously while deployed, tests running or not -- tear it down between test campaigns to release it
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+    - applies_when:
+        - field_path: workers.hpa
+          op: is_set
+      text: the HPA owns the worker count at runtime, floating between min_replicas and max_replicas on CPU utilization -- this footprint states the declared reservation, not the autoscaled range
+    - applies_when:
+        - field_path: workers.keda
+          op: is_set
+      text: KEDA owns the worker count at runtime, scaling on the live simulated-user count between min_replicas and max_replicas (the declared replicas field is ignored on this arm) -- this footprint cannot state the autoscaled range
+    - text: the load the workers generate lands on load_test.target_host -- the target's capacity and cost under test are its own
+  notes:
+    - applies_when:
+        - field_path: master.resources
+          op: is_unset
+      text: the chart applies no default requests or limits to the master -- undeclared resources genuinely reserve nothing schedulable; size the master for real tests, since it aggregates stats from every worker
+    - applies_when:
+        - field_path: workers.resources
+          op: is_unset
+      text: the chart applies no default requests or limits to the workers -- undeclared resources genuinely reserve nothing schedulable; a worker saturates around one CPU core, and the HPA arm requires CPU requests to compute utilization against
+    - applies_when:
+        - field_path: workers.replicas
+          op: is_unset
+        - field_path: workers.hpa
+          op: is_unset
+        - field_path: workers.keda
+          op: is_unset
+      text: an undeclared worker count runs 1 worker (the spec default); this footprint counts only the declared count
+    - applies_when:
+        - field_path: load_test.pip_packages
+          op: is_set
+      text: pip packages install at every pod start -- transient CPU, memory and network at startup this footprint does not model

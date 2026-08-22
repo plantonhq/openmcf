@@ -1,0 +1,25 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awseventbridgeapidestination
+spec:
+  # NOTE the connection's credential values never round-trip: AWS
+  # stores them in its own Secrets Manager secret and no read API
+  # returns them (declared write-normalized in the import catalog).
+  # A fresh import re-sends the configured credentials on its first
+  # plan - a one-time server-side no-op reconcile.
+  values:
+    - name: connection_name
+      derivations:
+        - from_spec_field: connection.name
+      where_to_find: >-
+        EventBridge console -> Integration -> Connections (the Name
+        column), or `aws events list-connections` (Name).
+    - name: api_destination_name
+      derivations:
+        - from_spec_field: destination.name
+      where_to_find: >-
+        EventBridge console -> Integration -> API destinations (the
+        Name column), or `aws events list-api-destinations` (Name).

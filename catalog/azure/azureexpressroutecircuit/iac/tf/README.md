@@ -83,7 +83,4 @@ module "hq_circuit" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/expressRouteCircuits/write` (and
-`.../authorizations/write` when issuing keys) -- held via Network
-Contributor, Contributor, or Owner.
+The deploying principal's least-privilege permission manifest lives at [`../permissions.yaml`](../permissions.yaml).

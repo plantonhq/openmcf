@@ -8,28 +8,31 @@
 # runtime role) are referenced resources -- the module never creates or
 # mutates them.
 
-# ── Credentials secret ──────────────────────────────────────────────────
+# ── Token secret ────────────────────────────────────────────────────────
 #
-# The container never sees the credentials document in its launch
-# configuration: the task definition carries only this secret's ARN, and
-# the ECS agent fetches the value at task start through the execution
-# role -- so reading the task definition (a common, low-sensitivity
-# permission) reveals nothing.
+# The container never sees the runner token in its launch configuration:
+# the task definition carries only this secret's ARN, and the ECS agent
+# fetches the value at task start through the execution role -- so reading
+# the task definition (a common, low-sensitivity permission) reveals
+# nothing. The token authorizes JOINING and is never the runner's
+# identity: the runner presents it once per enrollment, registers itself,
+# and receives its own individually revocable identity from the control
+# plane.
 #
-# Zero recovery window: the document is re-mintable credential material,
-# not data. Secrets Manager's default 30-day soft-delete would block
+# Zero recovery window: the token is re-mintable credential material, not
+# data. Secrets Manager's default 30-day soft-delete would block
 # re-creating a same-named runner for a month after a destroy, with no
 # compensating benefit for a value that can simply be re-issued.
-resource "aws_secretsmanager_secret" "credentials" {
-  name                    = "${local.runner_name}-credentials"
-  description             = "Credentials document for Planton runner '${local.runner_name}'"
+resource "aws_secretsmanager_secret" "token" {
+  name                    = "${local.runner_name}-token"
+  description             = "Runner token for Planton runner '${local.runner_name}'"
   recovery_window_in_days = 0
   tags                    = local.aws_tags
 }
 
-resource "aws_secretsmanager_secret_version" "credentials" {
-  secret_id     = aws_secretsmanager_secret.credentials.id
-  secret_string = var.spec.credentials
+resource "aws_secretsmanager_secret_version" "token" {
+  secret_id     = aws_secretsmanager_secret.token.id
+  secret_string = var.spec.token
 }
 
 # ── IAM: two roles, strictly separated ──────────────────────────────────
@@ -68,7 +71,7 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
 # -- the managed execution policy deliberately grants no secret
 # permissions.
 resource "aws_iam_role_policy" "execution_secret_read" {
-  name = "credentials-secret-read"
+  name = "token-secret-read"
   role = aws_iam_role.execution.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -76,7 +79,7 @@ resource "aws_iam_role_policy" "execution_secret_read" {
       {
         Effect   = "Allow"
         Action   = ["secretsmanager:GetSecretValue"]
-        Resource = aws_secretsmanager_secret.credentials.arn
+        Resource = aws_secretsmanager_secret.token.arn
       }
     ]
   })
@@ -166,27 +169,40 @@ resource "aws_ecs_task_definition" "runner" {
       essential = true
 
       # The runner's listening ports: the gRPC/CloudOps server and the
-      # webhook server. Both are private to the task ENI -- the security
-      # group admits no inbound traffic; the CloudOps channel (dual/grpc
-      # modes) reaches the runner through its own outbound-initiated
-      # tunnel.
+      # health server. Both are private to the task ENI -- the security
+      # group admits no inbound traffic; the CloudOps channel reaches the
+      # runner through its own outbound-initiated tunnel.
       portMappings = [
         { containerPort = 50051, protocol = "tcp" },
         { containerPort = 8093, protocol = "tcp" }
       ]
 
-      environment = [
-        { name = "PORT", value = "50051" },
-        { name = "EXECUTION_MODE", value = var.spec.execution_mode },
-        { name = "LOG_LEVEL", value = "info" },
-        { name = "TUNNEL_ENABLED", value = local.tunnel_enabled }
-      ]
+      # The runner's environment contract: the name it registers itself
+      # under, the control-plane endpoint when one is declared (omitted,
+      # the runner's built-in hosted default applies), and the base
+      # process settings. No EXECUTION_MODE: only the control plane knows
+      # whether its work queue is reachable, so the runner derives its
+      # mode from the identity the join returns -- a mode knob here would
+      # silently strip capability.
+      environment = concat(
+        [
+          { name = "PLANTON_RUNNER_NAME", value = local.registration_name },
+          { name = "PORT", value = "50051" },
+          { name = "LOG_LEVEL", value = "info" }
+        ],
+        try(var.spec.control_plane_endpoint, "") != "" ? [
+          { name = "PLANTON_RUNNER_ENDPOINT", value = var.spec.control_plane_endpoint }
+        ] : []
+      )
 
-      # The credentials document arrives as an env var resolved by the
-      # ECS agent at task start via the execution role -- never as
-      # plaintext in this document.
+      # The runner token arrives as an env var resolved by the ECS agent
+      # at task start via the execution role -- never as plaintext in
+      # this document. The token is only read at join, so rotating the
+      # secret needs no task restart: running tasks keep serving on their
+      # minted identity, and the next task replacement joins with the new
+      # value.
       secrets = [
-        { name = "PLANTON_RUNNER_CREDENTIALS", valueFrom = aws_secretsmanager_secret.credentials.arn }
+        { name = "PLANTON_RUNNER_TOKEN", valueFrom = aws_secretsmanager_secret.token.arn }
       ]
 
       logConfiguration = {

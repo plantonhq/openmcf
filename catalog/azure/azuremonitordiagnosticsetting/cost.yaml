@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremonitordiagnosticsetting
+spec:
+  billing_model: free
+  free_tier: A diagnostic setting is a routing switch -- an extension resource on the target that selects which platform logs and metrics leave it and where they go. The setting object carries no meter; a target can hold up to five of them at no charge.
+  notes: "The setting is free; the volume it routes is the bill, and WHERE it routes decides which meter. Logs sent to a Log Analytics workspace (log_analytics_workspace_id) bill as that workspace's ingestion per GB. Logs streamed to a storage account or Event Hub bill Azure Monitor's platform-logs meter per GB (a select list of platform logs is exportable free) PLUS the destination's own capacity or throughput meters; partner solutions (partner_solution_id) bill per partner. The enabled_logs selection is the cost dial -- the curated allLogs category_group auto-adopts every category Azure adds to the target later, which is coverage AND an open-ended volume commitment; per-category selections or the audit group keep the routed volume deliberate."

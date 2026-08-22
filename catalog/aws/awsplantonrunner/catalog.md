@@ -6,8 +6,8 @@ Deploys a standing Planton runner appliance inside your AWS VPC -- an always-on,
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Secrets Manager secret** -- holds the runner's credentials document; the container reads it at start through native secret injection, so the credentials never appear in the task definition
-- **IAM execution role** -- the setup identity: pulls the runner image, writes logs, and reads exactly the one credentials secret
+- **Secrets Manager secret** -- holds the runner token; the container reads it at start through native secret injection, so the token never appears in the task definition
+- **IAM execution role** -- the setup identity: pulls the runner image, writes logs, and reads exactly the one token secret
 - **IAM runtime role** -- the runner's own AWS identity while executing work; created permissionless, and only when `taskRole` does not reference an existing role
 - **CloudWatch log group** -- the audit trail of every operation the runner executes, with configurable retention
 - **Security group** -- outbound-only, no inbound rules, created in the VPC derived from the referenced subnets
@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Planton Setup
 
 - **AWS Provider Connection** -- the credential used to provision the appliance itself. Required.
-- **Runner registration and credentials** -- create the registration and mint its credentials document with `planton runner generate-credentials <runner-name>`, store the JSON as a managed secret, and reference it as `$secret/<slug>` in the `credentials` field. Plaintext is rejected.
+- **Runner token** -- nothing to create by hand: the platform mints a runner token and writes it at exactly the managed-secret reference the manifest declares, before the infrastructure applies. Choose a secret slug and reference it as `$secret/<slug>` in the `token` field; plaintext is rejected. The token only authorizes joining -- the runner registers itself on first boot and receives its own individually revocable identity, and revoking the token never touches runners it already admitted. (Self-service alternative: `planton runner token create`, or the console under Organization Settings → Runner Tokens.)
 
 ### AWS Account
 
@@ -54,14 +54,14 @@ spec:
         kind: AwsSubnet
         name: private-b
         fieldPath: status.outputs.subnet_id
-  credentials: $secret/vpc-runner-credentials
+  token: $secret/vpc-runner-token
 ```
 
 ```shell
 planton apply -f runner.yaml
 ```
 
-This minimal manifest deploys a pull-based (temporal-mode) worker at the default sizing (0.5 vCPU, 1 GiB) tracking the latest runner release, with a permissionless runtime role and 30-day log retention -- sizing, version pinning, execution mode, and the runtime identity are not configured.
+This minimal manifest deploys a pull-based worker at the default sizing (0.5 vCPU, 1 GiB) tracking the latest runner release, with a permissionless runtime role and 30-day log retention -- sizing, version pinning, and the runtime identity are not configured. The runner registers itself as `prod-vpc-runner` (`<env>-<metadata.name>`) the moment it joins.
 
 ### InfraChart
 
@@ -91,7 +91,7 @@ The InfraPipeline resolves the dependency graph, deploys the subnets, security g
 These are the most important decisions when configuring the runner. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 - **Subnet placement** -- `subnets` is the whole point of the appliance: whatever those subnets' route tables can reach, the runner can deploy to. All subnets must belong to the same VPC; two Availability Zones let the service reschedule across an AZ event.
-- **Execution mode** -- `executionMode` defaults to `temporal`, a pull-based worker that polls its queue and needs no inbound path at all. `dual` adds the real-time CloudOps channel through an outbound-initiated tunnel (the credentials must carry tunnel material); `grpc` executes no deploy operations and is rarely right for a standing appliance.
+- **Control-plane endpoint** -- `controlPlaneEndpoint` (host:port) is only for self-hosted control planes; leave it unset for Planton's hosted endpoint. It is the one bootstrap coordinate the join cannot deliver -- everything else arrives in the join response, so the runner self-configures its execution mode on arrival and no mode knob exists.
 - **Sizing** -- `cpu` and `memory` must form one of the fixed serverless pairings (validated up front; AWS would otherwise reject them only at deploy time). The 512/1024 default handles typical IaC operations; memory pressure shows up as failed operations mid-apply, so size memory up before CPU.
 - **Runner build** -- empty `runnerVersion` tracks the newest release on every task (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
 - **Runtime identity** -- leave `taskRole` empty to get a permissionless role (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference an `AwsIamRole` composed with exactly the permissions keyless cloud access needs.
@@ -120,15 +120,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `security_group_id` | The outbound-only group's id | Private targets reference it to trust the runner (e.g. an EKS API's allowed sources) |
 | `execution_role_arn` | The setup identity | Auditing image-pull/log/secret access |
 | `task_role_arn` | The runtime identity | Granting the runner AWS permissions for keyless operations |
-| `credentials_secret_arn` | The credentials secret's ARN | Auditing secret access; rotation tooling |
+| `token_secret_arn` | The token secret's ARN -- the token authorizes joining and is never the runner's identity | Auditing secret access; rotation tooling |
 | `region` | The deployed region | Targeting follow-up AWS operations correctly |
+| `runner_name` | The name the runner registers itself under with the control plane | Console and `planton runner list` lookups |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - **Private VPC worker** -- the standard appliance: a pull-based worker on two private subnets that makes a private-endpoint cluster deployable. Start from the **private-vpc-worker** preset.
-- **Dual-mode operations runner** -- adds the real-time CloudOps channel for live resource browsing through the runner, still outbound-only. Start from the **dual-mode** preset.
+- **Public subnet worker** -- the same worker on public subnets with `assignPublicIp: true`, for VPCs with an internet gateway but no NAT; still zero inbound exposure. Start from the **public-subnet** preset.
 - **High-capacity deploy worker** -- pinned version and larger sizing for heavy Terraform/Pulumi stacks and concurrent operations. Start from the **high-capacity** preset.
 
 ## Works With

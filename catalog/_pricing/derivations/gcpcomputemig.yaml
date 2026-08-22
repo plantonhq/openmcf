@@ -1,0 +1,299 @@
+# Cost derivation: the machine-executable rules turning any GcpComputeMig
+# manifest's spec values into metered quantities and price choices. The
+# bill is one instance's rate times the committed fleet: target_size for
+# fixed groups, the autoscaler's min_replicas floor for elastic ones (a
+# zero or unset floor refuses -- committed spend is unknowable). The
+# template machine type picks the family's per-vCPU and per-GiB rates;
+# shared-core E2 types bill their documented fractional vCPU. Per-instance
+# template disks live inside a repeated list these rules cannot resolve --
+# excluded honestly, never guessed. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/gcpcomputemig.yaml. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcomputemig
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: template.machine_type
+          op: not_equals
+          value: e2-small
+        - field_path: template.machine_type
+          op: not_equals
+          value: e2-medium
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      reason: the template machine type's on-demand rate is not pinned in the price book (only e2-small and e2-medium are), and the fleet multiplies whatever that rate is -- pricing an unpinned shape would be a guess wearing a dollar sign
+    - when:
+        - field_path: autoscaler
+          op: is_set
+        - field_path: autoscaler.min_replicas
+          op: equals
+          value: "0"
+      reason: the autoscaler's floor is zero or unset, so the committed fleet size is unknowable from the manifest -- the group bills whatever load makes it, between nothing and max_replicas instances
+    - when:
+        - field_path: versions
+          op: is_set
+      reason: a canary split runs different templates across an unstated division of the fleet -- which instances bill which machine rate cannot be resolved from the manifest
+    - when:
+        - field_path: instance_flexibility_policy
+          op: is_set
+      reason: instance flexibility lets the group substitute machine types from a ranked list -- the actual per-instance rate depends on which types GCP picks at creation time
+    - when:
+        - field_path: template.guest_accelerators
+          op: is_set
+      reason: each attached GPU bills hourly per instance at per-model rates the price book does not carry, and per-element type/count inside the repeated list cannot be resolved -- the accelerators usually outweigh the VMs themselves
+  lines:
+    - sku_meter: fleet instance vCPU
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-small
+        - field_path: target_size
+          op: is_set
+        - field_path: autoscaler
+          op: is_unset
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: target_size
+        - constant: "0.5"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: target_size instances x e2-small's documented 0.5 fractional vCPU (2 vCPUs exposed to the guest) x 730 hours at the E2 per-vCPU rate
+    - sku_meter: fleet instance memory
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-small
+        - field_path: target_size
+          op: is_set
+        - field_path: autoscaler
+          op: is_unset
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: target_size
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: target_size instances x e2-small's 2 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: fleet instance vCPU
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-small
+        - field_path: autoscaler
+          op: is_set
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: autoscaler.min_replicas
+        - constant: "0.5"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: the autoscaler's committed floor of min_replicas instances x e2-small's documented 0.5 fractional vCPU x 730 hours at the E2 per-vCPU rate
+    - sku_meter: fleet instance memory
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-small
+        - field_path: autoscaler
+          op: is_set
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: autoscaler.min_replicas
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: the autoscaler's committed floor of min_replicas instances x e2-small's 2 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: fleet instance vCPU
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-medium
+        - field_path: target_size
+          op: is_set
+        - field_path: autoscaler
+          op: is_unset
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: target_size
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: target_size instances x e2-medium's documented 1.0 fractional vCPU (2 vCPUs exposed to the guest) x 730 hours at the E2 per-vCPU rate
+    - sku_meter: fleet instance memory
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-medium
+        - field_path: target_size
+          op: is_set
+        - field_path: autoscaler
+          op: is_unset
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: target_size
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: target_size instances x e2-medium's 4 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: fleet instance vCPU
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-medium
+        - field_path: autoscaler
+          op: is_set
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: autoscaler.min_replicas
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: the autoscaler's committed floor of min_replicas instances x e2-medium's documented 1.0 fractional vCPU x 730 hours at the E2 per-vCPU rate
+    - sku_meter: fleet instance memory
+      applies_when:
+        - field_path: template.machine_type
+          op: equals
+          value: e2-medium
+        - field_path: autoscaler
+          op: is_set
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: SPOT
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: FLEX_START
+        - field_path: template.scheduling.provisioning_model
+          op: not_equals
+          value: RESERVATION_BOUND
+      quantity:
+        - field_value:
+            field_path: autoscaler.min_replicas
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: the autoscaler's committed floor of min_replicas instances x e2-medium's 4 GB of memory x 730 hours at the E2 per-GiB rate
+  exclusions:
+    - text: per-instance disk storage -- every instance carries its own copy of each template.disks entry (boot and data alike), billing per provisioned GiB-month, but per-element sizes and types inside the repeated list are beyond these rules' reach; the 03-stateful-group preset's 100 GB pd-balanced data disk x 3 instances is 300 GiB of excluded committed storage
+    - applies_when:
+        - field_path: template.scheduling.provisioning_model
+          op: equals
+          value: SPOT
+      text: running hours bill the fluctuating Spot market rate below the on-demand ceiling -- no committed fleet rate exists, and preemption can shrink the group at any time
+    - applies_when:
+        - field_path: template.scheduling.provisioning_model
+          op: equals
+          value: FLEX_START
+      text: FLEX_START capacity bills Dynamic Workload Scheduler discounted rates for bounded runs that start when capacity is available -- not a committed always-on charge
+    - applies_when:
+        - field_path: template.scheduling.provisioning_model
+          op: equals
+          value: RESERVATION_BOUND
+      text: compute bills through the specific reservation the fleet consumes, purchased outside this manifest
+    - applies_when:
+        - field_path: autoscaler
+          op: is_set
+      text: scaling above the floor -- each additional instance up to max_replicas bills the full per-instance rate while load keeps it alive
+    - applies_when:
+        - field_path: target_suspended_size
+          op: is_set
+      text: suspended standby instances stop their compute meters but bill their persisted memory images as storage plus their disks, quantities the manifest does not carry
+    - applies_when:
+        - field_path: target_stopped_size
+          op: is_set
+      text: stopped standby instances bill their disks while parked
+    - applies_when:
+        - field_path: resize_requests
+          op: is_set
+      text: Dynamic Workload Scheduler resize requests bill their bounded capacity at DWS rates for each request's run duration
+    - text: external IPv4 usage bills hourly per instance whose template interface holds an access config -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+    - text: OS license premiums for premium images (Windows Server, RHEL, SLES) bill per instance on top of the machine rate; the catalog presets pin license-free Debian
+    - text: network egress and disk snapshots follow the workload's behavior
+  notes:
+    - applies_when:
+        - field_path: autoscaler
+          op: is_set
+      text: The estimate is the committed floor -- min_replicas instances around the clock. The actual bill follows load between that floor and max_replicas; the ceiling is max_replicas divided by min_replicas times this estimate's compute lines.
+    - applies_when:
+        - field_path: target_size
+          op: is_unset
+        - field_path: autoscaler
+          op: is_unset
+      text: The manifest sets neither target_size nor an autoscaler -- the group is created with zero instances and bills nothing until sized.
+    - text: Priced at on-demand rates for the template machine type's documented vCPU and memory, fleet-multiplied. Instance templates themselves are free -- only the instances they stamp out bill. Shared-core E2 types bill their documented fractional vCPU.

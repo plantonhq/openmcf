@@ -1,0 +1,47 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesopensearch
+spec:
+  presets:
+    - preset: 01-dev-minimal
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 4Gi
+        cpu_limits: "2"
+        memory_limits: 4Gi
+        persistent_storage: 20Gi
+        basis: 2 nodes (pool all) x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 2 x 10Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the operator's temporary bootstrap node reserves capacity only until the initial quorum forms
+    - preset: 02-production-cluster
+      capacity_footprint:
+        cpu_requests: "8"
+        memory_requests: 31Gi
+        cpu_limits: "17"
+        memory_limits: 32Gi
+        persistent_storage: 1560Gi
+        basis: managers pool 3 nodes x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 3 x 20Gi volumes, data pool 3 nodes x (2 CPU / 8Gi memory requests, 4 CPU / 8Gi limits) + 3 x 500Gi volumes, plus Dashboards 2 replicas x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) with no storage of their own
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the operator's temporary bootstrap node reserves capacity only until the initial quorum forms
+    - preset: 03-s3-snapshots
+      capacity_footprint:
+        cpu_requests: "3"
+        memory_requests: 12Gi
+        cpu_limits: "6"
+        memory_limits: 12Gi
+        persistent_storage: 300Gi
+        basis: 3 nodes (pool nodes) x (1 CPU / 4Gi memory requests, 2 CPU / 4Gi limits) + 3 x 100Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - snapshot bytes in the registered S3 repository grow with index churn and snapshot count, billed on the AWS account outside the cluster
+        - the operator's temporary bootstrap node reserves capacity only until the initial quorum forms

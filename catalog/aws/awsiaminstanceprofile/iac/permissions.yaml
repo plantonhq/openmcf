@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsiaminstanceprofile
+spec:
+  aws:
+    statements:
+      - sid: ManageInstanceProfile
+        actions:
+          - iam:CreateInstanceProfile
+          - iam:GetInstanceProfile
+          - iam:DeleteInstanceProfile
+          - iam:AddRoleToInstanceProfile
+          - iam:RemoveRoleFromInstanceProfile
+          - iam:TagInstanceProfile
+          - iam:UntagInstanceProfile
+          - iam:ListInstanceProfileTags
+        resources:
+          - arn:aws:iam::*:instance-profile/*
+        provenance: derived
+        notes: Covers aws_iam_instance_profile / iam.InstanceProfile, the only resource either module manages -- creation with name and path, the role attach (retried internally against IAM's eventual consistency), the in-place role swap (remove old, add new), tagging, and deletion (which removes the role first). IAM ARNs carry no region, and instance-profile/* spans custom paths because '*' matches path separators. All profile APIs, including AddRoleToInstanceProfile and RemoveRoleFromInstanceProfile, authorize on the instance-profile ARN.
+      - sid: PassCarriedRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: AWS requires the caller of AddRoleToInstanceProfile to hold iam:PassRole on the role being placed into the profile -- the guard that stops a principal from escalating by handing a more-privileged role to instances it controls. PassRole authorizes on the ROLE ARN (a second ARN format beyond the profile's own; omitting it denies provisioning at create time). The wildcard is scoped to roles only; narrow it further to the account's role paths where the runner's blast radius must shrink.

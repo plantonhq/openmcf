@@ -18,8 +18,9 @@ deliberately NOT bundled here — model each grant as a first-class
 
 - **Hierarchy placement**: create under an organization or a folder;
   changing the parent migrates the project.
-- **Billing linkage**: attach a billing account at creation (the deploying
-  identity needs `roles/billing.user` on the account).
+- **Billing linkage**: attach a billing account at creation
+  ([`iac/permissions.yaml`](iac/permissions.yaml) lists the exact
+  least-privilege grants, including the billing-account-scoped one).
 - **Honest deletion semantics**: `deletionPolicy` is the provider's real
   three-way switch — `DELETE` (default), `PREVENT` (destroy fails), or
   `ABANDON` (remove from state, project lives on) — instead of a boolean

@@ -1,0 +1,44 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesplantonplatform
+spec:
+  # The module declares exactly one namespaced PlantonPlatform custom
+  # resource (kubectl_manifest — the 4-part composed ID form
+  # apiVersion//kind//name//namespace) plus the optional owning namespace.
+  values:
+    # ── the platform CR (kubectl_manifest "planton_platform") ────────────
+    - name: api_version
+      tofu_resource_name: planton_platform
+      derivations:
+        - literal: planton.ai/v1
+      where_to_find: Always "planton.ai/v1" — the CR's group/version.
+    - name: kind
+      tofu_resource_name: planton_platform
+      derivations:
+        - literal: PlantonPlatform
+      where_to_find: Always "PlantonPlatform" — the CR kind this module applies.
+    - name: name
+      tofu_resource_name: planton_platform
+      derivations:
+        - from_stack_output: platform_name
+      where_to_find: >-
+        The platform name — this resource's metadata.name
+        (`kubectl get plantonplatforms -A` shows every platform).
+    - name: namespace
+      tofu_resource_name: planton_platform
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The platform's namespace (`kubectl get plantonplatforms -A`,
+        NAMESPACE column) — PlantonPlatform is namespaced, so the composed
+        import ID carries the namespace segment.
+    # ── the optional owning namespace ─────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the platform's
+        namespace itself.

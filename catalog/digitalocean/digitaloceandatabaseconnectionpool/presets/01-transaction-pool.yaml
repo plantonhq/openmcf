@@ -1,0 +1,15 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: orders-pool
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  poolName: orders-pool
+  mode: transaction
+  size: 20
+  dbName: orders
+  user: orders-service

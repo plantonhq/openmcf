@@ -3,10 +3,15 @@ kind: DigitalOceanDnsZone
 metadata:
   name: my-simple-website-zone
 spec:
-  domainName: "<your-domain.com>"
+  domainName: example.com
   records:
     - name: "@"
       type: A
       values:
-        - value: "<web-server-ip>"
+        - value: 203.0.113.10
+      ttlSeconds: 3600
+    - name: www
+      type: CNAME
+      values:
+        - value: example.com.
       ttlSeconds: 3600

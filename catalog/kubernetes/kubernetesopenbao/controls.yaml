@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesopenbao
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: OpenBao encrypts everything it stores through its security barrier before any byte reaches the storage backend (Raft or file) -- encryption at rest is the product's core property, not a configuration. Dev mode is in-memory and persists nothing at all.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: auto_unseal
+      evidence:
+        type: spec_default
+        reference: Unset protects the barrier's root key with operator-held unseal key shares (Shamir). Declaring a seal backend delegates root-key protection to the customer's own KMS key -- AWS KMS, GCP Cloud KMS (the 03 preset, keyless via workload identity), Azure Key Vault, or another OpenBao's transit engine.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Unset serves plain HTTP inside the cluster (the chart default); setting tls.enabled with a certificate Secret is a composite change the module owns end to end -- listener cert/key, Secret mount, and every derived URL and probe switch to https. The Raft cluster port (8201) always uses OpenBao's own cluster TLS regardless.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders ClusterIP Services only (internal, active, standby, UI) -- nothing is exposed beyond the cluster, and the module never creates ingress resources; exposure composes from Gateway API kinds referencing the exported service handles.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_policy_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default (most clusters manage policy through first-class KubernetesNetworkPolicy resources). When true, the chart renders its NetworkPolicy for the server pods -- ingress on 8200/8201, admitting all namespaces by default.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An in-cluster secrets service serves no edge traffic -- web application firewalls compose at the gateway layer if the UI or API is ever exposed.
+    - control_id: rbac
+      status: not_applicable
+      notes: OpenBao's own policy engine governs every data-plane operation -- policies, auth methods, and roles are RUNTIME configuration created inside OpenBao after initialization, with no seam in this spec. Kubernetes RBAC governs the release's objects on the management plane.
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_account
+      evidence:
+        type: spec_default
+        reference: Cloud workload-identity annotations on the server ServiceAccount federate it to cloud APIs without static credentials -- the 03 preset unseals through GCP Cloud KMS keylessly via iam.gke.io/gcp-service-account. auth_delegator_enabled (default true) additionally binds the ServiceAccount for TokenReview so OpenBao's Kubernetes auth method can verify client tokens.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Which auth methods OpenBao accepts (Kubernetes, OIDC, userpass...) is runtime configuration inside OpenBao, outside this spec. The spec models no legacy protocol.
+    - control_id: audit-logging
+      status: configurable
+      field_path: server.audit_storage
+      evidence:
+        type: spec_default
+        reference: Unset provisions no audit volume. Setting it provisions a dedicated PVC per replica mounted for audit device output -- note that ENABLING the audit device itself (`bao audit enable file`) is a runtime operation after initialization; the volume is the durable substrate this spec can guarantee.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing. metrics.enabled renders the telemetry stanza with unauthenticated_metrics_access scoped to /v1/sys/metrics (without it the endpoint requires an OpenBao token and Prometheus cannot scrape); service_monitor_enabled additionally renders a ServiceMonitor for the Prometheus operator.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: snapshot_agent
+      evidence:
+        type: spec_default
+        reference: Unset means no backups. Enabling it runs a CronJob shipping Raft snapshots to an S3-compatible bucket on the declared schedule (default every 15 minutes) -- snapshot files outlive the cluster and restore with `bao operator raft snapshot restore`. Prerequisite the module cannot create -- the agent's Kubernetes-auth role inside OpenBao is runtime configuration.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: snapshot_agent.s3_expire_days
+      evidence:
+        type: spec_default
+        reference: Snapshots older than s3_expire_days (default 14) are expired from the bucket by the agent -- the retention window is a declared field, not an unbounded accumulation.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: server.ha
+      evidence:
+        type: spec_default
+        reference: Dev and standalone modes are single-instance. HA mode runs a Raft cluster (default 3 replicas -- odd counts tolerate minority loss), and the chart's default required anti-affinity places each replica on a distinct node. Spread across ZONES follows the cluster's node topology -- the spec does not model zone constraints directly.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Helm releases nor the chart's objects carry a deletion-protection flag; protection is operational (cluster RBAC, change review). The seal itself is a different safety net -- deleting pods loses nothing while the data PVCs survive, and a re-created sealed server needs its unseal keys or KMS seal to serve again.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The release runs exactly the chart_version the manifest pins (default 0.28.6 = OpenBao v2.6.1) -- there is no managed patch channel; upgrades are deliberate manifest changes.

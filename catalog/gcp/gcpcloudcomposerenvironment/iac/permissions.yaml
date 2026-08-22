@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudcomposerenvironment
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComposerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling composer.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageEnvironment
+        permissions:
+          - composer.environments.create
+          - composer.environments.get
+          - composer.environments.update
+          - composer.environments.delete
+          - composer.operations.get
+        provenance: derived
+        notes: Covers google_composer_environment -- create (a 25-45 minute long-running operation the provider polls via composer.operations.get, a permission Composer defines in its own right, verified in IAM's testable-permissions inventory), read/refresh, in-place updates (workloads sizing, software config, maintenance window, labels), and destroy. The underlying GKE cluster, Cloud SQL database, and bucket are assembled by Composer's own service agent, so no container.*, cloudsql.*, or storage.* permissions fall on the runner.
+      - purpose: ActAsEnvironmentServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Required when node_config.service_account pins the environment's workload identity (presets 02 and 03 do; Composer 3 requires the field) -- the Composer API demands actAs on that account at environment creation. The account itself must separately hold roles/composer.worker, a prerequisite on the environment's identity rather than a runner permission.

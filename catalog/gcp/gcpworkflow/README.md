@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** to host the workflow (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/workflows.editor` or broader, plus `iam.serviceAccounts.actAs` on the workflow's service account when one is set.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 
 ## Deploy
 

@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanvpcpeering
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A peering connection stores no data.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Peered traffic never leaves DigitalOcean's private network fabric -- it crosses no public internet path by construction; there is no toggle to weaken this.
+      notes: Applications may still layer TLS on top; the control here is that the peering path itself is private by construction.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A peering connects exactly two private VPC networks and exposes nothing publicly; it has no public endpoint to restrict.
+      notes: Note the flip side -- a peering WIDENS private reachability between the two VPCs (all members of both networks can route to each other); peer only networks that should genuinely trust each other.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: DigitalOcean VPC peering has no route-filtering or per-CIDR control surface -- it is all-or-nothing between the two VPCs; per-host restriction belongs to droplet firewalls (the DigitalOceanFirewall kind).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; the peering forwards at the network layer.
+    - control_id: rbac
+      status: not_applicable
+      notes: Peerings carry no permission model; API-token scopes govern who can manage them.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-peering audit surface; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Peerings emit no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The peering is stateless connectivity recreated by IaC from the spec's two VPC references.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The peering is a regional fabric construct with no replica or placement posture; DigitalOcean manages its availability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for peerings. Deleting one severs cross-VPC routes immediately -- traffic between the networks stops (documented in the GUIDE).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch; the fabric is DigitalOcean-managed.

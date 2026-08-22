@@ -1,0 +1,12 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCdn
+metadata:
+  name: app-assets-cdn
+spec:
+  origin:
+    valueFrom:
+      kind: DigitalOceanBucket
+      name: app-assets
+      fieldPath: status.outputs.bucket_domain_name
+  # Fingerprinted assets tolerate long edge caching -- one day.
+  ttl: 86400

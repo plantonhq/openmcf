@@ -1,0 +1,147 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesairflow
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.airflow -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the module-owned Secrets composed BEFORE the Helm release -- the security keys (fernet_key, api_secret_key, webserver_secret_key, jwt_secret), the admin bootstrap password (admin_auth), the bundled-Redis password, the composed connection Secrets (metadata_conn, result_backend_conn, broker_url, log_read_conn), and the PgBouncer config and stats Secrets -- plus read access for the referenced credential Secrets the module composes from (data.kubernetes_secret_v1.db_password, broker_password, log_backend_password). Conditional Secrets render only when their spec arm is set (broker, pgbouncer, logging backends, BYO security names suppress generation).
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the release-owned core objects the airflow chart manages through helm_release.airflow -- component Services (ClusterIP only), configuration ConfigMaps, per-component ServiceAccounts, and the shared DAG and logs PersistentVolumeClaims rendered when dags.persistence (without existing_claim) or logging.persistence declares chart-created storage. StatefulSet volumeClaimTemplates (triggerer, workers, bundled Redis) are provisioned by their controllers, not by the runner.
+      - api_groups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Read access supports the modules' wait/atomic install (helm_release.airflow waits for readiness, timeout 900s). The write verbs exist because of Kubernetes RBAC escalation prevention -- the chart's pod-launcher Role grants pod create/delete to the scheduler and workers for KubernetesExecutor task pods, and a principal can only create a Role granting permissions it already holds (or carries the escalate verb).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workloads inside helm_release.airflow -- API server, DAG processor, statsd-exporter, and PgBouncer Deployments; triggerer, Celery worker, and bundled-Redis StatefulSets. Workers render only under a Celery-family executor; the Redis StatefulSet only for the bundled_redis broker arm; PgBouncer only when spec.pgbouncer.enabled.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's database-migration and admin-user bootstrap Jobs, which the modules deliberately run HOOK-LESS (useHelmHooks false in both engines' values) so they apply as ordinary release resources with the install; the chart's ttlSecondsAfterFinished default self-deletes finished Jobs, so day-2 applies recreate them.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's namespaced RBAC templates (pod-launcher and log-reader Roles and RoleBindings at the chart's default rbac.create) rendered through helm_release.airflow. Kubernetes escalation prevention requires the runner to already hold the permissions those Roles grant (see the pods rule) or the escalate verb.
+      - api_groups:
+          - keda.sh
+        resources:
+          - scaledobjects
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's worker ScaledObject, rendered only when spec.components.workers.keda.enabled is true (the modules map it to the chart's workers.keda values; the KEDA operator itself must already run on the cluster -- a KubernetesKeda composes naturally).
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The airflow chart carries optional PodDisruptionBudget templates for its components; the typed spec never enables them, but the helm_values overlay (spec.helm_values, merged last) can. The overlay can extend the chart's object surface beyond these rules generally (network policies, priority classes, extra manifests) -- grants for such extensions ride the operator's review of the overlay, not this manifest.

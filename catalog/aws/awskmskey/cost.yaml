@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awskmskey
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AWS Key Management Service
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      description: Every customer-managed key bills a flat monthly fee from creation, prorated hourly -- the same rate for symmetric, asymmetric, and HMAC keys, multi-Region primaries, and keys backed by a custom key store. Disabling the key does not stop the charge; only scheduling deletion does.
+  cost_drivers:
+    - field_path: enable_key_rotation
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      impact: Each of the first two rotations adds another billed key-material version -- another full key-month charge, prorated hourly. AWS caps the surcharge at the second rotation, so a long-rotated key settles at three key-months per month.
+    - field_path: rotation_period_in_days
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      impact: Sets how soon the first two billed rotation versions arrive (default 365 days). Beyond the second rotation the cadence no longer moves the bill.
+    - field_path: multi_region
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      impact: The primary bills the same monthly fee as any key. Every replica key later created from it is its own key billing the same fee in its own region -- a separate resource outside this manifest.
+    - field_path: key_spec
+      sku_meter: KMS API requests
+      pricing_unit: requests
+      impact: Does not change the key fee; it selects the request rate class for usage. Requests against asymmetric and HMAC keys bill at higher per-10,000 rates than symmetric requests and are excluded from the request free tier; RSA data-key-pair generation is the most expensive class by far.
+    - field_path: custom_key_store_id
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      impact: The key fee is unchanged, but the CloudHSM cluster or external key manager behind the store is separately billed account-level infrastructure -- with CloudHSM, orders of magnitude larger than the key fee.
+    - field_path: disabled
+      sku_meter: customer managed keys
+      pricing_unit: key-months
+      impact: None -- a disabled key keeps billing the monthly fee. Only scheduling deletion stops the charge, and cancelling the deletion reinstates it as though never scheduled.
+  free_tier: 20,000 KMS API requests per month are free, calculated across all regions. Requests to asymmetric keys and GenerateDataKeyPair requests are excluded from the free tier. The key's monthly fee has no free tier.
+  estimate_exclusions:
+    - API requests bill per 10,000 by request class (symmetric and RSA_2048 at the base rate; other asymmetric and HMAC requests higher; RSA data-key-pair generation far higher) -- volume follows the workloads using the key
+    - the first two rotations each add a key-month of charge on their own schedule (rotation_period_in_days), capped at the second rotation
+    - multi-Region replica keys bill their own key-months in their own regions
+    - the CloudHSM cluster or external key manager behind a custom key store bills on its own
+  notes: "The monthly key fee is the whole commitment at manifest time; everything else follows usage of the key. Aliases and grants add no metered charge of their own -- the offer bills keys and API requests only."

@@ -1,40 +1,25 @@
-# Local variables for computed values and helper functions
-
 locals {
-  # Filesystem type mapping from protobuf enum to DigitalOcean API format
-  # Protobuf: NONE (0), EXT4 (1), XFS (2)
-  # DigitalOcean API expects lowercase strings: "", "ext4", "xfs"
-  filesystem_type_map = {
-    "NONE" = ""
-    "EXT4" = "ext4"
-    "XFS"  = "xfs"
-  }
+  # The proto enum value names ARE the strings the provider expects
+  # (ext4/xfs); "unformatted" (the enum zero value, which may also arrive as
+  # an omitted empty string) means "do not format" and must be sent as null.
+  filesystem_type = contains(["ext4", "xfs"], var.spec.filesystem_type) ? var.spec.filesystem_type : null
 
-  # Convert filesystem type from spec to DigitalOcean format
-  filesystem_type = lookup(local.filesystem_type_map, var.spec.filesystem_type, "")
+  # The label only means anything when a filesystem is being formatted.
+  filesystem_label = local.filesystem_type != null && var.spec.initial_filesystem_label != "" ? var.spec.initial_filesystem_label : null
 
-  # Determine if volume should be created from snapshot
-  from_snapshot = var.spec.snapshot_id != null && var.spec.snapshot_id != ""
-
-  # Common tags/labels for the volume
-  # Note: DigitalOcean volumes support tags which are used for organization
-  volume_tags = concat(
-    var.spec.tags,
-    var.metadata.labels != null ? [
-      for k, v in var.metadata.labels : "${k}:${v}"
-    ] : []
-  )
-
-  # Additional metadata tags
-  resource_tags = concat(
-    local.volume_tags,
+  # Standard Planton labels rendered as DigitalOcean "key:value" tags — the
+  # exact set and key spelling the Pulumi module applies, so both
+  # provisioners tag identically.
+  planton_tags = concat(
     [
-      "managed-by:terraform",
-      "resource:digitalocean-volume"
-    ]
+      "planton-ai_resource:true",
+      "planton-ai_name:${var.metadata.name}",
+      "planton-ai_kind:DigitalOceanVolume",
+    ],
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? ["planton-ai_organization:${var.metadata.org}"] : [],
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? ["planton-ai_environment:${var.metadata.env}"] : [],
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? ["planton-ai_id:${var.metadata.id}"] : [],
   )
 
-  # Description with metadata
-  volume_description = var.spec.description != "" ? var.spec.description : "DigitalOcean Volume managed by Terraform"
+  tags = distinct(concat(coalesce(var.spec.tags, []), local.planton_tags))
 }
-

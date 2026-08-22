@@ -1,0 +1,35 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: vector buckets themselves
+# are free on the S3 pricing page, empty indexes carry no meter, and every
+# S3 Vectors charge (logical storage, PUT uploads, per-query request,
+# data-processed, and data-returned fees) starts with the first vector an
+# embedding pipeline uploads -- stated in exclusions, never padded into
+# fabricated dollars. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awss3vectorbucket
+spec:
+  presets:
+    - preset: 01-bedrock-kb-backend
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - S3 Vectors storage bills $0.06 per logical GB-month from the first vector -- the 1024-dimension index prices at 4 KB of vector data per embedding plus metadata and key, and the manifest creates it EMPTY
+        - uploads bill $0.20 per logical GB with a 128 KB minimum per PUT -- driven by how much the knowledge base ingests, invisible to this manifest
+        - every knowledge-base retrieval queries the index -- $2.50 per million queries plus tiered data-processed charges ($0.004/TB first 100K vectors, $0.002/TB to 10M) plus data returned at $0.01/GB beyond the free first 512 KB per query; the source_text and source_uri keys are parked non-filterable, keeping the bulky payload OUT of every query's processed bytes
+        - read and list request meters are not yet published on the pricing page -- excluded as absence, not as $0
+      notes: Zero committed cost -- the zero is commitment-absence on an empty index, not a free tier; S3 Vectors has no permanent free allotment beyond the per-query data-returned allowance, and every meter starts with the first embedding the Bedrock knowledge base writes.
+    - preset: 02-encrypted-multi-index
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the same storage, upload, and query meter family across BOTH indexes, each empty at creation -- and per-vector cost diverges by design, with docs-titan carrying 4 KB of vector data per embedding (1024 dimensions) against code-small's 1 KB (256 dimensions), a 4x slope difference on storage and query-processed bytes alike
+        - the aws:kms encryption choice routes KMS request and key charges to the referenced key, billed on its own AwsKmsKey component
+        - read and list request meters are not yet published on the pricing page -- excluded as absence, not as $0
+      notes: Zero committed cost -- KMS encryption is posture, not a meter, on this component; an idle encrypted store meters nothing here, and the first query or upload starts the same usage meters as the unencrypted preset.

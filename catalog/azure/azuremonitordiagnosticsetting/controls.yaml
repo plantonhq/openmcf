@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitordiagnosticsetting
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The setting stores routing configuration, not telemetry; routed data rests at the destinations (Log Analytics workspace, storage account, Event Hub), each of which owns its encryption posture as its own catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt on the setting itself (see enc-at-rest); customer-managed-key levers live on the destination kinds.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Telemetry delivery from the target to the destinations runs inside Microsoft-operated Azure Monitor pipelines as platform posture; the setting offers no transport toggle.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A routing switch has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The setting is telemetry routing, not an access grant; creating one is governed by ARM RBAC at the target resource's scope (the setting is an extension resource), which is platform posture for every ARM resource.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The setting authenticates nobody -- delivery to destinations is Azure Monitor platform machinery. The one credential-shaped reference, eventhub_authorization_rule_id, names WHICH namespace rule authorizes streaming; the rule itself (and its key posture) is the AzureEventHubAuthorizationRule kind's concern.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The setting exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: enabled_logs
+      evidence:
+        type: spec_default
+        reference: The diagnostic setting is HOW a resource's audit trail leaves it -- without one, most Azure resources emit nothing beyond basic metrics. Selecting the target's audit categories (Key Vault's AuditEvent, AKS's kube-audit, or Azure's curated "audit" category_group, which auto-adopts new audit categories) captures administrative and access events to a queryable, alertable destination. A CEL requires at least one log or metric selection, so a deployed setting always routes something.
+      notes: The audit-capture strength is a selection choice -- a metrics-only setting satisfies the CEL while capturing no audit events, which is why enabled_logs is the field reviews should read.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS the monitoring integration and cannot be deployed as anything less -- CELs require at least one enabled log or metric category AND at least one destination (log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, or partner_solution_id), so every deployed setting exports the target's telemetry to a monitoring system.
+      notes: The spec front-loads Azure's real contract -- the API otherwise accepts an empty setting and then 404s on read.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing configuration -- nothing to back up; the manifest recreates the setting declaratively. Retention of the ROUTED data is the destination's posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The setting has no runtime footprint with a zonal failure mode; the telemetry pipeline that executes it is Microsoft-operated.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a diagnostic setting; deleting one silently stops the target's telemetry export -- a monitoring-coverage risk worth guarding in review, since nothing breaks loudly when it happens.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The export pipeline that evaluates selections and delivers to destinations is Microsoft-operated Azure Monitor infrastructure; no customer-visible patch surface exists.

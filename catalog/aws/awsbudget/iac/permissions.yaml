@@ -1,0 +1,49 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbudget
+spec:
+  aws:
+    statements:
+      - sid: ManageBudget
+        actions:
+          - budgets:ModifyBudget
+          - budgets:ViewBudget
+        resources:
+          - arn:aws:budgets::*:budget/*
+        provenance: derived
+        notes: Covers aws_budgets_budget. Budgets keeps a deliberately coarse IAM vocabulary -- ModifyBudget is the one write action covering create, update, AND delete of the budget (there is no per-verb split), and ViewBudget is every read on plan/refresh. The budget ARN format is REGION-LESS (arn:${Partition}:budgets::${Account}:budget/${BudgetName}) per the service reference -- a region-qualified ARN would never match. Budgets is account-global served from us-east-1 regardless of the provider's endpoint region.
+      - sid: ManageBudgetActions
+        actions:
+          - budgets:CreateBudgetAction
+          - budgets:DescribeBudgetAction
+          - budgets:DescribeBudgetActionsForBudget
+          - budgets:UpdateBudgetAction
+          - budgets:DeleteBudgetAction
+        resources:
+          - arn:aws:budgets::*:budget/*
+          - arn:aws:budgets::*:budget/*/action/*
+        provenance: derived
+        notes: Covers aws_budgets_budget_action, one per actions entry -- action CRUD scopes to the action ARN nested under the budget (also region-less), and DescribeBudgetActionsForBudget (scoped to the budget ARN) backs the provider's list-based reads. budgets:ExecuteBudgetAction is deliberately absent -- actions fire on threshold breach service-side (or by a human approving), never by the runner.
+      - sid: TagBudgetResources
+        actions:
+          - budgets:TagResource
+          - budgets:UntagResource
+          - budgets:ListTagsForResource
+        resources:
+          - arn:aws:budgets::*:budget/*
+          - arn:aws:budgets::*:budget/*/action/*
+        provenance: derived
+        notes: Tag-on-create plus tag reconciliation and the tag read on every refresh, for both the budget and its actions, per the service reference's scoping.
+      - sid: PassExecutionRoleToBudgets
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Needed only when actions are configured -- CreateBudgetAction and UpdateBudgetAction pass each action's execution_role_arn to the Budgets service (the role the fired action assumes to apply IAM policies, attach SCPs, or stop instances). Narrow the resource to the deployment's role naming convention where one exists.

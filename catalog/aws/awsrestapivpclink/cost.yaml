@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrestapivpclink
+spec:
+  billing_model: free
+  free_tier: A REST API VPC link has no meter of its own -- the AWS price list for API Gateway (offer AmazonApiGateway) contains no VPC-link SKU, hourly or per-request; it meters only API calls, caching, and WebSocket usage. The spec's own contract says it plainly -- creating the link is free -- and the price list confirms it.
+  notes: "The always-on charge people attribute to this link actually belongs to what it fronts: the internal Network Load Balancer named in target_arn bills hourly plus LCU usage on its own component (AwsNlb) from the moment it exists, whether or not a single request crosses the link. Requests on the REST APIs that integrate through the link bill on those API components' per-million request meter. Third-party cost guides claiming an hourly VPC-link charge conflate this resource with the interface VPC endpoints used by PRIVATE REST APIs, which do bill PrivateLink rates -- a different resource entirely."

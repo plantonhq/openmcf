@@ -14,6 +14,7 @@ go_library(
         "//pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider",
         "//shared/cloudresourcekind",
         "@com_github_pkg_errors//:errors",
+        "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure",
         "@com_github_pulumi_pulumi_azure_sdk_v6//go/azure/machinelearning",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],

@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesjob
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A run-to-completion Job stores no data of its own -- pods write wherever the job's code writes (a database, an object store), and encryption at rest is those targets' property. Secret env material rests in etcd under the cluster's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data at rest of its own (see enc-at-rest), there is no key to manage; keys apply to the systems the job writes to.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Job pods make outbound connections with whatever protocol the job's code speaks -- the spec models no TLS seam. Transport encryption is the job code's own configuration toward its targets.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no Service and no exposure of any kind -- Job pods are unreachable except pod-to-pod inside the cluster network, and they exist only while the Job runs.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Job pods accept no inbound traffic -- there is no ingress path to restrict. Kubernetes NetworkPolicies (separate resources) can restrict the pods' outbound reach.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Run-to-completion batch work serves no edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset runs Job pods as the namespace's default ServiceAccount, which carries no Kubernetes API permissions; setting it binds them to a dedicated identity whose permissions are granted declaratively through KubernetesRbac resources. The module itself never creates ServiceAccounts or RBAC objects.
+      notes: Management-plane access (the Job object itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset means Job pods hold no cloud identity; referencing a KubernetesServiceAccount resource attaches an identity whose own workload_identity configuration federates to cloud APIs (EKS IRSA, GKE Workload Identity, AKS Workload Identity) without static credentials -- how a migration job reaches cloud services keylessly.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec models no authentication protocol -- how the job's code authenticates to its targets is the job's own configuration.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the Job and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. Pod logs stream to stdout; ttl_seconds_after_finished bounds how long the finished Job (and its pod logs) persist -- all three presets keep 86400 seconds for post-mortems.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: pod.annotations
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; prometheus.io scrape annotations stamped on the Job pods are the conventional discovery seam, though short-lived pods usually report through a push gateway or the job code's own emission instead. The module wires no exporter.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Job has no state of its own to back up -- its entire definition is the declarative manifest, and rerunning it recreates the work. Whether the work's OUTPUT is durable is the property of the target the job writes to.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so no retention applies.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Run-to-completion work has no replica set to spread -- pods schedule wherever the cluster places them, failed pods retry per backoff_limit (or per index with backoff_limit_per_index), and pod_failure_policy can exempt infrastructure-caused failures from the retry budget, as the 03-resilient-batch preset demonstrates with DisruptionTarget.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Jobs; protection is operational (namespace RBAC, change review). suspend stops pod creation without deleting the Job -- note it deletes active pods and resets the active_deadline_seconds timer.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The Job runs exactly the image the manifest pins -- there is no managed patch channel, and a Job's pod template is immutable once created; new code means a new Job from an updated manifest.

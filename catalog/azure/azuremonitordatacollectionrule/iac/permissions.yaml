@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitordatacollectionrule
+spec:
+  azure:
+    groups:
+      - purpose: ManageDataCollectionRule
+        actions:
+          - Microsoft.Insights/DataCollectionRules/Read
+          - Microsoft.Insights/DataCollectionRules/Write
+          - Microsoft.Insights/DataCollectionRules/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_data_collection_rule -- create, read/refresh, in-place updates (sources, destinations, flows, description, tags; kind changes force a new rule), and destroy, held on the rule's resource group. The module passes every destination reference (workspace_resource_id, event_hub_id, storage_account_id, monitor_account_id) and data_collection_endpoint_id as opaque ARM IDs and performs no direct reads of them; Azure validates the references server-side at PUT, so deployments conventionally also hold read on the referenced destinations -- Monitoring Contributor plus Reader over the destinations covers both. ARM's inventory spells these operations with PascalCase verbs (Read/Write/Delete).
+      - purpose: AssignUserAssignedIdentity
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity declares the USER_ASSIGNED flavor -- attaching an existing AzureUserAssignedIdentity to the rule makes ARM check assign/action on that identity at PUT. System-assigned identities need nothing extra.

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiamsamlprovider.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsIamSamlProviderSpec defines one IAM SAML identity provider: the
+// account's trust anchor for SAML 2.0 federation. It is created from
+// the identity provider's metadata document (the XML the IdP - Okta,
+// Entra ID, Google Workspace, ... - publishes, carrying its issuer
+// and signing certificates), and IAM roles then trust it via
+// sts:AssumeRoleWithSAML in their trust policies.
+//
+// The provider's name comes from metadata.name and is WRITE-ONCE at
+// AWS - renaming replaces the provider (and every role trust policy
+// naming its ARN must be updated). The metadata document updates in
+// place - certificate rotations are ordinary updates.
+//
+// IAM is a GLOBAL service: the provider exists account-wide, and the
+// spec's region is only the provider endpoint region.
+message AwsIamSamlProviderSpec {
+  // The AWS region used by the provider while managing the SAML
+  // provider. IAM is a global service - every AWS API call is still
+  // made against a regional endpoint. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The IdP's SAML 2.0 metadata document - the XML verbatim, as
+  // published by the identity provider (issuer, SSO endpoints, and
+  // public signing certificates). This is a PUBLIC trust document,
+  // not a secret - IdPs serve it unauthenticated. AWS requires
+  // 1000-10000000 characters; update it in place when the IdP rotates
+  // its signing certificates (see valid_until in the outputs).
+  string saml_metadata_document = 2 [(buf.validate.field).string = {
+    min_len: 1000
+    max_len: 10000000
+  }];
+}

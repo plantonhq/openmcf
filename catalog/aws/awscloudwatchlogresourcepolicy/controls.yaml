@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchlogresourcepolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A resource policy stores no customer data -- it is a permission document held inside CloudWatch Logs' own control plane. The log data it lets services write rests (encrypted) in the receiving log groups, whose posture lives on AwsCloudwatchLogGroup.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); the resource-policy API exposes no KMS surface. Log-group CMK encryption is the AwsCloudwatchLogGroup component's kms_key_id.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy terminates no connections. Its management calls (PutResourcePolicy, DescribeResourcePolicies, DeleteResourcePolicy) ride AWS API endpoints, which serve exclusively over TLS as provider-wide behavior -- and the service log-writes it authorizes travel AWS's internal TLS channels into the log groups.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network endpoint to expose. Its exposure surface is identity, not network -- WHICH service principals may write WHERE is exactly what the required document governs (see rbac).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the policy has no addresses or ports, only an IAM-authorized management API.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: policy_document
+      evidence:
+        type: spec_default
+        reference: "The policy IS an access-control surface -- the required document declares which service principals may logs:CreateLogStream and logs:PutLogEvents against which log-group ARNs. Both presets scope tightly: route53.amazonaws.com into /aws/route53/* only, and events.amazonaws.com plus delivery.logs.amazonaws.com into /aws/events/* only. The resource_arn scope narrows the whole policy to one log group."
+      notes: "The document's quality is the operator's -- a Resource of \"*\" would let the named services write anywhere in the account's Logs namespace, so the control is configurable rather than enforced. Management of the policy object itself is separately IAM-authorized, and AWS guards updates with a revision ID so concurrent edits fail loudly instead of overwriting each other."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A policy runs no workload and holds no credentials -- the principals it names are AWS service principals whose calls AWS signs internally, not workload identities this manifest issues.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudWatch Logs has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Every PutResourcePolicy, DescribeResourcePolicies, and DeleteResourcePolicy call is recorded by AWS CloudTrail as account-level posture, not per-policy configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A permission document emits no metrics and no runtime signals -- there is nothing operational about it to export. Observability of the log flow it enables lives on the receiving AwsCloudwatchLogGroup components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A policy holds no data to back up -- it is declarative configuration fully re-creatable from the manifest; re-applying the document restores identical behavior.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is a regional control-plane document CloudWatch Logs stores and enforces across its own multi-AZ infrastructure -- there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither AWS nor the modules expose a deletion-protection flag. Deleting the policy revokes the grant, and the affected services stop being able to write -- Route53 query logging and EventBridge deliveries fail quietly on the AWS side, which is the real blast radius to know. One operational guard exists: resource-scoped deletes require the tracked revision ID, so never clear it from state by hand."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A policy is a pure configuration object with no software to patch.

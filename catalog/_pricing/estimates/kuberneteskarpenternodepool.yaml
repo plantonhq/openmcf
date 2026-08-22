@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteskarpenternodepool
+spec:
+  presets:
+    - preset: 01-general-purpose-on-demand
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the pool object itself bills nothing -- nodes exist only while pods demand them, launched from current-generation c/m/r on-demand instances at EC2 per-type hourly rates and consolidated away when under-used (consolidate_after 1m)
+        - the cpu 1000 limit is the spend ceiling, not a reservation -- provisioning stops there; nothing is held open to reach it
+        - each node's EBS volumes, AMI, and network placement bill through the referenced EC2NodeClass
+      notes: Zero committed cost -- the manifest shapes what future nodes may cost; it spends nothing itself.
+    - preset: 02-spot-diversified
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - launched nodes bill EC2 SPOT rates (a deep, market-priced discount to on-demand, interruptible with two minutes' notice) across at least 4 distinct instance families -- the min_values diversity that softens single-pool reclaims
+        - the business-hours disruption freeze (budget nodes "0", 9-to-5 weekdays) blocks only VOLUNTARY consolidation -- spot reclaims are involuntary and unaffected
+        - the cpu 500 limit is the spot pool's spend ceiling, not a reservation
+      notes: Zero committed cost -- spot capacity appears with pod demand and disappears with it (or with the market).
+    - preset: 03-gpu-dedicated
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - GPU nodes (g5 family, on-demand) launch ONLY for pods tolerating the nvidia.com/gpu taint and bill EC2 GPU-instance hourly rates while those jobs run -- among the most expensive instance hours a cluster can buy, which is exactly why nothing is held idle
+        - WhenEmpty consolidation with consolidate_after 5m keeps a finished GPU node warm for five minutes for follow-on jobs -- bounded paid idle time
+        - the nvidia.com/gpu 16 limit caps the pool-wide accelerator count; expire_after 168h recycles long-lived GPU nodes weekly
+      notes: Zero committed cost -- the taint gate means not one GPU dollar is spent until a GPU workload asks.

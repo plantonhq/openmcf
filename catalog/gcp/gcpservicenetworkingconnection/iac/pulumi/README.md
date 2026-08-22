@@ -15,7 +15,7 @@ For the default producer (`servicenetworking.googleapis.com`), this peering is w
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `servicenetworking.services.addPeering` (e.g. `roles/servicenetworking.networksAdmin`) plus `compute.networks.*` read on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

@@ -43,7 +43,7 @@ func (p E2EProof) Proven() bool {
 // aa_e2e/profile.yaml yet) yields nil proofs, not an error: the report then
 // simply shows nothing proven, which is the truth.
 func BuildE2EProofs(repoRoot string, provider cloudresourcekind.CloudResourceProvider) (map[string]E2EProof, error) {
-	providerName := provider.String()
+	providerName := crkreflect.ProviderDirName(provider)
 	if _, err := os.Stat(profile.ProviderProfilePath(repoRoot, providerName)); os.IsNotExist(err) {
 		return nil, nil
 	}

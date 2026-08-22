@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcorememory
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: With encryption_key_arn unset, AWS encrypts the memory -- raw events and extracted long-term records -- under a service-managed key; an unencrypted memory is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the service-managed key; referencing a KMS key puts all stored events and records under a customer-managed key you own and can revoke. Changing the key REPLACES the memory -- pick it before data accumulates.
+      notes: Revoking the key's grant makes the entire store unreadable to the service, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All memory access -- event writes, record retrievals, control-plane operations -- rides the HTTPS-only SigV4 bedrock-agentcore endpoints; no plaintext path to the store exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every read and write against the memory is an IAM-authorized API call scoped to the memory ARN; no anonymous or network-exposed access path exists.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens in your network -- the memory is a managed store behind AWS's service endpoints; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A memory serves no requests a WAF could front -- AgentCore's WebACL attachment exists only on the gateway kind.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Create/read/update/delete and the data-plane event and retrieval operations are IAM-authorized, and the service reference scopes the memory operations to the memory ARN for resource-level policies.
+    - control_id: workload-identity
+      status: configurable
+      field_path: execution_role_arn
+      evidence:
+        type: spec_default
+        reference: Unset suffices while extraction stays inside AWS's own pipeline. Operations that touch YOUR resources -- custom-strategy model invocation, Kinesis delivery -- run under this assumed role with short-lived credentials; it must trust bedrock-agentcore.amazonaws.com, and the modules require it in practice when a CUSTOM strategy or kinesis_delivery is configured.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All bedrock-agentcore control-plane operations on the memory -- create, update, strategy changes, delete -- are management events CloudTrail records unconditionally in the account's event history.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: kinesis_delivery
+      evidence:
+        type: spec_default
+        reference: Unset means the store is a black box between writes and reads. Configuring delivery streams every long-term record to the referenced Kinesis stream as it is written -- the hook for analytics, anomaly detection, or an independent audit trail of what agents remember.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: kinesis_delivery
+      evidence:
+        type: spec_default
+        reference: AWS publishes no native backup or restore for a memory -- deleting it deletes the store. FULL_CONTENT Kinesis delivery is the one egress-at-write mechanism -- each long-term record lands in your stream as it is written, letting you keep an independent copy outside the service.
+      notes: METADATA_ONLY delivery does not preserve record bodies; only FULL_CONTENT constitutes a recoverable copy.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: event_expiry_days
+      evidence:
+        type: spec_default
+        reference: The raw-event retention window is an explicit, required choice (7-365 days) -- AWS deletes session events past it. Long-term records extracted by strategies outlive the window and persist until deleted; their retention has no policy field by design.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AgentCore Memory is a regional managed store AWS operates across availability zones -- the manifest has no zonal footprint to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The memory carries no deletion-protection flag, and deletion is destructive -- events and extracted records go with it. The identity-seed fields (memory_name, encryption_key_arn, indexed_keys) REPLACE the memory on change, which is the same data loss wearing an update's clothes; the Kinesis copy under FULL_CONTENT delivery is the only survivor.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the storage and the built-in extraction pipeline; the memory exposes no runtime, version, or maintenance surface.

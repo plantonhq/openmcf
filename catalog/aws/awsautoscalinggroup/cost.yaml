@@ -1,0 +1,71 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate model: the group commits real spend (the instances it keeps
+# running, billed per instance-hour), but the instance type that sets the
+# hourly rate lives on the referenced AwsLaunchTemplate -- invisible in
+# this manifest, so a dollar figure here would be a guess wearing a
+# dollar sign. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsautoscalinggroup
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon EC2
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      description: Every instance the group keeps InService bills EC2's hourly rate for the referenced launch template's instance type, per second with a 60-second minimum, around the clock -- the bill's core is that rate times the maintained capacity times 730 hours a month, and the rate lives on the other component. The group itself carries no fee; EC2 Auto Scaling adds no charge beyond the resources it launches.
+  cost_drivers:
+    - field_path: min_size
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: The floor the group never shrinks below is the COMMITTED half of the bill -- min_size instances bill every hour regardless of demand. Zero is valid and makes the group free while idle; any positive floor is an always-on fleet at the referenced template's rate.
+    - field_path: desired_capacity
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: The capacity the group actively maintains is the quantity in the core arithmetic (instance rate x desired capacity x 730). Left at 0 the group starts at min_size and scaling policies own the number from there -- the fleet then bills wherever demand holds it between the floor and the ceiling.
+    - field_path: max_size
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: The hard spend ceiling -- no scaling policy, scheduled action, or refresh surge (beyond an explicitly allowed predictive buffer) can bill more concurrent instance-hours than max_size allows.
+    - field_path: mixed_instances_policy.instances_distribution.on_demand_percentage_above_base_capacity
+      sku_meter: Spot instance hours
+      pricing_unit: instance-hours
+      impact: The On-Demand/Spot split above the base is the group's biggest rate lever -- Spot capacity bills at a steep, pool-fluctuating discount to the On-Demand rate, at the price of interruptibility. Explicit 0 runs everything above the base on Spot; the AWS default (100) keeps it all On-Demand.
+    - field_path: mixed_instances_policy.instances_distribution.on_demand_base_capacity
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: The guaranteed On-Demand core that fills before the percentage split applies -- these instances always bill at full On-Demand rates, which is exactly what buys them immunity from Spot interruption.
+    - field_path: mixed_instances_policy.overrides
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: Each override adds an instance pool with its own hourly rate; weighted_capacity changes how many capacity units one instance fulfills, so the effective rate per unit of desired capacity depends on which pools the allocation strategy actually picks.
+    - field_path: scaling_policies
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: Policies move the billed instance count between min_size and max_size with demand -- the mechanism that makes the bill track load instead of the ceiling. Target-tracking policies also create CloudWatch alarms, billed on CloudWatch.
+    - field_path: scheduled_actions
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: Time-based capacity changes make spend a schedule -- business-hours scale-up and overnight scale-down convert to predictable blocks of instance-hours you can read straight off the cron expressions.
+    - field_path: warm_pool.pool_state
+      sku_meter: EBS volume storage
+      pricing_unit: GB-months
+      impact: Stopped pooled instances (the AWS default) bill only their EBS volumes; Hibernated adds the RAM-contents volume space; Running bills the full instance rate for capacity that is deliberately idle. The pool trades standing cost for scale-out seconds -- pool_state decides how much.
+    - field_path: capacity_reservation
+      sku_meter: reserved capacity instance hours
+      pricing_unit: instance-hours
+      impact: Targeting Capacity Reservations moves the spend to the reservations themselves -- reserved capacity bills whether instances fill it or not, so the group's job becomes USING capacity already being paid for elsewhere.
+    - field_path: max_instance_lifetime_seconds
+      sku_meter: instance hours
+      pricing_unit: instance-hours
+      impact: Bounded instance lifetime forces rolling replacements -- during each replacement the group briefly runs old and new instances side by side within the maintenance policy's surge bounds, a small recurring overlap on the baseline.
+  estimate_exclusions:
+    - the instance-hour rate is set by the referenced AwsLaunchTemplate's instance type (and OS pricing) -- this manifest holds every quantity dial but never the rate, which is why no estimate document exists for this component
+    - Spot rates fluctuate per pool and interruptions reshape which pools a mixed fleet actually bills
+    - EBS volumes, public IPv4 addresses, and anything else the launch template attaches to each instance bill per that template's configuration
+    - CloudWatch alarms created by scaling policies, and any detailed instance monitoring, bill on CloudWatch
+    - load balancer and target group spend bills on the referenced components; inter-AZ data transfer between instances follows application traffic
+  notes: "The honest estimate lives at composition time: the capacity bounds from this manifest, the instance type and its hourly rate from the referenced launch template, the purchase-option blend from the mixed-instances policy. Each piece is verified data -- only their join is deferred, to the surface that sees both components together. EC2 Auto Scaling itself is free by AWS's published pricing; every dollar this group generates is EC2 instance-hours (per-second billing, 60-second minimum), EBS, and the CloudWatch alarms its policies create. The one always-accruing charge a group can carry while scaled to zero is a warm pool's EBS storage."

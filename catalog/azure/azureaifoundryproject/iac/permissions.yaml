@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureaifoundryproject
+spec:
+  azure:
+    groups:
+      - purpose: ManageProject
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/read
+          - Microsoft.MachineLearningServices/workspaces/write
+          - Microsoft.MachineLearningServices/workspaces/delete
+        provenance: derived
+        notes: Covers azurerm_ai_foundry_project -- the project is ARM-wise a Microsoft.MachineLearningServices/workspaces resource of kind "Project" (the module source provisions exactly that; the Microsoft.CognitiveServices namespace is NOT involved). Create, in-place updates (identity, description, friendly name, tags), read/refresh, and destroy. The secondary call worth noting -- the provider derives the project's resource group by READING THE HUB referenced in ai_services_hub_id, and because the hub is itself a workspaces resource, that read rides the same workspaces/read action already granted (held at a scope covering the hub's resource group). Migrated from the module README's summary ("workspaces/* on the HUB's resource group -- Contributor covers it"), tightened here to the three verbs the module exercises.

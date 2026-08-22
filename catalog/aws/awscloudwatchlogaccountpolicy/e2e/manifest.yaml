@@ -1,0 +1,19 @@
+# Canonical AwsCloudwatchLogAccountPolicy example (hack/dev manifest
+# and refgen Example source): an account-wide field-index policy
+# narrowed to one log-group prefix.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAccountPolicy
+metadata:
+  name: api-field-index
+  id: api-field-index
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  policyName: api-field-index
+  policyType: FIELD_INDEX_POLICY
+  policyDocument:
+    Fields:
+      - requestId
+      - sourceIp
+  selectionCriteria: LogGroupNamePrefix IN ["/app/api"]

@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpserviceconnectionpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy is network authorization configuration -- it stores no customer data at rest, only the service class, subnet references, and limits that gate the connectivity automation.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); the Network Connectivity API exposes no KMS surface for policies.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy carries no traffic of its own -- it authorizes endpoint creation. Traffic through the resulting Private Service Connect endpoints rides Google's network fabric with its default in-transit protections, a property of the network path, not of this policy; payload-level TLS is the producer service's and client's concern.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Everything this policy authorizes is private by construction -- the connectivity automation draws endpoint IPs from the declared subnets inside the consumer VPC, and consumer-to-producer traffic over Private Service Connect never traverses the public internet. Private connectivity is the feature itself, not a hardening option.
+      notes: The subnets referenced in psc_config.subnetworks confine where endpoint IPs can land.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: psc_config.producer_instance_location
+      evidence:
+        type: spec_default
+        reference: Left empty, the automation connects to any producer instance the consumer project provisions; CUSTOM_RESOURCE_HIERARCHY_LEVELS restricts connections to producers living in the projects, folders, or organizations listed in allowed_google_producers_resource_hierarchy_levels. Two spec validations force the mode and the allowlist to move together, so a silently ignored allowlist cannot ship.
+      notes: Preset 03 sets CUSTOM_RESOURCE_HIERARCHY_LEVELS with an explicit allowlist. psc_config.limit additionally caps how many connections may exist under the policy before an operator deliberately raises it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The policy receives no HTTP requests -- request filters have nothing to attach to; PSC endpoints carry service traffic, not filterable web ingress.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Network Connectivity roles), not a component choice; the policy exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy runs no workloads and holds no credentials; the connectivity automation acts as Google-managed service agents outside this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Policy changes and the automation's endpoint operations land in Cloud Audit Logs as project-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy publishes no metrics of its own; connection counts surface as resource state, and traffic metrics belong to the endpoints and the producer instances.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest -- though recreating a deleted policy does not automatically repair endpoints stranded by the deletion (see deletion-protection).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane authorization with no zonal placement of its own; availability of the producer instances it enables is those kinds' posture, and each region needs its own policy by API design.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before the policy is removed. That guard matters more here than for most kinds -- deleting a live policy strands the existing PSC endpoints created under it and blocks new instances of the service class from connecting in the region.
+      notes: No preset sets PREVENT; ABANDON leaves the policy authorizing connections in GCP after it leaves management.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software to patch; the connectivity automation behind it is Google-operated.

@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningworkspace
+spec:
+  azure:
+    groups:
+      - purpose: ManageWorkspace
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/read
+          - Microsoft.MachineLearningServices/workspaces/write
+          - Microsoft.MachineLearningServices/workspaces/delete
+        provenance: derived
+        notes: Covers azurerm_machine_learning_workspace -- create, in-place updates, read/refresh, and destroy. Deletion is a SOFT delete; when the provider's purge-on-destroy features flag is enabled the subsequent purge rides the same delete action (the namespace publishes no separate purge operation). Held via Contributor on the resource group or a custom role scoped to Microsoft.MachineLearningServices/workspaces.
+      - purpose: ManageOutboundRules
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/outboundRules/read
+          - Microsoft.MachineLearningServices/workspaces/outboundRules/write
+          - Microsoft.MachineLearningServices/workspaces/outboundRules/delete
+        provenance: derived
+        notes: Covers the three composed rule resources -- azurerm_machine_learning_workspace_network_outbound_rule_fqdn, ..._private_endpoint, and ..._service_tag -- which all write the workspace's single .../outboundRules/{name} ARM collection (create, read/refresh, replace-on-change for the private-endpoint type, destroy). Only present when the spec's outbound-rule lists are non-empty.
+      - purpose: ReadCompanionAttachments
+        actions:
+          - Microsoft.Insights/Components/Read
+          - Microsoft.KeyVault/vaults/read
+          - Microsoft.Storage/storageAccounts/read
+          - Microsoft.ContainerRegistry/registries/read
+        provenance: derived
+        notes: The module itself never calls these -- application_insights_id, key_vault_id, storage_account_id, and container_registry_id arrive as resolved literal ARM IDs and pass straight into the workspace body. The Machine Learning resource provider, however, validates the attachments during the workspace PUT under the deployer's token, so creating a workspace against EXISTING companions needs read on each (Microsoft's own workspace-creation role guidance; migrated here from the module README, which summarized it as "read access on the referenced companion services -- Contributor on the resource group covers it"). The registry read applies only when container_registry_id is set.

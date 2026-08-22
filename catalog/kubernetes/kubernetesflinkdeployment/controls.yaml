@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesflinkdeployment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Durable job state (checkpoints, savepoints, HA metadata) lives on the object store the state directories point at -- encryption at rest is that store's posture (a composed KubernetesSeaweedFs or a cloud bucket), not this component's. Pod-local state is ephemeral.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the object store carrying the checkpoints and savepoints (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: flink_configuration
+      evidence:
+        type: spec_default
+        reference: Unset serves the Flink REST API and internal RPC in plaintext inside the cluster (the Flink default). Flink's security.ssl.* keys in flink_configuration enable TLS for the REST endpoint and internal transport.
+      notes: The only rendered exposure is the in-cluster ClusterIP REST Service -- traffic never leaves the cluster network unless separately exposed.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The operator creates only ClusterIP services for the cluster it renders (the <name>-rest REST/UI Service and internal services) -- nothing the modules or the operator create is reachable from outside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress seam exists on this spec -- the REST Service is in-cluster only, and narrowing which workloads may reach it is a Kubernetes NetworkPolicy (a separate resource), not a field here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Flink cluster serves no HTTP edge traffic -- the REST API and web UI are in-cluster operational surfaces. Web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The Flink pods run as the "flink" ServiceAccount by default -- the account the KubernetesFlinkOperator's chart creates with least-privilege reconcile RBAC in each watched namespace. service_account points elsewhere only if equivalent RBAC is provisioned separately.
+      notes: Management-plane access (the FlinkDeployment CR itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: state.s3
+      evidence:
+        type: spec_default
+        reference: Unset means the pods reach s3:// state directories through ambient cloud identity where the cluster provides it (IRSA, GKE Workload Identity) -- no stored credentials. Setting state.s3 wires static S3 keys as Secret references, rendered as pod environment and never into Flink configuration.
+      notes: The 02-stateful-ha-s3 preset uses static keys by necessity -- its object store is an in-cluster KubernetesSeaweedFs with no cloud identity to federate.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Flink's REST API carries no authentication of its own -- there is no legacy path to disable; access control is network reachability (in-cluster only by default). S3 credentials, when used, ride Kubernetes Secret references rather than config-file plaintext.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the deployment are Kubernetes API operations on the CR, captured by the target cluster's audit policy. Job and framework activity streams as logs to stdout for the cluster's log collector; a provider-style audit trail is not modeled.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: flink_configuration
+      evidence:
+        type: spec_default
+        reference: Unset exports no metrics (the Flink default). Flink's metrics.reporter.* keys in flink_configuration wire Prometheus or other reporters for the JobManager and TaskManagers.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: state.checkpoints_dir
+      evidence:
+        type: spec_default
+        reference: Unset means stateless-only -- restarts lose job state. Setting checkpoints_dir (with a non-stateless job.upgrade_mode) carries state across upgrades and failures; savepoints_dir plus the savepoint upgrade mode adds the operationally safest drain-and-restore path, and initial_savepoint_path bootstraps from an existing savepoint.
+      notes: The 02-stateful-ha-s3 preset checkpoints and savepoints to a composed SeaweedFS object store; 01-application-stateless deliberately carries no state.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: flink_configuration
+      evidence:
+        type: spec_default
+        reference: Checkpoint retention rides Flink's own configuration keys (e.g. the retained-checkpoints count) appended through flink_configuration; savepoints persist until manually removed -- their cleanup is operational, not declarative.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: job_manager.replicas
+      evidence:
+        type: spec_default
+        reference: Empty runs 1 JobManager (no failover). More than 1 runs warm standbys coordinated through state.high_availability -- the spec rejects standby replicas without it, mirroring the operator's validator. Spreading pods across zones rides scheduling and the cluster's topology.
+      notes: The 02-stateful-ha-s3 preset runs 2 JobManagers with Kubernetes-native HA on s3://flink-state/ha.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the operator offers a deletion-protection flag on the FlinkDeployment CR -- deleting it cascades the whole cluster through the operator's finalizer. Checkpoints and savepoints on the object store survive deletion and can bootstrap a re-created deployment (job.initial_savepoint_path).
+    - control_id: managed-patching
+      status: configurable
+      field_path: image
+      evidence:
+        type: spec_default
+        reference: Empty derives the official image from flink_version ("flink:<major>.<minor>" -- a floating tag that picks up patch releases as pods restart). Setting image pins an exact build; the Flink inside must match flink_version, since the operator shapes its submission protocol from the declared version.
+      notes: The operator refuses flink_version changes after a last-state suspend -- restore first, then upgrade.

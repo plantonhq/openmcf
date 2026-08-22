@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpspannerdatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner encrypts all stored data at rest with Google-managed keys by default; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption_config
+      evidence:
+        type: spec_validation
+        reference: Omitted means Google-managed encryption; the encryption_exactly_one_key_shape CEL rule forces exactly one key shape when set -- kms_key_name for regional instance configurations, kms_key_names (one key per region) for multi-region. Immutable, so the encryption posture is fixed at creation.
+      notes: Preset 03 enables regional CMEK. The key must live in the instance configuration's location -- a prerequisite outside this component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All client and administrative access goes through Google's Spanner API endpoints over TLS-encrypted gRPC/HTTPS; no plaintext listener exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The database has no network endpoint to expose -- reads and writes arrive through Google's IAM-gated Spanner API. Whether that API is reached over public or private paths (Private Google Access, VPC Service Controls) is project- and network-level configuration, not a database field.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists on a database; access control is entirely IAM. Network-source restriction of the Spanner API is a VPC Service Controls perimeter decision at the project level.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The database serves no HTTP application traffic; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management and data-plane call authorizes against IAM spanner.* permissions on the project, instance, or database; no non-IAM access path exists.
+      notes: Spanner additionally offers fine-grained access control (database roles granted per table/column) as an opt-in layer inside the database, managed through DDL rather than a spec field here.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The database runs no workloads and holds no credentials; callers authenticate to the Spanner API with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Spanner API; no legacy or weaker authentication path exists to disable. database_dialect selects SQL syntax, not an authentication mechanism.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Database create, DDL updates, and drop land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Data Access audit logs for reads and writes are opt-in project-level Cloud Audit Logs configuration, not a database field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner publishes CPU, storage, and operation metrics to Cloud Monitoring for every instance and database without configuration, and built-in statistics tables (spanner_sys) expose query and transaction detail in SQL.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: version_retention_period
+      evidence:
+        type: spec_default
+        reference: Point-in-time recovery over the version retention window -- GCP defaults to 1 hour when unset; the field widens it up to 7 days, letting any past state within the window be recovered or stale-read.
+      notes: Scheduled backups are a separate composable resource (GcpSpannerBackupSchedule) that references this database; PITR is the built-in continuous layer this field controls.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention length lives on the GcpSpannerBackupSchedule that creates the backups (its retention_duration field), not on the database. version_retention_period here governs the PITR window, assessed under backup-recovery.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Spanner regional instance configuration maintains three replicas across zones, and Spanner replicates and serves the database across them automatically -- Google's published pricing counts every node as three replicas in regional configurations.
+      notes: The topology (regional, dual-region, multi-region) is the parent GcpSpannerInstance's configuration choice; the database inherits it with no failure-domain field of its own.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- both engines refuse to destroy the resource while set, failing the plan before touching GCP. enable_drop_protection adds the API-side lock (blocks deletion through Console, gcloud, API, and IaC alike, and blocks deleting the parent instance while set).
+      notes: Three levers with different enforcement points -- deletion_protection (IaC-side, default on), enable_drop_protection (GCP API-side, preset 03 sets it for compliance-grade locking), and deletion_policy (what a permitted destroy does; PREVENT is a third wall, ABANDON keeps the database serving and billing).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner is a fully managed service -- Google operates and patches the storage and serving fleet; no version, channel, or maintenance surface exists on the database.

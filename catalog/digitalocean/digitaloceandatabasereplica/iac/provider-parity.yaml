@@ -1,0 +1,22 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- region, size, storage_size_mib, and tags
+# all match by exact name; the three renames below are the whole story.
+# region and size are REQUIRED in the spec although optional upstream: the
+# provider reads both back but never computes them, so omitted values drift
+# -- and region's drift schedules a replica REPLACEMENT (create-only).
+resources:
+  digitalocean_database_replica:
+    mappings:
+      # The cluster reference is a StringValueOrRef FK to the
+      # DigitalOceanDatabaseCluster kind.
+      - spec: spec.cluster
+        arg: cluster_id
+      - spec: spec.replica_name
+        arg: name
+      # The VPC reference is a StringValueOrRef FK to the DigitalOceanVpc
+      # kind.
+      - spec: spec.vpc
+        arg: private_network_uuid

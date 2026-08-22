@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsinternetgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An internet gateway stores nothing -- it is a stateless packet-forwarding and NAT element with no data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A layer-3 gateway forwards whatever the communicating endpoints negotiated -- it neither terminates nor enforces TLS. Transport encryption is decided by the workloads on each side, outside this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Public reachability is this component's deliberate purpose -- it is the VPC's door to the internet, so "not reachable from the internet" inverts what it is for. Attaching it exposes nothing by itself, though - a subnet only becomes public when its route table sends 0.0.0.0/0 (or ::/0) to this gateway and a resource holds a public address, and both of those decisions live on the subnet and workload components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The gateway performs no traffic filtering at any configuration -- inbound restriction for resources reached through it is owned by their security groups (AwsSecurityGroup) and network ACLs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web ACL or request filter can attach to an internet gateway -- edge protection on AWS attaches to the fronting services behind it (load balancers, CloudFront, API Gateway).
+    - control_id: rbac
+      status: not_applicable
+      notes: The gateway has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and the traffic it forwards carries no identity model.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The gateway exposes no authentication path at all -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls land in AWS CloudTrail as account-level posture, and traffic-level visibility is VPC Flow Logs, configured on the VPC, subnet, or interface -- none of it per-gateway configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An internet gateway publishes no CloudWatch metrics of its own -- traffic through it appears in the metrics of the instances and services sending it and in VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The gateway is stateless declarative configuration, fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An internet gateway is a horizontally scaled, redundant, highly available AWS-managed component -- AWS documents that it imposes no availability risks or bandwidth constraints on VPC traffic, with nothing to configure and no zonal placement to choose.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag. AWS does refuse to detach the gateway from a VPC that still has resources with mapped public addresses -- a dependency guard that surfaces live consumers, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The gateway is an AWS-operated infrastructure element with no operator-visible software -- AWS maintains it invisibly, and nothing about patching is exposed to configure.

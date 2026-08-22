@@ -75,7 +75,7 @@ func ModuleCensusForProvider(repoRoot string, provider cloudresourcekind.CloudRe
 		if _, err := crkreflect.NewInstance(kind); err != nil {
 			continue // enum value exists but the kind is not implemented yet
 		}
-		moduleRel := filepath.Join(catalogRoot, provider.String(), strings.ToLower(kind.String()), "iac", "tf")
+		moduleRel := filepath.Join(catalogRoot, crkreflect.ProviderDirName(provider), strings.ToLower(kind.String()), "iac", "tf")
 		moduleAbs := filepath.Join(repoRoot, moduleRel)
 		if _, err := os.Stat(moduleAbs); os.IsNotExist(err) {
 			out = append(out, ModuleCensus{Kind: kind.String(), ModuleDir: moduleRel, MissingModule: true})

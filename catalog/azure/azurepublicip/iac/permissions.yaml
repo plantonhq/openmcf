@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurepublicip
+spec:
+  azure:
+    groups:
+      - purpose: ManagePublicIp
+        actions:
+          - Microsoft.Network/publicIPAddresses/read
+          - Microsoft.Network/publicIPAddresses/write
+          - Microsoft.Network/publicIPAddresses/delete
+        provenance: derived
+        notes: Covers azurerm_public_ip / network.NewPublicIPAddress -- create, read/refresh, in-place updates (reverse FQDN, DDoS mode, idle timeout, tags), and destroy. Typically held via Network Contributor, Contributor, or Owner. Name, SKU/tier, version, zones, prefix membership, ip_tags, and edge zone changes replace the resource (and the actual address), which is still the same write/delete pair.
+      - purpose: AllocateFromPrefix
+        actions:
+          - Microsoft.Network/publicIPPrefixes/read
+          - Microsoft.Network/publicIPPrefixes/join/action
+        provenance: derived
+        notes: Required only when public_ip_prefix_id draws the address from a reserved prefix -- the modules just pass the resolved prefix ID in the create payload, but ARM authorizes the allocation service-side with join/action on the PREFIX's scope (read backs the reference resolution on refresh).
+      - purpose: JoinDdosProtectionPlan
+        actions:
+          - Microsoft.Network/ddosProtectionPlans/join/action
+        provenance: derived
+        notes: Required only when ddos_protection_mode is ENABLED with a ddos_protection_plan_id -- attaching IP-level protection references the plan in the address payload, and ARM checks join/action on the plan's scope, service-side. Plans are shared governance resources, so this grant usually lands on a different resource group than the address.

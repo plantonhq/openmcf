@@ -1,0 +1,61 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model rather than a derivation: Hyperdisk Balanced
+# bills IOPS and throughput only IN EXCESS of its included baselines
+# (3,000 IOPS and 140 MBps per Google's disk pricing page), and derivation
+# rules cannot subtract -- each preset's excess is computed here and
+# defended in its quantity basis. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpcomputedisk
+spec:
+  presets:
+    - preset: 01-data-volume
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned disk capacity
+          price: balanced-pd-capacity-us-central1
+          pricing_quantity: "100"
+          quantity_basis: the manifest provisions 100 GiB of pd-balanced (size_gb 100), billing every GiB monthly from creation -- full or empty, attached or not
+      exclusions:
+        - snapshot storage follows whatever snapshots the owner takes -- none are configured here
+      notes: pd-balanced performance scales with size and carries no separate performance meter -- capacity is the whole bill. The disk keeps billing while its VM is stopped and after the VM is deleted; deleting the disk is the only off switch.
+    - preset: 02-encrypted-database-volume
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned disk capacity
+          price: ssd-pd-capacity-us-central1
+          pricing_quantity: "500"
+          quantity_basis: the manifest provisions 500 GiB of pd-ssd (size_gb 500), billing every GiB monthly at the SSD premium rate
+      exclusions:
+        - CMEK adds no per-disk charge -- the Cloud KMS key bills its own key-version and operation charges on the GcpKmsKey component
+        - the create_snapshot_before_destroy final snapshot bills snapshot storage per GiB actually stored, from destroy day until someone deletes it -- unknowable from the manifest
+      notes: Encryption posture (CMEK vs Google-managed) does not change the disk's capacity rate -- the premium here is pd-ssd itself, chosen for database IOPS-per-GB.
+    - preset: 03-hyperdisk-high-iops
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned disk capacity
+          price: hyperdisk-balanced-capacity-us-central1
+          pricing_quantity: "1000"
+          quantity_basis: the manifest provisions 1,000 GiB of hyperdisk-balanced (size_gb 1000), billing every GiB monthly
+        - sku_meter: provisioned IOPS
+          price: hyperdisk-balanced-iops-us-central1
+          pricing_quantity: "3000"
+          quantity_basis: the manifest provisions 6,000 IOPS and hyperdisk-balanced includes a 3,000-IOPS baseline free -- only the 3,000-IOPS excess bills monthly
+        - sku_meter: provisioned throughput
+          price: hyperdisk-balanced-throughput-us-central1
+          pricing_quantity: "150"
+          quantity_basis: the manifest provisions 290 MBps and hyperdisk-balanced includes a 140-MBps baseline free -- only the 150-MBps excess bills monthly
+      exclusions:
+        - snapshot storage follows whatever snapshots the owner takes -- none are configured here
+      notes: Hyperdisk decouples performance from capacity -- IOPS and throughput retune in place (at most every 4 hours), so performance spend can ratchet up or down without touching the stored data. The included baselines are per-disk and fixed, not size-scaled.

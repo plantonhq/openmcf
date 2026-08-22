@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhubauthorizationrule
+spec:
+  azure:
+    groups:
+      - purpose: ManageNamespaceScopedRule
+        actions:
+          - Microsoft.EventHub/namespaces/authorizationRules/read
+          - Microsoft.EventHub/namespaces/authorizationRules/write
+          - Microsoft.EventHub/namespaces/authorizationRules/delete
+          - Microsoft.EventHub/namespaces/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Covers azurerm_eventhub_namespace_authorization_rule, created when the spec sets namespace_id -- create, read/refresh, rights updates, and destroy; the provider calls listkeys on every read to surface the keys and connection strings as sensitive outputs. Only exercised for namespace-scoped rules.
+      - purpose: ManageHubScopedRule
+        actions:
+          - Microsoft.EventHub/namespaces/eventhubs/authorizationRules/read
+          - Microsoft.EventHub/namespaces/eventhubs/authorizationRules/write
+          - Microsoft.EventHub/namespaces/eventhubs/authorizationRules/delete
+          - Microsoft.EventHub/namespaces/eventhubs/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Covers azurerm_eventhub_authorization_rule, created when the spec sets event_hub_id -- the same CRUD-plus-listkeys shape at single-hub scope. Only exercised for hub-scoped rules; the spec's exactly-one-scope XOR means one manifest ever touches one of these two groups.

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssecretsmanagersecret
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AWS Secrets Manager
+      sku_meter: secrets
+      pricing_unit: secret-months
+      description: Every stored secret bills a flat per-secret monthly fee from creation, prorated hourly -- a value-less shell secret bills the same as a populated one.
+  cost_drivers:
+    - field_path: replica_regions
+      sku_meter: secrets
+      pricing_unit: secret-months
+      impact: Each replica region holds a full billed secret at that region's per-secret rate -- two replicas triple the committed monthly fee.
+    - field_path: rotation
+      sku_meter: API requests
+      pricing_unit: requests
+      impact: Each rotation run invokes the rotation Lambda (billed on its own AwsLambda component) and spends Secrets Manager API calls on the rotation steps. New versions created by rotation carry no charge of their own.
+    - field_path: kms_key_id
+      sku_meter: customer managed keys
+      impact: Referencing a customer-managed key bills that key's monthly fee and request charges on its own AwsKmsKey component. The default AWS-managed aws/secretsmanager key carries no monthly fee (its API requests still bill).
+  free_tier: ""
+  estimate_exclusions:
+    - API calls bill per 10,000 -- every GetSecretValue read counts, so read frequency (connection-pool refreshes, deploy-time resolution) is the lever
+    - the rotation Lambda's invocations and runtime bill on its own AwsLambda component
+    - customer-managed KMS keys referenced by the secret or its replicas bill on their own AwsKmsKey components
+  notes: "The per-secret fee is the certainty at manifest time, multiplied by replicas; API-call volume follows how often applications read the secret. Versions are free: rotating or updating the value creates new versions at no charge."

@@ -81,10 +81,3 @@ module "hub_eastus" {
   mutually exclusive on ARM's side.
 - ARM refuses to delete a hub that still has gateways or connections --
   destroy those first.
-
-## Required Permissions
-
-The deploying credential needs `Microsoft.Network/virtualHubs/write`
-(plus the child collections: `hubRouteTables`, `routeMaps`,
-`bgpConnections`, `routingIntent`) -- held via Network Contributor,
-Contributor, or Owner.

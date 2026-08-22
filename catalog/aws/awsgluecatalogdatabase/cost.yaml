@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsgluecatalogdatabase
+spec:
+  billing_model: free
+  free_tier: A catalog database is a single metadata object in the account's Glue Data Catalog, and the catalog's free tier -- the first million objects stored, and the first million requests each month at no charge (Glue pricing page and price list, offer AWSGlue) -- absorbs it entirely. The database has no dedicated meter, and no realistic number of databases approaches the million-object threshold; accounts cross it on tables, partitions, and table versions at data-lake scale.
+  notes: "The meters worth knowing sit on the catalog around this object: beyond the free million, the Data Catalog bills monthly per hundred thousand metadata objects stored and per million metadata requests -- and those meters attach to the account's aggregate catalog usage, driven by the tables and partitions created UNDER this database and by the crawlers, Athena queries, ETL jobs, and Redshift Spectrum scans that read them. The data itself never bills here: whatever location_uri points at bills as S3 or wherever it lives, a federated_database's source bills on the Redshift side, and a target_database resource link adds exactly one metadata object while deferring everything else to the shared catalog it points at."

@@ -61,16 +61,25 @@ type AzureMachineLearningBatchDeploymentSpec struct {
 	// The compute pool jobs run on, by ARM ID
 	// (.../workspaces/{ws}/computes/{name}) -- typically an
 	// AzureMachineLearningComputeCluster that scales to zero between
-	// jobs. Unset lets the service run jobs on serverless compute
-	// (where the workspace supports it).
+	// jobs. REQUIRED for a Model-type recipe despite the ARM schema
+	// marking it optional: the service validates the create
+	// synchronously and rejects an empty compute with 400
+	// Code="UserError", "'Compute Id' must not be empty."
+	// (ArgumentNullOrEmpty; live-proven). A pipeline-component recipe
+	// carries its compute in the component's own settings instead.
 	ComputeId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=compute_id,json=computeId,proto3" json:"compute_id,omitempty"`
 	// Per-job compute sizing -- how many nodes a job spreads across
 	// and what VM size they run (within what the compute pool offers).
 	Resources *AzureMachineLearningBatchDeploymentResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
 	// The model the recipe runs -- a registered model asset referenced
-	// one of three ways (exactly one when the block is present). Unset
-	// is legal at the ARM layer for recipes whose environment embeds
-	// the model or whose pipeline component carries it.
+	// one of three ways (exactly one when the block is present).
+	// REQUIRED for a Model-type recipe despite the ARM schema marking
+	// it optional: the service validates the create synchronously and
+	// rejects an empty model with 400 Code="UserError", "'Model
+	// Reference' must not be empty." (ArgumentNullOrEmpty;
+	// live-proven -- an environment image cannot stand in for it).
+	// Only a pipeline-component recipe omits it: the component
+	// carries its own steps.
 	Model *AzureMachineLearningBatchDeploymentModel `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
 	// The scoring code the recipe runs -- a registered code asset and
 	// the script inside it that processes each mini-batch. Unset is
@@ -797,7 +806,7 @@ var File_catalog_azure_azuremachinelearningbatchdeployment_v1alpha1_spec_proto p
 
 const file_catalog_azure_azuremachinelearningbatchdeployment_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ecatalog/azure/azuremachinelearningbatchdeployment/v1alpha1/spec.proto\x12>dev.planton.azure.azuremachinelearningbatchdeployment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd4\x12\n" +
+	"Ecatalog/azure/azuremachinelearningbatchdeployment/v1alpha1/spec.proto\x12>dev.planton.azure.azuremachinelearningbatchdeployment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xea\x14\n" +
 	"'AzureMachineLearningBatchDeploymentSpec\x12\x84\x01\n" +
 	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\x10\x92\xd4a status.outputs.batch_endpoint_idR\n" +
 	"endpointId\x12?\n" +
@@ -833,7 +842,8 @@ const file_catalog_azure_azuremachinelearningbatchdeployment_v1alpha1_spec_proto
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x12\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x93\x02\xbaH\x8f\x02\x1a\x8c\x02\n" +
+	"9ml_batch_deployment_model_type_requires_model_and_compute\x12\x83\x01a model-type recipe (no pipeline_component) requires both model and compute_id -- the batch service rejects a create missing either\x1aIhas(this.pipeline_component) || (has(this.model) && has(this.compute_id))B\x12\n" +
 	"\x10_mini_batch_sizeB\x1f\n" +
 	"\x1d_max_concurrency_per_instanceB\x12\n" +
 	"\x10_error_threshold\"\xa0\x01\n" +

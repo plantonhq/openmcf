@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesseaweedfs
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: volume
+      sku_meter: cluster CPU, memory, and volume storage reservations
+      impact: The volume tier holds the object bytes and is the ONLY tier that grows with stored data -- each server reserves replicas x resources plus a data PVC PER pod (default 30Gi). Size the PVC for what you expect to store; min_free_space_percent flips volumes read-only when disk runs low.
+    - field_path: master
+      sku_meter: cluster CPU, memory, and volume storage reservations
+      impact: Masters coordinate the cluster -- replicas x resources plus a small metadata PVC each (default 5Gi). Use 1 (dev) or 3 (HA quorum); an even count wastes a node without adding failure tolerance.
+    - field_path: filer
+      sku_meter: cluster CPU, memory, and volume storage reservations
+      impact: Filers serve the namespace and (by default) the embedded S3 API -- replicas x resources plus a metadata PVC each (default 10Gi holding the per-pod leveldb store).
+    - field_path: s3.dedicated
+      sku_meter: cluster CPU and memory reservations
+      impact: Splitting the S3 gateway into its own Deployment adds replicas x resources of standing capacity -- the embedded default rides the filer pods for free.
+    - field_path: admin
+      sku_meter: cluster CPU and memory reservations
+      impact: The management console adds one pod (plus an optional persistence PVC) when enabled -- off by default.
+    - field_path: replication
+      sku_meter: cluster volume storage reservations
+      impact: The XYZ placement code multiplies stored BYTES -- "001" writes every object twice across volume servers, so effective capacity halves for the same PVC sizes.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - replication multiplies stored bytes WITHIN the declared volume PVCs -- it changes how far the declared storage goes, not the reservation itself
+    - the bucket-creation post-install hook Job is ephemeral and carries only chart-default sizing
+    - the helm_values overlay merges last and can override any modeled value (per-tier scheduling, the SFTP arm, the maintenance worker, external filer stores)
+    - object growth inside the store is workload-driven -- bucket TTLs and versioning change how fast the volume PVCs fill, which no manifest can know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. Unlike most catalog kinds, storage is the headline: every tier maps its data to PersistentVolumeClaims (never hostPath), and the honest manifest-time statement is compute across four pod classes plus per-pod PVCs on master, volume, filer, and (optionally) admin."

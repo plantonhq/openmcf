@@ -34,4 +34,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.RecoveryServices/vaults/backupPolicies/*` on the vault's resource group (Contributor covers it).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege control-plane actions the deploying principal needs.

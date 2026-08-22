@@ -1,0 +1,30 @@
+# Canonical AwsCostAnomalyMonitor example (hack/dev manifest and
+# refgen Example source): the recommended by-service dimensional
+# monitor with a daily email summary above a $100 absolute impact
+# threshold.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostAnomalyMonitor
+metadata:
+  name: service-spend-monitor
+  id: service-spend-monitor
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  monitorName: Service Spend Monitor
+  monitorType: DIMENSIONAL
+  monitorDimension: SERVICE
+  subscriptions:
+    - name: finops-daily-summary
+      frequency: DAILY
+      subscribers:
+        - address:
+            value: finops@example.com
+          type: EMAIL
+      thresholdExpression:
+        dimension:
+          key: ANOMALY_TOTAL_IMPACT_ABSOLUTE
+          matchOptions:
+            - GREATER_THAN_OR_EQUAL
+          values:
+            - "100"

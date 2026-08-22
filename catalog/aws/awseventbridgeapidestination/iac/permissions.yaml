@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseventbridgeapidestination
+spec:
+  aws:
+    statements:
+      - sid: ManageConnection
+        actions:
+          - events:CreateConnection
+          - events:UpdateConnection
+          - events:DeleteConnection
+          - events:DescribeConnection
+        resources:
+          - arn:aws:events:*:*:connection/*
+        provenance: derived
+        notes: "Covers aws_cloudwatch_event_connection / cloudwatch.EventConnection -- creation with the derived authorization_type, credential and parameter updates, deletion, and the DescribeConnection polling both engines do while the connection walks its auth state machine (CREATING/AUTHORIZING to AUTHORIZED, up to 20 minutes) plus every plan/refresh. All four actions scope to the connection ARN per the service reference. AWS creates and owns the backing Secrets Manager secret itself (events!connection/*), so the runner needs no secretsmanager grant; with a customer-managed kms_key_identifier the decryption grant rides the KEY's policy (the referenced AwsKmsKey), not the runner. Connections are untaggable at AWS -- no tagging actions exist for this kind. CAUTION for private endpoints: connections using VPC Lattice resource configurations have AWS create the resource association during CreateConnection -- if a private-endpoint apply is denied, the missing grants will be vpc-lattice ones surfaced in the error, a young surface the service reference does not yet tie to CreateConnection."
+      - sid: ManageApiDestination
+        actions:
+          - events:CreateApiDestination
+          - events:UpdateApiDestination
+          - events:DeleteApiDestination
+          - events:DescribeApiDestination
+        resources:
+          - arn:aws:events:*:*:api-destination/*
+          - arn:aws:events:*:*:connection/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_api_destination / cloudwatch.EventApiDestination -- endpoint, method, and rate-limit management plus the read on every plan/refresh. The connection ARN format is granted alongside the api-destination format because the service reference authorizes CreateApiDestination and DescribeApiDestination on BOTH (the destination binds to a connection at create time). INVOKING the destination (events:InvokeApiDestination) belongs to the rules, pipes, and schedules that fire it -- their components' manifests carry it, never the runner's.

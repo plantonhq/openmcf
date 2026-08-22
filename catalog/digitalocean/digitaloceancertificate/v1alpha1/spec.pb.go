@@ -23,79 +23,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanCertificateType represents the certificate source.
-type DigitalOceanCertificateType int32
-
-const (
-	// Unspecified certificate type (invalid, used for validation).
-	DigitalOceanCertificateType_unspecified DigitalOceanCertificateType = 0
-	// A free, auto‑managed Let's Encrypt certificate.
-	DigitalOceanCertificateType_lets_encrypt DigitalOceanCertificateType = 1
-	// A user‑provided custom certificate.
-	DigitalOceanCertificateType_custom DigitalOceanCertificateType = 2
-)
-
-// Enum value maps for DigitalOceanCertificateType.
-var (
-	DigitalOceanCertificateType_name = map[int32]string{
-		0: "unspecified",
-		1: "lets_encrypt",
-		2: "custom",
-	}
-	DigitalOceanCertificateType_value = map[string]int32{
-		"unspecified":  0,
-		"lets_encrypt": 1,
-		"custom":       2,
-	}
-)
-
-func (x DigitalOceanCertificateType) Enum() *DigitalOceanCertificateType {
-	p := new(DigitalOceanCertificateType)
-	*p = x
-	return p
-}
-
-func (x DigitalOceanCertificateType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (DigitalOceanCertificateType) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (DigitalOceanCertificateType) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_enumTypes[0]
-}
-
-func (x DigitalOceanCertificateType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DigitalOceanCertificateType.Descriptor instead.
-func (DigitalOceanCertificateType) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
-}
-
 // DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean.
+// A certificate is either issued and auto-renewed by Let's Encrypt (supply the domains) or uploaded
+// as user-provided PEM material (supply the key and certificate). The choice of certificate_source
+// branch fully determines the certificate type; both provisioners derive DigitalOcean's `type`
+// argument from whichever branch is set.
+//
+// Every argument on this resource is create-only: any change replaces the certificate. Both
+// provisioners create the replacement before destroying the old certificate so a load balancer
+// referencing it by name never observes a gap.
 type DigitalOceanCertificateSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// certificate_name is a unique, human‑readable identifier (≤ 64 chars).
+	// certificate_name is the unique, human-readable identifier of the certificate within the
+	// DigitalOcean account. The name IS the resource identity: because a Let's Encrypt
+	// certificate's UUID rotates on every auto-renewal, DigitalOcean addresses certificates by
+	// their stable name, and other resources (e.g. load balancer forwarding rules) reference
+	// certificates by name for the same reason.
 	CertificateName string `protobuf:"bytes,1,opt,name=certificate_name,json=certificateName,proto3" json:"certificate_name,omitempty"`
-	// type must align with the branch chosen in certificate_source.
-	Type DigitalOceanCertificateType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateType" json:"type,omitempty"`
-	// Mutually exclusive parameter sets.
+	// Exactly one certificate source must be chosen; the branch determines the certificate type.
 	//
 	// Types that are valid to be assigned to CertificateSource:
 	//
 	//	*DigitalOceanCertificateSpec_LetsEncrypt
 	//	*DigitalOceanCertificateSpec_Custom
 	CertificateSource isDigitalOceanCertificateSpec_CertificateSource `protobuf_oneof:"certificate_source"`
-	// Optional free‑form description (≤ 128 chars).
-	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	// Optional tags; must be unique and lowercase kebab.
-	Tags          []string `protobuf:"bytes,6,rep,name=tags,proto3" json:"tags,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DigitalOceanCertificateSpec) Reset() {
@@ -135,13 +88,6 @@ func (x *DigitalOceanCertificateSpec) GetCertificateName() string {
 	return ""
 }
 
-func (x *DigitalOceanCertificateSpec) GetType() DigitalOceanCertificateType {
-	if x != nil {
-		return x.Type
-	}
-	return DigitalOceanCertificateType_unspecified
-}
-
 func (x *DigitalOceanCertificateSpec) GetCertificateSource() isDigitalOceanCertificateSpec_CertificateSource {
 	if x != nil {
 		return x.CertificateSource
@@ -167,29 +113,17 @@ func (x *DigitalOceanCertificateSpec) GetCustom() *DigitalOceanCertificateCustom
 	return nil
 }
 
-func (x *DigitalOceanCertificateSpec) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *DigitalOceanCertificateSpec) GetTags() []string {
-	if x != nil {
-		return x.Tags
-	}
-	return nil
-}
-
 type isDigitalOceanCertificateSpec_CertificateSource interface {
 	isDigitalOceanCertificateSpec_CertificateSource()
 }
 
 type DigitalOceanCertificateSpec_LetsEncrypt struct {
+	// A free Let's Encrypt certificate that DigitalOcean issues and auto-renews.
 	LetsEncrypt *DigitalOceanCertificateLetsEncryptParams `protobuf:"bytes,3,opt,name=lets_encrypt,json=letsEncrypt,proto3,oneof"`
 }
 
 type DigitalOceanCertificateSpec_Custom struct {
+	// A user-provided (custom) certificate uploaded as PEM material.
 	Custom *DigitalOceanCertificateCustomParams `protobuf:"bytes,4,opt,name=custom,proto3,oneof"`
 }
 
@@ -198,15 +132,17 @@ func (*DigitalOceanCertificateSpec_LetsEncrypt) isDigitalOceanCertificateSpec_Ce
 func (*DigitalOceanCertificateSpec_Custom) isDigitalOceanCertificateSpec_CertificateSource() {}
 
 // Parameters specific to a Let's Encrypt certificate request.
+// Let's Encrypt validates domain ownership at issue time, so every listed domain must already be
+// managed by DigitalOcean DNS in the same account; issuance fails otherwise.
 type DigitalOceanCertificateLetsEncryptParams struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// domains is the list of FQDNs (or wildcard domains) to include.
-	// At least one domain is required.
-	Domains []string `protobuf:"bytes,1,rep,name=domains,proto3" json:"domains,omitempty"`
-	// disable auto_renew controls automatic renewal of the Let's Encrypt certificate.
-	DisableAutoRenew bool `protobuf:"varint,2,opt,name=disable_auto_renew,json=disableAutoRenew,proto3" json:"disable_auto_renew,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// domains is the list of fully-qualified domain names (or wildcard domains) to include
+	// in the certificate. At least one domain is required. DigitalOcean issues one certificate
+	// covering all listed names and renews it automatically; each renewal produces a new
+	// certificate UUID while the name stays stable.
+	Domains       []string `protobuf:"bytes,1,rep,name=domains,proto3" json:"domains,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanCertificateLetsEncryptParams) Reset() {
@@ -246,21 +182,17 @@ func (x *DigitalOceanCertificateLetsEncryptParams) GetDomains() []string {
 	return nil
 }
 
-func (x *DigitalOceanCertificateLetsEncryptParams) GetDisableAutoRenew() bool {
-	if x != nil {
-		return x.DisableAutoRenew
-	}
-	return false
-}
-
-// Parameters specific to a custom (user‑supplied) certificate.
+// Parameters specific to a custom (user-supplied) certificate.
+// The DigitalOcean API never returns certificate material: after creation the provisioner state
+// holds only hashes of what was written, and an imported certificate has all three fields empty.
 type DigitalOceanCertificateCustomParams struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// leaf_certificate is the PEM‑encoded public certificate.
+	// leaf_certificate is the PEM-encoded public certificate.
 	LeafCertificate string `protobuf:"bytes,1,opt,name=leaf_certificate,json=leafCertificate,proto3" json:"leaf_certificate,omitempty"`
-	// private_key is the PEM‑encoded private key.
+	// private_key is the PEM-encoded private key matching the leaf certificate.
 	PrivateKey string `protobuf:"bytes,2,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	// certificate_chain is an optional PEM‑encoded intermediate chain.
+	// certificate_chain is the optional PEM-encoded intermediate chain, ordered from the
+	// issuing CA up to (but not including) the root.
 	CertificateChain string `protobuf:"bytes,3,opt,name=certificate_chain,json=certificateChain,proto3" json:"certificate_chain,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -321,29 +253,20 @@ var File_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto protor
 
 const file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/digitalocean/digitaloceancertificate/v1alpha1/spec.proto\x129dev.planton.digitalocean.digitaloceancertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xbb\x04\n" +
+	"@catalog/digitalocean/digitaloceancertificate/v1alpha1/spec.proto\x129dev.planton.digitalocean.digitaloceancertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xa3\x03\n" +
 	"\x1bDigitalOceanCertificateSpec\x127\n" +
-	"\x10certificate_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x0fcertificateName\x12w\n" +
-	"\x04type\x18\x02 \x01(\x0e2V.dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x88\x01\n" +
+	"\x10certificate_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18@R\x0fcertificateName\x12\x88\x01\n" +
 	"\flets_encrypt\x18\x03 \x01(\v2c.dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateLetsEncryptParamsH\x00R\vletsEncrypt\x12x\n" +
-	"\x06custom\x18\x04 \x01(\v2^.dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParamsH\x00R\x06custom\x12*\n" +
-	"\vdescription\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\vdescription\x12\x1c\n" +
-	"\x04tags\x18\x06 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tagsB\x1b\n" +
-	"\x12certificate_source\x12\x05\xbaH\x02\b\x01\"\xbe\x01\n" +
+	"\x06custom\x18\x04 \x01(\v2^.dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParamsH\x00R\x06customB\x1b\n" +
+	"\x12certificate_source\x12\x05\xbaH\x02\b\x01J\x04\b\x02\x10\x03J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x04typeR\vdescriptionR\x04tags\"\xaa\x01\n" +
 	"(DigitalOceanCertificateLetsEncryptParams\x12d\n" +
-	"\adomains\x18\x01 \x03(\tBJ\xbaHG\xc8\x01\x01\x92\x01A\x18\x01\"=r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\adomains\x12,\n" +
-	"\x12disable_auto_renew\x18\x02 \x01(\bR\x10disableAutoRenew\"\xba\x01\n" +
+	"\adomains\x18\x01 \x03(\tBJ\xbaHG\xc8\x01\x01\x92\x01A\x18\x01\"=r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\adomainsJ\x04\b\x02\x10\x03R\x12disable_auto_renew\"\xba\x01\n" +
 	"#DigitalOceanCertificateCustomParams\x125\n" +
 	"\x10leaf_certificate\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0fleafCertificate\x12/\n" +
 	"\vprivate_key\x18\x02 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\n" +
 	"privateKey\x12+\n" +
-	"\x11certificate_chain\x18\x03 \x01(\tR\x10certificateChain*L\n" +
-	"\x1bDigitalOceanCertificateType\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\x10\n" +
-	"\flets_encrypt\x10\x01\x12\n" +
-	"\n" +
-	"\x06custom\x10\x02B\xc7\x03\n" +
+	"\x11certificate_chain\x18\x03 \x01(\tR\x10certificateChainB\xc7\x03\n" +
 	"=com.dev.planton.digitalocean.digitaloceancertificate.v1alpha1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1;digitaloceancertificatev1alpha1\xa2\x02\x04DPDD\xaa\x029Dev.Planton.Digitalocean.Digitaloceancertificate.V1alpha1\xca\x029Dev\\Planton\\Digitalocean\\Digitaloceancertificate\\V1alpha1\xe2\x02EDev\\Planton\\Digitalocean\\Digitaloceancertificate\\V1alpha1\\GPBMetadata\xea\x02=Dev::Planton::Digitalocean::Digitaloceancertificate::V1alpha1b\x06proto3"
 
 var (
@@ -358,23 +281,20 @@ func file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDe
 	return file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanCertificateType)(0),                 // 0: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateType
-	(*DigitalOceanCertificateSpec)(nil),              // 1: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec
-	(*DigitalOceanCertificateLetsEncryptParams)(nil), // 2: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateLetsEncryptParams
-	(*DigitalOceanCertificateCustomParams)(nil),      // 3: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParams
+	(*DigitalOceanCertificateSpec)(nil),              // 0: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec
+	(*DigitalOceanCertificateLetsEncryptParams)(nil), // 1: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateLetsEncryptParams
+	(*DigitalOceanCertificateCustomParams)(nil),      // 2: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParams
 }
 var file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_depIdxs = []int32{
-	0, // 0: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec.type:type_name -> dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateType
-	2, // 1: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec.lets_encrypt:type_name -> dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateLetsEncryptParams
-	3, // 2: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec.custom:type_name -> dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParams
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // 0: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec.lets_encrypt:type_name -> dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateLetsEncryptParams
+	2, // 1: dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateSpec.custom:type_name -> dev.planton.digitalocean.digitaloceancertificate.v1alpha1.DigitalOceanCertificateCustomParams
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_init() }
@@ -391,14 +311,13 @@ func file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_init(
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_goTypes,
 		DependencyIndexes: file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_depIdxs,
-		EnumInfos:         file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_enumTypes,
 		MessageInfos:      file_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto_msgTypes,
 	}.Build()
 	File_catalog_digitalocean_digitaloceancertificate_v1alpha1_spec_proto = out.File

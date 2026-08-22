@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakerfeaturegroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Feature Store encrypts both stores at rest unconditionally -- with no key configured, AWS's documented default is an AWS-owned KMS key for the online store and an AWS-managed KMS key for the offline store's S3 objects; an unencrypted store is not representable."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: online_store.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: "Unset means AWS-owned keys; referencing a KMS key encrypts the online store under a customer-managed key you can revoke. The key must be symmetric, and its policy must grant Feature Store use (kms:Encrypt, kms:Decrypt, kms:CreateGrant and friends) -- AWS rejects the group without it."
+      notes: offline_store.kms_key_arn extends customer-key coverage to the S3 copy independently -- the two stores can carry different keys. Both are create-time only, like nearly everything on this spec.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both planes are HTTPS-only AWS APIs -- the SageMaker management API for group lifecycle and the Feature Store runtime API for record reads and writes; delivery into the offline store rides AWS's TLS service channels. No plaintext path exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A feature group exposes no network listener -- the only data path is the Feature Store runtime API (PutRecord, GetRecord and friends), which requires SigV4-signed IAM credentials; there is no anonymous or directly routable surface.
+      notes: Whether the offline store's S3 objects are internet-reachable is the destination bucket's posture (public-access block, bucket policy) -- that bucket is named by s3_uri and governed outside this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a feature group; there is no inbound network surface to restrict. Keeping runtime API traffic off the public internet (VPC interface endpoints) is caller-side account wiring outside this component.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing surface -- the group terminates no HTTP traffic of its own and no web ACL can attach to it; the runtime API is IAM-gated AWS infrastructure.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation is IAM-authorized against the feature-group ARN -- lifecycle actions on the management plane, and per-operation runtime actions (sagemaker:PutRecord, sagemaker:GetRecord, sagemaker:DeleteRecord) on the data plane, so read and write access can be granted independently per group.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A feature group runs no user workload. The one identity it carries -- role_arn, required by the spec -- is assumed by the Feature Store service itself with short-lived credentials to persist offline-store data into S3; service plumbing fixed by AWS's design, not a workload-identity choice this manifest makes.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The single access path on both planes is SigV4-signed HTTPS; no legacy or weaker authentication protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation -- CreateFeatureGroup, UpdateFeatureGroup, DeleteFeatureGroup, tagging -- is recorded by CloudTrail by default, and when a customer-managed key is configured, Feature Store's encrypt/decrypt calls against it are auditable in CloudTrail's KMS events.
+      notes: Record-level reads and writes ride the separate Feature Store runtime API; capturing those as CloudTrail data events is trail-side configuration outside this component.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Feature Store publishes metrics to CloudWatch automatically with no opt-in -- consumption (consumed read/write request units in on-demand mode, consumed capacity units in provisioned mode) and operational health (request counts, 4xx/5xx errors, throttles, latency, online-store storage size), dimensioned per feature group and operation.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: offline_store
+      evidence:
+        type: spec_default
+        reference: Unset means online-only -- records live in one store with no automatic copy, and TTL expiry or group deletion loses them. Configuring the offline store lands every write durably in S3 as an append-only full history, from which the online store's current state can be rebuilt.
+      notes: The 02 preset carries both stores for exactly this reason; the 01 preset is online-only serving state that the upstream pipeline can regenerate.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No retention field exists on the group. Offline-store history persists until the s3_uri bucket's own lifecycle rules say otherwise -- that bucket is named by URI and governed outside this component. The online store's ttl is serving expiry (hard-deleting live records), not a backup retention control."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Feature Store is a regional managed service -- AWS operates the online store's serving fleet across availability zones with no zonal footprint the manifest could configure, and offline-store objects inherit S3's multi-AZ durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Feature groups expose no deletion-protection flag -- DeleteFeatureGroup succeeds whenever IAM allows it, dropping the online store's records with the group. Already-delivered offline-store files survive in the S3 bucket.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the storage and serving infrastructure behind both stores; the group exposes no runtime, version, or maintenance surface.

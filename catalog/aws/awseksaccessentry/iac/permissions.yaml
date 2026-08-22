@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseksaccessentry
+spec:
+  aws:
+    statements:
+      - sid: CreateAccessEntry
+        actions:
+          - eks:CreateAccessEntry
+        resources:
+          - arn:aws:eks:*:*:cluster/*
+        provenance: derived
+        notes: Create-time call of aws_eks_access_entry -- the service reference authorizes CreateAccessEntry on the CLUSTER ARN (the entry's own ARN does not exist yet), so the cluster pattern is required or provisioning is denied. No iam:PassRole is involved -- spec.principal_arn names the grantee of the access, not a role handed to a service to assume.
+      - sid: ManageAccessEntry
+        actions:
+          - eks:DescribeAccessEntry
+          - eks:UpdateAccessEntry
+          - eks:DeleteAccessEntry
+          - eks:TagResource
+          - eks:UntagResource
+        resources:
+          - arn:aws:eks:*:*:access-entry/*
+        provenance: derived
+        notes: Lifecycle of aws_eks_access_entry after creation, common to both source arms (the Pulumi module drives the same provider through the pulumi-aws bridge). Describe serves plan/refresh; Update changes groups and username in place (cluster and principal are create-time immutable and replace via Delete+Create); Tag/Untag reconcile the platform's identity tags. All five authorize on the access-entry ARN format (cluster/identity-type/account/name/uuid path -- the single trailing wildcard covers it). ListTagsForResource is deliberately absent -- the service reference does not support it on access entries; tags read back through DescribeAccessEntry.
+      - sid: ManagePolicyAssociations
+        actions:
+          - eks:AssociateAccessPolicy
+          - eks:DisassociateAccessPolicy
+          - eks:ListAssociatedAccessPolicies
+        resources:
+          - arn:aws:eks:*:*:access-entry/*
+        provenance: derived
+        notes: Exercised when spec.policy_associations is non-empty -- both modules materialize one aws_eks_access_policy_association per entry, keyed by policy name (associations add, re-scope, and remove in place without touching the entry). The service reference authorizes all three actions on the access-entry ARN; the AWS-managed access policies themselves (account-less arn:aws:eks::aws:cluster-access-policy/... ARNs) are call parameters, not authorization resources.

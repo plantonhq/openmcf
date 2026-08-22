@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsdlmlifecyclepolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy stores no data -- it is scheduling configuration held in AWS's control plane. The snapshots it creates inherit encryption from their source volumes (an encrypted volume can only produce encrypted snapshots), a posture owned by the volumes and snapshot objects, not this policy.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: custom_policy.schedules.cross_region_copy_rules.cmk_arn
+      evidence:
+        type: spec_default
+        reference: The one encryption dial this policy owns rides its cross-region copies -- encrypted=true forces encryption on copies of unencrypted sources, and cmk_arn picks the customer-managed key in the DESTINATION region (unset with encrypted=true uses that region's AWS-managed aws/ebs key). The 02 preset pins encrypted us-west-2 copies.
+      notes: Source-snapshot CMK choices belong to the source volumes; event-based policies carry the same per-destination encrypted/cmk_arn pair on their copy action.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy terminates no connections. Its management API rides TLS as provider-wide behavior, and the snapshot creation and inter-region copy traffic it triggers moves on AWS's internal encrypted service channels -- neither is per-policy configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network endpoint to expose. The visibility of the snapshots it creates (private by default; sharing is explicit) is decided by share_rule and the snapshot objects, not by any network surface here.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the policy has no addresses or ports, only an IAM-authorized management API.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every policy operation is IAM-authorized with resource-level scoping on the policy ARN (per the dlm service reference), and the automation itself acts only as the execution role the spec requires -- what DLM may snapshot, copy, share, or delete is exactly what that role's policy grants, never more.
+      notes: "share_rule is the one deliberate widening: it grants named accounts access to created snapshots on a schedule -- treat its target_accounts list as an access-control decision, optionally time-boxed by unshare_interval."
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The required execution_role_arn is the only identity the automation ever runs as -- DLM assumes it with short-lived credentials each time a schedule fires; no static keys exist anywhere in the arrangement. AWS ships a service default (AWSDataLifecycleManagerDefaultRole) or the manifest references its own AwsIamRole.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: DLM has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Policy management calls and every snapshot API call the execution role makes are recorded by AWS CloudTrail as account-level posture -- AWS's DLM page itself points to CloudTrail for the audit trail.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS's DLM page documents that Amazon CloudWatch collects the policies' actions as near real-time metrics -- how many snapshots and AMIs each policy creates, deletes, and copies -- with no opt-in surface on the policy; alarms on those metrics are account-side CloudWatch configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: This component IS the backup automation -- every policy mode must carry a create cadence and a retention rule (create_rule and retain_rule are required on every schedule; the default mode pins daily-ish creation with 2-14-day retention), so a deployed policy cannot exist without an automated, restorable snapshot regimen for whatever its tags match.
+      notes: Restore is the standard EBS path -- create a volume from any retained snapshot; fast_restore_rule pre-warms that path per availability zone where seconds matter.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: custom_policy.schedules.retain_rule
+      evidence:
+        type: spec_default
+        reference: Retention is a required, first-class dial on every schedule -- keep the newest N snapshots (1-1000) or keep each for a duration (DAYS through YEARS), with archive_rule extending aged snapshots into the archive tier under its own retention and cross-region copies carrying separate copy-side retention. The presets pin 14-count daily, 24-count hourly, and 90-day weekly tiers.
+      notes: Default-mode policies express retention as retain_interval_days (2-14, AWS default 7).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is regional control-plane configuration AWS operates on its own infrastructure; it has no zonal footprint. The snapshots it creates land in EBS's regional snapshot store (S3-backed, multi-AZ durable) as a property of EBS, and cross_region_copy_rules extend copies across REGIONS -- a disaster-recovery radius beyond zones.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on a policy. Deleting one stops future automation but deletes no existing snapshots -- and the safety cuts both ways, since retention cleanup also stops, leaving the last fleet of snapshots billing until something else deletes them. The disabled field pauses schedules without any deletion at all.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A policy is pure configuration with no software to patch. The optional pre/post scripts a schedule can run (AwsDlmScripts) execute through AWS Systems Manager on the TARGET instances -- patching those hosts is their components' posture, not this policy's.

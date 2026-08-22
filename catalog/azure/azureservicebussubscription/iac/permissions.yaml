@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureservicebussubscription
+spec:
+  azure:
+    groups:
+      - purpose: ManageSubscription
+        actions:
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/read
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/write
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/Delete
+        provenance: derived
+        notes: Covers azurerm_servicebus_subscription -- create, read/refresh, in-place updates, and destroy, addressed under the parent topic resolved from topic_id (the namespace and topic names are parsed from the ARM ID, so no separate resolution reads happen). Azure's operation inventory spells the delete action with a capital D.
+      - purpose: ManageSubscriptionRules
+        actions:
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/rules/read
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/rules/write
+          - Microsoft.ServiceBus/namespaces/topics/subscriptions/rules/Delete
+        provenance: derived
+        notes: Covers the azurerm_servicebus_subscription_rule resources folded in from the spec's rules list -- one create/read/update/delete cycle per declared SQL or correlation filter rule, as children of the subscription. Exercised only when rules are declared; the service-created "$Default" catch-all is never touched.

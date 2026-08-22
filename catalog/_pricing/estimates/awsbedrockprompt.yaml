@@ -1,0 +1,32 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsbedrockprompt
+spec:
+  presets:
+    - preset: 01-single-text-prompt
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each execution bills amazon.nova-micro-v1:0's per-1M-token input and output rates -- entirely run-driven, with no free allotment on Bedrock on-demand inference
+        - the maxTokens 256 cap bounds the expensive output side of every run; input cost tracks the summarized document's length, which only traffic decides
+      notes: Zero committed cost -- a stored one-variant template bills nothing at rest; the token meter starts with the first summarization request, and the zero is commitment-absence.
+    - preset: 02-chat-with-tools
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the default chat variant bills amazon.nova-lite-v1:0's token rates per run, with the tool catalog and system context counting as input tokens on every invocation; tool-call round trips add turns, and the lookup_order tool's own backend bills wherever it runs
+        - the A/B text variant bills amazon.nova-micro-v1:0's cheaper rates when callers select it -- the experiment's cost split follows the traffic split
+        - maxTokens 512 caps each run's output side
+      notes: Zero committed cost -- both variants are stored templates that bill nothing until invoked; per-run cost differs by variant (nova-lite vs nova-micro rate cards), so the A/B experiment is also a controlled price comparison.

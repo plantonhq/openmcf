@@ -1,0 +1,79 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurefrontdoorprofile
+spec:
+  presets:
+    - preset: 01-standard-delivery
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Front Door Service
+          sku_meter: profile base fee
+          pricing_unit: profile-months
+          pricing_quantity: "1"
+          quantity_basis: one profile x the tier's flat monthly base fee -- the same rate worldwide (Azure prints identical figures across all eight commercial pricing zones, so the zone convention never changes the committed bill); an unspecified sku deploys STANDARD, the spec's documented default
+          list_unit_price: "35"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Front Door Service' and armRegionName eq 'Zone 1' and meterName eq 'Standard Base Fees' and productName eq 'Azure Front Door' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "35.0000"
+      total_list_cost: "35.0000"
+      exclusions:
+        - client requests bill per 10,000 by the client's pricing zone and follow traffic -- PREMIUM's request rate is higher than STANDARD's
+        - data transfer out from edge to client bills per GB by the client's pricing zone; edge-to-origin transfer bills a separate per-GB meter; inbound transfer is free
+        - endpoints, origin groups, origins, routes, custom domains, and security policies are separate kinds carrying no meters of their own -- their requests and bytes land on this profile's usage meters
+        - custom domains beyond the first 100 bill per domain-month; the first 100 are free
+      notes: WAF enforcement adds no meter on these tiers -- custom rules are free on both and Microsoft's managed rule sets are free on PREMIUM; they are part of what the tenfold base-fee difference buys. The separately-metered per-policy and per-rule WAF charges belong to Front Door (classic), a different product this spec does not admit.
+    - preset: 02-premium-private-origins
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Front Door Service
+          sku_meter: profile base fee
+          pricing_unit: profile-months
+          pricing_quantity: "1"
+          quantity_basis: one profile x the tier's flat monthly base fee -- the same rate worldwide (Azure prints identical figures across all eight commercial pricing zones, so the zone convention never changes the committed bill); an unspecified sku deploys STANDARD, the spec's documented default
+          list_unit_price: "330"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Front Door Service' and armRegionName eq 'Zone 1' and meterName eq 'Premium Base Fees' and productName eq 'Azure Front Door' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "330.0000"
+      total_list_cost: "330.0000"
+      exclusions:
+        - client requests bill per 10,000 by the client's pricing zone and follow traffic -- PREMIUM's request rate is higher than STANDARD's
+        - data transfer out from edge to client bills per GB by the client's pricing zone; edge-to-origin transfer bills a separate per-GB meter; inbound transfer is free
+        - endpoints, origin groups, origins, routes, custom domains, and security policies are separate kinds carrying no meters of their own -- their requests and bytes land on this profile's usage meters
+        - custom domains beyond the first 100 bill per domain-month; the first 100 are free
+      notes: WAF enforcement adds no meter on these tiers -- custom rules are free on both and Microsoft's managed rule sets are free on PREMIUM; they are part of what the tenfold base-fee difference buys. The separately-metered per-policy and per-rule WAF charges belong to Front Door (classic), a different product this spec does not admit. PREMIUM is one-way -- Azure refuses a downgrade back to STANDARD, so the committed base fee cannot be reduced without replacing the profile and everything nested under it.
+    - preset: 03-compliance-log-scrubbing
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Front Door Service
+          sku_meter: profile base fee
+          pricing_unit: profile-months
+          pricing_quantity: "1"
+          quantity_basis: one profile x the tier's flat monthly base fee -- the same rate worldwide (Azure prints identical figures across all eight commercial pricing zones, so the zone convention never changes the committed bill); an unspecified sku deploys STANDARD, the spec's documented default
+          list_unit_price: "35"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Front Door Service' and armRegionName eq 'Zone 1' and meterName eq 'Standard Base Fees' and productName eq 'Azure Front Door' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "35.0000"
+      total_list_cost: "35.0000"
+      exclusions:
+        - client requests bill per 10,000 by the client's pricing zone and follow traffic -- PREMIUM's request rate is higher than STANDARD's
+        - data transfer out from edge to client bills per GB by the client's pricing zone; edge-to-origin transfer bills a separate per-GB meter; inbound transfer is free
+        - endpoints, origin groups, origins, routes, custom domains, and security policies are separate kinds carrying no meters of their own -- their requests and bytes land on this profile's usage meters
+        - custom domains beyond the first 100 bill per domain-month; the first 100 are free
+      notes: WAF enforcement adds no meter on these tiers -- custom rules are free on both and Microsoft's managed rule sets are free on PREMIUM; they are part of what the tenfold base-fee difference buys. The separately-metered per-policy and per-rule WAF charges belong to Front Door (classic), a different product this spec does not admit.

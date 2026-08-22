@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandatabaseuser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A database user stores no data of its own; data at rest lives on the cluster (DigitalOceanDatabaseCluster), which DigitalOcean encrypts at rest as a managed-service property.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest), and DigitalOcean Managed Databases offer no customer-managed keys.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Connection encryption is a property of the cluster's endpoints (DigitalOcean requires TLS on managed database connections), not of the user object.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user has no network endpoint of its own; exposure is governed by the cluster's VPC placement and its DigitalOceanDatabaseFirewall rule set.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the cluster's DigitalOceanDatabaseFirewall rule set, not on users.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Database users sit behind no HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: configurable
+      field_path: settings
+      evidence:
+        type: spec_default
+        reference: settings.kafka_acls and settings.opensearch_acls grant per-topic / per-index permissions from closed permission lists; a user with no ACLs has only the engine's default grants.
+      notes: The ACL settings are the user's access-control surface on Kafka and OpenSearch clusters. On PostgreSQL/MySQL, in-database GRANTs are data-plane operations outside IaC scope.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean Managed Databases authenticate users with server-generated passwords (plus mTLS certificates on Kafka); no keyless / federated identity path exists upstream.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: mysql_auth_plugin
+      evidence:
+        type: provider_default
+        reference: Unset defers to DigitalOcean's caching_sha2_password default (the modern MySQL plugin); mysql_native_password is the legacy opt-in for old clients.
+      notes: Leaving mysql_auth_plugin unset keeps the strong default. Setting mysql_native_password is a deliberate compatibility downgrade -- the spec comment says so where the choice is made.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-user audit surface through this resource; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Users emit no metrics; database monitoring targets the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Users are configuration on the cluster, recreated by IaC; cluster data backup is the DigitalOceanDatabaseCluster's posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Users exist on whatever topology the cluster has; they carry no availability posture of their own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for database users. Deleting one revokes access immediately (the password dies with it) -- the GUIDE covers safe rotation.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Patching is the managed cluster's property, not the user object's.

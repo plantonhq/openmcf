@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningonlinedeployment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The durable artifacts behind the deployment -- the registered model, code, environment images, and captured data-collector payloads -- live in the workspace's storage account and container registry, encrypted at rest by default; the managed instances' disks are Azure managed disks with platform-managed encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The deployment spec carries no key surface. Customer-managed-key encryption for Azure Machine Learning is a workspace-level, creation-time decision configured on AzureMachineLearningWorkspace and inherited by the resources in it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Scoring requests reach the deployment only through its endpoint's HTTPS scoring URI -- TLS is the only transport the managed endpoint offers.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Inbound exposure is the endpoint's decision -- public_network_access lives on AzureMachineLearningOnlineEndpoint, and requests reach this deployment only through that address. This spec's own network dial is egress-side (egress_public_network_access_enabled, ARM default Enabled) -- set false to route outbound image and model pulls through the workspace's managed network, as the 02-hardened-monitored-deployment preset does.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The deployment accepts no direct traffic -- ingress scoping (endpoint authentication mode, public network access, private endpoints) is configured on AzureMachineLearningOnlineEndpoint and the workspace.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Nothing in this spec attaches a request filter; fronting the endpoint's scoring address with a WAF or API gateway is composed outside this kind.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management of the deployment (create, update, delete, scale) is authorized by Azure RBAC on the workspace unconditionally; scoring-plane authentication is the endpoint's auth_mode, enforced on every request the endpoint routes here.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The deployment executes under its ENDPOINT's managed identity -- the identity that pulls images from the registry and reads the model is configured on AzureMachineLearningOnlineEndpoint. This spec's only identity surface is data_collector.collections.client_id, which selects a user-assigned identity's client ID for writing captured payloads to storage.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication modes for the scoring plane (key, Azure Machine Learning token, Entra token) are the endpoint's auth_mode on AzureMachineLearningOnlineEndpoint; this spec exposes no authentication path of its own.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the deployment to the Azure Activity Log unconditionally.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: app_insights_enabled
+      evidence:
+        type: spec_default
+        reference: ARM's default is false -- the zero value passes through exactly; true streams the deployment's scoring-traffic logs and metrics to the workspace's Application Insights.
+      notes: The 02-hardened-monitored-deployment preset enables it, and pairs it with the data_collector block capturing sampled scoring inputs and outputs for drift monitoring. Deployment infrastructure metrics surface through the workspace's Azure Monitor surface regardless of this flag.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A deployment is a running copy of registered artifacts -- the model version, code asset, and environment it serves are the durable objects, versioned in the workspace registry. Recreating the deployment from them is the recovery path; there is no deployment-local data to back up beyond what data_collector already lands in workspace storage.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Neither the pinned ARM contract nor this spec offers zone placement for managed deployments -- instance_count adds capacity within the region with no zone contract the manifest can express or verify. Regional resilience is composed above this kind (endpoints in multiple regions).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the ARM contract nor this spec offers a deletion-protection flag; the endpoint's traffic map is the safety mechanism -- routing traffic away from a deployment before deleting it is the operational guard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managed online deployments receive host OS image updates automatically -- Microsoft upgrades the compute nodes to the latest VM image as releases ship (at least monthly), with no action required. The scoring container's own contents (environment image, dependencies) remain the owner's responsibility, versioned through the workspace's environment assets.

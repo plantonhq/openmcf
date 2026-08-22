@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatednsrecord
+spec:
+  azure:
+    groups:
+      - purpose: ManageRecordSets
+        actions:
+          - Microsoft.Network/privateDnsZones/A/read
+          - Microsoft.Network/privateDnsZones/A/write
+          - Microsoft.Network/privateDnsZones/A/delete
+          - Microsoft.Network/privateDnsZones/AAAA/read
+          - Microsoft.Network/privateDnsZones/AAAA/write
+          - Microsoft.Network/privateDnsZones/AAAA/delete
+          - Microsoft.Network/privateDnsZones/CNAME/read
+          - Microsoft.Network/privateDnsZones/CNAME/write
+          - Microsoft.Network/privateDnsZones/CNAME/delete
+          - Microsoft.Network/privateDnsZones/MX/read
+          - Microsoft.Network/privateDnsZones/MX/write
+          - Microsoft.Network/privateDnsZones/MX/delete
+          - Microsoft.Network/privateDnsZones/PTR/read
+          - Microsoft.Network/privateDnsZones/PTR/write
+          - Microsoft.Network/privateDnsZones/PTR/delete
+          - Microsoft.Network/privateDnsZones/SRV/read
+          - Microsoft.Network/privateDnsZones/SRV/write
+          - Microsoft.Network/privateDnsZones/SRV/delete
+          - Microsoft.Network/privateDnsZones/TXT/read
+          - Microsoft.Network/privateDnsZones/TXT/write
+          - Microsoft.Network/privateDnsZones/TXT/delete
+        provenance: derived
+        notes: Covers the module's seven count-gated azurerm_private_dns_*_record resources -- exactly one materializes per deployment (the spec's exactly-one-payload rule), but the grant spans all seven record types so one profile serves any manifest. Record sets are addressed by the parent zone's ARM ID plus the record name. Held via Private DNS Zone Contributor on the zone's resource group, or a narrower custom role.

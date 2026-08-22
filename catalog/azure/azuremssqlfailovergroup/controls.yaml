@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremssqlfailovergroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The group stores no data of its own; the replicated databases rest encrypted under each server's transparent-data-encryption posture (AzureMssqlServer / AzureMssqlDatabase kinds).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key; customer-managed TDE keys are configured on the logical servers (AzureMssqlServer's transparent_data_encryption_key_vault_key_id), and both sides of the group need equivalent key access for replicas to run.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The listener ({name}.database.windows.net) resolves to the current primary server, where TLS is enforced and the minimum version pinned as that server's posture; the geo-replication channel between servers is Microsoft's internal service traffic.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The listener is a DNS name, not an endpoint of its own -- reachability is each logical server's posture (public network access, firewall and virtual-network rules, private endpoints), and it must be configured equivalently on the partners for connectivity to survive a failover.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on each server's firewall and virtual-network rules (see no-public-access); the group adds no reachable surface beyond DNS.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at the group; TDS endpoints have no WAF attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the group exposes no authentication plane of its own -- connections through the listener authenticate against whichever server is currently primary, under that server's SQL/Entra posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the SQL-versus-Entra-only decision is each logical server's posture (AzureMssqlServer's azuread_authentication_only) and should match across the group so a failover does not change the accepted auth methods.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group creation, database membership changes, and failovers are control-plane operations landing in the Azure Activity Log as subscription-level posture; SQL auditing of the data plane is each server's extended_auditing posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The group emits no metrics of its own; replication lag and role state surface through the databases' and servers' monitoring surfaces.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating the group IS the recovery mechanism -- Azure continuously geo-replicates every listed database to every partner server, and a failover re-points the read-write listener to the new primary with no connection-string change. The required read_write_endpoint_failover_policy makes the recovery trigger explicit -- AUTOMATIC fails over on its own after grace_minutes (at least 60), MANUAL leaves the trigger to an operator.
+      notes: Geo-replication is live-data disaster recovery, not a backup series -- point-in-time restore from automated backups remains each database's own posture (the AzureMssqlDatabase kind). A group with an empty database_ids list protects nothing until databases are added.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Replication is continuous rather than a retained backup series -- backup retention windows are configured per database, not on the group.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The group spans failure domains BIGGER than zones by contract -- Azure requires every partner server to live in a different region than the primary, and the spec requires at least one partner (partner_servers min_items 1), so the listener survives the loss of the entire primary region.
+      notes: Zone-level redundancy WITHIN a region remains each database's own posture; this kind adds the cross-region layer on top. readonly_endpoint_failover_policy_enabled decides whether the read-only listener follows a failover too (unset leaves it Disabled).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a failover group (Azure resource locks are subscription-side governance outside the manifest). Deleting the group stops replication coordination and releases the listener DNS names; the primary databases and their geo-secondaries keep running as they are.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the replication machinery and listener DNS; no customer-visible patch surface exists.

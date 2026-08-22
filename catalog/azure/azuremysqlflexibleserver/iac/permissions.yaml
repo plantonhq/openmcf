@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremysqlflexibleserver
+spec:
+  azure:
+    groups:
+      - purpose: ManageServer
+        actions:
+          - Microsoft.DBforMySQL/flexibleServers/read
+          - Microsoft.DBforMySQL/flexibleServers/write
+          - Microsoft.DBforMySQL/flexibleServers/delete
+          - Microsoft.DBforMySQL/flexibleServers/databases/read
+          - Microsoft.DBforMySQL/flexibleServers/databases/write
+          - Microsoft.DBforMySQL/flexibleServers/databases/delete
+          - Microsoft.DBforMySQL/flexibleServers/firewallRules/read
+          - Microsoft.DBforMySQL/flexibleServers/firewallRules/write
+          - Microsoft.DBforMySQL/flexibleServers/firewallRules/delete
+          - Microsoft.DBforMySQL/flexibleServers/configurations/read
+          - Microsoft.DBforMySQL/flexibleServers/configurations/write
+        provenance: derived
+        notes: Covers azurerm_mysql_flexible_server and its child resources (databases, firewall rules, server configurations) -- create, read/refresh, in-place updates, and destroy. Server parameters are managed one azurerm_mysql_flexible_server_configuration per entry in server_parameters.
+      - purpose: GrantEntraAdministrator
+        actions:
+          - Microsoft.DBforMySQL/flexibleServers/administrators/read
+          - Microsoft.DBforMySQL/flexibleServers/administrators/write
+          - Microsoft.DBforMySQL/flexibleServers/administrators/delete
+        provenance: derived
+        notes: Required only when aad_administrator declares the Entra admin principal -- azurerm_mysql_flexible_server_active_directory_administrator manages it as its own resource.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when user_assigned_identity_ids attaches identities (the CMK unwrap identity and the Entra administrator's identity) -- ARM checks assign/action on every identity referenced in the server payload (service-side; the modules only pass the resolved identity IDs). The CMK identity's own key unwrap/wrap access on the Key Vault is the identity's grant, not the runner's.
+      - purpose: JoinDelegatedSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/privateDnsZones/read
+          - Microsoft.Network/privateDnsZones/join/action
+        provenance: derived
+        notes: Required only for VNet-injected servers (delegated_subnet_id + private_dns_zone_id) -- injecting the server demands join on the delegated subnet. The provider itself never calls the private DNS zone API (it only carries the ID in the server payload); the zone permissions are a SERVICE-side need -- the flexible-server service validates the referenced zone and links it to the network during provisioning, which requires the deploying principal to hold read plus join on the zone in the ZONE's scope (the join action is what Azure checks when another resource references a private DNS zone).

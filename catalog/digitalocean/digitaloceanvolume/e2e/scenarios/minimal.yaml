@@ -1,0 +1,19 @@
+# Minimal volume: region + size only, left unformatted.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: planton-oss-e2e-digitaloceanvolume-min
+  id: planton-oss-e2e-digitaloceanvolume-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanvolume
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  volumeName: pltn-e2e-vol-min
+  region: nyc3
+  sizeGib: 10

@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetestrino
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: coordinator.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The single coordinator reserves the declared requests -- it plans and schedules every query, so its memory bounds cluster-wide concurrency. Pair limits with jvm.max_heap_percent so the heap follows the container.
+    - field_path: workers
+      sku_meter: cluster CPU and memory reservations
+      impact: Query execution capacity is workers.replicas x workers.resources -- the dominant footprint of any real cluster (default 2 workers). An autoscaling arm (hpa or keda) hands the count to the autoscaler; KEDA can scale to zero between queries.
+    - field_path: metrics.enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: Adds the Prometheus JMX exporter sidecar to EVERY Trino pod at chart-default sizing -- small per pod, multiplied by the fleet.
+    - field_path: fault_tolerant_execution
+      sku_meter: external spool storage
+      impact: Fault tolerance spools exchange data to the declared base_directories -- object-store usage (and its request/storage charges) grows with query volume and lives outside this component.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - an autoscaling arm (workers.hpa or workers.keda) changes the worker count at runtime -- KEDA can scale to zero -- so the footprint states the manifest-declared replicas
+    - the JMX exporter sidecar (metrics.enabled) carries only chart-default sizing -- the spec models no resources for it
+    - the helm_values overlay merges last and can override any modeled value
+    - fault-tolerant exchange spooling and the catalog data sources (PostgreSQL, MySQL, object stores) are external storage and separate components
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. Trino is diskless by design: it queries data where it lives and provisions no volumes, so the honest manifest-time statement is pure compute -- coordinator requests + workers.replicas x worker requests."

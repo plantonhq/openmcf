@@ -1,0 +1,51 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesAltinityOperator manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetesaltinityoperator.yaml; a server-side estimator
+# can evaluate the same rules against live manifests. The operator is a
+# single controller pod: the operator container plus the
+# metrics-exporter sidecar (its own resources block). The ClickHouse
+# clusters it reconciles reserve their own capacity on their
+# KubernetesClickHouse resources -- never here.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesaltinityoperator
+spec:
+  workloads:
+    - label: operator
+      resources_path: resources
+      instances:
+        constant: "1"
+    - label: metrics exporter
+      resources_path: metrics.resources
+      instances:
+        constant: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the ClickHouse clusters this operator reconciles reserve their own capacity -- each rides its KubernetesClickHouse resource"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override the modeled values, including resources
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the operator container declares no requests or limits (the chart ships no defaults), so it schedules unbounded and reserves nothing
+    - applies_when:
+        - field_path: metrics.resources
+          op: is_unset
+      text: the metrics-exporter sidecar (enabled by default) runs with the chart defaults -- no requests or limits -- and its memory grows with the number and size of managed clusters
+    - applies_when:
+        - field_path: metrics.enabled
+          op: is_set
+        - field_path: metrics.enabled
+          op: equals
+          value: "false"
+        - field_path: metrics.resources
+          op: is_set
+      text: metrics.resources is declared but the exporter is disabled -- the metrics exporter line above overstates by that amount
+    - text: the CRD hook job (enabled by default) runs only during install and upgrade -- a transient pod, never a standing reservation

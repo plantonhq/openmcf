@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanvpcpeering.v1alpha1;
+
+import "catalog/digitalocean/digitaloceanvpcpeering/v1alpha1/api.proto";
+import "catalog/digitalocean/provider.proto";
+
+//digital-ocean-vpc-peering stack-input
+message DigitalOceanVpcPeeringStackInput {
+  //target cloud-resource
+  DigitalOceanVpcPeering target = 1;
+  //provider-config
+  dev.planton.digitalocean.DigitalOceanProviderConfig provider_config = 2;
+}

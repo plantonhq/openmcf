@@ -1,0 +1,389 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscostcategory.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsCostCategorySpec defines one Cost Explorer cost category: a
+// named dimension YOU define that groups every line of spend into
+// exactly one of its values ("Team" = engineering/marketing/...,
+// "Environment" = prod/staging/...). Rules evaluate IN ORDER and the
+// first match wins; unmatched spend lands in default_value (or the
+// literal "Uncategorized" when unset).
+//
+// Rules come in two shapes: REGULAR rules assign a value you name to
+// the spend a Cost Explorer expression selects; INHERITED_VALUE rules
+// take the value from a dimension itself (the account name, a tag's
+// value) - the "one rule fans out to N values" shape.
+//
+// Split-charge rules re-allocate one value's costs across target
+// values (chargeback of shared platform costs). Cost Explorer is
+// account-global (served from us-east-1); the spec's region is the
+// provider endpoint region. The provider's rule_version argument is
+// module-pinned to "CostCategoryExpression.v1" - the only value the
+// API accepts.
+message AwsCostCategorySpec {
+  // The AWS region used by the provider while managing the category.
+  // Cost Explorer is account-global (served from us-east-1) - every
+  // API call still needs a regional endpoint. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The category's name - an explicit field because category names
+  // legally carry spaces and mixed case metadata.name cannot
+  // ("Cost Center"). 1-50 characters; changing the name replaces the
+  // category.
+  string category_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // The value unmatched spend lands in (1-50 characters; the pattern
+  // encodes the length). Unset = AWS reports such spend as
+  // "Uncategorized".
+  string default_value = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^.{1,50}$"
+  ];
+
+  // When the category starts applying, as an ISO-8601 month start
+  // ("2024-01-01T00:00:00Z" - AWS accepts month boundaries only).
+  // Unset = AWS starts at the current month. AWS re-categorizes the
+  // current and previous month retroactively on rule changes.
+  string effective_start = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-01T00:00:00Z$"
+  ];
+
+  // The categorization rules, evaluated in order - first match wins.
+  repeated AwsCostCategoryRule rules = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  // Split-charge rules: re-allocate one value's costs across target
+  // values, proportionally, evenly, or by fixed percentages.
+  repeated AwsCostCategorySplitChargeRule split_charge_rules = 6;
+}
+
+// AwsCostCategoryRule is one categorization rule.
+message AwsCostCategoryRule {
+  // A rule is exactly one shape: a REGULAR expression rule or an
+  // INHERITED_VALUE dimension rule.
+  option (buf.validate.message).cel = {
+    id: "rule.exactly_one_shape"
+    message: "a rule is exactly one shape: set rule (REGULAR) or inherited_value (INHERITED_VALUE), never both"
+    expression: "has(this.rule) != has(this.inherited_value)"
+  };
+  option (buf.validate.message).cel = {
+    id: "rule.type_matches_shape"
+    message: "type INHERITED_VALUE pairs with inherited_value; REGULAR (or unset) pairs with rule"
+    expression: "(this.type == 'INHERITED_VALUE') == has(this.inherited_value)"
+  };
+  // A REGULAR rule assigns the value YOU name; an inherited rule
+  // takes its value from the dimension.
+  option (buf.validate.message).cel = {
+    id: "rule.regular_names_its_value"
+    message: "REGULAR rules need value - the category value the matched spend is assigned to"
+    expression: "has(this.inherited_value) || this.value != ''"
+  };
+
+  // The rule's shape. Unset = REGULAR (the provider default).
+  string type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "REGULAR",
+        "INHERITED_VALUE"
+      ]
+    }
+  ];
+
+  // For REGULAR rules: the category value assigned to matched spend
+  // (1-50 characters; the pattern encodes the length).
+  string value = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^.{1,50}$"
+  ];
+
+  // For REGULAR rules: the Cost Explorer expression selecting the
+  // spend this rule matches.
+  AwsCostCategoryExpression rule = 3;
+
+  // For INHERITED_VALUE rules: the dimension whose own value becomes
+  // the category value.
+  AwsCostCategoryInheritedValue inherited_value = 4;
+}
+
+// AwsCostCategoryInheritedValue takes the category value from a
+// dimension itself.
+message AwsCostCategoryInheritedValue {
+  // Where the value comes from: the linked account's name, or a
+  // cost-allocation tag's value.
+  string dimension_name = 1 [(buf.validate.field).string = {
+    in: [
+      "LINKED_ACCOUNT_NAME",
+      "TAG"
+    ]
+  }];
+
+  // For TAG: the tag key whose value is inherited. AWS ignores it for
+  // LINKED_ACCOUNT_NAME.
+  string dimension_key = 2 [(buf.validate.field).string.max_len = 1024];
+}
+
+// AwsCostCategorySplitChargeRule re-allocates one category value's
+// costs across target values.
+message AwsCostCategorySplitChargeRule {
+  // FIXED allocations must say what percentage each target receives.
+  option (buf.validate.message).cel = {
+    id: "split.fixed_requires_percentages"
+    message: "method FIXED needs a parameter of type ALLOCATION_PERCENTAGES with one percentage per target"
+    expression: "this.method != 'FIXED' || this.parameters.exists(p, p.type == 'ALLOCATION_PERCENTAGES')"
+  };
+
+  // The category value whose costs are split away (e.g. a shared
+  // "Platform" value).
+  string source = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // The category values receiving the split costs (1-500).
+  repeated string targets = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+    items: {
+      string: {max_len: 1024}
+    }
+  }];
+
+  // How costs split: PROPORTIONAL to each target's own costs, EVEN
+  // across targets, or FIXED percentages (see parameters).
+  string method = 3 [(buf.validate.field).string = {
+    in: [
+      "FIXED",
+      "PROPORTIONAL",
+      "EVEN"
+    ]
+  }];
+
+  // Split parameters - today only ALLOCATION_PERCENTAGES for the
+  // FIXED method (one percentage per target, in target order,
+  // summing to 100).
+  repeated AwsCostCategorySplitChargeParameter parameters = 4;
+}
+
+// AwsCostCategorySplitChargeParameter is one split-charge parameter.
+message AwsCostCategorySplitChargeParameter {
+  // The parameter type ("ALLOCATION_PERCENTAGES" is the only value
+  // the API accepts today).
+  string type = 1 [(buf.validate.field).string = {
+    in: ["ALLOCATION_PERCENTAGES"]
+  }];
+
+  // The percentage values, one per target in target order, summing
+  // to 100 (e.g. ["60", "40"]).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 500
+  }];
+}
+
+// AwsCostCategoryExpression is the root of a rule's Cost Explorer
+// expression: a leaf (dimension / tag / cost_category) or a
+// composition (and / or / not) of child nodes. The LEVELED shape
+// (root -> node -> leaf) mirrors the AWS API exactly - AWS accepts
+// composition at most two levels below the root, so the deepest legal
+// tree is expressible and nothing deeper can be written.
+message AwsCostCategoryExpression {
+  // A dimension leaf (service, region, account, ...).
+  AwsCostCategoryExpressionDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsCostCategoryExpressionTag tag = 2;
+
+  // A leaf matching ANOTHER cost category's values (categories can
+  // build on categories).
+  AwsCostCategoryExpressionCostCategory cost_category = 3;
+
+  // Children that must ALL match.
+  repeated AwsCostCategoryExpressionNode and = 4;
+
+  // Children of which AT LEAST ONE must match.
+  repeated AwsCostCategoryExpressionNode or = 5;
+
+  // A child that must NOT match.
+  AwsCostCategoryExpressionNode not = 6;
+}
+
+// AwsCostCategoryExpressionNode is a mid-level node: a leaf or one
+// more composition level whose children are leaves (the deepest level
+// AWS accepts).
+message AwsCostCategoryExpressionNode {
+  // A dimension leaf.
+  AwsCostCategoryExpressionDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsCostCategoryExpressionTag tag = 2;
+
+  // A leaf matching another cost category's values.
+  AwsCostCategoryExpressionCostCategory cost_category = 3;
+
+  // Leaf children that must ALL match.
+  repeated AwsCostCategoryExpressionLeaf and = 4;
+
+  // Leaf children of which AT LEAST ONE must match.
+  repeated AwsCostCategoryExpressionLeaf or = 5;
+
+  // A leaf child that must NOT match.
+  AwsCostCategoryExpressionLeaf not = 6;
+}
+
+// AwsCostCategoryExpressionLeaf is a terminal filter: exactly one of
+// the three leaf shapes, with no further composition (AWS rejects
+// deeper nesting).
+message AwsCostCategoryExpressionLeaf {
+  // A dimension leaf.
+  AwsCostCategoryExpressionDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsCostCategoryExpressionTag tag = 2;
+
+  // A leaf matching another cost category's values.
+  AwsCostCategoryExpressionCostCategory cost_category = 3;
+}
+
+// AwsCostCategoryExpressionDimension filters on one Cost Explorer
+// dimension.
+message AwsCostCategoryExpressionDimension {
+  // The dimension to filter on.
+  string key = 1 [(buf.validate.field).string = {
+    in: [
+      "AZ",
+      "INSTANCE_TYPE",
+      "LINKED_ACCOUNT",
+      "LINKED_ACCOUNT_NAME",
+      "OPERATION",
+      "PURCHASE_TYPE",
+      "REGION",
+      "SERVICE",
+      "SERVICE_CODE",
+      "USAGE_TYPE",
+      "USAGE_TYPE_GROUP",
+      "RECORD_TYPE",
+      "OPERATING_SYSTEM",
+      "TENANCY",
+      "SCOPE",
+      "PLATFORM",
+      "SUBSCRIPTION_ID",
+      "LEGAL_ENTITY_NAME",
+      "INVOICING_ENTITY",
+      "DEPLOYMENT_OPTION",
+      "DATABASE_ENGINE",
+      "CACHE_ENGINE",
+      "INSTANCE_TYPE_FAMILY",
+      "BILLING_ENTITY",
+      "RESERVATION_ID",
+      "RESOURCE_ID",
+      "RIGHTSIZING_TYPE",
+      "SAVINGS_PLANS_TYPE",
+      "SAVINGS_PLAN_ARN",
+      "PAYMENT_OPTION",
+      "AGREEMENT_END_DATE_TIME_AFTER",
+      "AGREEMENT_END_DATE_TIME_BEFORE",
+      "PAYER_ACCOUNT",
+      "ANOMALY_TOTAL_IMPACT_ABSOLUTE",
+      "ANOMALY_TOTAL_IMPACT_PERCENTAGE"
+    ]
+  }];
+
+  // How values match. Unset = EQUALS.
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The values to match.
+  repeated string values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {max_len: 1024}
+    }
+  }];
+}
+
+// AwsCostCategoryExpressionTag filters on one cost-allocation tag
+// key.
+message AwsCostCategoryExpressionTag {
+  // The tag key.
+  string key = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // How values match (see the dimension leaf; ABSENT matches spend
+  // missing the tag entirely).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The tag values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}
+
+// AwsCostCategoryExpressionCostCategory filters on another cost
+// category's values.
+message AwsCostCategoryExpressionCostCategory {
+  // The other category's name.
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // How values match (see the dimension leaf).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "ABSENT",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The category values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}

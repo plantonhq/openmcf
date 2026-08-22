@@ -1,0 +1,56 @@
+# Cost derivation: the machine-executable rules turning any GcpAddress
+# manifest's spec values into metered quantities and price choices. Only a
+# static EXTERNAL IPv4 reservation bills -- hourly, at the reserved-idle
+# rate, the reservation's own committed worst case. INTERNAL addresses and
+# external IPv6 are free by Google's pricing and produce zero-line
+# estimates. Attachment state (VM, Spot VM, forwarding rule) changes the
+# rate but lives outside this manifest -- carried in notes, never guessed.
+# The estimate generator replays the catalog presets through these rules
+# to emit ../estimates/gcpaddress.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpaddress
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-central1
+  lines:
+    - sku_meter: reserved external IPv4
+      applies_when:
+        - field_path: address_type
+          op: not_equals
+          value: INTERNAL
+        - field_path: ip_version
+          op: not_equals
+          value: IPV6
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: static-ip-idle-us-central1
+      basis: one static external IPv4 x 730 hours at the reserved-but-unattached rate -- the reservation's own committed charge, and its worst case
+  exclusions:
+    - applies_when:
+        - field_path: address_type
+          op: not_equals
+          value: INTERNAL
+        - field_path: ip_version
+          op: not_equals
+          value: IPV6
+      text: the attached-state discount -- in use on a standard VM the IP bills ~$0.005/hr and on a Spot VM ~$0.0025/hr instead of the idle rate, and assigned to a forwarding rule it is free; what holds the IP lives outside this manifest
+    - text: network egress through the address follows the traffic of whatever resource holds it, at that resource's network-tier rates
+  notes:
+    - applies_when:
+        - field_path: address_type
+          op: equals
+          value: INTERNAL
+      text: An INTERNAL reservation draws a private address from your subnetwork and never bills, whatever its purpose -- this estimate is genuinely zero.
+    - applies_when:
+        - field_path: ip_version
+          op: equals
+          value: IPV6
+      text: External IPv6 addresses are free -- Google's hourly IP charge is a scarcity price on IPv4 only. This estimate is genuinely zero.
+    - text: Priced at the reserved-idle rate ($0.01/hr) because that is the only state the manifest itself commits to. Attaching the IP to a VM roughly halves the rate; putting it on a forwarding rule -- a static IP's most common job -- zeroes it.

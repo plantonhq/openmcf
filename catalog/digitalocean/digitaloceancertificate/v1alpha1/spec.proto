@@ -6,74 +6,82 @@ import "buf/validate/validate.proto";
 import "shared/options/options.proto";
 
 // DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean.
+// A certificate is either issued and auto-renewed by Let's Encrypt (supply the domains) or uploaded
+// as user-provided PEM material (supply the key and certificate). The choice of certificate_source
+// branch fully determines the certificate type; both provisioners derive DigitalOcean's `type`
+// argument from whichever branch is set.
+//
+// Every argument on this resource is create-only: any change replaces the certificate. Both
+// provisioners create the replacement before destroying the old certificate so a load balancer
+// referencing it by name never observes a gap.
 message DigitalOceanCertificateSpec {
-  // certificate_name is a unique, human‑readable identifier (≤ 64 chars).
+  // Retired fields. `type` duplicated the oneof branch choice and made the
+  // mismatched combination representable; the type is now derived from the
+  // branch. `description` and `tags` have no counterpart on DigitalOcean
+  // certificates (neither the provider nor the API accepts them).
+  reserved 2, 5, 6;
+  reserved "type", "description", "tags";
+
+  // certificate_name is the unique, human-readable identifier of the certificate within the
+  // DigitalOcean account. The name IS the resource identity: because a Let's Encrypt
+  // certificate's UUID rotates on every auto-renewal, DigitalOcean addresses certificates by
+  // their stable name, and other resources (e.g. load balancer forwarding rules) reference
+  // certificates by name for the same reason.
   string certificate_name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 64
   ];
 
-  // type must align with the branch chosen in certificate_source.
-  DigitalOceanCertificateType type = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.defined_only = true
-  ];
-
-  // Mutually exclusive parameter sets.
+  // Exactly one certificate source must be chosen; the branch determines the certificate type.
   oneof certificate_source {
     option (buf.validate.oneof).required = true;
 
+    // A free Let's Encrypt certificate that DigitalOcean issues and auto-renews.
     DigitalOceanCertificateLetsEncryptParams lets_encrypt = 3;
+    // A user-provided (custom) certificate uploaded as PEM material.
     DigitalOceanCertificateCustomParams custom = 4;
   }
-
-  // Optional free‑form description (≤ 128 chars).
-  string description = 5 [(buf.validate.field).string.max_len = 128];
-
-  // Optional tags; must be unique and lowercase kebab.
-  repeated string tags = 6 [(buf.validate.field).repeated.unique = true];
-}
-
-// DigitalOceanCertificateType represents the certificate source.
-enum DigitalOceanCertificateType {
-  // Unspecified certificate type (invalid, used for validation).
-  unspecified = 0;
-  // A free, auto‑managed Let's Encrypt certificate.
-  lets_encrypt = 1;
-  // A user‑provided custom certificate.
-  custom = 2;
 }
 
 // Parameters specific to a Let's Encrypt certificate request.
+// Let's Encrypt validates domain ownership at issue time, so every listed domain must already be
+// managed by DigitalOcean DNS in the same account; issuance fails otherwise.
 message DigitalOceanCertificateLetsEncryptParams {
-  // domains is the list of FQDNs (or wildcard domains) to include.
-  // At least one domain is required.
+  // Retired: `disable_auto_renew` had no counterpart on the provider or the
+  // API -- DigitalOcean always auto-renews Let's Encrypt certificates.
+  reserved 2;
+  reserved "disable_auto_renew";
+
+  // domains is the list of fully-qualified domain names (or wildcard domains) to include
+  // in the certificate. At least one domain is required. DigitalOcean issues one certificate
+  // covering all listed names and renews it automatically; each renewal produces a new
+  // certificate UUID while the name stays stable.
   repeated string domains = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).repeated.unique = true,
     (buf.validate.field).repeated.items.string = {pattern: "^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$"}
   ];
-
-  // disable auto_renew controls automatic renewal of the Let's Encrypt certificate.
-  bool disable_auto_renew = 2;
 }
 
-// Parameters specific to a custom (user‑supplied) certificate.
+// Parameters specific to a custom (user-supplied) certificate.
+// The DigitalOcean API never returns certificate material: after creation the provisioner state
+// holds only hashes of what was written, and an imported certificate has all three fields empty.
 message DigitalOceanCertificateCustomParams {
-  // leaf_certificate is the PEM‑encoded public certificate.
+  // leaf_certificate is the PEM-encoded public certificate.
   string leaf_certificate = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // private_key is the PEM‑encoded private key.
+  // private_key is the PEM-encoded private key matching the leaf certificate.
   string private_key = 2 [
     (dev.planton.shared.options.sensitive) = true,
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
 
-  // certificate_chain is an optional PEM‑encoded intermediate chain.
+  // certificate_chain is the optional PEM-encoded intermediate chain, ordered from the
+  // issuing CA up to (but not including) the root.
   string certificate_chain = 3;
 }

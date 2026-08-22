@@ -72,7 +72,4 @@ module "federated_identity_credential" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/write`
-on the parent identity -- held via Managed Identity Contributor, Contributor,
-or Owner on the identity's scope.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

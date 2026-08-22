@@ -1,0 +1,95 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslaunchtemplate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: block_device_mappings.ebs.encrypted
+      evidence:
+        type: spec_default
+        reference: Unset inherits the AMI's block-device mapping (or the account's EBS-encryption-by-default setting); true encrypts the mapped volume at rest on every instance launched from the template -- the way a golden template makes encrypted storage the fleet-wide default instead of a per-launch decision.
+      notes: Everything in this template is a launch-time DEFAULT for instances launched from it -- the template object itself stores only configuration, encrypted as EC2 control-plane posture. A consumer override (ASG mixed-instances override, RunInstances parameter) can still replace the mapping.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: block_device_mappings.ebs.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset with encrypted true uses the AWS-managed aws/ebs key; referencing a customer-managed key encrypts launched volumes under it, adding revocation and cross-account control for every instance the template produces.
+      notes: Each block-device mapping carries its own key, so root and data volumes can use different CMKs.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A launch template describes compute -- launched instances terminate whatever protocols their workloads run. Transport encryption belongs to the software on the instances and the load balancers in front of them, not to the blueprint.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network_interfaces.associate_public_ip_address
+      evidence:
+        type: spec_default
+        reference: Tri-state -- unset inherits each subnet's map-public-IP-on-launch setting; an explicit false on the declared interface guarantees instances launched from this template take no public IPv4 regardless of subnet defaults, and an explicit true attaches one.
+      notes: Templates that declare no interfaces delegate the decision entirely to the consumer's subnets; reachability is ultimately subnet routing plus the attached security groups.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The security groups baked into the template are the inbound surface of every instance launched from it; unset leaves the decision to the consumer or the VPC's default security group -- not a production posture. When network_interfaces are declared, the spec requires groups per interface instead (network_interfaces.security_group_ids).
+      notes: Baking groups into the golden template is how an organization guarantees fleet instances never launch with the VPC default group.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF attaches to Layer-7 entry points (ALB, CloudFront, API Gateway), not to instances or the templates that launch them; request filtering belongs to the tier routing traffic at the fleet.
+    - control_id: rbac
+      status: configurable
+      field_path: instance_profile
+      evidence:
+        type: spec_default
+        reference: The instance profile baked into the template is the AWS API identity of every instance launched from it -- each launched workload holds exactly the permissions that role grants, and no profile means no AWS API access at all.
+      notes: Management-plane actions on the template and on launched instances are governed by IAM on the caller's side, outside this spec.
+    - control_id: workload-identity
+      status: configurable
+      field_path: instance_profile
+      evidence:
+        type: spec_default
+        reference: An attached instance profile serves short-lived role credentials through the instance metadata service on every launched instance, so fleet workloads call AWS APIs without any static access key -- the template is where that keyless posture is set once for the whole fleet.
+      notes: Pair it with metadata_options.http_tokens "required" so the served credentials cannot be stolen through the legacy IMDSv1 path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: metadata_options.http_tokens
+      evidence:
+        type: spec_default
+        reference: The AWS default is "optional" (IMDSv1 and v2 both answer); "required" makes every instance launched from this template refuse the legacy no-token IMDSv1 path -- the single most effective hardening against credential-stealing SSRF, applied fleet-wide from one field.
+      notes: SSH-versus-SSM is the other legacy-auth axis -- leaving key_name unset keeps static SSH keys out of the fleet in favor of SSM Session Manager through the instance profile.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface -- template changes and launches land in account-level CloudTrail outside this component, and OS-level audit logs belong to agents the launched workloads run.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: detailed_monitoring
+      evidence:
+        type: spec_default
+        reference: Defaults to false -- launched instances publish basic 5-minute CloudWatch metrics automatically; true enables 1-minute detailed monitoring on every launch, so auto-scaling policies and alarms driven by the fleet react meaningfully faster.
+      notes: Billed per instance-metric on the launched instances. Memory and disk-space metrics require the CloudWatch agent either way.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A template stores no data to back up -- it is a versioned blueprint re-creatable from the manifest, and volume snapshot automation (Data Lifecycle Manager, AWS Backup) targets launched instances' volumes by tag from outside this component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the template level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A template is a regional blueprint with no placement footprint of its own -- zone spread is the consuming auto-scaling group's subnet list. The one placement field here that touches zones (placement.availability_zone) PINS launches to a single zone, the opposite of redundancy, and fleet templates leave it unset.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: disable_api_termination
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, every instance launched from the template refuses API termination until protection is explicitly lifted -- a launch-default guard for pet-like fleet members.
+      notes: This protects LAUNCHED INSTANCES; the template object itself has no deletion guard (deleting it strands no instances -- running instances keep their configuration). Note the interaction the spec documents -- an auto-scaling group cannot scale in protected instances; use the ASG's own scale-in protection for elastic fleets. disable_api_stop additionally guards against stops.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: OS patching on EC2 is the customer's side of the shared-responsibility line. The template's version mechanism is how fleets ROLL OUT patched images -- rotate image_id to a patched AMI, and consumers following $Default pick it up on the next launch or instance refresh -- but that is a delivery path an operator drives, not a managed patch channel this spec configures.

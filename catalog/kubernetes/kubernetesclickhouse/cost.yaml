@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesclickhouse
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: shards
+      sku_meter: cluster CPU and memory reservations
+      impact: Every shard multiplies the host count -- the operator renders shards x replicas single-pod StatefulSets, each carrying the declared resources and its own data volume.
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Replicas per shard multiply the host count the same way shards do -- each replica is a full copy of its shard's data on its own pod and volume. Any value above 1 also triggers a managed 3-node Keeper unless coordination says otherwise.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per host -- claimed for every shard x replica pod whether queries run or not. Limits set the burst ceiling, not the reservation.
+    - field_path: disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every host provisions its own data volume of this size at /var/lib/clickhouse through the cluster's storage class; the size can only grow.
+    - field_path: log_disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: When set, every host adds a second dedicated volume for server logs on top of its data volume.
+    - field_path: coordination
+      sku_meter: cluster CPU and memory reservations
+      impact: A managed Keeper adds its own ensemble (default 3 nodes, 10Gi volume each) -- deployed automatically whenever replicas > 1 or shards > 1 with coordination unset, or explicitly via managed_keeper. External coordination adds nothing here; its capacity lives wherever that ensemble runs.
+    - field_path: stopped
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Stopping the cluster scales every host StatefulSet to zero -- the CPU and memory reservations are released, but every PVC stays, so the storage reservation persists while paused.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - a managed Keeper declared without explicit resources reserves storage only -- its pods run on operator defaults with no CPU or memory requests
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: (shards x replicas) hosts x (requests + data volume), plus the managed Keeper's ensemble when the topology triggers one. The Altinity operator that reconciles this cluster is its own component (kubernetesaltinityoperator) and carries its own footprint."
