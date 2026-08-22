@@ -1,14 +1,18 @@
 # Minimal AzureMongoCluster scenario: the Free-tier sandbox shape --
-# one shard, HA disabled, 32 GiB, MongoDB 8.0, both auth methods (so
-# the user kind's lane can bind an Entra grant), and one composed
-# firewall rule (proving the keyed-child machinery live). The
-# cloud-side name carries the run-id token (the name is a GLOBAL
-# hostname label). Free tier is one-per-subscription and
-# region-limited -- if Azure rejects it in this region, the proof
-# session bumps computeTier to M10 (~cents/hour) under proof design
-# authority. The throwaway admin password is a literal BY DESIGN (a
-# run-scoped sandbox credential; real deployments reference a secret
-# store).
+# one shard, HA disabled, 32 GiB, MongoDB 8.0, NativeAuth only, and
+# one composed firewall rule (proving the keyed-child machinery
+# live). NativeAuth only is LOAD-BEARING: ARM rejects a Free cluster
+# listing MicrosoftEntraID (400 "Microsoft Entra ID authentication is
+# not supported for 'Free' cluster tier" -- live-caught, now the
+# mongo_cluster_free_tier_no_entra CEL); the Entra-enabled shape is
+# proven live by the user kind's lane through its consumer-scoped M10
+# prerequisite override. The cloud-side name carries the run-id token
+# (the name is a GLOBAL hostname label). Free tier is
+# one-per-subscription and region-limited -- if Azure rejects it in
+# this region, the proof session bumps computeTier to M10
+# (~cents/hour) under proof design authority. The throwaway admin
+# password is a literal BY DESIGN (a run-scoped sandbox credential;
+# real deployments reference a secret store).
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMongoCluster
 metadata:
@@ -39,7 +43,6 @@ spec:
   highAvailabilityMode: Disabled
   authenticationMethods:
     - NativeAuth
-    - MicrosoftEntraID
   firewallRules:
     - name: e2e-probe
       startIpAddress: 203.0.113.10

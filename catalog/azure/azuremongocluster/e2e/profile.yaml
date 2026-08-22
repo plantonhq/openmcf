@@ -3,21 +3,30 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremongocluster
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (the Free-tier
-  # sandbox with both auth methods and one composed firewall rule --
-  # the keyed-child machinery and the sensitive connection-string
-  # outputs proven live). The GeoReplica and PointInTimeRestore arms
-  # stay offline-proven (reasons: a replica needs a second live
-  # cluster with the GeoReplicas preview feature -- double the lane's
-  # cost and time for a mode Azure documents as source-inherited; a
-  # restore needs backup history that exists only minutes after
-  # create -- both offline plans render the arms; unblock: a proven
-  # long-lived source cluster). Watch-list: Free-tier regional
-  # availability (fallback M10 under proof design authority) and the
-  # cluster create's duration (the provider budgets 60m).
+  # PROVEN live on both engines (dual-engine six-phase runner + blind
+  # import round-trip). ONE scenario runs: `minimal` (the Free-tier
+  # sandbox with NativeAuth and one composed firewall rule -- the
+  # keyed-child machinery and the sensitive connection-string outputs
+  # proven live, 4/4 fields). The live lane forced ONE contract fix at
+  # the full bar: ARM rejects MicrosoftEntraID on the Free tier (400
+  # "Microsoft Entra ID authentication is not supported for 'Free'
+  # cluster tier") -- now the mongo_cluster_free_tier_no_entra CEL;
+  # the Entra-enabled M10 shape is proven live by the user kind's
+  # consumer-scoped override. Measured: Free create ~7m20-35s (well
+  # under the provider's 60m budget), destroy ~2m, full lane 11-13
+  # min per engine; the Free slot released cleanly between the
+  # engines' back-to-back creates. The blind import round-tripped the
+  # cluster plus its firewall-rule child (address-key derivation)
+  # consuming exactly the two DECLARED tolerances -- create_mode and
+  # administrator_password, the never-read-back pair the provider's
+  # Read echoes from prior state. The GeoReplica and
+  # PointInTimeRestore arms stay offline-proven (reasons: a replica
+  # needs a second live cluster with the GeoReplicas preview feature
+  # -- double the lane's cost and time for a mode Azure documents as
+  # source-inherited; a restore needs backup history that exists only
+  # minutes after create -- both offline plans render the arms;
+  # unblock: a proven long-lived source cluster).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90

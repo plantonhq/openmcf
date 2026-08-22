@@ -211,7 +211,9 @@ sandbox), "M10"/"M20"/"M25" (burstable dev tiers), "M30" and up
 (general purpose, dedicated vCores). Required for "Default" mode;
 updatable in place. "Free" and "M25" clusters cannot use
 zone-redundant high availability and cannot shard beyond one
-shard.
+shard, and "Free" clusters cannot use MicrosoftEntraID
+authentication (ARM rejects the create with 400 "Microsoft Entra
+ID authentication is not supported for 'Free' cluster tier").
 
 - rule: {"string":{"in":["Free","M10","M20","M25","M30","M40","M50","M60","M80","M200"]}}
 
@@ -274,7 +276,11 @@ principals via AzureMongoClusterUser grants). Azure defaults an
 unset list to ["NativeAuth"] -- the engines send the list only
 when it is set, mirroring that service default. Include
 "MicrosoftEntraID" here before creating AzureMongoClusterUser
-grants against the cluster.
+grants against the cluster. Not available on the "Free" tier:
+ARM rejects a Free cluster listing "MicrosoftEntraID" at create
+(400 "Microsoft Entra ID authentication is not supported for
+'Free' cluster tier" -- a server-side contract no provider
+schema carries); use M10 or higher when grants are needed.
 
 - rule: {"repeated":{"unique":true,"items":{"string":{"in":["NativeAuth","MicrosoftEntraID"]}}}}
 
@@ -476,6 +482,7 @@ metadata tags (user values win on key conflicts).
 - `mongo_cluster_admin_credentials_pair`: administrator_username and administrator_password must be set together
 - `mongo_cluster_source_location_pairs_with_source_server`: source_location requires source_server_id
 - `mongo_cluster_burstable_tier_limits`: The Free and M25 tiers cannot use ZoneRedundantPreferred high availability and cannot have more than one shard
+- `mongo_cluster_free_tier_no_entra`: The Free tier does not support MicrosoftEntraID authentication -- use M10 or higher for clusters that Entra principals sign in to
 - `mongo_cluster_data_api_default_mode_only`: data_api_mode_enabled can only be set on Default-mode clusters
 - `mongo_cluster_storage_type_requires_size`: storage_type requires storage_size_in_gb
 - `mongo_cluster_cmk_requires_identity`: customer_managed_key requires the unwrap identity to be listed in user_assigned_identity_ids
