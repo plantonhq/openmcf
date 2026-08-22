@@ -8,6 +8,12 @@ spec:
     valueFrom:
       name: <your-eventgrid-topic>
   name: orders-to-queue
+  # Must match the source topic's input schema: Azure rejects the
+  # create when a CloudEvents-input topic is asked to deliver
+  # EventGridSchema (the check is server-side only). The catalog's
+  # topic examples use CloudEventSchemaV1_0; drop this line only for
+  # an EventGridSchema-input topic.
+  eventDeliverySchema: CloudEventSchemaV1_0
   destination:
     storageQueue:
       storageAccountId:

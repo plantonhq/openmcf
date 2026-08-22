@@ -32,6 +32,15 @@ spec:
     valueFrom:
       name: planton-oss-e2e-azureeventgridtopic-smoke
   name: eges-smoke-to-queue
+  # The source topic's input schema is CloudEventSchemaV1_0 (the topic
+  # kind's smoke shape), and ARM rejects a delivery schema the source
+  # cannot map (InvalidRequest: "EventDeliverySchema value
+  # EventGridSchema cannot be used in combination with the topic's
+  # input schema of CloudEventSchemaV1_0" -- live-caught; the provider
+  # never validates the pairing). Matching the source proves the
+  # schema field live on the scope wiring; the system-topic scenario
+  # proves the EventGridSchema default (system topics emit it).
+  eventDeliverySchema: CloudEventSchemaV1_0
   destination:
     storageQueue:
       storageAccountId:

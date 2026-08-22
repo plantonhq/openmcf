@@ -75,6 +75,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureeventgrideventsubscriptionv
 
 // deliverySchema resolves the platform default (EventGridSchema,
 // mirroring Azure's own) so both engines render the schema explicitly.
+// The default is only deliverable from EventGridSchema-input sources:
+// ARM rejects the create (InvalidRequest, server-side only -- the
+// provider does not validate the pairing) when the source topic's
+// input_schema is CloudEventSchemaV1_0, so manifests subscribing to a
+// CloudEvents topic must set the spec field explicitly.
 func deliverySchema(spec *azureeventgrideventsubscriptionv1alpha1.AzureEventgridEventSubscriptionSpec) string {
 	if spec.EventDeliverySchema != nil && *spec.EventDeliverySchema != "" {
 		return *spec.EventDeliverySchema

@@ -2,6 +2,10 @@
 
 Judgment calls that matter when you run event subscriptions in production.
 
+## Match the delivery schema to the source's input schema
+
+Azure enforces a pairing no plan can catch: a topic whose `input_schema` is `CloudEventSchemaV1_0` cannot deliver `EventGridSchema` -- the create fails with `InvalidRequest` ("cannot be used in combination with the topic's input schema"), and the check lives only in Azure's service, never in the provider. The default delivery schema is `EventGridSchema`, which suits system topics and platform events (they always emit it) -- but the moment you subscribe to a CloudEvents custom topic, set `event_delivery_schema: CloudEventSchemaV1_0` explicitly. Check the source topic's input schema FIRST; it is create-time-fixed on both sides (both fields are ForceNew), so a mismatch is a redeploy, not an edit.
+
 ## Dead-letter first, destination second
 
 Event Grid does not queue undeliverable events: after the retry policy gives up, an event without a dead-letter destination is gone. The production-grade order is to create the dead-letter container, wire `dead_letter`, THEN cut traffic over -- not the reverse. Treat a subscription without dead-lettering as fire-and-forget by explicit choice, never by omission.
