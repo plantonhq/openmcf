@@ -9,7 +9,6 @@ package cloudflareauthenticatedoriginpullsv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
-	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -181,7 +180,7 @@ var File_catalog_cloudflare_cloudflareauthenticatedoriginpulls_v1alpha1_spec_pro
 
 const file_catalog_cloudflare_cloudflareauthenticatedoriginpulls_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Icatalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1/spec.proto\x12Bdev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc8\x04\n" +
+	"Icatalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1/spec.proto\x12Bdev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc8\x04\n" +
 	"&CloudflareAuthenticatedOriginPullsSpec\x12r\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12&\n" +
 	"\fzone_enabled\x18\x02 \x01(\bH\x00R\vzoneEnabled\x88\x01\x01\x12\xae\x01\n" +

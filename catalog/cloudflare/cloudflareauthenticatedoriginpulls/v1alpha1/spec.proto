@@ -4,7 +4,6 @@ package dev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
-import "shared/options/options.proto";
 
 // CloudflareAuthenticatedOriginPullsSpec manages a zone's Authenticated
 // Origin Pulls enablement: the zone-wide toggle that makes Cloudflare present
