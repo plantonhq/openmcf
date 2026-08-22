@@ -803,6 +803,36 @@ create-time UUID generation. The sibling `SqlRoleDefinition` needs the
 same explicit-GUID treatment for `role_definition_id` when unset; its
 logical name can stay on `metadata.name`.
 
+### Long-running Azure components (Bastion hosts)
+
+A Bastion host is the ~10-minute duration class outside gateways:
+measured live (BASIC SKU, eastus, dedicated AzureBastionSubnet), the
+create ran **10-14 minutes** (13m33s Pulumi, 9m59s Terraform) and the
+delete **6-9 minutes** (6m16s / 8m41s), and the host bills (~$0.19/h)
+from creation. A full single-engine lane (fixture chain up, deploy,
+verify, destroy, verify-gone, chain down) totals **~35-45 minutes**
+because the shared subnet and address install profiles deploy every
+document (~13 fixture deploys at ~1 minute each) before the host
+starts; budget `-timeout=90m` per engine (120m with the import
+round-trip enabled).
+
+### Bare `ServiceUnavailable` on an ARM create LRO: transient, retry the lane once
+
+Some ARM operations fail their create's long-running poll with a bare
+`ServiceUnavailable` -- empty error code, message "The service is
+unavailable now. Please retry the request later." -- minutes after the
+resource reads as materializing (a mid-poll GET saw it `Updating`).
+First live member: a Network Watcher flow log create with Traffic
+Analytics polled 12 minutes into that answer, Azure rolled the
+half-created flow log back cleanly (NotFound moments later, nothing
+stranded), and the IDENTICAL manifest created in 36 seconds on the
+retry. This is the ML MFE `InternalServerError` class wearing a 503:
+treat the first occurrence as a transient service fault -- wait out the
+failed lane's teardown, verify the half-created resource rolled back
+(flow logs live under the watcher in `NetworkWatcherRG`, NOT the
+fixture resource group, so check there), and retry once before touching
+the module. A second identical failure is the finding.
+
 ### Front Door: fast creates, ~18-minute profile deletes
 
 Azure Front Door (Standard/Premium) inverts the usual timing profile:
