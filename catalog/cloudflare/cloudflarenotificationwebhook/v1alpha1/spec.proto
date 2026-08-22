@@ -37,7 +37,5 @@ message CloudflareNotificationWebhookSpec {
   // response -- it cannot be read back, imported, or drift-detected.
   // Provide a managed-secret reference; the platform resolves it
   // just-in-time at deploy.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef secret = 4 [
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret = 4 [(dev.planton.shared.options.sensitive) = true];
 }

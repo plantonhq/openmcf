@@ -219,14 +219,26 @@ message CloudflareAiGatewayDlpPolicy {
   // The action when the policy matches: FLAG logs, BLOCK refuses.
   string action = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {in: ["FLAG", "BLOCK"]}
+    (buf.validate.field).string = {
+      in: [
+        "FLAG",
+        "BLOCK"
+      ]
+    }
   ];
 
   // Which traffic direction the policy screens: the REQUEST (prompt), the
   // RESPONSE (model output), or both.
   repeated string check = 4 [
     (buf.validate.field).repeated.min_items = 1,
-    (buf.validate.field).repeated.items = {string: {in: ["REQUEST", "RESPONSE"]}}
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: [
+          "REQUEST",
+          "RESPONSE"
+        ]
+      }
+    }
   ];
 
   // The DLP profile IDs this policy evaluates.
@@ -375,7 +387,9 @@ message CloudflareAiGatewaySpendLimitsRule {
   // What the limit measures. Cloudflare currently supports only "cost".
   string limit_type = 4 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {in: ["cost"]}
+    (buf.validate.field).string = {
+      in: ["cost"]
+    }
   ];
 
   // The budget window, in seconds.
@@ -413,7 +427,12 @@ message CloudflareAiGatewaySpendLimitsMetadataFilter {
   // only requests whose value is in `values`.
   string mode = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {in: ["partition", "filter"]}
+    (buf.validate.field).string = {
+      in: [
+        "partition",
+        "filter"
+      ]
+    }
   ];
 
   // The values filtered on (used by filter mode).
@@ -426,7 +445,9 @@ message CloudflareAiGatewaySpendLimitsFilter {
   // The only mode Cloudflare supports here is "filter".
   string mode = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {in: ["filter"]}
+    (buf.validate.field).string = {
+      in: ["filter"]
+    }
   ];
 
   // The model or provider names counted against this budget.
@@ -460,7 +481,16 @@ message CloudflareAiGatewayRouteElement {
   // model), end (terminate).
   string type = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {in: ["start", "conditional", "percentage", "rate", "model", "end"]}
+    (buf.validate.field).string = {
+      in: [
+        "start",
+        "conditional",
+        "percentage",
+        "rate",
+        "model",
+        "end"
+      ]
+    }
   ];
 
   // Where the flow goes next. Which edges apply depends on the node type

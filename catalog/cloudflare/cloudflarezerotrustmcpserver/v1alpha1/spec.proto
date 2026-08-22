@@ -56,18 +56,14 @@ message CloudflareZeroTrustMcpServerSpec {
   // cannot be read back, imported, or drift-detected. Provide a
   // managed-secret reference; the platform resolves it just-in-time at
   // deploy.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef auth_credentials = 6 [
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef auth_credentials = 6 [(dev.planton.shared.options.sensitive) = true];
 
   // The OAuth client secret for manually-configured OAuth (Cloudflare's
   // auth_config auth_mode "manual" -- a server-reported mode; with dynamic
   // client registration the secret is minted by the flow instead).
   // WRITE-ONLY: stored encrypted, never returned by any read. Provide a
   // managed-secret reference.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef client_secret = 7 [
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef client_secret = 7 [(dev.planton.shared.options.sensitive) = true];
 
   // A free-form description shown in portals and the dashboard.
   string description = 8;

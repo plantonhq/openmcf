@@ -146,9 +146,7 @@ message CloudflareLogpushJobSpec {
   // with the generate_ownership_challenge arm below to make Cloudflare drop
   // the file). Same-account R2 destinations skip the challenge. SENSITIVE
   // and write-only: the API never returns it.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef ownership_challenge = 13 [
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ownership_challenge = 13 [(dev.planton.shared.options.sensitive) = true];
 
   // When true, the module also performs the challenge-issuing step for this
   // job's destination_conf: Cloudflare drops the challenge file into the

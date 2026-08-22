@@ -82,7 +82,13 @@ message CloudflareZoneTlsSettingsTotalTls {
   // The certificate authority issuing Total TLS certificates. Unset lets
   // Cloudflare choose. The certificates' validity period is fixed by Cloudflare
   // (90 days) and is not configurable.
-  optional string certificate_authority = 2 [(buf.validate.field).string = {in: ["google", "lets_encrypt", "ssl_com"]}];
+  optional string certificate_authority = 2 [(buf.validate.field).string = {
+    in: [
+      "google",
+      "lets_encrypt",
+      "ssl_com"
+    ]
+  }];
 }
 
 // One hostname's TLS overrides. At least one of min_tls_version, http2, or
@@ -99,7 +105,14 @@ message CloudflareZoneTlsSettingsHostnameSetting {
   string hostname = 1 [(buf.validate.field).required = true];
 
   // Minimum TLS version for this hostname, overriding the zone-wide setting.
-  optional string min_tls_version = 2 [(buf.validate.field).string = {in: ["1.0", "1.1", "1.2", "1.3"]}];
+  optional string min_tls_version = 2 [(buf.validate.field).string = {
+    in: [
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.3"
+    ]
+  }];
 
   // HTTP/2 support for this hostname, overriding the zone-wide setting.
   optional bool http2 = 3;

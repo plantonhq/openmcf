@@ -93,12 +93,12 @@ var _ = ginkgo.Describe("CloudflareZoneSettingsSpec Custom Validation Tests", fu
 			input := validZoneSettings(&CloudflareZoneSettingsSpec{
 				ZoneId: zoneRef(),
 				AutomaticPlatformOptimization: &CloudflareZoneSettingsAutomaticPlatformOptimization{
-					Enabled:          true,
+					Enabled:           true,
 					CacheByDeviceType: true,
-					Cf:               true,
-					Hostnames:        []string{"example.com", "www.example.com"},
-					Wordpress:        true,
-					WpPlugin:         true,
+					Cf:                true,
+					Hostnames:         []string{"example.com", "www.example.com"},
+					Wordpress:         true,
+					WpPlugin:          true,
 				},
 			})
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())

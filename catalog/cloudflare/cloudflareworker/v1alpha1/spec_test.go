@@ -97,11 +97,11 @@ var _ = ginkgo.Describe("CloudflareWorkerSpec Custom Validation Tests", func() {
 					Persist:          true,
 				},
 				Traces: &CloudflareWorkerObservabilityTraces{
-					Enabled:            true,
-					Destinations:       []string{"otel"},
-					HeadSamplingRate:   0.1,
-					Persist:            true,
-					PropagationPolicy:  "accept",
+					Enabled:           true,
+					Destinations:      []string{"otel"},
+					HeadSamplingRate:  0.1,
+					Persist:           true,
+					PropagationPolicy: "accept",
 				},
 			}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())

@@ -224,7 +224,7 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 			ginkgo.It("rejects a structured type without its data block", func() {
 				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
 					ZoneName: "example.com", AccountId: "a",
-					Records:  []*CloudflareDnsZoneRecord{{Name: "_sip._tcp", Type: CloudflareDnsZoneRecord_SRV, Content: "10 5 5060 sip.example.com"}},
+					Records: []*CloudflareDnsZoneRecord{{Name: "_sip._tcp", Type: CloudflareDnsZoneRecord_SRV, Content: "10 5 5060 sip.example.com"}},
 				}))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
