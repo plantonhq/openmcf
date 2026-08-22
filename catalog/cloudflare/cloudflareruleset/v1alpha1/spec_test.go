@@ -110,6 +110,24 @@ var _ = ginkgo.Describe("CloudflareRulesetSpec Validation", func() {
 			gomega.Expect(protovalidate.Validate(r)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts a skip rule targeting specific rules in another ruleset", func() {
+			r := validResource()
+			r.Spec.Phase = CloudflareRulesetSpec_http_request_firewall_custom
+			r.Spec.Rules = []*CloudflareRulesetRule{
+				{
+					Expression: "http.host eq \"example.com\"",
+					Action:     CloudflareRulesetRule_skip,
+					Enabled:    boolPtr(true),
+					ActionParameters: &CloudflareRulesetActionParameters{
+						Rules: map[string]*CloudflareRulesetStringList{
+							"4814384a9e5d4991b9815dcfc25d2f1f": {Values: []string{"8ac8bc2a661e475d940980f9317f28e1"}},
+						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(r)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts a rule without action_parameters", func() {
 			r := validResource()
 			r.Spec.Phase = CloudflareRulesetSpec_http_request_firewall_custom
@@ -405,6 +423,43 @@ var _ = ginkgo.Describe("CloudflareRulesetSpec Validation", func() {
 			err := protovalidate.Validate(r)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mode"))
+		})
+
+		ginkgo.It("rejects a skip rules map with a non-hex ruleset id key", func() {
+			r := validResource()
+			r.Spec.Rules[0].ActionParameters = &CloudflareRulesetActionParameters{
+				Rules: map[string]*CloudflareRulesetStringList{
+					"current": {Values: []string{"8ac8bc2a661e475d940980f9317f28e1"}},
+				},
+			}
+			err := protovalidate.Validate(r)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("skip rules"))
+		})
+
+		ginkgo.It("rejects a skip rules map entry with no rule ids", func() {
+			r := validResource()
+			r.Spec.Rules[0].ActionParameters = &CloudflareRulesetActionParameters{
+				Rules: map[string]*CloudflareRulesetStringList{
+					"4814384a9e5d4991b9815dcfc25d2f1f": {},
+				},
+			}
+			err := protovalidate.Validate(r)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("skip rules"))
+		})
+
+		ginkgo.It("rejects a skip rules map combined with the ruleset option", func() {
+			r := validResource()
+			r.Spec.Rules[0].ActionParameters = &CloudflareRulesetActionParameters{
+				Ruleset: "current",
+				Rules: map[string]*CloudflareRulesetStringList{
+					"4814384a9e5d4991b9815dcfc25d2f1f": {Values: []string{"8ac8bc2a661e475d940980f9317f28e1"}},
+				},
+			}
+			err := protovalidate.Validate(r)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("incompatible"))
 		})
 
 		ginkgo.It("rejects an invalid header operation", func() {

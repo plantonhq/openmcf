@@ -1,0 +1,27 @@
+# Minimal DNS block policy: the most common Gateway shape -- block a domain
+# for everyone. enabled and precedence are EXPLICIT (the provider defaults
+# enabled to FALSE; explicit precedence keeps rule order deliberate).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustgatewaypolicy-dns-block-minimal
+  id: planton-oss-e2e-cloudflarezerotrustgatewaypolicy-dns-block-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustgatewaypolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-dns-block
+  action: block
+  filter: dns
+  enabled: true
+  precedence: 15000
+  traffic: any(dns.domains[*] == "blocked-${E2E_RUN_ID}.example.com")
+  ruleSettings:
+    blockReason: Blocked by Planton E2E policy

@@ -1,0 +1,25 @@
+# The minimal live arm: one alert type delivered to one email address --
+# proves the create/update/delete lifecycle and the at-least-one-mechanism
+# wall live, with no cross-kind dependency.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarenotificationpolicy-email-minimal
+  id: planton-oss-e2e-cloudflarenotificationpolicy-email-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarenotificationpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-email-minimal-${E2E_RUN_ID}
+  alert_type: tunnel_health_event
+  description: planton e2e minimal email policy
+  mechanisms:
+    emails:
+      - e2e@example.com

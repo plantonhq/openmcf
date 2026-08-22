@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmanagedprefixlist
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A prefix list stores nothing but CIDR strings and their descriptions -- VPC control-plane configuration, not customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: No traffic flows through a prefix list -- it is a named set of CIDRs that OTHER constructs' rules consult. Transport encryption belongs to the workloads whose traffic those referencing rules admit.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The list has no endpoint of its own to expose. Whether workloads are internet-reachable is decided by the security-group and NACL rules that reference it -- assessed on those components.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: entries
+      evidence:
+        type: spec_default
+        reference: The entries set IS the curated source allowlist that referencing security-group and NACL rules admit -- a rule pointing at this list opens exactly these CIDRs and nothing else, and removing an entry here closes it in every referencing rule at once. The spec keeps the set honest with unique-CIDR and address-family CEL validation.
+      notes: The list enforces nothing by itself -- restriction lands only where rules reference the pl- id. The centralization cuts both ways; one stale broad CIDR added here widens every referencing rule simultaneously, so review entries with the same care as a 0.0.0.0/0 source.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A CIDR allowlist operates at layers 3 and 4 through the rules that reference it -- it cannot inspect HTTP requests. Edge protection attaches at layer 7 (AWS WAF, CloudFront) on the fronting components.
+    - control_id: rbac
+      status: not_applicable
+      notes: The list has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and the list itself authenticates nothing.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The list runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The list exposes no authentication path at all -- there is nothing to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Entry changes land in AWS CloudTrail as account-level posture, and AWS versions the list on every entry change (the version output), so the current version number is itself a change signal -- but neither is per-list configuration this manifest carries.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A prefix list publishes no CloudWatch metrics -- traffic admitted by referencing rules appears in the attached resources' metrics and VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The list is declarative configuration fully re-creatable from the manifest -- entries live inline and re-create with it; there is no data to back up. Note that re-creation issues a NEW pl- id, so referencing rules must be repointed -- an availability concern for references, not a data-loss one.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A prefix list has no zonal existence -- it is a regional control-plane object available to every referencing rule in the region automatically. There is nothing to place or fail over.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag. AWS does refuse to delete a list that security-group rules, NACL rules, or route tables still reference -- a dependency guard that protects referencing rules from dangling, not an opt-in protection lever.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A prefix list is a pure configuration object with no software to patch.

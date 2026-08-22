@@ -1,0 +1,97 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetestrino
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Trino is diskless by design -- it provisions no volumes and stores no data; it queries data where it lives, so encryption at rest is the posture of the catalog data sources (PostgreSQL, MySQL, object stores) and of any fault-tolerant spool destination, all separate components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data rests here to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: https
+      evidence:
+        type: spec_default
+        reference: Unset means plain HTTP on the pods with TLS expected at composed exposure kinds -- the module sets http-server.process-forwarded=true so proxied HTTPS requests are password-authenticated and plain-HTTP data-plane requests are refused outright; https.enabled with a JKS keystore Secret serves TLS from the Trino containers directly.
+      notes: Verified at the pin against the server's request-authentication source -- allow-insecure-over-http would NOT extend password auth to HTTP, which is why the module never uses it.
+    - control_id: no-public-access
+      status: configurable
+      field_path: service.type
+      evidence:
+        type: spec_default
+        reference: Unset means ClusterIP -- nothing is internet-reachable until exposure is composed explicitly; "LoadBalancer" or "NodePort" opts into direct exposure with service.annotations carrying the cloud LB configuration.
+      notes: Both presets keep the default ClusterIP posture.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_policy_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true renders the chart's NetworkPolicy -- Trino pods may talk to each other, and extra ingress rules admit clients and scrapers. Requires a CNI that enforces NetworkPolicy.
+      notes: Neither preset enables it -- the cluster's namespace-level NetworkPolicy posture governs by default.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component terminates no edge traffic -- exposure happens through separate kinds and a web application firewall belongs to that layer.
+    - control_id: rbac
+      status: configurable
+      field_path: access_control_rules
+      evidence:
+        type: spec_default
+        reference: Empty means no system access control -- authenticated users see every catalog; the file-provider JSON rules document scopes who may access which catalogs, schemas, and tables, pairing with auth.groups_secret group mappings.
+      notes: Authentication (who you are) is on by default; this seam governs authorization (what you may touch). resource_groups_config adds per-group concurrency and memory limits.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Trino reaches its data sources with database credentials delivered from referenced Secrets as ${ENV:VAR} references (Trino's own secrets mechanism) -- this spec models no cloud-identity seam, and no cloud API access is part of the component's own operation.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Upstream ships NO authentication -- anyone reaching the Service could query everything and impersonate any user. That never deploys from this kind -- the module enables PASSWORD (file) authentication with a module-generated admin (Secret <name>-auth), configures the required internal-communication shared secret, and refuses plain-HTTP data-plane requests via http-server.process-forwarded.
+      notes: auth.enabled=false is an explicit opt-out with the spec-level warning attached. Credentials never render into ConfigMaps -- catalog passwords ride ${ENV:VAR} references resolved from Secrets.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The module-enabled PASSWORD (file) authenticator carries a module-generated admin credential (see no-legacy-auth) with no strength policy, lockout, or MFA of its own -- LDAP/OAuth2 sign-in is coordinator configuration beyond the typed seams.
+    - control_id: audit-logging
+      status: configurable
+      field_path: event_listener_properties
+      evidence:
+        type: spec_default
+        reference: Empty means no event listeners; event-listener.name properties wire Trino's query-event integrations -- the native seam for query audit logging (who ran what, when, against which catalogs).
+      notes: Changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true enables JMX metrics with the bundled Prometheus JMX exporter sidecar on every pod, and metrics.service_monitor_enabled renders coordinator and worker ServiceMonitors for operator-based scraping (CEL requires metrics.enabled alongside).
+      notes: The 02-federated-warehouse preset enables both. The module renders the exporter's required hostPort config -- the chart's empty default would crash-loop the sidecar.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- Trino holds no durable state (see enc-at-rest); recovery is redeployment, and the data sources own their own backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: workers.replicas
+      evidence:
+        type: spec_default
+        reference: Defaults to 2 workers; the fleet scales freely and graceful_shutdown drains running queries before termination. The coordinator is a singleton by architecture -- fault_tolerant_execution makes QUERIES survive worker failures (spooled exchanges plus task retries), not coordinator failures.
+      notes: The 02-federated-warehouse preset runs an HPA to 6 workers with graceful shutdown. Zone spread is the cluster scheduler's topology behavior -- this spec models node_selector and tolerations, not anti-affinity.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Helm offers a deletion-protection flag on a release; protection is operational (namespace RBAC, change review). Deleting the resource removes the release -- the queried data sources are separate resources and survive untouched.
+    - control_id: managed-patching
+      status: configurable
+      field_path: image.tag
+      evidence:
+        type: spec_default
+        reference: Defaults to "480" (the Trino release this kind is built against) and the modules pin the chart version (1.42.2) internally -- version changes are deliberate manifest edits, rolled as atomic Helm upgrades (wait, atomic, cleanup_on_fail).
+      notes: The metrics.exporter_image default is a FROZEN legacy Bitnami mirror -- production deployments should override it alongside their image-mirror policy.

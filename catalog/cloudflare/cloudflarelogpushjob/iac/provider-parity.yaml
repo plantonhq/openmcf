@@ -1,0 +1,54 @@
+# Provider-parity manifest for CloudflareLogpushJob.
+# Records only divergences from exact-name matching against
+# cloudflare_logpush_job and the folded cloudflare_logpush_ownership_challenge
+# at the pinned provider version. Unlisted arguments (account_id, zone_id,
+# dataset, destination_conf, name, enabled, filter, kind, max_upload_bytes,
+# max_upload_interval_seconds, max_upload_records, ownership_challenge) match
+# spec fields by exact name. The deprecated logpull_options and frequency
+# arguments are out of checker scope automatically.
+resources:
+  cloudflare_logpush_job:
+    mappings:
+      # output_options is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.output_options.output_type
+        arg: output_options
+      - spec: spec.output_options.field_names
+        arg: output_options
+      - spec: spec.output_options.timestamp_format
+        arg: output_options
+      - spec: spec.output_options.sample_rate
+        arg: output_options
+      - spec: spec.output_options.batch_prefix
+        arg: output_options
+      - spec: spec.output_options.batch_suffix
+        arg: output_options
+      - spec: spec.output_options.record_prefix
+        arg: output_options
+      - spec: spec.output_options.record_suffix
+        arg: output_options
+      - spec: spec.output_options.record_delimiter
+        arg: output_options
+      - spec: spec.output_options.record_template
+        arg: output_options
+      - spec: spec.output_options.field_delimiter
+        arg: output_options
+      - spec: spec.output_options.merge_subrequests
+        arg: output_options
+      - spec: spec.output_options.cve_2021_44228
+        arg: output_options
+  # The ownership-challenge issuing step, folded as the
+  # generate_ownership_challenge arm: a one-shot POST (no read, no delete,
+  # no import) whose scope and destination are the job's own spec fields.
+  cloudflare_logpush_ownership_challenge:
+    mappings:
+      - spec: spec.account_id
+        arg: account_id
+      - spec: spec.zone_id
+        arg: zone_id
+      - spec: spec.destination_conf
+        arg: destination_conf
+specExclusions:
+  # The challenge arm's instantiation gate: it decides WHETHER the folded
+  # one-shot resource is created and never travels as an argument.
+  - field: spec.generate_ownership_challenge
+    reason: "instantiation gate with no provider counterpart -- the challenge resource's existence IS the issuing step; the modules create it only when asked"

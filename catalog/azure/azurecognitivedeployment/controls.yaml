@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecognitivedeployment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The deployment is a model selection and stores no customer data of its own; data the service holds (fine-tunes, uploaded files, stored completions) rests on the parent ACCOUNT, whose at-rest encryption is unconditional and whose CMK option lives on that kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key here (see enc-at-rest); customer-managed keys are the parent account's customer_managed_key block.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The deployment has no endpoint of its own -- applications call it THROUGH the parent account's HTTPS-only endpoint, passing the deployment's name as the model parameter; the TLS posture is the account's, enforced there without a plaintext mode.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Reachability is entirely the parent account's posture -- its public_network_access_enabled flag, network perimeter and private endpoints decide who can reach ANY deployment on it; the deployment object carries no network surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No source filter exists on the deployment; ingress restriction is the parent account's network_acls, that kind's manifest.
+    - control_id: edge-protection
+      status: configurable
+      field_path: rai_policy_name
+      evidence:
+        type: spec_default
+        reference: Unset applies Azure's DEFAULT responsible-AI content-filter policy -- the service assigns one to every deployment, so prompts and completions are filtered from the first call; setting the field selects a named policy on the same account (custom severity thresholds, jailbreak and protected-material filters, blocklists) as this deployment's request/response filter.
+      notes: "This is the AI analogue of a WAF: filtering runs inside the model call rather than in front of it. A custom policy CAN weaken filters (filter_enabled false per category), which is why the posture is configurable, not enforced. No preset sets a custom policy -- all ride Azure's default."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the deployment (create, capacity change, model version change, delete) is Azure RBAC on the parent account's scope unconditionally -- there is no non-ARM management path.
+      notes: DATA-plane callers authenticate to the parent account, where local_auth_enabled decides whether static keys work alongside Entra ID tokens -- that hardening lives on the account's manifest.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The deployment carries no identity of its own and holds no credentials; callers' identity posture (Entra tokens versus account keys) is the parent account's local_auth_enabled, and the account's own managed identity is that kind's identity block.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface of its own to strengthen or disable -- key-versus-token auth is decided on the parent account (its local_auth_enabled), and applies uniformly to every deployment on it.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes (model swaps, capacity moves, deletes) land in the Azure Activity Log automatically as subscription-level posture; per-request audit of the data plane is the parent account's diagnostic-settings surface, a separate component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The deployment publishes no metric surface of its own -- token usage, latency and error metrics surface on the parent ACCOUNT's Azure Monitor metrics with per-deployment dimensions, so operational visibility rides that kind without configuration here.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration only -- the manifest recreates the deployment exactly (model, version, SKU, capacity, policy selection); there is no data to back up, and the model weights are Microsoft's, not yours to protect.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The deployment exposes no zone surface -- availability of the serving infrastructure is Microsoft's operation; the GlobalStandard and DataZone SKUs route requests across Azure's own footprint (Azure-wide or data-zone-wide), which is a routing property of the SKU, not a zone configuration to manage.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No refuse-deletion flag exists on the deployment; it is recreated declaratively in seconds. Worth knowing both directions: deleting a pay-per-token deployment breaks callers but costs nothing, while deleting a ProvisionedManaged deployment is precisely how its continuous PTU billing STOPS."
+    - control_id: managed-patching
+      status: configurable
+      field_path: version_upgrade_option
+      evidence:
+        type: spec_default
+        reference: Unspecified applies the provider default, OnceNewDefaultVersionAvailable -- Azure upgrades the deployed model version in place through the service's own channel as new default versions ship and old ones retire. NO_AUTO_UPGRADE opts out for pinned-version compliance, taking on the retirement calendar manually; ONCE_CURRENT_VERSION_EXPIRED upgrades only at expiry.
+      notes: The 02-text-embeddings preset pins NO_AUTO_UPGRADE deliberately -- embedding outputs are deterministic per version, and silent upgrades would strand stored vectors.

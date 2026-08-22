@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarewaitingroom
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageRoom
+        name: Waiting Rooms Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Create/update/delete the room via POST/PATCH/DELETE /zones/{zone_id}/waiting_rooms[/{waiting_room_id}] and replace the room's whole bypass-rules list via PUT /zones/{zone_id}/waiting_rooms/{waiting_room_id}/rules (derived from the module's API surface). Covers the Terraform module's cloudflare_waiting_room and cloudflare_waiting_room_rules resources and the Pulumi module's matching WaitingRoom and WaitingRoomRules resources; neither engine performs secondary lookups or data-source reads. Group names are from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22); the reference's API-name table renders the pair as "Waiting Rooms Read" / "Waiting RoomsWrite" -- the missing space before "Write" is a rendering artifact affecting many rows of that page.
+      - purpose: ReadRoom
+        name: Waiting Rooms Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Refresh/import the room via GET /zones/{zone_id}/waiting_rooms/{waiting_room_id} and its rules via GET .../rules (derived from the module's API surface).

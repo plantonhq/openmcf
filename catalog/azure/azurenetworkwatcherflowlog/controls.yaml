@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurenetworkwatcherflowlog
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The flow log stores nothing itself -- the recorded flow files rest in the referenced STORAGE ACCOUNT (encrypted by Storage's always-on service-side encryption) and Traffic Analytics' enriched records in the Log Analytics workspace; both at-rest postures, including customer-managed-key upgrades, belong to those kinds. Flow records are traffic METADATA (addresses, ports, verdicts, byte counts), never packet contents.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); CMK levers live on the AzureStorageAccount and the workspace's dedicated-cluster posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The Network Watcher platform writes flow files to storage and feeds Traffic Analytics over Microsoft-operated service channels; nothing on this spec opens or configures a transport.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A recorder configuration has no network endpoint. The stored files' exposure is the storage account's posture -- worth hardening there, since flow logs map the network's internal conversation patterns.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Managing flow logs is ARM RBAC on the Network Watcher's scope (flowLogs read/write/delete plus the configure/query actions -- Network Contributor carries them), and reading the recorded data is RBAC on the storage account and workspace. All platform posture; the spec adds no authorization plane.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The flow log authenticates nobody -- the Network Watcher platform arranges its own write access to the storage account service-side (the DEPLOYER needs SAS-listing rights on the account at configure time; the runner permissions manifest carries that), and no credential lives in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own to strengthen or disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "This component IS an audit recorder -- for the NETWORK layer: who talked to whom, on which ports, allowed or denied. Its own configuration changes land in the Azure Activity Log automatically. Neither is a toggle here; the one honesty worth stating is that flow logging observes traffic, it never controls it."
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: traffic_analytics
+      evidence:
+        type: spec_default
+        reference: Setting the traffic_analytics block pipes every flow record into a Log Analytics workspace for query, topology, and threat views -- the spec's own export-to-monitoring lever, with interval_in_minutes choosing the 60-minute default or 10-minute accelerated cadence. Unset, the flow log writes raw files to storage only.
+      notes: The workspace is addressed twice by design (its customer GUID and its ARM ID -- two outputs of the same AzureLogAnalyticsWorkspace); Traffic Analytics manages NWTA-prefixed data-collection resources beside the workspace that must not be hand-edited.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration -- the manifest recreates the flow log; recording resumes from recreation (flow records are point-in-time observations, and any gap is unrecoverable by design). The accumulated files' durability is the storage account's redundancy posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain. retention_policy.days is DATA retention -- how long flow files live before Azure prunes them (up to 365 days; disabled keeps them forever) -- a data-lifecycle dial, not a backup policy, and one that OVERWRITES the storage account's own lifecycle rules at create time.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The recorder is a configuration on the Microsoft-operated regional Network Watcher singleton -- no zonal lever exists; the stored files' resilience is the storage account's redundancy choice (all configurations supported, LRS through GZRS).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag; deleting the flow log stops recording silently (already-written files survive in the storage account until retention prunes them). The enabled flag is the reversible pause.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The collection pipeline -- the regional Network Watcher, the flow-log writers, Traffic Analytics processing -- is Microsoft-operated platform infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremanageddisk
+spec:
+  azure:
+    groups:
+      - purpose: ManageDisk
+        actions:
+          - Microsoft.Compute/disks/read
+          - Microsoft.Compute/disks/write
+          - Microsoft.Compute/disks/delete
+        provenance: derived
+        notes: Covers azurerm_managed_disk / compute.NewManagedDisk -- create with the chosen SKU and origin (EMPTY, COPY, FROM_IMAGE, IMPORT, RESTORE, UPLOAD), refresh, the in-place updates the API allows (size growth, SKU/tier changes, performance dials, network posture, tags), and destroy. Typically held via Contributor or Owner on the resource group. Source-based origins (COPY/RESTORE/IMPORT/FROM_IMAGE) pass resolved ARM IDs in the disk payload; ARM authorizes reading the source service-side on the source's own scope, so cross-resource-group sources need read there.
+      - purpose: ReadDiskEncryptionSet
+        actions:
+          - Microsoft.Compute/diskEncryptionSets/read
+        provenance: derived
+        notes: Only when disk_encryption_set_id or secure_vm_disk_encryption_set_id is set -- the modules never call the encryption-set API (the resolved ID rides the disk payload), but ARM authorizes associating the disk with the REFERENCED set by reading it on the set's scope at create time (service-side). The set's own access to its Key Vault key is the set's configuration, not a runner grant.

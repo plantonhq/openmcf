@@ -1,0 +1,45 @@
+# Reference manifests for DigitalOceanUptimeCheck -- protovalidate-valid,
+# embedded as the reference page's Example block, and the documents the
+# offline tofu plans render. Two documents: a bare https check, and a
+# check with latency + down alerts fanning out.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: homepage-check
+spec:
+  checkName: homepage
+  target: https://www.example.com
+  regions:
+    - us_east
+    - eu_west
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: api-check
+spec:
+  checkName: api
+  target: https://api.example.com
+  type: https
+  regions:
+    - us_east
+    - us_west
+    - eu_west
+    - se_asia
+  alerts:
+    - alertName: api-slow
+      type: latency
+      threshold: 800
+      comparison: greater_than
+      period: 5m
+      notifications:
+        emails:
+          - ops@example.com
+    - alertName: api-down
+      type: down_global
+      notifications:
+        emails:
+          - ops@example.com
+        slack:
+          - channel: "#alerts"
+            url: https://hooks.slack.com/services/EXAMPLE/EXAMPLE/EXAMPLE

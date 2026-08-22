@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareOriginCaCertificateSpec provisions a Cloudflare Origin CA certificate:
 a free TLS certificate that Cloudflare's edge trusts, installed on an origin
 server so the Cloudflare-to-origin hop can run encrypted end-to-end (the "Full

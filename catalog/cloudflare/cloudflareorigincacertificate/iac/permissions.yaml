@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The modules' remaining resources create nothing at Cloudflare: when the
+# spec omits csr, both engines generate the private key and CSR locally
+# (Terraform: tls_private_key + tls_cert_request; Pulumi: the matching
+# pulumi-tls PrivateKey + CertRequest), so no additional API permission is
+# involved and the key never transits the Cloudflare API.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareorigincacertificate
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageCertificate
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_origin_ca_certificate resource and the Pulumi module's matching OriginCaCertificate resource -- zone-scoped, granted on the zones the requested hostnames belong to; create/revoke the certificate via POST /certificates and DELETE /certificates/{certificate_id} (the Origin CA endpoints are unprefixed -- account/user-level paths -- but the token permission Cloudflare documents for them is the zone-scoped SSL and Certificates group; neither engine performs secondary lookups). Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22), and this write group is additionally named by Cloudflare's own Origin CA product page, whose "API calls" section says to authenticate with "an API token with Permissions that include Zone - SSL and Certificates - Edit" (https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/, retrieved 2026-08-22) -- documented-strength evidence beyond static analysis, recorded as derived until the live capture lane proves it.
+      - purpose: ReadCertificate
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the certificate via GET /certificates/{certificate_id} (Write covers the whole lifecycle; Read is only needed for read-only credentials).

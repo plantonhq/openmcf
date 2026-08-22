@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsauroradsql
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Aurora DSQL cluster encrypts its storage at rest -- with kms_encryption_key unset the cluster uses the AWS-owned key (the provider reports the sentinel "AWS_OWNED_KMS_KEY"); an unencrypted cluster is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_encryption_key
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-owned default key; referencing a KMS key encrypts the cluster under a key you own and can revoke. Switching keys later re-encrypts in place -- no replacement, no downtime window to plan around.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "AWS's documentation states it plainly: Aurora DSQL requires ALL connections to use TLS encryption and rejects any attempt that does not -- there is no setting to accept plaintext PostgreSQL connections, and the management API is HTTPS-only."
+      notes: For production clients AWS recommends sslmode verify-full against Amazon Root CA 1, which additionally validates the server certificate and hostname -- a client-side hardening choice on top of the mandatory encryption.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The cluster endpoint ("{identifier}.dsql.{region}.on.aws") is a public endpoint with no spec dial to disable it -- every connection must present a short-lived IAM authentication token over TLS, so reachability is not access, but network placement is not configurable here. Private connectivity is possible by creating a VPC interface endpoint separately (DSQL publishes a PrivateLink service name), managed outside this manifest.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: DSQL exposes no security-group or CIDR surface -- the cluster is not IN a VPC, so there is nothing on this spec to attach network restrictions to. AWS's documented path for source restriction is IAM policy conditions (for example aws:SourceIp on the dsql:DbConnect grant) or the separate VPC-endpoint route -- both live outside this manifest.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The cluster serves the PostgreSQL wire protocol, not HTTP -- there is no WAF attachment point, and edge request filtering has no meaning for a SQL endpoint.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The management plane is IAM-authorized per action on the cluster ARN (create, update, delete, peering, policy). The data plane is IAM too -- connecting requires a token minted under dsql:DbConnect or dsql:DbConnectAdmin, and inside the database PostgreSQL roles govern object access, so both planes ride role-based grants end to end.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DSQL has no native database passwords by design -- the ONLY way to connect is a short-lived IAM authentication token generated from the caller's credentials. There is no long-lived database secret to create, store, rotate, or leak; keyless access is the sole path, not an option.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Password authentication does not exist on a DSQL cluster -- no password-bearing CREATE USER, no fallback path. IAM token authentication over mandatory TLS is the single authentication mechanism, so there is no weaker mode to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the cluster -- create, update, delete, peering changes, policy changes -- is captured by CloudTrail unconditionally; tampering with the cluster's configuration is itself recorded.
+      notes: The spec exposes no SQL-statement audit surface -- what queries ran inside the database is not captured by this component's configuration.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DSQL reports cluster activity to CloudWatch automatically, including the full DPU breakdown (ComputeDPU, ReadDPU, WriteDPU, MultiRegionWriteDPU, StreamDPU) AWS documents on the pricing page -- no spec surface is needed to turn the metrics on.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: DSQL takes no automatic backups and this spec carries no backup dial. AWS's supported path is AWS Backup -- backup and restore jobs against the cluster (the dsql:StartBackupJob / dsql:StartRestoreJob surface in the service reference) are configured in AWS Backup plans, managed outside this manifest. Multi-AZ replication protects availability, not against bad writes or deletes.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no component-owned backups there is no retention dial here -- retention length lives in the AWS Backup plan protecting the cluster, outside this manifest.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every cluster replicates data across three Availability Zones within its region as a built-in property -- AWS's pricing page states it plainly: data is replicated across three AZs and you pay for one logical copy. No spec surface could turn it off."
+      notes: multi_region extends the posture across REGIONS -- two peered clusters plus a witness region form one active-active database that survives a full region failure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Unset (false) means the cluster deletes on demand. True makes AWS refuse deletion until the flag is lifted -- flip it to false and apply before destroying. Both shipped presets turn it on.
+      notes: force_destroy converts the wall into a speed bump -- the module disables protection and then deletes in one destroy. Keep it false in production; it exists for disposable environments.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed and serverless -- there is no engine version, maintenance window, or instance to patch on the spec; AWS operates and upgrades the fleet invisibly.

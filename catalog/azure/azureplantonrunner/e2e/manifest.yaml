@@ -1,0 +1,17 @@
+# Minimal AzurePlantonRunner manifest for local module testing. The token
+# value below is an obviously-fake placeholder with the right shape --
+# real deployments supply a managed-secret reference ($secret/<slug>)
+# that the platform fills with a runner token before the infrastructure
+# applies. The token authorizes joining and is never the runner's
+# identity: the runner registers itself on first boot and receives its
+# own individually revocable identity.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePlantonRunner
+metadata:
+  name: azureplantonrunner-demo
+spec:
+  resourceGroup:
+    value: my-resource-group
+  containerAppEnvironmentId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-resource-group/providers/Microsoft.App/managedEnvironments/my-environment
+  token: prt_FAKE_PLACEHOLDER_VALUE

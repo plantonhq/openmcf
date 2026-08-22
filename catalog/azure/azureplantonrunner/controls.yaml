@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureplantonrunner
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The appliance's stored state is the runner token in the Container App's own secret store, which the platform encrypts at rest unconditionally; the replica's ephemeral storage is likewise platform-encrypted.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Neither the spec nor the modules expose a customer-managed key seam -- the app's secret store offers no CMK argument, so platform-managed encryption is the only option this component offers.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every connection is outbound and TLS -- image pulls and Azure API calls ride Microsoft's TLS-only endpoints, and the runner's own channels to the control plane (queue polling, the outbound-initiated CloudOps tunnel) are TLS-carried by the platform. No inbound path exists at all (see no-public-access).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render NO ingress block at all -- the Container App has no inbound endpoint, external or internal, so nothing can initiate a connection to it from anywhere. The spec's own design states the posture -- zero inbound exposure; the runner only ever dials out.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: With no ingress configured, the app admits no inbound sources whatsoever -- the strictest possible ingress restriction, stronger than any declared allow-list.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request surface exists to filter -- the app has no ingress (see no-public-access), so a web application firewall has nothing to sit in front of.
+    - control_id: rbac
+      status: not_applicable
+      notes: The appliance exposes no management or data plane of its own inside Azure -- work arrives through the Planton control plane, where runner registration and operation dispatch are governed by the platform's own access control, outside this manifest's choices.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The app holds no Azure managed identity -- neither the spec nor the modules attach one. The runner's cloud access rides Planton's keyless connections brokered through the control plane, not credentials held by the replica, so there is no workload-identity seam on this component to configure.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the runner introduces itself to the control plane by joining with its runner token (delivered through the app's secret store, never a plain environment variable) and serving on the identity it receives.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The runner logs every operation it executes to stdout/stderr, but where those console logs land is the REFERENCED Container App Environment's choice -- an environment wired to Log Analytics captures them; one left unwired does not. This spec has no seam for that decision, so the honest claim is that log capture is owned by the environment's component, not this one.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Container Apps publishes replica and app metrics (CPU, memory, replica count) to Azure Monitor automatically for every app -- no opt-in exists on the modules' resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The appliance is stateless by design -- the runner token is re-mintable material, and everything else is declarative and re-creatable from the manifest. Operation logs are the audit trail, governed by the environment's log retention, not backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy is a property of the REFERENCED Container App Environment, decided when the environment is created -- this spec has no seam for it. And the modules fix the replica count at one by design (a runner's identity is minted for one live replica; the registration's work queue serializes operations), so a zonal event means a replica restart wherever the environment can place it, never a failover to a live replica.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on the spec or the modules' resource -- deliberate, because orderly teardown is part of the appliance's contract (the runner is destroyed last, after the workloads it deploys), and the token makes it re-mintable standing infrastructure.
+    - control_id: managed-patching
+      status: configurable
+      field_path: runner_version
+      evidence:
+        type: spec_default
+        reference: Defaults to "latest" -- new replicas pull the newest runner release on every (re)start, so the appliance tracks the patched build by default; pinning a version tag takes the patch cadence into your own hands for change control.
+      notes: The compute layer beneath the replica is Container Apps' serverless substrate -- Microsoft patches the hosts and container runtime with no customer surface. A pinned runner is patched by bumping the tag.

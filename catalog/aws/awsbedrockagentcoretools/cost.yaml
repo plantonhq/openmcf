@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcoretools
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: browsers
+      sku_meter: Browser tool CPU
+      pricing_unit: vCPU-hours
+      impact: A browser object is a free configuration shell -- sessions bill, per second across their whole lifetime (boot to termination, 1-second minimum), $0.0895 per vCPU-hour of ACTUAL CPU consumed plus $0.00945 per GB-hour of peak memory (128 MB minimum). CPU during I/O wait is free, but memory is not -- a session left open between page loads keeps metering its peak memory until it terminates.
+    - field_path: code_interpreters
+      sku_meter: Code Interpreter CPU
+      pricing_unit: vCPU-hours
+      impact: Same consumption shape as the browser -- the sandbox object is free; each execution session bills $0.0895 per vCPU-hour of actual CPU and $0.00945 per GB-hour of peak memory, per second with a 1-second minimum, from session start to termination. Idle-but-open sandbox sessions keep the memory meter running.
+    - field_path: browser_profiles
+      sku_meter: browser profile artifact storage
+      pricing_unit: GB-months
+      impact: "A profile stores nothing until a session saves state into it; from then on its artifacts (cookies, local storage) bill at Amazon S3 Standard rates -- a charge AWS started April 15, 2026 -- and keep billing monthly while the saved state exists. Small per profile, but it is the one meter here that persists between sessions."
+    - field_path: browsers.recording
+      sku_meter: S3 Standard storage
+      pricing_unit: GB-months
+      impact: Session recordings land in the referenced AwsS3Bucket and bill that component's storage and request meters -- a busy recorded browser writes video-scale objects on every session, so the audit trail's real cost is the bucket's, growing until its lifecycle rules say otherwise.
+    - field_path: browsers.network.mode
+      sku_meter: network data transfer
+      pricing_unit: GB
+      impact: Session traffic bills at standard EC2 data-transfer rates in either mode; VPC mode routes it through your subnets, where your VPC's own networking (NAT gateways especially) can meter the same bytes again on those components.
+  free_tier: "AgentCore built-in tools publish no permanent free allotment -- browser and code-interpreter sessions bill from their first second and profile artifacts from their first byte. The up-to-$200 AWS Free Tier credit for new customers is a one-time trial credit, not a permanent tier. There are no minimum fees: a bundle whose tools no agent ever starts a session on bills nothing."
+  estimate_exclusions:
+    - session volume, duration, and sizing are entirely agent-driven -- the same manifest bills nothing idle and real money under a busy agent (the pricing page's own browser example runs to four figures monthly at 100K ten-minute sessions)
+    - browser and code-interpreter sessions bill $0.0895 per vCPU-hour actual CPU plus $0.00945 per GB-hour peak memory, per second, across the full session lifetime -- I/O-wait CPU is free, session-open memory is not
+    - browser profile artifacts bill at S3 Standard rates (starting April 15, 2026) once sessions save state, and persist month over month until the profile is deleted
+    - session recordings bill storage and requests on the referenced AwsS3Bucket
+    - client certificates and their rotation bill on the referenced AwsSecretsManagerSecret entries
+    - network data transfer bills at standard EC2 rates, plus your VPC's own components (NAT gateways) in VPC mode
+  notes: "Everything this bundle creates is a configuration shell -- browsers, profiles, and interpreters have no update API precisely because they are cheap to recreate, and none of them bills at rest. The bill is session arithmetic: agents start sessions, and each session meters actual CPU per second and peak memory per second until it terminates. Two behaviors decide real spend. First, the 'I/O wait is free' rule applies only to CPU -- an agent that opens a browser session and thinks for ten minutes pays memory for all ten. Second, the persistent leftovers: profile artifacts and S3 recordings are the only things that outlive a session, and both grow monotonically until deleted. The AWS-default tools (aws.browser.v1, aws.codeinterpreter.v1) bill the same session rates without this component existing -- what this bundle buys is configuration (VPC placement, recording, signing, enterprise policies, mTLS certificates), not the meter."

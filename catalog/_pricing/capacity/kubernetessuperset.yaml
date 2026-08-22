@@ -1,0 +1,49 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesSuperset manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetessuperset.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Superset's spec sizes
+# two pod classes -- the web tier and the Celery workers; the beat,
+# flower, websocket, and MCP pods and the init Job carry only
+# chart-default sizing and are excluded loudly below. Superset provisions
+# no volumes -- all durable state lives in the metadata database and
+# cache components.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetessuperset
+spec:
+  workloads:
+    - label: web replica
+      resources_path: web.resources
+      instances:
+        field_value:
+          field_path: web.replicas
+          default_when_unset: "1"
+    - label: worker
+      resources_path: worker.resources
+      instances:
+        field_value:
+          field_path: worker.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: web.hpa
+          op: is_set
+      text: the web HPA owns the web replica count at runtime between its declared bounds -- the footprint states the manifest-declared replicas
+    - applies_when:
+        - field_path: worker.hpa
+          op: is_set
+      text: the worker HPA owns the worker replica count at runtime between its declared bounds -- the footprint states the manifest-declared replicas
+    - text: the beat, flower, websocket, and MCP pods (when enabled) and the per-upgrade init Job carry only chart-default sizing -- the spec models no resources for them
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override any modeled value, including resources and replica counts -- this footprint states the typed spec's declaration
+    - text: the metadata database and the composed Valkey cache are separate components whose capacity rides their own footprints
+  notes:
+    - text: Superset provisions no volumes -- all durable state lives in the metadata database and cache components, so the footprint is purely compute reservations
+    - text: the worker binding contributes only when spec.cache enables the async fleet and worker resources are declared -- a web-only manifest states just the web tier

@@ -271,6 +271,7 @@ Fields on other kinds that can point at this resource:
 | GcpGlobalAddress | `spec.network` | `status.outputs.network_self_link` |
 | GcpGlobalForwardingRule | `spec.network` | `status.outputs.network_self_link` |
 | GcpMemorystoreInstance | `spec.pscAutoConnections[].network` | `status.outputs.network_id` |
+| GcpPlantonRunner | `spec.vpcAccess.network` | `status.outputs.network_name` |
 | GcpRedisInstance | `spec.authorizedNetwork` | `status.outputs.network_self_link` |
 | GcpRegionNetworkEndpointGroup | `spec.network` | `status.outputs.network_self_link` |
 | GcpRouterNat | `spec.vpcSelfLink` | `status.outputs.network_self_link` |

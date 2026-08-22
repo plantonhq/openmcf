@@ -46,6 +46,9 @@ spec:
         type: spec_default
         reference: Setting false on a project sink falls back to the legacy shared cloud-logs@ service account -- one identity shared by every legacy sink in the project (single-project GCS/Pub/Sub only). The default true retires that path with a dedicated per-sink writer, and the spec pins the field to project scope because other scopes never offer the legacy identity.
       notes: BigQuery destinations refuse the legacy writer outright (spec-validated, mirroring the provider's own constraint).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

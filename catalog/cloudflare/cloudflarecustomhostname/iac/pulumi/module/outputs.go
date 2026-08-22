@@ -19,4 +19,7 @@ const (
 	OpVerificationErrors = "verification_errors"
 	// OpCreatedAt is the creation timestamp.
 	OpCreatedAt = "created_at"
+	// OpZoneId is the exported stack output containing the Cloudflare zone ID
+	// the hostname was onboarded onto (API identity is zone_id + custom_hostname_id).
+	OpZoneId = "zone_id"
 )

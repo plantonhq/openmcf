@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecognitiveaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure AI services encrypt customer data at rest with Microsoft-managed keys on every account unconditionally -- training data, fine-tunes and stored artifacts included; no configuration can disable it.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Absent leaves Microsoft-managed keys; the block encrypts the account's data with your own Key Vault key instead. The account needs a managed identity with wrap/unwrap access on the key BEFORE this is configured -- reference a versionless key ID so rotation propagates.
+      notes: No preset configures it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The account's endpoint (regional or custom-subdomain) is HTTPS-only, and the management plane is TLS-only ARM; no plaintext mode exists at any configuration level.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (ARM's default -- the endpoint answers the public internet); setting it false makes the account reachable only through private endpoints.
+      notes: No preset disables it outright; the 03-private-hardened-account preset instead locks the public endpoint down with a Deny-default network perimeter (see restricted-ingress).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_acls
+      evidence:
+        type: spec_default
+        reference: Absent leaves the endpoint open to any caller with valid credentials; the block sets a default action of Deny with allowed IPs/CIDRs, allowed VNet subnets (service endpoints), and an optional trusted-Azure-services bypass. Requires custom_subdomain_name -- network rules only apply to the custom endpoint (the provider's own contract, front-loaded as a spec rule).
+      notes: The 03-private-hardened-account preset ships Deny with an office CIDR, one app subnet, and the AzureServices bypass.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class attachment point exists on the service endpoint itself; organizations that need request filtering front the account with API Management or an application gateway, separate kinds.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management of the account is Azure RBAC unconditionally, and the data plane carries Entra ID role-based access (Cognitive Services User and friends) on every account with a custom subdomain -- the token path is authorized per-caller by RBAC.
+      notes: With local_auth_enabled left true, the account's two access KEYS also work -- shared-secret access that bypasses per-caller RBAC; see no-legacy-auth for the field that closes it.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Absent means no managed identity; the block attaches a system-assigned or user-assigned identity through which the ACCOUNT reaches your Key Vault key and user-owned storage with short-lived tokens instead of credentials. Required for project management, customer-managed keys, and identity-based storage access.
+      notes: The 02-ai-foundry-account preset attaches SYSTEM_ASSIGNED (projects require it).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (ARM's default -- the account's static access keys work); setting it false disables key auth entirely and forces Entra ID tokens, the recommended hardened posture (the key outputs are then empty).
+      notes: The 03-private-hardened-account preset sets it false.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the account (create, key regeneration, network changes, delete) to the Azure Activity Log unconditionally.
+      notes: Data-plane request auditing (who called which API) additionally needs a diagnostic setting streaming the account's resource logs -- a separate component (AzureMonitorDiagnosticSetting).
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every account publishes Azure Monitor platform metrics (call counts, latency, errors, token usage for the AI kinds) without configuration -- the Microsoft.CognitiveServices/accounts resource type carries its own metric definitions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The account object is declarative configuration, recreated exactly from the manifest. Service-side artifacts (custom models, fine-tunes) have no backup surface on this spec; the storage block moves customer data into YOUR storage accounts, whose backup posture is that kind's. Accidental deletion has a native net -- see deletion-protection.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The account exposes no zone-placement surface -- availability inside a region is Microsoft's service operation under the SLA, not a configuration. Cross-region resilience is composed from a second account in another region behind your own routing.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No refuse-deletion flag exists on the account (Azure resource locks are subscription-side governance outside the manifest), but deletion is a SOFT delete: the account becomes a recoverable, purgeable ghost that keeps holding its name -- the Key Vault recycle-bin pattern. The official modules purge the ghost on destroy (the provider's own purge_soft_delete_on_destroy default), so a Planton destroy is final; an out-of-band portal delete is recoverable until purged."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the model-serving and API infrastructure behind every kind; no customer-visible patch surface exists on the account.

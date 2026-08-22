@@ -44,6 +44,9 @@ spec:
         type: spec_default
         reference: The configuration IS the decision about which authentication paths exist -- the vocabulary is exactly "AAD" (Entra ID -- interactive sign-in with conditional access and MFA), "Certificate" (mutual TLS against client_root_certificates), and "Radius" (delegated to your RADIUS servers), and only the listed types are offered. A configuration listing only "AAD" has no shared-secret or certificate path at all; each enabled type must bring its block (spec-enforced CEL mirrors ARM's contract), so a half-configured weaker path cannot deploy.
       notes: client_revoked_certificates blocks an individual lost or compromised client certificate by thumbprint without rotating the root -- the revocation half of running the Certificate path responsibly. Gateways pick up in-place changes, so tightening the policy propagates without redeploying.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Configuration changes land in the Azure Activity Log automatically as subscription-level posture -- meaningful, since every change alters who can enter the network; per-connection logs are the gateways' diagnostic posture.

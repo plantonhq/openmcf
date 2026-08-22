@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurestorageobjectreplication
+spec:
+  azure:
+    groups:
+      - purpose: ManageReplicationPolicyBothAccounts
+        actions:
+          - Microsoft.Storage/storageAccounts/objectReplicationPolicies/read
+          - Microsoft.Storage/storageAccounts/objectReplicationPolicies/write
+          - Microsoft.Storage/storageAccounts/objectReplicationPolicies/delete
+        provenance: derived
+        notes: "Covers azurerm_storage_object_replication / storage.NewObjectReplication -- ONE logical policy that Azure materializes on BOTH accounts under one server-assigned GUID, so these actions must be held on BOTH the source and the destination account's scope (they may live in different resource groups or subscriptions; the spec marks both references containment-exempt). The provider writes the destination side first (which assigns rule IDs), mirrors it onto the source, refreshes by reading both sides, and destroy deletes both. The apply-time prerequisites -- blob versioning + change feed on the source, versioning on the destination -- are validated server-side by Azure against the accounts' own state; the module makes no account read and needs no account-level grant beyond the policy child endpoint."

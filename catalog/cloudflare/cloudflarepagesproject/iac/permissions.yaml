@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# Binding targets (KV namespaces, D1 databases, R2 buckets, Queues,
+# Workers) are referenced by ID/name resolved from other components'
+# outputs -- the modules never call those services' APIs. The git-provider
+# authorization for git-connected projects is a one-time, browser-driven
+# dashboard step outside any token this inventory covers (the spec's own
+# contract records this). The component README and catalog.md carried no
+# named permission prose to migrate.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarepagesproject
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageProject
+        name: Pages Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Covers the Terraform module's cloudflare_pages_project + cloudflare_pages_domain resources and the Pulumi module's matching PagesProject + PagesDomain resources -- create/update/delete the project via POST/PATCH/DELETE /accounts/{account_id}/pages/projects[/{project_name}] and attach/detach each custom domain via POST/DELETE /accounts/{account_id}/pages/projects/{project_name}/domains[/{domain_name}] (derived from the modules' API surface; neither engine performs secondary lookups or data-source reads). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the page lists this account-scoped group in two naming variants -- "Cloudflare Pages Edit" and "Pages Write" -- both verbatim on the page; the Write form is used here).
+      - purpose: ReadProject
+        name: Pages Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the project and its domains via GET on the same paths (derived from the modules' API surface).

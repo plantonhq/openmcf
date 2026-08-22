@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactorytrigger
+spec:
+  azure:
+    groups:
+      - purpose: ManageTrigger
+        actions:
+          - Microsoft.DataFactory/factories/triggers/read
+          - Microsoft.DataFactory/factories/triggers/write
+          - Microsoft.DataFactory/factories/triggers/delete
+        provenance: derived
+        notes: Covers all four variant resources the module fans out on the spec's variant block -- azurerm_data_factory_trigger_schedule, _tumbling_window, _blob_event, and _custom_event (and their Pulumi twins) -- because Azure stores every trigger type in the same factory-scoped triggers namespace with the same three operations. The module parses data_factory_id client-side and performs no factory read; pipeline references travel as names in the payload. Held at the factory's scope; Data Factory Contributor carries them.
+      - purpose: StartStopTrigger
+        actions:
+          - Microsoft.DataFactory/factories/triggers/start/action
+          - Microsoft.DataFactory/factories/triggers/stop/action
+        provenance: derived
+        notes: The started/stopped lifecycle is part of every deploy, not an operator afterthought -- Azure forbids editing a started trigger, so the providers STOP a started trigger before any update or delete and START it again when activated is true (the platform default). Even manifests that deploy activated false exercise stop/start on the update path once the trigger has ever been started.
+      - purpose: SubscribeEventSources
+        actions:
+          - Microsoft.EventGrid/eventSubscriptions/write
+        provenance: derived
+        notes: "Exercised only for the EVENT trigger types, and on a REFERENCED scope -- Microsoft's own RBAC contract for storage event triggers: the account that creates or updates the trigger must hold Microsoft.EventGrid/EventSubscriptions/Write on the STORAGE ACCOUNT (blob_event.storage_account_id), and the custom-event analog requires it on the Event Grid custom topic (custom_event.eventgrid_topic_id). The permission check happens service-side inside Data Factory before it asks Event Grid to subscribe -- the modules never call Event Grid directly, and the Data Factory service principal itself needs no grant on either resource (per Microsoft's storage-event-trigger role-based-access-control documentation). Schedule and tumbling-window manifests never need this group."

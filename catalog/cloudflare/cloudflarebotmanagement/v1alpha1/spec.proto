@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarebotmanagement.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareBotManagementSpec manages a zone's Bot Management configuration --
+// the singleton switchboard deciding how Cloudflare treats automated traffic,
+// from the free Bot Fight Mode toggle through Super Bot Fight Mode's per-category
+// actions up to the Enterprise Bot Management knobs and the AI-crawler controls.
+//
+// A field left unset is NOT MANAGED: the module never sends it and the zone keeps
+// whatever value it already carries. The configuration is a zone singleton with
+// NO DELETE at Cloudflare -- destroying this resource abandons the last-applied
+// values rather than reverting them (Cloudflare's own tooling warns the same).
+// To retire a setting, set it to its off value and apply BEFORE destroying.
+//
+// Fields are gated by the zone's plan, in four families:
+//   - Free: fight_mode.
+//   - Pro/Business (Super Bot Fight Mode): sbfm_definitely_automated,
+//     sbfm_likely_automated (Business+), sbfm_verified_bots,
+//     sbfm_static_resource_protection, optimize_wordpress.
+//   - Enterprise Bot Management: auto_update_model, suppress_session_score,
+//     enable_js, bm_cookie_enabled.
+//   - AI & crawler controls (plan-independent rollout): ai_bots_protection,
+//     crawler_protection, content_bots_protection, cf_robots_variant,
+//     is_robots_txt_managed.
+// Setting a field the zone's plan does not include fails at the API, not here --
+// the plan walls are Cloudflare's, and they move; the families above are the
+// provider-documented grouping.
+message CloudflareBotManagementSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_setting"
+    message: "configure at least one bot-management setting -- a CloudflareBotManagement resource that manages nothing would deploy nothing"
+    expression: "has(this.fight_mode) || has(this.sbfm_definitely_automated) || has(this.sbfm_likely_automated) || has(this.sbfm_verified_bots) || has(this.sbfm_static_resource_protection) || has(this.optimize_wordpress) || has(this.auto_update_model) || has(this.suppress_session_score) || has(this.enable_js) || has(this.bm_cookie_enabled) || has(this.ai_bots_protection) || has(this.crawler_protection) || has(this.content_bots_protection) || has(this.cf_robots_variant) || has(this.is_robots_txt_managed)"
+  };
+
+  // The zone whose Bot Management configuration is managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Bot Fight Mode (free plans): challenge requests matching known bot patterns.
+  // Mutually exclusive with Super Bot Fight Mode at Cloudflare -- zones on SBFM
+  // plans manage the sbfm_* fields instead.
+  optional bool fight_mode = 2;
+
+  // Super Bot Fight Mode: action on requests Cloudflare scores as DEFINITELY
+  // automated. Pro plans and above.
+  optional string sbfm_definitely_automated = 3 [(buf.validate.field).string = {
+    in: [
+      "allow",
+      "block",
+      "managed_challenge"
+    ]
+  }];
+
+  // Super Bot Fight Mode: action on requests Cloudflare scores as LIKELY
+  // automated. Business plans and above.
+  optional string sbfm_likely_automated = 4 [(buf.validate.field).string = {
+    in: [
+      "allow",
+      "block",
+      "managed_challenge"
+    ]
+  }];
+
+  // Super Bot Fight Mode: action on verified bots (search-engine crawlers and
+  // other bots Cloudflare has verified). Blocking verified bots blocks search
+  // indexing -- allow is the safe default posture.
+  optional string sbfm_verified_bots = 5 [(buf.validate.field).string = {
+    in: [
+      "allow",
+      "block"
+    ]
+  }];
+
+  // Super Bot Fight Mode: extend protection to static resources (images, CSS,
+  // JS). Can block legitimate hotlinked-asset traffic -- Cloudflare's own docs
+  // caution that static protection may catch real users.
+  optional bool sbfm_static_resource_protection = 6;
+
+  // Super Bot Fight Mode: tune protections for WordPress sites (loopback
+  // requests, wp-cron and kin).
+  optional bool optimize_wordpress = 7;
+
+  // Enterprise Bot Management: automatically adopt new bot-detection ML models
+  // as Cloudflare releases them.
+  optional bool auto_update_model = 8;
+
+  // Enterprise Bot Management: stop tracking the session's highest bot score in
+  // the Bot Management cookie.
+  optional bool suppress_session_score = 9;
+
+  // Enterprise Bot Management: run Cloudflare's lightweight invisible JavaScript
+  // detections to sharpen bot scoring.
+  optional bool enable_js = 10;
+
+  // Enterprise Bot Management: allow the Bot Management cookie to be placed on
+  // end-user devices (Cloudflare defaults this to true).
+  optional bool bm_cookie_enabled = 11;
+
+  // AI crawler control: block AI scrapers and crawlers. only_on_ad_pages limits
+  // the block to pages carrying ads.
+  optional string ai_bots_protection = 12 [(buf.validate.field).string = {
+    in: [
+      "block",
+      "disabled",
+      "only_on_ad_pages"
+    ]
+  }];
+
+  // AI crawler control: punish AI scrapers with a link maze instead of a plain
+  // block.
+  optional string crawler_protection = 13 [(buf.validate.field).string = {
+    in: [
+      "enabled",
+      "disabled"
+    ]
+  }];
+
+  // Content-bot control: block automated traffic with low bot scores, excluding
+  // Cloudflare's safe verified-bot categories. Manage exceptions via skip rules
+  // in a CloudflareRuleset.
+  optional string content_bots_protection = 14 [(buf.validate.field).string = {
+    in: [
+      "block",
+      "disabled"
+    ]
+  }];
+
+  // Robots Access Control License variant: policy_only publishes the license
+  // policy without enforcement; off disables it.
+  optional string cf_robots_variant = 15 [(buf.validate.field).string = {
+    in: [
+      "off",
+      "policy_only"
+    ]
+  }];
+
+  // Serve a Cloudflare-managed robots.txt (prepended to any existing robots.txt
+  // the origin serves).
+  optional bool is_robots_txt_managed = 16;
+}

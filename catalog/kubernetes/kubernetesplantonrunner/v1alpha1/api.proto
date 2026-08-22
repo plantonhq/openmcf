@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonrunner.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesplantonrunner/v1alpha1/outputs.proto";
+import "catalog/kubernetes/kubernetesplantonrunner/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// KubernetesPlantonRunner is a standing Planton runner hosted on your
+// Kubernetes cluster: an always-on worker that executes deploy operations
+// and cloud operations from inside the cluster's network, making private
+// endpoints deployable and operable with an outbound-only posture. It is
+// born with a runner token, registers itself with the control plane on
+// first boot, and receives its own individually revocable identity.
+message KubernetesPlantonRunner {
+  // api-version must be set to "kubernetes.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, always "KubernetesPlantonRunner".
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesPlantonRunner'];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration defining where the runner lives,
+  // how big it is, which build it runs, and the token it joins with.
+  KubernetesPlantonRunnerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  KubernetesPlantonRunnerStatus status = 5;
+}
+
+// KubernetesPlantonRunnerStatus describes the status fields for a runner
+// resource.
+message KubernetesPlantonRunnerStatus {
+  // outputs captures the outputs returned by Pulumi/Terraform after
+  // provisioning.
+  KubernetesPlantonRunnerStackOutputs outputs = 1;
+}

@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The endpoint stores no data at rest -- it is a DNS forwarding plane. Query logs, if wanted, are a separate resolver-query-log resource writing to destinations with their own encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); the resolver endpoint API offers no KMS surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: protocols
+      evidence:
+        type: spec_default
+        reference: Unset speaks AWS's default Do53 -- plaintext DNS on port 53, the hybrid-DNS convention. Listing DoH (or DoH-FIPS on inbound) makes the endpoint answer or originate DNS-over-HTTPS, putting the query stream itself under TLS for peers that support it.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Endpoint ENIs carry PRIVATE IPs in the subnets you list -- resolver endpoints have no public-IP option, so reachability is bounded by your VPC connectivity (Direct Connect, VPN, peering) and the required security groups. Nothing here can face the internet.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_validation
+        reference: security_group_ids is required with at least one group -- an endpoint without a security-group boundary is unrepresentable. The groups decide exactly which peers can send DNS to (inbound) or receive it from (outbound) the ENIs on TCP+UDP 53.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The endpoint serves DNS to private peers, not web requests -- there is no WAF attachment point. DNS-level filtering is the Route 53 Resolver DNS Firewall's job, a separate component associated to VPCs.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every endpoint, rule, and association operation is IAM-authorized on its resolver-endpoint / resolver-rule ARN; the data path is bounded by network posture (security groups), not credentials, as DNS convention dictates.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The endpoint runs no workload and holds no credentials -- it forwards DNS queries between resolvers.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Management is the SigV4-signed Route 53 Resolver API. The DNS protocol itself is unauthenticated by design; peer restriction is the security groups' job (restricted-ingress).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations are captured by account-level AWS CloudTrail. Per-query logging exists at AWS as Resolver Query Logging -- a separate VPC-associated resource outside this spec, so this manifest carries no logging dial.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: rni_enhanced_metrics_enabled
+      evidence:
+        type: spec_default
+        reference: Basic endpoint metrics flow to CloudWatch regardless; unset leaves AWS's default for the enhanced per-interface metrics, and target_name_server_metrics_enabled likewise governs per-target metrics on outbound endpoints -- the two observability dials this spec owns.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless forwarding plane -- nothing to back up. The endpoint, rules, and associations are fully declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: ip_addresses
+      evidence:
+        type: spec_default
+        reference: Each ip_addresses entry places an ENI in the subnet it names -- AWS requires at least 2 and recommends spreading them across AZs, but the spec cannot force the subnets into DIFFERENT zones, so zone spread is the author's subnet choice. Both catalog presets place their two ENIs in different-AZ subnets.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Resolver endpoints and rules carry no deletion-protection flag -- neither the spec nor the provider resources have one. Deleting the endpoint stops forwarding; on-prem resolvers pointed at its IPs go dark until reconfigured, which is the real operational guard to plan around.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the resolver fleet behind the ENIs; no runtime, version, or maintenance surface is exposed.

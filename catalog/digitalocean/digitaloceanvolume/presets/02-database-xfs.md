@@ -11,7 +11,8 @@ This preset creates a DigitalOcean block storage volume pre-formatted with XFS, 
 ## Key Configuration Choices
 
 - **XFS filesystem** (`filesystemType: xfs`) -- optimized for large files and parallel I/O. PostgreSQL and MySQL both benefit from XFS for WAL and data files.
-- **100 GiB** (`sizeGib: 100`) -- larger starting size appropriate for database workloads. Resize as data grows (up to 16 TiB).
+- **Filesystem label** (`initialFilesystemLabel: dbdata`) -- lets the Droplet mount by label (`LABEL=dbdata`) instead of a device path that shifts across reboots and attach order.
+- **100 GiB** (`sizeGib: 100`) -- larger starting size appropriate for database workloads. Volumes only EXPAND -- resize upward as data grows (up to 16 TiB).
 - **Database tag** -- enables tag-based firewall rules restricting access to database-tier resources.
 
 ## Placeholders to Replace

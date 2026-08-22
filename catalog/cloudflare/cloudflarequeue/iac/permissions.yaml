@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# A worker (push) consumer references the consuming Worker by script name
+# resolved from that component's outputs -- the modules never call the
+# Workers API. The component README and catalog.md carried no named
+# permission prose to migrate.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarequeue
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageQueue
+        name: Queues Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Covers the Terraform module's cloudflare_queue + cloudflare_queue_consumer resources and the Pulumi module's matching Queue + QueueConsumer resources -- create/update/delete the queue via POST/PUT/DELETE /accounts/{account_id}/queues[/{queue_id}] and manage its single consumer via POST/PUT/DELETE /accounts/{account_id}/queues/{queue_id}/consumers[/{consumer_id}] (derived from the modules' API surface; neither engine performs secondary lookups or data-source reads). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the page lists this account-scoped group in two naming variants -- "Queues Edit" and "Queues Write" -- both verbatim on the page; the Write form is used here).
+      - purpose: ReadQueue
+        name: Queues Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the queue and consumer via GET on the same paths (derived from the modules' API surface).

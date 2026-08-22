@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesargoworkflows
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: controller.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The workflow controller's reservation per replica. Empty means the chart defaults, and the chart ships NO default requests or limits -- the pod schedules unbounded and the cluster reserves nothing for it.
+    - field_path: controller.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Replicas beyond 1 are HOT STANDBYS behind leader election -- they take over on failure, they do not share the workload -- so extra replicas buy failover, each reserving the full controller resources.
+    - field_path: server
+      sku_meter: cluster CPU and memory reservations
+      impact: The Argo server (UI + REST API) runs by chart default; server.resources sizes it and server.replicas multiplies it. Disable it (enabled=false) for controller-only installs where workflows are submitted purely as CRs.
+    - field_path: artifact_repository
+      sku_meter: object storage for artifacts and archived logs
+      pricing_unit: GB-months
+      impact: Step artifacts (and main-container logs when archive_logs is true) accumulate on the declared S3/GCS/Azure store; growth tracks pipeline activity and artifact sizes.
+    - field_path: archive
+      sku_meter: relational database storage
+      pricing_unit: GB-months
+      impact: Completed workflows written to the declared Postgres/MySQL database so history survives CR garbage collection -- growth tracks workflow volume, unbounded by any knob on this spec.
+    - field_path: retention_policy
+      sku_meter: Kubernetes API objects
+      impact: How many completed Workflow CRs of each outcome stay in the cluster. Empty keeps everything until TTLs or humans clean up -- unbounded etcd growth on busy clusters; the archive is where history belongs.
+  estimate_exclusions:
+    - the workflow pods are the real capacity story -- every step runs as its own pod, sized by the workflow's declarations plus the argoexec executor, created at run time and gone at completion; no manifest can state them
+    - artifact and archive growth ride pipeline activity -- on composed KubernetesSeaweedFs/KubernetesPostgres resources that capacity is those components' own footprints
+    - "helm_values merges LAST over the typed rendering and can override modeled values, including resources, replicas, and executor sizing -- this profile describes the spec's declaration"
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its engine pods (the workflow controller and the Argo server) reserve, realized on the cluster's bill. The engine is the control plane, not the workload: workflow pods run per Workflow declaration under the runner ServiceAccount, and the two durability seams (artifact_repository, archive) route storage growth to the components or services that own it."

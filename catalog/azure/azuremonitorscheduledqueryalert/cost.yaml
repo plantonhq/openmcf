@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremonitorscheduledqueryalert
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Monitor
+      sku_meter: log alert time series
+      pricing_unit: time-series-months
+      description: The rule bills a flat monthly fee set by how often its query runs -- at eastus list, 3.00 at 1-minute frequency, 1.50 at 5 minutes, 1.00 at 10 minutes, 0.50 at 15 minutes -- from creation until deletion, alerts fired or not. The fee includes the first evaluated time series; dimension splits bill each additional series at the same frequency rate.
+  cost_drivers:
+    - field_path: evaluation_frequency
+      sku_meter: log alert time series
+      pricing_unit: time-series-months
+      impact: The single biggest dial -- each step down the frequency ladder roughly halves the fee (1-minute 3.00, 5-minute 1.50, 10-minute 1.00, 15-minute 0.50 at eastus list). PT5M is the default and suits most operational alerts; paying 6x for PT1M is a deliberate urgency choice.
+    - field_path: criteria
+      sku_meter: log alert time series
+      pricing_unit: time-series-months
+      impact: Each criterion is its own scheduled query evaluating its own time series -- more criteria, more evaluated series at the frequency rate.
+    - field_path: criteria.dimensions
+      sku_meter: log alert time series
+      pricing_unit: time-series-months
+      impact: Dimension splits (at-scale log monitoring) bill each evaluated dimension combination as a time series beyond the rule's included first -- a per-service-role split across 12 roles adds 11 monthly fees, and "*" follows whatever values the live data carries.
+    - field_path: enabled
+      sku_meter: log alert time series
+      pricing_unit: time-series-months
+      impact: Disabled rules bill nothing -- Microsoft's pricing page says so plainly -- which is why disabling during maintenance windows beats deleting and recreating.
+  estimate_exclusions:
+    - notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup components
+    - dimension splits bill each evaluated dimension combination beyond the included first series at the frequency rate -- a count that follows the live data's values
+    - the queried workspace's own costs (ingestion, retention) bill on the AzureLogAnalyticsWorkspace component; querying Analytics-tier tables from an alert adds no per-query charge, but alerts over Basic-tier tables bill that plan's per-GB-scanned search meter
+  notes: "A scheduled query alert is a standing query with a monthly price tag set by its own schedule: the meter is per evaluated time series per month at the evaluation frequency's rate, the rule includes its first series, and it accrues whether the alert ever fires or not. The frequency ladder is the whole cost story -- 3.00 / 1.50 / 1.00 / 0.50 (eastus list) for 1 / 5 / 10 / 15-minute evaluation -- so the honest sizing question is how stale an alert can afford to be. The retail price list publishes no meter slower than the 15-minute band -- frequencies from PT30M through P1D carry no distinct published rate of their own. Prices verified from Microsoft's Retail Prices API and the Azure Monitor pricing page on 2026-08-18."

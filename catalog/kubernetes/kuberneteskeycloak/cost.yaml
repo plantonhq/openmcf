@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskeycloak
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: instances
+      sku_meter: cluster CPU and memory reservations
+      impact: Each instance is a full Keycloak server pod carrying the declared resource requests. All state lives in the database, so instances scale horizontally -- the sandbox db vendors (dev-file/dev-mem) force a single instance.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: "The CPU and memory requests are what the scheduler reserves per instance. Keycloak is a JVM -- give it real memory. When the manifest omits resources, the spec-declared defaults apply (250m CPU / 768Mi requests, 1 CPU / 1Gi limits): the reservation exists either way."
+    - field_path: db
+      sku_meter: cluster CPU and memory reservations
+      impact: "The REQUIRED database is where every byte of Keycloak state lives -- its capacity and storage ride the database component (a KubernetesPostgres composes naturally), not this one. The dev-file/dev-mem sandbox vendors keep data on ephemeral pod storage: no cost, no durability."
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the database's capacity and storage ride its own component (e.g. KubernetesPostgres) -- Keycloak itself binds no persistent volumes"
+    - "the Keycloak Operator that reconciles this resource carries its own footprint on KubernetesKeycloakOperator"
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its server pods reserve, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: instances x requests, where omitted resources fall back to the spec-declared defaults the module applies."

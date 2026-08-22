@@ -1,0 +1,15 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+resources:
+  digitalocean_spaces_key:
+    mappings:
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.key_name
+        arg: name
+      # The spec pluralizes the provider's repeated grant block; bucket and
+      # permission match by name (the spec's bucket is a typed reference to
+      # DigitalOceanBucket, rendered as the provider's bucket-name string --
+      # empty for a fullaccess grant, the provider's own grammar).
+      - spec: spec.grants
+        arg: grant

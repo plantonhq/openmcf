@@ -1,0 +1,21 @@
+# Minimal CloudflareSecretsStore scenario: create the account vault, verify,
+# destroy. The store name is run-scoped; the ONE-store-per-account limit
+# means this lane fails honestly on an account that already carries a store
+# (the profile's watch item).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSecretsStore
+metadata:
+  name: planton-oss-e2e-cloudflaresecretsstore-minimal
+  id: planton-oss-e2e-cloudflaresecretsstore-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflaresecretsstore
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-store-min-${E2E_RUN_ID}

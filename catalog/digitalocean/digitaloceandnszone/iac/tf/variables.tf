@@ -1,44 +1,31 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "DigitalOcean DNS Zone specification"
+  description = "DigitalOceanDnsZone specification"
   type = object({
     domain_name = string
     records = optional(list(object({
-      name        = string
-      type        = string
-      values      = list(object({
-        value = optional(string)
-        value_from_resource_output = optional(object({
-          resource_id_ref = object({
-            name = string
-          })
-          output_key = string
-        }))
-      }))
-      ttl_seconds = optional(number)
-      priority    = optional(number)
-      weight      = optional(number)
-      port        = optional(number)
-      flags       = optional(number)
-      tag         = optional(string)
-    })))
+      name = string
+      values = list(string)
+      ttl_seconds = optional(number, 0)
+      type = string
+      priority = optional(number)
+      weight = optional(number)
+      port = optional(number)
+      flags = optional(number)
+      tag = optional(string, "")
+    })), [])
+    ip_address = optional(string, "")
   })
-}
-
-variable "digitalocean_token" {
-  description = "DigitalOcean API token for authentication"
-  type        = string
-  sensitive   = true
 }

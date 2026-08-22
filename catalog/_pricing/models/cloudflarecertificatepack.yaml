@@ -1,0 +1,41 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Hand model rather than a derivation: the committed spend is
+# the zone's Advanced Certificate Manager add-on -- a constant zone-level
+# subscription no spec value scales, shared by every advanced pack on the
+# zone -- so the attribution assumption belongs in per-preset prose, not in
+# derivation machinery (same shape as cloudflareloadbalancer). Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: cloudflarecertificatepack
+spec:
+  presets:
+    - preset: 01-advanced-txt
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: ACM add-on subscription
+          price: cloudflare-advanced-certificate-manager-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the zone's Advanced Certificate Manager add-on, which every advanced pack presupposes (the spec only accepts type \"advanced\") -- the add-on is zone-scoped and shared by every advanced pack and ACM feature on the zone; this estimate attributes the full fee to this pack (stated assumption)"
+      exclusions:
+        - "no per-certificate fee is published -- the 90-day Google Trust Services certificate covering the apex and wildcard rides the add-on, with issuance, TXT validation, and auto-renewal included"
+        - eligible Enterprise customers can preview ACM as a non-contract service free of metered usage fees -- contract terms replace list pricing
+      notes: "The plans page publishes \"$10/mo\" for the add-on without spelling out the zone scoping; the per-zone reading is stated as an assumption, consistent with Cloudflare's zone-scoped ACM dashboard."
+    - preset: 02-lets-encrypt-annual
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: ACM add-on subscription
+          price: cloudflare-advanced-certificate-manager-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the zone's Advanced Certificate Manager add-on, which every advanced pack presupposes (the spec only accepts type \"advanced\") -- zone-scoped and shared across the zone's packs; full fee attributed to this pack (stated assumption)"
+      exclusions:
+        - "no per-certificate fee is published -- the 365-day Let's Encrypt certificate rides the add-on; the annual validity changes the rotation cadence, not the price"
+        - eligible Enterprise customers can preview ACM as a non-contract service free of metered usage fees -- contract terms replace list pricing

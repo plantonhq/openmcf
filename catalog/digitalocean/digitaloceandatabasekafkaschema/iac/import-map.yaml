@@ -1,0 +1,27 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceandatabasekafkaschema
+spec:
+  # Import is EXCLUDED from live round-trips: the provider's importer is
+  # broken at the current pin -- it restores only cluster_id (setting the
+  # resource id to the bare cluster id, not the canonical
+  # "{cluster_id}/schema-registry/{subject}" form Create produces) and
+  # NEVER restores subject_name, so the post-import read addresses an
+  # empty subject and cannot round-trip. Recorded as excluded in
+  # aa_import/catalog.yaml (the docker_credentials precedent); this map
+  # exists for conformance and re-evaluates if a future provider pin fixes
+  # the importer. The values below are what a FIXED importer would need.
+  values:
+    - name: cluster_id
+      derivations:
+        - from_stack_output: cluster_id
+      where_to_find: >-
+        The Kafka cluster's UUID: DigitalOcean control panel -> Databases ->
+        the cluster's Overview, or `doctl databases list` (the ID column).
+    - name: subject_name
+      derivations:
+        - from_stack_output: subject_name
+      where_to_find: >-
+        The schema subject's name: the cluster's "Schema Registry" tab in
+        the DigitalOcean control panel.

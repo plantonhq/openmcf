@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanspaceskey
+spec:
+  billing_model: free
+  notes: Spaces access keys are free API objects in any quantity. The Spaces subscription itself (the buckets and their storage/bandwidth) is billed on the bucket side; a key only authorizes access and meters nothing.

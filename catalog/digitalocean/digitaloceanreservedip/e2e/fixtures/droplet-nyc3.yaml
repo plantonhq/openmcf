@@ -1,0 +1,25 @@
+# Region-pinned droplet fixture for the assignment scenarios. A reserved
+# IP can only be assigned to a droplet in ITS OWN region, and the Droplet
+# kind's standard install fixture deliberately omits the region
+# (DigitalOcean chooses one with capacity) -- so the assignment lanes
+# deploy this extra instance pinned to the same nyc3 the scenarios
+# reserve in, keeping the region pairing deterministic.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDroplet
+metadata:
+  name: planton-oss-e2e-digitaloceanreservedip-droplet-fixture
+  id: planton-oss-e2e-digitaloceanreservedip-droplet-fixture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanreservedip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dropletName: pltn-e2e-dorip-droplet-fx
+  region: nyc3
+  size: s-1vcpu-1gb
+  image: ubuntu-24-04-x64

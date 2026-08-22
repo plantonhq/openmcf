@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesloki
+spec:
+  presets:
+    - preset: 02-production-scalable
+      capacity_footprint:
+        persistent_storage: 120Gi
+        basis: "3 writers: 3 x 20Gi WAL volumes; 3 backends: 3 x 20Gi working volumes"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the memcached caches (both on by default) are sized by the caching memory knobs, not by a typed resources block -- unset, the chunks cache alone renders a 9830Mi memory request (1.2x the chart's 8192MB default) and the results cache another 1.2x 1024MB
+        - the canary (on by default) is a DaemonSet -- ONE POD PER NODE, so its total consumption multiplies with the cluster's node count, which no manifest can know; canary_enabled false removes it
+        - log chunks and indexes live in the S3-compatible backend -- stored bytes and requests are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), growing with log volume across the retention window, outside this cluster's capacity
+      notes: the chart applies no default requests or limits to the tier containers -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set simple_scalable.resources for any real deployment (size the write tier's needs first) the nginx gateway (on by default) runs with no declared requests or limits -- the chart default; declare gateway.resources to reserve for it
+    - preset: 03-multitenant
+      capacity_footprint:
+        persistent_storage: 60Gi
+        basis: "3 writers: 3 x 10Gi WAL (the spec-declared default size) volumes; 3 backends: 3 x 10Gi working (the spec-declared default size) volumes"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the memcached caches (both on by default) are sized by the caching memory knobs, not by a typed resources block -- unset, the chunks cache alone renders a 9830Mi memory request (1.2x the chart's 8192MB default) and the results cache another 1.2x 1024MB
+        - the canary (on by default) is a DaemonSet -- ONE POD PER NODE, so its total consumption multiplies with the cluster's node count, which no manifest can know; canary_enabled false removes it
+        - log chunks and indexes live in the S3-compatible backend -- stored bytes and requests are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), growing with log volume across the retention window, outside this cluster's capacity
+      notes: the chart applies no default requests or limits to the tier containers -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set simple_scalable.resources for any real deployment (size the write tier's needs first) each write and backend replica provisions a 10Gi volume by default even without a declared disk_size -- stated in this footprint at the spec-declared default size the nginx gateway (on by default) runs with no declared requests or limits -- the chart default; declare gateway.resources to reserve for it

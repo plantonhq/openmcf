@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredatafactorydataflow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A data flow is transformation logic -- a script plus named endpoint declarations -- and stores no data of its own at rest. The definition is held by the Microsoft-operated Data Factory service under the FACTORY's encryption posture; the data it transforms rests in the external systems its sources and sinks point at, and transient Spark execution state lives on the service-managed cluster for the run's duration only.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); the customer-managed-key lever for stored factory definitions (data flows included) lives on the AzureDataFactory kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Run-time transport between the Spark cluster and each store rides the referenced linked services' connections and the integration runtime, which own that posture; managing the definition flows through ARM's TLS-only management API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A transformation definition has no network endpoint. Whether the EXECUTION touches the internet is runtime posture -- a factory with a managed virtual network runs data flows inside it, reaching stores over managed private endpoints (both AzureDataFactory-side choices).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists on the definition to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Authoring the data flow is governed by ARM RBAC on the factory (Data Factory Contributor is the canonical role) -- platform posture for every factory entity; the data flow itself exposes no authorization plane.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The data flow authenticates nobody -- sources and sinks reach their stores through linked services (by name), where the identity-versus-secret choice is made on the AzureDataFactoryLinkedService kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own; login patterns live on the referenced linked services.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Authoring operations land in the Azure Activity Log automatically, and execution telemetry (activity runs, data flow monitoring output) is captured through the factory's diagnostic settings -- both factory-level posture with no toggle here.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The definition emits no signals of its own; per-run data flow monitoring (stage timings, row counts) rides the pipeline run that executes it and the factory's telemetry surface.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative definition -- nothing to back up; the manifest recreates the data flow (script included) in the factory's shared data-flow namespace. Factories bound to a git repository additionally keep the authored definition versioned there (AzureDataFactory posture).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A data flow has no standing runtime footprint with a zonal failure mode -- Spark clusters are provisioned by the Microsoft-operated service per execution and torn down after.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a data flow; deleting one breaks the pipelines that execute it (and, for a flowlet, every data flow that embeds it) at next run, and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service that stores data flow definitions and the Spark runtime that executes them are Microsoft-operated Azure Data Factory infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareturnstilewidget
+spec:
+  billing_model: free
+  free_tier: "Turnstile's own plans page prices the standard tier as exactly \"Free\": up to 20 widgets per account, all widget types, and \"Unlimited challenges (traffic or verification requests)\" (https://developers.cloudflare.com/turnstile/plans/, fetched 2026-08-22). No meter counts widgets, challenges served, or /siteverify validations at any volume, and Turnstile works without any other Cloudflare service."
+  notes: "No field of this spec buys anything: account_id, name, domains, mode, clearance_level, and region are plain widget configuration. The three Enterprise-only toggles (bot_fight_mode, ephemeral_id, offlabel) are plan-gated features -- they require an Enterprise Turnstile contract the account already has, and on a standard account the API rejects them rather than billing. The only real spend anywhere near this kind is that Enterprise contract itself (Contact Sales pricing on the same plans page), which is negotiated at the account and buys higher widget/hostname limits and the gated toggles -- never created or committed by this object."

@@ -1,0 +1,66 @@
+# Full-surface DigitalOceanBucket: explicit region, versioning, lifecycle
+# rules (days-based expiration on a prefix, noncurrent-version expiration,
+# multipart-upload abort), CORS rules through the standalone configuration
+# resource, a deny-by-IP bucket policy, and force_destroy=true (guaranteeing
+# teardown even if a lane writes objects). Logging is deliberately absent
+# (deferred arm -- see profile.yaml: the target bucket is a same-kind
+# fixture the prerequisite chain cannot express).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanBucket
+metadata:
+  name: planton-oss-e2e-digitaloceanbucket-full
+  id: planton-oss-e2e-digitaloceanbucket-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: pltn-e2e-dobkt-full-${E2E_RUN_ID}
+  region: nyc3
+  accessControl: PRIVATE
+  versioningEnabled: true
+  forceDestroy: true
+  lifecycleRules:
+    - id: expire-tmp
+      prefix: tmp/
+      enabled: true
+      abortIncompleteMultipartUploadDays: 3
+      expiration:
+        days: 7
+      noncurrentVersionExpiration:
+        days: 14
+  corsRules:
+    - allowedMethods:
+        - GET
+        - HEAD
+      allowedOrigins:
+        - "https://example.com"
+      allowedHeaders:
+        - "*"
+      exposeHeaders:
+        - ETag
+      id: web-read
+      maxAgeSeconds: 3000
+  policy: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "DenyOutsideCorp",
+          "Effect": "Deny",
+          "Principal": "*",
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::pltn-e2e-dobkt-full-${E2E_RUN_ID}/private/*",
+          "Condition": {
+            "NotIpAddress": {
+              "aws:SourceIp": "203.0.113.0/24"
+            }
+          }
+        }
+      ]
+    }

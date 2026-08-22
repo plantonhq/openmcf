@@ -25,55 +25,128 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on DigitalOcean.
-// It focuses on essential parameters for a production-grade cluster, following the 80/20 principle to expose only the most commonly used settings.
+// DigitalOceanKubernetesClusterSpec models the full digitalocean_kubernetes_cluster
+// resource surface: version/region/VPC placement, the inline default node pool
+// (with labels, taints, tags, and autoscaling), HA control plane, surge and auto
+// upgrades, maintenance policy, control-plane firewall, pod/service/worker
+// subnets, isolated workers, SSO, cluster-autoscaler tuning, registry
+// integration, kubeconfig expiry, destroy-time cleanup, and the managed addon
+// toggles (routing agent, GPU device plugins and DRA drivers, RDMA, CoreDNS
+// autoscaler, P2P OCI registry).
+//
+// Additional node pools beyond the inline default pool are separate
+// DigitalOceanKubernetesNodePool resources.
 type DigitalOceanKubernetesClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the Kubernetes cluster. This will be the cluster's identifier in DigitalOcean.
-	// Constraints: Must be unique per account. (A maximum length or character set may be enforced by DigitalOcean, e.g., alphanumeric and hyphens.)
+	// A human-readable name for the Kubernetes cluster. This name is the
+	// cluster's identifier in DigitalOcean.
 	ClusterName string `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	// The DigitalOcean region where the cluster will be created.
-	// Determines where the cluster's control plane and nodes are provisioned.
+	// The DigitalOcean region where the cluster's control plane and nodes are
+	// provisioned. Cannot be changed after creation.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// The Kubernetes version to use for the cluster (semantic versioning).
-	// Must be a supported version on DigitalOcean (e.g., 1.22+).
-	// Example: "1.26.3"
+	// The Kubernetes version slug to create the cluster at, e.g. "1.33.1-do.3"
+	// or a prefix like "1.33". This is the creation pin: patch upgrades ride
+	// auto_upgrade, and both provisioners ignore later drift on this field
+	// because DigitalOcean recreates the whole cluster when the configured
+	// version is lower than the live one.
 	KubernetesVersion string `protobuf:"bytes,3,opt,name=kubernetes_version,json=kubernetesVersion,proto3" json:"kubernetes_version,omitempty"`
-	// Reference to the DigitalOcean VPC where the cluster's control plane will reside.
-	// This must be an existing VPC in the same region. The cluster consumes the VPC's
-	// ID (a DigitalOcean UUID), so a reference resolves to the DigitalOceanVpc's
-	// exported vpc_id output rather than its metadata name.
+	// Reference to the DigitalOcean VPC where the cluster will reside. The
+	// cluster consumes the VPC's ID (a DigitalOcean UUID), so a reference
+	// resolves to the DigitalOceanVpc's exported vpc_id output rather than its
+	// metadata name. Cannot be changed after creation.
 	Vpc *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=vpc,proto3" json:"vpc,omitempty"`
-	// Whether to enable a highly available control plane for the cluster.
-	// If true, the cluster is created with a High Availability control plane (multiple masters for increased uptime, additional cost).
-	// Default: false.
+	// Whether to run a highly available control plane (multiple replicas,
+	// additional cost). HA is one-way: once enabled it cannot be turned off.
+	// Unset sends an explicit false, which is deliberate: newer DOKS versions
+	// default HA on server-side, and an explicit false keeps the cheaper
+	// single-replica control plane unless HA is asked for.
 	HighlyAvailable bool `protobuf:"varint,5,opt,name=highly_available,json=highlyAvailable,proto3" json:"highly_available,omitempty"`
-	// Whether to enable automatic patch upgrades for the cluster.
-	// If true, the cluster will automatically upgrade to new patch releases of Kubernetes when available.
+	// Whether the cluster automatically upgrades to new patch releases inside
+	// the maintenance window. Minor/major upgrades are never automatic.
 	AutoUpgrade bool `protobuf:"varint,6,opt,name=auto_upgrade,json=autoUpgrade,proto3" json:"auto_upgrade,omitempty"`
-	// Whether to disable surge upgrades for the cluster.
-	// If false(default), cluster upgrades will temporarily provision extra nodes to minimize downtime during updates.
-	DisableSurgeUpgrade bool `protobuf:"varint,7,opt,name=disable_surge_upgrade,json=disableSurgeUpgrade,proto3" json:"disable_surge_upgrade,omitempty"`
-	// Scheduled maintenance window for cluster updates (format: "day=HH:MM" or "any=HH:MM").
-	// Examples: "sunday=02:00" or "any=00:00"
-	// If not specified, DigitalOcean will apply updates at any time.
-	MaintenanceWindow string `protobuf:"bytes,8,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
-	// Whether to enable DigitalOcean Container Registry (DOCR) integration.
-	// If true, automatically creates imagePullSecrets in the cluster for pulling private images from DOCR.
-	// Default: false.
+	// Whether to integrate the account's DigitalOcean Container Registry
+	// (DOCR): pulls from the private registry work cluster-wide without
+	// imagePullSecrets. This is an account-level association the API never
+	// reports back, so it survives as configuration only.
 	RegistryIntegration bool `protobuf:"varint,9,opt,name=registry_integration,json=registryIntegration,proto3" json:"registry_integration,omitempty"`
-	// List of allowed IP addresses (CIDR notation) for control plane firewall.
-	// Restricts Kubernetes API server access to specified IPs for security.
-	// If empty, API server is publicly accessible (not recommended for production).
-	// Example: ["203.0.113.5/32", "198.51.100.0/24"]
-	ControlPlaneFirewallAllowedIps []string `protobuf:"bytes,10,rep,name=control_plane_firewall_allowed_ips,json=controlPlaneFirewallAllowedIps,proto3" json:"control_plane_firewall_allowed_ips,omitempty"`
-	// A list of tags to apply to the cluster.
-	// Tags help organize and identify the cluster within DigitalOcean.
+	// Tags applied to the cluster in DigitalOcean, in addition to the standard
+	// Planton labels both provisioners always apply. Never include
+	// "terraform:default-node-pool" -- the provider manages that tag itself to
+	// mark the inline pool.
 	Tags []string `protobuf:"bytes,11,rep,name=tags,proto3" json:"tags,omitempty"`
-	// Reference to the default node pool for the cluster.
+	// The cluster's inline default node pool. Its name is synthesized by the
+	// provisioners; additional pools are separate DigitalOceanKubernetesNodePool
+	// resources.
 	DefaultNodePool *DigitalOceanKubernetesClusterDefaultNodePool `protobuf:"bytes,12,opt,name=default_node_pool,json=defaultNodePool,proto3" json:"default_node_pool,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Whether upgrades temporarily provision surge nodes to minimize downtime.
+	// DigitalOcean defaults this ON, so unset defers to that default; set it to
+	// false only to explicitly disable surge upgrades.
+	SurgeUpgrade *bool `protobuf:"varint,13,opt,name=surge_upgrade,json=surgeUpgrade,proto3,oneof" json:"surge_upgrade,omitempty"`
+	// (Optional) Weekly window in which DigitalOcean applies automatic
+	// maintenance and auto-upgrades. When unset, DigitalOcean picks a window.
+	MaintenancePolicy *DigitalOceanKubernetesClusterMaintenancePolicy `protobuf:"bytes,14,opt,name=maintenance_policy,json=maintenancePolicy,proto3" json:"maintenance_policy,omitempty"`
+	// (Optional) Firewall in front of the cluster's public API server endpoint.
+	// When unset, the API server accepts connections from anywhere.
+	ControlPlaneFirewall *DigitalOceanKubernetesClusterControlPlaneFirewall `protobuf:"bytes,15,opt,name=control_plane_firewall,json=controlPlaneFirewall,proto3" json:"control_plane_firewall,omitempty"`
+	// (Optional) CIDR block for pod IPs. When unset, DigitalOcean assigns one.
+	// Cannot be changed after creation.
+	ClusterSubnet string `protobuf:"bytes,16,opt,name=cluster_subnet,json=clusterSubnet,proto3" json:"cluster_subnet,omitempty"`
+	// (Optional) CIDR block for service ClusterIPs. When unset, DigitalOcean
+	// assigns one. Cannot be changed after creation.
+	ServiceSubnet string `protobuf:"bytes,17,opt,name=service_subnet,json=serviceSubnet,proto3" json:"service_subnet,omitempty"`
+	// (Optional) UUID of the DigitalOcean-managed subnet to place worker nodes
+	// in. Literal only: worker subnets are DigitalOcean-assigned network
+	// slices, not a Planton-managed kind. Cannot be changed after creation.
+	WorkerSubnetUuid string `protobuf:"bytes,18,opt,name=worker_subnet_uuid,json=workerSubnetUuid,proto3" json:"worker_subnet_uuid,omitempty"`
+	// (Optional) Whether worker nodes are blocked from public internet access
+	// (control plane connectivity is routed internally). Cannot be changed
+	// after creation.
+	IsolatedWorkers bool `protobuf:"varint,19,opt,name=isolated_workers,json=isolatedWorkers,proto3" json:"isolated_workers,omitempty"`
+	// (Optional) When true, destroying the cluster also deletes the load
+	// balancers, volumes, and volume snapshots it created. DANGEROUS and
+	// destroy-time only: it never affects the running cluster, and the API
+	// never reports it back.
+	DestroyAllAssociatedResources bool `protobuf:"varint,20,opt,name=destroy_all_associated_resources,json=destroyAllAssociatedResources,proto3" json:"destroy_all_associated_resources,omitempty"`
+	// (Optional) Validity of the provisioner-fetched kubeconfig credentials in
+	// seconds. 0 (unset) means DigitalOcean's 7-day default.
+	KubeconfigExpireSeconds uint32 `protobuf:"varint,21,opt,name=kubeconfig_expire_seconds,json=kubeconfigExpireSeconds,proto3" json:"kubeconfig_expire_seconds,omitempty"`
+	// (Optional) Tuning for the DigitalOcean-managed cluster-autoscaler.
+	ClusterAutoscalerConfiguration *DigitalOceanKubernetesClusterAutoscalerConfiguration `protobuf:"bytes,22,opt,name=cluster_autoscaler_configuration,json=clusterAutoscalerConfiguration,proto3" json:"cluster_autoscaler_configuration,omitempty"`
+	// (Optional) OpenID Connect single sign-on for the cluster's Kubernetes
+	// API.
+	Sso *DigitalOceanKubernetesClusterSso `protobuf:"bytes,23,opt,name=sso,proto3" json:"sso,omitempty"`
+	// (Optional) The DigitalOcean routing agent, required for some advanced
+	// networking features. Unset leaves the addon at DigitalOcean's default.
+	RoutingAgent *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,24,opt,name=routing_agent,json=routingAgent,proto3" json:"routing_agent,omitempty"`
+	// (Optional) Peer-to-peer OCI registry mirror addon for faster image pulls
+	// across nodes. Unset leaves the addon at DigitalOcean's default.
+	P2POciRegistryPlugin *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,25,opt,name=p2p_oci_registry_plugin,json=p2pOciRegistryPlugin,proto3" json:"p2p_oci_registry_plugin,omitempty"`
+	// (Optional) AMD GPU device plugin addon (mutually exclusive with the AMD
+	// DRA driver). Unset leaves the addon at DigitalOcean's default.
+	AmdGpuDevicePlugin *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,26,opt,name=amd_gpu_device_plugin,json=amdGpuDevicePlugin,proto3" json:"amd_gpu_device_plugin,omitempty"`
+	// (Optional) AMD GPU dynamic-resource-allocation driver addon (mutually
+	// exclusive with the AMD device plugin). Unset leaves the addon at
+	// DigitalOcean's default.
+	AmdGpuDraDriver *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,27,opt,name=amd_gpu_dra_driver,json=amdGpuDraDriver,proto3" json:"amd_gpu_dra_driver,omitempty"`
+	// (Optional) AMD GPU device metrics exporter addon. Unset leaves the addon
+	// at DigitalOcean's default.
+	AmdGpuDeviceMetricsExporterPlugin *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,28,opt,name=amd_gpu_device_metrics_exporter_plugin,json=amdGpuDeviceMetricsExporterPlugin,proto3" json:"amd_gpu_device_metrics_exporter_plugin,omitempty"`
+	// (Optional) NVIDIA GPU device plugin addon (mutually exclusive with the
+	// NVIDIA DRA driver). Unset leaves the addon at DigitalOcean's default.
+	NvidiaGpuDevicePlugin *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,29,opt,name=nvidia_gpu_device_plugin,json=nvidiaGpuDevicePlugin,proto3" json:"nvidia_gpu_device_plugin,omitempty"`
+	// (Optional) NVIDIA GPU dynamic-resource-allocation driver addon (mutually
+	// exclusive with the NVIDIA device plugin). Unset leaves the addon at
+	// DigitalOcean's default.
+	NvidiaGpuDraDriver *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,30,opt,name=nvidia_gpu_dra_driver,json=nvidiaGpuDraDriver,proto3" json:"nvidia_gpu_dra_driver,omitempty"`
+	// (Optional) RDMA shared device plugin addon for high-performance
+	// networking on supported GPU droplets. Unset leaves the addon at
+	// DigitalOcean's default.
+	RdmaSharedDevicePlugin *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,31,opt,name=rdma_shared_device_plugin,json=rdmaSharedDevicePlugin,proto3" json:"rdma_shared_device_plugin,omitempty"`
+	// (Optional) CoreDNS horizontal autoscaler addon. Unset leaves the addon
+	// at DigitalOcean's default.
+	CorednsAutoscaler *DigitalOceanKubernetesClusterFeatureToggle `protobuf:"bytes,32,opt,name=coredns_autoscaler,json=corednsAutoscaler,proto3" json:"coredns_autoscaler,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DigitalOceanKubernetesClusterSpec) Reset() {
@@ -148,32 +221,11 @@ func (x *DigitalOceanKubernetesClusterSpec) GetAutoUpgrade() bool {
 	return false
 }
 
-func (x *DigitalOceanKubernetesClusterSpec) GetDisableSurgeUpgrade() bool {
-	if x != nil {
-		return x.DisableSurgeUpgrade
-	}
-	return false
-}
-
-func (x *DigitalOceanKubernetesClusterSpec) GetMaintenanceWindow() string {
-	if x != nil {
-		return x.MaintenanceWindow
-	}
-	return ""
-}
-
 func (x *DigitalOceanKubernetesClusterSpec) GetRegistryIntegration() bool {
 	if x != nil {
 		return x.RegistryIntegration
 	}
 	return false
-}
-
-func (x *DigitalOceanKubernetesClusterSpec) GetControlPlaneFirewallAllowedIps() []string {
-	if x != nil {
-		return x.ControlPlaneFirewallAllowedIps
-	}
-	return nil
 }
 
 func (x *DigitalOceanKubernetesClusterSpec) GetTags() []string {
@@ -190,26 +242,180 @@ func (x *DigitalOceanKubernetesClusterSpec) GetDefaultNodePool() *DigitalOceanKu
 	return nil
 }
 
-// DigitalOcean Kubernetes Cluster Default Node Pool
+func (x *DigitalOceanKubernetesClusterSpec) GetSurgeUpgrade() bool {
+	if x != nil && x.SurgeUpgrade != nil {
+		return *x.SurgeUpgrade
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetMaintenancePolicy() *DigitalOceanKubernetesClusterMaintenancePolicy {
+	if x != nil {
+		return x.MaintenancePolicy
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetControlPlaneFirewall() *DigitalOceanKubernetesClusterControlPlaneFirewall {
+	if x != nil {
+		return x.ControlPlaneFirewall
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetClusterSubnet() string {
+	if x != nil {
+		return x.ClusterSubnet
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetServiceSubnet() string {
+	if x != nil {
+		return x.ServiceSubnet
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetWorkerSubnetUuid() string {
+	if x != nil {
+		return x.WorkerSubnetUuid
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetIsolatedWorkers() bool {
+	if x != nil {
+		return x.IsolatedWorkers
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetDestroyAllAssociatedResources() bool {
+	if x != nil {
+		return x.DestroyAllAssociatedResources
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetKubeconfigExpireSeconds() uint32 {
+	if x != nil {
+		return x.KubeconfigExpireSeconds
+	}
+	return 0
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetClusterAutoscalerConfiguration() *DigitalOceanKubernetesClusterAutoscalerConfiguration {
+	if x != nil {
+		return x.ClusterAutoscalerConfiguration
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetSso() *DigitalOceanKubernetesClusterSso {
+	if x != nil {
+		return x.Sso
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetRoutingAgent() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.RoutingAgent
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetP2POciRegistryPlugin() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.P2POciRegistryPlugin
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetAmdGpuDevicePlugin() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.AmdGpuDevicePlugin
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetAmdGpuDraDriver() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.AmdGpuDraDriver
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetAmdGpuDeviceMetricsExporterPlugin() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.AmdGpuDeviceMetricsExporterPlugin
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetNvidiaGpuDevicePlugin() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.NvidiaGpuDevicePlugin
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetNvidiaGpuDraDriver() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.NvidiaGpuDraDriver
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetRdmaSharedDevicePlugin() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.RdmaSharedDevicePlugin
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterSpec) GetCorednsAutoscaler() *DigitalOceanKubernetesClusterFeatureToggle {
+	if x != nil {
+		return x.CorednsAutoscaler
+	}
+	return nil
+}
+
+// DigitalOceanKubernetesClusterDefaultNodePool is the cluster's inline
+// default node pool. Changing its size (or gpu_partition_mode) REPLACES THE
+// ENTIRE CLUSTER -- the provider force-news the cluster resource, not just
+// the pool. Size a default pool once and grow with additional
+// DigitalOceanKubernetesNodePool resources instead.
 type DigitalOceanKubernetesClusterDefaultNodePool struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The slug identifier for the Droplet size to use for each node (e.g., "s-4vcpu-8gb").
-	// This defines the CPU and memory of the nodes in the pool.
+	// The slug identifier for the Droplet size of each node (e.g.
+	// "s-2vcpu-4gb"). Changing it replaces the whole cluster.
 	Size string `protobuf:"bytes,1,opt,name=size,proto3" json:"size,omitempty"`
-	// The number of nodes to provision in the pool.
-	// Must be at least 1. If auto_scale is enabled, this acts as the initial desired node count.
+	// The number of nodes in the pool. With auto_scale enabled this is the
+	// initial count; the live count then drifts freely between min_nodes and
+	// max_nodes without producing configuration diffs.
 	NodeCount uint32 `protobuf:"varint,2,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
-	// Enable auto-scaling for this node pool.
-	// If true, the platform will manage node count between min_nodes and max_nodes.
+	// Whether DigitalOcean's cluster-autoscaler manages this pool's node count
+	// between min_nodes and max_nodes.
 	AutoScale bool `protobuf:"varint,3,opt,name=auto_scale,json=autoScale,proto3" json:"auto_scale,omitempty"`
-	// Minimum number of nodes when auto-scaling is enabled.
-	// Required if auto_scale is true.
+	// Minimum node count when auto_scale is enabled.
 	MinNodes uint32 `protobuf:"varint,4,opt,name=min_nodes,json=minNodes,proto3" json:"min_nodes,omitempty"`
-	// Maximum number of nodes when auto-scaling is enabled.
-	// Required if auto_scale is true.
-	MaxNodes      uint32 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Maximum node count when auto_scale is enabled.
+	MaxNodes uint32 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
+	// (Optional) Kubernetes labels applied to every node in the pool, in
+	// addition to the standard Planton labels both provisioners always apply.
+	Labels map[string]string `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// (Optional) Kubernetes taints applied to every node in the pool.
+	Taints []*DigitalOceanKubernetesClusterNodePoolTaint `protobuf:"bytes,7,rep,name=taints,proto3" json:"taints,omitempty"`
+	// (Optional) DigitalOcean tags applied to the pool's Droplets, in addition
+	// to the cluster's tags.
+	Tags []string `protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty"`
+	// (Optional) GPU partitioning mode for AMD GPU Droplet sizes. Changing it
+	// replaces the whole cluster.
+	GpuPartitionMode string `protobuf:"bytes,9,opt,name=gpu_partition_mode,json=gpuPartitionMode,proto3" json:"gpu_partition_mode,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DigitalOceanKubernetesClusterDefaultNodePool) Reset() {
@@ -277,25 +483,454 @@ func (x *DigitalOceanKubernetesClusterDefaultNodePool) GetMaxNodes() uint32 {
 	return 0
 }
 
+func (x *DigitalOceanKubernetesClusterDefaultNodePool) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterDefaultNodePool) GetTaints() []*DigitalOceanKubernetesClusterNodePoolTaint {
+	if x != nil {
+		return x.Taints
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterDefaultNodePool) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *DigitalOceanKubernetesClusterDefaultNodePool) GetGpuPartitionMode() string {
+	if x != nil {
+		return x.GpuPartitionMode
+	}
+	return ""
+}
+
+// DigitalOceanKubernetesClusterNodePoolTaint is a Kubernetes taint applied
+// to every node in the pool.
+type DigitalOceanKubernetesClusterNodePoolTaint struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Taint key, e.g. "dedicated".
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// (Optional) Taint value, e.g. "gpu-workloads". Kubernetes allows
+	// valueless taints, so empty is legal; the provisioners always send the
+	// value (possibly empty), which is all the provider's required leaf asks.
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Taint effect. One of NoSchedule, PreferNoSchedule, NoExecute
+	// (case-sensitive, exactly as Kubernetes spells them).
+	Effect        string `protobuf:"bytes,3,opt,name=effect,proto3" json:"effect,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) Reset() {
+	*x = DigitalOceanKubernetesClusterNodePoolTaint{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterNodePoolTaint) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterNodePoolTaint.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterNodePoolTaint) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterNodePoolTaint) GetEffect() string {
+	if x != nil {
+		return x.Effect
+	}
+	return ""
+}
+
+// DigitalOceanKubernetesClusterMaintenancePolicy is the weekly slot in which
+// DigitalOcean applies automatic maintenance and auto-upgrades. The window's
+// duration is determined by DigitalOcean, not configurable.
+type DigitalOceanKubernetesClusterMaintenancePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Day of the week, or "any" to let DigitalOcean pick the day.
+	// Case-insensitive.
+	Day string `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
+	// Start of the window in UTC, 24-hour "HH:MM", for example "02:00".
+	StartTime     string `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterMaintenancePolicy) Reset() {
+	*x = DigitalOceanKubernetesClusterMaintenancePolicy{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterMaintenancePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterMaintenancePolicy) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterMaintenancePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterMaintenancePolicy.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterMaintenancePolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DigitalOceanKubernetesClusterMaintenancePolicy) GetDay() string {
+	if x != nil {
+		return x.Day
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterMaintenancePolicy) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+// DigitalOceanKubernetesClusterControlPlaneFirewall restricts which source
+// addresses may reach the cluster's public Kubernetes API endpoint.
+type DigitalOceanKubernetesClusterControlPlaneFirewall struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the firewall is enforced. Keeping enabled explicit (rather than
+	// inferring it from a non-empty address list) allows staging rules while
+	// disabled and matches the provider's block, whose enabled leaf is
+	// required. optional gives the bool presence so an explicit false is valid.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// Source addresses allowed to reach the API server, as plain IPs or CIDR
+	// blocks. The provider validates nothing here; catching a typo before
+	// apply beats a lockout after.
+	AllowedAddresses []string `protobuf:"bytes,2,rep,name=allowed_addresses,json=allowedAddresses,proto3" json:"allowed_addresses,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterControlPlaneFirewall) Reset() {
+	*x = DigitalOceanKubernetesClusterControlPlaneFirewall{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterControlPlaneFirewall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterControlPlaneFirewall) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterControlPlaneFirewall) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterControlPlaneFirewall.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterControlPlaneFirewall) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DigitalOceanKubernetesClusterControlPlaneFirewall) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterControlPlaneFirewall) GetAllowedAddresses() []string {
+	if x != nil {
+		return x.AllowedAddresses
+	}
+	return nil
+}
+
+// DigitalOceanKubernetesClusterAutoscalerConfiguration tunes the
+// DigitalOcean-managed cluster-autoscaler's scale-down behavior.
+type DigitalOceanKubernetesClusterAutoscalerConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// (Optional) Node utilization fraction (0.0-1.0) below which a node is
+	// eligible for scale-down. Optional so an unset value defers to
+	// DigitalOcean's default rather than sending 0.
+	ScaleDownUtilizationThreshold *float64 `protobuf:"fixed64,1,opt,name=scale_down_utilization_threshold,json=scaleDownUtilizationThreshold,proto3,oneof" json:"scale_down_utilization_threshold,omitempty"`
+	// (Optional) How long a node must stay unneeded before scale-down, as a Go
+	// duration string, e.g. "1m30s".
+	ScaleDownUnneededTime string `protobuf:"bytes,2,opt,name=scale_down_unneeded_time,json=scaleDownUnneededTime,proto3" json:"scale_down_unneeded_time,omitempty"`
+	// (Optional) Expander strategies the autoscaler uses to pick which pool to
+	// grow, in priority order (e.g. "least-waste", "random", "priority").
+	Expanders     []string `protobuf:"bytes,3,rep,name=expanders,proto3" json:"expanders,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) Reset() {
+	*x = DigitalOceanKubernetesClusterAutoscalerConfiguration{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterAutoscalerConfiguration) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterAutoscalerConfiguration.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterAutoscalerConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) GetScaleDownUtilizationThreshold() float64 {
+	if x != nil && x.ScaleDownUtilizationThreshold != nil {
+		return *x.ScaleDownUtilizationThreshold
+	}
+	return 0
+}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) GetScaleDownUnneededTime() string {
+	if x != nil {
+		return x.ScaleDownUnneededTime
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterAutoscalerConfiguration) GetExpanders() []string {
+	if x != nil {
+		return x.Expanders
+	}
+	return nil
+}
+
+// DigitalOceanKubernetesClusterSso configures OpenID Connect single sign-on
+// for the cluster's Kubernetes API.
+type DigitalOceanKubernetesClusterSso struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether SSO is enabled. optional gives the bool presence so an explicit
+	// false is valid.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// (Optional) Whether SSO is mandatory for all cluster access.
+	Required bool `protobuf:"varint,2,opt,name=required,proto3" json:"required,omitempty"`
+	// (Optional) OIDC issuer URL of the identity provider.
+	IssuerUrl string `protobuf:"bytes,3,opt,name=issuer_url,json=issuerUrl,proto3" json:"issuer_url,omitempty"`
+	// (Optional) OAuth client ID registered with the identity provider.
+	ClientId      string `protobuf:"bytes,4,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterSso) Reset() {
+	*x = DigitalOceanKubernetesClusterSso{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterSso) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterSso) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterSso) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterSso.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterSso) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DigitalOceanKubernetesClusterSso) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterSso) GetRequired() bool {
+	if x != nil {
+		return x.Required
+	}
+	return false
+}
+
+func (x *DigitalOceanKubernetesClusterSso) GetIssuerUrl() string {
+	if x != nil {
+		return x.IssuerUrl
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterSso) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+// DigitalOceanKubernetesClusterFeatureToggle switches a DigitalOcean-managed
+// cluster addon on or off. Leaving the parent field unset is meaningfully
+// different from enabled: false -- unset defers to DigitalOcean's own default
+// for that addon, while a set message asserts the desired state.
+type DigitalOceanKubernetesClusterFeatureToggle struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the addon is enabled. optional gives the bool presence so an
+	// explicit false (assert OFF) is valid, not just true.
+	Enabled       *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanKubernetesClusterFeatureToggle) Reset() {
+	*x = DigitalOceanKubernetesClusterFeatureToggle{}
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanKubernetesClusterFeatureToggle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanKubernetesClusterFeatureToggle) ProtoMessage() {}
+
+func (x *DigitalOceanKubernetesClusterFeatureToggle) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanKubernetesClusterFeatureToggle.ProtoReflect.Descriptor instead.
+func (*DigitalOceanKubernetesClusterFeatureToggle) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DigitalOceanKubernetesClusterFeatureToggle) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
 var File_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/digitalocean/digitaloceankubernetescluster/v1alpha1/spec.proto\x12?dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb2\x06\n" +
+	"Fcatalog/digitalocean/digitaloceankubernetescluster/v1alpha1/spec.proto\x12?dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb8\x1c\n" +
 	"!DigitalOceanKubernetesClusterSpec\x12)\n" +
 	"\fcluster_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vclusterName\x12L\n" +
 	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x125\n" +
 	"\x12kubernetes_version\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11kubernetesVersion\x12j\n" +
 	"\x03vpc\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x124\n" +
 	"\x10highly_available\x18\x05 \x01(\bB\t\x92\xa6\x1d\x05falseR\x0fhighlyAvailable\x12!\n" +
-	"\fauto_upgrade\x18\x06 \x01(\bR\vautoUpgrade\x122\n" +
-	"\x15disable_surge_upgrade\x18\a \x01(\bR\x13disableSurgeUpgrade\x12-\n" +
-	"\x12maintenance_window\x18\b \x01(\tR\x11maintenanceWindow\x121\n" +
-	"\x14registry_integration\x18\t \x01(\bR\x13registryIntegration\x12J\n" +
-	"\"control_plane_firewall_allowed_ips\x18\n" +
-	" \x03(\tR\x1econtrolPlaneFirewallAllowedIps\x12\x12\n" +
-	"\x04tags\x18\v \x03(\tR\x04tags\x12\xa1\x01\n" +
-	"\x11default_node_pool\x18\f \x01(\v2m.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePoolB\x06\xbaH\x03\xc8\x01\x01R\x0fdefaultNodePool\"\xce\x01\n" +
+	"\fauto_upgrade\x18\x06 \x01(\bR\vautoUpgrade\x121\n" +
+	"\x14registry_integration\x18\t \x01(\bR\x13registryIntegration\x128\n" +
+	"\x04tags\x18\v \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags\x12\xa1\x01\n" +
+	"\x11default_node_pool\x18\f \x01(\v2m.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePoolB\x06\xbaH\x03\xc8\x01\x01R\x0fdefaultNodePool\x122\n" +
+	"\rsurge_upgrade\x18\r \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\fsurgeUpgrade\x88\x01\x01\x12\x9e\x01\n" +
+	"\x12maintenance_policy\x18\x0e \x01(\v2o.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterMaintenancePolicyR\x11maintenancePolicy\x12\xa8\x01\n" +
+	"\x16control_plane_firewall\x18\x0f \x01(\v2r.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterControlPlaneFirewallR\x14controlPlaneFirewall\x122\n" +
+	"\x0ecluster_subnet\x18\x10 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xd0\x01\x01R\rclusterSubnet\x122\n" +
+	"\x0eservice_subnet\x18\x11 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xd0\x01\x01R\rserviceSubnet\x12,\n" +
+	"\x12worker_subnet_uuid\x18\x12 \x01(\tR\x10workerSubnetUuid\x12)\n" +
+	"\x10isolated_workers\x18\x13 \x01(\bR\x0fisolatedWorkers\x12G\n" +
+	" destroy_all_associated_resources\x18\x14 \x01(\bR\x1ddestroyAllAssociatedResources\x12:\n" +
+	"\x19kubeconfig_expire_seconds\x18\x15 \x01(\rR\x17kubeconfigExpireSeconds\x12\xbf\x01\n" +
+	" cluster_autoscaler_configuration\x18\x16 \x01(\v2u.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterAutoscalerConfigurationR\x1eclusterAutoscalerConfiguration\x12s\n" +
+	"\x03sso\x18\x17 \x01(\v2a.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSsoR\x03sso\x12\x90\x01\n" +
+	"\rrouting_agent\x18\x18 \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\froutingAgent\x12\xa2\x01\n" +
+	"\x17p2p_oci_registry_plugin\x18\x19 \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x14p2pOciRegistryPlugin\x12\x9e\x01\n" +
+	"\x15amd_gpu_device_plugin\x18\x1a \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x12amdGpuDevicePlugin\x12\x98\x01\n" +
+	"\x12amd_gpu_dra_driver\x18\x1b \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x0famdGpuDraDriver\x12\xbe\x01\n" +
+	"&amd_gpu_device_metrics_exporter_plugin\x18\x1c \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR!amdGpuDeviceMetricsExporterPlugin\x12\xa4\x01\n" +
+	"\x18nvidia_gpu_device_plugin\x18\x1d \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x15nvidiaGpuDevicePlugin\x12\x9e\x01\n" +
+	"\x15nvidia_gpu_dra_driver\x18\x1e \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x12nvidiaGpuDraDriver\x12\xa6\x01\n" +
+	"\x19rdma_shared_device_plugin\x18\x1f \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x16rdmaSharedDevicePlugin\x12\x9a\x01\n" +
+	"\x12coredns_autoscaler\x18  \x01(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggleR\x11corednsAutoscaler:\xd9\x02\xbaH\xd5\x02\x1a\xa0\x01\n" +
+	"\x16amd_gpu_plugin_xor_dra\x12Camd_gpu_device_plugin and amd_gpu_dra_driver are mutually exclusive\x1aA!has(this.amd_gpu_device_plugin) || !has(this.amd_gpu_dra_driver)\x1a\xaf\x01\n" +
+	"\x19nvidia_gpu_plugin_xor_dra\x12Invidia_gpu_device_plugin and nvidia_gpu_dra_driver are mutually exclusive\x1aG!has(this.nvidia_gpu_device_plugin) || !has(this.nvidia_gpu_dra_driver)B\x10\n" +
+	"\x0e_surge_upgradeJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\n" +
+	"\x10\vR\x15disable_surge_upgradeR\x12maintenance_windowR\"control_plane_firewall_allowed_ips\"\xfa\x06\n" +
 	",DigitalOceanKubernetesClusterDefaultNodePool\x12\x1a\n" +
 	"\x04size\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04size\x12)\n" +
 	"\n" +
@@ -304,7 +939,48 @@ const file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_prot
 	"\n" +
 	"auto_scale\x18\x03 \x01(\bR\tautoScale\x12\x1b\n" +
 	"\tmin_nodes\x18\x04 \x01(\rR\bminNodes\x12\x1b\n" +
-	"\tmax_nodes\x18\x05 \x01(\rR\bmaxNodesB\xf1\x03\n" +
+	"\tmax_nodes\x18\x05 \x01(\rR\bmaxNodes\x12\x91\x01\n" +
+	"\x06labels\x18\x06 \x03(\v2y.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool.LabelsEntryR\x06labels\x12\x83\x01\n" +
+	"\x06taints\x18\a \x03(\v2k.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterNodePoolTaintR\x06taints\x128\n" +
+	"\x04tags\x18\b \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags\x12p\n" +
+	"\x12gpu_partition_mode\x18\t \x01(\tBB\xbaH?\xd8\x01\x01r:R\x1bAMD_PARTITION_MODE_SPX_NPS1R\x1bAMD_PARTITION_MODE_DPX_NPS2R\x10gpuPartitionMode\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
+	"\x10autoscale_bounds\x12=auto_scale requires min_nodes >= 1 and max_nodes >= min_nodes\x1aN!this.auto_scale || (this.min_nodes >= 1u && this.max_nodes >= this.min_nodes)\"\xa7\x01\n" +
+	"*DigitalOceanKubernetesClusterNodePoolTaint\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12I\n" +
+	"\x06effect\x18\x03 \x01(\tB1\xbaH.\xc8\x01\x01r)R\n" +
+	"NoScheduleR\x10PreferNoScheduleR\tNoExecuteR\x06effect\"\xdc\x01\n" +
+	".DigitalOceanKubernetesClusterMaintenancePolicy\x12`\n" +
+	"\x03day\x18\x01 \x01(\tBN\xbaHK\xc8\x01\x01rF2D^(?i)(any|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$R\x03day\x12H\n" +
+	"\n" +
+	"start_time\x18\x02 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^([01][0-9]|2[0-3]):[0-5][0-9]$R\tstartTime\"\xf4\x01\n" +
+	"1DigitalOceanKubernetesClusterControlPlaneFirewall\x12%\n" +
+	"\aenabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01H\x00R\aenabled\x88\x01\x01\x12\x8b\x01\n" +
+	"\x11allowed_addresses\x18\x02 \x03(\tB^\xbaH[\x92\x01X\"V\xba\x01S\n" +
+	"\n" +
+	"ip_or_cidr\x12#must be an IP address or CIDR block\x1a this.isIp() || this.isIpPrefix()R\x10allowedAddressesB\n" +
+	"\n" +
+	"\b_enabled\"\x99\x02\n" +
+	"4DigitalOceanKubernetesClusterAutoscalerConfiguration\x12e\n" +
+	" scale_down_utilization_threshold\x18\x01 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\x1dscaleDownUtilizationThreshold\x88\x01\x01\x127\n" +
+	"\x18scale_down_unneeded_time\x18\x02 \x01(\tR\x15scaleDownUnneededTime\x12\x1c\n" +
+	"\texpanders\x18\x03 \x03(\tR\texpandersB#\n" +
+	"!_scale_down_utilization_threshold\"\xad\x01\n" +
+	" DigitalOceanKubernetesClusterSso\x12%\n" +
+	"\aenabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01H\x00R\aenabled\x88\x01\x01\x12\x1a\n" +
+	"\brequired\x18\x02 \x01(\bR\brequired\x12\x1d\n" +
+	"\n" +
+	"issuer_url\x18\x03 \x01(\tR\tissuerUrl\x12\x1b\n" +
+	"\tclient_id\x18\x04 \x01(\tR\bclientIdB\n" +
+	"\n" +
+	"\b_enabled\"_\n" +
+	"*DigitalOceanKubernetesClusterFeatureToggle\x12%\n" +
+	"\aenabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01H\x00R\aenabled\x88\x01\x01B\n" +
+	"\n" +
+	"\b_enabledB\xf1\x03\n" +
 	"Ccom.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1B\tSpecProtoP\x01Z~github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetescluster/v1alpha1;digitaloceankubernetesclusterv1alpha1\xa2\x02\x04DPDD\xaa\x02?Dev.Planton.Digitalocean.Digitaloceankubernetescluster.V1alpha1\xca\x02?Dev\\Planton\\Digitalocean\\Digitaloceankubernetescluster\\V1alpha1\xe2\x02KDev\\Planton\\Digitalocean\\Digitaloceankubernetescluster\\V1alpha1\\GPBMetadata\xea\x02CDev::Planton::Digitalocean::Digitaloceankubernetescluster::V1alpha1b\x06proto3"
 
 var (
@@ -319,22 +995,44 @@ func file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto
 	return file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_goTypes = []any{
-	(*DigitalOceanKubernetesClusterSpec)(nil),            // 0: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec
-	(*DigitalOceanKubernetesClusterDefaultNodePool)(nil), // 1: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool
-	(digitalocean.DigitalOceanRegion)(0),                 // 2: dev.planton.digitalocean.DigitalOceanRegion
-	(*v1.StringValueOrRef)(nil),                          // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*DigitalOceanKubernetesClusterSpec)(nil),                    // 0: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec
+	(*DigitalOceanKubernetesClusterDefaultNodePool)(nil),         // 1: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool
+	(*DigitalOceanKubernetesClusterNodePoolTaint)(nil),           // 2: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterNodePoolTaint
+	(*DigitalOceanKubernetesClusterMaintenancePolicy)(nil),       // 3: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterMaintenancePolicy
+	(*DigitalOceanKubernetesClusterControlPlaneFirewall)(nil),    // 4: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterControlPlaneFirewall
+	(*DigitalOceanKubernetesClusterAutoscalerConfiguration)(nil), // 5: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterAutoscalerConfiguration
+	(*DigitalOceanKubernetesClusterSso)(nil),                     // 6: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSso
+	(*DigitalOceanKubernetesClusterFeatureToggle)(nil),           // 7: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	nil,                                  // 8: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool.LabelsEntry
+	(digitalocean.DigitalOceanRegion)(0), // 9: dev.planton.digitalocean.DigitalOceanRegion
+	(*v1.StringValueOrRef)(nil),          // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
-	3, // 1: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.default_node_pool:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9,  // 0: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	10, // 1: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 2: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.default_node_pool:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool
+	3,  // 3: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.maintenance_policy:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterMaintenancePolicy
+	4,  // 4: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.control_plane_firewall:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterControlPlaneFirewall
+	5,  // 5: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.cluster_autoscaler_configuration:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterAutoscalerConfiguration
+	6,  // 6: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.sso:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSso
+	7,  // 7: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.routing_agent:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 8: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.p2p_oci_registry_plugin:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 9: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.amd_gpu_device_plugin:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 10: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.amd_gpu_dra_driver:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 11: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.amd_gpu_device_metrics_exporter_plugin:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 12: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.nvidia_gpu_device_plugin:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 13: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.nvidia_gpu_dra_driver:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 14: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.rdma_shared_device_plugin:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	7,  // 15: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterSpec.coredns_autoscaler:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterFeatureToggle
+	8,  // 16: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool.labels:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool.LabelsEntry
+	2,  // 17: dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterDefaultNodePool.taints:type_name -> dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1.DigitalOceanKubernetesClusterNodePoolTaint
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_init() }
@@ -342,13 +1040,18 @@ func file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto
 	if File_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

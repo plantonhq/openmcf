@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandatabasefirewall
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule set stores no data; it filters access to the cluster.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Connection encryption is the cluster endpoints' property; the firewall only decides who may connect.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ip_rules
+      evidence:
+        type: spec_default
+        reference: With any rule set deployed, the cluster accepts connections ONLY from the listed sources; keeping ip_rules to private CIDRs (or using only droplet/kubernetes/app/tag rules) removes public reachability entirely.
+      notes: This kind IS the cluster's public-exposure control. Two facts to hold -- a broad ip_rule (e.g. 0.0.0.0/0) re-admits the internet deliberately, and DESTROYING this resource clears the rule set, after which the cluster accepts connections from anywhere again (the GUIDE's loudest warning).
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec.at_least_one_rule CEL rule makes an empty rule set unrepresentable -- deploying this kind ALWAYS restricts the cluster's inbound access to declared sources.
+      notes: The five typed lists (IPs/CIDRs, Droplets, Kubernetes clusters, apps, Droplet tags) are the declared sources; the modules fan them out to DigitalOcean's rule rows.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Layer-3/4 source filtering, not an HTTP request filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Source filtering is network-level; identity-level access lives on DigitalOceanDatabaseUser and in-database grants.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No credential surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no rule-change audit surface through this resource; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The rule set emits no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule set is stateless configuration, recreated by IaC.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The rule set is a control-plane property with no availability topology.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag -- and deletion here means OPENING the database (the empty-rule-set semantics taught on no-public-access and in the GUIDE), so guard this resource's lifecycle in review, not in the provider.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software surface to patch.

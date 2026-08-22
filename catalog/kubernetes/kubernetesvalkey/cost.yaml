@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesvalkey
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per pod -- the capacity is claimed whether the store is busy or idle. Limits set the burst ceiling, not the reservation. Size memory above config.max_memory; Valkey needs headroom for replication buffers and persistence forks.
+    - field_path: replication
+      sku_meter: cluster CPU and memory reservations
+      impact: Replication multiplies the footprint -- one primary plus the declared replicas (the chart defaults to 2 when unset), every pod carrying the declared resources and its own persistent volume.
+    - field_path: persistence.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Standalone mode's optional data volume, provisioned through the cluster's storage class; omitted means a pure in-memory cache that starts empty after every pod restart and reserves no storage.
+    - field_path: replication.persistence.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Replication mode provisions one volume of this size for EVERY pod -- the primary and each replica (replicas bootstrap by full-syncing from disk, so persistence is required in this mode).
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the redis_exporter metrics sidecar (metrics.enabled) consumes CPU and memory the spec declares no reservation for
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: (1 primary + replicas) x (requests + volume) in replication mode, or a single instance in standalone mode."

@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecosmosdbmongodatabase
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Cosmos DB
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      description: "A database with fixed shared throughput bills every provisioned 100 RU/s by the hour from the moment it exists -- one budget every collection without its own throughput draws from, on the same API-agnostic RU meters the NoSQL children bill. A database that sets neither field is a pure namespace and carries no meter of its own."
+    - service_name: Azure Cosmos DB
+      sku_meter: autoscale throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      description: "A database with an autoscale ceiling bills each hour's highest scaled-to RU/s at the autoscale rate -- 1.5x the standard rate per 100 RU/s -- with a committed floor of 10% of the ceiling that bills even when every collection in it sits idle (Microsoft's Cosmos DB pricing page: a 1,000 RU/s maximum scales hourly between 100 and 1,000 RU/s)."
+  cost_drivers:
+    - field_path: throughput
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      impact: "The committed shared budget when set: RU/s divided by 100, times 730 hours, at the standard rate. Many small collections split this one bill instead of each paying the 400 RU/s dedicated minimum -- the economics of shared throughput."
+    - field_path: autoscale_max_throughput
+      sku_meter: autoscale throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      impact: "Sets the committed floor (10% of the ceiling bills around the clock at the 1.5x rate) and the worst-case ceiling for the whole database's shared budget. A 4,000 RU/s ceiling commits about 35.04 USD/month in eastus at list and can bill up to ten times that under sustained peak."
+  free_tier: "An account-level choice: a free-tier Cosmos DB account discounts its first 1,000 RU/s and 25 GB for the account's lifetime, and Microsoft's pricing page notes free-tier accounts can run up to 25 containers on a 1,000 RU/s shared-throughput database at no charge (retrieved 2026-08-18). Estimates here price list rates without that discount."
+  estimate_exclusions:
+    - "consumed storage bills per GB-month (0.25 USD in eastus at list, verified 2026-08-18) on the collections' documents plus indexes -- the database stores nothing of its own"
+    - "the account's region topology multiplies everything: N replicated regions bill this database's shared throughput N times over, and the region list lives on the account manifest"
+    - "on serverless accounts (both fields unset by requirement) the account bills consumed request units per million -- pure runtime behavior"
+    - "collections that bring their own dedicated throughput bill on their own AzureCosmosdbMongoCollection manifests, not on this shared budget"
+  notes: "The database is either a paid pool or a free namespace, and the throughput fields decide which -- on the same API-agnostic RU meters as the NoSQL children, because Cosmos DB prices Request Units identically across its RU-based APIs. Set, the fields provision one shared RU/s budget billed hourly whether the collections use it or not -- fixed at the standard rate, autoscale between 10% and 100% of the ceiling at 1.5x per 100 RU/s. Unset, the database costs nothing to exist and the money moves to each collection's dedicated throughput or the serverless account's per-request meter. All rates read from Microsoft's Cosmos DB pricing pages and the Retail Prices API on 2026-08-18."

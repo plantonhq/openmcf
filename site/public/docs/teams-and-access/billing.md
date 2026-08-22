@@ -13,6 +13,8 @@ tags:
 
 Every Planton organization has a billing account that determines which capabilities are available. Billing is managed through Stripe and can be configured entirely from the web console. Seats are the only meter: automation runs — infrastructure deployments and CI/CD pipelines — are never billed, and AI assistance runs on prepaid credits you control.
 
+This page describes organizations on planton.ai. A self-hosted deployment has no billing surface — its capabilities come from its license, and the AI Assistant is not yet available on self-hosted installs.
+
 ## Subscription Plans
 
 ### Free

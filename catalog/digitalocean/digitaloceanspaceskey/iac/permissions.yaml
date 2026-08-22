@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+#
+# Note: keys are managed through the control-plane REST API -- the runner
+# needs NO Spaces (S3) credentials to manage keys; the key it creates IS a
+# Spaces credential for workloads.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanspaceskey
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageSpacesKey
+        scopes:
+          - spaces_key:read
+          - spaces_key:create_credentials
+          - spaces_key:update
+          - spaces_key:delete
+        provenance: derived
+        notes: Covers digitalocean_spaces_key's create/read/update/delete paths (the resource has no importer) -- read the key via GET /v2/spaces/keys/{access_key} (spaces_key:read), create the key via POST /v2/spaces/keys where spaces_key:create_credentials is the scope that returns the secret_key in the create response, which is the only place the secret ever exists, rename / re-grant via PUT /v2/spaces/keys/{access_key} (spaces_key:update), and delete the key via DELETE /v2/spaces/keys/{access_key} (spaces_key:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

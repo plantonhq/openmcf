@@ -1,0 +1,76 @@
+# Complete example manifest for CloudflareAiGateway. One gateway with
+# caching, rate limiting, retries, log management, gateway authentication,
+# prompt/response guardrails, a daily spend cap, and a dynamic route that
+# sends free-tier traffic to a cheap model and everything else to a smarter
+# one. The two dynamic-route objects below the gateway are what the offline
+# plan proves as the designed 2-to-add (gateway + route).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: prod-llm-gateway
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  gateway_id: prod-llm-gateway
+  cache_invalidate_on_update: true
+  cache_ttl: 300
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 1000
+  rate_limiting_technique: sliding
+  retry:
+    backoff: exponential
+    delay: 1000
+    max_attempts: 3
+  log_management:
+    max_records: 100000
+    strategy: DELETE_OLDEST
+  authentication: true
+  guardrails:
+    prompt:
+      p1: BLOCK
+      s1: FLAG
+    response: {}
+  spend_limits:
+    enabled: true
+    rules:
+      - id: daily-cap
+        limit: 50
+        limit_type: cost
+        window: 86400
+        technique: sliding
+  dynamic_routes:
+    - name: cheap-first
+      elements:
+        - id: start
+          type: start
+          outputs:
+            next:
+              element_id: check
+        - id: check
+          type: conditional
+          outputs:
+            on_true:
+              element_id: cheap
+            on_false:
+              element_id: smart
+          properties:
+            conditions: '{"metadata.tier": {"$eq": "free"}}'
+        - id: cheap
+          type: model
+          outputs:
+            success:
+              element_id: done
+          properties:
+            model: "@cf/meta/llama-3.1-8b-instruct"
+            provider: workers-ai
+        - id: smart
+          type: model
+          outputs:
+            success:
+              element_id: done
+          properties:
+            model: gpt-4o
+            provider: openai
+        - id: done
+          type: end
+          outputs: {}

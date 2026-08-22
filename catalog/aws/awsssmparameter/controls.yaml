@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsssmparameter
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: Choosing type SecureString stores the value KMS-encrypted at rest; String and StringList values are stored as plain configuration text. The spec's CEL rules force SecureString values through the sensitive secure_value arm so the plaintext also never lands in plans or state.
+      notes: There is no default -- type is required -- so the encryption posture is an explicit authoring decision on every manifest. Anything secret belongs in a SecureString.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: key_id
+      evidence:
+        type: spec_default
+        reference: Unset means SecureString values encrypt under the account's AWS-managed aws/ssm key; referencing an AwsKmsKey switches encryption to a customer-managed key you can rotate and revoke. AWS ignores key_id for String and StringList types.
+      notes: Readers of the parameter then also need kms:Decrypt on the key -- revoking the grant makes the value unreadable, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Parameter Store is reached only through the SSM HTTPS API -- every read and write rides TLS; no plaintext protocol to a parameter exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A parameter exposes no endpoint and has no resource policy granting anonymous access -- every read is an IAM-authorized SigV4 call within the account (cross-account sharing via RAM exists for Advanced parameters but is not part of this component's surface).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a parameter; there is no inbound network surface to restrict. Who may read the value is IAM policy on the parameter ARN, covered by rbac.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a stored configuration value.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- read, write, delete, tag -- is IAM-authorized against the parameter's ARN, and hierarchical names ("/prod/db/url") let policies grant by path prefix, so a team's subtree is one policy statement.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A parameter runs no workload. Applications reading it authenticate as their own IAM principals; the parameter itself holds no credentials for acting on anything.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Parameter Store has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Parameter Store API call -- including GetParameter reads and PutParameter writes -- is recorded by AWS CloudTrail as a management event, so who read or changed the value is captured unconditionally in any account with a trail.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A stored value emits no metrics to alarm on. Parameter create/update/delete changes are published to Amazon EventBridge by AWS's design account-wide; rules reacting to them are authored on EventBridge components, not here.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every overwrite creates a new parameter version and Parameter Store retains the last 100 versions automatically, so a bad write is recoverable by reading a prior version. The manifest itself regenerates the current value on apply.
+      notes: Deleting the parameter deletes its whole version history -- version recovery protects against overwrites, not deletion.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Version retention is fixed by AWS at the last 100 versions with no configurable dial on the parameter. Advanced-tier parameter policies add expiration/notification behaviors, not retention of history.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Parameter Store is a regional managed service AWS operates across availability zones -- a parameter has no zonal footprint to configure and survives zone loss by design.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Parameters carry no deletion-protection flag -- DeleteParameter succeeds for any authorized principal. Guarding deletion is IAM-deny territory on the parameter ARN, outside this manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Parameter Store storage and API; the parameter exposes no runtime, version, or maintenance surface.

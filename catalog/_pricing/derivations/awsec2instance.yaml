@@ -53,17 +53,7 @@ spec:
         - field_path: root_block_device.volume_type
           op: not_equals
           value: gp3
-      reason: the root volume's type is not gp3 (or is inherited from the AMI's mapping), and only the gp3 storage rate is pinned in the price book
-    - when:
-        - field_path: root_block_device.iops
-          op: not_equals
-          value: "0"
-      reason: explicitly provisioned IOPS can exceed the gp3 included 3000 baseline and bill a monthly surcharge of (provisioned minus included) IOPS, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
-    - when:
-        - field_path: root_block_device.throughput_mibps
-          op: not_equals
-          value: "0"
-      reason: explicitly provisioned throughput can exceed the gp3 included 125 MiB/s baseline and bill a monthly surcharge of (provisioned minus included) MiB/s, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+      reason: the root volume's type is not gp3 (or is inherited from the AMI's mapping), and only the gp3 storage and performance rates are pinned in the price book
   lines:
     - sku_meter: instance hours
       applies_when:
@@ -90,6 +80,28 @@ spec:
             field_path: root_block_device.volume_size_gb
       price_slug: ebs-gp3-storage-us-east-1
       basis: the reshaped root volume's size (root_block_device.volume_size_gb) at the gp3 rate, billing from creation full or empty
+    - sku_meter: provisioned IOPS
+      applies_when:
+        - field_path: root_block_device.volume_type
+          op: equals
+          value: gp3
+      quantity:
+        - subtract_baseline:
+            field_path: root_block_device.iops
+            baseline: "3000"
+      price_slug: ebs-gp3-iops-us-east-1
+      basis: gp3 includes a 3,000-IOPS baseline free -- only the excess over it (root_block_device.iops minus 3,000) bills monthly
+    - sku_meter: provisioned throughput
+      applies_when:
+        - field_path: root_block_device.volume_type
+          op: equals
+          value: gp3
+      quantity:
+        - subtract_baseline:
+            field_path: root_block_device.throughput_mibps
+            baseline: "125"
+      price_slug: ebs-gp3-throughput-us-east-1
+      basis: gp3 includes a 125-MiB/s baseline free -- only the excess over it (root_block_device.throughput_mibps minus 125) bills monthly
     - sku_meter: public IPv4 address usage
       applies_when:
         - field_path: associate_public_ip_address

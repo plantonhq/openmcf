@@ -1,0 +1,215 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetes.proto";
+import "catalog/kubernetes/workload_pod.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+/**
+ * **KubernetesPlantonOperatorSpec** installs the Planton operator — the
+ * lifecycle manager that reconciles a `PlantonPlatform` declaration into a
+ * running self-hosted Planton (control plane, console, identity server,
+ * databases, in-cluster runner, secrets manager) — from the official
+ * `planton-operator` Helm chart (OCI, ghcr.io/plantonhq/charts) as a real
+ * Helm release, byte-identical to a hand-installed one.
+ *
+ * This component installs the MANAGER only. Installing the operator alone
+ * deploys NO platform — the operator never auto-creates a PlantonPlatform;
+ * each platform is declared with a KubernetesPlantonPlatform resource,
+ * which the operator reconciles. One operator serves EVERY platform on the
+ * cluster (it watches all namespaces).
+ *
+ * ONE OPERATOR PER CLUSTER: the operator enforces this itself at startup —
+ * it scans for sibling operator Deployments (matched by the chart's
+ * `app.kubernetes.io/name: planton-operator` + `control-plane:
+ * controller-manager` labels) and refuses to start beside one, naming the
+ * remedy in its log. Adding more PLATFORMS to a cluster that already runs
+ * the operator is normal and needs no second operator — declare more
+ * KubernetesPlantonPlatform resources instead. The Helm release name is
+ * fixed to "planton-operator" for the same singleton reason.
+ *
+ * CRD LIFECYCLE IS MODULE-OWNED: the `plantonplatforms.planton.ai` CRD is
+ * applied by the modules from a copy staged at the pinned chart version
+ * (the chart's own CRD install is skipped), and it is KEPT on uninstall —
+ * destroying this resource never cascade-deletes PlantonPlatform
+ * declarations or the platforms behind them. Because the module owns the
+ * CRD, a `chart_version` upgrade also carries the matching CRD update —
+ * unlike a plain `helm upgrade`, which never touches CRDs.
+ *
+ * DESTROY: removing the operator leaves every platform RUNNING but
+ * unmanaged — spec edits stop taking effect until an operator returns
+ * and adopts them. Platform deletion still completes without the
+ * operator (teardown is Kubernetes garbage collection of the
+ * declaration's owner-referenced objects), so the ordering is
+ * operational hygiene, not a hard constraint. The kept CRD is what makes
+ * all of this safe: declarations survive the operator's absence.
+ */
+message KubernetesPlantonOperatorSpec {
+  /**
+   * The namespace to install the operator into ("planton-operator" is the
+   * convention). Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource. This is only the manager's home —
+   * platforms live in their own namespaces.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the release is installed, and deleted with
+   * the resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * The planton-operator chart version to install. Defaults to the version
+   * this catalog release was validated against; pin a different version
+   * only for change control. The chart's appVersion pins the operator
+   * image, and the module's staged CRD copy matches this default — when
+   * pinning a NEWER chart than the default, know that the module still
+   * applies the CRD staged at the default pin (upgrade the catalog to move
+   * both together).
+   */
+  string chart_version = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "chart_version_format"
+      message: "chart version must be an exact semver like \"0.7.1\" — ranges are not reproducible"
+      expression: "this.matches('^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$')"
+    }
+  ];
+
+  /**
+   * Skip applying the module-owned `plantonplatforms.planton.ai` CRD.
+   * Set true only when something else manages the CRD (a GitOps tool, a
+   * pre-existing operator install being adopted). The chart's own CRD
+   * install is always skipped regardless — the module owns the CRD
+   * lifecycle so upgrades and keep-on-uninstall semantics are guaranteed.
+   */
+  bool skip_crds = 4;
+
+  /**
+   * Operator replica count. Chart default: 1. Extra replicas are
+   * leader-elected warm standbys that shorten failover of the OPERATOR
+   * itself — they add no reconciliation throughput.
+   */
+  optional int32 replicas = 5 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Leader election for the operator's controller manager. Chart default:
+   * true. Required whenever replicas > 1; disable only on
+   * single-replica resource-constrained clusters where the lease traffic
+   * matters.
+   */
+  optional bool leader_election = 6 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Operator container resources. Empty = the chart's defaults (requests
+   * 10m/256Mi, limits 500m/512Mi) — comfortable for the reconcile loops of
+   * several platforms; the heavy lifting happens in the platforms' own
+   * workloads, never in the operator.
+   */
+  dev.planton.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * The operator's Kubernetes ServiceAccount. Empty = the chart creates
+   * one named after the release. The operator talks only to the Kubernetes
+   * API — it holds no cloud credentials, so annotations are rarely needed
+   * here (cloud identity for platform workloads is configured on the
+   * KubernetesPlantonPlatform resource instead).
+   */
+  KubernetesPlantonOperatorServiceAccount service_account = 8;
+
+  /**
+   * Extra labels merged into every resource the chart renders — fleet
+   * conventions, cost attribution, policy selectors.
+   */
+  map<string, string> common_labels = 9;
+
+  /**
+   * Annotations added to the operator pod.
+   */
+  map<string, string> pod_annotations = 10;
+
+  /**
+   * Node selector for the operator pod.
+   */
+  map<string, string> node_selector = 11;
+
+  /**
+   * Tolerations for the operator pod.
+   */
+  repeated dev.planton.kubernetes.WorkloadToleration tolerations = 12;
+
+  /**
+   * Names of image-pull secrets (in the installation namespace) for
+   * pulling the operator image from a private mirror.
+   */
+  repeated string image_pull_secrets = 13 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  /**
+   * Override the operator image (registry mirrors, air-gapped clusters).
+   * Empty = the chart default (ghcr.io/plantonhq/planton/operator at the
+   * chart's app version). The mirror must be digest-identical to the
+   * official image — the operator's version must match the CRD schema the
+   * module stages.
+   */
+  KubernetesPlantonOperatorImage image = 14;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (affinity, health-probe port, image pull policy) — never the
+   * substitute for them. `nameOverride`/`fullnameOverride` are
+   * deliberately not honored knobs: renaming the Deployment takes it out
+   * of the operator's own one-per-cluster startup guard's view. Do not
+   * put secrets here.
+   */
+  string helm_values = 15;
+}
+
+/**
+ * The operator's ServiceAccount.
+ */
+message KubernetesPlantonOperatorServiceAccount {
+  /**
+   * Create the ServiceAccount with the release. Chart default: true. Set
+   * false to bring your own (name it below).
+   */
+  optional bool create = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * ServiceAccount name. Empty = derived from the release name.
+   */
+  string name = 2;
+
+  /**
+   * Annotations on the ServiceAccount.
+   */
+  map<string, string> annotations = 3;
+}
+
+/**
+ * Operator image override.
+ */
+message KubernetesPlantonOperatorImage {
+  /**
+   * Image repository (e.g. "my-mirror.example.com/planton/operator").
+   */
+  string repository = 1;
+
+  /**
+   * Image tag. Empty = the chart's app version.
+   */
+  string tag = 2;
+}

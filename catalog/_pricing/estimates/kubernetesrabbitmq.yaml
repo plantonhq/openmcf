@@ -1,0 +1,45 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesrabbitmq
+spec:
+  presets:
+    - preset: 01-dev-single-node
+      capacity_footprint:
+        cpu_requests: 500m
+        memory_requests: 1Gi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 node x (500m CPU / 1Gi memory requests, 1 CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: ephemeral clusters run on emptyDir -- no persistent volume is provisioned, so any disk_size value (including the platform-stamped 10Gi default) reserves nothing
+    - preset: 02-production-quorum
+      capacity_footprint:
+        cpu_requests: "3"
+        memory_requests: 12Gi
+        cpu_limits: "6"
+        memory_limits: 12Gi
+        persistent_storage: 150Gi
+        basis: 3 nodes x (1 CPU / 4Gi memory requests, 2 CPU / 4Gi limits) + 3 x 50Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 03-mqtt-iot-broker
+      capacity_footprint:
+        cpu_requests: 1500m
+        memory_requests: 6Gi
+        cpu_limits: "3"
+        memory_limits: 6Gi
+        persistent_storage: 60Gi
+        basis: 3 nodes x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 3 x 20Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics

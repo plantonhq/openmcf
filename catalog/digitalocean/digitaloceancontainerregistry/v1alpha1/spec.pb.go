@@ -77,24 +77,31 @@ func (DigitalOceanContainerRegistryTier) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean
-// Container Registry (DOCR). It exposes only the essential fields needed for the common 80 % use case.
+// DigitalOceanContainerRegistrySpec defines the configuration for a DigitalOcean Container
+// Registry (DOCR), modeling the provider's full surface: the registry itself plus the optional
+// Docker credentials DigitalOcean can mint for it. A DigitalOcean account can hold exactly ONE
+// container registry, and registry names share a global namespace across all DigitalOcean
+// accounts.
 type DigitalOceanContainerRegistrySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Registry name (must be unique within your DigitalOcean account).
-	// 1-63 characters, lowercase letters, numbers, and hyphens; must start and end with an alphanumeric.
+	// Registry name (globally unique across ALL DigitalOcean accounts, not just yours).
+	// 1-63 characters, lowercase letters, numbers, and hyphens; must start and end with an
+	// alphanumeric. The name is the resource identity and cannot be changed after creation.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Subscription tier slug (defines storage limits and pricing).
+	// Subscription tier slug (defines storage limits and pricing). The tier can be changed
+	// after creation; everything else on the registry is create-only.
 	SubscriptionTier DigitalOceanContainerRegistryTier `protobuf:"varint,2,opt,name=subscription_tier,json=subscriptionTier,proto3,enum=dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTier" json:"subscription_tier,omitempty"`
-	// Required region slug where registry data is stored (e.g., "nyc3", "sfo3").
-	// DigitalOcean container registries are single-region and the region cannot
-	// be changed after creation, so a region must be specified explicitly.
+	// (Optional) Region slug where registry data is stored (e.g. "nyc3", "sfo3").
+	// When omitted, DigitalOcean chooses a region and the chosen slug is reported back.
+	// The region cannot be changed after creation.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,3,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// Enable garbage collection of untagged images.
-	// Default is false (no automatic GC).
-	GarbageCollectionEnabled bool `protobuf:"varint,4,opt,name=garbage_collection_enabled,json=garbageCollectionEnabled,proto3" json:"garbage_collection_enabled,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// (Optional) Docker credentials to mint for this registry. When set, both provisioners
+	// create a credential (a base64-encoded Docker `config.json`) exported through the
+	// `docker_credentials` stack output. When omitted, no credential is created -- the secure
+	// default, since an unconfigured credential would otherwise live for ~50 years.
+	DockerCredentials *DigitalOceanContainerRegistryDockerCredentials `protobuf:"bytes,5,opt,name=docker_credentials,json=dockerCredentials,proto3" json:"docker_credentials,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DigitalOceanContainerRegistrySpec) Reset() {
@@ -148,23 +155,88 @@ func (x *DigitalOceanContainerRegistrySpec) GetRegion() digitalocean.DigitalOcea
 	return digitalocean.DigitalOceanRegion(0)
 }
 
-func (x *DigitalOceanContainerRegistrySpec) GetGarbageCollectionEnabled() bool {
+func (x *DigitalOceanContainerRegistrySpec) GetDockerCredentials() *DigitalOceanContainerRegistryDockerCredentials {
 	if x != nil {
-		return x.GarbageCollectionEnabled
+		return x.DockerCredentials
+	}
+	return nil
+}
+
+// Docker credentials minted for the registry.
+// Neither knob is recoverable from the DigitalOcean API afterwards: the API only ever returns a
+// freshly minted credential, which is why blind import of this surface is impossible at the
+// current provider pin.
+type DigitalOceanContainerRegistryDockerCredentials struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Allow push (write) access. Defaults to false: a read-only pull credential.
+	Write bool `protobuf:"varint,1,opt,name=write,proto3" json:"write,omitempty"`
+	// (Optional) Credential lifetime in seconds. When unset, DigitalOcean uses the API maximum
+	// (1576800000 seconds, roughly 50 years -- effectively non-expiring). Changing the lifetime
+	// re-mints the credential in place.
+	ExpirySeconds *int32 `protobuf:"varint,2,opt,name=expiry_seconds,json=expirySeconds,proto3,oneof" json:"expiry_seconds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanContainerRegistryDockerCredentials) Reset() {
+	*x = DigitalOceanContainerRegistryDockerCredentials{}
+	mi := &file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanContainerRegistryDockerCredentials) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanContainerRegistryDockerCredentials) ProtoMessage() {}
+
+func (x *DigitalOceanContainerRegistryDockerCredentials) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanContainerRegistryDockerCredentials.ProtoReflect.Descriptor instead.
+func (*DigitalOceanContainerRegistryDockerCredentials) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DigitalOceanContainerRegistryDockerCredentials) GetWrite() bool {
+	if x != nil {
+		return x.Write
 	}
 	return false
+}
+
+func (x *DigitalOceanContainerRegistryDockerCredentials) GetExpirySeconds() int32 {
+	if x != nil && x.ExpirySeconds != nil {
+		return *x.ExpirySeconds
+	}
+	return 0
 }
 
 var File_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/digitalocean/digitaloceancontainerregistry/v1alpha1/spec.proto\x12?dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\x8c\x03\n" +
+	"Fcatalog/digitalocean/digitaloceancontainerregistry/v1alpha1/spec.proto\x12?dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\x89\x04\n" +
 	"!DigitalOceanContainerRegistrySpec\x12A\n" +
 	"\x04name\x18\x01 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x01\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x04name\x12\x97\x01\n" +
-	"\x11subscription_tier\x18\x02 \x01(\x0e2b.dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTierB\x06\xbaH\x03\xc8\x01\x01R\x10subscriptionTier\x12L\n" +
-	"\x06region\x18\x03 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12<\n" +
-	"\x1agarbage_collection_enabled\x18\x04 \x01(\bR\x18garbageCollectionEnabled*\x83\x01\n" +
+	"\x11subscription_tier\x18\x02 \x01(\x0e2b.dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTierB\x06\xbaH\x03\xc8\x01\x01R\x10subscriptionTier\x12D\n" +
+	"\x06region\x18\x03 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionR\x06region\x12\x9e\x01\n" +
+	"\x12docker_credentials\x18\x05 \x01(\v2o.dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryDockerCredentialsR\x11dockerCredentialsJ\x04\b\x04\x10\x05R\x1agarbage_collection_enabled\"\x94\x01\n" +
+	".DigitalOceanContainerRegistryDockerCredentials\x12\x14\n" +
+	"\x05write\x18\x01 \x01(\bR\x05write\x129\n" +
+	"\x0eexpiry_seconds\x18\x02 \x01(\x05B\r\xbaH\n" +
+	"\x1a\b\x18\x80\x9e\xf0\xef\x05(\x00H\x00R\rexpirySeconds\x88\x01\x01B\x11\n" +
+	"\x0f_expiry_seconds*\x83\x01\n" +
 	"!DigitalOceanContainerRegistryTier\x124\n" +
 	"0digitalocean_container_registry_tier_unspecified\x10\x00\x12\v\n" +
 	"\astarter\x10\x01\x12\t\n" +
@@ -185,20 +257,22 @@ func file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto
 }
 
 var file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanContainerRegistryTier)(0),    // 0: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTier
-	(*DigitalOceanContainerRegistrySpec)(nil), // 1: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec
-	(digitalocean.DigitalOceanRegion)(0),      // 2: dev.planton.digitalocean.DigitalOceanRegion
+	(DigitalOceanContainerRegistryTier)(0),                 // 0: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTier
+	(*DigitalOceanContainerRegistrySpec)(nil),              // 1: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec
+	(*DigitalOceanContainerRegistryDockerCredentials)(nil), // 2: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryDockerCredentials
+	(digitalocean.DigitalOceanRegion)(0),                   // 3: dev.planton.digitalocean.DigitalOceanRegion
 }
 var file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_depIdxs = []int32{
 	0, // 0: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec.subscription_tier:type_name -> dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryTier
-	2, // 1: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 1: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	2, // 2: dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistrySpec.docker_credentials:type_name -> dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1.DigitalOceanContainerRegistryDockerCredentials
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_init() }
@@ -206,13 +280,14 @@ func file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto
 	if File_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

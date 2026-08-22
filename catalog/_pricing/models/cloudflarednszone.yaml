@@ -1,0 +1,37 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Zero-committed model: every catalog preset omits the
+# subscription block and stays on the free plan, so no preset carries a
+# committed line -- the conditional paid arm (spec.subscription.rate_plan)
+# is named per preset in exclusions instead of being priced into a
+# commitment no preset makes. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: cloudflarednszone
+spec:
+  presets:
+    - preset: 01-basic-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "this preset stays on the account's default free plan (no subscription block) -- DNS hosting, records, resolution, unmetered DDoS protection, and the free managed WAF ruleset are included at $0, and DNS queries carry no charge on any plan"
+        - "setting spec.subscription.rate_plan is the switch to a real paid zone plan billed per domain: pro at $25/mo ($20/mo billed annually), business at $250/mo ($200/mo billed annually), enterprise contract-priced; lite, pro_plus, and the partner identifiers have no published price (https://www.cloudflare.com/plans/, retrieved 2026-08-22)"
+      notes: Zero committed cost is the accurate estimate, not a gap -- the free plan is a real, complete Cloudflare offering for authoritative DNS.
+    - preset: 02-dnssec-signed
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "this preset stays on the account's default free plan (no subscription block); DNSSEC signing carries no charge -- it is included with the zone on every plan"
+        - "setting spec.subscription.rate_plan is the switch to a real paid zone plan billed per domain: pro at $25/mo ($20/mo billed annually), business at $250/mo ($200/mo billed annually), enterprise contract-priced; lite, pro_plus, and the partner identifiers have no published price (https://www.cloudflare.com/plans/, retrieved 2026-08-22)"
+    - preset: 03-typed-records
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "this preset stays on the account's default free plan (no subscription block); its records (proxied A, MX, TXT, SRV) add no charge -- records and queries are free on every plan, and proxied traffic rides the zone plan's included protections"
+        - "setting spec.subscription.rate_plan is the switch to a real paid zone plan billed per domain: pro at $25/mo ($20/mo billed annually), business at $250/mo ($200/mo billed annually), enterprise contract-priced; lite, pro_plus, and the partner identifiers have no published price (https://www.cloudflare.com/plans/, retrieved 2026-08-22)"

@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanapp
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: App Platform
+      sku_meter: container instances
+      pricing_unit: months
+      description: Every service and worker runs always-on container instances billed per second (one-minute minimum) at the size slug's monthly rate -- an app with any non-static component pays for its containers from deploy to destroy.
+  cost_drivers:
+    - field_path: services
+      sku_meter: container instances
+      pricing_unit: months
+      impact: "Each service bills instance_size_slug's monthly rate times its instance count (basic-xxs is 5.00 USD/mo, professional-xs is 12.00 USD/mo per https://docs.digitalocean.com/products/app-platform/details/pricing/, retrieved 2026-08-22; the current apps-s-*/apps-d-* slugs carry their own rates on the same page). With autoscaling set, the committed floor is min_instance_count."
+    - field_path: workers
+      sku_meter: container instances
+      pricing_unit: months
+      impact: "Workers bill exactly like services: size slug rate times instance count, always-on."
+    - field_path: jobs
+      sku_meter: container instances
+      pricing_unit: months
+      impact: "Jobs bill at the size slug's rate ONLY while they run (around deployments) -- near-zero for occasional deploys, but the same per-second rate applies."
+    - field_path: databases
+      sku_meter: development database
+      pricing_unit: months
+      impact: "Each in-app development database bills 7.00 USD/mo per 512 MiB instance (https://docs.digitalocean.com/products/app-platform/details/pricing/, retrieved 2026-08-22); production-cluster attachments bill on their own DigitalOceanDatabaseCluster components."
+    - field_path: egress
+      sku_meter: dedicated egress IP
+      pricing_unit: months
+      impact: "The DEDICATED_IP egress type adds up to 25.00 USD/mo per app (billed per second) for a static, highly available egress address pair."
+    - field_path: static_sites
+      sku_meter: container instances
+      pricing_unit: months
+      impact: "Static sites add nothing to a paid app's bill; an app with ONLY static sites is free (up to three such apps per account, then 3.00 USD/mo per additional static-only app)."
+  free_tier: "Up to 3 apps using only static-site components are free, each with 1 GiB/mo of outbound transfer; static sites inside a paid app cost nothing (https://www.digitalocean.com/pricing/app-platform, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - "outbound transfer beyond the pooled per-instance allowance (40-100 GiB/mo per legacy instance, 50-900 GiB/mo per current instance) bills 0.02 USD/GiB; inbound is free"
+    - "with autoscaling set, instances above min_instance_count up to max_instance_count follow CPU demand"
+    - "job runtime around deployments bills per second at the job's size rate -- unknowable from the manifest"
+    - "functions components bill through DigitalOcean Functions' own request/GB-second meters, not container instances"
+  notes: "Apps bill per second with a one-minute minimum; components bill for the first 28 days of the month after creation (renaming a component restarts that count). The presets pin LEGACY slugs (basic-xxs, professional-xs) whose rates DigitalOcean still publishes but intends to deprecate -- the current apps-s-*/apps-d-* slugs are the forward path. App Platform pricing carries no region dimension -- the region moves placement, not the rate."

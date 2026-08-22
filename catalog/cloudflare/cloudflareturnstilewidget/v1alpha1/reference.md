@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareTurnstileWidgetSpec provisions a Cloudflare Turnstile widget: a
 privacy-preserving CAPTCHA alternative. A widget yields a public site key
 (embedded in the page's frontend) and a secret key (used server-side to call

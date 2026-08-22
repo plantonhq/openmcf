@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurebackupprotectedfileshare
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Recovery points are Azure Files share snapshots inside the source storage account, and Azure Storage encrypts all data -- live shares and their snapshots alike -- at rest unconditionally.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Snapshot data lives in the source storage account, so customer-managed keys are the ACCOUNT's encryption choice on its own component -- the protection binding adds no key surface of its own.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Snapshot creation and restore move data inside Azure Storage's fabric under Microsoft's transport encryption; no customer-configurable transport exists on the protection itself.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The protected item is a registration, not an endpoint -- nothing listens. The share's own reachability is the storage account's network posture on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a WAF to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the protection -- register, change policy, restore, delete data -- is authorized by Azure RBAC on the vault's scope unconditionally (Backup Contributor / Backup Operator / Backup Reader are the purpose-built roles).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The registration holds no credentials and runs no workloads; Azure Backup's service identity drives snapshot management platform-side.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the vault's security settings are the hardening surface, vault-side.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management action -- registration, policy changes, restores, data deletion -- lands in the Azure Activity Log unconditionally, and Azure Backup records every job in the vault's backup jobs history.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup job outcomes and protected-item health surface in Backup center and the vault's monitoring blade with no configuration; vault diagnostic settings can additionally export them to Log Analytics.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS the control -- registering the share under a policy is what makes its backups automated and restorable (full-share or item-level, in place or to another location).
+      notes: The component's purpose-control. Creation only registers -- the first recovery point lands on the policy's next scheduled run. Snapshot-managed recovery points live in the SOURCE account, so they protect against deletion and modification of data, not against losing the account itself -- the vaulted flavor of Azure Files backup is the answer to that threat model, outside this component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention length is the referenced AzureBackupPolicyFileShare's whole job -- schedule and retention live there, and re-pointing backup_policy_id (the spec's only updatable field) updates protection in place.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Resilience of the snapshot data follows the SOURCE storage account's redundancy (LRS/ZRS/GRS) on that component; the registration itself has no zone posture of its own.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Recovery Services vaults ship soft delete enabled by default -- deleted backup data is retained 14 additional days and can be undeleted, a provider-level recycle bin for the protected item.
+      notes: Worth hearing plainly -- destroying this resource stops protection AND deletes the backup data (the modules keep the engines' default); soft delete is the safety net.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Backup is a fully managed service -- Microsoft operates the snapshot-management fabric; no customer-visible patch surface exists on the protection itself.

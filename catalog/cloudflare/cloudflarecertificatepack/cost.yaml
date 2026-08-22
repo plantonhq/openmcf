@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecertificatepack
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Advanced Certificate Manager
+      sku_meter: ACM add-on subscription
+      pricing_unit: subscription-months
+      description: "Every pack this kind can create is an advanced certificate pack (the spec only accepts type \"advanced\"), and \"To order advanced certificates, you must purchase the Advanced Certificate Manager add-on\" -- availability \"Paid add-on\" on Free, Pro, Business, AND Enterprise (https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/, retrieved 2026-08-22). The published price is \"Advanced Certificate Manager ... $10/mo\" (https://www.cloudflare.com/plans/, retrieved 2026-08-22). The add-on activates on a zone (Cloudflare's ACM dashboard is zone-scoped) and is shared by every advanced pack and ACM feature on that zone -- stated assumption, since the plans page publishes the price without spelling out the zone scoping."
+  cost_drivers:
+    - field_path: type
+      sku_meter: ACM add-on subscription
+      impact: "Only \"advanced\" is accepted, so every pack this kind creates presupposes the paid Advanced Certificate Manager add-on -- the committed spend arrives with the object's existence, not with traffic."
+    - field_path: zone_id
+      sku_meter: ACM add-on subscription
+      impact: The add-on is a per-zone subscription -- packs ordered across different zones each presuppose that zone's own ACM purchase; packs on the same zone share one.
+  free_tier: ""
+  estimate_exclusions:
+    - "no per-certificate fee is published -- advanced packs ride the zone's ACM subscription (Cloudflare's ACM page notes Enterprise ACM subscriptions allow up to 100 edge certificates per zone), so the pack itself adds no metered line beyond the add-on"
+    - the ACM subscription is shared by every advanced pack, Total TLS, custom trust stores, and the other ACM features on the zone -- attributing its full fee to one pack overstates the marginal cost of the second
+    - eligible Enterprise customers can preview ACM as a non-contract service, free of metered usage fees -- Enterprise contract terms replace list pricing
+  notes: "The certificate itself (issuance, validation, auto-renewal by google, lets_encrypt, or ssl_com) carries no published charge of its own -- the whole cost story is the zone's ACM add-on, committed the moment an advanced pack must exist. Cloudflare prices the add-on globally (no regional variants). Rates read live 2026-08-22."

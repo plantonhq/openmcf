@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresnippetrules.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareSnippetRulesSpec manages the zone's snippet routing table: the
+// ordered list of expressions deciding which requests invoke which snippet.
+// The zone has exactly ONE such table -- this resource is a zone singleton, and
+// every apply replaces the whole list (Cloudflare's API is a full-replacement
+// PUT). Keep all of a zone's snippet rules in ONE manifest; a second manifest
+// against the same zone would silently overwrite the first's rules on every
+// apply.
+//
+// Destroying this resource deletes ALL snippet rules in the zone -- including
+// any created outside this manifest (dashboard, API). The snippets themselves
+// survive; only the routing table empties.
+//
+// Rules evaluate in list order against Cloudflare's Rules language
+// (https://developers.cloudflare.com/ruleset-engine/rules-language/) -- the same
+// wirefilter expressions rulesets use, e.g.
+// `http.request.uri.path starts_with "/legacy"`.
+message CloudflareSnippetRulesSpec {
+  // The zone whose snippet routing table is managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The zone's snippet rules, evaluated in order. This list is the WHOLE table:
+  // every apply replaces all snippet rules in the zone with exactly this list.
+  repeated CloudflareSnippetRule rules = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareSnippetRule is one row of the zone's snippet routing table.
+message CloudflareSnippetRule {
+  // The match expression in Cloudflare's Rules language (wirefilter), e.g.
+  // `http.request.uri.path starts_with "/api/legacy"`. Validated by Cloudflare
+  // at apply time.
+  string expression = 1 [(buf.validate.field).required = true];
+
+  // The snippet the rule invokes on matching requests.
+  // When using value_from, defaults to CloudflareSnippet kind and
+  // status.outputs.snippet_name field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef snippet_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareSnippet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.snippet_name"
+  ];
+
+  // Optional description shown in the dashboard's rule list.
+  string description = 3;
+
+  // Whether the rule is active. FOOTGUN: Cloudflare defaults this to FALSE -- a
+  // rule that omits enabled is created DISABLED and matches nothing (this
+  // flipped from true in older API generations, and migrated configurations
+  // have been burned by it). This spec defaults it to true so a manifest that
+  // declares a rule gets a rule that runs; set enabled: false explicitly to
+  // stage a rule without activating it.
+  optional bool enabled = 4 [(dev.planton.shared.options.default) = "true"];
+}

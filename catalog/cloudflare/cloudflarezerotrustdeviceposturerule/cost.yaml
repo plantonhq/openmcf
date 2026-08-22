@@ -1,0 +1,14 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustdeviceposturerule
+spec:
+  billing_model: free
+  notes: >-
+    Posture rules create no charge of their own -- device posture is
+    included in every Zero Trust plan (Free covers 50 users). Third-party
+    posture providers (CrowdStrike, Intune, and kin) bill separately on
+    their own contracts.

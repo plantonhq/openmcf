@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasekafkaschema.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseKafkaSchemaSpec models the full
+// digitalocean_database_kafka_schema_registry resource surface: one schema
+// subject registered in a DigitalOcean managed Kafka cluster's schema
+// registry.
+//
+// EVERY field is create-only. There is no update path in the provider:
+// any change -- including evolving the schema definition, even a
+// whitespace-only reformat (the definition is compared verbatim, never
+// normalized) -- destroys the subject and re-registers it, which DROPS all
+// previously registered versions of the subject. Treat schema evolution as
+// a deliberate replacement, never a casual edit.
+message DigitalOceanDatabaseKafkaSchemaSpec {
+  // The Kafka database cluster whose schema registry the subject is
+  // registered in. Use a literal cluster UUID or a reference to a
+  // DigitalOceanDatabaseCluster resource (the cluster must run the kafka
+  // engine). Changing it replaces the subject.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the schema subject. Unique within the cluster's registry; the
+  // subject name IS the API identity. Changing it replaces the subject.
+  string subject_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Schema definition language: avro, json, or protobuf (case-sensitive).
+  // Changing it replaces the subject.
+  string schema_type = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "avro",
+        "json",
+        "protobuf"
+      ]
+    }
+  ];
+
+  // The schema definition itself, in the language schema_type names (e.g.
+  // an Avro record document as JSON). Stored and compared verbatim --
+  // formatting is significant. Changing it replaces the subject and drops
+  // all prior versions.
+  string schema = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecosmosdbsqlcontainer
+spec:
+  azure:
+    groups:
+      - purpose: ManageSqlContainer
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/read
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/write
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/delete
+        provenance: derived
+        notes: "Covers azurerm_cosmosdb_sql_container / cosmosdb.NewSqlContainer -- create with the partition key, indexing policy, TTL, unique keys, and conflict-resolution policy riding the container payload; refresh; in-place updates (indexing policy, TTL); and destroy. Both modules parse the resource group, account, and database names locally from the resolved sql_database_id -- no API call reads the parents -- and Cosmos child operations are long-running, so both providers poll the container until provisioning settles (read persists through creates, updates, and destroys). Typically held via DocumentDB Account Contributor, Contributor, or Owner on the resource group."
+      - purpose: ManageContainerThroughput
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/throughputSettings/read
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/throughputSettings/write
+        provenance: derived
+        notes: "Needed when the spec sets throughput or autoscale_max_throughput: dedicated throughput rides the create payload, but the provider reads the container's throughput settings on every refresh to detect drift and issues throughputSettings/write for in-place throughput changes. A container sharing the database's throughput (both fields unset) has no throughput sub-resource, and these actions go unused."

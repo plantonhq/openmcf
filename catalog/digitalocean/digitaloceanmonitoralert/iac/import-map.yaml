@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanmonitoralert
+spec:
+  # The policy imports by its bare UUID (the resource id; the provider's
+  # own uuid attribute is declared but never populated at the pin).
+  values:
+    - name: alert_id
+      derivations:
+        - from_stack_output: alert_id
+      where_to_find: >-
+        `doctl monitoring alert list` (the UUID column) -- the control
+        panel's Monitoring -> Alerts page shows policies but not their
+        UUIDs.

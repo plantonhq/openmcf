@@ -1,0 +1,16 @@
+package module
+
+const (
+	// OpCertificateId is the exported stack output containing the uploaded
+	// certificate's ID.
+	OpCertificateId = "certificate_id"
+	// OpZoneId is the exported stack output containing the zone the certificate
+	// belongs to.
+	OpZoneId = "zone_id"
+	// OpExpiresOn is the exported stack output containing the certificate's
+	// expiry timestamp (RFC3339).
+	OpExpiresOn = "expires_on"
+	// OpStatus is the exported stack output containing the certificate's
+	// deployment status (deployment is asynchronous).
+	OpStatus = "status"
+)

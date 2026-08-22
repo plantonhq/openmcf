@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanloadbalancer
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` is a regional HTTP balancer with
+  # no VPC (proves the region-default-VPC path) and no Droplets (a
+  # memberless balancer is valid); `full` composes the VPC fixture via the
+  # e2e-prerequisites annotation (the spec's vpc is OPTIONAL, so the
+  # fixture is never a registry edge), tag-based targeting, a firewall,
+  # cookie sticky sessions, full health-check thresholds, PROXY protocol,
+  # backend keepalive, idle-timeout, and size_unit. Deliberately not in
+  # the live lanes: GLOBAL / domains / glb_settings (needs a delegated
+  # domain), HTTPS / redirect_http_to_https / tls_passthrough (need a
+  # certificate -- Let's Encrypt needs a delegated domain), BYOIP `ip`
+  # (needs a BYOIP prefix on the account), and the Pulumi SDK v4.49.0 gap
+  # arms (`subnet_uuid`, `ip` -- Terraform wires them; Pulumi fails
+  # loudly if set). Balancers create in under a minute (the provider
+  # waiter is 10 minutes) and bill ~$12/month prorated hourly, so a full
+  # two-scenario dual-engine sweep costs pennies.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

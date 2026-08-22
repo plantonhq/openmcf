@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarednszone
+spec:
+  # The zone's import identity is the bare Cloudflare-assigned zone id -- the
+  # anchor resource and its zone-singleton satellites (dnssec, hold,
+  # subscription) all import by it. It is discoverable from a prior deploy's
+  # stack outputs and from the dashboard.
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).
+    - name: dns_record_id
+      where_to_find: >-
+        Needed only when importing a zone whose spec carries inline records:
+        each record's Cloudflare-assigned id, from the dashboard (the zone ->
+        DNS -> Records; open the record -- the id is in the URL) or
+        `GET /zones/<zone_id>/dns_records?name=<fqdn>` on the Cloudflare v4
+        API (the id field). The zone's outputs do not carry per-record ids
+        (records are a list; import resolution asks per address).

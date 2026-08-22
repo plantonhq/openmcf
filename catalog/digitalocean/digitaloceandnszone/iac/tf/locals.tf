@@ -1,59 +1,32 @@
-# Local variables for DigitalOcean DNS Zone module
 locals {
-  # Extract domain name from spec
-  domain_name = var.spec.domain_name
-
-  # Process DNS records to flatten for iteration
-  # Each record with multiple values becomes multiple DigitalOcean DNS records
+  # Flatten the spec's records for iteration: a record with multiple values
+  # becomes one DigitalOcean record per value (same name and type). Record
+  # values arrive flattened as plain strings: the Planton orchestrator
+  # resolves valueFrom references before Terraform runs. The spec's shared
+  # enum value names ARE the DigitalOcean record types (A, AAAA, CNAME, ...),
+  # so each record's type wires through directly.
   dns_records = flatten([
     for idx, record in coalesce(var.spec.records, []) : [
       for val_idx, value in record.values : {
-        # Unique identifier for this specific record instance
         key = "${record.name}-${idx}-${val_idx}"
 
-        # Record configuration
-        name        = record.name
-        type        = local.record_type_map[record.type]
-        value       = value.value
-        ttl_seconds = coalesce(record.ttl_seconds, 3600)
+        name  = record.name
+        type  = record.type
+        value = value
 
-        # MX and SRV priority
+        # 0 means unset: the ttl attribute is then Computed and DigitalOcean
+        # applies its default (1800 seconds).
+        ttl = coalesce(record.ttl_seconds, 0) > 0 ? record.ttl_seconds : null
+
+        # Per-type fields carry the spec's presence semantics: unset arrives
+        # as null and is simply not sent. Spec CEL rules already guarantee
+        # the fields each record type requires are present.
         priority = record.priority
-
-        # SRV-specific fields
-        weight = record.weight
-        port   = record.port
-
-        # CAA-specific fields
-        flags = record.flags
-        tag   = record.tag
+        weight   = record.weight
+        port     = record.port
+        flags    = record.flags
+        tag      = record.tag != null && record.tag != "" ? record.tag : null
       }
     ]
   ])
-
-  # Map protobuf enum values to Terraform/DigitalOcean record types
-  record_type_map = {
-    "dns_record_type_unspecified" = "A"           # Default fallback
-    "dns_record_type_a"           = "A"
-    "dns_record_type_aaaa"        = "AAAA"
-    "dns_record_type_cname"       = "CNAME"
-    "dns_record_type_mx"          = "MX"
-    "dns_record_type_txt"         = "TXT"
-    "dns_record_type_srv"         = "SRV"
-    "dns_record_type_caa"         = "CAA"
-    "dns_record_type_ns"          = "NS"
-    "dns_record_type_soa"         = "SOA"
-    "dns_record_type_ptr"         = "PTR"
-  }
-
-  # Metadata labels for tagging/tracking
-  labels = merge(
-    {
-      "managed-by"    = "planton"
-      "resource-kind" = "digitalocean-dns-zone"
-      "resource-name" = var.metadata.name
-    },
-    coalesce(var.metadata.labels, {})
-  )
 }
-

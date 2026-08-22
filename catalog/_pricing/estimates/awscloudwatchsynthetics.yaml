@@ -1,0 +1,42 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awscloudwatchsynthetics
+spec:
+  presets:
+    - preset: 01-heartbeat-canary
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AmazonCloudWatch
+          sku_meter: canary runs
+          pricing_unit: runs
+          pricing_quantity: "8760"
+          quantity_basis: schedule.expression rate(5 minutes) with start_canary true runs the canary 12 times an hour x 730 hours -- every scheduled run bills whether the checkout endpoint answers or not
+          list_unit_price: "0.0012"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "10.5120"
+      total_list_cost: "10.5120"
+      exclusions:
+        - "every run also executes the Synthetics-managed Lambda at the pinned 960 MB (memory_in_mb): Lambda request and GB-second duration charges follow the script's actual runtime per run"
+        - every run writes logs to CloudWatch Logs (ingestion plus storage) and artifacts under canary/checkout in the referenced S3 bucket (PUT requests plus GB-month storage, trimmed by the 7-day success retention)
+        - maxRetries 1 bills one extra run (plus its cascade) after each FAILED run -- failure frequency is the endpoint's behavior, unknowable here
+        - the canary's CloudWatch custom metrics and any alarms watching them bill on their own meters and components
+      notes: The account's first 100 canary runs each month are free (permanent CloudWatch free-tier allowance) -- about 8 hours of this cadence, so the estimate prices the full 8,760 runs. start_canary true commits the meter from apply; stopping the canary is the off switch, and delete_lambda true keeps teardown clean.
+    - preset: 02-canary-fleet-groups
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - canaries that JOIN these groups bill their runs and cascades on their own component instances -- the groups aggregate results, never charges
+      notes: "Genuinely free, not merely zero-committed: Synthetics groups are name-and-tags containers with no meter at AWS, and this instance creates no canary. Synthetics bills per canary run only."

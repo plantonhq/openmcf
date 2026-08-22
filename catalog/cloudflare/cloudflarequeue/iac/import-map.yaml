@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarequeue
+spec:
+  # The queue imports as {account_id}/{queue_id}. The consumer resource ships
+  # no importer at v5.23.0 (see the provider catalog's notes row) -- a blind
+  # round-trip re-asserts it from configuration, so its placeholders are the
+  # same two values. account_id is spec-relative; queue_id is the deploy's
+  # own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: queue_id
+      derivations:
+        - from_stack_output: queue_id
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> Queues -> the queue
+        (the queue ID on the settings pane), or
+        `GET /accounts/<account_id>/queues` on the Cloudflare v4 API (the
+        queue_id field).

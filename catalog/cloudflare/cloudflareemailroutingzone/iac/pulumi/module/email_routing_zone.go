@@ -35,35 +35,50 @@ func emailRoutingZone(
 	}
 
 	if ca := spec.CatchAll; ca != nil {
-		// Map the typed catch-all action onto the provider's generic {type, value[]}.
-		values := pulumi.StringArray{}
-		switch ca.Type {
-		case cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingCatchAllActionType_forward:
-			for _, f := range ca.ForwardTo {
-				values = append(values, pulumi.String(f.GetValue()))
+		// Map each typed catch-all action onto the provider's generic
+		// {type, value[]}: forward -> destination addresses; worker -> the
+		// single script name; drop -> no values.
+		actions := cloudflare.EmailRoutingCatchAllActionArray{}
+		for _, a := range ca.Actions {
+			values := pulumi.StringArray{}
+			switch a.Type {
+			case cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingCatchAllActionType_forward:
+				for _, f := range a.ForwardTo {
+					values = append(values, pulumi.String(f.GetValue()))
+				}
+			case cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingCatchAllActionType_worker:
+				if a.Worker != nil {
+					values = append(values, pulumi.String(a.Worker.GetValue()))
+				}
 			}
-		case cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingCatchAllActionType_worker:
-			if ca.Worker != nil {
-				values = append(values, pulumi.String(ca.Worker.GetValue()))
-			}
+			actions = append(actions, cloudflare.EmailRoutingCatchAllActionArgs{
+				Type:   pulumi.String(a.Type.String()),
+				Values: values,
+			})
 		}
 
+		catchAllArgs := &cloudflare.EmailRoutingCatchAllArgs{
+			ZoneId:  pulumi.String(zoneId),
+			Enabled: pulumi.Bool(ca.Enabled),
+			// "all" is the only matcher type Cloudflare permits on the
+			// catch-all, so the module supplies it.
+			Matchers: cloudflare.EmailRoutingCatchAllMatcherArray{
+				cloudflare.EmailRoutingCatchAllMatcherArgs{Type: pulumi.String("all")},
+			},
+			Actions: actions,
+		}
+		if ca.Name != "" {
+			catchAllArgs.Name = pulumi.String(ca.Name)
+		}
+
+		// NOTE: the provider's Delete for this resource is a genuine no-op (no
+		// API call) -- destroying it drops it from state and the zone keeps its
+		// last catch-all configuration. The zone-level destroy (disabling Email
+		// Routing) is what actually retires the behavior.
 		_, err := cloudflare.NewEmailRoutingCatchAll(
 			ctx,
 			"email-routing-catch-all",
-			&cloudflare.EmailRoutingCatchAllArgs{
-				ZoneId:  pulumi.String(zoneId),
-				Enabled: pulumi.Bool(ca.Enabled),
-				Matchers: cloudflare.EmailRoutingCatchAllMatcherArray{
-					cloudflare.EmailRoutingCatchAllMatcherArgs{Type: pulumi.String("all")},
-				},
-				Actions: cloudflare.EmailRoutingCatchAllActionArray{
-					cloudflare.EmailRoutingCatchAllActionArgs{
-						Type:   pulumi.String(ca.Type.String()),
-						Values: values,
-					},
-				},
-			},
+			catchAllArgs,
 			pulumi.Provider(cloudflareProvider),
 			pulumi.DependsOn([]pulumi.Resource{settings}),
 		)
@@ -73,12 +88,17 @@ func emailRoutingZone(
 	}
 
 	if spec.LockDnsRecords {
+		// dns_name targets a subdomain of the zone; empty routes the apex.
+		dnsArgs := &cloudflare.EmailRoutingDnsArgs{
+			ZoneId: pulumi.String(zoneId),
+		}
+		if spec.DnsName != "" {
+			dnsArgs.Name = pulumi.String(spec.DnsName)
+		}
 		_, err := cloudflare.NewEmailRoutingDns(
 			ctx,
 			"email-routing-dns",
-			&cloudflare.EmailRoutingDnsArgs{
-				ZoneId: pulumi.String(zoneId),
-			},
+			dnsArgs,
 			pulumi.Provider(cloudflareProvider),
 			pulumi.DependsOn([]pulumi.Resource{settings}),
 		)

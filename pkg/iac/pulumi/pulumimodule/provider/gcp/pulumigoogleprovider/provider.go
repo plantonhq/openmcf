@@ -11,8 +11,12 @@
 //     provider inline (external_credentials) together with the workload identity pool provider
 //     audience and the service account to impersonate; the provider plugin performs the STS
 //     exchange + impersonation itself, out of our process.
+//   - access_token set        -> a pre-minted short-lived Google OAuth2 access token (e.g.
+//     issued by a credential broker at deploy time), passed through the typed AccessToken
+//     field. This is the one credential field the SDK's NewProvider auto-secret-wraps itself,
+//     so no explicit pulumi.ToSecret is needed here.
 //   - service_account_key set -> static service-account key JSON (today's mode).
-//   - neither                 -> no credential. The provider falls back to Google's ambient
+//   - none                    -> no credential. The provider falls back to Google's ambient
 //     Application Default Credentials chain (e.g. a self-hosted runner's attached service
 //     account or `gcloud auth application-default`).
 //
@@ -190,6 +194,16 @@ func buildProviderInputs(gcpProviderConfig *gcpprovider.GcpProviderConfig) (*pro
 				"identityToken":       pulumi.ToSecret(pulumi.String(webIdentity.GetWebIdentityToken())),
 				"serviceAccountEmail": pulumi.String(webIdentity.GetServiceAccountEmail()),
 			}},
+		}}, nil
+
+	case gcpProviderConfig.GetAccessToken() != "":
+		// A pre-minted short-lived OAuth2 access token. Like web_identity above, an
+		// explicitly supplied short-lived credential wins over a stale service_account_key.
+		// AccessToken is the one field the SDK's NewProvider auto-secret-wraps (and registers
+		// as an additional secret output), so it is passed plain here -- wrapping it again
+		// would be redundant, not wrong.
+		return &providerInputs{args: &gcp.ProviderArgs{
+			AccessToken: pulumi.String(gcpProviderConfig.GetAccessToken()),
 		}}, nil
 
 	case gcpProviderConfig.GetServiceAccountKey() != "":

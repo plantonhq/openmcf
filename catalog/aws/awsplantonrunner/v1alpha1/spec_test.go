@@ -26,9 +26,9 @@ func int32Ptr(v int32) *int32 { return &v }
 func stringPtr(v string) *string { return &v }
 
 // minimalValidRunner is the common case: a runner placed on two private
-// subnets with its credentials document supplied (in real deployments the
-// credentials arrive as a managed-secret reference; validation sees the
-// resolved document).
+// subnets with its runner token supplied (in real deployments the token
+// arrives as a managed-secret reference; validation sees the resolved
+// value).
 func minimalValidRunner() *AwsPlantonRunner {
 	return &AwsPlantonRunner{
 		ApiVersion: "aws.planton.dev/v1alpha1",
@@ -42,7 +42,7 @@ func minimalValidRunner() *AwsPlantonRunner {
 				literalRef("subnet-0123456789abcdef0"),
 				literalRef("subnet-0fedcba9876543210"),
 			},
-			Credentials: `{"type":"planton_runner","org":"acme","runner":"vpc-runner"}`,
+			Token: "prt_FAKE_PLACEHOLDER_VALUE",
 		},
 	}
 }
@@ -99,16 +99,9 @@ var _ = ginkgo.Describe("AwsPlantonRunnerSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept the dual execution mode", func() {
+			ginkgo.It("should accept a self-hosted control plane endpoint", func() {
 				input := minimalValidRunner()
-				input.Spec.ExecutionMode = stringPtr("dual")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-
-			ginkgo.It("should accept the grpc execution mode", func() {
-				input := minimalValidRunner()
-				input.Spec.ExecutionMode = stringPtr("grpc")
+				input.Spec.ControlPlaneEndpoint = "planton.example.com:443"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -154,9 +147,23 @@ var _ = ginkgo.Describe("AwsPlantonRunnerSpec Validation Tests", func() {
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
 
-			ginkgo.It("should return an error when credentials are missing", func() {
+			ginkgo.It("should return an error when the token is missing", func() {
 				input := minimalValidRunner()
-				input.Spec.Credentials = ""
+				input.Spec.Token = ""
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a control plane endpoint carrying a scheme prefix", func() {
+				input := minimalValidRunner()
+				input.Spec.ControlPlaneEndpoint = "https://planton.example.com:443"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a control plane endpoint without a port", func() {
+				input := minimalValidRunner()
+				input.Spec.ControlPlaneEndpoint = "planton.example.com"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
@@ -196,13 +203,6 @@ var _ = ginkgo.Describe("AwsPlantonRunnerSpec Validation Tests", func() {
 				input := minimalValidRunner()
 				input.Spec.Cpu = int32Ptr(8192)
 				input.Spec.Memory = int32Ptr(18432)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-
-			ginkgo.It("should reject an unknown execution mode", func() {
-				input := minimalValidRunner()
-				input.Spec.ExecutionMode = stringPtr("kubernetes")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

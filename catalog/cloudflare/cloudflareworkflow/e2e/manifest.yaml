@@ -1,0 +1,21 @@
+# Complete example manifest for CloudflareWorkflow. Registers a durable
+# workflow served by the OrderFulfillment class exported from a deployed
+# Worker script, with explicit retention, a step cap, and a nightly cron
+# trigger. The script must be deployed before the workflow registers.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorkflow
+metadata:
+  name: order-fulfillment
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  workflow_name: order-fulfillment
+  class_name: OrderFulfillment
+  script_name:
+    value: order-processor
+  default_retention:
+    error_retention: "7 days"
+    success_retention: "86400000"
+  limits:
+    steps: 512
+  schedules:
+    - cron: "0 3 * * *"

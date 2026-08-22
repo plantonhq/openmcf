@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareworkflow
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: schedules
+      sku_meter: Workers requests and CPU time
+      pricing_unit: instance runs (requests + CPU milliseconds)
+      impact: >-
+        Cron triggers create instances on a cadence -- instance runs consume
+        Workers CPU time and requests, metered on the account's Workers plan
+        (free-tier limits apply; Workers Paid lifts them).
+    - field_path: limits.steps
+      sku_meter: Workers CPU time and storage
+      pricing_unit: steps executed per instance
+      impact: >-
+        Steps bound how much work one instance may do; more steps means more
+        Workers compute and state storage per instance.
+  estimate_exclusions:
+    - Instance volume is traffic- and code-driven -- triggers and the Worker code creating instances decide how many runs happen
+    - Per-instance compute depends on what each step does, not on this manifest
+  notes: >-
+    Registering a workflow costs nothing -- the bill comes from INSTANCE
+    RUNS, which consume Workers requests, CPU time, and storage under the
+    account's Workers plan. Production-scale usage rides Workers Paid
+    ($5/mo) limits.

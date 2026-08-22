@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate quantities: a vault certificate has no holding meter -- Microsoft
+# bills certificate RENEWALS per request (3.00 USD each) and every other
+# certificate operation on the vault's per-10,000-transactions meter -- so
+# an idle certificate bills nothing, and the money follows enrollments,
+# renewals, and the reads consumers make against its faces.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurekeyvaultcertificate
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: certificate_policy.lifetime_actions
+      sku_meter: certificate renewal requests
+      pricing_unit: renewals
+      impact: "AUTO_RENEW turns expiry into a recurring 3.00 USD charge -- every renewal the vault performs bills one Certificate Renewal Request, Microsoft's only certificate meter that is not plain operations. EMAIL_CONTACTS notifies instead of renewing and moves nothing; the renewal that eventually follows (manual or otherwise) is what bills."
+    - field_path: certificate_policy.x509_certificate_properties.validity_in_months
+      sku_meter: certificate renewal requests
+      pricing_unit: renewals
+      impact: "Sets the renewal cadence under AUTO_RENEW: a 12-month certificate renewing at 80% lifetime bills 3.00 USD roughly every 9.6 months, and halving the validity doubles the renewal frequency and its charges."
+    - field_path: certificate_policy.issuer_name
+      sku_meter: certificate renewal requests
+      pricing_unit: renewals
+      impact: "Self and integrated-CA issuers both bill Azure's 3.00 USD per renewal request; an integrated CA (DigiCert, GlobalSign) ADDITIONALLY charges its own certificate fee on the CA's invoice -- Key Vault does not issue or resell public certificates, so the CA's price never appears on the Azure bill."
+    - field_path: certificate_policy.key_properties.key_type
+      sku_meter: HSM-protected key months and advanced key operations
+      impact: "RSA_HSM / EC_HSM put the certificate's private key on Premium-tier HSM hardware, adding the per-key monthly HSM charge (1.00 USD for RSA 2,048-bit; advanced types tier from 5.00 USD down to 0.40 USD) for actively-used keys; EC keys and RSA above 2,048 bits also move that key's cryptographic operations to the 0.15 USD per 10,000 advanced rate."
+  estimate_exclusions:
+    - "certificate renewal requests bill 3.00 USD per renewal -- a separate meter from all other certificate operations, and the only recurring charge an AUTO_RENEW policy commits to, on a cadence (validity times renewal trigger) no monthly estimate can place"
+    - "every other certificate operation -- create, import, policy update, contact management, reads -- bills the parent vault's operations meter at 0.03 USD per 10,000 transactions, with no free grant"
+    - "consumer reads of the certificate's secret and key faces (TLS terminators fetching the bundle, signers using the key) bill the same operations meter; advanced key types (RSA 3,072/4,096-bit, elliptic-curve) bill their operations at 0.15 USD per 10,000"
+    - "HSM-protected key types add per-key monthly charges on the PREMIUM vault tier (1.00 USD RSA 2,048-bit; advanced types tiered 5.00 down to 0.40 USD, actively-used keys only, each version counted) -- none of the committed presets use them"
+    - "an integrated public CA's own certificate fee is billed by the CA (DigiCert, GlobalSign), never by Azure -- absent from every Azure meter by design"
+  notes: "A vault certificate is three linked faces (certificate, key, secret) with no holding charge on any of them -- storing it, versioning it, and letting it expire are all free. The bill is event-driven: 3.00 USD per renewal request, plus ordinary vault operations for everything anyone does to it or reads from it, both landing on the parent AzureKeyVault's meters. The commitment posture of the presets is genuinely zero: 01 self-signed with AUTO_RENEW bills its first 3.00 USD only when the first renewal fires (about 9.6 months in), 02 imported and 03 CA-pending renew manually. Rates are eastus retail, retrieved 2026-08-18 from the Azure Retail Prices API and the Key Vault pricing page."

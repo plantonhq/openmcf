@@ -54,6 +54,9 @@ spec:
       evidence:
         type: spec_default
         reference: superuser.enabled defaults to false -- the postgres superuser password is blanked and every connection runs through the application owner role or declared roles; enabling superuser SQL access is an explicit opt-in.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Instance activity logs stream as JSON to stdout for the cluster's log collector; a provider-style audit trail (pgAudit) is not modeled in this spec. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

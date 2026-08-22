@@ -1,0 +1,112 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetescilium
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.cilium -- created and owned only when spec.create_namespace is true (kube-system installs, the upstream convention, leave it false); get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.cilium -- the cilium-config ConfigMap (the agent's entire configuration), per-component ServiceAccounts, the hubble-peer Service plus hubble-relay/hubble-ui Services when spec.hubble.relay/ui enable them, and the Helm-generated Hubble TLS certificate Secrets. Secrets also cover Helm's own release-state Secret in the installation namespace.
+      - api_groups:
+          - apps
+        resources:
+          - daemonsets
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The cilium agent DaemonSet (one pod per node -- the dataplane itself), the cilium-operator Deployment, and the hubble-relay/hubble-ui Deployments rendered only when spec.hubble.relay / spec.hubble.ui are true.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's ClusterRoles and ClusterRoleBindings for the agent and operator. These are BROAD by design -- the agent watches pods, nodes, endpoints, and services cluster-wide and the operator manages Cilium's own CRDs (which the operator registers at RUNTIME under its own ClusterRole; the runner never applies CRDs itself). The runner must be able to grant everything these roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the installation namespace (the agent and operator config-access Roles).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.prometheus.service_monitor or spec.hubble.metrics_service_monitor is true -- both require the Prometheus operator CRDs on the cluster (the release fails to install without them).
+      - api_groups:
+          - gateway.networking.k8s.io
+        resources:
+          - gatewayclasses
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The "cilium" GatewayClass, rendered only when spec.gateway_api is true (which requires kube_proxy_replacement and the Gateway API CRDs from KubernetesGatewayApiCrds). The chart's Gateway API arm also renders supporting objects in its own namespaces; the chart's full object surface under helm_values overrides is broader than any static list -- the rules here cover the typed spec's rendering.

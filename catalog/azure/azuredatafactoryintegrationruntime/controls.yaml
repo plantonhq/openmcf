@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredatafactoryintegrationruntime
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An integration runtime is a compute engine, not a store -- Spark clusters (azure flavor) and SSIS node VMs are provisioned per run or per started session and hold data transiently; the data being moved rests in the source and sink systems, which own that posture. The one durable store this component can CAUSE is the SSISDB catalog database, created on your Azure SQL server, whose encryption at rest is that server's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No durable data of its own to key (see enc-at-rest); the factory definition store's customer-managed-key lever lives on the AzureDataFactory kind, and SSISDB's on the hosting SQL server's kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The runtime's control channel to Data Factory is Microsoft-operated TLS (the self-hosted agent connects OUTBOUND to Azure's relay), and data-plane transport to each store is decided by the linked services' connections -- neither is a toggle on this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: azure.virtual_network_enabled
+      evidence:
+        type: spec_default
+        reference: On the azure flavor, virtual_network_enabled joins the compute to the factory's managed virtual network so data flows reach stores over managed private endpoints instead of public endpoints (the factory must have the network enabled). The SSIS flavor offers the same posture through vnet_integration / express_vnet_integration (nodes join a subnet you own); the self-hosted flavor lives in YOUR network by construction.
+      notes: Off (the default), the azure flavor's compute reaches data stores over their public endpoints -- private-path execution is a deliberate, per-runtime choice. The runtime itself listens on nothing either way; this control is about the path its OUTBOUND data traffic takes.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The runtime accepts no inbound connections -- Spark clusters and SSIS nodes originate traffic, and the self-hosted agent dials out to Azure's relay endpoints; there is no listener to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Managing the runtime (create, start, stop, delete) is ARM RBAC on the factory -- platform posture, no authorization plane here. One RBAC edge is worth knowing when composing -- SHARING a self-hosted runtime across factories (self_hosted.rbac_authorization) requires the borrowing factory's identity to hold Contributor on the primary runtime's resource ID; the grant itself happens outside this manifest.
+    - control_id: workload-identity
+      status: configurable
+      field_path: azure_ssis.catalog_info.administrator_login
+      evidence:
+        type: spec_default
+        reference: Omitting the SSISDB catalog's administrator_login/administrator_password authenticates the runtime to the catalog server as the factory's MANAGED IDENTITY (grant it access on the SQL server) -- no credential in the manifest; azure_ssis.credential_name goes further, pinning a named user-assigned-identity credential registered on the factory.
+      notes: This is the SSIS flavor's choice; the azure flavor holds no credentials at all (data-plane auth belongs to linked services), and the self-hosted agent authenticates to Azure with the registration's authorization keys, surfaced as sensitive outputs.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: azure_ssis.catalog_info.administrator_password
+      evidence:
+        type: spec_default
+        reference: The weaker path is explicit in the spec -- a SQL administrator login/password for the SSISDB catalog (stored by Azure as a hidden secure string), inline SAS tokens for custom setup scripts, and inline passwords/licenses in express custom setup -- while every one of them has a stronger form alongside it (managed-identity catalog auth, Key-Vault-sourced command keys and component licenses).
+      notes: Deploying a secret-based form is a visible, reviewable manifest choice, never a hidden default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Create/start/stop/delete operations land in the Azure Activity Log automatically; package- and run-level history rides the factory's diagnostic settings and, for SSIS, the SSISDB catalog's own logging -- none of it toggled here.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Runtime health (node status, available memory, CPU) is surfaced through the factory's monitoring surface and metrics -- factory-level diagnostic-settings posture, with no per-runtime export toggle on this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The runtime is stateless, recreatable compute -- the manifest recreates any flavor. The stateful thing it CAUSES, the SSISDB catalog with your deployed packages, lives on your Azure SQL server and is backed up by THAT service's automatic backups (its kind's posture). A recreated self-hosted registration issues NEW authorization keys -- installed agents must re-register.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups of its own to retain (see backup-recovery); SSISDB retention is the hosting SQL server's setting.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: No zone lever exists on any flavor -- azure-flavor Spark placement is Microsoft-managed and per-run; SSIS number_of_nodes is scale-out capacity within Azure's placement, not zone pinning; self-hosted high availability is built by YOU registering multiple agent nodes against one registration.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag; deleting the runtime strands the pipelines and data flows that name it at their next run. Deleting an SSIS runtime does NOT delete the SSISDB database on your SQL server.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both managed flavors run on Microsoft-patched infrastructure -- azure-flavor Spark clusters are provisioned fresh per run, and SSIS node VMs are Azure-managed images (custom setup re-applies on every start, so node state never drifts unpatched).
+      notes: The self-hosted flavor's HOST machines are the deliberate exception -- the OS under the agent is yours to patch (the agent software itself offers Microsoft's auto-update channel). Choosing self_hosted is choosing that responsibility.

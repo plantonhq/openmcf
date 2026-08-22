@@ -1,0 +1,26 @@
+# GitHub OAuth provider scenario: the common social-login shape. The client
+# id/secret are DUMMIES -- Cloudflare validates the config shape at create,
+# not the credentials (no user ever logs in through this provider; the lane
+# never needs them to).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessidentityprovider-github-oauth
+  id: planton-oss-e2e-cloudflarezerotrustaccessidentityprovider-github-oauth
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessidentityprovider
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-github
+  type: github
+  config:
+    clientId: e2e-dummy-client-id
+    clientSecret:
+      value: e2e-dummy-client-secret

@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetescertmanager
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: cert-manager stores its state -- Certificate objects, ACME account keys, issued key material -- in Kubernetes Secrets and custom resources inside etcd; encryption at rest is a property of the cluster's etcd and its provider, owned by the cluster, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd encryption are configured on the cluster's control plane (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every path is TLS by construction -- the admission webhook serves the API server over TLS with a self-managed serving certificate the cainjector keeps injected, the controller talks to the Kubernetes API over its TLS endpoint, and ACME/CA traffic is HTTPS to the issuing authority.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- the webhook and metrics Services are ClusterIP only, reachable solely inside the cluster network; nothing listens on the internet.
+      notes: webhook.host_network moves the webhook onto the node network for control planes that cannot reach pod IPs; it remains cluster-internal.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The only inbound traffic is the Kubernetes API server calling the admission webhook over the cluster network; there is no user-facing ingress surface to restrict. Kubernetes NetworkPolicies (separate resources) can narrow the network path further.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: cert-manager serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates dedicated ServiceAccounts for the controller, webhook, and cainjector, each bound to purpose-scoped ClusterRoles and Roles rendered by the chart itself -- no component runs with broader access than its function needs.
+      notes: Management-plane access (the release and its custom resources) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: workload_identity
+      evidence:
+        type: spec_default
+        reference: Unset means DNS-01 providers authenticate with static credentials stored in issuer Secrets (or token-based providers like Cloudflare); workload_identity annotates the controller ServiceAccount for keyless cloud DNS access -- EKS IRSA, GKE Workload Identity, or AKS Workload Identity -- so DNS-01 challenges reach the cloud DNS API without stored keys.
+      notes: The 02-gke-workload-identity and 03-eks-irsa presets demonstrate the keyless postures; 01-basic carries no cloud identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: cert-manager exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster, and outbound CA traffic uses the ACME protocol's key-signed requests. There is no weaker path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Controller activity streams to stdout for the cluster's log collector (log_level tunes verbosity) and issuance milestones land as Kubernetes Events; administrative changes to cert-manager and its custom resources are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: prometheus.enabled defaults to true -- every component exposes a Prometheus metrics endpoint; prometheus.service_monitor opts into ServiceMonitor-based scrape discovery where the Prometheus operator CRDs exist.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: cert-manager holds no data of its own to back up -- certificates are re-issuable from their authorities, and the objects describing them live in etcd, protected by the cluster's own state backup. crds.keep_on_uninstall (default true) keeps every Certificate and Issuer object through an uninstall.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; extra controller replicas are leader-elected hot standbys that take over on failure, and webhook.replicas scales the admission path the API server depends on. pod_disruption_budget guards each component (minAvailable 1) against voluntary eviction.
+      notes: Spreading replicas across zones is the cluster scheduler's topology behavior; the spec declares counts, not zones.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: crds.keep_on_uninstall defaults to true -- uninstalling the release keeps the CRDs and therefore every Certificate, Issuer, and ClusterIssuer object cluster-wide; destroying that data requires an explicit false.
+      notes: The release itself carries no deletion lock -- what the default protects is the cluster-wide certificate data, the destructive blast radius of this component.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed cert-manager release (default v1.20.3); changing it re-runs the Helm release with the new chart, rolling all three components deliberately through the module.

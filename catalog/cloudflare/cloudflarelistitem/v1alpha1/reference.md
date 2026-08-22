@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareListItemSpec declares a single entry inside a Cloudflare List. The
 entry's shape must match the parent list's kind (an ip/CIDR, an ASN, a
 hostname, or a redirect). Items have independent lifecycles, so a list can be

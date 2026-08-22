@@ -8,10 +8,16 @@ import (
 )
 
 // Resources provisions the runner appliance. The pieces, in dependency
-// order: the credentials secret, the two IAM roles (setup vs runtime --
-// kept separate so neither accumulates the other's permissions), the log
+// order: the token secret, the two IAM roles (setup vs runtime -- kept
+// separate so neither accumulates the other's permissions), the log
 // group, the outbound-only security group, and finally the compute
 // (cluster, task definition, service) that runs the container.
+//
+// ENROLLMENT IS TOKEN-FIRST: the task ships the runner TOKEN (via Secrets
+// Manager), never an identity. The runner joins the control plane on
+// first boot, registers itself, and receives its own individually
+// revocable identity; task replacement re-joins with the same token (its
+// lineage re-admits the runner it originally admitted).
 func Resources(ctx *pulumi.Context, stackInput *awsplantonrunnerv1alpha1.AwsPlantonRunnerStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -23,9 +29,9 @@ func Resources(ctx *pulumi.Context, stackInput *awsplantonrunnerv1alpha1.AwsPlan
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	createdSecret, err := credentialsSecret(ctx, locals, provider)
+	createdSecret, err := tokenSecret(ctx, locals, provider)
 	if err != nil {
-		return errors.Wrap(err, "failed to create credentials secret")
+		return errors.Wrap(err, "failed to create token secret")
 	}
 
 	createdExecutionRole, err := executionRole(ctx, locals, provider, createdSecret)

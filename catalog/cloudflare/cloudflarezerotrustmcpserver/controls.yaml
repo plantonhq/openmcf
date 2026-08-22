@@ -1,0 +1,81 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustmcpserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Upstream credentials (auth_credentials, client_secret) are stored AES-GCM-encrypted at Cloudflare and never returned by any read endpoint.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface -- Cloudflare's key infrastructure holds the credentials.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management traffic is HTTPS; the proxied MCP path terminates TLS at Cloudflare and re-originates HTTPS to the upstream hostname.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A registration is not itself an endpoint -- users reach the server only through an Access-protected portal.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own; the portal carries the Access policy.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Proxied MCP traffic rides Cloudflare's edge with its standard DDoS and TLS posture.
+    - control_id: rbac
+      status: configurable
+      field_path: updated_tools
+      evidence:
+        type: spec_default
+        reference: updated_tools / updated_prompts rows with enabled false remove sharp capabilities from what any user can invoke through Cloudflare.
+      notes: Per-audience control layers on at the portal; the server registration is the floor.
+    - control_id: workload-identity
+      status: configurable
+      field_path: auth_type
+      evidence:
+        type: spec_default
+        reference: auth_type (oauth or bearer with a stored credential) makes Cloudflare authenticate to the upstream on behalf of users -- the upstream credential never reaches clients.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Upstream auth method is the upstream's design; unauthenticated registrations are a deliberate spec choice for network-trusted internal servers.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Registration changes land in the account audit log; proxied MCP invocations are logged by Access AI Controls.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Configuration-only surface, reproducible from the manifest (credentials re-assert from managed secrets).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The proxy layer is Cloudflare's global anycast network; upstream availability is the upstream's concern.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No provider-side deletion guard; a deleted registration is recreated from the manifest (credentials from managed secrets).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

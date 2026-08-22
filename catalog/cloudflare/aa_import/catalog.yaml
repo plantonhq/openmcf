@@ -1,0 +1,720 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: cloudflare
+spec:
+  # Import-ID formats per Cloudflare resource type, as documented by the
+  # upstream terraform-provider-cloudflare (v5 line). The FORMAT lives here
+  # (provider knowledge, shared by every component); which concrete value
+  # fills each {placeholder} lives in the owning component's import-map.yaml.
+  # Correctness is machine-proven by the E2E import round-trip (deploy a
+  # fixture, set state aside, re-import blind, plan must show zero diff) --
+  # never by review alone.
+  #
+  # Cloudflare import IDs follow the API's resource hierarchy: zone-scoped
+  # objects import as "<zone_id>/<id>", account-scoped objects as
+  # "<account_id>/<id>", and the zone itself as "<zone_id>". There is no
+  # scan-side correspondence here (cloud_control_type_name is an AWS-only
+  # concept); account discovery happens through the Cloudflare API itself.
+  resource_types:
+    # --- DNS ------------------------------------------------------------------
+    # The zone and its zone-singleton satellites (dns settings, dnssec, hold,
+    # subscription) all carry the bare zone id as their identity.
+    - terraform_type: cloudflare_zone
+      pulumi_type: cloudflare:index/zone:Zone
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_dns_settings
+      pulumi_type: cloudflare:index/zoneDnsSettings:ZoneDnsSettings
+      id_format: "{zone_id}"
+      notes: >-
+        The v5.23.0 terraform provider ships NO importer for this resource
+        (docs: "This resource does not currently support terraform import";
+        the package has no ImportState). The id_format records the API
+        identity (GET /zones/{zone_id}/dns_settings). A blind round-trip must
+        expect the import step to fail for this address and instead re-assert
+        the settings from configuration -- safe, because the resource is a
+        zone-singleton PUT whose create is idempotent for identical values.
+    - terraform_type: cloudflare_zone_dnssec
+      pulumi_type: cloudflare:index/zoneDnssec:ZoneDnssec
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_hold
+      pulumi_type: cloudflare:index/zoneHold:ZoneHold
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_subscription
+      pulumi_type: cloudflare:index/zoneSubscription:ZoneSubscription
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_dns_record
+      pulumi_type: cloudflare:index/dnsRecord:DnsRecord
+      id_format: "{zone_id}/{dns_record_id}"
+    # --- Workers --------------------------------------------------------------
+    - terraform_type: cloudflare_workers_script
+      pulumi_type: cloudflare:index/workersScript:WorkersScript
+      id_format: "{account_id}/{script_name}"
+    - terraform_type: cloudflare_workers_script_subdomain
+      pulumi_type: cloudflare:index/workersScriptSubdomain:WorkersScriptSubdomain
+      id_format: "{account_id}/{script_name}"
+    - terraform_type: cloudflare_workers_custom_domain
+      pulumi_type: cloudflare:index/workersCustomDomain:WorkersCustomDomain
+      id_format: "{account_id}/{domain_id}"
+    - terraform_type: cloudflare_workers_route
+      pulumi_type: cloudflare:index/workersRoute:WorkersRoute
+      id_format: "{zone_id}/{route_id}"
+    - terraform_type: cloudflare_workers_cron_trigger
+      pulumi_type: cloudflare:index/workersCronTrigger:WorkersCronTrigger
+      id_format: "{account_id}/{script_name}"
+    # --- Load Balancing ---------------------------------------------------------
+    # The load balancer's documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{scope_id}/{lb_id}"); the catalog kind is zone-scoped,
+    # so the zones/ arm is the one recorded here.
+    - terraform_type: cloudflare_load_balancer
+      pulumi_type: cloudflare:index/loadBalancer:LoadBalancer
+      id_format: "zones/{zone_id}/{load_balancer_id}"
+    # --- Email Routing ----------------------------------------------------------
+    # Settings, the managed DNS records, and the catch-all rule are zone
+    # singletons -- their import identity is the bare zone id. Rules are
+    # zone-scoped objects; destination addresses are account-scoped objects.
+    - terraform_type: cloudflare_email_routing_settings
+      pulumi_type: cloudflare:index/emailRoutingSettings:EmailRoutingSettings
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_dns
+      pulumi_type: cloudflare:index/emailRoutingDns:EmailRoutingDns
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_catch_all
+      pulumi_type: cloudflare:index/emailRoutingCatchAll:EmailRoutingCatchAll
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_rule
+      pulumi_type: cloudflare:index/emailRoutingRule:EmailRoutingRule
+      id_format: "{zone_id}/{rule_id}"
+    - terraform_type: cloudflare_email_routing_address
+      pulumi_type: cloudflare:index/emailRoutingAddress:EmailRoutingAddress
+      id_format: "{account_id}/{address_id}"
+    # --- Rulesets -----------------------------------------------------------------
+    # The ruleset's documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{account_id|zone_id}/{ruleset_id}"); the catalog
+    # kind's live scenarios are zone-scoped, so the zones/ arm is the one
+    # recorded here (an account-scoped ruleset imports via the accounts/ arm).
+    - terraform_type: cloudflare_ruleset
+      pulumi_type: cloudflare:index/ruleset:Ruleset
+      id_format: "zones/{zone_id}/{ruleset_id}"
+    # --- Workers KV -------------------------------------------------------------
+    # The namespace is the container; an entry's identity appends its key.
+    # Import IDs are strictly positional slash-delimited segments, so a key
+    # containing "/" cannot be imported -- catalog scenarios keep keys
+    # slash-free.
+    - terraform_type: cloudflare_workers_kv_namespace
+      pulumi_type: cloudflare:index/workersKvNamespace:WorkersKvNamespace
+      id_format: "{account_id}/{namespace_id}"
+    - terraform_type: cloudflare_workers_kv
+      pulumi_type: cloudflare:index/workersKv:WorkersKv
+      id_format: "{account_id}/{namespace_id}/{key_name}"
+    # --- D1 ---------------------------------------------------------------------
+    - terraform_type: cloudflare_d1_database
+      pulumi_type: cloudflare:index/d1Database:D1Database
+      id_format: "{account_id}/{database_id}"
+    # --- Queues -----------------------------------------------------------------
+    - terraform_type: cloudflare_queue
+      pulumi_type: cloudflare:index/queue:Queue
+      id_format: "{account_id}/{queue_id}"
+    - terraform_type: cloudflare_queue_consumer
+      pulumi_type: cloudflare:index/queueConsumer:QueueConsumer
+      id_format: "{account_id}/{queue_id}"
+      notes: >-
+        The v5.23.0 terraform provider ships NO importer for this resource
+        (docs: "This resource does not currently support terraform import";
+        the package has no ImportState). The id_format records the consumer's
+        parent scope; its full API identity is
+        GET /accounts/{account_id}/queues/{queue_id}/consumers/{consumer_id},
+        where consumer_id is server-assigned. A blind round-trip must expect
+        the import step to fail for this address and instead re-assert the
+        consumer from configuration -- safe, because a queue has at most one
+        consumer and re-creating it converges on the same state.
+    # --- R2 ---------------------------------------------------------------------
+    # The bucket's import ID is strictly positional THREE segments: the
+    # provider's parser rejects a two-segment ID, so a default-jurisdiction
+    # bucket imports with the literal "default" as its third segment. The six
+    # bucket-scoped companions (cors, lifecycle, lock, event notifications,
+    # custom and managed domains) ship NO importer at v5.23.0 -- each row
+    # records the API identity and the round-trip expectation instead. All R2
+    # API calls carry the jurisdiction as a cf-r2-jurisdiction HEADER, never a
+    # path segment.
+    - terraform_type: cloudflare_r2_bucket
+      pulumi_type: cloudflare:index/r2Bucket:R2Bucket
+      id_format: "{account_id}/{bucket_name}/{jurisdiction}"
+    - terraform_type: cloudflare_r2_bucket_cors
+      pulumi_type: cloudflare:index/r2BucketCors:R2BucketCors
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0 ("This resource does not currently support
+        terraform import"; no ImportState). The id_format records the API
+        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/cors).
+        A blind round-trip must expect the import step to fail for this
+        address and instead re-assert the CORS policy from configuration --
+        safe, because it is a bucket-singleton PUT whose create is idempotent
+        for identical values.
+    - terraform_type: cloudflare_r2_bucket_lifecycle
+      pulumi_type: cloudflare:index/r2BucketLifecycle:R2BucketLifecycle
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0 ("This resource does not currently support
+        terraform import"; no ImportState). The id_format records the API
+        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lifecycle).
+        A blind round-trip re-asserts the lifecycle policy from configuration
+        -- a bucket-singleton PUT, idempotent for identical values.
+    - terraform_type: cloudflare_r2_bucket_lock
+      pulumi_type: cloudflare:index/r2BucketLock:R2BucketLock
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0 ("This resource does not currently support
+        terraform import"; no ImportState). The id_format records the API
+        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lock).
+        A blind round-trip re-asserts the lock policy from configuration -- a
+        bucket-singleton PUT, idempotent for identical values.
+    - terraform_type: cloudflare_r2_bucket_event_notification
+      pulumi_type: cloudflare:index/r2BucketEventNotification:R2BucketEventNotification
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0 ("This resource does not currently support
+        terraform import"; no ImportState). The id_format records the parent
+        scope; the API identity is
+        GET /accounts/{account_id}/event_notifications/r2/{bucket_name}/configuration/queues/{queue_id}.
+        A blind round-trip re-asserts the notification rules from
+        configuration -- a per-queue PUT, idempotent for identical values.
+    - terraform_type: cloudflare_r2_custom_domain
+      pulumi_type: cloudflare:index/r2CustomDomain:R2CustomDomain
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0 ("This resource does not currently support
+        terraform import"; no ImportState). The id_format records the parent
+        scope; the API identity is
+        GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/custom/{domain}.
+        A blind round-trip re-asserts the custom domain from configuration.
+    - terraform_type: cloudflare_r2_managed_domain
+      pulumi_type: cloudflare:index/r2ManagedDomain:R2ManagedDomain
+      id_format: "{account_id}/{bucket_name}"
+      notes: >-
+        No importer at v5.23.0, and the provider's Read AND Delete for this
+        resource are EMPTY function bodies -- it never refreshes from the API
+        and cannot be destroyed through terraform (the managed r2.dev domain
+        stays in the API until manually disabled). The id_format records the
+        parent scope; the API identity is
+        GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/managed.
+        A blind round-trip re-asserts the toggle from configuration.
+    # --- Hyperdrive -------------------------------------------------------------
+    # The origin password is write-only (the API never returns it), so an
+    # imported config lands with an empty password in state until the
+    # configuration re-asserts it.
+    - terraform_type: cloudflare_hyperdrive_config
+      pulumi_type: cloudflare:index/hyperdriveConfig:HyperdriveConfig
+      id_format: "{account_id}/{hyperdrive_id}"
+    # --- Zero Trust: Access -------------------------------------------------------
+    # Applications and groups are dual-scope: the documented import ID carries a
+    # literal scope prefix ("{accounts|zones}/{account_id|zone_id}/{id}"); the
+    # catalog kinds' live scenarios are account-scoped, so the accounts/ arm is
+    # the one recorded here (a zone-scoped object imports via the zones/ arm).
+    # Standalone policies are account-scoped by API design -- no scope prefix.
+    - terraform_type: cloudflare_zero_trust_access_application
+      pulumi_type: cloudflare:index/zeroTrustAccessApplication:ZeroTrustAccessApplication
+      id_format: "accounts/{account_id}/{application_id}"
+    - terraform_type: cloudflare_zero_trust_access_group
+      pulumi_type: cloudflare:index/zeroTrustAccessGroup:ZeroTrustAccessGroup
+      id_format: "accounts/{account_id}/{group_id}"
+    - terraform_type: cloudflare_zero_trust_access_policy
+      pulumi_type: cloudflare:index/zeroTrustAccessPolicy:ZeroTrustAccessPolicy
+      id_format: "{account_id}/{policy_id}"
+    # Identity providers and service tokens are dual-scope like applications
+    # and groups: the documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{account_id|zone_id}/{id}"). Live scenarios are
+    # account-scoped, so the accounts/ arm is the one recorded here. The
+    # SCIM secret (IdP) and client_secret (service token) never survive
+    # import -- Cloudflare returns them only at create/rotation.
+    - terraform_type: cloudflare_zero_trust_access_identity_provider
+      pulumi_type: cloudflare:index/zeroTrustAccessIdentityProvider:ZeroTrustAccessIdentityProvider
+      id_format: "accounts/{account_id}/{identity_provider_id}"
+    - terraform_type: cloudflare_zero_trust_access_service_token
+      pulumi_type: cloudflare:index/zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken
+      id_format: "accounts/{account_id}/{service_token_id}"
+    # The organization is a singleton upsert: import adopts whatever the
+    # account carries. ACCOUNT SCOPE ONLY -- the provider's importer never
+    # populates zone_id, so a zone-scoped organization cannot be imported
+    # (its docs page claims no import support at all; the code ships an
+    # account-scoped ImportState, exercised by the provider's own tests).
+    # The provider also records an import gap on deny_unmatched_requests
+    # (the API returns false where config carried null) -- re-assert from
+    # configuration after import.
+    - terraform_type: cloudflare_zero_trust_organization
+      pulumi_type: cloudflare:index/zeroTrustOrganization:ZeroTrustOrganization
+      id_format: "{account_id}"
+    # The key-rotation cadence is an account singleton like the org itself.
+    - terraform_type: cloudflare_zero_trust_access_key_configuration
+      pulumi_type: cloudflare:index/zeroTrustAccessKeyConfiguration:ZeroTrustAccessKeyConfiguration
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_access_infrastructure_target
+      pulumi_type: cloudflare:index/zeroTrustAccessInfrastructureTarget:ZeroTrustAccessInfrastructureTarget
+      id_format: "{account_id}/{target_id}"
+    # MCP portals and servers import by their user-chosen ids (slugs).
+    # The server's auth_credentials and client_secret are write-only and
+    # never round-trip; last_synced moves server-side between apply and
+    # import (the provider's own test ignores it on verify).
+    - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_portal
+      pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpPortal:ZeroTrustAccessAiControlsMcpPortal
+      id_format: "{account_id}/{portal_id}"
+    - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_server
+      pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpServer:ZeroTrustAccessAiControlsMcpServer
+      id_format: "{account_id}/{server_id}"
+    # --- Zero Trust: Gateway ------------------------------------------------------
+    # Gateway policies and Zero Trust lists are account-scoped by API design
+    # -- no scope prefix. Policy import is "{account_id}/{rule_id}"; list
+    # import is "{account_id}/{list_id}".
+    - terraform_type: cloudflare_zero_trust_gateway_policy
+      pulumi_type: cloudflare:index/zeroTrustGatewayPolicy:ZeroTrustGatewayPolicy
+      id_format: "{account_id}/{policy_id}"
+    - terraform_type: cloudflare_zero_trust_list
+      pulumi_type: cloudflare:index/zeroTrustList:ZeroTrustList
+      id_format: "{account_id}/{list_id}"
+    # The Gateway configuration and logging surfaces are account singletons
+    # (no-op destroy class): import adopts whatever the account carries as
+    # the bare account id.
+    - terraform_type: cloudflare_zero_trust_gateway_settings
+      pulumi_type: cloudflare:index/zeroTrustGatewaySettings:ZeroTrustGatewaySettings
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_gateway_logging
+      pulumi_type: cloudflare:index/zeroTrustGatewayLogging:ZeroTrustGatewayLogging
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_gateway_pacfile
+      pulumi_type: cloudflare:index/zeroTrustGatewayPacfile:ZeroTrustGatewayPacfile
+      id_format: "{account_id}/{pacfile_id}"
+    - terraform_type: cloudflare_zero_trust_dns_location
+      pulumi_type: cloudflare:index/zeroTrustDnsLocation:ZeroTrustDnsLocation
+      id_format: "{account_id}/{location_id}"
+    # --- Zero Trust: Tunnels ------------------------------------------------------
+    # The tunnel and its remote-ingress config are separate provider resources
+    # sharing ONE identity: the config is a tunnel-singleton, so both import as
+    # "<account_id>/<tunnel_id>". Routes and virtual networks carry their own
+    # server-assigned UUIDs. Tunnels and routes SOFT-DELETE (the API keeps
+    # answering with deleted_at set), so an import target must be an ACTIVE
+    # object -- importing a soft-deleted id converges on a create, not an
+    # adoption.
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflared:ZeroTrustTunnelCloudflared
+      id_format: "{account_id}/{tunnel_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_config
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredConfig:ZeroTrustTunnelCloudflaredConfig
+      id_format: "{account_id}/{tunnel_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_route
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredRoute:ZeroTrustTunnelCloudflaredRoute
+      id_format: "{account_id}/{route_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_virtual_network
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredVirtualNetwork:ZeroTrustTunnelCloudflaredVirtualNetwork
+      id_format: "{account_id}/{virtual_network_id}"
+    # --- Zero Trust: Devices --------------------------------------------------------
+    # The default profile is an account singleton: import adopts whatever the
+    # account carries as the bare account id. The provider's own import tests
+    # ignore exclude/include, fallback_domains, default, gateway_unique_id,
+    # service_mode_v2, and the lan_allow pair on verify -- re-assert those
+    # from configuration after import.
+    - terraform_type: cloudflare_zero_trust_device_default_profile
+      pulumi_type: cloudflare:index/zeroTrustDeviceDefaultProfile:ZeroTrustDeviceDefaultProfile
+      id_format: "{account_id}"
+    # The account-default fallback list is a singleton like the profile it
+    # rides.
+    - terraform_type: cloudflare_zero_trust_device_default_profile_local_domain_fallback
+      pulumi_type: cloudflare:index/zeroTrustDeviceDefaultProfileLocalDomainFallback:ZeroTrustDeviceDefaultProfileLocalDomainFallback
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_device_default_profile_certificates
+      pulumi_type: cloudflare:index/zeroTrustDeviceDefaultProfileCertificates:ZeroTrustDeviceDefaultProfileCertificates
+      id_format: "{zone_id}"
+      notes: >-
+        The v5.23.0 terraform provider ships NO importer for this resource
+        (the package has no ImportState, and its plan modifier warns the
+        resource "cannot be destroyed from Terraform"). The id_format
+        records the API identity (GET /zones/{zone_id}/devices/policy/
+        certificates). A blind round-trip must expect the import step to
+        fail for this address and instead re-assert the toggle from
+        configuration -- the write is an idempotent PUT.
+    # Custom profiles import by their server-assigned policy id; the
+    # provider's own import tests ignore exclude/include on verify --
+    # re-assert split-tunnel routes from configuration after import.
+    - terraform_type: cloudflare_zero_trust_device_custom_profile
+      pulumi_type: cloudflare:index/zeroTrustDeviceCustomProfile:ZeroTrustDeviceCustomProfile
+      id_format: "{account_id}/{policy_id}"
+    - terraform_type: cloudflare_zero_trust_device_custom_profile_local_domain_fallback
+      pulumi_type: cloudflare:index/zeroTrustDeviceCustomProfileLocalDomainFallback:ZeroTrustDeviceCustomProfileLocalDomainFallback
+      id_format: "{account_id}/{policy_id}"
+    - terraform_type: cloudflare_zero_trust_device_posture_rule
+      pulumi_type: cloudflare:index/zeroTrustDevicePostureRule:ZeroTrustDevicePostureRule
+      id_format: "{account_id}/{rule_id}"
+    # --- SSL / SaaS hostnames ---------------------------------------------------
+    # Packs, custom hostnames, and the fallback-origin singleton are zone-scoped.
+    # Import IDs are slash-joined with no "zones/" prefix. Packs are ordered
+    # objects: the provider documents import as supported-but-not-recommended
+    # (replace the certificate instead). Soft-delete statuses
+    # (pending_deletion / deleted) still answer GET, so an import target must
+    # be an ACTIVE object.
+    - terraform_type: cloudflare_certificate_pack
+      pulumi_type: cloudflare:index/certificatePack:CertificatePack
+      id_format: "{zone_id}/{certificate_pack_id}"
+      notes: >-
+        Import is supported (`<zone_id>/<certificate_pack_id>`) but the
+        provider docs advise replacing the certificate entirely instead of
+        adopting an existing pack. Most order fields (hosts, validation
+        method, validity days, CA) do not round-trip through import -- the
+        provider's own acceptance test ignores them. A pack in
+        pending_deletion or deleted still answers GET; importing that id
+        converges on a create, not an adoption.
+    - terraform_type: cloudflare_custom_hostname
+      pulumi_type: cloudflare:index/customHostname:CustomHostname
+      id_format: "{zone_id}/{custom_hostname_id}"
+    - terraform_type: cloudflare_custom_hostname_fallback_origin
+      pulumi_type: cloudflare:index/customHostnameFallbackOrigin:CustomHostnameFallbackOrigin
+      id_format: "{zone_id}"
+      notes: >-
+        The fallback origin is a zone singleton -- its API identity IS the
+        zone (GET /zones/{zone_id}/custom_hostnames/fallback_origin). There
+        is no resource id of its own. Write path is PUT (Create=Update);
+        a token-only credential may 403 the write even when GET succeeds.
+    # --- Lists ------------------------------------------------------------------
+    # The list is the container; items are a separate resource. Never mix
+    # inline `items` on the list with CloudflareListItem -- the provider
+    # treats them as competing writers.
+    - terraform_type: cloudflare_list
+      pulumi_type: cloudflare:index/list:List
+      id_format: "{account_id}/{list_id}"
+    - terraform_type: cloudflare_list_item
+      pulumi_type: cloudflare:index/listItem:ListItem
+      id_format: "{account_id}/{list_id}/{item_id}"
+    # --- Load Balancing: monitor and pool ---------------------------------------
+    # Account-scoped; the zone-scoped load balancer itself is recorded above
+    # under Load Balancing. Requires the Load Balancing add-on.
+    - terraform_type: cloudflare_load_balancer_monitor
+      pulumi_type: cloudflare:index/loadBalancerMonitor:LoadBalancerMonitor
+      id_format: "{account_id}/{monitor_id}"
+      notes: >-
+        port and consecutive_up / consecutive_down may differ after import
+        when the spec left them at the "use Cloudflare default" zero -- the
+        API returns the server default, the configuration still sends null.
+    - terraform_type: cloudflare_load_balancer_pool
+      pulumi_type: cloudflare:index/loadBalancerPool:LoadBalancerPool
+      id_format: "{account_id}/{pool_id}"
+    # --- Origin CA --------------------------------------------------------------
+    # Account-unscoped: the certificate's identity is the bare certificate_id
+    # (GET /certificates/{id}). csr is write-only (never returned); 
+    # requested_validity is not returned after creation. The generated-key
+    # convenience path also declares hashicorp/tls helpers (below).
+    - terraform_type: cloudflare_origin_ca_certificate
+      pulumi_type: cloudflare:index/originCaCertificate:OriginCaCertificate
+      id_format: "{certificate_id}"
+      config_only_attributes: [csr]
+      write_normalized_attributes: [requested_validity]
+      notes: >-
+        csr is write-only -- the API never returns it. requested_validity is
+        not returned after creation. Both are ignored by the provider's own
+        import verification. Revoke is not delete: a just-revoked certificate
+        may still answer GET for a window.
+    - terraform_type: tls_private_key
+      pulumi_type: tls:index/privateKey:PrivateKey
+      id_format: "{private_key_pem}"
+      notes: >-
+        Module plumbing for CloudflareOriginCaCertificate's generated-key
+        path (hashicorp/tls). The import ID is the PEM itself, recoverable
+        from the stack's private_key output. Count is 0 when the spec
+        supplies a CSR, so this address is absent on that arm.
+    - terraform_type: tls_cert_request
+      pulumi_type: tls:index/certRequest:CertRequest
+      id_format: "{private_key_pem}"
+      notes: >-
+        The hashicorp/tls provider ships NO importer for tls_cert_request.
+        Recreating the CSR from the same key+hostnames yields a different
+        PEM, and csr is ForceNew on cloudflare_origin_ca_certificate, so a
+        generated-key blind round-trip must expect the import step to fail
+        for this address -- it is module plumbing, not a cloud identity.
+        The id_format reuses the private-key placeholder so the component
+        map does not invent a non-derivable CSR value.
+    # --- Pages ------------------------------------------------------------------
+    # The project identity is its name (not a server-assigned id). Custom
+    # domains are a companion resource keyed by hostname. Secret env vars
+    # inside deployment_configs do not survive import -- the API never
+    # returns secret_text values.
+    - terraform_type: cloudflare_pages_project
+      pulumi_type: cloudflare:index/pagesProject:PagesProject
+      id_format: "{account_id}/{project_name}"
+      notes: >-
+        Secret environment variables in deployment_configs (secret_text
+        env_vars) do not round-trip -- the API never returns the value, so
+        a post-import plan shows a secret diff until configuration
+        re-asserts it. The provider also normalizes several
+        deployment_configs / build_config / domains attributes on write.
+    - terraform_type: cloudflare_pages_domain
+      pulumi_type: cloudflare:index/pagesDomain:PagesDomain
+      id_format: "{account_id}/{project_name}/{domain_name}"
+    # --- Turnstile --------------------------------------------------------------
+    # The sitekey is the API identity (not a separate id). The secret is a
+    # sensitive output and is returned on read, so it does round-trip.
+    - terraform_type: cloudflare_turnstile_widget
+      pulumi_type: cloudflare:index/turnstileWidget:TurnstileWidget
+      id_format: "{account_id}/{sitekey}"
+    # --- Zone settings ------------------------------------------------------------
+    # The zone-settings family: one fan-out resource (per setting id) plus
+    # four zone-scoped companions. All import against the zone identity;
+    # zone_setting and origin_cloud_region add their own key segment.
+    - terraform_type: cloudflare_zone_setting
+      pulumi_type: cloudflare:index/zoneSetting:ZoneSetting
+      id_format: "{zone_id}/{setting_id}"
+      notes: >-
+        One provider instance per setting id -- import each managed setting
+        individually. Delete is a NO-OP at v5.23.0 (the provider's own plans
+        warn the resource cannot be destroyed), so an imported setting is
+        owned from the first apply and abandoned, never removed, on destroy.
+    - terraform_type: cloudflare_managed_transforms
+      pulumi_type: cloudflare:index/managedTransforms:ManagedTransforms
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_url_normalization_settings
+      pulumi_type: cloudflare:index/urlNormalizationSettings:UrlNormalizationSettings
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_origin_cloud_region
+      pulumi_type: cloudflare:index/originCloudRegion:OriginCloudRegion
+      id_format: "{zone_id}/{origin_ip}"
+      notes: >-
+        The origin IP is the row's API identity (the provider sets the
+        resource id to origin_ip, and its import test verifies against
+        origin_ip rather than id).
+    - terraform_type: cloudflare_waiting_room_settings
+      pulumi_type: cloudflare:index/waitingRoomSettings:WaitingRoomSettings
+      id_format: "{zone_id}"
+    # --- Cache settings -----------------------------------------------------------
+    # Six zone singletons; every one imports as the bare zone id.
+    - terraform_type: cloudflare_tiered_cache
+      pulumi_type: cloudflare:index/tieredCache:TieredCache
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_argo_tiered_caching
+      pulumi_type: cloudflare:index/argoTieredCaching:ArgoTieredCaching
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_cache_reserve
+      pulumi_type: cloudflare:index/zoneCacheReserve:ZoneCacheReserve
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_regional_tiered_cache
+      pulumi_type: cloudflare:index/regionalTieredCache:RegionalTieredCache
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_argo_smart_routing
+      pulumi_type: cloudflare:index/argoSmartRouting:ArgoSmartRouting
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_cache_variants
+      pulumi_type: cloudflare:index/zoneCacheVariants:ZoneCacheVariants
+      id_format: "{zone_id}"
+    # --- Zone TLS settings ----------------------------------------------------------
+    # Four zone singletons plus the per-(setting, hostname) override fan-out
+    # and the CA hostname associations (dual format).
+    - terraform_type: cloudflare_universal_ssl_setting
+      pulumi_type: cloudflare:index/universalSslSetting:UniversalSslSetting
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_total_tls
+      pulumi_type: cloudflare:index/totalTls:TotalTls
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_auto_origin_tls_kex
+      pulumi_type: cloudflare:index/zoneAutoOriginTlsKex:ZoneAutoOriginTlsKex
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_origin_tls_compliance_modes
+      pulumi_type: cloudflare:index/originTlsComplianceModes:OriginTlsComplianceModes
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_hostname_tls_setting
+      pulumi_type: cloudflare:index/hostnameTlsSetting:HostnameTlsSetting
+      id_format: "{zone_id}/{setting_id}"
+      notes: >-
+        The provider's ImportState is DEFECTIVE at v5.23.0: it parses only
+        zone_id/setting_id and never restores the Required hostname (and its
+        Read consults the zone-wide list endpoint through a single-object
+        envelope). A blind round-trip must expect the post-import plan to
+        replace the resource; re-assert the overrides from configuration
+        instead -- safe, because the per-hostname write is idempotent for
+        identical values.
+    - terraform_type: cloudflare_certificate_authorities_hostname_associations
+      pulumi_type: cloudflare:index/certificateAuthoritiesHostnameAssociations:CertificateAuthoritiesHostnameAssociations
+      id_format: "{zone_id}/{mtls_certificate_id}"
+      notes: >-
+        Dual format in the provider's hand-written ImportState: the bare
+        "{zone_id}" imports the managed-CA association list (the docs
+        document only this form), while "{zone_id}/{mtls_certificate_id}"
+        imports an mTLS certificate's own hostname list. Use the form
+        matching the row being adopted.
+    # --- TLS uploads + Authenticated Origin Pulls -----------------------------------
+    # Certificate uploads never round-trip their key material: the API never
+    # returns certificate or private_key, so every blind import re-asserts
+    # them from configuration.
+    - terraform_type: cloudflare_custom_ssl
+      pulumi_type: cloudflare:index/customSsl:CustomSsl
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only (never returned by the
+        API) -- the round-trip re-asserts them from configuration. status is
+        asynchronous (pending before active) and never round-trips cleanly.
+    - terraform_type: cloudflare_mtls_certificate
+      pulumi_type: cloudflare:index/mtlsCertificate:MtlsCertificate
+      id_format: "{account_id}/{certificate_id}"
+      notes: >-
+        private_key is write-only (never returned by the API); CA uploads
+        carry no key at all. Every argument is create-only, so a post-import
+        value change plans a replace, never an update.
+    - terraform_type: cloudflare_authenticated_origin_pulls
+      pulumi_type: cloudflare:index/authenticatedOriginPulls:AuthenticatedOriginPulls
+      id_format: "{zone_id}/{hostname}"
+      notes: >-
+        The config list never survives import (no_refresh) even though it is
+        Required -- re-assert the association row from configuration; the
+        write is idempotent for identical values.
+    - terraform_type: cloudflare_authenticated_origin_pulls_settings
+      pulumi_type: cloudflare:index/authenticatedOriginPullsSettings:AuthenticatedOriginPullsSettings
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_authenticated_origin_pulls_certificate
+      pulumi_type: cloudflare:index/authenticatedOriginPullsCertificate:AuthenticatedOriginPullsCertificate
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only -- the round-trip
+        re-asserts them from configuration. Deletion is asynchronous
+        (pending_deletion/deleted statuses answer 200 before the record
+        goes).
+    - terraform_type: cloudflare_authenticated_origin_pulls_hostname_certificate
+      pulumi_type: cloudflare:index/authenticatedOriginPullsHostnameCertificate:AuthenticatedOriginPullsHostnameCertificate
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only -- the round-trip
+        re-asserts them from configuration. Deletion is asynchronous
+        (pending_deletion/deleted statuses answer 200 before the record
+        goes).
+    # --- Zone security ------------------------------------------------------------
+    # Access rules are dual-scope: the documented import ID carries a literal
+    # "accounts/" or "zones/" prefix. Live scenarios are account-scoped.
+    - terraform_type: cloudflare_access_rule
+      pulumi_type: cloudflare:index/accessRule:AccessRule
+      id_format: "accounts/{account_id}/{rule_id}"
+    - terraform_type: cloudflare_bot_management
+      pulumi_type: cloudflare:index/botManagement:BotManagement
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_snippet
+      pulumi_type: cloudflare:index/snippet:Snippet
+      id_format: "{zone_id}/{snippet_name}"
+    - terraform_type: cloudflare_snippet_rules
+      pulumi_type: cloudflare:index/snippetRules:SnippetRules
+      id_format: "{zone_id}"
+      notes: >-
+        Import populates only zone_id. The provider's Read discards the
+        response body (rules carry a no_refresh tag), so a blind
+        round-trip must re-assert the rule list from configuration --
+        safe, because the write is a full-replacement PUT.
+    # --- Health -------------------------------------------------------------------
+    - terraform_type: cloudflare_healthcheck
+      pulumi_type: cloudflare:index/healthcheck:Healthcheck
+      id_format: "{zone_id}/{healthcheck_id}"
+    # --- Waiting room -------------------------------------------------------------
+    - terraform_type: cloudflare_waiting_room
+      pulumi_type: cloudflare:index/waitingRoom:WaitingRoom
+      id_format: "{zone_id}/{waiting_room_id}"
+    - terraform_type: cloudflare_waiting_room_rules
+      pulumi_type: cloudflare:index/waitingRoomRules:WaitingRoomRules
+      id_format: "{zone_id}/{waiting_room_id}"
+      notes: >-
+        Import never populates the vestigial top-level id. Re-assert the
+        bypass-rule list from configuration -- the write is a
+        full-replacement PUT of the room's entire rule set.
+    - terraform_type: cloudflare_waiting_room_event
+      pulumi_type: cloudflare:index/waitingRoomEvent:WaitingRoomEvent
+      id_format: "{zone_id}/{waiting_room_id}/{event_id}"
+    # --- Workers platform: Workflows and Secrets Store ------------------------------
+    - terraform_type: cloudflare_workflow
+      pulumi_type: cloudflare:index/workflow:Workflow
+      id_format: "{account_id}/{workflow_name}"
+      notes: >-
+        Identity is the workflow NAME, not a UUID. The API answers GET for
+        deleted workflows with a numeric is_deleted marker instead of a 404,
+        and create is a PUT -- importing an existing name and re-applying is
+        always an adopt, never a conflict.
+    - terraform_type: cloudflare_secrets_store
+      pulumi_type: cloudflare:index/secretsStore:SecretsStore
+      id_format: "{account_id}/{store_id}"
+      notes: >-
+        Every argument is create-only (the provider's Update is an empty
+        stub), and Cloudflare allows one store per account -- import is how
+        an existing (e.g. dashboard-created) store is adopted instead of
+        failing the create.
+    - terraform_type: cloudflare_secrets_store_secret
+      pulumi_type: cloudflare:index/secretsStoreSecret:SecretsStoreSecret
+      id_format: "{account_id}/{store_id}/{secret_id}"
+      notes: >-
+        value is write-only (never returned by the API) -- the round-trip
+        lands with an empty value and must re-assert it from configuration.
+    # --- AI ---------------------------------------------------------------------
+    - terraform_type: cloudflare_ai_gateway
+      pulumi_type: cloudflare:index/aiGateway:AiGateway
+      id_format: "{account_id}/{gateway_id}"
+      notes: >-
+        The gateway id is the user-chosen URL slug (the resource's own id
+        argument), not a server-generated UUID.
+    - terraform_type: cloudflare_ai_gateway_dynamic_routing
+      pulumi_type: cloudflare:index/aiGatewayDynamicRouting:AiGatewayDynamicRouting
+      id_format: "{account_id}/{gateway_id}/{route_id}"
+      notes: >-
+        The elements list forces replacement on any change, so a post-import
+        graph edit plans a replace, never an update -- renaming the route is
+        the only in-place change.
+    # --- Logs -------------------------------------------------------------------
+    # Logpush jobs are dual-scope: the import id carries the scope
+    # discriminator, so an account job imports as
+    # accounts/<account_id>/<job_id> and a zone job as
+    # zones/<zone_id>/<job_id>.
+    - terraform_type: cloudflare_logpush_job
+      pulumi_type: cloudflare:index/logpushJob:LogpushJob
+      id_format: "{scope_prefix}/{scope_id}/{job_id}"
+      notes: >-
+        ownership_challenge is write-only (never returned by the API) and must
+        be re-asserted from configuration after import. kind cannot be changed
+        on an existing job -- Cloudflare rejects the update with HTTP 400 even
+        though the provider plans it in place -- and a legacy job may read
+        back kind "instant-logs", which the provider normalizes to "".
+    - terraform_type: cloudflare_logpush_ownership_challenge
+      pulumi_type: cloudflare:index/logpushOwnershipChallenge:LogpushOwnershipChallenge
+      not_importable_upstream_reason: >-
+        The provider ships no ImportState for the challenge, and its Read and
+        Delete are both empty -- the resource records a one-shot POST that
+        Cloudflare keeps forever. Its own plan warning says it "cannot be
+        destroyed from Terraform" and destroying it only drops it from state.
+    # --- Notifications ----------------------------------------------------------
+    - terraform_type: cloudflare_notification_policy
+      pulumi_type: cloudflare:index/notificationPolicy:NotificationPolicy
+      id_format: "{account_id}/{policy_id}"
+      notes: >-
+        Everything round-trips (no write-only fields), but the provider ships
+        no import acceptance test for this resource -- unlike its webhooks
+        sibling -- so verify the imported filters tree against configuration
+        before trusting a clean plan.
+    - terraform_type: cloudflare_notification_policy_webhooks
+      pulumi_type: cloudflare:index/notificationPolicyWebhooks:NotificationPolicyWebhooks
+      id_format: "{account_id}/{webhook_id}"
+      notes: >-
+        secret never round-trips ("Secrets are not returned in any API
+        response body") and must be re-asserted from configuration. The
+        provider's own import tests additionally ignore created_at and type on
+        verify; type is a server-inferred echo of the URL, never configured.
+    # --- Analytics --------------------------------------------------------------
+    - terraform_type: cloudflare_web_analytics_site
+      pulumi_type: cloudflare:index/webAnalyticsSite:WebAnalyticsSite
+      id_format: "{account_id}/{site_tag}"
+      notes: >-
+        The import id uses the site TAG (the resource's real key; its id
+        attribute is a copy). Four attributes -- enabled, host, lite, zone_tag
+        -- are never read back from the API, so an imported site carries them
+        only from configuration; the provider hand-backfills zone_tag from the
+        computed ruleset during import.
+    - terraform_type: cloudflare_web_analytics_rule
+      pulumi_type: cloudflare:index/webAnalyticsRule:WebAnalyticsRule
+      not_importable_upstream_reason: >-
+        The provider ships no ImportState, and its Read is an empty stub, so
+        rules are write-only from IaC's perspective -- an adopted site
+        re-asserts its declared rules on the next apply.
+    # --- Accounts, IAM & organization ------------------------------------------
+    - terraform_type: cloudflare_account_token
+      pulumi_type: cloudflare:index/accountToken:AccountToken
+      id_format: "{account_id}/{token_id}"
+      notes: >-
+        The token VALUE is never re-fetchable (returned only by the original
+        create), so an imported token has no usable credential in state -- if
+        the value was lost, rotate the token rather than importing it. The
+        provider's own import tests also ignore policies, because Cloudflare
+        returns them in canonical order rather than the order applied.

@@ -1,0 +1,51 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# SEPARATE CREDENTIAL -- R2 bundle fetch: when spec.r2_bundle is set, BOTH
+# modules read the pre-built script bundle through R2's S3-compatible API
+# (the Terraform module's aws_s3_object data source against the account's
+# r2.cloudflarestorage.com endpoint; the Pulumi module's s3.GetObject via an
+# aws provider configured the same way). That path authenticates with an R2
+# access key ID and secret (S3 credentials minted from an R2 API token at
+# the account), NOT with the Cloudflare API token above. The runner needs
+# read access to the bundle bucket through that credential.
+#
+# HONEST UNKNOWN: custom-domain attachment (PUT /accounts/{account_id}/workers/domains)
+# connects a hostname in a Cloudflare zone -- whether Cloudflare additionally
+# requires a zone-scoped permission (e.g. DNS Write on the target zone) for
+# that call is not stated on the permissions reference page; the live capture
+# lane should settle it.
+#
+# The component README and catalog.md carried no named permission prose to
+# migrate.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareworker
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageScript
+        name: Workers Scripts Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Upload/update/delete the script (with its bindings, secrets, assets manifest, observability settings, and migrations) via PUT/DELETE /accounts/{account_id}/workers/scripts/{script_name}, manage workers.dev exposure via the script's subdomain endpoint, manage cron triggers via PUT .../workers/scripts/{script_name}/schedules, and attach custom domains via PUT /accounts/{account_id}/workers/domains (derived from the modules' API surface). Covers the Terraform module's cloudflare_workers_script, cloudflare_workers_script_subdomain, cloudflare_workers_custom_domain, cloudflare_workers_route, and cloudflare_workers_cron_trigger resources, mirrored by the Pulumi module. Binding targets (KV, D1, R2, Queues, other Workers) are referenced by id/name resolved from other components' outputs -- the modules never call those services' APIs. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the page lists each group in two naming variants -- "...Edit" and "...Write" -- both verbatim on the page; the Write form is used here).
+      - purpose: ReadScript
+        name: Workers Scripts Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the script and its settings via GET on the same paths (derived from the modules' API surface).
+      - purpose: ManageRoutes
+        name: Workers Routes Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Only needed when the spec declares routes. Zone-scoped on every zone named in routes[]; create/delete pattern routes via POST/DELETE /zones/{zone_id}/workers/routes[/{route_id}] (derived from the modules' API surface).
+      - purpose: ReadRoutes
+        name: Workers Routes Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Only needed when the spec declares routes. Refresh/import routes via GET on the same path (derived from the modules' API surface).

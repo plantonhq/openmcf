@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesstatefulset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The workload's data rests on the PersistentVolumes the target cluster's storage class provisions from volume_claim_templates; encryption at rest is a property of that storage (cloud-managed disks typically encrypt by default), owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The workload serves whatever protocol the application implements -- the spec models no TLS seam. Transport encryption is the application's own responsibility, a service mesh's, or the composed exposure kind's.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render only the headless governing Service (kubernetes_service_v1, cluster_ip hardcoded to "None"), so replicas are reachable solely inside the cluster network by their stable DNS names. External exposure is composed through first-class ingress kinds referencing the exported Service handle -- this module creates no exposure infrastructure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The workload creates no ingress path to restrict -- pods sit behind a headless in-cluster Service. Network-source restriction is owned by Kubernetes NetworkPolicies (the KubernetesNamespace kind's network isolation) and by the exposure kinds composed in front.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No edge exists on this component -- external traffic only reaches it through separately composed exposure kinds, where request filtering would attach.
+    - control_id: rbac
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset runs pods as the namespace's default ServiceAccount, which carries no Kubernetes API permissions; setting it binds pods to a dedicated identity whose permissions are granted declaratively through KubernetesRbac resources. The module itself never creates ServiceAccounts or RBAC objects, so identity and permissions stay auditable resources in the graph.
+      notes: Management-plane access (the StatefulSet object itself) is governed by the target cluster's Kubernetes RBAC. The 03-hardened-database preset references a dedicated KubernetesServiceAccount.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset means pods hold no cloud identity; referencing a KubernetesServiceAccount resource attaches an identity whose own workload_identity configuration federates to cloud APIs (EKS IRSA, GKE Workload Identity, AKS Workload Identity) without static credentials.
+      notes: The workload-identity binding lives on the referenced KubernetesServiceAccount resource, not in this spec. pod.automount_service_account_token=false additionally hardens pods that never call the Kubernetes API, as the 03-hardened-database preset demonstrates.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec models no authentication protocol -- how clients authenticate to the application is the application's own concern.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the StatefulSet and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. The application's own logs stream to stdout for the cluster's log collector; no separate audit trail is modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: pod.annotations
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; prometheus.io scrape annotations stamped on the pod template are the conventional discovery seam for cluster Prometheus stacks. The application must serve the metrics endpoint itself -- the module wires no exporter. Metrics-exporter sidecars are the other common pattern (container.sidecars).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The spec models no backup mechanism. Backing up the application's state is the application's own tooling (dumps, replication) or a volume-snapshot solution outside this spec; pvc_retention_policy's Retain default protects the volumes from workload deletion but is not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so no retention applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: availability.replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (no redundancy); running 3 or more replicas with pod.scheduling anti-affinity or topology spread constraints places members on distinct nodes or zones, and availability.pod_disruption_budget holds the quorum floor through voluntary disruptions.
+      notes: The 02-ha-quorum-cluster preset runs 3 replicas with required node anti-affinity and a PDB holding 2 available so a drain can never break quorum.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on StatefulSets; protection is operational (namespace RBAC, change review). pvc_retention_policy.when_deleted defaults to Retain, so the DATA survives workload deletion and re-creating the StatefulSet with the same name re-adopts it -- data protection, not deletion protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The workload runs exactly the image the manifest pins -- there is no managed patch channel. Patch cadence is the image owner's build pipeline (the deploy-target contract injects fresh artifacts at spec.container.app.image), with rollout safety governed by update_strategy (reverse-ordinal rolling updates, partition canaries, or operator-driven OnDelete).

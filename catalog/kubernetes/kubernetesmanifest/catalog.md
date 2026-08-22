@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Kubernetes Cluster
 
-- **Appropriate RBAC permissions** for the resource types in your manifest. Cluster-scoped resources (CRDs, ClusterRoles) require cluster-admin access. Namespace-scoped resources require permissions in the target namespace.
+- **Appropriate RBAC permissions** for the resource types in your manifest -- see `iac/permissions.yaml` for the full permission statement.
 - **CRDs pre-installed** if your manifest references custom resources. The manifest component does not handle CRD installation ordering across separate Cloud Resources.
 
 ## Deploy

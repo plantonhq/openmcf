@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaremtlscertificate.v1alpha1;
+
+// CloudflareMtlsCertificateStackOutputs captures the observable outputs after
+// uploading an mTLS certificate.
+message CloudflareMtlsCertificateStackOutputs {
+  // The ID of the uploaded certificate -- what Authenticated Origin Pulls
+  // rows, zone TLS CA associations, and Workers mTLS bindings reference.
+  string certificate_id = 1;
+
+  // When the certificate expires (RFC3339).
+  string expires_on = 2;
+
+  // The certificate's serial number.
+  string serial_number = 3;
+}

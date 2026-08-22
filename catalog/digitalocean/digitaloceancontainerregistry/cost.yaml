@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceancontainerregistry
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Container Registry
+      sku_meter: registry subscription
+      pricing_unit: months
+      description: A paid tier bills its flat monthly subscription from creation to deletion, whether or not a single image is pushed -- the tier is the bill.
+  cost_drivers:
+    - field_path: subscription_tier
+      sku_meter: registry subscription
+      pricing_unit: months
+      impact: "The whole committed bill: starter is free (1 repository, 500 MiB), basic is 5.00 USD/mo (5 repositories, 5 GiB included), professional is 20.00 USD/mo (unlimited repositories, 100 GiB included) -- https://www.digitalocean.com/pricing/container-registry, retrieved 2026-08-22. The tier is the only mutable field on the registry."
+  free_tier: "The starter tier is free forever: 1 repository and 500 MiB of storage, with no overage option (https://www.digitalocean.com/pricing/container-registry, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - "storage beyond the paid tier's included allowance (5 GiB basic, 100 GiB professional) bills 0.02 USD/GiB/mo -- image storage follows push/garbage-collection behavior no manifest can predict"
+    - "docker credentials (the docker_credentials block) are free -- read/write scope and expiry change nothing on the bill"
+  notes: "An account holds exactly ONE registry, so this subscription exists at most once per account. Container Registry pricing carries no region dimension -- the optional region field moves where image data is stored, not the rate. Deleting the registry ends the subscription; downgrading tiers requires fitting within the lower tier's storage allowance."

@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesrabbitmq
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Queues, quorum-queue Raft logs, and the metadata store rest on the PersistentVolumes the target cluster's storage class provisions; encryption at rest is a property of that storage, owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Empty serves plaintext in-cluster; tls.secret_name enables the TLS listeners from an existing kubernetes.io/tls Secret (the cert-manager seam) -- AMQPS moves to 5671 and the management UI to 15671. ca_secret_name adds mutual TLS (client certificates required).
+      notes: The plain listeners stay open alongside TLS unless tls.disable_non_tls_listeners closes them (see no-legacy-auth). The Vault backend can alternatively issue the server certificate through a PKI engine (secret_backend.vault.pki_issuer_path).
+    - control_id: no-public-access
+      status: enforced_by_default
+      field_path: service.type
+      evidence:
+        type: spec_default
+        reference: The client Service defaults to ClusterIP (the operator default) -- in-cluster access only. External exposure is a deliberate act of setting load_balancer or node_port, or composing first-class exposure kinds over the exported endpoints; no ingress resources are created here.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may connect; when service.type is load_balancer, source restriction lives in the cloud LB's own controls (via service.annotations) or Kubernetes NetworkPolicies composed as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A message broker serves no HTTP edge traffic of its own -- the management UI is exposed only through composed exposure kinds, where request filtering lives.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The operator generates the administrator credentials itself and delivers them in the <name>-default-user Secret -- they never pass through this spec, so no credential lands in a manifest or state file. Further users, vhosts, and per-vhost permissions are RabbitMQ's own access-control system, managed through the broker (a data operation).
+      notes: Setting default_user/default_pass lines in configuration.additional_config would override the generated credentials and put the password in plaintext on the CR -- the spec documentation warns against it.
+    - control_id: workload-identity
+      status: configurable
+      field_path: secret_backend
+      evidence:
+        type: spec_default
+        reference: Empty delivers credentials through the operator-generated Kubernetes Secret. The vault arm authenticates the cluster pods to HashiCorp Vault through a Kubernetes-auth role -- credentials are read (and rotated by the updater sidecar) from a Vault path instead of resting in a static Secret.
+      notes: The external_secret_name arm composes with external-secrets-operator flows that materialize credentials from a cloud secret manager.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: tls.disable_non_tls_listeners
+      evidence:
+        type: spec_default
+        reference: With TLS enabled, the plaintext listeners (AMQP 5672, management 15672, and the plain ports of any enabled plugin) stay open by default; disable_non_tls_listeners closes every one of them, so only TLS-enabled clients can connect.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The management UI signs users in against RabbitMQ's internal user store, and password policy or stronger factors on those accounts are broker configuration inside the product -- this spec models the listener surface (see no-legacy-auth), not credential strength.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- broker logs stream to stdout for the cluster's log collector. Changes to the RabbitmqCluster resource itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The rabbitmq_prometheus plugin is one of the always-on essentials the operator enables on every node (alongside rabbitmq_management and rabbitmq_peer_discovery_k8s) -- the Prometheus metrics endpoint is present on every cluster without any spec field.
+      notes: Scrape configuration (a PodMonitor or annotations) composes at the observability layer; this component guarantees the endpoint exists.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No automated backup is modeled -- RabbitMQ backups (definitions export, blue-green migration) are data-plane operations outside deployment configuration. Volume snapshots are the cluster's storage-class concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No automated backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: 1 by default (dev only -- no redundancy); an ODD count (3, 5, 7) lets quorum queues and the Raft-based metadata store survive node loss. spread_across_nodes adds REQUIRED pod anti-affinity so no two brokers share a Kubernetes node -- co-located brokers make quorum queues pointless against node loss.
+      notes: The anti-affinity spreads across hostnames; zone-level topology constraints are not typed. Queues must additionally be declared as quorum queues (a data operation) to replicate.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the operator offers a deletion-protection flag on the RabbitmqCluster resource; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: image
+      evidence:
+        type: spec_default
+        reference: Empty runs the operator's default image (rabbitmq:4.2.6-management at the pinned operator release); upgrading is a deliberate act of changing the image, which the operator rolls through the cluster with its post-deploy queue rebalancing.
+      notes: auto_enable_all_feature_flags keeps the cluster upgrade-ready by enabling stable feature flags automatically after upgrades. The image must be a -management variant -- the operator's generated configuration expects the management plugin.

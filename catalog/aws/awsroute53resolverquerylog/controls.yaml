@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53resolverquerylog
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The configuration stores nothing itself -- delivered query logs rest in the referenced destination, whose encryption posture is that component's. An S3 destination supports every S3 server-side encryption option per the Route 53 developer guide; a log group destination inherits CloudWatch Logs encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Key choice lives on the destination component, not here. One documented coupling: an S3 destination under SSE-KMS needs the customer managed key's policy to grant the log-delivery account write use -- the referenced bucket and key components own that contract."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Route 53 Resolver management API is HTTPS-only, and log delivery to CloudWatch Logs, S3, and Firehose rides AWS's internal service channels through the vended log-delivery service; no plaintext path to or from the pipeline exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration exposes no endpoint -- it is control-plane plumbing that writes into a referenced destination. Whether the delivered logs are reachable is the destination component's posture (bucket public-access block, log-group resource policy), decided there.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a query logging configuration; there is no inbound network surface to restrict. Access to the delivered logs is IAM and resource-policy territory on the destination components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a log-delivery pipeline.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, delete, associate, disassociate -- is IAM-authorized on the resolver-query-log-config ARN, and cross-account use of a configuration happens only through an explicit AWS RAM share (the share_status output reports it); no anonymous or implicit path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no user workload. Delivery rides AWS's vended log-delivery service principal (delivery.logs.amazonaws.com), authorized by resource policies on the destination -- service plumbing fixed by AWS's design, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Resolver API has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit dial -- this component's OUTPUT is itself the DNS audit stream (every unique resolver query from associated VPCs, with source instance, name, type, and response). Operations on the configuration land in AWS CloudTrail as account-level posture, not per-config settings.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: destination_arn
+      evidence:
+        type: spec_default
+        reference: "The destination decides observability: a CloudWatch log group puts queries where Logs Insights, metric filters, and alarms run in near-real-time; an S3 bucket is an after-the-fact archive with typically higher latency; a Firehose stream feeds OpenSearch or Redshift for continuous analytics -- the Route 53 developer guide draws exactly this triage."
+      notes: The same guide's throughput warning belongs in the choice -- high-QPS workloads should log to S3, because CloudWatch destinations can throttle at the PutLogEvents limit while S3 delivery does not.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The configuration stores nothing itself -- delivered logs live in the referenced destination, whose durability posture is that component's. Name and destination are immutable (ForceNew), so replacement recreates the config while existing log data survives in the destination; history was never the config's to lose.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The configuration has no retention field by design -- delivered logs persist per the destination's own dials (log-group retention_in_days, bucket lifecycle rules). Retention policy lives on those components.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Capture happens inside Route 53 Resolver, a regional managed service AWS operates across availability zones -- the configuration has no zonal footprint to place, and delivered logs inherit the destination's own durability model.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag. Deleting the configuration (or disassociating a VPC) stops future capture; already-delivered logs stay in the destination untouched.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the resolver capture and log-delivery pipeline; the configuration exposes no runtime, version, or maintenance surface.

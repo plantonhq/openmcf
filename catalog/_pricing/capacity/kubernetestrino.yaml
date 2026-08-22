@@ -1,0 +1,49 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesTrino manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetestrino.yaml; a server-side estimator can evaluate
+# the same rules against live manifests. Trino runs two pod classes --
+# the singleton coordinator and the worker fleet; it is diskless by
+# design (no volumes -- it queries data where it lives), so the footprint
+# is purely compute reservations.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetestrino
+spec:
+  workloads:
+    - label: coordinator
+      resources_path: coordinator.resources
+      instances:
+        constant: "1"
+    - label: worker
+      resources_path: workers.resources
+      instances:
+        field_value:
+          field_path: workers.replicas
+          default_when_unset: "2"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: workers.hpa
+          op: is_set
+      text: the worker HPA owns the worker count at runtime up to its declared max -- the replicas field is ignored while the arm is set, so the footprint states the declared (or default) replicas
+    - applies_when:
+        - field_path: workers.keda
+          op: is_set
+      text: KEDA owns the worker count at runtime and can scale to zero between queries -- the replicas field is ignored while the arm is set, so the footprint states the declared (or default) replicas
+    - applies_when:
+        - field_path: metrics.enabled
+          op: equals
+          value: "true"
+      text: the Prometheus JMX exporter sidecar rides EVERY Trino pod at chart-default sizing -- the spec models no resources for it
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override any modeled value, including resources and replica counts -- this footprint states the typed spec's declaration
+    - text: fault-tolerant exchange spooling writes to external storage (object stores or local paths) and the catalog data sources are separate components -- neither rides this footprint
+  notes:
+    - text: Trino is diskless by design -- it provisions no volumes and queries data where it lives, so the footprint is purely compute reservations
+    - text: workers.replicas 0 with coordinator.include_in_scheduling gives the single-node shape -- the worker binding then contributes nothing and the coordinator carries all execution

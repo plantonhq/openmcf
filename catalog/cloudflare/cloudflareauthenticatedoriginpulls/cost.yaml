@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareauthenticatedoriginpulls
+spec:
+  billing_model: free
+  notes: Authenticated Origin Pulls is free on every plan -- the zone toggle and hostname associations create no charge. The uploaded client certificates the associations reference carry their own (also free) profile.

@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakermodelregistry
+spec:
+  aws:
+    statements:
+      - sid: ManageModelPackageGroup
+        actions:
+          - sagemaker:CreateModelPackageGroup
+          - sagemaker:DescribeModelPackageGroup
+          - sagemaker:DeleteModelPackageGroup
+        resources:
+          - arn:aws:sagemaker:*:*:model-package-group/*
+        provenance: derived
+        notes: Covers aws_sagemaker_model_package_group / sagemaker.ModelPackageGroup. DescribeModelPackageGroup serves every plan/refresh. There is no update API for the group -- even a description edit is ForceNew upstream, so Delete and Create both fire on routine edits. All three actions take resource-level scoping on the model-package-group ARN format per the service reference.
+      - sid: ManageGroupResourcePolicy
+        actions:
+          - sagemaker:PutModelPackageGroupPolicy
+          - sagemaker:GetModelPackageGroupPolicy
+          - sagemaker:DeleteModelPackageGroupPolicy
+        resources:
+          - arn:aws:sagemaker:*:*:model-package-group/*
+        provenance: derived
+        notes: Covers aws_sagemaker_model_package_group_policy -- rendered exactly when spec.resource_policy is set. Put is an idempotent upsert (in-place policy updates), Get runs on every refresh of the policy resource, and Delete fires when the policy leaves the spec or the component is destroyed. All three scope to the model-package-group ARN per the service reference.
+      - sid: TagModelPackageGroup
+        actions:
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:model-package-group/*
+        provenance: derived
+        notes: Tags are the group's ONLY mutable surface, so AddTags carries tag-on-create and every later tag reconciliation; ListTags reads on every refresh. The service reference scopes the tagging trio to dozens of SageMaker resource formats; the model-package-group format is the only one this component touches.

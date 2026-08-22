@@ -1,0 +1,38 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanBucket manifest's spec values into metered quantities and
+# price choices. Spaces is a hybrid: the committed half is the flat 5.00
+# USD/mo Spaces subscription (250 GiB storage, 1 TiB outbound transfer,
+# and up to 100 buckets included), and the usage half -- storage and
+# transfer past those allowances -- follows object volume no manifest can
+# predict, so it rides the exclusions. The subscription is ACCOUNT-level:
+# the honest reading of a per-bucket estimate is "this bucket needs the
+# subscription to exist", stated in the basis, because an account already
+# running Spaces adds the bucket for free. No spec field changes the
+# committed price -- ACLs, versioning, CORS, policy, logging, and
+# lifecycle rules are all free configuration -- so the derivation is one
+# unconditional line. Spaces pricing carries no region dimension, so the
+# entry is pinned "global". The estimate generator replays the catalog
+# presets through these rules to emit ../estimates/digitaloceanbucket.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceanbucket
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  lines:
+    - sku_meter: Spaces subscription
+      quantity:
+        - constant: "1"
+      price_slug: do-spaces-subscription-monthly
+      basis: "the flat monthly Spaces subscription this bucket requires -- account-level, covering up to 100 buckets with shared 250 GiB storage and 1 TiB transfer allowances, so an account already subscribed adds this bucket at no new committed cost"
+  exclusions:
+    - text: "storage beyond the subscription's included 250 GiB bills 0.02 USD/GiB/mo, following object volume; versioning keeps noncurrent versions as billable storage"
+    - text: "outbound transfer beyond the included 1 TiB bills 0.01 USD/GiB; inbound is free"
+    - text: "cold storage bills 0.007 USD/GiB/mo on its own meter, selected per object outside this spec"
+  notes:
+    - text: "Priced at DigitalOcean's global Spaces rate -- the pricing page carries no region dimension. ACL, versioning, lifecycle rules, CORS, policy, and access logging are all free configuration; the subscription is the entire committed bill."

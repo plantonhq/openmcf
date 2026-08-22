@@ -1,0 +1,29 @@
+# Offline-plan arm: a SAML provider with the full SAML surface (attributes,
+# header attributes, signing, public certs). Offline because a live SAML
+# provider adds no lifecycle coverage beyond the OAuth arm (same create/read/
+# destroy path, different config fields) while the shape -- the widest config
+# family -- still deserves a plan proof.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: test-idp-saml
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: corp-saml
+  type: saml
+  config:
+    issuer_url: https://idp.example.com/entity
+    sso_target_url: https://idp.example.com/sso
+    email_attribute_name: email
+    attributes:
+      - groups
+      - department
+    header_attributes:
+      - attribute_name: groups
+        header_name: X-Idp-Groups
+    idp_public_certs:
+      - |
+        -----BEGIN CERTIFICATE-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3VS5JJcds3xfn/ygWy
+        -----END CERTIFICATE-----
+    sign_request: true

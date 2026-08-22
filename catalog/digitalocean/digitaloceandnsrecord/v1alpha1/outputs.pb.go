@@ -21,22 +21,25 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanDnsRecordStackOutputs captures the outputs after provisioning a DigitalOcean DNS record.
-// It includes the record's unique identifier and hostname for reference.
+// DigitalOceanDnsRecordStackOutputs captures the outputs after provisioning a
+// DigitalOcean DNS record.
 type DigitalOceanDnsRecordStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unique identifier of the created DNS record in DigitalOcean.
-	// This ID is assigned by DigitalOcean and can be used for API operations.
+	// The unique identifier of the created DNS record. DigitalOcean assigns a
+	// NUMERIC id (exported here as its string form); together with the domain
+	// it addresses the record in the API and in imports
+	// ("{domain},{record_id}").
 	RecordId string `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
-	// The fully qualified hostname of the DNS record.
-	// For example: "www.example.com" or "example.com" for root domain records.
+	// The fully-qualified hostname of the record (the provider's computed
+	// fqdn), e.g. "www.example.com", or "example.com" for apex records.
 	Hostname string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// The DNS record type that was created.
-	// One of: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA.
+	// One of: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, SOA.
 	RecordType string `protobuf:"bytes,3,opt,name=record_type,json=recordType,proto3" json:"record_type,omitempty"`
-	// The domain name (DNS zone) where the record was created.
+	// The domain name (DNS zone) the record was created in.
 	Domain string `protobuf:"bytes,4,opt,name=domain,proto3" json:"domain,omitempty"`
-	// The TTL (time to live) in seconds that was applied to the record.
+	// The TTL (time to live) in seconds applied to the record. When the spec
+	// left ttl_seconds unset, this carries the API's applied default.
 	TtlSeconds    int32 `protobuf:"varint,5,opt,name=ttl_seconds,json=ttlSeconds,proto3" json:"ttl_seconds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

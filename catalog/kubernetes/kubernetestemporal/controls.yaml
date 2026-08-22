@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetestemporal
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The component stores nothing at rest -- it provisions no volumes; every workflow's state and search index live in the database you bring (a separate component whose encryption posture governs), and archival destinations carry their own bucket encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data rests here to key (see enc-at-rest) -- customer-managed keys belong to the database and archival-bucket components.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: database.postgres.tls
+      evidence:
+        type: spec_default
+        reference: Unset means a plaintext database connection (the in-cluster co-location default); tls.enabled with host_verification encrypts and verifies it for managed databases over untrusted networks. The mysql and cassandra arms carry the identical tls block.
+      notes: Client-facing mTLS on the frontend gRPC endpoint rides helm_values (server.config.tls plus certificate volume mounts) -- the typed fields cover the database leg.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The frontend (gRPC 7233) and Web UI (HTTP 8080) Services are ClusterIP with NO service-type seam in this spec -- nothing is internet-reachable until exposure is composed explicitly via first-class kinds over the exported handles.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The modules render no NetworkPolicies and the spec has no seam for them -- restricting which sources may reach the frontend and UI Services is the cluster's NetworkPolicy posture (a KubernetesNetworkPolicy composes naturally).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component terminates no edge traffic -- exposure happens through separate kinds and a web application firewall belongs to that layer.
+    - control_id: rbac
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: Unset means no authorization -- anyone who can reach the frontend can act on every Temporal namespace (the upstream default); JWT authorization rides helm_values (server.config.authorization), and internal_frontend_enabled is the REQUIRED typed companion so Temporal's own system workers bypass the JWT gate.
+      notes: Temporal namespaces isolate workloads logically but are not an authentication boundary without authorization enabled -- keep the frontend unexposed (the default) until it is.
+    - control_id: workload-identity
+      status: configurable
+      field_path: archival
+      evidence:
+        type: spec_default
+        reference: The s3 and gcs archival providers authenticate with the pods' AMBIENT identity (IRSA / GCP Workload Identity via ServiceAccount annotations through helm_values) -- the spec deliberately models no key seam, so nothing credential-bearing ever renders.
+      notes: Database credentials are Secret-native by construction -- the chart wires a secretKeyRef and strips the Helm-side keys before writing the server config.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The server exposes no legacy password or static-key authentication mode to disable -- client access control is JWT authorization (see rbac), and database passwords ride existing Secrets as secretKeyRefs, never rendered values. The chart's own inline-password Secret is never created because existingSecret is always set.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The Web UI ships with no sign-in of its own (the upstream default) -- OIDC/SSO for the UI and JWT authorization for the frontend are server and chart configuration riding helm_values, so no end-user credential-strength surface exists in this spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: A provider-style audit trail is not modeled in this spec -- server activity streams to stdout for the cluster's log collector (log_level tunes verbosity), workflow histories are themselves a durable execution record, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false -- pods still carry prometheus.io scrape annotations for annotation-based collection; true renders a ServiceMonitor per server service for the Prometheus Operator (a KubernetesKubePrometheusStack composes naturally).
+      notes: The 02-production preset enables it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: archival
+      evidence:
+        type: spec_default
+        reference: Empty means archival disabled (the upstream default) -- closed workflow histories are DELETED at namespace retention; an s3/gcs provider with history_uri and visibility_uri preserves them to durable object storage with read access enabled.
+      notes: The primary store's backup posture rides the database component (e.g. KubernetesPostgres backups) -- archival protects closed histories beyond retention, not the live database.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: temporal_namespaces
+      evidence:
+        type: spec_default
+        reference: Each declared Temporal namespace carries retention (default "3d") -- how long closed workflow histories stay queryable in the database before deletion; archival, when configured, keeps them beyond it.
+      notes: The 02-production preset sets 7d retention on its namespace explicitly. Archival-bucket lifecycle rules ride the bucket's own component.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: services
+      evidence:
+        type: spec_default
+        reference: Empty means one replica of each of the four server services; all four scale horizontally -- history redistributes shard ownership across its replicas -- and the Web UI scales via web_ui.replicas.
+      notes: The 02-production preset runs 2/3/2/2 across frontend/history/matching/worker plus 2 UI replicas. Zone spread is the cluster scheduler's topology behavior -- this spec models node_selector and tolerations, not anti-affinity. True HA also needs an HA database.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Helm offers a deletion-protection flag on a release; protection is operational (namespace RBAC, change review). Deleting the resource removes the release -- the database, holding every workflow's state, is a separate resource and survives.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Defaults to "1.6.0" (which ships Temporal 1.31.2) -- version changes are deliberate manifest edits, rolled as atomic Helm upgrades (wait, atomic, cleanup_on_fail) with the schema-upgrade Jobs running inside the same budget.
+      notes: The images block overrides repositories/tags for air-gapped mirrors without changing the deployed version contract.

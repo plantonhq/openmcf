@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awss3directorybucket
+spec:
+  presets:
+    - preset: 01-ml-scratch
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - S3 Express One Zone storage bills per GB-month from the first byte of training scratch data -- the manifest pins an empty availability-zone bucket (use1-az4), so nothing meters until the workload writes
+        - PUT, COPY, POST, LIST, and RenameObject requests bill per 1,000, GET and other reads per 1,000, plus this class's per-GB data-upload and data-retrieval charges -- all proportional to training I/O the manifest cannot see
+        - force_destroy teardown is meter-free -- DELETE and CANCEL requests are free on the S3 pricing page, and deleting the data ends the storage meter
+      notes: Zero committed cost -- the zero is commitment-absence on an empty bucket, not a free tier; the Express One Zone class has no permanent free allotment, and every meter starts with the first object the training job writes.
+    - preset: 02-local-zone-edge
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - S3 Express One Zone storage bills per GB-month from the first cached render byte -- the manifest pins an empty Local Zone bucket (usw2-lax1-az1, SingleLocalZone redundancy), and Local Zone locations carry their own rate rows on the S3 pricing page
+        - the same request meter family applies at the edge -- PUT/COPY/POST/LIST/RenameObject and GET per 1,000, plus per-GB data-upload and data-retrieval charges, all driven by render-cache traffic invisible to this manifest
+        - without force_destroy, destroy FAILS while objects remain -- emptying the cache first is the operator's step, at zero request cost (DELETE is free)
+      notes: Zero committed cost -- commitment-absence on an empty edge bucket, never "free"; the first byte the render fleet caches starts the Local Zone storage meter at that location's published rate.

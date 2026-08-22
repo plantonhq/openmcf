@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredisksnapshot
+spec:
+  azure:
+    groups:
+      - purpose: ManageSnapshot
+        actions:
+          - Microsoft.Compute/snapshots/read
+          - Microsoft.Compute/snapshots/write
+          - Microsoft.Compute/snapshots/delete
+        provenance: derived
+        notes: "Covers azurerm_snapshot / compute.NewSnapshot -- create with the chosen create_option and source, refresh, in-place updates (tags, disk_size_gb growth, network_access_policy, disk_access_id, public_network_access_enabled), and destroy. snapshots/read also covers the Copy-from-snapshot case: when source_resource_id names another snapshot, ARM authorizes reading THAT snapshot under the same action on its scope."
+      - purpose: ReadCopySourceDisk
+        actions:
+          - Microsoft.Compute/disks/read
+        provenance: derived
+        notes: "The modules never call the disk API -- the resolved source_resource_id rides the snapshot payload -- but for create_option Copy from a managed disk, ARM authorizes the read of the REFERENCED disk on the disk's scope at create time (service-side). Needed only when the source is a disk; a snapshot source is covered by snapshots/read above."
+      - purpose: ReadImportSourceAccount
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+        provenance: derived
+        notes: "For create_option Import, the spec's storage_account_id names the account holding the source VHD and carries the read grant -- ARM validates the caller's access to that account's scope service-side while the platform reads the blob. Needed only for Import-shaped manifests (the Import VHD preset); Copy-shaped manifests never touch the storage API. The encryption_settings Key Vault references, when present, ride the payload as URLs -- Azure imposes no deploy-time RBAC on the deploying principal for them."

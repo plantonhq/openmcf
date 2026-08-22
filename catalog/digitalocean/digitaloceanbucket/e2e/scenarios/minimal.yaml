@@ -1,0 +1,21 @@
+# Minimal DigitalOceanBucket: a private bucket with NO region -- proves the
+# provider's own nyc3 default path and the bucket_id / region / endpoint
+# outputs the verifier addresses the bucket with. The run-id token keeps
+# the name globally unique (Spaces bucket names are unique per region
+# across ALL DigitalOcean customers).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanBucket
+metadata:
+  name: planton-oss-e2e-digitaloceanbucket-min
+  id: planton-oss-e2e-digitaloceanbucket-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: pltn-e2e-dobkt-min-${E2E_RUN_ID}

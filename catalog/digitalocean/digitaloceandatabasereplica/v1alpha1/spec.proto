@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasereplica.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/region.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseReplicaSpec models the full
+// digitalocean_database_replica resource surface: a single-node read-only
+// replica of a DigitalOcean managed database cluster (PostgreSQL and MySQL
+// primaries support replicas), in the primary's region or a different one.
+//
+// region and size are REQUIRED here even though the upstream provider
+// marks them optional: the provider always reads both back from the API
+// but never computes them, so a configuration that omits them drifts on
+// the next apply -- and because region is create-only upstream, that drift
+// schedules a full REPLICA REPLACEMENT. Requiring explicit values makes
+// that failure class unrepresentable; "inherit from the primary" is
+// expressed by simply writing the primary's region and size.
+message DigitalOceanDatabaseReplicaSpec {
+  // The database cluster to replicate (the primary). Use a literal cluster
+  // UUID or a reference to a DigitalOceanDatabaseCluster resource.
+  // Changing it replaces the replica.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the read replica. Unique within the cluster; the name IS the
+  // replica's API identity for reads and deletes (DigitalOcean also mints
+  // a UUID, exported as an output). Changing it replaces the replica.
+  string replica_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The DigitalOcean region for the replica. Same region as the primary
+  // gives a hot standby for read scaling; a different region gives a
+  // cross-region read replica. Changing it replaces the replica.
+  DigitalOceanRegion region = 3 [(buf.validate.field).required = true];
+
+  // The slug identifier for the replica's node size (e.g. "db-s-1vcpu-1gb").
+  // Must be at least the primary's size (API-enforced). Growing it resizes
+  // the replica in place; shrinking is not supported by DigitalOcean.
+  string size = 4 [(buf.validate.field).required = true];
+
+  // (Optional) Reference to a DigitalOcean VPC for the replica's private
+  // networking -- useful when the replica lives in a different region from
+  // the primary and must join that region's VPC. When unset, DigitalOcean
+  // places the replica in the target region's default VPC. Cannot be
+  // changed after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // (Optional) Custom disk size in MiB for the replica. When unset, the
+  // size slug's default storage applies. Grows in place together with
+  // size changes; DigitalOcean rounds and enforces per-slug bounds
+  // server-side.
+  //
+  // WARNING -- replica storage must be at least the primary's storage, or
+  // replication can fail when the primary outgrows the replica's disk.
+  uint64 storage_size_mib = 6;
+
+  // (Optional) Tags applied to the replica in DigitalOcean, in addition to
+  // the standard Planton labels both provisioners always apply.
+  //
+  // WARNING -- replica tags are CREATE-ONLY upstream: changing this list
+  // REPLACES the whole replica (a new replica is seeded from the primary;
+  // replication catch-up applies). Settle tagging before production use.
+  repeated string tags = 7 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
+}

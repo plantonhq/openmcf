@@ -6,6 +6,7 @@ package providerparity
 import (
 	"sort"
 
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
@@ -75,7 +76,7 @@ func BuildReport(repoRoot string, provider cloudresourcekind.CloudResourceProvid
 	if err != nil {
 		return Report{}, err
 	}
-	return buildReport(provider.String(), spec, modules, schemas), nil
+	return buildReport(crkreflect.ProviderDirName(provider), spec, modules, schemas), nil
 }
 
 func buildReport(cloudProvider string, spec []KindCensus, modules []ModuleCensus, schemas map[string]*Schema) Report {

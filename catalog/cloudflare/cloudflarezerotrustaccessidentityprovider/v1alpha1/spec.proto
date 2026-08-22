@@ -1,0 +1,321 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareZeroTrustAccessIdentityProviderSpec defines how users sign in to
+// Access-protected applications: the connection between Cloudflare Zero Trust
+// and an identity provider (Google, Okta, Azure AD, GitHub, a generic OIDC or
+// SAML provider, or Cloudflare's own one-time PIN).
+//
+// The provider TYPE is immutable at Cloudflare (changing it replaces the
+// provider, invalidating every policy rule that references the old provider
+// ID). The config surface is a union in practice: which fields apply depends on
+// the type, and the validation rules below mirror Cloudflare's own per-type
+// gating so a mismatch fails at validation instead of at the API.
+message CloudflareZeroTrustAccessIdentityProviderSpec {
+  // Exactly one of account_id or zone_id must be set: an identity provider lives
+  // either at the account level (usable by every application in the account --
+  // the common case) or scoped to a single zone.
+  option (buf.validate.message).cel = {
+    id: "spec.account_xor_zone"
+    message: "set exactly one of account_id or zone_id"
+    expression: "(this.account_id != '') != has(this.zone_id)"
+  };
+
+  // Azure AD fields ride only the azureAD type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_azure_ad"
+    message: "conditional_access_enabled, directory_id, prompt, and support_groups apply only when type is azureAD"
+    expression: "!has(this.config) || this.type == 'azureAD' || (!has(this.config.conditional_access_enabled) && this.config.directory_id == '' && this.config.prompt == '' && !has(this.config.support_groups))"
+  };
+
+  // Centrify fields ride only the centrify type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_centrify"
+    message: "centrify_account and centrify_app_id apply only when type is centrify"
+    expression: "!has(this.config) || this.type == 'centrify' || (this.config.centrify_account == '' && this.config.centrify_app_id == '')"
+  };
+
+  // Google Workspace fields ride only the google-apps type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_google_apps"
+    message: "apps_domain applies only when type is google-apps"
+    expression: "!has(this.config) || this.type == 'google-apps' || this.config.apps_domain == ''"
+  };
+
+  // Generic OIDC endpoint fields ride only the oidc type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_oidc"
+    message: "auth_url, certs_url, scopes, and token_url apply only when type is oidc"
+    expression: "!has(this.config) || this.type == 'oidc' || (this.config.auth_url == '' && this.config.certs_url == '' && this.config.scopes.size() == 0 && this.config.token_url == '')"
+  };
+
+  // Okta fields ride only the okta type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_okta"
+    message: "authorization_server_id and okta_account apply only when type is okta"
+    expression: "!has(this.config) || this.type == 'okta' || (this.config.authorization_server_id == '' && this.config.okta_account == '')"
+  };
+
+  // OneLogin / PingOne account fields ride only their types.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_onelogin_pingone"
+    message: "onelogin_account applies only when type is onelogin; ping_env_id only when type is pingone"
+    expression: "!has(this.config) || ((this.type == 'onelogin' || this.config.onelogin_account == '') && (this.type == 'pingone' || this.config.ping_env_id == ''))"
+  };
+
+  // SAML fields ride only the saml type.
+  option (buf.validate.message).cel = {
+    id: "spec.config_gate_saml"
+    message: "SAML fields (attributes, email_attribute_name, enable_encryption, header_attributes, idp_public_certs, issuer_url, sign_request, sso_target_url) apply only when type is saml"
+    expression: "!has(this.config) || this.type == 'saml' || (this.config.attributes.size() == 0 && this.config.email_attribute_name == '' && !has(this.config.enable_encryption) && this.config.header_attributes.size() == 0 && this.config.idp_public_certs.size() == 0 && this.config.issuer_url == '' && !has(this.config.sign_request) && this.config.sso_target_url == '')"
+  };
+
+  // SAML assertion encryption needs the certificate set it encrypts with.
+  option (buf.validate.message).cel = {
+    id: "spec.encryption_requires_certificate_set"
+    message: "enable_encryption requires saml_certificate_set_id"
+    expression: "!has(this.config) || !has(this.config.enable_encryption) || !this.config.enable_encryption || this.saml_certificate_set_id != ''"
+  };
+
+  // One-time PIN has no SCIM surface (Cloudflare rejects the combination).
+  option (buf.validate.message).cel = {
+    id: "spec.scim_not_for_onetimepin"
+    message: "scim_config cannot be set when type is onetimepin"
+    expression: "this.type != 'onetimepin' || !has(this.scim_config)"
+  };
+
+  // The Cloudflare account ID that owns this identity provider. Set this for an
+  // account-scoped provider (the common case). Mutually exclusive with zone_id.
+  string account_id = 1 [(buf.validate.field).cel = {
+    id: "account_id.hex32"
+    message: "account_id must be a 32-character hex string"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{32}$')"
+  }];
+
+  // The Cloudflare zone this provider is scoped to, as a literal zone ID or a
+  // reference to a CloudflareDnsZone. Set this for a zone-scoped provider.
+  // Mutually exclusive with account_id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The name of the identity provider, shown to users on the Access login page.
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // The identity provider type. IMMUTABLE at Cloudflare: changing it replaces
+  // the provider (new provider ID), invalidating policy rules that reference
+  // the old one. The value set and casing are Cloudflare's own (azureAD and
+  // google-apps are spelled exactly so). "onetimepin" needs no config at all;
+  // OAuth types (github, google, facebook, linkedin, yandex) need client_id +
+  // client_secret; oidc/saml need their endpoint fields.
+  string type = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "onetimepin",
+        "azureAD",
+        "saml",
+        "centrify",
+        "facebook",
+        "github",
+        "google-apps",
+        "google",
+        "linkedin",
+        "oidc",
+        "okta",
+        "onelogin",
+        "pingone",
+        "yandex",
+        "cloudflare"
+      ]
+    }
+  ];
+
+  // The provider connection parameters. Which fields apply depends on `type`
+  // (the message-level rules above enforce the pairing). Omit entirely for
+  // "onetimepin" -- the module sends Cloudflare the empty config object it
+  // expects.
+  CloudflareZeroTrustAccessIdentityProviderConfig config = 5;
+
+  // The UID of the SAML encryption certificate set assigned to this provider
+  // (created out-of-band via the Access API's saml_certificate endpoint).
+  // Required when config.enable_encryption is true.
+  string saml_certificate_set_id = 6;
+
+  // SCIM provisioning: let the identity provider push user create/update/
+  // deprovision events to Cloudflare so Zero Trust identities stay in sync
+  // without waiting for re-authentication. Not available for onetimepin.
+  // Enabling SCIM mints a bearer secret exposed once in the scim_secret stack
+  // output.
+  CloudflareZeroTrustAccessIdentityProviderScimConfig scim_config = 7;
+
+  // Declares the provider immutable: Cloudflare refuses API updates and deletes
+  // while this is set. A safety latch for foundational providers -- clearing it
+  // requires an explicit apply.
+  bool read_only = 8;
+}
+
+// CloudflareZeroTrustAccessIdentityProviderConfig carries the per-type
+// connection parameters. All fields are optional at the API; the spec's
+// message-level rules enforce which fields pair with which provider type.
+message CloudflareZeroTrustAccessIdentityProviderConfig {
+  // Custom claims to request from the identity provider and add to the signed
+  // Access JWT (usable in policy rules).
+  repeated string claims = 1;
+
+  // The OAuth client ID issued by the identity provider for this connection.
+  string client_id = 2;
+
+  // Sensitive. The OAuth client secret issued by the identity provider.
+  // Provide a managed-secret reference; the platform resolves it just-in-time
+  // at deploy and never stores it in plaintext.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef client_secret = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The claim name carrying the user's email in the id_token response, when the
+  // provider does not use the standard "email" claim.
+  string email_claim_name = 4;
+
+  // Enable Proof Key for Code Exchange (PKCE) on the OAuth flow.
+  optional bool pkce_enabled = 5;
+
+  // azureAD only: load authentication contexts (conditional access) from the
+  // Azure AD tenant so policies can require them.
+  optional bool conditional_access_enabled = 6;
+
+  // azureAD only: the Azure AD directory (tenant) UUID.
+  string directory_id = 7;
+
+  // azureAD only: the Microsoft login interaction mode. "login" forces
+  // credential entry (negating single sign-on), "none" forbids any interactive
+  // prompt (errors if SSO cannot complete silently), "select_account" shows the
+  // account picker.
+  string prompt = 8 [(buf.validate.field).cel = {
+    id: "prompt.enum"
+    message: "prompt must be login, select_account, or none"
+    expression: "this == '' || this in ['login', 'select_account', 'none']"
+  }];
+
+  // azureAD only: load the user's groups from the tenant so policies can match
+  // on them.
+  optional bool support_groups = 9;
+
+  // centrify only: the Centrify account URL (e.g. https://abc123.my.centrify.com).
+  string centrify_account = 10;
+
+  // centrify only: the Centrify app ID (e.g. exampleapp).
+  string centrify_app_id = 11;
+
+  // google-apps only: the Google Workspace domain (your company's TLD).
+  string apps_domain = 12;
+
+  // oidc only: the authorization_endpoint URL of the identity provider.
+  string auth_url = 13;
+
+  // oidc only: the jwks_uri endpoint serving the provider's token-signing keys.
+  string certs_url = 14;
+
+  // oidc only: the OAuth scopes to request.
+  repeated string scopes = 15;
+
+  // oidc only: the token_endpoint URL of the identity provider.
+  string token_url = 16;
+
+  // okta only: the Okta authorization server ID (when using a custom
+  // authorization server).
+  string authorization_server_id = 17;
+
+  // okta only: the Okta account URL (e.g. https://example.okta.com).
+  string okta_account = 18;
+
+  // onelogin only: the OneLogin account URL (e.g. https://example.onelogin.com).
+  string onelogin_account = 19;
+
+  // pingone only: the PingOne environment identifier.
+  string ping_env_id = 20;
+
+  // saml only: SAML attribute names added to the signed Access JWT and usable
+  // in policy rules.
+  repeated string attributes = 21;
+
+  // saml only: the attribute name carrying the user's email in the SAML
+  // response, when not the standard one.
+  string email_attribute_name = 22;
+
+  // saml only: encrypt SAML assertions with the certificate set assigned via
+  // saml_certificate_set_id (which becomes required). Configure the public
+  // certificate at the external identity provider.
+  optional bool enable_encryption = 23;
+
+  // saml only: IdP attributes returned as headers on the request to the origin
+  // after the Access callback.
+  repeated CloudflareZeroTrustAccessIdentityProviderHeaderAttribute header_attributes = 24;
+
+  // saml only: X.509 certificates used to verify the signature of the SAML
+  // authentication response (PEM).
+  repeated string idp_public_certs = 25;
+
+  // saml only: the IdP Entity ID or Issuer URL.
+  string issuer_url = 26;
+
+  // saml only: sign the SAML authentication request with Access credentials
+  // (verify with the public key from the Access certs endpoints).
+  optional bool sign_request = 27;
+
+  // saml only: the URL Access sends SAML authentication requests to.
+  string sso_target_url = 28;
+
+  // Restrict authentication through this provider to members of the Cloudflare
+  // account. Leave unset for Cloudflare's default behavior.
+  optional bool restrict_to_account_members = 29;
+}
+
+// CloudflareZeroTrustAccessIdentityProviderHeaderAttribute maps one IdP
+// attribute onto a request header added on the way to the origin.
+message CloudflareZeroTrustAccessIdentityProviderHeaderAttribute {
+  // The attribute name as sent by the identity provider.
+  string attribute_name = 1;
+
+  // The header name added to the request to the origin.
+  string header_name = 2;
+}
+
+// CloudflareZeroTrustAccessIdentityProviderScimConfig enables SCIM provisioning
+// from the identity provider into Cloudflare Zero Trust.
+message CloudflareZeroTrustAccessIdentityProviderScimConfig {
+  // seat_deprovision piggybacks on user_deprovision -- Cloudflare rejects
+  // freeing seats without also revoking sessions.
+  option (buf.validate.message).cel = {
+    id: "scim.seat_requires_user_deprovision"
+    message: "seat_deprovision requires user_deprovision"
+    expression: "!this.seat_deprovision || this.user_deprovision"
+  };
+
+  // Turn SCIM on. Enabling it for the first time mints the SCIM bearer secret
+  // (exposed once in the scim_secret stack output; refresh it later via the
+  // Access API's refresh_scim_secret endpoint if lost).
+  bool enabled = 1;
+
+  // How a SCIM update event affects the user's Zero Trust identity used in
+  // policy evaluation: "automatic" updates the identity in place (and augments
+  // it with SCIM fields), "reauth" forces re-authentication on group-membership
+  // changes (identities do not carry SCIM fields), "no_action" leaves
+  // identities untouched. Leave empty for Cloudflare's default (no_action).
+  string identity_update_behavior = 2 [(buf.validate.field).cel = {
+    id: "identity_update_behavior.enum"
+    message: "identity_update_behavior must be automatic, reauth, or no_action"
+    expression: "this == '' || this in ['automatic', 'reauth', 'no_action']"
+  }];
+
+  // Free the user's Zero Trust seat when the identity provider deprovisions
+  // them. Requires user_deprovision.
+  bool seat_deprovision = 3;
+
+  // Revoke the user's Access and Gateway sessions when the identity provider
+  // deprovisions them.
+  bool user_deprovision = 4;
+}

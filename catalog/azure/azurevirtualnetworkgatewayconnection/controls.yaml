@@ -49,6 +49,9 @@ spec:
         type: spec_default
         reference: Unspecified lets Azure apply its default, IKEv2; IKE_V1 exists only for legacy on-premises devices, and choosing it reopens the weaker legacy negotiation on this tunnel. Fixed at creation.
       notes: Both presets ride the IKEv2 default. The other legacy arm lives gateway-side -- a POLICY_BASED gateway forces IKEv1 for everything it carries, examined on the AzureVirtualNetworkGateway component.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

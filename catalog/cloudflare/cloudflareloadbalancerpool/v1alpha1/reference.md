@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareLoadBalancerPoolSpec defines an account-scoped pool of origin servers
 for Cloudflare Load Balancing. A pool groups origins, health-checks them via a
 referenced monitor, and is selected by one or more zone-scoped
@@ -392,6 +394,11 @@ Fields on other kinds that can point at this resource:
 | CloudflareLoadBalancer | `spec.regionPools[].poolIds` | `status.outputs.pool_id` |
 | CloudflareLoadBalancer | `spec.countryPools[].poolIds` | `status.outputs.pool_id` |
 | CloudflareLoadBalancer | `spec.popPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.countryPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.defaultPools` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.fallbackPool` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.popPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.regionPools[].poolIds` | `status.outputs.pool_id` |
 
 ## See Also
 

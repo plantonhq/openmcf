@@ -33,20 +33,51 @@ What the binding changes:
 
 - **Your edits target the running project.** Saving records a new project
   version and the platform starts a deployment pipeline for it immediately —
-  there is no separate "deploy" step to offer.
-- **The app refreshes this folder from the server every time it opens**, so
-  what you read here is the deployed truth as of the conversation's start.
+  there is no separate "deploy" step to offer. The organization's catalog
+  policy never blocks these saves: it refuses only NEW creations of
+  disabled kinds, and a deployed project's resources already exist — never
+  warn about availability on a working-copy save
+  (`catalog-availability.md`).
+- **The folder is laid out fresh from the server** — by the app when the
+  conversation starts, or by your own checkout — so what you read here is
+  the deployed truth as of that moment, placed for THIS conversation alone.
 - **The chart is out of the picture.** Never suggest publishing this folder
   as a chart or `chart publish` unless the user explicitly wants to turn
   their project's state into a reusable chart.
 
+## When you are NOT in a working copy: check one out
+
+A conversation about a deployed project does not always start inside its
+working copy — in your own workspace, the request may simply name the
+project. Never reconstruct a project's files from its record by hand; pull
+the real thing:
+
+```
+planton infra project checkout <id-or-name> --output-dir <project-dir>
+```
+
+The checkout lays out the working copy — templates, values, and the hidden
+binding — as its own top-level subfolder of your workspace, and everything
+in this reference applies to it from that moment. It writes many files at
+once, so the composing declaration (SKILL.md's live-screen rule) comes
+FIRST. Re-running it against the same folder refreshes the managed files
+from server truth and leaves any other files alone. Only chart-sourced
+projects check out: a git-sourced project's files live in its repository
+(the command refuses with the clone URL — offer to work from a clone the
+user makes, never fork the repo yourself).
+
 ## Opening posture: diagnose FIRST when there is a failure
 
 When the conversation opens from a failed pipeline (the opening message
-names a pipeline id), earn trust before touching anything:
+names a pipeline id), **the four-step diagnosis is your FIRST ACT — run it
+before any reply that merely acknowledges the request.** The user already
+asked for the investigation by arriving here; a first turn that restates
+the failure and waits is a failed turn. Consent gates CHANGES, never
+diagnosis — reading status, logs, and records requires nobody's permission.
 
 1. Run the four-step diagnosis from `planton-cli.md` (status → failed node →
-   logs → stack job when needed).
+   logs → stack job when needed), dumping large records to `.scratch/`
+   files and reading those (the large-records rule in `planton-cli.md`).
 2. Explain what went wrong in the user's language — name the resource and
    the cause, not the plumbing.
 3. Recommend the fix with a reason, and say what it will do when applied
@@ -84,8 +115,8 @@ When holding one long-running command open is unsuitable, split it:
 
 ```
 planton chart install <projectName> . --org <org> --env <env> -m "…" --no-follow
-planton infra-pipeline status <infpipe_id>     # poll between other work
-planton infra-pipeline logs <infpipe_id>       # when a node fails
+planton infra pipeline status <infpipe_id>     # poll between other work
+planton infra pipeline logs <infpipe_id>       # when a node fails
 ```
 
 ## Narrate every transition — the user is watching the app

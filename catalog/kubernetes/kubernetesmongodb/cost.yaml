@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesmongodb
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replica_sets
+      sku_meter: cluster CPU and memory reservations
+      impact: Every replica set contributes size x its declared resources -- each member is a full mongod pod reserving its requests whether queries run or not, plus one persistent volume per member (grows only, never shrinks). An enabled arbiter adds a vote-only pod per set at near-zero data cost.
+    - field_path: sharding
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling sharding adds two more pod classes on top of the shards -- the config-server replica set (size x resources + a volume per member) and the mongos routers (size x resources, no storage) -- and turns every declared replica set into a shard.
+    - field_path: backup
+      sku_meter: object storage for backups
+      pricing_unit: GB-months
+      impact: Scheduled backups and PITR oplog chunks accumulate on the declared object stores (S3, GCS, Azure); each task's keep count bounds how many backups survive pruning.
+    - field_path: log_collector
+      sku_meter: cluster CPU and memory reservations
+      impact: When declared, the fluent-bit log-collector sidecar rides every member pod; its resources field is the only reservation it declares.
+    - field_path: pause
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Pausing scales every pod to zero -- the CPU and memory reservations are released, but the data volumes stay, so the storage reservation persists while paused.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - when backup is configured, Percona Backup for MongoDB agents ride every member pod with no resources surface in this spec -- real consumption, no reservation
+    - object-store bytes for backups and PITR oplog chunks grow with database churn across each task's keep window
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint summed over replica sets -- for each set, size x (requests + storage volume) -- plus the config-server and mongos terms when sharding is enabled. The Percona operator that reconciles this cluster is its own component (kubernetesperconamongooperator) and carries its own footprint."

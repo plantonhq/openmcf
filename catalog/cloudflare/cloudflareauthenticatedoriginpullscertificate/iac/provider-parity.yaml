@@ -1,0 +1,12 @@
+# Provider-parity manifest for CloudflareAuthenticatedOriginPullsCertificate.
+# The kind folds two near-identical provider resources: the zone-wide upload
+# (cloudflare_authenticated_origin_pulls_certificate) and the hostname-scoped
+# upload (cloudflare_authenticated_origin_pulls_hostname_certificate). Their
+# arguments (zone_id, certificate, private_key on both) match spec fields by
+# exact name.
+specExclusions:
+  # The scope field is realized by the module's resource selection itself --
+  # it decides WHICH of the two provider resources is created, and never
+  # travels as an argument.
+  - field: spec.scope
+    reason: "realized by the module's resource selection (zone vs hostname upload surface), not by any provider argument"

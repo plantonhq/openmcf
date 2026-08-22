@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchloganomalydetector
+spec:
+  billing_model: free
+  free_tier: "A log anomaly detector never bills. AWS's own launch announcement says it plainly: \"Anomaly detection is included as part of your log ingestion fees, and there is no additional charge for this feature\" -- the ML model trains, evaluates, and surfaces anomalies at no charge, whether enabled is true or false, at any evaluation_frequency from ONE_MIN to ONE_HOUR, over any filter_pattern. This is a permanent property of the feature, not a trial."
+  notes: "No field of this spec buys anything -- including evaluation_frequency, which trades detection lag for freshness, never dollars (AWS prices the feature into ingestion; there is no per-evaluation meter to make longer intervals cheaper). The real spend lives one hop away: the referenced log groups' own ingestion ($0.50 per GB standard class on AwsCloudwatchLogGroup) is the fee the announcement says this feature rides on -- a detector over a silent group costs nothing anywhere, and a detector over a busy group adds nothing to what that group already billed. Two conditional charges sit on OTHER objects: a customer-managed kms_key_id makes the referenced AwsKmsKey bill its own monthly key charge and API requests, and the adjacent Patterns/Compare features in Logs Insights (not this component) bill as Logs Insights queries per AWS's announcement."

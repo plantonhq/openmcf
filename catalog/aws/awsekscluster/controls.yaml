@@ -60,6 +60,9 @@ spec:
         type: spec_default
         reference: The AWS default API_AND_CONFIG_MAP keeps the legacy aws-auth ConfigMap path alive alongside access entries; API mode retires the legacy path entirely.
       notes: All four presets pin API mode.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: enabled_cluster_log_types

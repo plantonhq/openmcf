@@ -1,0 +1,34 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: every object this kind
+# creates -- workload identities, vaulted credentials, the Cedar engine and
+# its policies -- is free to exist, and both published meters (credential
+# requests, policy authorizations) start with agent traffic that lives
+# outside this manifest -- stated in exclusions, never padded into
+# fabricated dollars. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbedrockagentcoreidentity
+spec:
+  presets:
+    - preset: 01-vaulted-credentials
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - each successful token or API key request an agent makes through the vaulted providers bills $0.010 per 1,000 -- but ONLY outside AgentCore Runtime and Gateway, where AWS waives the Identity charge entirely, so the same providers can serve unlimited waived traffic
+        - request volume is entirely workload-driven -- token-heavy OAuth patterns (short-lived tokens, per-call refresh) multiply requests without any manifest change
+        - AWS vaults the API key and OAuth client secret in Secrets Manager under the service's token vault at no charge surfacing on this kind
+      notes: Zero committed cost -- vaulted providers are free registrations; the credential-request meter waits for direct (non-Runtime, non-Gateway) agent traffic, and the zero is commitment-absence with no permanent request allotment behind it.
+    - preset: 02-cedar-authorization
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - policy authorization bills $0.000025 per request each time a gateway evaluates a tool call against this engine -- gateway traffic invisible to this manifest, with the first 100 temporal policies per engine incurring no additional authorization charges
+        - natural-language policy authoring bills $0.13 per 1,000 input tokens, a console workflow this preset never performs -- its two policies arrive as ready Cedar statements
+        - a customer-managed encryption key, if later referenced, would bill per-request on its own AwsKmsKey component; this preset uses the service-managed key at no charge
+      notes: Zero committed cost -- the engine and its two Cedar policies are free at rest; the authorization meter starts with the first policy-enforced tool call on a gateway, not with this manifest.

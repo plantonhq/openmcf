@@ -1,25 +1,57 @@
+# Example DigitalOceanLoadBalancer manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real balancer (regional HTTP, no VPC,
+# no Droplets). The second exercises the regional surface: explicit VPC,
+# size_unit, PROXY protocol, keepalive, idle-timeout, tag targeting,
+# health-check thresholds, cookie sticky sessions, and a firewall.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanLoadBalancer
 metadata:
-  name: first-lb
+  name: example-dolb-minimal
 spec:
-  loadBalancerName: first-lb       # Must be unique per DigitalOcean account
-  region: blr1                    # Any valid DigitalOceanRegion slug (e.g., nyc3, sfo3, fra1)
-  vpc:
-    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                        # UUID or StringValueOrRef to DigitalOceanVpc
-  forwardingRules: # One or more rules
+  loadBalancerName: example-dolb-minimal
+  region: nyc3
+  forwardingRules:
     - entryPort: 80
       entryProtocol: http
       targetPort: 80
       targetProtocol: http
-#    - entryPort: 443
-#      entryProtocol: https
-#      targetPort: 443
-#      targetProtocol: https
-  healthCheck: # Optional; recommended for HTTP/HTTPS traffic
-    port: 80
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanLoadBalancer
+metadata:
+  name: example-dolb-full
+spec:
+  loadBalancerName: example-dolb-full
+  region: nyc3
+  vpc:
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
+  sizeUnit: 1
+  enableProxyProtocol: true
+  enableBackendKeepalive: true
+  httpIdleTimeoutSeconds: 90
+  dropletTag: web
+  forwardingRules:
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 8080
+      targetProtocol: http
+  healthCheck:
+    port: 8080
     protocol: http
     path: /health
-    checkIntervalSec: 10          # Defaults to 10 s if omitted (per proto hint)
-  dropletTag: web                 # Attach all Droplets with this tag (mutually exclusive with dropletIds)
-  enableStickySessions: false     # Set true to enable cookie‑based session affinity
+    checkIntervalSec: 15
+    responseTimeoutSeconds: 5
+    unhealthyThreshold: 3
+    healthyThreshold: 5
+  stickySessions:
+    type: cookies
+    cookieName: DO-LB
+    cookieTtlSeconds: 300
+  firewall:
+    allow:
+      - cidr:10.0.0.0/8
+    deny:
+      - cidr:192.0.2.0/24

@@ -1,0 +1,159 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.kube_prometheus_stack -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+          - endpoints
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The module's own remote-write auth Secret (kubernetes_secret_v1.remote_write_auth -- declared basic-auth usernames materialized as Secret keys; passwords stay in user-owned Secrets) plus the chart's large core surface -- per-component Services and ServiceAccounts, Grafana's dashboard/datasource ConfigMaps and its admin Secret, Alertmanager's configuration Secret, and the control-plane scrape Services WITH manual Endpoints the chart renders in kube-system for the controller-manager/scheduler/etcd scrapers (the runner touches kube-system even when installing elsewhere). Secrets also cover Helm's own release-state Secret.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - daemonsets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's Deployments -- the Prometheus Operator, kube-state-metrics (exporters.kube_state_metrics_enabled, default true), and the bundled Grafana (grafana.enabled, default true) -- and the node-exporter DaemonSet (exporters.node_exporter_enabled, default true; one pod per node). The Prometheus and Alertmanager StatefulSets are created at RUNTIME by the operator reconciling their custom resources under its own RBAC -- the runner never applies StatefulSets.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's hook Jobs -- the admission-webhook certgen pair (creates the webhook serving certificate and patches the caBundle into the webhook configurations; skipped when operator.admission_webhooks.cert_manager or disabled takes over) and the optional CRD upgrade Job (spec.crd_upgrade_job, default off -- server-side-applies the CRD bundle on upgrades).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's per-component ClusterRoles and bindings -- the operator's custom-resource management, Prometheus' cluster-wide scrape discovery reads (broad by the monitoring function's nature), kube-state-metrics' object-state reads, and Grafana's cluster read access for its sidecars. The runner must be able to grant everything these roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the installation namespace (Grafana and the certgen hook's Roles and bindings).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+          - mutatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The operator's admission webhooks validating PrometheusRule and AlertmanagerConfig objects at apply time -- rendered unless operator.admission_webhooks.disabled; the certgen hook Job (or cert-manager's CA injector on that arm) patches the caBundle at runtime.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The monitoring.coreos.com CRDs (Prometheus, Alertmanager, ServiceMonitor, PodMonitor, PrometheusRule, Probe, ScrapeConfig, ...) ship in a subchart's crds/ directory -- Helm installs them once and never upgrades or deletes them (uninstall keeps them); skip_crds is the bring-your-own-CRDs arm, and the crd_upgrade_job hook server-side-applies newer bundles under its own hook RBAC.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - prometheuses
+          - alertmanagers
+          - servicemonitors
+          - prometheusrules
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's custom resources the runner applies -- ONE Prometheus CR and ONE Alertmanager CR (the operator reconciles them into StatefulSets), the stack's self-monitoring ServiceMonitors, and the curated default_rules PrometheusRule set. User workloads' monitors belong to their own components, never this runner.
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - certificates
+          - issuers
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when operator.admission_webhooks.cert_manager is true -- the chart's Issuer + Certificates for the webhook serving certificate instead of the certgen hook. Requires cert-manager (KubernetesCertManager) on the cluster.

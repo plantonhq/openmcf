@@ -1,0 +1,73 @@
+# Provider-parity manifest for CloudflareZeroTrustDeviceDefaultProfile.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_device_default_profile and the folded
+# cloudflare_zero_trust_device_default_profile_local_domain_fallback and
+# cloudflare_zero_trust_device_default_profile_certificates at the pinned
+# provider version. Unlisted arguments (account_id, the toggle body,
+# support_url, tunnel_protocol, lan_allow_minutes, lan_allow_subnet_size)
+# match spec fields by exact name.
+resources:
+  cloudflare_zero_trust_device_default_profile:
+    mappings:
+      # exclude is a nested-attribute list; fan-in of every spec leaf.
+      - spec: spec.exclude.address
+        arg: exclude
+      - spec: spec.exclude.host
+        arg: exclude
+      - spec: spec.exclude.description
+        arg: exclude
+      # include is a nested-attribute list; fan-in of every spec leaf.
+      - spec: spec.include.address
+        arg: include
+      - spec: spec.include.host
+        arg: include
+      - spec: spec.include.description
+        arg: include
+      # service_mode_v2 is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.service_mode_v2.mode
+        arg: service_mode_v2
+      - spec: spec.service_mode_v2.port
+        arg: service_mode_v2
+      # virtual_networks is a nested attribute; fan-in of every spec leaf.
+      # The provider names the default-vnet attribute "default"; the spec
+      # names it default_virtual_network_id for clarity.
+      - spec: spec.virtual_networks.allowed
+        arg: virtual_networks
+      - spec: spec.virtual_networks.default_virtual_network_id
+        arg: virtual_networks
+      # dns_search_suffixes is a nested-attribute list; fan-in of every
+      # spec leaf.
+      - spec: spec.dns_search_suffixes.suffix
+        arg: dns_search_suffixes
+      - spec: spec.dns_search_suffixes.description
+        arg: dns_search_suffixes
+    exclusions:
+      # China-network Global Acceleration endpoints: Cloudflare enables the
+      # feature per account through an account representative, so no
+      # self-service caller can configure it. Unblock condition: model the
+      # block when the feature becomes self-service (or a customer with the
+      # allowlisted entitlement needs it).
+      - arg: global_acceleration
+        reason: "account-representative allowlist gate (China network Global Acceleration); not configurable on self-service accounts"
+  # The profile's local-DNS fallback list: the profile resource reports
+  # fallback_domains read-only, and this dedicated full-replacement
+  # companion is the only write path -- the fold is load-bearing, not a
+  # convenience.
+  cloudflare_zero_trust_device_default_profile_local_domain_fallback:
+    mappings:
+      # domains is a nested-attribute set; fan-in of every spec leaf.
+      - spec: spec.fallback_domains.suffix
+        arg: domains
+      - spec: spec.fallback_domains.description
+        arg: domains
+      - spec: spec.fallback_domains.dns_server
+        arg: domains
+  # Per-zone WARP client certificate provisioning: the one zone-scoped
+  # surface on this account-scoped kind, folded as the zone_certificates
+  # message.
+  cloudflare_zero_trust_device_default_profile_certificates:
+    mappings:
+      - spec: spec.zone_certificates.zone_id
+        arg: zone_id
+      - spec: spec.zone_certificates.enabled
+        arg: enabled

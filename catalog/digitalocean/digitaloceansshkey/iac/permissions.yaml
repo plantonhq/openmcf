@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceansshkey
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageSshKey
+        scopes:
+          - ssh_key:read
+          - ssh_key:create
+          - ssh_key:update
+          - ssh_key:delete
+        provenance: derived
+        notes: Covers digitalocean_ssh_key's create/read/update/delete/import paths -- read the key through GET /v2/account/keys/{id} (ssh_key:read), register the key via POST /v2/account/keys (ssh_key:create), rename the key via PUT /v2/account/keys/{id} (ssh_key:update), and delete the key via DELETE /v2/account/keys/{id} (ssh_key:delete). A full-access token also works; it is never least-privilege.

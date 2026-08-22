@@ -24,16 +24,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Enumeration of supported database engines for DigitalOcean managed database clusters.
-// Values match DigitalOcean API expected engine slugs.
+// Enumeration of database engines for DigitalOcean managed database
+// clusters. Value names are exactly the DigitalOcean API engine slugs.
 type DigitalOceanDatabaseEngine int32
 
 const (
 	DigitalOceanDatabaseEngine_digital_ocean_database_engine_unspecified DigitalOceanDatabaseEngine = 0
-	DigitalOceanDatabaseEngine_pg                                        DigitalOceanDatabaseEngine = 1 // PostgreSQL (DigitalOcean uses "pg" slug)
+	DigitalOceanDatabaseEngine_pg                                        DigitalOceanDatabaseEngine = 1 // PostgreSQL
 	DigitalOceanDatabaseEngine_mysql                                     DigitalOceanDatabaseEngine = 2 // MySQL
-	DigitalOceanDatabaseEngine_redis                                     DigitalOceanDatabaseEngine = 3 // Redis
+	DigitalOceanDatabaseEngine_redis                                     DigitalOceanDatabaseEngine = 3 // Redis (legacy caching engine; DigitalOcean treats redis and valkey as interchangeable)
 	DigitalOceanDatabaseEngine_mongodb                                   DigitalOceanDatabaseEngine = 4 // MongoDB
+	DigitalOceanDatabaseEngine_kafka                                     DigitalOceanDatabaseEngine = 5 // Apache Kafka
+	DigitalOceanDatabaseEngine_opensearch                                DigitalOceanDatabaseEngine = 6 // OpenSearch
+	DigitalOceanDatabaseEngine_valkey                                    DigitalOceanDatabaseEngine = 7 // Valkey (Redis-compatible caching engine)
 )
 
 // Enum value maps for DigitalOceanDatabaseEngine.
@@ -44,13 +47,19 @@ var (
 		2: "mysql",
 		3: "redis",
 		4: "mongodb",
+		5: "kafka",
+		6: "opensearch",
+		7: "valkey",
 	}
 	DigitalOceanDatabaseEngine_value = map[string]int32{
 		"digital_ocean_database_engine_unspecified": 0,
-		"pg":      1,
-		"mysql":   2,
-		"redis":   3,
-		"mongodb": 4,
+		"pg":         1,
+		"mysql":      2,
+		"redis":      3,
+		"mongodb":    4,
+		"kafka":      5,
+		"opensearch": 6,
+		"valkey":     7,
 	}
 )
 
@@ -81,40 +90,80 @@ func (DigitalOceanDatabaseEngine) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// DigitalOceanDatabaseClusterSpec defines the essential configuration for creating a managed database cluster on DigitalOcean.
-// This follows the 80/20 principle: only the most commonly used fields are exposed to keep the API simple.
+// DigitalOceanDatabaseClusterSpec models the full digitalocean_database_cluster
+// resource surface: engine/version/size/region/node topology, private
+// networking, custom storage with autoscale, maintenance windows,
+// backup-restore provisioning, engine-conditional tuning (sql_mode,
+// eviction_policy), project placement, and tags.
+//
+// Per-engine tuning parameters (PostgreSQL/MySQL/Redis/Kafka/OpenSearch/
+// Valkey/MongoDB config settings) are applied through DigitalOcean's
+// separate per-engine config APIs, not through the cluster resource, and
+// are therefore not part of this spec. Database users, logical databases,
+// connection pools, replicas, and firewall rules are likewise separate
+// DigitalOcean resources.
 type DigitalOceanDatabaseClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A human-readable name for the database cluster.
-	// This name will be used as the cluster's identifier in DigitalOcean.
+	// This name is the cluster's identifier in DigitalOcean.
 	ClusterName string `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	// The database engine for the cluster.
-	// Allowed values include: POSTGRES, MYSQL, REDIS, MONGODB.
+	// The database engine for the cluster. Enum value names are exactly the
+	// DigitalOcean engine slugs (pg, mysql, redis, mongodb, kafka,
+	// opensearch, valkey).
 	Engine DigitalOceanDatabaseEngine `protobuf:"varint,2,opt,name=engine,proto3,enum=dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseEngine" json:"engine,omitempty"`
-	// The engine version for the cluster.
-	// For example, "14" for PostgreSQL 14, "8" for MySQL 8, etc.
-	// Only major (and optionally minor) version numbers are expected.
+	// The engine version for the cluster, as a major or major.minor number:
+	// "16" for PostgreSQL 16, "8" for MySQL 8, "7" for Redis/Valkey,
+	// "3.5" for Kafka, "2" for OpenSearch, "7.0" for MongoDB.
+	// Changing the version on an existing cluster performs an in-place major
+	// version upgrade; DigitalOcean does not support downgrades.
 	EngineVersion string `protobuf:"bytes,3,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
 	// The DigitalOcean region where the cluster will be created.
-	// Determines the data center location for the cluster.
+	// Changing the region on an existing cluster performs a live migration.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,4,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// The slug identifier for the cluster's node size (e.g., "db-s-2vcpu-4gb").
-	// This defines the CPU/memory resources for each node in the cluster.
+	// The slug identifier for the cluster's node size (e.g. "db-s-2vcpu-4gb").
+	// Defines the CPU/memory resources for each node; changing it resizes the
+	// cluster in place.
 	SizeSlug string `protobuf:"bytes,5,opt,name=size_slug,json=sizeSlug,proto3" json:"size_slug,omitempty"`
-	// The number of nodes in the cluster. Allowed values are 1 to 3 for primary nodes.
+	// The number of nodes in the cluster. Valid counts are engine-specific
+	// and enforced by the DigitalOcean API: PostgreSQL/MySQL/Redis/Valkey/
+	// MongoDB accept 1-3 (1 primary plus up to 2 standbys), Kafka requires
+	// at least 3, OpenSearch accepts 1-15.
 	NodeCount uint32 `protobuf:"varint,6,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
 	// (Optional) Reference to a DigitalOcean VPC for the database cluster.
-	// If provided, the cluster will be created within the specified private network.
-	// Use a literal VPC UUID or a reference to a DigitalOceanVpc resource.
+	// If provided, the cluster is created within the specified private
+	// network. Use a literal VPC UUID or a reference to a DigitalOceanVpc
+	// resource. Cannot be changed after creation.
 	Vpc *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=vpc,proto3" json:"vpc,omitempty"`
-	// (Optional) Custom storage size in GiB for the cluster.
-	// If not set, the default storage for the chosen size_slug will be used.
+	// (Optional) Custom storage size in GiB for the cluster. If not set, the
+	// default storage for the chosen size_slug is used. Storage can only be
+	// increased, never decreased, and growing size_slug with this unset
+	// adopts the new size's default base storage.
 	StorageGib uint32 `protobuf:"varint,8,opt,name=storage_gib,json=storageGib,proto3" json:"storage_gib,omitempty"`
-	// (Optional) Whether to enable cluster access to public networking.
-	// When false (default), no public connection is available; the cluster is accessible only via the VPC or DigitalOcean internal network.
-	EnablePublicConnectivity bool `protobuf:"varint,9,opt,name=enable_public_connectivity,json=enablePublicConnectivity,proto3" json:"enable_public_connectivity,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// (Optional) Weekly maintenance window for automatic updates.
+	MaintenanceWindow *DigitalOceanDatabaseClusterMaintenanceWindow `protobuf:"bytes,9,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
+	// (Optional) Provision this cluster by restoring a backup of an existing
+	// cluster. Consumed only at creation time; DigitalOcean never reports it
+	// back afterward.
+	BackupRestore *DigitalOceanDatabaseClusterBackupRestore `protobuf:"bytes,10,opt,name=backup_restore,json=backupRestore,proto3" json:"backup_restore,omitempty"`
+	// (Optional) Automatic storage growth when the disk approaches capacity.
+	StorageAutoscale *DigitalOceanDatabaseClusterStorageAutoscale `protobuf:"bytes,11,opt,name=storage_autoscale,json=storageAutoscale,proto3" json:"storage_autoscale,omitempty"`
+	// (Optional) Key eviction policy for Redis or Valkey clusters. Known
+	// values: noeviction, allkeys_lru, allkeys_random, volatile_lru,
+	// volatile_random, volatile_ttl. Removing a previously set policy resets
+	// the cluster to noeviction.
+	EvictionPolicy string `protobuf:"bytes,12,opt,name=eviction_policy,json=evictionPolicy,proto3" json:"eviction_policy,omitempty"`
+	// (Optional) Comma-separated SQL modes for MySQL clusters, for example
+	// "ANSI,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION".
+	SqlMode string `protobuf:"bytes,13,opt,name=sql_mode,json=sqlMode,proto3" json:"sql_mode,omitempty"`
+	// (Optional) DigitalOcean project UUID to put the cluster in. Literal; a
+	// typed reference lands when the Project kind is forged. Cannot be
+	// changed after creation.
+	ProjectId string `protobuf:"bytes,14,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// (Optional) Tags applied to the cluster in DigitalOcean, in addition to
+	// the standard Planton labels both provisioners always apply.
+	Tags          []string `protobuf:"bytes,15,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanDatabaseClusterSpec) Reset() {
@@ -203,37 +252,293 @@ func (x *DigitalOceanDatabaseClusterSpec) GetStorageGib() uint32 {
 	return 0
 }
 
-func (x *DigitalOceanDatabaseClusterSpec) GetEnablePublicConnectivity() bool {
+func (x *DigitalOceanDatabaseClusterSpec) GetMaintenanceWindow() *DigitalOceanDatabaseClusterMaintenanceWindow {
 	if x != nil {
-		return x.EnablePublicConnectivity
+		return x.MaintenanceWindow
+	}
+	return nil
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetBackupRestore() *DigitalOceanDatabaseClusterBackupRestore {
+	if x != nil {
+		return x.BackupRestore
+	}
+	return nil
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetStorageAutoscale() *DigitalOceanDatabaseClusterStorageAutoscale {
+	if x != nil {
+		return x.StorageAutoscale
+	}
+	return nil
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetEvictionPolicy() string {
+	if x != nil {
+		return x.EvictionPolicy
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetSqlMode() string {
+	if x != nil {
+		return x.SqlMode
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterSpec) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+// DigitalOceanDatabaseClusterMaintenanceWindow is the weekly slot in which
+// DigitalOcean applies automatic maintenance. A cluster has exactly one
+// window; DigitalOcean picks one automatically when none is set.
+type DigitalOceanDatabaseClusterMaintenanceWindow struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Day of the week, e.g. "monday". Case-insensitive.
+	Day string `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
+	// Start hour of the window in UTC, "HH:MM" (seconds optional), for
+	// example "02:00".
+	Hour          string `protobuf:"bytes,2,opt,name=hour,proto3" json:"hour,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanDatabaseClusterMaintenanceWindow) Reset() {
+	*x = DigitalOceanDatabaseClusterMaintenanceWindow{}
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanDatabaseClusterMaintenanceWindow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanDatabaseClusterMaintenanceWindow) ProtoMessage() {}
+
+func (x *DigitalOceanDatabaseClusterMaintenanceWindow) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanDatabaseClusterMaintenanceWindow.ProtoReflect.Descriptor instead.
+func (*DigitalOceanDatabaseClusterMaintenanceWindow) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DigitalOceanDatabaseClusterMaintenanceWindow) GetDay() string {
+	if x != nil {
+		return x.Day
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterMaintenanceWindow) GetHour() string {
+	if x != nil {
+		return x.Hour
+	}
+	return ""
+}
+
+// DigitalOceanDatabaseClusterBackupRestore provisions a new cluster from a
+// backup of an existing cluster in the same account. Write-once: it drives
+// creation and is never read back, so changing it later has no effect.
+type DigitalOceanDatabaseClusterBackupRestore struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the existing cluster whose backup to restore from.
+	DatabaseName string `protobuf:"bytes,1,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// (Optional) ISO8601 timestamp of the backup to restore. When unset, the
+	// most recent backup is used.
+	BackupCreatedAt string `protobuf:"bytes,2,opt,name=backup_created_at,json=backupCreatedAt,proto3" json:"backup_created_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DigitalOceanDatabaseClusterBackupRestore) Reset() {
+	*x = DigitalOceanDatabaseClusterBackupRestore{}
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanDatabaseClusterBackupRestore) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanDatabaseClusterBackupRestore) ProtoMessage() {}
+
+func (x *DigitalOceanDatabaseClusterBackupRestore) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanDatabaseClusterBackupRestore.ProtoReflect.Descriptor instead.
+func (*DigitalOceanDatabaseClusterBackupRestore) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DigitalOceanDatabaseClusterBackupRestore) GetDatabaseName() string {
+	if x != nil {
+		return x.DatabaseName
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterBackupRestore) GetBackupCreatedAt() string {
+	if x != nil {
+		return x.BackupCreatedAt
+	}
+	return ""
+}
+
+// DigitalOceanDatabaseClusterStorageAutoscale grows the cluster's disk
+// automatically when usage crosses a threshold. DigitalOcean enforces a
+// one-hour cooldown between autoscale operations.
+type DigitalOceanDatabaseClusterStorageAutoscale struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether automatic storage growth is enabled.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// (Optional) Disk usage percentage that triggers growth, 15-95. When
+	// unset, DigitalOcean applies its default threshold.
+	ThresholdPercent uint32 `protobuf:"varint,2,opt,name=threshold_percent,json=thresholdPercent,proto3" json:"threshold_percent,omitempty"`
+	// (Optional) Growth step size in GiB, minimum 10, rounded to the nearest
+	// 10 GiB. When unset, DigitalOcean auto-calculates 25% of current size
+	// (min 50 GiB, max 1024 GiB).
+	IncrementGib  uint32 `protobuf:"varint,3,opt,name=increment_gib,json=incrementGib,proto3" json:"increment_gib,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) Reset() {
+	*x = DigitalOceanDatabaseClusterStorageAutoscale{}
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanDatabaseClusterStorageAutoscale) ProtoMessage() {}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanDatabaseClusterStorageAutoscale.ProtoReflect.Descriptor instead.
+func (*DigitalOceanDatabaseClusterStorageAutoscale) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
 	}
 	return false
+}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) GetThresholdPercent() uint32 {
+	if x != nil {
+		return x.ThresholdPercent
+	}
+	return 0
+}
+
+func (x *DigitalOceanDatabaseClusterStorageAutoscale) GetIncrementGib() uint32 {
+	if x != nil {
+		return x.IncrementGib
+	}
+	return 0
 }
 
 var File_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/digitalocean/digitaloceandatabasecluster/v1alpha1/spec.proto\x12=dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf6\x04\n" +
+	"Dcatalog/digitalocean/digitaloceandatabasecluster/v1alpha1/spec.proto\x12=dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xaa\v\n" +
 	"\x1fDigitalOceanDatabaseClusterSpec\x12-\n" +
 	"\fcluster_name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x18@R\vclusterName\x12y\n" +
 	"\x06engine\x18\x02 \x01(\x0e2Y.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseEngineB\x06\xbaH\x03\xc8\x01\x01R\x06engine\x12D\n" +
 	"\x0eengine_version\x18\x03 \x01(\tB\x1d\xbaH\x1a\xc8\x01\x01r\x152\x13^[0-9]+(\\.[0-9]+)?$R\rengineVersion\x12L\n" +
 	"\x06region\x18\x04 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12#\n" +
-	"\tsize_slug\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsizeSlug\x12+\n" +
+	"\tsize_slug\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bsizeSlug\x12)\n" +
 	"\n" +
-	"node_count\x18\x06 \x01(\rB\f\xbaH\t\xc8\x01\x01*\x04\x18\x03(\x01R\tnodeCount\x12d\n" +
+	"node_count\x18\x06 \x01(\rB\n" +
+	"\xbaH\a\xc8\x01\x01*\x02(\x01R\tnodeCount\x12d\n" +
 	"\x03vpc\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
 	"\vstorage_gib\x18\b \x01(\rR\n" +
-	"storageGib\x12<\n" +
-	"\x1aenable_public_connectivity\x18\t \x01(\bR\x18enablePublicConnectivity*v\n" +
+	"storageGib\x12\x9a\x01\n" +
+	"\x12maintenance_window\x18\t \x01(\v2k.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterMaintenanceWindowR\x11maintenanceWindow\x12\x8e\x01\n" +
+	"\x0ebackup_restore\x18\n" +
+	" \x01(\v2g.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterBackupRestoreR\rbackupRestore\x12\x97\x01\n" +
+	"\x11storage_autoscale\x18\v \x01(\v2j.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterStorageAutoscaleR\x10storageAutoscale\x12'\n" +
+	"\x0feviction_policy\x18\f \x01(\tR\x0eevictionPolicy\x12\x19\n" +
+	"\bsql_mode\x18\r \x01(\tR\asqlMode\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x0e \x01(\tR\tprojectId\x128\n" +
+	"\x04tags\x18\x0f \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags:\x8c\x02\xbaH\x88\x02\x1ag\n" +
+	"\x13sql_mode_mysql_only\x12'sql_mode applies only to MySQL clusters\x1a'this.sql_mode == '' || this.engine == 2\x1a\x9c\x01\n" +
+	"\x1ceviction_policy_caching_only\x128eviction_policy applies only to Redis or Valkey clusters\x1aBthis.eviction_policy == '' || this.engine == 3 || this.engine == 7\"\xcb\x01\n" +
+	",DigitalOceanDatabaseClusterMaintenanceWindow\x12\\\n" +
+	"\x03day\x18\x01 \x01(\tBJ\xbaHG\xc8\x01\x01rB2@^(?i)(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$R\x03day\x12=\n" +
+	"\x04hour\x18\x02 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[0-9]{2}:[0-9]{2}(:[0-9]{2})?$R\x04hour\"\x87\x01\n" +
+	"(DigitalOceanDatabaseClusterBackupRestore\x12/\n" +
+	"\rdatabase_name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\fdatabaseName\x12*\n" +
+	"\x11backup_created_at\x18\x02 \x01(\tR\x0fbackupCreatedAt\"\xbb\x01\n" +
+	"+DigitalOceanDatabaseClusterStorageAutoscale\x12 \n" +
+	"\aenabled\x18\x01 \x01(\bB\x06\xbaH\x03\xc8\x01\x01R\aenabled\x129\n" +
+	"\x11threshold_percent\x18\x02 \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18_(\x0fR\x10thresholdPercent\x12/\n" +
+	"\rincrement_gib\x18\x03 \x01(\rB\n" +
+	"\xbaH\a\xd8\x01\x01*\x02(\n" +
+	"R\fincrementGib*\x9d\x01\n" +
 	"\x1aDigitalOceanDatabaseEngine\x12-\n" +
 	")digital_ocean_database_engine_unspecified\x10\x00\x12\x06\n" +
 	"\x02pg\x10\x01\x12\t\n" +
 	"\x05mysql\x10\x02\x12\t\n" +
 	"\x05redis\x10\x03\x12\v\n" +
-	"\amongodb\x10\x04B\xe3\x03\n" +
+	"\amongodb\x10\x04\x12\t\n" +
+	"\x05kafka\x10\x05\x12\x0e\n" +
+	"\n" +
+	"opensearch\x10\x06\x12\n" +
+	"\n" +
+	"\x06valkey\x10\aB\xe3\x03\n" +
 	"Acom.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1B\tSpecProtoP\x01Zzgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasecluster/v1alpha1;digitaloceandatabaseclusterv1alpha1\xa2\x02\x04DPDD\xaa\x02=Dev.Planton.Digitalocean.Digitaloceandatabasecluster.V1alpha1\xca\x02=Dev\\Planton\\Digitalocean\\Digitaloceandatabasecluster\\V1alpha1\xe2\x02IDev\\Planton\\Digitalocean\\Digitaloceandatabasecluster\\V1alpha1\\GPBMetadata\xea\x02ADev::Planton::Digitalocean::Digitaloceandatabasecluster::V1alpha1b\x06proto3"
 
 var (
@@ -249,22 +554,28 @@ func file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_r
 }
 
 var file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanDatabaseEngine)(0),         // 0: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseEngine
-	(*DigitalOceanDatabaseClusterSpec)(nil), // 1: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec
-	(digitalocean.DigitalOceanRegion)(0),    // 2: dev.planton.digitalocean.DigitalOceanRegion
-	(*v1.StringValueOrRef)(nil),             // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(DigitalOceanDatabaseEngine)(0),                      // 0: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseEngine
+	(*DigitalOceanDatabaseClusterSpec)(nil),              // 1: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec
+	(*DigitalOceanDatabaseClusterMaintenanceWindow)(nil), // 2: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterMaintenanceWindow
+	(*DigitalOceanDatabaseClusterBackupRestore)(nil),     // 3: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterBackupRestore
+	(*DigitalOceanDatabaseClusterStorageAutoscale)(nil),  // 4: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterStorageAutoscale
+	(digitalocean.DigitalOceanRegion)(0),                 // 5: dev.planton.digitalocean.DigitalOceanRegion
+	(*v1.StringValueOrRef)(nil),                          // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_depIdxs = []int32{
 	0, // 0: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.engine:type_name -> dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseEngine
-	2, // 1: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
-	3, // 2: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	5, // 1: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	6, // 2: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.maintenance_window:type_name -> dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterMaintenanceWindow
+	3, // 4: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.backup_restore:type_name -> dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterBackupRestore
+	4, // 5: dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterSpec.storage_autoscale:type_name -> dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1.DigitalOceanDatabaseClusterStorageAutoscale
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_init() }
@@ -278,7 +589,7 @@ func file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_i
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

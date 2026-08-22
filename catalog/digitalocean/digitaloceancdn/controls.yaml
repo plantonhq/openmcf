@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceancdn
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The edge caches copies of already-public bucket objects; durable storage posture belongs to the origin bucket (the DigitalOceanBucket kind).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CDN endpoint DigitalOcean provisions serves over HTTPS with a DigitalOcean-managed certificate on the *.cdn.digitaloceanspaces.com host; a custom domain requires its own certificate (the spec's certificate reference, validated as a pair).
+      notes: The spec makes custom_domain unrepresentable without a certificate -- serving a custom domain over plain HTTP cannot be configured.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Public delivery is this kind's PURPOSE -- a CDN endpoint exists to serve bucket content publicly at the edge. What the origin exposes is governed on the DigitalOceanBucket kind (its ACL and policy).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No per-source filtering surface exists on DigitalOcean's CDN.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DigitalOcean's CDN offers no WAF or rate-limiting controls; it is a cache tier only.
+    - control_id: rbac
+      status: not_applicable
+      notes: No permission model of its own; API-token scopes govern who can manage the endpoint.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no CDN access logs or per-endpoint audit surface.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The endpoint emits no metrics into DigitalOcean monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The endpoint is stateless configuration recreated by IaC; cached content re-pulls from the origin.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Edge delivery is DigitalOcean's globally distributed CDN network by construction; there is no single-location mode to weaken it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for CDN endpoints. Deleting one is a traffic event -- the cdn endpoint hostname stops resolving content and custom-domain CNAMEs dangle (documented in the GUIDE).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The edge fleet is DigitalOcean-managed.

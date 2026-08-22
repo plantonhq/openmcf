@@ -1,0 +1,3 @@
+name: azureplantonrunner-pulumi-project
+description: pulumi project for azure-planton-runner cloud resource
+runtime: go

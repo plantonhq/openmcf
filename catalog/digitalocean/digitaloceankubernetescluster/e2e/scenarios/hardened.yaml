@@ -1,0 +1,68 @@
+# Hardened DigitalOceanKubernetesCluster: proves the surfaces the minimal
+# lane leaves at defaults -- an enabled control-plane firewall, a
+# maintenance policy (the day leaf the old collapsed string could not
+# express), cluster-autoscaler tuning, an explicit surge_upgrade, the
+# routing-agent addon (the ONE addon block the Pulumi SDK v4.49.0 carries;
+# the other eight are Terraform-only until the SDK grows them), and a
+# default pool exercising labels, a taint, pool tags, and autoscaling.
+# Deliberately absent: highly_available (cost), the Pulumi-gap arms (sso,
+# isolated_workers, worker_subnet_uuid, gpu_partition_mode, non-routing
+# addons), and custom subnets (create-only CIDRs add no verify value over
+# the offline plan).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesCluster
+metadata:
+  name: planton-oss-e2e-digitaloceankubernetescluster-hard
+  id: planton-oss-e2e-digitaloceankubernetescluster-hard
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceankubernetescluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-doks-hard
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  surgeUpgrade: true
+  maintenancePolicy:
+    day: sunday
+    startTime: "02:00"
+  # 0.0.0.0/0 proves the firewall block's wiring without locking the
+  # harness out -- its egress IP is unknown, and a real allowlist would
+  # block the verifier's API access to the cluster.
+  controlPlaneFirewall:
+    enabled: true
+    allowedAddresses:
+      - "0.0.0.0/0"
+  clusterAutoscalerConfiguration:
+    scaleDownUtilizationThreshold: 0.5
+    scaleDownUnneededTime: "1m30s"
+    expanders:
+      - least-waste
+  routingAgent:
+    enabled: true
+  tags:
+    - planton-e2e
+  defaultNodePool:
+    size: s-1vcpu-2gb
+    nodeCount: 1
+    autoScale: true
+    minNodes: 1
+    maxNodes: 2
+    labels:
+      e2e-arm: hardened
+    taints:
+      - key: dedicated
+        value: e2e
+        effect: PreferNoSchedule
+    tags:
+      - planton-e2e

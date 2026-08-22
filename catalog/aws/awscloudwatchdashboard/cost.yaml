@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchdashboard
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AmazonCloudWatch
+      sku_meter: dashboard months
+      pricing_unit: dashboard-months
+      description: Every custom dashboard bills a flat $3.00 per dashboard per month (the offer's DashboardsUsageHour-Basic meter, prorated by the hour the dashboard exists), viewed or not, from creation to deletion. The rate is region-uniform -- the offer prices it at location "Any".
+  cost_drivers:
+    - field_path: dashboard_body
+      sku_meter: logs insights data scanned
+      pricing_unit: GB
+      impact: Widgets decide what extra meters the dashboard can start when someone views it -- a log widget executes a Logs Insights query and bills per GB scanned on every load, and a custom widget invokes its Lambda function (billed on that function) each render. Metric widgets rendered in the owner's own console are free.
+    - field_path: region
+      sku_meter: dashboard months
+      pricing_unit: dashboard-months
+      impact: The dashboard fee itself does not move with region -- the offer publishes one rate at location "Any". Region decides which region's console lists the dashboard; its widgets may chart metrics from any region regardless.
+  free_tier: "The account's first 3 custom dashboards, each referencing up to 50 metrics, are free as a permanent part of the price structure -- an account-level allowance no single manifest can see, so the committed estimate prices the full rate and states the allowance. A dashboard referencing more than 50 metrics bills even inside the allowance; all Automatic Dashboards are free."
+  estimate_exclusions:
+    - log widgets execute a Logs Insights query on every dashboard load, billing per GB of log data scanned -- view frequency is human-driven and invisible to this manifest
+    - sharing a dashboard bills the GetMetricData API calls used to render the shared copy (rendering the original in the owner's console stays free)
+    - custom widgets and external metric data sources invoke a Lambda function per render, billed on that function
+    - the metrics, logs, and alarms the widgets chart bill on their own source components -- the dashboard only visualizes them
+  notes: "The fee is committed the hour the dashboard exists and prorated hourly -- AWS's dashboard pricing prose states costs accrue by the hour for as long as the custom dashboard exists. Nothing in the widget layout moves the committed fee: one sprawling 40-widget canvas and one single-widget page both bill one dashboard-month. Create and update are the same PutDashboard upsert, so body edits never restart or duplicate the meter; renaming (dashboard_name) replaces the dashboard, which AWS meters as fractional months of each."

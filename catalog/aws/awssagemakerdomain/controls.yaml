@@ -1,0 +1,84 @@
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakerdomain
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The domain's home EFS file system and every space's EBS volume are always encrypted -- with an AWS-managed key when kms_key_id is unset. There is no unencrypted option.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: kms_key_id re-keys the domain's EFS and EBS storage under a customer-managed KMS key (presets 02 and 03's posture); sharing_settings.s3_kms_key_id separately keys shared notebook outputs in S3.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Studio access rides HTTPS presigned URLs and the SageMaker API; storage traffic to EFS/EBS moves on AWS's internal encrypted paths. No plaintext option exists for this spec to harden.
+    - control_id: no-public-access
+      status: configurable
+      field_path: app_network_access_type
+      evidence:
+        type: spec_default
+        reference: The AWS default PublicInternetOnly routes app traffic through SageMaker-managed networking with internet egress; VpcOnly (presets 02 and 03) confines every app's traffic to your VPC and its endpoints. Inbound Studio access is always authenticated -- this dial governs egress and data-path exposure.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: default_user_settings
+      evidence:
+        type: spec_default
+        reference: default_user_settings.security_group_ids attach to every user's apps (and domain_security_group_ids to the domain's own ENIs) -- in VpcOnly mode these groups are the entire network posture of the ML workbench.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Studio is reached through authenticated presigned URLs on AWS-operated endpoints -- there is no customer-facing web surface to put a WAF in front of.
+    - control_id: rbac
+      status: configurable
+      field_path: auth_mode
+      evidence:
+        type: spec_validation
+        reference: auth_mode is required -- IAM authenticates users as IAM principals, SSO hands sign-in to Identity Center (presets 02 and 03), and per-profile/per-space execution roles decide what each user's apps may touch. studio_web_portal_settings can additionally hide whole app types and instance tiers from the picker.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: default_user_settings.execution_role_arn is required -- every app a user launches runs as an IAM execution role, never on ambient credentials; per-profile overrides narrow it further.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Access paths are SigV4-signed APIs and presigned URLs; no legacy protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: configurable
+      field_path: execution_role_identity_config
+      evidence:
+        type: spec_default
+        reference: USER_PROFILE_NAME (preset 02) stamps each session's sts:SourceIdentity with the acting user profile, so CloudTrail attributes actions to humans rather than the shared execution role; DISABLED (the AWS default) leaves only the role identity in the trail.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: SageMaker publishes app and instance metrics to CloudWatch automatically; the spec carries no monitoring dial (idle_settings is a cost control, not telemetry).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The declared surface (domain, profiles, spaces) is re-creatable from the manifest. User home directories live on the auto-created EFS -- backing that up is account-level AWS Backup posture on a resource this spec does not own directly (see deletion-protection for the retention lever it does own).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: The domain provisions ENIs in the listed subnets (minimum one) -- listing subnets across multiple AZs, as every preset does, spreads app placement across zones.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: home_efs_retention_policy
+      evidence:
+        type: spec_default
+        reference: The default Retain (AWS's own) preserves the home EFS file system -- every user's files -- through domain deletion; Delete tears it down with the domain (preset 01's choice for disposable dev domains). This is the data-loss lever on teardown.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Studio control plane and app infrastructure; users' app images update by version selection, not by customer patching.

@@ -1,0 +1,98 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesharbor
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: storage.s3.encrypt
+      evidence:
+        type: spec_default
+        reference: On the AWS S3 backend, encrypt turns on server-side encryption for stored blobs. The gcs and azure backends encrypt at rest by provider default; the filesystem backend's encryption is the storage class's property (compose an encrypted KubernetesStorageClass).
+      notes: Harbor's metadata rides the database -- at-rest posture there is the database component's concern (or the internal StatefulSet's storage class).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key seam exists on this spec -- s3.encrypt uses the provider's default server-side encryption, and the other backends carry no key field. CMK applies at the storage class or the external database/object store.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: expose.tls.enabled
+      evidence:
+        type: spec_default
+        reference: "TLS terminates at the nginx front door when enabled, with cert_secret_name as the cert-manager seam (a KubernetesCertificate composes). EMPTY cert with TLS enabled auto-generates a self-signed certificate that REGENERATES ON EVERY APPLY -- labs only. enabled false is legitimate exactly when TLS terminates in the composed exposure in front (external_url stays https://)."
+      notes: "The other legs have their own seams: internal_tls for component-to-component HTTPS, database.external.ssl_mode (default disable -- set verify-full for managed databases), cache.external.tls_enabled for rediss://, storage.s3.secure for the blob backend, and ca_bundle_secret_name for self-signed endpoints."
+    - control_id: no-public-access
+      status: configurable
+      field_path: expose.service_type
+      evidence:
+        type: spec_default
+        reference: Empty means ClusterIP -- reachable only inside the cluster, with north-south exposure composed from the catalog's exposure kinds pointed at the exported front-door Service. NodePort and LoadBalancer open real network surface and are deliberate declarations.
+      notes: The 02-production-composed preset uses LoadBalancer with TLS and an NLB annotation; external_url must match the address clients actually dial or OCI auth fails.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: expose.source_ranges
+      evidence:
+        type: spec_default
+        reference: LoadBalancer-only -- source_ranges renders loadBalancerSourceRanges, restricting which client CIDRs reach the front door. Empty means open to whatever can route to the LB.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A web application firewall rides the composed exposure (ingress/gateway kinds or the cloud LB) in front of the nginx front door, not this component.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: "Access is governed by Harbor's own project-based RBAC (project admin/maintainer/developer/guest roles). CREDENTIALS ARE NEVER THE CHART DEFAULTS: the modules generate every internal credential per-install (admin password, database password, encryption key, registry credential -- the chart's documented defaults are public knowledge and never ship); the admin password exports via the admin_password_secret output."
+      notes: admin_auth.existing_secret_name brings a team-owned admin credential instead of the generated one.
+    - control_id: workload-identity
+      status: configurable
+      field_path: storage.gcs.use_workload_identity
+      evidence:
+        type: spec_default
+        reference: The keyless arms are first-class -- gcs.use_workload_identity binds the registry to a GCP service account with no key material anywhere, and s3.credentials UNSET resolves the AMBIENT chain (EKS IRSA / Pod Identity, node roles). Declared keys are materialized into module-owned Secrets, never rendered Helm values.
+      notes: The azure driver has no ambient chain -- an account key is required there (spec-enforced).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Harbor's authentication mode (local database vs OIDC/LDAP) is in-product configuration, not modeled in this deployment spec. The classic weak path -- the chart's public default credentials -- structurally never ships (see rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Harbor's authentication mode (local database vs OIDC/LDAP) and any password or MFA policy on it are in-product configuration, not modeled in this deployment spec; the spec's guarantee is bootstrap hygiene -- the chart's public default credentials structurally never ship (see rbac).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Harbor's audit log (project-level operation history) lives in-product, stored in its database; component logs stream to stdout at log_level (default info) for the cluster's log collector. Changes to the release are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Enables /metrics on core, registry, and jobservice plus the dedicated harbor-exporter Deployment; metrics.service_monitor_enabled additionally creates a ServiceMonitor (requires the monitoring.coreos.com CRDs -- a KubernetesKubePrometheusStack composes).
+      notes: The 02-production-composed preset enables both.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "No backup seam exists on this spec. The production posture routes state to components that have one: an external KubernetesPostgres (continuous WAL archiving and base backups) and object storage for blobs. The internal database and Redis arms are evaluation-grade by upstream's own position -- one replica, no failover, no backups."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: core.replicas
+      evidence:
+        type: spec_default
+        reference: Every stateless component (core, portal, registry, jobservice, nginx) defaults to 1 replica and scales independently. More than one registry replica on the filesystem backend REQUIRES ReadWriteMany access mode (spec-enforced CEL) -- object storage is the backend that scales the registry.
+      notes: HA also requires the external database and cache arms -- the internal StatefulSets are single-node by design. The 02-production-composed preset runs 2 replicas of every stateless component against external Postgres, Valkey, and SeaweedFS.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: keep_volumes_on_uninstall
+      evidence:
+        type: spec_default
+        reference: "Empty means TRUE (chart truth): the registry and jobservice PVCs carry helm.sh/resource-policy: keep, so artifact blobs and job logs survive uninstall for a reinstall to adopt. The internal database and Redis volumes are StatefulSet-template PVCs Helm NEVER deletes regardless -- sweep them explicitly when retiring an install for good."
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Empty pins chart 1.19.1 (Harbor 2.15.1), so every deployment is reproducible; version changes are deliberate chart_version bumps. image_registry rewrites the registry host of every component image for air-gapped mirrors while repository paths and tags stay chart-truth.

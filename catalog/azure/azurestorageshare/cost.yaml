@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestorageshare
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Storage
+      sku_meter: provisioned share capacity
+      pricing_unit: GB-months
+      description: "Premium (SSD FileStorage) shares bill the PROVISIONED quota on existence -- Microsoft's Azure Files provisioned model charges for the storage you provision regardless of what you use, at 0.16 USD per GB-month (Premium LRS, eastus; ZRS 0.20). A 100 GB share costs ~16 USD/month with zero bytes written. Standard-account shares carry NO baseline: their quota is an enforcement limit, and only used capacity bills."
+  cost_drivers:
+    - field_path: quota_gb
+      sku_meter: provisioned share capacity
+      pricing_unit: GB-months
+      impact: "On premium FileStorage accounts this IS the billed quantity -- every provisioned GB bills whether used or not, and premium floors at 100 GB. On standard accounts it only caps writes; the bill follows used GB on the account's pay-as-you-go meters."
+    - field_path: access_tier
+      sku_meter: share at-rest and transaction meter class
+      impact: "Routes the share between meter classes. PREMIUM (required on FileStorage accounts) bills provisioned capacity. The standard tiers price used storage against transactions in opposite directions (eastus LRS, per GB-month / per 10K writes): TRANSACTION_OPTIMIZED 0.06 / 0.015, HOT 0.0287 / 0.065, COOL 0.0228 / 0.13 plus 0.01 USD/GB retrieval -- COOL is cheapest at rest and priciest to touch."
+    - field_path: enabled_protocol
+      sku_meter: provisioned share capacity
+      impact: "NFS requires a premium FileStorage account, so choosing NFS commits the share to provisioned billing even when access_tier is left unset (Premium is Azure's default -- and only legal -- tier there). SMB works on every account kind and adds no meter of its own."
+  free_tier: "None. Azure Files has no free grant on capacity, transactions, or snapshots."
+  estimate_exclusions:
+    - "standard-account shares bill USED capacity and operations on the account's pay-as-you-go meters (eastus LRS: data stored 0.06/0.0287/0.0228 USD per GB-month by tier, metadata 0.0297, writes 0.015-0.13 per 10K by tier, reads 0.0015-0.013 per 10K, cool retrieval 0.01 USD/GB) -- all following what workloads actually store and do"
+    - "share snapshots bill their differential used GB (premium LRS 0.136 USD/GB-month in eastus; standard snapshots at the tier's used-capacity rate) -- snapshot cadence and churn are runtime facts"
+    - "the provisioned rate is keyed to the referenced ACCOUNT's redundancy and billing model, which this manifest sees only as a reference: ZRS bills 0.20 USD/GB-month, and accounts created on the provisioned v2 model bill separately provisioned storage/IOPS/throughput meters on their own rate card"
+    - "geo-redundant replication (GRS/GZRS), data transfer, and private-endpoint hours bill on the account and networking components, not the share"
+  notes: "What flips this component to hybrid is the premium shape: the committed preset 02-nfs-premium-share pins quotaGb 100 on a FileStorage account, and Azure Files' provisioned model bills that quota from the moment the share exists ('You are charged for the storage you've provisioned regardless of what you use' -- Azure Files pricing page). Presets 01 (standard SMB) and 03 (standard COOL) are genuinely pay-as-you-go: their quota caps writes but bills nothing. Rates read live from the Azure Retail Prices API (serviceName 'Storage', productName 'Premium Files' / 'Files v2', eastus) and Microsoft's Azure Files pricing page on 2026-08-18; LRS and eastus assumed and stated wherever a rate is quoted."

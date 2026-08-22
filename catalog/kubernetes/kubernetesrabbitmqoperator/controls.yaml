@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesrabbitmqoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its state is the custom resources it reconciles, held in the cluster's etcd. Message data at rest is a property of the volumes the managed brokers provision, owned by KubernetesRabbitMq resources and the cluster's storage classes.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); customer-managed keys for broker volumes are configured on the target cluster's storage classes.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The manifest's mutating and validating admission webhooks serve TLS by construction -- their serving certificate is a cert-manager Certificate (self-signed Issuer) with CA injection, and cert-manager is a hard registry prerequisite of this kind. The operator's other traffic is the Kubernetes API, TLS by construction.
+      notes: TLS on the managed brokers' listeners is declared per cluster on KubernetesRabbitMq resources.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The applied manifest renders no external exposure -- its only service surfaces are the in-cluster webhook Service (consumed by the API server) and the metrics Service, and the spec offers no ingress or LoadBalancer seam.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no client-facing traffic to restrict. Network exposure of the managed brokers is declared on KubernetesRabbitMq resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cluster-internal controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The release manifest ships the operator's RBAC verbatim -- ServiceAccount, Role, ClusterRole, and bindings, exactly as the RabbitMQ team released them -- and the modules apply it unmodified.
+      notes: watch_namespaces fences which namespaces the operator RECONCILES (the OPERATOR_SCOPE_NAMESPACE environment variable); the manifest's cluster-wide RBAC objects are fixed upstream regardless -- the fence narrows attention, not permissions. Access to the operator's own resources is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator calls no cloud APIs -- it authenticates to the Kubernetes API with its ServiceAccount; there is no cloud identity to federate.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator exposes no authentication surface of its own. Broker credentials are GENERATED per cluster by the operator and delivered as Kubernetes Secrets, declared and consumed on KubernetesRabbitMq resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, Services, and Secrets for managed brokers -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The release manifest ships the operator's metrics Service, applied verbatim with the rest of the documents -- the Prometheus endpoint exists out of the box.
+      notes: Scrape wiring (ServiceMonitor or scrape config) is the target cluster's monitoring stack; the spec models no scrape seam. Broker metrics are declared on KubernetesRabbitMq resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up; its own configuration is this manifest, re-appliable at any time. Broker data protection is declared on KubernetesRabbitMq resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The release manifest runs the operator as a single-replica Deployment and this spec models no replica count. A brief operator outage pauses reconciliation only -- managed brokers keep serving; Kubernetes reschedules the pod.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Kubernetes nor the manifest offers a deletion-protection flag, and this operator's deletion posture is the OPPOSITE of the chart-based operators in this catalog: the RabbitmqCluster CRD is one document of the applied manifest and is REMOVED with the resource -- destroying the operator cascade-deletes every RabbitmqCluster on the cluster. Never destroy the operator while KubernetesRabbitMq resources exist."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: "The spec deliberately has NO version field: the installed operator (and its RabbitmqCluster CRD schema) is pinned to the release the catalog's typed SDK was generated against -- a user-selectable version would silently drift the CRD schema away from the typed resources built on it. Upgrades arrive as catalog updates, never as per-manifest drift."

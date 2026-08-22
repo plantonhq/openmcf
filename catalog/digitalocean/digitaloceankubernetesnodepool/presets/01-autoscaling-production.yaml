@@ -1,11 +1,14 @@
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
-  name: my-app-pool
+  name: app-pool
 spec:
   nodePoolName: app-pool
   cluster:
-    value: "<cluster-name>"
+    valueFrom:
+      kind: DigitalOceanKubernetesCluster
+      name: my-doks-cluster
+      fieldPath: status.outputs.cluster_id
   size: s-4vcpu-8gb
   nodeCount: 3
   autoScale: true
@@ -14,4 +17,4 @@ spec:
   labels:
     workload: app
   tags:
-    - production
+    - env:production

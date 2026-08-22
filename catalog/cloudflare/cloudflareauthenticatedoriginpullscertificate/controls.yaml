@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareauthenticatedoriginpullscertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare stores the uploaded private key encrypted in its key infrastructure; the API never returns it.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface -- Cloudflare's key infrastructure holds the upload.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The upload exists to mutually authenticate Cloudflare-to-origin TLS -- transit encryption is the component's purpose.
+      notes: The origin must require and validate the certificate for the mutual half to hold.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The certificate is presented only to your origin; the private key is never publicly reachable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own -- the enablement kind and the origin's TLS posture enforce.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Origin-authentication material, not an edge-protection policy.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the upload exposes no data plane of its own.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The upload IS the identity Cloudflare presents to the origin -- a scoped, rotatable client credential rather than a shared secret.
+      notes: scope decides the identity's blast radius (zone-wide vs per-hostname).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token with Zone SSL and Certificates Edit.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records uploads and deletions in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own; watch the expires_on output for rotation, which is this component's operational duty.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration re-creatable from the manifest PLUS the externally held certificate and key -- the API never returns them, so the secret store is the real backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare presents the certificate from its global edge on every origin pull.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete settling asynchronously (pending_deletion before gone). Revert or re-point referencing associations first.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the presentation; the customer's only lifecycle duty is certificate rotation (certificate and key together -- the zone surface silently ignores key-only changes at v5.23.0).

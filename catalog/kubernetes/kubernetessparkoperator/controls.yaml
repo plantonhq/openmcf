@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessparkoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its desired state is the spark.apache.org custom resources in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Spark job data rides each workload's own storage.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption and each Spark workload's data stores, owned elsewhere.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: This operator serves no inbound endpoint -- no admission webhook, no UI, no certificate machinery (it validates in its reconcile loop). Its only traffic is outbound to the Kubernetes API, which rides the API server's TLS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Nothing the modules render is exposed outside the cluster network -- no LoadBalancer, no Ingress; the operator runs as an in-cluster Deployment reconciling CRs through the Kubernetes API.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: workload.namespaces
+      evidence:
+        type: spec_default
+        reference: Empty watches every namespace with a cluster-wide workload ClusterRole -- the normal one-operator-per-cluster posture. A list fences Spark to exactly those namespaces -- the chart creates them, plants the workload service account and a namespace-scoped Role in each, and SparkApplications anywhere else are ignored without an error.
+      notes: This governs which namespaces may run Spark workloads, not a network path -- the operator has no inbound network surface. The 02-fenced-team-namespaces preset fences Spark to two team namespaces.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The operator serves no HTTP edge traffic. Web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates the operator's RBAC and the Spark WORKLOAD RBAC as one decided surface -- cluster-scoped by default, or per-namespace Roles in the fenced posture. The modules re-pin every hardcoded chart RBAC name to the release identity so multiple installs cannot collide. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+      notes: Spark driver pods create and delete executor pods at runtime -- the workload service account ("spark" by default) carries real pod-management permissions by design, scoped per-namespace in the fenced posture (02-fenced-team-namespaces).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator authenticates to the Kubernetes API through its ServiceAccount token -- it holds no cloud API credentials. Cloud identity for Spark jobs (object stores, warehouses) is configured on each SparkApplication, not here.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator exposes no authentication surface of its own -- no webhook, no UI, no credentials shipped. There is no legacy path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation the operator performs is a Kubernetes API operation, captured by the target cluster's audit policy. The operator emits reconcile logs to stdout for the cluster's log collector; a dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: operator_properties
+      evidence:
+        type: spec_default
+        reference: Unset leaves the chart's built-in operator configuration. operator_properties keys (the upstream spark.kubernetes.operator.* catalog, which includes the operator's metrics surface) append over those defaults; dynamic_config makes selected properties hot-reloadable without a restart.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up -- desired state is the Spark CRs (the cluster's etcd backup posture). The chart leaves the spark.apache.org CRDs and every workload declaration in place on uninstall, and workload RBAC is marked helm.sh/resource-policy keep, so removing the operator never destroys workload state or identity.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (no failover). More than 1 turns on leader election -- one active reconciler, warm standbys -- which the chart refuses to run without; the modules render the leader-election property automatically, exactly when replicas exceed 1.
+      notes: The 02-fenced-team-namespaces preset runs 2 replicas. Spreading the replicas across zones rides scheduling (node_selector, tolerations) and the cluster's topology.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the operator install; protection is operational (namespace RBAC, change review). The chart's crds/ posture and the keep-on-uninstall workload resources mean deleting this component strands but never destroys running Spark workloads.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default 1.8.0 (operator 1.0.0) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits.
+      notes: Chart upgrades NEVER upgrade the spark.apache.org CRDs (Helm crds/ directory posture) -- new CRD files are applied manually per the upstream release notes when a bump changes them.

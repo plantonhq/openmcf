@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53resolverquerylog
+spec:
+  aws:
+    statements:
+      - sid: ManageQueryLogConfig
+        actions:
+          - route53resolver:CreateResolverQueryLogConfig
+          - route53resolver:DeleteResolverQueryLogConfig
+          - route53resolver:GetResolverQueryLogConfig
+          - route53resolver:TagResource
+          - route53resolver:UntagResource
+          - route53resolver:ListTagsForResource
+        resources:
+          - arn:aws:route53resolver:*:*:resolver-query-log-config/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_query_log_config / route53.ResolverQueryLogConfig. GetResolverQueryLogConfig and ListTagsForResource run on every plan/refresh; TagResource serves tag-on-create and UntagResource later reconciliation (tags are the config's ONLY mutable attribute -- name and destination are ForceNew). All six actions take resource-level scoping on the resolver-query-log-config ARN per the service reference. The runner needs no logs or s3 grants for destination wiring -- delivery rides the delivery.logs.amazonaws.com service principal, a same-account S3 destination's bucket policy is updated automatically at create per the Route 53 developer guide, and a destination the resolver cannot write to fails ASYNCHRONOUSLY after a clean apply (the provider's waiter surfaces the association error), proving the API never demands destination permissions from the caller; AWS's own AmazonRoute53ResolverFullAccess managed policy carries no logs or s3 actions either. Destination writability is the referenced destination component's contract.
+      - sid: AssociateVpcs
+        actions:
+          - route53resolver:AssociateResolverQueryLogConfig
+          - route53resolver:DisassociateResolverQueryLogConfig
+        resources:
+          - arn:aws:route53resolver:*:*:resolver-query-log-config/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_query_log_config_association / route53.ResolverQueryLogConfigAssociation -- one join per vpc_ids entry, every argument ForceNew (an association changes only by replacement). Both actions scope to the resolver-query-log-config ARN per the service reference.
+      - sid: ReadAssociations
+        actions:
+          - route53resolver:GetResolverQueryLogConfigAssociation
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for each association's status, and the create-time waiter polls it to surface asynchronous delivery failures. The service reference lists no resource types for this action (non-scopable), so an ARN-scoped grant would be a runtime deny -- the wildcard is the narrowest possible scope.

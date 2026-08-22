@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresnippet.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareSnippetSpec defines one Cloudflare Snippet: a small JavaScript
+// module deployed to the zone's edge, invoked on requests that match snippet
+// rules (managed separately by CloudflareSnippetRules). Snippets are the
+// lightweight sibling of Workers -- same runtime, no bindings, sized for
+// header rewrites, redirects, and request/response touch-ups.
+//
+// The snippet NAME is the identity: Cloudflare's create call is an upsert, so
+// deploying a snippet whose name already exists in the zone silently adopts and
+// overwrites it. Pick names deliberately, and treat renaming as
+// delete-and-recreate (the provider replaces the resource when the name
+// changes). Plan limits apply to snippet COUNT per zone (free plans allow a
+// small number; higher plans more) -- the limit is Cloudflare's, checked at
+// create.
+//
+// Code travels INLINE in the manifest as file content strings -- the same
+// convention as the Worker kind's script. Cloudflare caps snippet code size
+// (32 KB per snippet at the time of writing); oversized code fails at the API.
+message CloudflareSnippetSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.main_module_in_files"
+    message: "main_module must name one of the files -- the entry module has to be part of the snippet's own file list"
+    expression: "this.files.exists(f, f.name == this.main_module)"
+  };
+
+  // The zone the snippet is deployed to.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The snippet's name -- its IDENTITY within the zone. IMMUTABLE in practice:
+  // changing it replaces the snippet (new identity), and any snippet rule
+  // referencing the old name keeps pointing at whatever the old name holds.
+  // Letters, numbers, and underscores only (Cloudflare's naming rule for
+  // snippets; the API rejects other characters).
+  string snippet_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "snippet_name.shape"
+      message: "snippet_name may contain only letters, numbers, and underscores (e.g. redirect_legacy_urls)"
+      expression: "this.matches('^[a-zA-Z0-9_]+$')"
+    }
+  ];
+
+  // The snippet's source files. Most snippets are a single file; multi-file
+  // snippets import siblings by name via ES module imports.
+  repeated CloudflareSnippetFile files = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // The entry module -- which file's default export handles the request. Must
+  // name one of the files above.
+  string main_module = 4 [(buf.validate.field).required = true];
+}
+
+// CloudflareSnippetFile is one source file of a snippet.
+message CloudflareSnippetFile {
+  // The file name (e.g. main.js). Referenced by main_module and by ES module
+  // imports from sibling files.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The file's JavaScript source, inline. Keep the content byte-stable
+  // (consistent line endings, no trailing whitespace churn) -- Cloudflare
+  // re-serves the stored content on reads, and gratuitous formatting differences
+  // read back as configuration drift.
+  string content = 2 [(buf.validate.field).required = true];
+}

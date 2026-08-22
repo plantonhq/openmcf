@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanmonitoralert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An alert policy stores no user data; its one credential-like value (the Slack webhook URL) is marked sensitive in the spec and secret-wrapped by both provisioners.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy serves no traffic; DigitalOcean delivers notifications over HTTPS (Slack webhooks) and SMTP as a platform property.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network surface of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: Policies carry no permission model; who can edit them is account-level DigitalOcean team permissioning.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy authenticates nothing; Slack delivery uses the webhook URL the spec carries as a sensitive field.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface beyond the webhook URL (see workload-identity).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-policy audit surface; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The kind IS the monitoring integration -- metric_type/compare/value/window are required fields, and the required alerts message carries an at-least-one-channel validation rule, so a policy that watches nothing or notifies nobody is unrepresentable.
+      notes: Alert policies exist to wire DigitalOcean's built-in metrics to humans; every instance of this kind is a monitoring integration by construction.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy is stateless configuration, recreated by IaC.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: DigitalOcean evaluates policies platform-side; there is no placement or availability posture to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for alert policies. Deleting one silences its notifications immediately -- the GUIDE says so where users decide.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch; evaluation runs on DigitalOcean's platform.

@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarelistitem
+spec:
+  # A list item under live E2E: the harness installs the CloudflareList
+  # prerequisite first (the kind's registry prerequisite -- an ip-kind
+  # list), then deploy -> GET
+  # accounts/{account_id}/rules/lists/{list_id}/items/{item_id} verify ->
+  # destroy -> verify-destroyed on both provisioners. The live scenario is
+  # one TEST-NET CIDR in the fixture list (the cheapest arm of the
+  # ip/asn/hostname/redirect oneof). Delete is an async bulk POST the
+  # provider never polls; the verifier retries the absent-check. Deliberately
+  # not live: a redirect item (the import ID would need URL-encoding of the
+  # source_url). Free; objects create in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

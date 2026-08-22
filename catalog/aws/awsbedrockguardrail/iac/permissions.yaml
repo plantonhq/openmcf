@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockguardrail
+spec:
+  aws:
+    statements:
+      - sid: CreateGuardrail
+        actions:
+          - bedrock:CreateGuardrail
+        resources:
+          - arn:aws:bedrock:*:*:guardrail/*
+        provenance: derived
+        notes: Covers the create call of aws_bedrock_guardrail / bedrock.Guardrail. The service reference lists only REFERENCED resource types for CreateGuardrail (guardrail-profile when cross_region_profile is set, automated-reasoning-policy which this spec never uses) -- the guardrail's own ARN does not exist until the call returns, and AWS's own guardrails permission guide grants the action on "*". The wildcard is the narrowest grant that works for both the plain and cross-region shapes.
+      - sid: ManageGuardrail
+        actions:
+          - bedrock:GetGuardrail
+          - bedrock:UpdateGuardrail
+          - bedrock:DeleteGuardrail
+          - bedrock:CreateGuardrailVersion
+        resources:
+          - arn:aws:bedrock:*:*:guardrail/*
+          - arn:aws:bedrock:*:*:guardrail-profile/*
+        provenance: derived
+        notes: Covers aws_bedrock_guardrail (draft reads/updates/deletion) and aws_bedrock_guardrail_version for spec.versions entries -- deleting a numbered version is the same DeleteGuardrail API with a version parameter, so no separate action exists. GetGuardrail serves every plan/refresh of both resources. All four scope to the guardrail ARN; UpdateGuardrail additionally authorizes against the guardrail-profile ARN when cross_region_profile is set, which is why that format is granted too.
+      - sid: TagGuardrail
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:guardrail/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh (AWS's guardrails permission guide calls out bedrock:TagResource explicitly for tagged creates). The service reference scopes all three tagging actions to the guardrail ARN format among others; only the format this module tags is granted.

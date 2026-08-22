@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceancdn.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanCdnSpec models the full digitalocean_cdn resource surface: a
+// CDN endpoint that serves a Spaces bucket's content from DigitalOcean's
+// global edge network, optionally under a custom subdomain with a managed
+// TLS certificate.
+//
+// Certificates are referenced BY NAME, never by UUID: a Let's Encrypt
+// certificate's UUID rotates on every auto-renewal while its name stays
+// stable, so DigitalOcean addresses CDN certificates by name (the provider's
+// numeric certificate_id argument is deprecated for exactly this reason and
+// is deliberately not modeled here -- its update path can silently detach
+// the certificate when the custom domain changes).
+message DigitalOceanCdnSpec {
+  // The origin server -- the fully-qualified domain name of the Space whose
+  // content the CDN serves (for example
+  // "my-bucket.nyc3.digitaloceanspaces.com"). Use a literal FQDN or a
+  // reference to a DigitalOceanBucket resource. Changing it replaces the
+  // CDN endpoint.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef origin = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanBucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_domain_name"
+  ];
+
+  // (Optional) How long, in seconds, the edge caches content before
+  // revalidating against the origin. When unset, DigitalOcean applies its
+  // default of 3600 (one hour) and reports it back. The floor is 1 because
+  // an explicit zero can never reach the API -- the provider drops zero
+  // values on the way out, making "ttl = 0" indistinguishable from unset.
+  optional int32 ttl = 2 [(buf.validate.field).int32.gte = 1];
+
+  // (Optional) The DigitalOcean-managed TLS certificate for the custom
+  // domain, referenced by its stable NAME (which is also what
+  // DigitalOceanCertificate exports as certificate_id). The literal value
+  // "needs-cloudflare-cert" is a DigitalOcean sentinel that requests an
+  // edge-provisioned certificate instead of an account-managed one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_id"
+  ];
+
+  // (Optional) A fully-qualified custom subdomain to serve the CDN content
+  // from (for example "assets.example.com"). Requires certificate: serving
+  // a custom domain without TLS is not supported by DigitalOcean, and the
+  // provider only surfaces the failure at apply time -- it is rejected at
+  // validation time here instead.
+  string custom_domain = 4 [(buf.validate.field).cel = {
+    id: "spec.custom_domain_fqdn"
+    message: "custom_domain must be a fully-qualified domain name"
+    expression: "this == '' || this.matches('^[A-Za-z0-9\\\\-\\\\.]+\\\\.[A-Za-z]{2,}$')"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "spec.custom_domain_requires_certificate"
+    message: "custom_domain requires certificate (the TLS certificate that will serve it)"
+    expression: "this.custom_domain == '' || has(this.certificate)"
+  };
+}

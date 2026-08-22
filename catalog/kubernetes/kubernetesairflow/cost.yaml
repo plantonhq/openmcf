@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesairflow
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: components
+      sku_meter: cluster CPU and memory reservations
+      impact: Each Airflow component -- API server, scheduler, DAG processor, triggerer, and Celery workers -- reserves its declared resource requests times its replica count. The reservation is claimed whether pipelines run or not; components with no declared resources run on the chart's defaults (no requests).
+    - field_path: components.triggerer.persistence_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every triggerer replica provisions its own local-state volume. The chart default is 100Gi when this field is not declared -- size it deliberately for small clusters.
+    - field_path: components.workers.persistence_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every Celery worker provisions its own task-log volume (chart default 100Gi). Applies only under a Celery-family executor with persistence enabled.
+    - field_path: broker
+      sku_meter: cluster CPU and memory reservations
+      impact: The bundled_redis arm adds one Redis pod with its declared resources and a persistent volume (default 1Gi). The valkey and existing-Secret arms reserve nothing here -- that broker's capacity rides its own component.
+    - field_path: pgbouncer
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, one PgBouncer pooler pod (plus its metrics-exporter sidecar) runs with the declared resources.
+    - field_path: logging.persistence.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: When shared log persistence is enabled, one cluster-wide volume of this size holds task logs so the UI can read them after pods rotate (chart default 100Gi when the size is not declared).
+    - field_path: dags.persistence.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: When DAG delivery uses the persistence arm, one shared volume of this size holds the DAG files (chart default 1Gi; nothing is created when existing_claim points at your own PVC).
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - with the KubernetesExecutor (this kind's default), every task runs as its own ephemeral pod -- per-task reservations exist only while tasks run and no standing worker fleet is counted
+    - KEDA autoscaling, when enabled, owns the Celery worker replica count at runtime between its declared bounds
+    - volume sizes left undeclared fall back to chart defaults the footprint cannot count (the triggerer and each Celery worker default to 100Gi volumes)
+    - the helm_values overlay merges last and can override any modeled value, including resources and replica counts
+    - the metadata database and any composed Valkey broker are separate components whose capacity rides their own footprints
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: per-component replicas x requests, plus the declared volumes. The metadata database (KubernetesPostgres or external MySQL) is a separate resource with its own footprint -- never folded into this one."

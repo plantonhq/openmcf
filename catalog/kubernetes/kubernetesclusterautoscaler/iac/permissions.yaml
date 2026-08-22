@@ -1,0 +1,111 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesclusterautoscaler
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.cluster_autoscaler -- created and owned only when spec.create_namespace is true (kube-system installs, the upstream convention, leave it false); get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.cluster_autoscaler -- the metrics ClusterIP Service, the autoscaler ServiceAccount (carrying the IRSA/workload-identity annotations the modules render), and the chart's credential Secret (templates/secret.yaml), which renders only when a static-credential arm is set (aws.access_keys, azure.identity.service_principal, or civo). Secrets also cover Helm's own release-state Secret.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The autoscaler Deployment -- the single controller pod class this component runs.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's ClusterRole and ClusterRoleBinding for the autoscaler -- broad by function (nodes, pods, evictions, and the workload objects scale decisions read). Not rendered when cluster_api.namespace_scoped_rbac switches the chart to a namespaced Role (rbac.clusterScoped=false), the least-privilege Cluster API posture.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the installation namespace (leases and status access), plus the full namespaced Role/RoleBinding pair that replaces the ClusterRole when cluster_api.namespace_scoped_rbac is true.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.prometheus.service_monitor is true -- requires the Prometheus operator CRDs on the cluster (the release fails to install without them).
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders a PodDisruptionBudget for the autoscaler pod by default (its podDisruptionBudget value defaults to maxUnavailable 1); the typed spec does not touch it -- tuned or disabled only through helm_values, per the spec's escape-hatch doc.

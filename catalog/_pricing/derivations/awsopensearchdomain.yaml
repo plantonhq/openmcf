@@ -4,10 +4,11 @@
 # data nodes, dedicated masters, UltraWarm -- each tier's instance type
 # selecting its rate, plus the per-node gp3 EBS volumes. UltraWarm and
 # cold managed storage bill per GB actually stored -- exclusions, never
-# guessed numbers. Explicit gp3 IOPS/throughput dials REFUSE: the billable
-# surcharge is (provisioned minus included baseline), an arithmetic these
-# rules cannot express, and an estimate without it would understate a
-# committed charge. The estimate generator replays the catalog presets
+# guessed numbers. Explicit gp3 IOPS/throughput dials REFUSE: the
+# surcharge bills at OpenSearch's own per-IOPS and per-MiBps rates, which
+# this price book does not yet carry, and an estimate without it would
+# understate a committed charge. The estimate generator replays the
+# catalog presets
 # through these rules to emit ../estimates/awsopensearchdomain.yaml.
 # Schema: finops/componentcostderivation/v1.
 apiVersion: finops.planton.dev/v1
@@ -37,12 +38,12 @@ spec:
         - field_path: ebs_options.iops
           op: not_equals
           value: "0"
-      reason: explicitly provisioned gp3 IOPS can exceed the included 3000-IOPS baseline and bill a monthly per-IOPS surcharge of (provisioned minus included) per data-node volume, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+      reason: explicitly provisioned gp3 IOPS above the included 3000-IOPS baseline bill a monthly per-IOPS surcharge per data-node volume at OpenSearch's own rate, which this price book does not yet carry -- an estimate without it would understate a committed charge
     - when:
         - field_path: ebs_options.throughput
           op: not_equals
           value: "0"
-      reason: explicitly provisioned gp3 throughput can exceed the included 125-MiB/s baseline and bill a monthly per-MiBps surcharge of (provisioned minus included) per data-node volume, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+      reason: explicitly provisioned gp3 throughput above the included 125-MiB/s baseline bills a monthly per-MiBps surcharge per data-node volume at OpenSearch's own rate, which this price book does not yet carry -- an estimate without it would understate a committed charge
   lines:
     - sku_meter: data node hours
       quantity:

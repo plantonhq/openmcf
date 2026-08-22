@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. This kind is the catalog's sole
+# intentional passthrough -- a generic Helm install -- so most postures
+# belong to the PACKAGED CHART, and this profile says so honestly rather
+# than claiming stances the spec cannot enforce. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteshelmrelease
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: What data the release stores, and whether at rest it is encrypted, is decided by the packaged chart and its values -- this spec has no seam for it. The release record itself is a Kubernetes Secret whose at-rest posture is the cluster's etcd encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys are the packaged chart's concern where its workloads store data (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The deployed workloads' traffic posture rides the chart. Chart TRANSPORT is governed by repo -- https:// and oci:// repositories serve chart bytes encrypted, and plain http:// is accepted by the contract, so the repo choice is the operator's.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether the release exposes anything publicly (LoadBalancer Services, Ingresses) is decided entirely by the chart and its values -- unknowable from this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Network exposure and its restriction are the chart's rendering (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Whether an HTTP edge even exists is the chart's decision; web application firewalls would ride whatever the chart renders.
+    - control_id: rbac
+      status: not_applicable
+      notes: The RBAC the release creates (ServiceAccounts, Roles, ClusterRoles) is the chart's content. Installing and managing the release itself is governed by the target cluster's Kubernetes RBAC on the IaC runner -- see iac/permissions.yaml for why that surface is unbounded for a passthrough.
+    - control_id: workload-identity
+      status: configurable
+      field_path: set_sensitive
+      evidence:
+        type: spec_default
+        reference: The credential seams this spec OWNS are chart-repository auth (repository_username and repository_password, a validated pair, sensitive-marked) and set_sensitive chart values -- applied last, always literal strings, kept out of rendered plans and state where each engine supports it. Identity of the deployed workloads rides the chart.
+      notes: The 03-private-repo-with-secrets preset demonstrates both seams. Do not put secrets in values_yaml -- the spec says so explicitly.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication paths of the deployed workloads are the chart's content; this spec's only auth is the chart-repository pair (see workload-identity).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: End-user sign-in, where it exists, belongs to the workloads the chart deploys -- their credential-strength posture is the chart's content, invisible to this spec (see no-legacy-auth).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the release are Kubernetes API operations captured by the target cluster's audit policy, and Helm keeps per-revision release history (max_history, default 10) with an optional free-form description visible in helm status. Audit logging INSIDE the deployed workloads rides the chart.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Metrics endpoints, ServiceMonitors, and dashboards are the chart's content -- this spec models no monitoring seam.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Helm revision history (max_history, default 10, 0 = unlimited) makes the release DEFINITION recoverable via rollback -- but that recovers configuration, never data. Data backup for whatever the chart deploys is the chart's concern."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No data backups exist at this layer to retain (see backup-recovery); max_history bounds only the release-revision records.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Replica counts, topology spread, and disruption budgets are chart values inside the opaque values_yaml -- the availability posture is the chart's, tuned in its own vocabulary.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: atomic
+      evidence:
+        type: spec_default
+        reference: "Off by default. atomic protects against HALF-DEPLOYED states -- a failed install or upgrade rolls everything back and purges new resources -- and cleanup_on_fail is its lighter sibling for failed upgrades. Neither guards deletion itself: destroying the resource uninstalls the release."
+      notes: CRDs shipped in the chart's crds/ directory follow Helm's contract -- installed when absent (unless skip_crds), NOT removed on uninstall. Whatever data the chart's workloads hold survives or dies by the chart's own uninstall behavior.
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: The exact chart version is REQUIRED -- an unpinned "latest" install is not reproducible, and reproducibility is the point of declaring the release here. Upgrades are deliberate pin changes; reuse_values and reset_values (mutually exclusive) govern whether the previous release's values carry over, and max_history keeps the rollback depth.
+      notes: All three presets pin exact versions (6.9.2 for the podinfo pair).

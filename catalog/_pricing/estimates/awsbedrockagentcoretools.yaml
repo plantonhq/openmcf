@@ -1,0 +1,36 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsbedrockagentcoretools
+spec:
+  presets:
+    - preset: 01-sandboxed-code-interpreter
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each code-execution session bills $0.0895 per vCPU-hour of actual CPU plus $0.00945 per GB-hour of peak memory, per second with a 1-second minimum and a 128 MB memory floor, from session start to termination -- volume and sizing are entirely agent-driven
+        - CPU during I/O wait is free but memory is not -- a sandbox session left open between executions keeps metering its peak memory
+        - SANDBOX network mode means no network path and therefore no data-transfer meter at all
+        - no permanent free allotment exists for tool sessions -- the up-to-$200 AWS Free Tier credit for new customers is a one-time trial, not a tier
+      notes: Zero committed cost -- the interpreter is a configuration shell with no update API and no at-rest meter; nothing bills until an agent starts a session.
+    - preset: 02-recorded-research-browser
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each browser session bills $0.0895 per vCPU-hour of actual CPU plus $0.00945 per GB-hour of peak memory, per second across the whole session lifetime -- the pricing page's own example runs 100K ten-minute sessions to $1,226.67 monthly, all of it traffic-driven
+        - session recordings write to the referenced AwsS3Bucket, whose storage and request meters bill on that component and grow until its lifecycle rules prune them
+        - the docs_login profile stores nothing at create; once sessions save state, its artifacts (cookies, local storage) bill at Amazon S3 Standard rates (a meter AWS started April 15, 2026) monthly while they exist -- usage-created state, not manifest-committed spend
+        - network data transfer bills at standard EC2 rates as sessions browse
+        - no permanent free allotment exists for tool sessions -- the up-to-$200 AWS Free Tier credit for new customers is a one-time trial, not a tier
+      notes: Zero committed cost -- browser, profile, and recording wiring all bill nothing at rest; every meter (session compute, recording storage on the referenced bucket, profile artifacts) starts with the first agent session and scales with usage the manifest cannot see.

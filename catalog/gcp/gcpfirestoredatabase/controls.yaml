@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No legacy authentication path exists to disable. app_engine_integration_mode couples the database's LIFECYCLE to a legacy App Engine app (presets 02 and 03 set DISABLED to decouple it); it is not an authentication mechanism.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

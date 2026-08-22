@@ -17,4 +17,10 @@ message CloudflareDnsRecordStackOutputs {
 
   // Whether the record is proxied through Cloudflare (orange cloud).
   bool proxied = 4;
+
+  // The Cloudflare Zone ID the record lives in. A record's API identity is
+  // (zone_id, record_id), so downstream consumers -- verification tooling,
+  // imports, chart blocks composing on the record -- need the zone alongside
+  // the record's own id.
+  string zone_id = 5;
 }

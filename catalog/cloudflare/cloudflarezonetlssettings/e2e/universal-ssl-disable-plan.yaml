@@ -1,0 +1,16 @@
+# OFFLINE-PLAN ARM (never a live scenario): disabling Universal SSL stops
+# certificate issuance and is the unreachability class -- even on a throwaway
+# zone the lane's own verification depends on the zone staying reachable.
+# Plan-proven offline; the ca_hostname_associations managed-CA arm rides
+# along (no-op destroy, harmless offline).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: test-tls-universal-ssl-disable
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  universal_ssl_enabled: false
+  ca_hostname_associations:
+    - hostnames:
+        - app.example.com

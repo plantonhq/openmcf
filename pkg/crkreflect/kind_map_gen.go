@@ -350,6 +350,7 @@ import (
 	azurenetworkinterfacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkinterface/v1alpha1"
 	azurenetworksecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworksecuritygroup/v1alpha1"
 	azurenetworkwatcherflowlogv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkwatcherflowlog/v1alpha1"
+	azureplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureplantonrunner/v1alpha1"
 	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
 	azureprivatednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsrecord/v1alpha1"
@@ -406,51 +407,103 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
+	cloudflareaccountapitokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareaccountapitoken/v1alpha1"
+	cloudflareaigatewayv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareaigateway/v1alpha1"
+	cloudflareauthenticatedoriginpullsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1"
+	cloudflareauthenticatedoriginpullscertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1"
+	cloudflarebotmanagementv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarebotmanagement/v1alpha1"
+	cloudflarecachesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecachesettings/v1alpha1"
 	cloudflarecertificatepackv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecertificatepack/v1alpha1"
 	cloudflarecustomhostnamev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1"
 	cloudflarecustomhostnamefallbackoriginv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1"
+	cloudflarecustomsslcertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1"
 	cloudflared1databasev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflared1database/v1alpha1"
 	cloudflarednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarednsrecord/v1alpha1"
 	cloudflarednszonev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarednszone/v1alpha1"
 	cloudflareemailroutingaddressv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingaddress/v1alpha1"
 	cloudflareemailroutingrulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingrule/v1alpha1"
 	cloudflareemailroutingzonev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingzone/v1alpha1"
+	cloudflarehealthcheckv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarehealthcheck/v1alpha1"
 	cloudflarehyperdriveconfigv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarehyperdriveconfig/v1alpha1"
+	cloudflareipaccessrulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareipaccessrule/v1alpha1"
 	cloudflarekvnamespacev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarekvnamespace/v1alpha1"
 	cloudflarelistv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelist/v1alpha1"
 	cloudflarelistitemv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelistitem/v1alpha1"
 	cloudflareloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancer/v1alpha1"
 	cloudflareloadbalancermonitorv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancermonitor/v1alpha1"
 	cloudflareloadbalancerpoolv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancerpool/v1alpha1"
+	cloudflarelogpushjobv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelogpushjob/v1alpha1"
+	cloudflaremtlscertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaremtlscertificate/v1alpha1"
+	cloudflarenotificationpolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarenotificationpolicy/v1alpha1"
+	cloudflarenotificationwebhookv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarenotificationwebhook/v1alpha1"
 	cloudflareorigincacertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareorigincacertificate/v1alpha1"
 	cloudflarepagesprojectv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarepagesproject/v1alpha1"
 	cloudflarequeuev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarequeue/v1alpha1"
 	cloudflarer2bucketv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarer2bucket/v1alpha1"
 	cloudflarerulesetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareruleset/v1alpha1"
+	cloudflaresecretsstorev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresecretsstore/v1alpha1"
+	cloudflaresecretsstoresecretv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresecretsstoresecret/v1alpha1"
+	cloudflaresnippetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippet/v1alpha1"
+	cloudflaresnippetrulesv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippetrules/v1alpha1"
 	cloudflareturnstilewidgetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareturnstilewidget/v1alpha1"
+	cloudflarewaitingroomv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroom/v1alpha1"
+	cloudflarewaitingroomeventv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1"
+	cloudflarewebanalyticssitev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewebanalyticssite/v1alpha1"
 	cloudflareworkerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1"
 	cloudflareworkerskvpairv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkerskvpair/v1alpha1"
+	cloudflareworkflowv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkflow/v1alpha1"
 	cloudflarezerotrustaccessapplicationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessapplication/v1alpha1"
 	cloudflarezerotrustaccessgroupv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessgroup/v1alpha1"
+	cloudflarezerotrustaccessidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1"
+	cloudflarezerotrustaccessinfrastructuretargetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/v1alpha1"
 	cloudflarezerotrustaccesspolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccesspolicy/v1alpha1"
+	cloudflarezerotrustaccessservicetokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1"
+	cloudflarezerotrustdevicecustomprofilev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/v1alpha1"
+	cloudflarezerotrustdevicedefaultprofilev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/v1alpha1"
+	cloudflarezerotrustdeviceposturerulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdeviceposturerule/v1alpha1"
+	cloudflarezerotrustdnslocationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdnslocation/v1alpha1"
+	cloudflarezerotrustgatewaypolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1"
+	cloudflarezerotrustgatewaysettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1"
+	cloudflarezerotrustlistv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustlist/v1alpha1"
+	cloudflarezerotrustmcpportalv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustmcpportal/v1alpha1"
+	cloudflarezerotrustmcpserverv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustmcpserver/v1alpha1"
+	cloudflarezerotrustorganizationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustorganization/v1alpha1"
 	cloudflarezerotrusttunnelv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1"
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
-	digitaloceanappplatformservicev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanappplatformservice/v1alpha1"
+	cloudflarezonesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonesettings/v1alpha1"
+	cloudflarezonetlssettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonetlssettings/v1alpha1"
+	digitaloceanappv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanapp/v1alpha1"
 	digitaloceanbucketv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1"
+	digitaloceancdnv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancdn/v1alpha1"
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
 	digitaloceancontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancontainerregistry/v1alpha1"
 	digitaloceandatabaseclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasecluster/v1alpha1"
+	digitaloceandatabaseconnectionpoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseconnectionpool/v1alpha1"
+	digitaloceandatabasedbv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasedb/v1alpha1"
+	digitaloceandatabasefirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasefirewall/v1alpha1"
+	digitaloceandatabasekafkaschemav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkaschema/v1alpha1"
+	digitaloceandatabasekafkatopicv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkatopic/v1alpha1"
+	digitaloceandatabasereplicav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasereplica/v1alpha1"
+	digitaloceandatabaseuserv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseuser/v1alpha1"
 	digitaloceandnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnsrecord/v1alpha1"
 	digitaloceandnszonev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnszone/v1alpha1"
 	digitaloceandropletv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandroplet/v1alpha1"
+	digitaloceandropletautoscalepoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandropletautoscalepool/v1alpha1"
 	digitaloceanfirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanfirewall/v1alpha1"
 	digitaloceanfunctionv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanfunction/v1alpha1"
 	digitaloceankubernetesclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetescluster/v1alpha1"
 	digitaloceankubernetesnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1"
 	digitaloceanloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1"
+	digitaloceanmonitoralertv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanmonitoralert/v1alpha1"
+	digitaloceanprojectv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanproject/v1alpha1"
+	digitaloceanreservedipv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanreservedip/v1alpha1"
+	digitaloceanspaceskeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanspaceskey/v1alpha1"
+	digitaloceansshkeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceansshkey/v1alpha1"
+	digitaloceanuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanuptimecheck/v1alpha1"
 	digitaloceanvolumev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvolume/v1alpha1"
 	digitaloceanvpcv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1"
+	digitaloceanvpcpeeringv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpcpeering/v1alpha1"
 	gcpaddressv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpaddress/v1alpha1"
 	gcpalloydbclusterv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbcluster/v1alpha1"
 	gcpalloydbinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbinstance/v1alpha1"
@@ -517,6 +570,7 @@ import (
 	gcpmonitoringnotificationchannelv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringnotificationchannel/v1alpha1"
 	gcpmonitoringslov1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringslo/v1alpha1"
 	gcpmonitoringuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpmonitoringuptimecheck/v1alpha1"
+	gcpplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpplantonrunner/v1alpha1"
 	gcpprojectv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpproject/v1alpha1"
 	gcpprojectiammemberv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpprojectiammember/v1alpha1"
 	gcppubsubschemav1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcppubsubschema/v1alpha1"
@@ -633,6 +687,9 @@ import (
 	kubernetesperconamongooperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamongooperator/v1alpha1"
 	kubernetesperconamysqloperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamysqloperator/v1alpha1"
 	kubernetespersistentvolumeclaimv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespersistentvolumeclaim/v1alpha1"
+	kubernetesplantonoperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonoperator/v1alpha1"
+	kubernetesplantonplatformv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonplatform/v1alpha1"
+	kubernetesplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonrunner/v1alpha1"
 	kubernetespoddisruptionbudgetv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1"
 	kubernetespostgresv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespostgres/v1alpha1"
 	kubernetespriorityclassv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespriorityclass/v1alpha1"
@@ -1037,6 +1094,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNetworkInterface:                          &azurenetworkinterfacev1alpha1.AzureNetworkInterface{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkSecurityGroup:                      &azurenetworksecuritygroupv1alpha1.AzureNetworkSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AzureNetworkWatcherFlowLog:                     &azurenetworkwatcherflowlogv1alpha1.AzureNetworkWatcherFlowLog{},
+	cloudresourcekind.CloudResourceKind_AzurePlantonRunner:                             &azureplantonrunnerv1alpha1.AzurePlantonRunner{},
 	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsRecord:                          &azureprivatednsrecordv1alpha1.AzurePrivateDnsRecord{},
@@ -1096,54 +1154,106 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:               &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
-	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
-	cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin:  &cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOrigin{},
-	cloudresourcekind.CloudResourceKind_CloudflareD1Database:                    &cloudflared1databasev1alpha1.CloudflareD1Database{},
-	cloudresourcekind.CloudResourceKind_CloudflareDnsRecord:                     &cloudflarednsrecordv1alpha1.CloudflareDnsRecord{},
-	cloudresourcekind.CloudResourceKind_CloudflareDnsZone:                       &cloudflarednszonev1alpha1.CloudflareDnsZone{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingAddress:           &cloudflareemailroutingaddressv1alpha1.CloudflareEmailRoutingAddress{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingRule:              &cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRule{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingZone:              &cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingZone{},
-	cloudresourcekind.CloudResourceKind_CloudflareHyperdriveConfig:              &cloudflarehyperdriveconfigv1alpha1.CloudflareHyperdriveConfig{},
-	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                   &cloudflarekvnamespacev1alpha1.CloudflareKvNamespace{},
-	cloudresourcekind.CloudResourceKind_CloudflareList:                          &cloudflarelistv1alpha1.CloudflareList{},
-	cloudresourcekind.CloudResourceKind_CloudflareListItem:                      &cloudflarelistitemv1alpha1.CloudflareListItem{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:                  &cloudflareloadbalancerv1alpha1.CloudflareLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerMonitor:           &cloudflareloadbalancermonitorv1alpha1.CloudflareLoadBalancerMonitor{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerPool:              &cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool{},
-	cloudresourcekind.CloudResourceKind_CloudflareOriginCaCertificate:           &cloudflareorigincacertificatev1alpha1.CloudflareOriginCaCertificate{},
-	cloudresourcekind.CloudResourceKind_CloudflarePagesProject:                  &cloudflarepagesprojectv1alpha1.CloudflarePagesProject{},
-	cloudresourcekind.CloudResourceKind_CloudflareQueue:                         &cloudflarequeuev1alpha1.CloudflareQueue{},
-	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                      &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
-	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                       &cloudflarerulesetv1alpha1.CloudflareRuleset{},
-	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:               &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
-	cloudresourcekind.CloudResourceKind_CloudflareWorker:                        &cloudflareworkerv1alpha1.CloudflareWorker{},
-	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                 &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:    &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:          &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:         &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:               &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:          &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork: &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_CloudflareAccountApiToken:                     &cloudflareaccountapitokenv1alpha1.CloudflareAccountApiToken{},
+	cloudresourcekind.CloudResourceKind_CloudflareAiGateway:                           &cloudflareaigatewayv1alpha1.CloudflareAiGateway{},
+	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPulls:            &cloudflareauthenticatedoriginpullsv1alpha1.CloudflareAuthenticatedOriginPulls{},
+	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate: &cloudflareauthenticatedoriginpullscertificatev1alpha1.CloudflareAuthenticatedOriginPullsCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflareBotManagement:                       &cloudflarebotmanagementv1alpha1.CloudflareBotManagement{},
+	cloudresourcekind.CloudResourceKind_CloudflareCacheSettings:                       &cloudflarecachesettingsv1alpha1.CloudflareCacheSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:                     &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
+	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                      &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
+	cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin:        &cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOrigin{},
+	cloudresourcekind.CloudResourceKind_CloudflareCustomSslCertificate:                &cloudflarecustomsslcertificatev1alpha1.CloudflareCustomSslCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflareD1Database:                          &cloudflared1databasev1alpha1.CloudflareD1Database{},
+	cloudresourcekind.CloudResourceKind_CloudflareDnsRecord:                           &cloudflarednsrecordv1alpha1.CloudflareDnsRecord{},
+	cloudresourcekind.CloudResourceKind_CloudflareDnsZone:                             &cloudflarednszonev1alpha1.CloudflareDnsZone{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingAddress:                 &cloudflareemailroutingaddressv1alpha1.CloudflareEmailRoutingAddress{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingRule:                    &cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRule{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingZone:                    &cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingZone{},
+	cloudresourcekind.CloudResourceKind_CloudflareHealthcheck:                         &cloudflarehealthcheckv1alpha1.CloudflareHealthcheck{},
+	cloudresourcekind.CloudResourceKind_CloudflareHyperdriveConfig:                    &cloudflarehyperdriveconfigv1alpha1.CloudflareHyperdriveConfig{},
+	cloudresourcekind.CloudResourceKind_CloudflareIpAccessRule:                        &cloudflareipaccessrulev1alpha1.CloudflareIpAccessRule{},
+	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                         &cloudflarekvnamespacev1alpha1.CloudflareKvNamespace{},
+	cloudresourcekind.CloudResourceKind_CloudflareList:                                &cloudflarelistv1alpha1.CloudflareList{},
+	cloudresourcekind.CloudResourceKind_CloudflareListItem:                            &cloudflarelistitemv1alpha1.CloudflareListItem{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:                        &cloudflareloadbalancerv1alpha1.CloudflareLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerMonitor:                 &cloudflareloadbalancermonitorv1alpha1.CloudflareLoadBalancerMonitor{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerPool:                    &cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool{},
+	cloudresourcekind.CloudResourceKind_CloudflareLogpushJob:                          &cloudflarelogpushjobv1alpha1.CloudflareLogpushJob{},
+	cloudresourcekind.CloudResourceKind_CloudflareMtlsCertificate:                     &cloudflaremtlscertificatev1alpha1.CloudflareMtlsCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflareNotificationPolicy:                  &cloudflarenotificationpolicyv1alpha1.CloudflareNotificationPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareNotificationWebhook:                 &cloudflarenotificationwebhookv1alpha1.CloudflareNotificationWebhook{},
+	cloudresourcekind.CloudResourceKind_CloudflareOriginCaCertificate:                 &cloudflareorigincacertificatev1alpha1.CloudflareOriginCaCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflarePagesProject:                        &cloudflarepagesprojectv1alpha1.CloudflarePagesProject{},
+	cloudresourcekind.CloudResourceKind_CloudflareQueue:                               &cloudflarequeuev1alpha1.CloudflareQueue{},
+	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                            &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
+	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                             &cloudflarerulesetv1alpha1.CloudflareRuleset{},
+	cloudresourcekind.CloudResourceKind_CloudflareSecretsStore:                        &cloudflaresecretsstorev1alpha1.CloudflareSecretsStore{},
+	cloudresourcekind.CloudResourceKind_CloudflareSecretsStoreSecret:                  &cloudflaresecretsstoresecretv1alpha1.CloudflareSecretsStoreSecret{},
+	cloudresourcekind.CloudResourceKind_CloudflareSnippet:                             &cloudflaresnippetv1alpha1.CloudflareSnippet{},
+	cloudresourcekind.CloudResourceKind_CloudflareSnippetRules:                        &cloudflaresnippetrulesv1alpha1.CloudflareSnippetRules{},
+	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:                     &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
+	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoom:                         &cloudflarewaitingroomv1alpha1.CloudflareWaitingRoom{},
+	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent:                    &cloudflarewaitingroomeventv1alpha1.CloudflareWaitingRoomEvent{},
+	cloudresourcekind.CloudResourceKind_CloudflareWebAnalyticsSite:                    &cloudflarewebanalyticssitev1alpha1.CloudflareWebAnalyticsSite{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorker:                              &cloudflareworkerv1alpha1.CloudflareWorker{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                       &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorkflow:                            &cloudflareworkflowv1alpha1.CloudflareWorkflow{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:          &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:                &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider:     &cloudflarezerotrustaccessidentityproviderv1alpha1.CloudflareZeroTrustAccessIdentityProvider{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget: &cloudflarezerotrustaccessinfrastructuretargetv1alpha1.CloudflareZeroTrustAccessInfrastructureTarget{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:               &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken:         &cloudflarezerotrustaccessservicetokenv1alpha1.CloudflareZeroTrustAccessServiceToken{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceCustomProfile:        &cloudflarezerotrustdevicecustomprofilev1alpha1.CloudflareZeroTrustDeviceCustomProfile{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceDefaultProfile:       &cloudflarezerotrustdevicedefaultprofilev1alpha1.CloudflareZeroTrustDeviceDefaultProfile{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDevicePostureRule:          &cloudflarezerotrustdeviceposturerulev1alpha1.CloudflareZeroTrustDevicePostureRule{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDnsLocation:                &cloudflarezerotrustdnslocationv1alpha1.CloudflareZeroTrustDnsLocation{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy:              &cloudflarezerotrustgatewaypolicyv1alpha1.CloudflareZeroTrustGatewayPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewaySettings:            &cloudflarezerotrustgatewaysettingsv1alpha1.CloudflareZeroTrustGatewaySettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustList:                       &cloudflarezerotrustlistv1alpha1.CloudflareZeroTrustList{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpPortal:                  &cloudflarezerotrustmcpportalv1alpha1.CloudflareZeroTrustMcpPortal{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpServer:                  &cloudflarezerotrustmcpserverv1alpha1.CloudflareZeroTrustMcpServer{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustOrganization:               &cloudflarezerotrustorganizationv1alpha1.CloudflareZeroTrustOrganization{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:                     &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:                &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork:       &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneSettings:                        &cloudflarezonesettingsv1alpha1.CloudflareZoneSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings:                     &cloudflarezonetlssettingsv1alpha1.CloudflareZoneTlsSettings{},
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_DigitalOceanAppPlatformService: &digitaloceanappplatformservicev1alpha1.DigitalOceanAppPlatformService{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:             &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:        &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:  &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:    &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:          &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:            &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:            &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:           &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:           &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:  &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool: &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:       &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:             &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanApp:                    &digitaloceanappv1alpha1.DigitalOceanApp{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:                 &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanCdn:                    &digitaloceancdnv1alpha1.DigitalOceanCdn{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:            &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:      &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:        &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseConnectionPool: &digitaloceandatabaseconnectionpoolv1alpha1.DigitalOceanDatabaseConnectionPool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseDb:             &digitaloceandatabasedbv1alpha1.DigitalOceanDatabaseDb{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseFirewall:       &digitaloceandatabasefirewallv1alpha1.DigitalOceanDatabaseFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaSchema:    &digitaloceandatabasekafkaschemav1alpha1.DigitalOceanDatabaseKafkaSchema{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaTopic:     &digitaloceandatabasekafkatopicv1alpha1.DigitalOceanDatabaseKafkaTopic{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseReplica:        &digitaloceandatabasereplicav1alpha1.DigitalOceanDatabaseReplica{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseUser:           &digitaloceandatabaseuserv1alpha1.DigitalOceanDatabaseUser{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:              &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:                &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:                &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDropletAutoscalePool:   &digitaloceandropletautoscalepoolv1alpha1.DigitalOceanDropletAutoscalePool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:               &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:               &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:      &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool:     &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:           &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanMonitorAlert:           &digitaloceanmonitoralertv1alpha1.DigitalOceanMonitorAlert{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanProject:                &digitaloceanprojectv1alpha1.DigitalOceanProject{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanReservedIp:             &digitaloceanreservedipv1alpha1.DigitalOceanReservedIp{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanSpacesKey:              &digitaloceanspaceskeyv1alpha1.DigitalOceanSpacesKey{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanSshKey:                 &digitaloceansshkeyv1alpha1.DigitalOceanSshKey{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanUptimeCheck:            &digitaloceanuptimecheckv1alpha1.DigitalOceanUptimeCheck{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:                 &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                    &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpcPeering:             &digitaloceanvpcpeeringv1alpha1.DigitalOceanVpcPeering{},
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
@@ -1213,6 +1323,7 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpMonitoringNotificationChannel:       &gcpmonitoringnotificationchannelv1alpha1.GcpMonitoringNotificationChannel{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringSlo:                       &gcpmonitoringslov1alpha1.GcpMonitoringSlo{},
 	cloudresourcekind.CloudResourceKind_GcpMonitoringUptimeCheck:               &gcpmonitoringuptimecheckv1alpha1.GcpMonitoringUptimeCheck{},
+	cloudresourcekind.CloudResourceKind_GcpPlantonRunner:                       &gcpplantonrunnerv1alpha1.GcpPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_GcpProject:                             &gcpprojectv1alpha1.GcpProject{},
 	cloudresourcekind.CloudResourceKind_GcpProjectIamMember:                    &gcpprojectiammemberv1alpha1.GcpProjectIamMember{},
 	cloudresourcekind.CloudResourceKind_GcpPubSubSchema:                        &gcppubsubschemav1alpha1.GcpPubSubSchema{},
@@ -1332,6 +1443,9 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1alpha1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1alpha1.KubernetesPerconaMysqlOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim:       &kubernetespersistentvolumeclaimv1alpha1.KubernetesPersistentVolumeClaim{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonOperator:             &kubernetesplantonoperatorv1alpha1.KubernetesPlantonOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonPlatform:             &kubernetesplantonplatformv1alpha1.KubernetesPlantonPlatform{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonRunner:               &kubernetesplantonrunnerv1alpha1.KubernetesPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget:         &kubernetespoddisruptionbudgetv1alpha1.KubernetesPodDisruptionBudget{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1alpha1.KubernetesPostgres{},
 	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1alpha1.KubernetesPriorityClass{},

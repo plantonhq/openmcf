@@ -1,0 +1,86 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesnats
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.nats (Pulumi namespace equivalent) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.auth -- the <name>-auth Opaque Secret holding module-generated user passwords (one key per username), rendered only when spec.auth declares users or accounts. The Helm release also stores its state in namespace-scoped release Secrets, covered by the same verbs.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.nats -- the official NATS chart renders the client and headless Services, the nats.conf ConfigMap, ServiceAccounts, and (with JetStream's file store, this kind's default) volumeClaimTemplates that materialize PVCs. The release installs with wait=true, so the runner also reads pods to confirm readiness. The chart's full object surface is the chart's to evolve; these are the families the pinned chart (2.14.2) manages.
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workloads -- the NATS server StatefulSet (with its config-reloader sidecar) and the nats-box utility Deployment (rendered unless spec.nats_box_enabled is false).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - podmonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's PodMonitor -- rendered only when spec.metrics.pod_monitor_enabled is true (requires the Prometheus Operator CRDs on the cluster).

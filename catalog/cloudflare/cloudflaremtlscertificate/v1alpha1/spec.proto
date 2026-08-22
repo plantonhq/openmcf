@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaremtlscertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareMtlsCertificateSpec uploads a certificate to the account-level
+// mTLS certificate store. A CA certificate (ca: true) is what Authenticated
+// Origin Pulls and Workers mTLS bindings reference to validate client
+// certificates; a leaf certificate (ca: false) is presented BY Cloudflare as
+// a client. Self-signed CAs are the normal case here -- this store holds
+// YOUR trust material, not publicly trusted certificates.
+//
+// Every field is create-only at the API: changing any of them replaces the
+// upload (the certificate id changes). Rotate by replacing the resource and
+// re-pointing consumers at the new certificate id.
+message CloudflareMtlsCertificateSpec {
+  // The Cloudflare account the certificate is uploaded to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.len = 32,
+    (buf.validate.field).string.pattern = "^[0-9a-fA-F]{32}$"
+  ];
+
+  // A display name for the certificate (shown in the dashboard).
+  string name = 2;
+
+  // Whether this is a CA certificate (true) or a leaf certificate (false).
+  // Must be stated explicitly -- the two are consumed by different surfaces
+  // and the API cannot change it after upload.
+  optional bool ca = 3 [(buf.validate.field).required = true];
+
+  // The certificate (or CA chain) in PEM form. Keep the PEM byte-stable --
+  // a formatting-only change still replaces the upload.
+  string certificates = 4 [(buf.validate.field).required = true];
+
+  // The certificate's private key in PEM form, only needed when Cloudflare
+  // must present this certificate itself (leaf certificates). CA uploads used
+  // for validating clients need no key. Provide a managed-secret reference;
+  // the platform resolves it just-in-time at deploy and never stores it in
+  // plaintext. The API never returns the key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_key = 5 [(dev.planton.shared.options.sensitive) = true];
+}

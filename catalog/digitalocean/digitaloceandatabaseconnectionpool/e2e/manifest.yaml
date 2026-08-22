@@ -1,0 +1,30 @@
+# Reference manifests for DigitalOceanDatabaseConnectionPool --
+# protovalidate-valid, embedded as the reference page's Example block, and
+# the documents the offline tofu plans render. Two documents: a
+# dedicated-user pool and an inbound-user pool.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: orders-pool
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  poolName: orders-pool
+  mode: transaction
+  size: 20
+  dbName: orders
+  user: orders-service
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: shared-inbound-pool
+spec:
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  poolName: shared-inbound-pool
+  mode: session
+  size: 10
+  dbName: defaultdb

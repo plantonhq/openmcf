@@ -1,0 +1,143 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources plus the
+# pinned openbao chart 0.28.6, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesopenbao
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.openbao (Terraform) and namespace.go (Pulumi) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.seal_credentials (Terraform) and seal_secret.go (Pulumi) -- rendered only when a declared-credential auto-unseal arm carries material; the chart wires each key to the server as environment variables. Helm's own release-state Secrets in the target namespace also live here.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered inside helm_release.openbao (main.tf; main.go in Pulumi) -- the internal, active, standby, and UI Services (publishNotReadyAddresses so sealed pods stay addressable), the server-config ConfigMap synthesized from typed fields, and the server ServiceAccount (annotated from spec.service_account).
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders the server StatefulSet (1 replica in dev/standalone, spec.server.ha.replicas in HA); the injector Deployment renders only when spec.injector.enabled is true. The per-replica PVCs are created by the StatefulSet controller, never by the runner. The module sets wait=false / non-atomic BY DESIGN (sealed pods are NotReady until operator init/unseal), so no pods read access is needed for rollout tracking.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart binds the server ServiceAccount to system:auth-delegator (ClusterRoleBinding) when spec.service_account.auth_delegator_enabled is true (the default) -- required for OpenBao's Kubernetes auth method to verify client tokens via TokenReview. The injector's RBAC objects render only when spec.injector.enabled is true.
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - mutatingwebhookconfigurations
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Rendered only when spec.injector.enabled is true -- the agent injector's cluster-wide MutatingWebhookConfiguration (off by default here, a deliberate divergence from the chart's default; fails open so injector downtime never blocks pod creation).
+      - api_groups:
+          - networking.k8s.io
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.network_policy_enabled is true -- the chart's NetworkPolicy admitting ingress on 8200/8201.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.metrics.service_monitor_enabled is true (CEL requires metrics.enabled alongside) -- requires the Prometheus operator CRDs on the cluster.
+      - api_groups:
+          - batch
+        resources:
+          - cronjobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.snapshot_agent.enabled is true -- the chart's snapshot-agent CronJob shipping Raft snapshots to the configured S3-compatible bucket. The spec.helm_values escape hatch can widen the chart's object surface beyond this profile; overlay users own the extra permissions.

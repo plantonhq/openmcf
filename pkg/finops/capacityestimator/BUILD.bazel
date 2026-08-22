@@ -1,0 +1,33 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "capacityestimator",
+    srcs = [
+        "capacityestimator.go",
+        "quantity.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/finops/capacityestimator",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//finops/componentcapacityderivation/v1:componentcapacityderivation",
+        "//finops/componentcostestimate/v1:componentcostestimate",
+        "//finops/componentcostestimatemodel/v1:componentcostestimatemodel",
+        "//pkg/finops/costestimator",
+        "//pkg/specpath",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "capacityestimator_test",
+    srcs = ["capacityestimator_test.go"],
+    embed = [":capacityestimator"],
+    deps = [
+        "//catalog/kubernetes",
+        "//catalog/kubernetes/kubernetespostgres/v1alpha1",
+        "//finops/componentcapacityderivation/v1:componentcapacityderivation",
+        "//finops/componentcostderivation/v1:componentcostderivation",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

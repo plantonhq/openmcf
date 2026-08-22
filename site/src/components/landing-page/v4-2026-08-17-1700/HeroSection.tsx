@@ -96,7 +96,7 @@ const AnimatedCompose: FC = () => {
           <Box className="w-3 h-3 rounded-full bg-[#10b981]/80" />
         </Box>
         <Typography className="text-sm text-[#666]">
-          Planton Desktop — Chart Studio
+          Planton Desktop — Planton Studio
         </Typography>
       </Box>
 

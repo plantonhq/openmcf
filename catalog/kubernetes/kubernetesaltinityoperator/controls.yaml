@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesaltinityoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its state is the custom resources it reconciles, held in the cluster's etcd. ClickHouse data at rest is a property of the volumes the managed clusters provision, owned by KubernetesClickHouse resources and the cluster's storage classes.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); customer-managed keys for managed-cluster volumes are configured on the target cluster's storage classes.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The spec models no TLS seam for the operator's own connections. Its Kubernetes API traffic is TLS by construction; its management connections to managed ClickHouse instances follow those clusters' listener configuration, owned by the KubernetesClickHouse resources.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the chart's only Service is the in-cluster ClusterIP metrics endpoint (<name>-metrics on 8888, present only while metrics.enabled), and the spec offers no ingress or LoadBalancer seam.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no inbound traffic beyond the in-cluster metrics endpoint; there is no client-facing listener to restrict. Kubernetes NetworkPolicies (separate resources) can fence the metrics port if required.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cluster-internal controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: namespace_scoped_rbac
+      evidence:
+        type: spec_default
+        reference: False (the chart default) grants the operator cluster-wide RBAC to manage ClickHouse resources in every watched namespace; true swaps in namespace-scoped Roles/RoleBindings so the operator can neither see nor touch anything outside its own namespace -- only sound paired with a single-namespace watch_namespaces.
+      notes: The 02-namespace-scoped preset pairs namespace_scoped_rbac with a single watched namespace -- the tenancy posture for shared clusters. Access to the operator's own resources is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator calls no cloud APIs -- it authenticates to the Kubernetes API with its ServiceAccount and to managed ClickHouse instances with the operator_credentials user; there is no cloud identity to federate.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: operator_credentials
+      evidence:
+        type: spec_default
+        reference: Unset leaves the chart's publicly documented default credentials (clickhouse_operator / clickhouse_operator_password) on every managed cluster -- the spec calls this UNSAFE FOR PRODUCTION; setting operator_credentials provisions a real password into the chart-managed Secret, and the operator injects the matching user restricted to its pod address.
+      notes: All three presets set a password explicitly.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, ConfigMaps, and Services for managed clusters -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: metrics.enabled defaults to true -- the metrics-exporter sidecar serves Prometheus metrics for every managed cluster on 8888 (plus the operator's own on 9999); service_monitor_enabled adds a ServiceMonitor for Prometheus Operator scraping.
+      notes: Disabling the exporter removes metrics for every managed cluster, not just the operator.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up. ClickHouse backups belong to the managed clusters (KubernetesClickHouse); the operator's own configuration is this manifest, re-appliable at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The chart runs the operator as a single-replica controller Deployment and this spec models no replica count. A brief operator outage pauses reconciliation only -- managed ClickHouse clusters keep serving; Kubernetes reschedules the pod.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is deliberately bounded: the four CRDs ship in the chart's crds/ directory, which Helm never deletes on uninstall -- removing the operator never cascade-deletes ClickHouseInstallation resources or their data."
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default chart (0.27.2); upgrades are deliberate chart_version changes, and chart versions track operator releases one-to-one. The crd_hook job (enabled by default) server-side-applies CRD schema changes on every upgrade so new operators never run against old schemas.
+      notes: The 03-private-mirror preset pins the operator and hook images for air-gapped installs where the default images cannot be pulled.

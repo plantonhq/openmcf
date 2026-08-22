@@ -1,0 +1,18 @@
+# The minimal live arm: one byte-stable single-file snippet. The snippet name
+# uses the underscore run-ID variant -- snippet names forbid hyphens, and the
+# plain token carries the runner's hyphenated engine suffix.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSnippet
+metadata:
+  name: e2e-snippet-minimal-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  snippet_name: e2e_snip_${E2E_RUN_ID_UNDERSCORE}
+  files:
+    - name: main.js
+      content: "export default { async fetch(request) { return fetch(request); } };"
+  main_module: main.js

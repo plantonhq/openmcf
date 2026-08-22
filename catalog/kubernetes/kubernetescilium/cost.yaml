@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetescilium
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: agent_resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The agent is a DaemonSet -- one pod on EVERY node, so whatever is declared here is reserved once per node and the cluster-wide total grows with the cluster itself. Empty means the chart's default of no requests or limits.
+    - field_path: operator.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator runs a fixed Deployment (chart default 2 replicas, leader-elected hot standbys spread by pod anti-affinity); each replica carries the declared operator resources.
+    - field_path: operator.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator container's requests are reserved per replica; empty means the chart's default of no explicit resources.
+    - field_path: hubble.relay
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling the relay adds a cluster-wide flow-aggregation Deployment whose pods have no typed resources surface in this spec -- real consumption with no declared reservation.
+    - field_path: hubble.ui
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling the UI adds the service-map console Deployment, likewise without a typed resources surface -- real consumption with no declared reservation.
+  estimate_exclusions:
+    - the agent reservation is PER NODE -- the cluster-wide total is agent_resources times the number of nodes, which only the target cluster knows
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the hubble-relay and hubble-ui pods run without declared resources (no typed surface) -- real consumption, no reservation
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replica counts -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- it IS the cluster's dataplane. Its footprint is the Cilium control machinery: the per-node agent plus the fixed operator pods (and optional Hubble components). The workloads it wires and polices carry their own capacity on their own components."

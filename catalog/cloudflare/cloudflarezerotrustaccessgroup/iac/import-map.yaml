@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustaccessgroup
+spec:
+  # The group imports with a literal "accounts/" scope prefix recorded in the
+  # provider catalog's id_format: the owning account plus the group's
+  # server-assigned UUID. account_id is spec-relative for the account-scoped
+  # case the live scenarios prove; a zone-scoped group imports via the zones/
+  # arm instead (the outputs do not carry zone_id today -- the ruleset
+  # precedent). group_id is the deploy's own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: group_id
+      derivations:
+        - from_stack_output: group_id
+      where_to_find: >-
+        Zero Trust dashboard -> Access -> Access groups -> the group (the
+        group ID is in the API, not the UI), or
+        `GET /accounts/<account_id>/access/groups` on the Cloudflare v4 API
+        (the id field of the entry whose name matches).

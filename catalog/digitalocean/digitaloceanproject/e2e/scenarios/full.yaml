@@ -1,0 +1,32 @@
+# Full DigitalOceanProject: description, purpose, environment, and
+# membership -- a Droplet joins the project by REFERENCE to its urn output.
+# The Droplet is an optional composition seam (projects exist without
+# members), so the fixture rides the e2e-prerequisites annotation and
+# installs from that kind's minimal scenario. Destroy proves the
+# relocate-then-delete path: the droplet must survive in the account's
+# default project.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: planton-oss-e2e-digitaloceanproject-full
+  id: planton-oss-e2e-digitaloceanproject-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanproject
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanDroplet"
+  tags:
+    - planton-e2e
+spec:
+  projectName: pltn-e2e-doprj-full-${E2E_RUN_ID}
+  description: Planton E2E full-surface project
+  purpose: Service or API
+  environment: staging
+  resources:
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: planton-oss-e2e-digitaloceandroplet-min
+        fieldPath: status.outputs.urn

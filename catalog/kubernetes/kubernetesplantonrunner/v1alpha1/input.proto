@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonrunner.v1alpha1;
+
+import "catalog/kubernetes/kubernetesplantonrunner/v1alpha1/api.proto";
+import "catalog/kubernetes/provider.proto";
+
+//kubernetes-planton-runner stack-input
+message KubernetesPlantonRunnerStackInput {
+  //target cloud-resource
+  KubernetesPlantonRunner target = 1;
+  //provider-config
+  dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

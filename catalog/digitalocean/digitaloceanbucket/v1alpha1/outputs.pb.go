@@ -21,13 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanBucketStackOutputs captures the resulting bucket info after provisioning.
+// DigitalOceanBucketStackOutputs captures the bucket's identity and
+// addressing endpoints after provisioning.
 type DigitalOceanBucketStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Unique identifier for the bucket (UUID format)
+	// The provider's resource id for the bucket, which IS the bucket name --
+	// Spaces buckets have no separate UUID. Import addressing pairs it with
+	// the region ("<region>,<name>").
 	BucketId string `protobuf:"bytes,1,opt,name=bucket_id,json=bucketId,proto3" json:"bucket_id,omitempty"`
-	// Regional endpoint URL for the bucket (e.g., "https://<region>.digitaloceanspaces.com")
-	Endpoint      string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The region-level Spaces endpoint host ("<region>.digitaloceanspaces.com",
+	// without the bucket name or a scheme). Pair it with the bucket name for
+	// path-style access.
+	Endpoint string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The region slug the bucket lives in, read back from the API -- set even
+	// when spec.region was omitted and the provider default applied.
+	Region string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
+	// The bucket's virtual-host-style FQDN
+	// ("<bucket>.<region>.digitaloceanspaces.com").
+	BucketDomainName string `protobuf:"bytes,4,opt,name=bucket_domain_name,json=bucketDomainName,proto3" json:"bucket_domain_name,omitempty"`
+	// The uniform resource name of the bucket ("do:space:<name>").
+	Urn           string `protobuf:"bytes,5,opt,name=urn,proto3" json:"urn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -76,14 +89,38 @@ func (x *DigitalOceanBucketStackOutputs) GetEndpoint() string {
 	return ""
 }
 
+func (x *DigitalOceanBucketStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketStackOutputs) GetBucketDomainName() string {
+	if x != nil {
+		return x.BucketDomainName
+	}
+	return ""
+}
+
+func (x *DigitalOceanBucketStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceanbucket_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanbucket_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	">catalog/digitalocean/digitaloceanbucket/v1alpha1/outputs.proto\x124dev.planton.digitalocean.digitaloceanbucket.v1alpha1\"Y\n" +
+	">catalog/digitalocean/digitaloceanbucket/v1alpha1/outputs.proto\x124dev.planton.digitalocean.digitaloceanbucket.v1alpha1\"\xb1\x01\n" +
 	"\x1eDigitalOceanBucketStackOutputs\x12\x1b\n" +
 	"\tbucket_id\x18\x01 \x01(\tR\bbucketId\x12\x1a\n" +
-	"\bendpoint\x18\x02 \x01(\tR\bendpointB\xa7\x03\n" +
+	"\bendpoint\x18\x02 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06region\x12,\n" +
+	"\x12bucket_domain_name\x18\x04 \x01(\tR\x10bucketDomainName\x12\x10\n" +
+	"\x03urn\x18\x05 \x01(\tR\x03urnB\xa7\x03\n" +
 	"8com.dev.planton.digitalocean.digitaloceanbucket.v1alpha1B\fOutputsProtoP\x01Zhgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1;digitaloceanbucketv1alpha1\xa2\x02\x04DPDD\xaa\x024Dev.Planton.Digitalocean.Digitaloceanbucket.V1alpha1\xca\x024Dev\\Planton\\Digitalocean\\Digitaloceanbucket\\V1alpha1\xe2\x02@Dev\\Planton\\Digitalocean\\Digitaloceanbucket\\V1alpha1\\GPBMetadata\xea\x028Dev::Planton::Digitalocean::Digitaloceanbucket::V1alpha1b\x06proto3"
 
 var (

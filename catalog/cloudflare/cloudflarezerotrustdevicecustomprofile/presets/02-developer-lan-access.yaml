@@ -1,0 +1,22 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceCustomProfile
+metadata:
+  name: developer-lan-access
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: developer-lan-access
+  match: identity.groups.name == "engineering"
+  precedence: 200
+  description: engineers keep LAN access windows and local lab routes
+  lan_allow_minutes: 30
+  lan_allow_subnet_size: 24
+  exclude:
+    - address: 192.0.2.0/24
+      description: lab network stays local
+  fallback_domains:
+    - suffix: lab.internal
+      description: resolved by the lab resolver
+      dns_server:
+        - 10.10.0.53
+    - suffix: localhost
+    - suffix: home.arpa

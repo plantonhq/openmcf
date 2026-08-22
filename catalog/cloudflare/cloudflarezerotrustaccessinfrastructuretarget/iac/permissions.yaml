@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccessinfrastructuretarget
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageTarget
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the target via POST/PUT/DELETE /accounts/{account_id}/infrastructure/targets[/{target_id}] and refresh/import it via GET on the same path (the guide names only this single group for the Terraform lifecycle; no narrower read-level group is documented for these endpoints; derived from the module's API surface). Covers the Terraform module's single cloudflare_zero_trust_access_infrastructure_target resource and the Pulumi module's matching ZeroTrustAccessInfrastructureTarget resource; neither engine performs secondary lookups or data-source reads -- an omitted virtual_network_id is assigned server-side, not looked up by the module. The general API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22) lists no infrastructure-targets-specific group, and the targets API endpoint docs carry no "Accepted Permissions" section; the group is the one Cloudflare's own SSH infrastructure access guide (https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-infrastructure-access/, retrieved 2026-08-22) explicitly instructs adding to the API token when managing the infrastructure target with the Cloudflare Terraform provider.

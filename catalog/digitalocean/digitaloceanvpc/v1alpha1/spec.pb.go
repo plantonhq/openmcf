@@ -9,7 +9,6 @@ package digitaloceanvpcv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	digitalocean "github.com/plantonhq/planton/catalog/digitalocean"
-	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,32 +23,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual Private Cloud (VPC).
-// A DigitalOcean VPC allows you to create a private, isolated network for your Droplets and other resources,
-// enabling secure communication within your infrastructure.
-// This specification focuses on the essential parameters for creating a VPC, adhering to the 80/20 principle.
+// DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual
+// Private Cloud (VPC) -- a private, isolated network for Droplets and other resources within one
+// region. The VPC's name comes from the resource's metadata.name; the spec models the provider's
+// remaining argument surface in full.
 type DigitalOceanVpcSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A human-readable description for the VPC.
-	// Constraints: Maximum 100 characters.
+	// (Optional) A human-readable description for the VPC (up to 255 characters).
 	Description string `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
-	// The DigitalOcean region where the VPC will be created.
-	// This determines the geographical location of the VPC.
+	// The DigitalOcean region where the VPC will be created. Cannot be changed after creation.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// The IP range for the VPC in CIDR notation (optional).
-	// Only /16, /20, or /24 CIDR blocks are supported for VPCs on DigitalOcean.
+	// (Optional) The IP range for the VPC in CIDR notation. DigitalOcean accepts prefix lengths
+	// from /16 through /24, and the range must not overlap any other network in the account.
 	// Example: "10.10.0.0/16"
 	//
-	// 80/20 Principle: When omitted, DigitalOcean auto-generates a non-conflicting /20 CIDR block (4,096 IPs).
-	// This is the recommended approach for dev/test environments and when explicit IP planning is not required.
-	// For production environments with specific IPAM requirements, explicitly specify the CIDR block.
-	IpRangeCidr string `protobuf:"bytes,3,opt,name=ip_range_cidr,json=ipRangeCidr,proto3" json:"ip_range_cidr,omitempty"`
-	// A boolean indicating whether this VPC should be set as the default for the specified region.
-	// Only one VPC can be the default for a given region.
-	// Default: false
-	IsDefaultForRegion bool `protobuf:"varint,4,opt,name=is_default_for_region,json=isDefaultForRegion,proto3" json:"is_default_for_region,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// When omitted, DigitalOcean auto-generates a non-conflicting range and reports it back
+	// through the `ip_range` stack output. The range is immutable: changing it after creation
+	// REPLACES the VPC.
+	IpRangeCidr   string `protobuf:"bytes,3,opt,name=ip_range_cidr,json=ipRangeCidr,proto3" json:"ip_range_cidr,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanVpcSpec) Reset() {
@@ -103,23 +96,15 @@ func (x *DigitalOceanVpcSpec) GetIpRangeCidr() string {
 	return ""
 }
 
-func (x *DigitalOceanVpcSpec) GetIsDefaultForRegion() bool {
-	if x != nil {
-		return x.IsDefaultForRegion
-	}
-	return false
-}
-
 var File_catalog_digitalocean_digitaloceanvpc_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanvpc_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/digitalocean/digitaloceanvpc/v1alpha1/spec.proto\x121dev.planton.digitalocean.digitaloceanvpc.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a\x1cshared/options/options.proto\"\xa1\x02\n" +
-	"\x13DigitalOceanVpcSpec\x12)\n" +
-	"\vdescription\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18dR\vdescription\x12L\n" +
-	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12S\n" +
-	"\rip_range_cidr\x18\x03 \x01(\tB/\xbaH,r*2(^([0-9]{1,3}\\.){3}[0-9]{1,3}/(16|20|24)$R\vipRangeCidr\x12<\n" +
-	"\x15is_default_for_region\x18\x04 \x01(\bB\t\x92\xa6\x1d\x05falseR\x12isDefaultForRegionB\x8f\x03\n" +
+	"8catalog/digitalocean/digitaloceanvpc/v1alpha1/spec.proto\x121dev.planton.digitalocean.digitaloceanvpc.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\x89\x02\n" +
+	"\x13DigitalOceanVpcSpec\x12*\n" +
+	"\vdescription\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\vdescription\x12L\n" +
+	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12[\n" +
+	"\rip_range_cidr\x18\x03 \x01(\tB7\xbaH4\xd8\x01\x01r/2-^([0-9]{1,3}\\.){3}[0-9]{1,3}/(1[6-9]|2[0-4])$R\vipRangeCidrJ\x04\b\x04\x10\x05R\x15is_default_for_regionB\x8f\x03\n" +
 	"5com.dev.planton.digitalocean.digitaloceanvpc.v1alpha1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1;digitaloceanvpcv1alpha1\xa2\x02\x04DPDD\xaa\x021Dev.Planton.Digitalocean.Digitaloceanvpc.V1alpha1\xca\x021Dev\\Planton\\Digitalocean\\Digitaloceanvpc\\V1alpha1\xe2\x02=Dev\\Planton\\Digitalocean\\Digitaloceanvpc\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Digitalocean::Digitaloceanvpc::V1alpha1b\x06proto3"
 
 var (

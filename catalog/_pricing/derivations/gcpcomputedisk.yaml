@@ -1,0 +1,112 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpComputeDisk manifest's spec values into metered quantities and price
+# choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/gcpcomputedisk.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Prices live
+# in the provider's price book (../pricebook/). The disk type selects the
+# capacity rate through a value-keyed lookup (pd-balanced, pd-ssd, and
+# hyperdisk-balanced are priced; other types refuse at lookup time).
+# Hyperdisk Balanced bills IOPS and throughput only IN EXCESS of its
+# included baselines (3,000 IOPS and 140 MBps per Google's disk pricing
+# page) -- the subtract_baseline factors state exactly that arithmetic.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcomputedisk
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: zone
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: source_snapshot
+          op: is_set
+        - field_path: size_gb
+          op: equals
+          value: "0"
+      reason: a snapshot-restored disk with no explicit size_gb inherits the referenced snapshot's size, so its committed GiB-month quantity is unknowable from this manifest
+    - when:
+        - field_path: type
+          op: not_equals
+          value: hyperdisk-balanced
+        - field_path: provisioned_iops
+          op: not_equals
+          value: "0"
+      reason: provisioned IOPS on a non-Hyperdisk type bill a per-IOPS meter this price book does not carry
+    - when:
+        - field_path: type
+          op: not_equals
+          value: hyperdisk-balanced
+        - field_path: provisioned_throughput
+          op: not_equals
+          value: "0"
+      reason: provisioned throughput on a non-Hyperdisk type bills a per-MBps meter this price book does not carry
+  lines:
+    - sku_meter: provisioned disk capacity
+      quantity:
+        - field_value:
+            field_path: size_gb
+      price_lookup:
+        service_name: Compute Engine
+        pricing_unit: GiB-months
+        attributes:
+          - key: disk_type
+            from_field: type
+      basis: every provisioned GiB (size_gb) bills monthly at the disk type's own capacity rate from creation -- full or empty, attached or not
+    - sku_meter: provisioned IOPS
+      applies_when:
+        - field_path: type
+          op: equals
+          value: hyperdisk-balanced
+      quantity:
+        - subtract_baseline:
+            field_path: provisioned_iops
+            baseline: "3000"
+      price_slug: hyperdisk-balanced-iops-us-central1
+      basis: hyperdisk-balanced includes a 3,000-IOPS baseline free -- only the excess over it (provisioned_iops minus 3,000) bills monthly
+    - sku_meter: provisioned throughput
+      applies_when:
+        - field_path: type
+          op: equals
+          value: hyperdisk-balanced
+      quantity:
+        - subtract_baseline:
+            field_path: provisioned_throughput
+            baseline: "140"
+      price_slug: hyperdisk-balanced-throughput-us-central1
+      basis: hyperdisk-balanced includes a 140-MBps baseline free -- only the excess over it (provisioned_throughput minus 140) bills monthly
+  exclusions:
+    - applies_when:
+        - field_path: create_snapshot_before_destroy
+          op: equals
+          value: "false"
+      text: snapshot storage follows whatever snapshots the owner takes -- none are configured here
+    - applies_when:
+        - field_path: create_snapshot_before_destroy
+          op: equals
+          value: "true"
+      text: the create_snapshot_before_destroy final snapshot bills snapshot storage per GiB actually stored, from destroy day until someone deletes it -- unknowable from the manifest
+    - applies_when:
+        - field_path: kms_key
+          op: is_set
+      text: CMEK adds no per-disk charge -- the Cloud KMS key bills its own key-version and operation charges on the GcpKmsKey component
+  notes:
+    - applies_when:
+        - field_path: type
+          op: equals
+          value: pd-balanced
+      text: pd-balanced performance scales with size and carries no separate performance meter -- capacity is the whole bill. The disk keeps billing while its VM is stopped and after the VM is deleted; deleting the disk is the only off switch.
+    - applies_when:
+        - field_path: type
+          op: equals
+          value: pd-ssd
+      text: Encryption posture (CMEK vs Google-managed) does not change the disk's capacity rate -- the premium here is pd-ssd itself, chosen for database IOPS-per-GB.
+    - applies_when:
+        - field_path: type
+          op: equals
+          value: hyperdisk-balanced
+      text: Hyperdisk decouples performance from capacity -- IOPS and throughput retune in place (at most every 4 hours), so performance spend can ratchet up or down without touching the stored data. The included baselines are per-disk and fixed, not size-scaled.

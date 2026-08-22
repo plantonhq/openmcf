@@ -47,9 +47,10 @@ spec:
       fieldPath: status.outputs.zone_id
   catchAll:
     enabled: true
-    type: forward
-    forwardTo:
-      - value: catch-all@example.com
+    actions:
+      - type: forward
+        forwardTo:
+          - value: catch-all@example.com
 ```
 
 ```shell
@@ -64,15 +65,15 @@ These are the most important decisions when enabling Email Routing. Explore the 
 
 **Zone (`zoneId`)** -- The zone to enable Email Routing on. Immutable -- changing it replaces the resource. Reference a `CloudflareDnsZone` to keep the dependency in the graph.
 
-**Catch-all Action (`catchAll.type`)** -- What happens to unmatched mail. `drop` discards it silently (Cloudflare's default), `forward` delivers it to `forwardTo` destinations, `worker` hands it to an Email Worker. Omit `catchAll` to leave the default.
+**Catch-all Actions (`catchAll.actions`)** -- What happens to unmatched mail, as a list of actions applied in order: `drop` discards it silently (Cloudflare's default), `forward` delivers it to `forwardTo` destinations, `worker` hands it to an Email Worker -- and one catch-all can forward AND invoke a Worker. Omit `catchAll` to leave the default.
 
-**Lock DNS Records (`lockDnsRecords`)** -- Manage the auto-created MX/SPF/DKIM records explicitly so they cannot be edited out-of-band.
+**Lock DNS Records (`lockDnsRecords`)** -- Manage the auto-created MX/SPF/DKIM records explicitly so they cannot be edited out-of-band. With `dnsName`, the managed records target a subdomain of the zone (subdomain email routing) instead of the apex.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-The zone references a **CloudflareDnsZone** (via `zoneId`). A forwarding catch-all references **CloudflareEmailRoutingAddress** mailboxes (via `catchAll.forwardTo`); a worker catch-all references a **CloudflareWorker** (via `catchAll.worker`).
+The zone references a **CloudflareDnsZone** (via `zoneId`). A forwarding catch-all action references **CloudflareEmailRoutingAddress** mailboxes (via `actions[].forwardTo`); a worker action references a **CloudflareWorker** (via `actions[].worker`).
 
 ### What This Component Provides
 

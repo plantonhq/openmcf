@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareipaccessrule.v1alpha1;
+
+// CloudflareIpAccessRuleStackOutputs captures the observable outputs after
+// creating an IP Access rule.
+message CloudflareIpAccessRuleStackOutputs {
+  // The ID of the created rule.
+  string rule_id = 1;
+
+  // The zone the rule was created on (empty for account-wide rules). Published
+  // so zone-scoped consumers and the import recipe can derive scope without
+  // re-reading the manifest.
+  string zone_id = 2;
+
+  // The account the rule was created on (empty for zone-scoped rules).
+  string account_id = 3;
+}

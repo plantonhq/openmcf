@@ -3,8 +3,8 @@
 # catalog-data conformance gate. The spec deliberately hides the compute
 # substrate; the official modules provision it on ECS Fargate -- one
 # always-on task (the modules fix the count at one runner per
-# registration) plus a Secrets Manager secret holding the credentials
-# document. Schema: finops/componentcostprofile/v1.
+# registration) plus a Secrets Manager secret holding the runner
+# token. Schema: finops/componentcostprofile/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostProfile
 metadata:
@@ -21,9 +21,9 @@ spec:
       pricing_unit: GB-hours
       description: The same always-on task bills its memory allocation (memory / 1024 GB) at the region's Fargate per-GB-hour rate, every hour.
     - service_name: AWS Secrets Manager
-      sku_meter: credentials secret
+      sku_meter: runner token secret
       pricing_unit: secret-months
-      description: The deployment stores the runner's credentials document as one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime.
+      description: The deployment stores the runner token as one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime.
   cost_drivers:
     - field_path: cpu
       sku_meter: Fargate vCPU hours
@@ -45,4 +45,4 @@ spec:
     - CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
     - data transfer -- image pulls, control-plane traffic, and NAT gateway processing (in the recommended private-subnet posture, NAT hours and per-GB processing bill on the NAT gateway's own component)
   free_tier: The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more). The ECS cluster, task definition, security group, and IAM roles the modules create are free resources.
-  notes: "The compute substrate is an implementation detail of the modules, confirmed from their sources: one ECS Fargate task (Linux/x86_64 rates -- the modules set no runtime platform, so the AWS default applies) with desired count fixed at one -- scaling execution capacity means more runners, never more copies of this one. The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately."
+  notes: "The compute substrate is an implementation detail of the modules, confirmed from their sources: one ECS Fargate task (Linux/x86_64 rates -- the modules set no runtime platform, so the AWS default applies) with desired count fixed at one -- scaling execution capacity means more runners, never more copies of this one. The token secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately."

@@ -1,0 +1,21 @@
+# Minimal scenario: an empty portal (no server rows) on a run-scoped
+# hostname -- proves the portal lifecycle itself.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustMcpPortal
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustmcpportal-minimal
+  id: planton-oss-e2e-cloudflarezerotrustmcpportal-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustmcpportal
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  portal_id: e2e-portal-${E2E_RUN_ID}
+  hostname: mcp-e2e-${E2E_RUN_ID}.example.com
+  name: Planton E2E Portal ${E2E_RUN_ID}

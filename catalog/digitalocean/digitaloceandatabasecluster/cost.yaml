@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandatabasecluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Managed Databases
+      sku_meter: database nodes
+      pricing_unit: months
+      description: Every node of the cluster bills a flat monthly amount (prorated hourly) from creation to deletion, whether or not any query runs -- the engine and size slug set the per-node rate, and node_count multiplies it.
+  cost_drivers:
+    - field_path: size_slug
+      sku_meter: database nodes
+      pricing_unit: months
+      impact: "The size slug sets the per-node monthly rate -- the dominant term (e.g. PostgreSQL db-s-2vcpu-4gb is 60.90 USD/mo per node, db-s-1vcpu-1gb is 15.15 USD/mo, at https://www.digitalocean.com/pricing/managed-databases, retrieved 2026-08-22; the page carries one table per engine with no region dimension -- rates are identical in every region)."
+    - field_path: node_count
+      sku_meter: database nodes
+      pricing_unit: months
+      impact: "Each node is a full billed copy at the size slug's rate: standbys and Kafka brokers cost the same as the primary. Kafka clusters start at 3 brokers by the API's own minimum."
+    - field_path: engine
+      sku_meter: database nodes
+      pricing_unit: months
+      impact: "The engine selects the rate table: PostgreSQL/MySQL 1 GiB nodes are 15.15 USD/mo while the caching engines (redis/valkey) are 15.00 USD/mo, OpenSearch 4 GiB is 37.05 USD/mo, and Kafka is priced per broker (the 3-broker k-s-2-2-40 plan is 148.80 USD/mo)."
+    - field_path: storage_gib
+      sku_meter: additional storage
+      pricing_unit: GiB-months
+      impact: "Storage above the size slug's included base bills 0.215 USD/GiB/mo in 10 GiB increments (https://www.digitalocean.com/pricing/managed-databases, retrieved 2026-08-22). Storage only grows -- it can never be shrunk back."
+    - field_path: storage_autoscale.enabled
+      sku_meter: additional storage
+      pricing_unit: GiB-months
+      impact: "Automatic growth adds additional-storage spend whenever disk usage crosses the threshold -- a ratchet that only increases the bill, since managed database storage cannot shrink."
+  free_tier: ""
+  estimate_exclusions:
+    - "storage added by storage_autoscale follows actual disk usage -- each triggered growth step adds 0.215 USD/GiB/mo permanently"
+    - "read-only replicas bill on their own DigitalOceanDatabaseReplica components, each a full node at its own size's rate"
+    - "daily backups and 7-day point-in-time recovery are included in the node price -- no separate backup meter exists"
+  notes: "Nodes bill hourly (the pricing page publishes both USD/hr and the monthly cap per size) from cluster creation. DigitalOcean prices managed databases identically across regions -- the pricing page has no region dimension. Kafka is priced in brokers with a 3-broker minimum; the caching engines redis and valkey share one rate table (the pricing page lists it under Valkey). Deleting the cluster stops the meter and discards its backups."

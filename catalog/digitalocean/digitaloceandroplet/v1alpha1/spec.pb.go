@@ -25,84 +25,92 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Timezone options for Droplet’s system clock.
-type DigitalOceanDropletTimezone int32
-
-const (
-	DigitalOceanDropletTimezone_utc   DigitalOceanDropletTimezone = 0 // coordinated universal time
-	DigitalOceanDropletTimezone_local DigitalOceanDropletTimezone = 1 // local timezone
-)
-
-// Enum value maps for DigitalOceanDropletTimezone.
-var (
-	DigitalOceanDropletTimezone_name = map[int32]string{
-		0: "utc",
-		1: "local",
-	}
-	DigitalOceanDropletTimezone_value = map[string]int32{
-		"utc":   0,
-		"local": 1,
-	}
-)
-
-func (x DigitalOceanDropletTimezone) Enum() *DigitalOceanDropletTimezone {
-	p := new(DigitalOceanDropletTimezone)
-	*p = x
-	return p
-}
-
-func (x DigitalOceanDropletTimezone) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (DigitalOceanDropletTimezone) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (DigitalOceanDropletTimezone) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_enumTypes[0]
-}
-
-func (x DigitalOceanDropletTimezone) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DigitalOceanDropletTimezone.Descriptor instead.
-func (DigitalOceanDropletTimezone) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM).
+// DigitalOceanDropletSpec models the full digitalocean_droplet resource
+// surface: base image and sizing, region and VPC placement, SSH key
+// injection, automated backups with a weekly/daily policy window, IPv6 and
+// public-network toggles, the monitoring and web-console agents, block
+// volume attachments, cloud-init user data, tags, GPU partitioning, and the
+// resize/shutdown behavior flags.
 type DigitalOceanDropletSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// droplet hostname (DNS-compatible, <=63 chars)
+	// Droplet name, shown in the control panel and used as the instance
+	// hostname. DigitalOcean accepts hostname-style names: letters, digits,
+	// hyphens, and dots, up to 255 characters. Renaming updates in place.
 	DropletName string `protobuf:"bytes,1,opt,name=droplet_name,json=dropletName,proto3" json:"droplet_name,omitempty"`
-	// region slug (datacenter location for the droplet)
+	// (Optional) The region to create the droplet in. When unset, DigitalOcean
+	// chooses a region with available capacity. Cannot be changed after
+	// creation.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// Droplet size slug, e.g. "s-2vcpu-4gb" or "g-8vcpu-32gb".
-	// Valid values: must match the regexp "^[a-z0-9]+(-[a-z0-9]+)+$" and
-	// must be accepted by the DigitalOcean /v2/sizes API at creation time.
+	// Droplet size slug, e.g. "s-1vcpu-1gb" or "g-8vcpu-32gb". Changing the
+	// size resizes the droplet (it is powered off during the resize); whether
+	// the resize permanently grows the disk is governed by resize_disk.
 	Size string `protobuf:"bytes,3,opt,name=size,proto3" json:"size,omitempty"`
-	// image slug for the droplet base image (e.g. "ubuntu-22-04-x64")
+	// Base image: an OS image slug (e.g. "ubuntu-24-04-x64"), a custom image
+	// ID, or a droplet snapshot ID (both numeric). Cannot be changed after
+	// creation.
 	Image string `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
-	// target vpc network uuid for the droplet
+	// (Optional) Reference to the DigitalOcean VPC to attach the droplet's
+	// private network interface to. When unset, the droplet lands in the
+	// region's default VPC (the resulting UUID is exported as the vpc_uuid
+	// output either way). Cannot be changed after creation.
 	Vpc *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=vpc,proto3" json:"vpc,omitempty"`
-	// enable IPv6 networking (disabled by default)
+	// Enable public IPv6 networking. Enabling on an existing droplet updates
+	// in place; disabling it forces the droplet to be recreated.
 	EnableIpv6 bool `protobuf:"varint,7,opt,name=enable_ipv6,json=enableIpv6,proto3" json:"enable_ipv6,omitempty"`
-	// enable automated backups (disabled by default)
+	// Enable automated backups. Toggling updates in place. The backup window
+	// is configured via backup_policy; without one, DigitalOcean defaults to
+	// a daily plan.
 	EnableBackups bool `protobuf:"varint,8,opt,name=enable_backups,json=enableBackups,proto3" json:"enable_backups,omitempty"`
-	// disable digitalocean monitoring agent (monitoring on by default)
-	DisableMonitoring bool `protobuf:"varint,9,opt,name=disable_monitoring,json=disableMonitoring,proto3" json:"disable_monitoring,omitempty"`
-	// block storage volumes to attach (must reside in same region)
+	// Block storage volumes to attach, referencing DigitalOceanVolume
+	// resources in the same region. Attachment changes update in place.
 	VolumeIds []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=volume_ids,json=volumeIds,proto3" json:"volume_ids,omitempty"`
-	// tags to apply to the droplet (must be unique)
+	// (Optional) Tags applied to the droplet in DigitalOcean, in addition to
+	// the standard Planton labels both provisioners always apply. Tags are
+	// how firewalls and load balancers target droplet groups.
 	Tags []string `protobuf:"bytes,11,rep,name=tags,proto3" json:"tags,omitempty"`
-	// cloud-init user data script (<=32 KiB)
+	// (Optional) Cloud-init user data executed on first boot (<= 32 KiB).
+	// Cannot be changed after creation; DigitalOcean stores only a hash of it.
 	UserData string `protobuf:"bytes,12,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
-	// timezone setting for the droplet's clock (default: UTC)
-	Timezone      *DigitalOceanDropletTimezone `protobuf:"varint,13,opt,name=timezone,proto3,enum=dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletTimezone,oneof" json:"timezone,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Install the DigitalOcean monitoring agent for enhanced graphs and
+	// monitor alert policies. Defaults OFF, matching the provider. Cannot be
+	// changed after creation.
+	Monitoring bool `protobuf:"varint,14,opt,name=monitoring,proto3" json:"monitoring,omitempty"`
+	// (Optional) SSH keys to inject at creation — the standard access path to
+	// a droplet. Each entry is the ID or fingerprint of an SSH key already
+	// registered on the DigitalOcean account. Keys cannot be added or removed
+	// after creation: any change forces the droplet to be recreated.
+	SshKeys []string `protobuf:"bytes,15,rep,name=ssh_keys,json=sshKeys,proto3" json:"ssh_keys,omitempty"`
+	// (Optional) When and how often automated backups run. Requires
+	// enable_backups; omitted with backups enabled, DigitalOcean defaults to
+	// a daily plan in a window it picks.
+	BackupPolicy *DigitalOceanDropletBackupPolicy `protobuf:"bytes,16,opt,name=backup_policy,json=backupPolicy,proto3" json:"backup_policy,omitempty"`
+	// (Optional) Install the DigitalOcean agent that powers the web console
+	// in the control panel. Unset, DigitalOcean installs it where the image
+	// supports it and silently skips otherwise; explicit true makes an
+	// installation failure fatal; explicit false prevents installation.
+	// Cannot be changed after creation.
+	DropletAgent *bool `protobuf:"varint,17,opt,name=droplet_agent,json=dropletAgent,proto3,oneof" json:"droplet_agent,omitempty"`
+	// Gracefully shut the droplet down (ACPI power-off, letting the OS flush
+	// and stop services) before it is destroyed, instead of the default
+	// immediate power-off. Updates in place; it only affects destroy-time
+	// behavior.
+	GracefulShutdown bool `protobuf:"varint,18,opt,name=graceful_shutdown,json=gracefulShutdown,proto3" json:"graceful_shutdown,omitempty"`
+	// Whether a size change also permanently grows the disk. DigitalOcean
+	// defaults this ON (unset defers to that): the resize applies fully and
+	// cannot be reverted to a smaller size later. Set false for a CPU/RAM-only
+	// resize that stays reversible.
+	ResizeDisk *bool `protobuf:"varint,19,opt,name=resize_disk,json=resizeDisk,proto3,oneof" json:"resize_disk,omitempty"`
+	// (Optional) Public networking is enabled on every new droplet by
+	// default; set explicit false to create a droplet with NO public network
+	// interface at all (reachable only inside its VPC). Cannot be changed
+	// after creation.
+	PublicNetworking *bool `protobuf:"varint,20,opt,name=public_networking,json=publicNetworking,proto3,oneof" json:"public_networking,omitempty"`
+	// (Optional) Partition mode for a GPU droplet, only supported on GPU
+	// sizes that advertise it. Omit for a full GPU (equivalent to
+	// PARTITION_MODE_SPX_NPS1). Cannot be changed after creation.
+	GpuPartitionMode string `protobuf:"bytes,21,opt,name=gpu_partition_mode,json=gpuPartitionMode,proto3" json:"gpu_partition_mode,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DigitalOceanDropletSpec) Reset() {
@@ -184,13 +192,6 @@ func (x *DigitalOceanDropletSpec) GetEnableBackups() bool {
 	return false
 }
 
-func (x *DigitalOceanDropletSpec) GetDisableMonitoring() bool {
-	if x != nil {
-		return x.DisableMonitoring
-	}
-	return false
-}
-
 func (x *DigitalOceanDropletSpec) GetVolumeIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.VolumeIds
@@ -212,38 +213,170 @@ func (x *DigitalOceanDropletSpec) GetUserData() string {
 	return ""
 }
 
-func (x *DigitalOceanDropletSpec) GetTimezone() DigitalOceanDropletTimezone {
-	if x != nil && x.Timezone != nil {
-		return *x.Timezone
+func (x *DigitalOceanDropletSpec) GetMonitoring() bool {
+	if x != nil {
+		return x.Monitoring
 	}
-	return DigitalOceanDropletTimezone_utc
+	return false
+}
+
+func (x *DigitalOceanDropletSpec) GetSshKeys() []string {
+	if x != nil {
+		return x.SshKeys
+	}
+	return nil
+}
+
+func (x *DigitalOceanDropletSpec) GetBackupPolicy() *DigitalOceanDropletBackupPolicy {
+	if x != nil {
+		return x.BackupPolicy
+	}
+	return nil
+}
+
+func (x *DigitalOceanDropletSpec) GetDropletAgent() bool {
+	if x != nil && x.DropletAgent != nil {
+		return *x.DropletAgent
+	}
+	return false
+}
+
+func (x *DigitalOceanDropletSpec) GetGracefulShutdown() bool {
+	if x != nil {
+		return x.GracefulShutdown
+	}
+	return false
+}
+
+func (x *DigitalOceanDropletSpec) GetResizeDisk() bool {
+	if x != nil && x.ResizeDisk != nil {
+		return *x.ResizeDisk
+	}
+	return false
+}
+
+func (x *DigitalOceanDropletSpec) GetPublicNetworking() bool {
+	if x != nil && x.PublicNetworking != nil {
+		return *x.PublicNetworking
+	}
+	return false
+}
+
+func (x *DigitalOceanDropletSpec) GetGpuPartitionMode() string {
+	if x != nil {
+		return x.GpuPartitionMode
+	}
+	return ""
+}
+
+// DigitalOceanDropletBackupPolicy is the weekly or daily window in which
+// DigitalOcean runs automated backups. A droplet has exactly one policy;
+// DigitalOcean picks a daily window automatically when none is set.
+type DigitalOceanDropletBackupPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Backup plan: "daily" or "weekly".
+	Plan string `protobuf:"bytes,1,opt,name=plan,proto3" json:"plan,omitempty"`
+	// Day of the week a weekly backup runs, as the API's three-letter
+	// uppercase token.
+	Weekday string `protobuf:"bytes,2,opt,name=weekday,proto3" json:"weekday,omitempty"`
+	// Hour of the day the backup window starts (0-20, mirroring the
+	// provider's own bounds). The API schedules windows on a four-hour grid:
+	// 0, 4, 8, 12, 16, or 20.
+	Hour          int32 `protobuf:"varint,3,opt,name=hour,proto3" json:"hour,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanDropletBackupPolicy) Reset() {
+	*x = DigitalOceanDropletBackupPolicy{}
+	mi := &file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanDropletBackupPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanDropletBackupPolicy) ProtoMessage() {}
+
+func (x *DigitalOceanDropletBackupPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanDropletBackupPolicy.ProtoReflect.Descriptor instead.
+func (*DigitalOceanDropletBackupPolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DigitalOceanDropletBackupPolicy) GetPlan() string {
+	if x != nil {
+		return x.Plan
+	}
+	return ""
+}
+
+func (x *DigitalOceanDropletBackupPolicy) GetWeekday() string {
+	if x != nil {
+		return x.Weekday
+	}
+	return ""
+}
+
+func (x *DigitalOceanDropletBackupPolicy) GetHour() int32 {
+	if x != nil {
+		return x.Hour
+	}
+	return 0
 }
 
 var File_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/digitalocean/digitaloceandroplet/v1alpha1/spec.proto\x125dev.planton.digitalocean.digitaloceandroplet.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda\x06\n" +
-	"\x17DigitalOceanDropletSpec\x12N\n" +
-	"\fdroplet_name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\vdropletName\x12L\n" +
-	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x126\n" +
+	"<catalog/digitalocean/digitaloceandroplet/v1alpha1/spec.proto\x125dev.planton.digitalocean.digitaloceandroplet.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9e\v\n" +
+	"\x17DigitalOceanDropletSpec\x12Y\n" +
+	"\fdroplet_name\x18\x01 \x01(\tB6\xbaH3\xc8\x01\x01r.\x18\xff\x012)^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$R\vdropletName\x12D\n" +
+	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionR\x06region\x126\n" +
 	"\x04size\x18\x03 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[a-z0-9]+(-[a-z0-9]+)+$R\x04size\x12?\n" +
-	"\x05image\x18\x04 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x05image\x12j\n" +
-	"\x03vpc\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
+	"\x05image\x18\x04 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x05image\x12d\n" +
+	"\x03vpc\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x1f\n" +
 	"\venable_ipv6\x18\a \x01(\bR\n" +
 	"enableIpv6\x12%\n" +
-	"\x0eenable_backups\x18\b \x01(\bR\renableBackups\x12-\n" +
-	"\x12disable_monitoring\x18\t \x01(\bR\x11disableMonitoring\x12t\n" +
+	"\x0eenable_backups\x18\b \x01(\bR\renableBackups\x12t\n" +
 	"\n" +
 	"volume_ids\x18\n" +
-	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x93'\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12\x1c\n" +
-	"\x04tags\x18\v \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x04tags\x12&\n" +
-	"\tuser_data\x18\f \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x02R\buserData\x12|\n" +
-	"\btimezone\x18\r \x01(\x0e2R.dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletTimezoneB\a\x8a\xa6\x1d\x03UTCH\x00R\btimezone\x88\x01\x01B\v\n" +
-	"\t_timezone*1\n" +
-	"\x1bDigitalOceanDropletTimezone\x12\a\n" +
-	"\x03utc\x10\x00\x12\t\n" +
-	"\x05local\x10\x01B\xab\x03\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x93'\x92\xd4a\x18status.outputs.volume_idR\tvolumeIds\x12:\n" +
+	"\x04tags\x18\v \x03(\tB&\xbaH#\x92\x01 \x18\x01\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags\x12&\n" +
+	"\tuser_data\x18\f \x01(\tB\t\xbaH\x06r\x04(\x80\x80\x02R\buserData\x12\x1e\n" +
+	"\n" +
+	"monitoring\x18\x0e \x01(\bR\n" +
+	"monitoring\x12)\n" +
+	"\bssh_keys\x18\x0f \x03(\tB\x0e\xbaH\v\x92\x01\b\x18\x01\"\x04r\x02\x10\x01R\asshKeys\x12{\n" +
+	"\rbackup_policy\x18\x10 \x01(\v2V.dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletBackupPolicyR\fbackupPolicy\x12(\n" +
+	"\rdroplet_agent\x18\x11 \x01(\bH\x00R\fdropletAgent\x88\x01\x01\x12+\n" +
+	"\x11graceful_shutdown\x18\x12 \x01(\bR\x10gracefulShutdown\x12.\n" +
+	"\vresize_disk\x18\x13 \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\n" +
+	"resizeDisk\x88\x01\x01\x120\n" +
+	"\x11public_networking\x18\x14 \x01(\bH\x02R\x10publicNetworking\x88\x01\x01\x12h\n" +
+	"\x12gpu_partition_mode\x18\x15 \x01(\tB:\xbaH7\xd8\x01\x01r2R\x17PARTITION_MODE_SPX_NPS1R\x17PARTITION_MODE_DPX_NPS2R\x10gpuPartitionMode:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
+	"\x1ebackup_policy_requires_backups\x129backup_policy can only be set when enable_backups is true\x1a/!has(this.backup_policy) || this.enable_backupsB\x10\n" +
+	"\x0e_droplet_agentB\x0e\n" +
+	"\f_resize_diskB\x14\n" +
+	"\x12_public_networkingJ\x04\b\t\x10\n" +
+	"J\x04\b\r\x10\x0eR\x12disable_monitoringR\btimezone\"\xb4\x01\n" +
+	"\x1fDigitalOceanDropletBackupPolicy\x12+\n" +
+	"\x04plan\x18\x01 \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\x05dailyR\x06weeklyR\x04plan\x12E\n" +
+	"\aweekday\x18\x02 \x01(\tB+\xbaH(\xd8\x01\x01r#R\x03SUNR\x03MONR\x03TUER\x03WEDR\x03THUR\x03FRIR\x03SATR\aweekday\x12\x1d\n" +
+	"\x04hour\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x00R\x04hourB\xab\x03\n" +
 	"9com.dev.planton.digitalocean.digitaloceandroplet.v1alpha1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandroplet/v1alpha1;digitaloceandropletv1alpha1\xa2\x02\x04DPDD\xaa\x025Dev.Planton.Digitalocean.Digitaloceandroplet.V1alpha1\xca\x025Dev\\Planton\\Digitalocean\\Digitaloceandroplet\\V1alpha1\xe2\x02ADev\\Planton\\Digitalocean\\Digitaloceandroplet\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Digitalocean::Digitaloceandroplet::V1alpha1b\x06proto3"
 
 var (
@@ -258,19 +391,18 @@ func file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDescGZ
 	return file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanDropletTimezone)(0),     // 0: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletTimezone
-	(*DigitalOceanDropletSpec)(nil),      // 1: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec
-	(digitalocean.DigitalOceanRegion)(0), // 2: dev.planton.digitalocean.DigitalOceanRegion
-	(*v1.StringValueOrRef)(nil),          // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*DigitalOceanDropletSpec)(nil),         // 0: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec
+	(*DigitalOceanDropletBackupPolicy)(nil), // 1: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletBackupPolicy
+	(digitalocean.DigitalOceanRegion)(0),    // 2: dev.planton.digitalocean.DigitalOceanRegion
+	(*v1.StringValueOrRef)(nil),             // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_depIdxs = []int32{
 	2, // 0: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
 	3, // 1: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 2: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec.volume_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 3: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec.timezone:type_name -> dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletTimezone
+	1, // 3: dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletSpec.backup_policy:type_name -> dev.planton.digitalocean.digitaloceandroplet.v1alpha1.DigitalOceanDropletBackupPolicy
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -289,14 +421,13 @@ func file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   1,
+			NumEnums:      0,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_goTypes,
 		DependencyIndexes: file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_depIdxs,
-		EnumInfos:         file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_enumTypes,
 		MessageInfos:      file_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto_msgTypes,
 	}.Build()
 	File_catalog_digitalocean_digitaloceandroplet_v1alpha1_spec_proto = out.File

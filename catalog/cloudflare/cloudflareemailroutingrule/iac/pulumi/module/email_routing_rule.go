@@ -33,9 +33,12 @@ func emailRoutingRule(
 		matchers = append(matchers, margs)
 	}
 
-	// Map the typed action onto the provider's generic {type, value[]}.
-	values := pulumi.StringArray{}
-	if action := spec.Action; action != nil {
+	// Map each typed action onto the provider's generic {type, value[]}:
+	// forward -> destination addresses; worker -> the single script name;
+	// drop -> no values.
+	actions := cloudflare.EmailRoutingRuleActionArray{}
+	for _, action := range spec.Actions {
+		values := pulumi.StringArray{}
 		switch action.Type {
 		case cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRuleActionType_forward:
 			for _, f := range action.ForwardTo {
@@ -46,13 +49,10 @@ func emailRoutingRule(
 				values = append(values, pulumi.String(action.Worker.GetValue()))
 			}
 		}
-	}
-
-	actions := cloudflare.EmailRoutingRuleActionArray{
-		cloudflare.EmailRoutingRuleActionArgs{
-			Type:   pulumi.String(spec.Action.Type.String()),
+		actions = append(actions, cloudflare.EmailRoutingRuleActionArgs{
+			Type:   pulumi.String(action.Type.String()),
 			Values: values,
-		},
+		})
 	}
 
 	args := &cloudflare.EmailRoutingRuleArgs{

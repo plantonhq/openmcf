@@ -67,6 +67,9 @@ spec:
         type: spec_default
         reference: Unset keeps the provider default, which still admits TLS 1.0 handshakes; the Policy-Min-TLS-1-2 policies disable the legacy protocol paths, and anonymous_auth_enabled stays false unless deliberately enabled at FGAC turn-on.
       notes: Both production presets pin Policy-Min-TLS-1-2-PFS-2023-10.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: cognito_options and saml_options delegate Dashboards sign-in to Amazon Cognito or a SAML IdP, where password strength and MFA are governed; the internal-user-database path models only the bootstrap master_user_name/master_user_password, with no credential-strength policy to configure.
     - control_id: audit-logging
       status: configurable
       field_path: log_publishing_options

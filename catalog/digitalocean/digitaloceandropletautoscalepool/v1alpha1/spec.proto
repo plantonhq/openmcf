@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandropletautoscalepool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/region.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDropletAutoscalePoolSpec models the full
+// digitalocean_droplet_autoscale resource surface: a pool of identical
+// droplets that DigitalOcean keeps at a fixed size or scales between bounds
+// on CPU/memory utilization -- the closest thing DigitalOcean has to a
+// managed instance group.
+//
+// The scaling mode is a strict either/or: a static pool holds an exact
+// member count, a dynamic pool scales between min and max on utilization
+// targets. The provider validates NONE of this pairing (it sends every
+// field it is given and lets the API sort it out); the oneof below makes a
+// mixed shape unrepresentable instead.
+//
+// DESTROY DESTROYS THE MEMBER DROPLETS: the API's only delete for a pool is
+// the "dangerous" variant that terminates every droplet the pool owns.
+// There is no way to keep the members and delete only the pool.
+message DigitalOceanDropletAutoscalePoolSpec {
+  // Name of the autoscale pool. Updates in place.
+  string pool_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Exactly one scaling mode must be chosen.
+  oneof scaling {
+    option (buf.validate.oneof).required = true;
+
+    // Hold the pool at an exact member count.
+    DigitalOceanDropletAutoscalePoolStaticScale static = 2;
+    // Scale between bounds on average CPU/memory utilization.
+    DigitalOceanDropletAutoscalePoolDynamicScale dynamic = 3;
+  }
+
+  // The template every pool member is created from. Template changes roll
+  // through the pool by replacing members with the new shape.
+  DigitalOceanDropletAutoscalePoolTemplate droplet_template = 4 [(buf.validate.field).required = true];
+}
+
+// Static scaling: the pool holds exactly this many members.
+message DigitalOceanDropletAutoscalePoolStaticScale {
+  // The exact number of droplets to maintain in the pool.
+  uint32 target_instances = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+}
+
+// Dynamic scaling: the pool scales between min and max on utilization
+// targets. Utilization metrics come from the droplet monitoring agent, so
+// the template should keep with_droplet_agent enabled.
+message DigitalOceanDropletAutoscalePoolDynamicScale {
+  option (buf.validate.message).cel = {
+    id: "dynamic.min_lte_max"
+    message: "min_instances must not exceed max_instances"
+    expression: "this.min_instances <= this.max_instances"
+  };
+  option (buf.validate.message).cel = {
+    id: "dynamic.at_least_one_target"
+    message: "dynamic scaling requires target_cpu_utilization and/or target_memory_utilization"
+    expression: "has(this.target_cpu_utilization) || has(this.target_memory_utilization)"
+  };
+
+  // The fewest droplets the pool may shrink to.
+  uint32 min_instances = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+
+  // The most droplets the pool may grow to.
+  uint32 max_instances = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+
+  // (Optional) Average CPU load to maintain, as a fraction in (0, 1] --
+  // e.g. 0.7 scales to keep the pool near 70% CPU. The floor excludes zero
+  // because the wire format drops zero values: an explicit 0 can never
+  // reach the API and would silently mean "no CPU target".
+  optional double target_cpu_utilization = 3 [
+    (buf.validate.field).double.gt = 0,
+    (buf.validate.field).double.lte = 1
+  ];
+
+  // (Optional) Average memory load to maintain, as a fraction in (0, 1].
+  // Same zero-exclusion rationale as target_cpu_utilization.
+  optional double target_memory_utilization = 4 [
+    (buf.validate.field).double.gt = 0,
+    (buf.validate.field).double.lte = 1
+  ];
+
+  // (Optional) Minutes to wait between scaling events. When unset,
+  // DigitalOcean applies its own default cooldown.
+  optional uint32 cooldown_minutes = 5 [(buf.validate.field).uint32.gte = 1];
+}
+
+// The droplet shape every pool member is created from. These are the same
+// knobs a standalone droplet takes, minus the per-droplet identity fields
+// the pool owns (names are generated from the pool name).
+message DigitalOceanDropletAutoscalePoolTemplate {
+  // Droplet size slug for every member (e.g. "s-1vcpu-1gb").
+  string size = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The DigitalOcean region every member is created in.
+  DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
+
+  // Image slug (e.g. "ubuntu-24-04-x64") or numeric image ID for every
+  // member. DigitalOcean reports the image back as a numeric ID even when
+  // a slug was supplied; both provisioners keep the configured value.
+  string image = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // SSH keys injected into every member -- required by the API (an
+  // autoscaled droplet has no other first-boot access path). Each entry is
+  // a literal numeric SSH key ID or a reference to a DigitalOceanSshKey
+  // resource.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef ssh_keys = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanSshKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.ssh_key_id"
+  ];
+
+  // (Optional) The VPC every member joins. Use a literal VPC UUID or a
+  // reference to a DigitalOceanVpc resource. When unset, DigitalOcean
+  // places members in the region's default VPC.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // (Optional) The project members are created in. Use a literal project
+  // UUID or a reference to a DigitalOceanProject resource. When unset,
+  // members land in the account's default project.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // (Optional) Tags applied to every member, in addition to the standard
+  // Planton labels both provisioners always apply. Tags are how firewalls
+  // and load balancers target droplet groups.
+  repeated string tags = 7 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"
+  ];
+
+  // (Optional) Install the DigitalOcean monitoring agent on every member.
+  // The agent supplies the CPU/memory utilization metrics dynamic scaling
+  // decides on -- leave it enabled for any dynamic pool.
+  bool with_droplet_agent = 8;
+
+  // (Optional) Enable IPv6 networking on every member.
+  bool ipv6 = 9;
+
+  // (Optional) Cloud-init user data executed on each member's first boot.
+  string user_data = 10;
+}

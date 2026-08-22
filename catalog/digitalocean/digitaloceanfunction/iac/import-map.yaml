@@ -1,0 +1,13 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanfunction
+spec:
+  values:
+    - name: app_id
+      derivations:
+        - from_stack_output: function_id
+      where_to_find: >-
+        DigitalOcean control panel -> Apps -> the app that hosts the
+        functions component -> Settings, or `doctl apps list` (the ID
+        column). function_id is that app UUID.

@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# HONEST UNKNOWN, deliberately NOT declared as data: the component's
+# catalog.md prose requires "DNS edit access for the auto-provisioned
+# records" (a zone-scoped DNS Write / DNS Read pair), but the modules never
+# call the dns_records API directly -- enabling routing auto-provisions
+# MX/SPF/DKIM server-side, and the email_routing_dns resource works the
+# email-routing endpoint -- so whether the token actually needs a DNS grant
+# for those server-side record writes is UNVERIFIED. An underived claim
+# never ships as data; the live capture lane settles it, and the pair joins
+# the groups below if the capture proves it.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareemailroutingzone
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageEmailRouting
+        name: Email Routing Rules Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: "Covers the Terraform module's cloudflare_email_routing_settings, count-gated cloudflare_email_routing_catch_all, and count-gated cloudflare_email_routing_dns resources and the Pulumi module's matching EmailRoutingSettings, EmailRoutingCatchAll, and EmailRoutingDns resources (neither engine performs secondary lookups) -- enable/disable settings via POST/DELETE /zones/{zone_id}/email/routing, the catch-all via PUT /zones/{zone_id}/email/routing/rules/catch_all, and the managed DNS records (when lock_dns_records is set) via /zones/{zone_id}/email/routing/dns. The reference lists no separate group for routing settings; Email Routing Rules is the product's only zone-scoped group, and the mapping is derived from the modules' API surface. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22)."
+      - purpose: ReadEmailRouting
+        name: Email Routing Rules Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: "Read-side of the same resources -- refresh/import the settings, catch-all, and DNS state via GET on the same endpoints."

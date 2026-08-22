@@ -2,11 +2,14 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceanfunction.v1alpha1;
 
-// DigitalOceanFunctionStackOutputs captures the outputs after deploying a DigitalOcean function.
+// Outputs of a DigitalOceanFunction. The provider has no standalone
+// Functions resource, so function_id is the App Platform app UUID.
 message DigitalOceanFunctionStackOutputs {
-  // function_id is the unique identifier of the deployed function.
+  // App Platform app UUID that hosts the functions component. Used to
+  // import the digitalocean_app resource.
   string function_id = 1;
-
-  // https_endpoint is the public HTTPS URL endpoint for invoking the function.
+  // Public HTTPS URL of the app (the functions HTTP endpoint).
   string https_endpoint = 2;
+  // Default ondigitalocean.app hostname assigned by the platform.
+  string default_hostname = 3;
 }

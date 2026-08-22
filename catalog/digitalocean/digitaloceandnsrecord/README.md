@@ -1,308 +1,82 @@
 # DigitalOcean DNS Record
 
-Provision and manage individual DNS records in DigitalOcean domains using Planton's unified API.
+A single DNS record in a DigitalOcean-hosted zone, described once in a Planton manifest: every record type the DigitalOcean API accepts (A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, SOA), the per-type fields each requires, and a zone reference so records compose with their zone in infra charts.
 
-## Overview
+## What this component models
 
-DigitalOcean DNS provides a simple and reliable managed DNS service for your domains. This component enables you to create individual DNS records within a DigitalOcean-managed domain (DNS zone).
+The spec maps one-to-one onto DigitalOcean's `digitalocean_record`:
 
-DNS records are the fundamental building blocks of your domain's DNS configuration—mapping hostnames to IP addresses (A/AAAA records), creating aliases (CNAME), routing email (MX), and storing verification data (TXT).
+| Spec field | What it controls |
+|---|---|
+| `domain` | The zone the record lives in — a literal domain or a reference to a `DigitalOceanDnsZone`; changing it recreates the record |
+| `name` | The host name relative to the zone (`@` for the apex, `www`, `api.v1`) |
+| `type` | The record type; changing it recreates the record |
+| `value` | The record's target — an IP, hostname, or text, as a literal or a reference to another resource's output |
+| `ttlSeconds` | Cache TTL; omit to take DigitalOcean's default (1800) |
+| `priority` | Required for MX and SRV (lower wins) |
+| `weight` / `port` | Required for SRV |
+| `flags` / `tag` | Required for CAA (`flags: 0` non-critical, `128` critical; `tag`: `issue`, `issuewild`, or `iodef`) |
 
-This component provides a clean, protobuf-defined API for provisioning DNS records, following the **80/20 principle**: exposing only the essential configuration fields that cover the most common use cases.
+The provider's type-conditional requirements are enforced at validation time — an MX without a priority or an SRV missing its port never reaches a provisioner.
 
-## Key Features
+## Quick start
 
-- **All Major Record Types**: Support for A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA records
-- **TTL Control**: Configurable TTL (30-86400 seconds, default 1800)
-- **Priority Support**: Required for MX and SRV records
-- **SRV Fields**: Full support for weight, port configuration
-- **CAA Fields**: Flags and tag support for certificate authority authorization
-- **Validation**: Built-in validation for record types, TTL ranges, and cross-field rules
-
-## Prerequisites
-
-1. **DigitalOcean Domain**: An existing domain registered in DigitalOcean DNS
-2. **API Token**: DigitalOcean API token with write permissions
-3. **Planton CLI**: Install from [planton.dev](https://planton.dev)
-
-## Quick Start
-
-### A Record (IPv4)
-
-Point a subdomain to an IPv4 address:
+Point a subdomain at a server:
 
 ```yaml
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
-  name: www-a-record
+  name: app-a-record
 spec:
   domain:
-    value: "example.com"
-  name: "www"
-  type: A
-  value:
-    value: "192.0.2.1"
-```
-
-Deploy:
-
-```bash
-planton apply -f record.yaml
-```
-
-### Reference to DNS Zone Resource
-
-You can reference a DigitalOceanDnsZone resource for the domain:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: www-a-record
-spec:
-  domain:
-    value_from:
+    valueFrom:
       kind: DigitalOceanDnsZone
-      name: my-dns-zone
-      field_path: "status.outputs.zone_name"
-  name: "www"
+      name: my-zone
+      fieldPath: status.outputs.zone_name
+  name: app
   type: A
   value:
-    value: "192.0.2.1"
+    value: 203.0.113.10
 ```
 
-### CNAME Record
-
-Create an alias to another hostname:
+A service locator with the full SRV surface:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: app-cname
 spec:
   domain:
-    value: "example.com"
-  name: "app"
-  type: CNAME
-  value:
-    value: "www.example.com"
-```
-
-### MX Record (Email)
-
-Route email to your mail server:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: mx-primary
-spec:
-  domain:
-    value: "example.com"
-  name: "@"
-  type: MX
-  value:
-    value: "mail.example.com"
-  priority: 10
-```
-
-### TXT Record (SPF, DKIM, Verification)
-
-Add SPF for email authentication:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDnsRecord
-metadata:
-  name: spf-record
-spec:
-  domain:
-    value: "example.com"
-  name: "@"
-  type: TXT
-  value:
-    value: "v=spf1 include:_spf.google.com ~all"
-```
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `domain` | StringValueOrRef | DigitalOcean domain name (can be direct value or reference to DigitalOceanDnsZone) |
-| `name` | string | Record name (e.g., "www", "@" for root, "api") |
-| `type` | enum | DNS record type: A, AAAA, CNAME, MX, TXT, SRV, NS, CAA |
-| `value` | StringValueOrRef | Record value (can be direct value or reference to another resource) |
-
-### StringValueOrRef Format
-
-The `domain` and `value` fields support either direct values or references to other resources:
-
-**Direct value:**
-```yaml
-domain:
-  value: "example.com"
-```
-
-**Reference to another resource:**
-```yaml
-domain:
-  value_from:
-    kind: DigitalOceanDnsZone
-    name: my-dns-zone
-    field_path: "status.outputs.zone_name"
-```
-
-### Optional Fields
-
-| Field | Type | Description | Default |
-|-------|------|-------------|---------|
-| `ttl_seconds` | int32 | Time to live (30-86400 seconds) | 1800 |
-| `priority` | int32 | Priority for MX/SRV records (0-65535) | 0 |
-| `weight` | int32 | Weight for SRV records (0-65535) | 0 |
-| `port` | int32 | Port for SRV records (0-65535) | 0 |
-| `flags` | int32 | Flags for CAA records (0-255) | 0 |
-| `tag` | string | Tag for CAA records (issue, issuewild, iodef) | "" |
-
-### Record Types
-
-| Type | Description | Example Value |
-|------|-------------|---------------|
-| **A** | IPv4 address | `192.0.2.1` |
-| **AAAA** | IPv6 address | `2001:db8::1` |
-| **CNAME** | Canonical name (alias) | `www.example.com` |
-| **MX** | Mail exchange | `mail.example.com` |
-| **TXT** | Text record | `v=spf1 include:...` |
-| **SRV** | Service locator | `sipserver.example.com` |
-| **NS** | Nameserver | `ns1.example.com` |
-| **CAA** | Certificate Authority Authorization | `letsencrypt.org` |
-
-## Outputs
-
-After deployment, the following outputs are available:
-
-- `record_id`: Unique identifier of the created DNS record
-- `hostname`: Fully qualified hostname (e.g., "www.example.com")
-- `record_type`: The DNS record type that was created
-- `domain`: The domain name where the record was created
-- `ttl_seconds`: The TTL applied to the record
-
-Access outputs:
-
-```bash
-planton output record_id
-planton output hostname
-```
-
-## Common Use Cases
-
-### 1. Web Server
-
-```yaml
-spec:
-  domain: "example.com"
-  name: "www"
-  type: A
-  value: "192.0.2.1"
-  ttl_seconds: 3600
-```
-
-### 2. API Endpoint
-
-```yaml
-spec:
-  domain: "example.com"
-  name: "api"
-  type: CNAME
-  value: "api-lb.example.com"
-```
-
-### 3. Root Domain (Apex)
-
-```yaml
-spec:
-  domain: "example.com"
-  name: "@"
-  type: A
-  value: "192.0.2.1"
-```
-
-### 4. SRV Record for SIP
-
-```yaml
-spec:
-  domain: "example.com"
-  name: "_sip._tcp"
+    value: example.com
+  name: _sip._tcp
   type: SRV
-  value: "sipserver.example.com"
+  value:
+    value: sip.example.com.
   priority: 10
-  weight: 5
+  weight: 60
   port: 5060
 ```
 
-### 5. CAA Record
+## Behavior worth knowing
 
-Restrict certificate issuance:
+- **Hostname values read back with a trailing dot** — CNAME/MX/NS/SRV/CAA targets are stored fully qualified (`mail.example.com.`); author the dot to avoid a permanent diff.
+- **Explicit zeros are dropped** — the provider omits a `priority`/`weight`/`port`/`flags` of exactly 0 from the create request and the API's default applies; use positive values when exactness matters (CAA `flags: 0` is safe — the API default IS 0).
+- **TTLs harmonize server-side** — DigitalOcean forces one TTL across records sharing a fully-qualified name (RFC 2181), so the live TTL can drift when a sibling record changes it.
+- **Records import with a two-part ID** — `{domain},{record_id}`; both are stack outputs of this component.
 
-```yaml
-spec:
-  domain: "example.com"
-  name: "@"
-  type: CAA
-  value: "letsencrypt.org"
-  flags: 0
-  tag: "issue"
-```
+## Outputs
 
-## Best Practices
+| Output | Meaning |
+|---|---|
+| `record_id` | The record's numeric ID (string form) — with `domain`, how the API and imports address it |
+| `hostname` | The fully-qualified name (the provider's computed fqdn) |
+| `record_type` | The type that was created |
+| `domain` | The zone the record was created in |
+| `ttl_seconds` | The applied TTL (the API default when the spec left it unset) |
 
-1. **Use Appropriate TTLs**: Lower TTLs (60-300) for records that change frequently, higher (3600-86400) for stable records
-2. **MX Priority Ordering**: Use 10, 20, 30 for primary, secondary, tertiary mail servers
-3. **SPF Records**: Limit to one TXT record per domain with SPF
-4. **Test Before Production**: Verify records resolve correctly with `dig` before relying on them
+## See also
 
-## Testing Records
-
-```bash
-# Test A record
-dig @ns1.digitalocean.com www.example.com A
-
-# Check MX records
-dig @ns1.digitalocean.com example.com MX
-
-# Verify TXT records
-dig @ns1.digitalocean.com example.com TXT
-```
-
-## Examples
-
-For detailed usage examples, see e2e/manifest.yaml.
-
-## Architecture Details
-
-For in-depth architectural guidance and production best practices, see GUIDE.md.
-
-## Terraform and Pulumi
-
-This component supports both Pulumi (default) and Terraform:
-
-- **Pulumi**: `iac/pulumi/` - Go-based implementation
-- **Terraform**: `iac/tf/` - HCL-based implementation
-
-Both produce identical infrastructure. Choose based on your team's preference.
-
-## Support
-
-- **DigitalOcean DNS Docs**: [docs.digitalocean.com/products/networking/dns](https://docs.digitalocean.com/products/networking/dns)
-- **Planton**: [planton.dev](https://planton.dev)
-
-## License
-
-This component is part of Planton and follows the same license.
+- `GUIDE.md` — operational judgment calls (record-vs-zone ownership, TTL strategy, SRV/CAA anatomy)
+- `presets/` — apex A record and www CNAME starting points
+- `v1alpha1/reference.md` — the generated field-by-field contract
 
 ---
 

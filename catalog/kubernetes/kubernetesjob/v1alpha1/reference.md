@@ -1590,6 +1590,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -1688,6 +1689,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -1808,31 +1810,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -1842,17 +1863,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -2419,6 +2476,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -2517,6 +2575,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2637,31 +2696,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -2671,17 +2749,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -4436,6 +4550,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -4534,6 +4649,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4654,31 +4770,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -4688,17 +4823,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -5265,6 +5436,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -5363,6 +5535,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -5483,31 +5656,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -5517,17 +5709,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -7320,6 +7548,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -7418,6 +7647,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7538,31 +7768,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -7572,17 +7821,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -8149,6 +8434,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -8247,6 +8533,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -8367,31 +8654,50 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
-- `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -8401,17 +8707,53 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustOrganization` -- No prerequisites: the organization is an account-scoped configuration singleton (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessInfrastructureTarget` -- No prerequisites: targets are account-scoped, and the virtual-network reference is an optional per-manifest edge (omitted = the account's default virtual network).
+- `CloudflareZeroTrustMcpPortal` -- No prerequisites: portals are account-scoped, and the servers[] rows' MCP-server references are optional per-manifest edges.
+- `CloudflareZeroTrustMcpServer` -- No prerequisites: MCP server registrations are account-scoped and self-contained -- portals reference them, not the reverse.
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
+- `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
+- `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareLogpushJob` -- No prerequisites: logpush jobs are dual-scope (account or zone) and the zone reference is optional -- zone-scoped lanes declare the edge at the scenario level.
+- `CloudflareNotificationPolicy` -- No prerequisites: every delivery mechanism (email, PagerDuty, webhook) is optional -- policies referencing a webhook declare the edge at the scenario level.
+- `CloudflareNotificationWebhook` -- No prerequisites: a webhook destination is account-scoped and self-contained -- notification policies reference it, not the reverse.
+- `CloudflareWebAnalyticsSite` -- No prerequisites: a site is identified by host OR zone, and the zone reference is optional -- zone-measured lanes declare the edge at the scenario level.
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
+- `CloudflareAccountApiToken` -- No prerequisites: an account-owned API token is self-contained; the resources its policies cover are identifiers, not references.
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`

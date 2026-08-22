@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesplantonoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own — its desired state is the planton.ai PlantonPlatform resources in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Platform data (databases, secrets) belongs to the platforms declared with KubernetesPlantonPlatform, never to the manager.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption, owned by the cluster.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The operator's only network traffic is calls TO the Kubernetes API server, which ride the API server's TLS. The chart exposes no serving endpoint beyond the plain-HTTP health probes on the pod-local port (kubelet-only traffic).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders NO Service and no Ingress at all (verified in the pinned 0.7.1 template set) — the operator is unreachable as a network endpoint; nothing the modules apply is externally exposed.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no inbound traffic — the chart renders no Service or webhook registration. There is no ingress seam to fence.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The operator serves no HTTP edge traffic. Web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart ships the operator's RBAC as fixed documents — a ClusterRole/ClusterRoleBinding pair for cluster-wide platform reconciliation plus a namespaced leader-election Role/RoleBinding, applied verbatim by the release. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+      notes: The operator's RBAC is necessarily broad — it creates and manages entire platform stacks (Deployments, Services, Secrets, sub-operators) across namespaces by design.
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_account.annotations
+      evidence:
+        type: spec_default
+        reference: The operator itself talks only to the Kubernetes API through its ServiceAccount token and holds no cloud credentials; service_account.annotations exists for the rare fleet convention that annotates every ServiceAccount. Cloud identity for platform workloads is configured on the KubernetesPlantonPlatform resource (runner service-account annotations), never here.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator ships no credentials and exposes no authentication surface of its own. Credentials for the platforms it deploys (admin setup codes, OIDC clients) are minted per platform by the operator at reconcile time and belong to those resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation the operator performs is a Kubernetes API operation, captured by the target cluster's audit policy. The operator emits reconcile logs to stdout for the cluster's log collector; a dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring seam is modeled on this spec — the chart renders no metrics Service or ServiceMonitor at the pin; the operator's health is watched through its /healthz and /readyz probes and the cluster's workload monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up — desired state is the PlantonPlatform CRs (the cluster's etcd backup posture). The module-owned CRD is KEPT on uninstall by design, so removing the operator never cascade-deletes platform declarations; platform data backup belongs to the platforms themselves.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas with leader_election (chart default true) runs leader-elected warm standbys; spread across zones rides node_selector/tolerations or the affinity surface through helm_values. The operator's loss degrades platform lifecycle management, not running platforms.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag; protection is operational (namespace RBAC, change review). Destroying this component removes the manager but KEEPS the plantonplatforms.planton.ai CRD (module-owned, retained on delete) — platform declarations and running platforms survive, unmanaged, until an operator is reinstalled.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules pin the chart to the catalog-validated default (0.7.1; its appVersion pins the operator image) and stage the matching CRD from exactly that published package. chart_version exists for deliberate change control, floored at 0.7.0 — older operators predate the PlantonPlatform schema the staged CRD advertises and are refused loudly by both engines.
+      notes: image.repository/tag exist for air-gapped mirrors of the SAME release, not for version selection.

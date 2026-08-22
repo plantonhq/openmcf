@@ -1,0 +1,29 @@
+# Inbound-user DigitalOceanDatabaseConnectionPool: the user field omitted,
+# creating DigitalOcean's "inbound user" pool where clients authenticate
+# with their own database credentials. Proves the omitted-user path reads
+# back stably (empty user, no drift) and that the pool's password output is
+# legitimately empty for this shape.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: planton-oss-e2e-digitaloceandatabaseconnectionpool-inb
+  id: planton-oss-e2e-digitaloceandatabaseconnectionpool-inb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabaseconnectionpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  poolName: pltn-e2e-dodbcp-inb
+  mode: session
+  size: 5
+  dbName: defaultdb

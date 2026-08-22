@@ -1,0 +1,18 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCdn
+metadata:
+  name: branded-assets-cdn
+spec:
+  origin:
+    valueFrom:
+      kind: DigitalOceanBucket
+      name: app-assets
+      fieldPath: status.outputs.bucket_domain_name
+  ttl: 3600
+  # The certificate reference carries the certificate's stable NAME.
+  certificate:
+    valueFrom:
+      kind: DigitalOceanCertificate
+      name: assets-cert
+      fieldPath: status.outputs.certificate_id
+  customDomain: assets.example.com

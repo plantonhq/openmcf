@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Default 1. More than one enables leader election automatically -- extra replicas are hot standbys reserving the same resources, not workload shards.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller container's requests are what each replica reserves. Unset, the chart applies NO requests or limits (the chart default) and the pod schedules unbounded.
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: The overlay merges LAST and can override any modeled value, including replicas and resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the listener and runner pods this controller creates are not its footprint: one listener per declared runner scale set (chart-sized) plus ephemeral runner pods that scale with CI demand -- that capacity rides the KubernetesGhaRunnerScaleSet resources that declare the fleets"
+    - the helm_values overlay merges last and can change any of the above
+  notes: "This component installs the ENGINE -- a small controller Deployment whose cost is the share of the cluster it reserves. The capacity that actually grows with CI load rides the KubernetesGhaRunnerScaleSet resources it reconciles: one listener pod per fleet and one ephemeral runner pod per job. A controller with no declared fleets reconciles nothing and reserves only its own pods."

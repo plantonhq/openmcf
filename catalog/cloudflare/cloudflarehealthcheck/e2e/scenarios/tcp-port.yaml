@@ -1,0 +1,17 @@
+# The TCP arm: a connection_established probe on a database port, proving the
+# tcp_config branch and the config-matches-type wall live.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareHealthcheck
+metadata:
+  name: e2e-hc-tcp-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-hc-tcp-${E2E_RUN_ID}
+  address: "203.0.113.51"
+  type: TCP
+  tcp_config:
+    port: 5432

@@ -56,6 +56,9 @@ spec:
       evidence:
         type: spec_default
         reference: The viewer certificate's minimum_protocol_version retires legacy TLS -- modern security policies refuse TLSv1.0/1.1 handshakes; custom origins likewise pin ssl_protocols for the forward leg.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: logging

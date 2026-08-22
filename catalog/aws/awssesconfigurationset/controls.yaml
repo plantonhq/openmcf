@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssesconfigurationset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A configuration set stores no message content -- it is sending policy (TLS posture, tracking, suppression, event routing) held in SES's managed control plane. The emails themselves transit SES and are never a stored artifact of this component; event copies land in the referenced destinations, whose at-rest posture is decided on those components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no key surface -- the SESv2 configuration-set API exposes no customer-managed-key option.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: delivery_options.tls_policy
+      evidence:
+        type: spec_default
+        reference: "Unset means OPTIONAL -- SES attempts TLS to the receiving mail server but falls back to plaintext SMTP, the protocol's historical default. REQUIRE fails the send rather than deliver without TLS: the right posture for anything carrying sensitive content, enforced per-set for every identity and send call that uses it."
+      notes: tracking_options.https_policy is the sibling dial for the rewritten open/click tracking links (REQUIRE forces https on them); the SESv2 management API carrying this configuration is itself HTTPS-only.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A configuration set exposes no endpoint -- it is control-plane policy attached to sends. The custom tracking domain resolves to SES's own tracking endpoint via a CNAME owned by the referenced DNS record component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a configuration set; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for sending policy.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the set and its event destinations -- create, the six Put option calls, destination changes, delete -- is IAM-authorized against the set's own ARN (arn:aws:ses:region:account:configuration-set/name), so grants can be scoped to exactly this set.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A configuration set runs no user workload. The one identity it touches is service plumbing -- a Firehose event destination has SES assume the referenced IAM role (trusting ses.amazonaws.com, ideally condition-locked to this set's ARN) to put records on the stream; that role is authored on its own component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The SESv2 configuration API has a single authentication path: SigV4-signed IAM requests. SES's SMTP-credential mechanism belongs to message submission, not to this policy object."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every change to the set -- TLS posture loosened, suppression override removed, an event destination deleted -- is a management event captured in CloudTrail unconditionally; silencing the bounce feedback loop is itself on the record.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: event_destinations
+      evidence:
+        type: spec_default
+        reference: "Empty means sends under this set emit nothing -- bounces and complaints accumulate invisibly. Each named destination streams chosen event types (SEND, BOUNCE, COMPLAINT, DELIVERY, OPEN, CLICK, ...) into CloudWatch metrics, EventBridge, Firehose, SNS, or Pinpoint; the bounce/complaint feedback loop that keeps a sender off suppression lists is built from exactly these."
+      notes: reputation_metrics_enabled is the companion switch -- off by AWS default, it publishes the set's bounce and complaint rates to CloudWatch, the numbers SES suspends accounts over.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- the set is pure policy, fully recreatable by re-applying the manifest. Emails and events are transient flows, never state this component holds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set; no field of this spec governs retention of any stored data.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SES is a regional managed service AWS operates across availability zones; the configuration set has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on a configuration set. Destroy removes the set and its event destinations; identities that named it as their default and send calls that reference it explicitly then fail until re-pointed -- the blast radius of deletion is broken sends, not lost data.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches SES's sending and event-publishing pipeline; the set exposes no runtime, version, or maintenance surface.

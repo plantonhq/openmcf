@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsecrregistrysettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every image ECR stores is encrypted at rest -- repositories the registry auto-creates through this component's automation (pull-through cache, replication, create-on-push) default to AES256 server-side encryption when no template says otherwise; an unencrypted repository is not representable at ECR.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: repository_creation_templates
+      evidence:
+        type: spec_default
+        reference: A template's encryption arm switches the repositories it stamps to KMS (or dual-layer KMS_DSSE) under a key you own and can revoke; omitted, auto-created repositories use AES256 with Amazon-managed keys. AWS requires the template's custom_role_arn when KMS is used -- repository creation fails without it, by ECR's documented design.
+      notes: This governs only repositories the REGISTRY creates on your behalf; explicitly managed repositories choose their own encryption on AwsEcrRepo.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The settings singleton terminates no connections. Registry API calls, image pushes and pulls, upstream cache fetches, and replication all ride ECR's HTTPS-only service endpoints -- provider behavior, not per-setting configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network endpoint belongs to this component; ECR's API surface is AWS's own. The exposure this spec DOES govern is identity-based -- which other accounts may replicate into or pull through this registry -- carried by registry_policy (see rbac).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; registry-level access control is IAM- and resource-policy territory (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The settings receive no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: registry_policy
+      evidence:
+        type: spec_default
+        reference: "The registry permissions policy is the registry's resource-based access control: it grants OTHER accounts registry-level actions -- ecr:ReplicateImage into this registry, pull-through cache sharing -- while repository-level grants stay on each AwsEcrRepo's policy. Unset means no cross-account registry grants, the tightest posture. account_settings.registry_policy_scope pins the V2 semantics under which registry policies grant only registry-level actions."
+      notes: Templates can also stamp a repository_policy onto every auto-created repository, putting even automation-created repositories under declared access control from birth.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No user workload runs here. The custom_role_arn fields (cache rules' cross-account pull role, templates' repository-creation role) are roles ECR ITSELF assumes with short-lived credentials -- service plumbing fixed by ECR's design, not a workload-identity choice.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "ECR has a single authentication path -- SigV4-signed IAM requests (docker login rides short-lived authorization tokens minted through it); no legacy protocol exists to disable. The two version knobs here are not auth: registry_policy_scope V1-vs-V2 versions policy SEMANTICS, and basic_scan_type_version AWS_NATIVE-vs-CLAIR versions the basic SCANNER."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Registry management calls and every push, pull, and cache import are recorded by AWS CloudTrail as account-level posture, not per-setting configuration.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: scanning
+      evidence:
+        type: spec_default
+        reference: The scanning arm is the registry's security-signal integration -- ENHANCED hands the whole registry to Amazon Inspector for OS-plus-language-package findings, with CONTINUOUS_SCAN re-scanning retained images as new CVEs publish; BASIC scans on push with the native scanner. Findings surface through Inspector and ECR scan APIs. Unset means the registry reset default -- BASIC with no rules, no automatic scanning at all.
+      notes: The 01 preset pins ENHANCED with CONTINUOUS_SCAN over every repository -- the strongest posture this surface offers (Inspector's per-image meters apply, see cost profile).
+    - control_id: backup-recovery
+      status: configurable
+      field_path: replication_rules
+      evidence:
+        type: spec_default
+        reference: Replication rules automatically copy matching images to up to 10 destination registries (cross-region, or cross-account where the destination's registry policy allows ecr:ReplicateImage) as they are pushed -- the registry-level disaster-recovery lever; recovery is pulling from the replica registry. Unset means no replication, the AWS default.
+      notes: Replication is forward-looking -- it copies images pushed after the rule exists, not history. The settings themselves are declarative and fully re-creatable from the manifest, with per-arm destroy semantics taught on each arm.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Replicas have no retention dial of their own -- each destination registry keeps images until ITS lifecycle rules expire them. The lifecycle_policy a creation template stamps governs image expiry in auto-created repositories, an image-housekeeping policy rather than a backup-retention one.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ECR is a regional managed service AWS operates across availability zones -- registry configuration and stored images have no zonal footprint the manifest could place, and image storage inherits multi-AZ durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists. Destroy's blast radius differs per arm by AWS's design: the registry policy and the keyed collections (cache rules, templates, exclusions) genuinely delete, scanning and replication RESET to empty defaults, and account settings PERSIST at last-applied values. Already-cached repositories and images always survive rule deletion."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the registry, the scanners, and the cache/replication machinery; the one version knob exposed (basic_scan_type_version) selects between AWS-operated scanner engines, not software the operator maintains.

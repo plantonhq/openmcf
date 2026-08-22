@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseventbridgeapidestination
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: destination
+      sku_meter: API destination invocation events
+      pricing_unit: events
+      impact: Every event delivered through the destination bills per million invocations ($0.20 per million on the EventBridge pricing page), counted in 64 KB chunks -- a 256 KB payload bills as 4 events. The destination and its connection carry no existence fee; the meter runs exactly as fast as the rules, pipes, and schedules pointed at it fire.
+    - field_path: destination.invocation_rate_limit_per_second
+      sku_meter: API destination invocation events
+      pricing_unit: events
+      impact: A ceiling, not a schedule -- the limit (AWS default 300/s) queues invocations beyond it to protect the downstream API. It defers delivery rather than reducing the bill; every event eventually delivered still bills once.
+    - field_path: connection.private_invocation_endpoint
+      sku_meter: PrivateLink and VPC Lattice data transfer
+      pricing_unit: GB
+      impact: "Pointing the connection at a private endpoint moves each invocation's bytes onto AWS PrivateLink and VPC Lattice, whose data-transfer meters bill per GB carried -- the pricing page says private invocations are 'billed at standard AWS PrivateLink and Amazon VPC Lattice charges'. Public endpoints instead pay standard internet data-transfer-out rates."
+  free_tier: "API destinations have NO free allotment -- the per-million invocation meter bills from the very first event, permanently. What costs nothing is existence: the connection and destination objects carry no hourly or monthly fee, so an idle destination is a true zero (commitment absence, not an allowance)."
+  estimate_exclusions:
+    - invocation volume is entirely upstream-driven -- the same manifest costs nothing until a rule, pipe, or schedule fires events at it, then bills $0.20 per million delivered in 64 KB chunks
+    - data transfer out to the internet for public HTTPS endpoints bills at standard AWS data-transfer rates on top of the invocation meter
+    - private endpoints ride PrivateLink and VPC Lattice, whose per-GB data-transfer meters bill on those services
+    - the INVOKING side bills separately on its own component -- custom events ingested by an event bus, pipe requests, or scheduler invocations each carry their own meter
+    - a customer-managed key on connection.kms_key_identifier bills its monthly key fee and per-request charges on the referenced AwsKmsKey
+    - the SaaS or internal API being invoked prices its own ingestion entirely outside AWS
+  notes: "The whole kind is pay-per-delivery: a connection (auth trust anchor) and a destination (HTTPS endpoint + method + rate limit) both exist for free, and the only EventBridge meter is $0.20 per million invocation events in 64 KB chunks -- an order of magnitude cheaper than the $1.00-per-million custom-event ingestion the invoking bus may already be paying. OAuth token fetches EventBridge performs before invoking are not metered. The classic surprise is payload chunking (big events multiply the count) and forgetting that the rate limit only queues -- it never discounts."

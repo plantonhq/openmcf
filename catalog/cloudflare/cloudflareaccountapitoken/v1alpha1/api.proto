@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflareaccountapitoken/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflareaccountapitoken/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareAccountApiToken is a KRM-style resource for creating
+// account-owned API tokens: scoped Cloudflare credentials with policies,
+// IP conditions, and validity windows.
+message CloudflareAccountApiToken {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareAccountApiToken'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareAccountApiTokenSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareAccountApiTokenStatus status = 5;
+}
+
+// CloudflareAccountApiTokenStatus represents the observed state of the
+// token.
+message CloudflareAccountApiTokenStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareAccountApiTokenStackOutputs outputs = 1;
+}

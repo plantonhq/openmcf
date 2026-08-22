@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurekeyvaultcertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "All three faces of the certificate -- the public part, the private key, and the secret bundle -- are persisted by Key Vault encrypted with HSM-backed keys unconditionally; no configuration stores any of them in plaintext."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Key Vault's own storage encryption is Microsoft-managed with no customer-key surface. The customer-controlled hardening that DOES exist here is key_properties.key_type: the _HSM variants pin the certificate's private key to FIPS 140-2 Level 3 hardware (Premium vault tier) -- custody hardening, not a storage-encryption key choice."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every enrollment, import, and read travels the vault's HTTPS-only data plane (TLS 1.2+). The certificate's own JOB is encryption in transit elsewhere -- and its private key can be confined so it never leaves the vault at all (see notes)."
+      notes: "key_properties.exportable false keeps the private key inside the vault -- vault-integrated TLS consumers fetch through Key Vault references and the key material never crosses the wire; the 03-ca-pending-csr preset runs that posture."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "A certificate has no network surface of its own -- reachability is the parent vault's posture (public_network_access_enabled, network_acls, private endpoints), set on the AzureKeyVault component this spec references."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Inbound filtering is the vault's network_acls territory (see no-public-access) -- there is no per-certificate network rule to declare."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The data plane serving this certificate is a Microsoft-managed REST endpoint with no WAF attachment point; the customer-side perimeter is the vault's network rules plus Azure AD authentication."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every data-plane call touching the certificate is authorized by the vault -- Azure RBAC roles like Key Vault Certificates Officer in the recommended mode, or legacy access-policy grants -- and no configuration makes a certificate (or its private key) anonymously readable."
+      notes: "WHICH authorization model applies is the vault's rbac_authorization_enabled choice, examined on the AzureKeyVault profile. Consumers of the secret face (TLS terminators) need only secret-read grants -- narrower than certificate management."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The certificate runs nothing -- it is held credential material. Whether consumers fetch it with short-lived managed identities (Application Gateway's user-assigned identity reading the secret face is the canonical pattern) is decided on the consumer components."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The certificate has no authentication paths of its own; legacy-versus-RBAC authorization is the vault's choice (see rbac)."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "A certificate is a data-plane object, so even its CREATION never reaches the Azure Activity Log -- the trail of who enrolled, renewed, or read it is the vault's AuditEvent diagnostic logging, a vault-level diagnostic setting outside both this spec and the vault's. Compose it when issuance audit is required."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Certificates publish no per-object metrics; traffic signals ride the vault's automatic platform metrics. Expiry watching has two composable surfaces: lifetime_actions EMAIL_CONTACTS notifies the vault's certificate contacts, and Key Vault's Event Grid system topic emits CertificateNearExpiry events -- both outside this control's metric sense."
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Soft delete is always on vault-wide and covers every certificate: a deleted certificate stays recoverable for the vault's retention window (7-90 days, default 90), and the official modules auto-recover a name-colliding create against a soft-deleted certificate rather than failing."
+      notes: "Renewals and re-imports create new VERSIONS rather than destroying anything -- the version history is the point-in-time record; a data-plane backup/restore blob also exists as an operation outside this spec."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "Recovery retention is the vault's soft_delete_retention_days -- one window for everything inside; no per-certificate retention knob exists."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The certificate inherits Key Vault's automatic redundancy -- zone-redundant service in availability-zone regions, with contents replicated within the region (and to the paired region where one exists), no configuration surface, no opt-out."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No per-certificate protection flag exists. The vault's purge_protection_enabled is the relevant guard: with it on, even a deleted certificate cannot be purged before the retention window lapses -- set on the AzureKeyVault component."
+    - control_id: managed-patching
+      status: configurable
+      field_path: certificate_policy.lifetime_actions
+      evidence:
+        type: spec_default
+        reference: "A certificate's version upgrade is its renewal, and the policy decides who performs it: no lifetime action (or EMAIL_CONTACTS) leaves renewal manual, while AUTO_RENEW hands re-enrollment to the vault -- it mints the new version before expiry with no human in the loop, and versionless consumers follow automatically."
+      notes: "The 01-self-signed-auto-renew preset renews automatically at 80% lifetime; 03-ca-pending-csr can only EMAIL_CONTACTS (an Unknown issuer is inherently manual). The service platform itself is Microsoft-patched PaaS with no customer surface."

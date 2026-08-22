@@ -51,6 +51,9 @@ spec:
         type: spec_default
         reference: This spec IS the client's authentication-path allowlist. explicit_auth_flows decides whether the weaker paths exist -- ALLOW_USER_PASSWORD_AUTH (password over the wire instead of SRP) and the legacy pre-ALLOW spellings are only enabled by listing them; the hardened posture lists ALLOW_USER_SRP_AUTH and ALLOW_REFRESH_TOKEN_AUTH only. In allowed_oauth_flows, the implicit grant (tokens leaking into browser history) is likewise opt-in, with the code grant the recommended path.
       notes: Reinforcing dials -- prevent_user_existence_errors ENABLED closes the user-enumeration oracle (LEGACY reveals whether a user exists); refresh_token_rotation retires each refresh token at use; enable_token_revocation (AWS default true) keeps sign-out able to kill live tokens; generate_secret false plus PKCE is the correct public-client posture. The spec's validations refuse mixing legacy and ALLOW_* spellings and refuse client_credentials combined with user-facing grants.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The client selects OAuth flows and token lifetimes for sign-in the user pool performs -- password policy, MFA, and threat protection are pool-level configuration (the AwsCognitoUserPool kind carries that stance), not per-client settings.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Management calls are recorded by AWS CloudTrail as account-level posture; sign-in event history and exportable auth-event logs are pool-tier threat-protection capabilities, not per-client settings.

@@ -92,6 +92,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/digitalocean/godo v1.202.0
 	github.com/fatih/color v1.18.0
 	github.com/google/cel-go v0.26.1
 	github.com/google/go-containerregistry v0.21.8
@@ -112,8 +113,8 @@ require (
 	github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1
 	github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0
-	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0
-	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0
+	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.19.0
+	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0
 	github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.33.0
 	github.com/pulumi/pulumi-random/sdk/v4 v4.16.7
@@ -212,6 +213,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
@@ -223,6 +225,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-getter/v2 v2.2.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/hashicorp/terraform-json v0.23.0 // indirect

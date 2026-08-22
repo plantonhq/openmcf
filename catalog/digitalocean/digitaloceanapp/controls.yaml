@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanapp
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: App Platform containers are ephemeral compute with no persistent disk surface -- there is nothing at rest to encrypt on the app. Data lives in the databases and object stores the app talks to, each with its own posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service anywhere on the platform -- no CMK surface exists for App Platform.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Platform serves every app over automatic HTTPS -- DigitalOcean provisions and renews the certificates and redirects traffic to TLS, with no way to serve plaintext to the public.
+      notes: Custom domains added through the domains field get the same automatic certificate treatment.
+    - control_id: no-public-access
+      status: configurable
+      field_path: services
+      evidence:
+        type: spec_default
+        reference: Each service chooses its exposure -- http_port routes it publicly through the app's ingress, while internal_ports keeps it reachable only from the app's other components.
+      notes: An app with routable services always has a public URL -- App Platform is a public PaaS by design; the vpc field places EGRESS traffic in a VPC, not ingress. Both presets expose one public web service, the kind's usual job.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: App Platform offers no source-IP allowlist -- the ingress field shapes routing (paths, components, CORS), not who may connect. IP-level restriction requires fronting the app with an external edge.
+    - control_id: edge-protection
+      status: configurable
+      field_path: enhanced_threat_control_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults false; true enables enhanced threat control, DigitalOcean's edge-layer filtering of malicious traffic in front of the app. Baseline DDoS mitigation and the global CDN are always on.
+      notes: Neither preset enables it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management-plane access is governed by DigitalOcean team roles and API token scopes on the caller's side; the app's own endpoints authenticate users however the workload code decides. No RBAC surface lives in this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean has no workload-identity federation for App Platform -- app code calling DigitalOcean APIs must carry a static token in an env var (the envs fields support secret-typed values for exactly that).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The platform side of the app authenticates nobody -- there is no legacy auth path to close; whatever authentication the app performs is workload code.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: App Platform exposes deploy and runtime logs, not an audit-log configuration -- management-plane actions land in the team's account activity outside this component.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: alerts
+      evidence:
+        type: spec_default
+        reference: App-level alerts (deployment failures, domain issues) and per-component alerts (CPU, memory, restarts) are declared in the spec; none exist unless declared.
+      notes: Basic runtime metrics flow to the DigitalOcean control panel automatically; log_destinations on each component forward logs to external providers (Papertrail, Datadog, Logtail, OpenSearch).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: App containers are stateless and rebuilt from source on every deploy -- there is nothing to back up. The honest caveat rides the databases field, since development databases are NOT backed up and die with the app; production data belongs on DigitalOceanDatabaseCluster components with their own backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup channel (see backup-recovery), no retention knob exists.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: services
+      evidence:
+        type: spec_default
+        reference: instance_count 2 or more (or autoscaling with min_instance_count 2 or more) runs redundant container instances behind the platform ingress, so one instance's failure does not drop the service; the default single instance is a single point of failure.
+      notes: "Redundancy is instance-level within the region -- App Platform has no multi-region app. The container-image preset pins an autoscaling floor of 2; the git-source preset runs a single instance."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a deletion-protection flag for apps -- nothing exists to refuse a delete, and destroying the app also destroys its development databases.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Platform is a managed PaaS -- DigitalOcean patches the underlying OS, runtimes, and infrastructure automatically; no version or patch surface is exposed to configure.
+      notes: The maintenance field controls deploy-freeze windows, not patching. The workload's own dependencies are rebuilt from source on each deploy, which is the operator's cadence to keep current.

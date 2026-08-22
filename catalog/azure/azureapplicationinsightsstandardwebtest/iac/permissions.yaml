@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  azure:
+    groups:
+      - purpose: ManageWebTest
+        actions:
+          - Microsoft.Insights/Webtests/Read
+          - Microsoft.Insights/Webtests/Write
+          - Microsoft.Insights/Webtests/Delete
+        provenance: derived
+        notes: Covers azurerm_application_insights_standard_web_test / appinsights.NewStandardWebTest -- create in the resource group, refresh, in-place updates (request, schedule, validation rules, locations, enabled), and destroy. Typically held via Monitoring Contributor, Contributor, or Owner on the resource group.
+      - purpose: ReadApplicationInsightsComponent
+        actions:
+          - Microsoft.Insights/Components/Read
+        provenance: derived
+        notes: The modules never call the components API -- the resolved application_insights_id rides the web test's payload (and its hidden-link tag, which binds results to the component) -- but ARM authorizes binding the test to the REFERENCED component by reading it on the component's scope at create time (service-side). Components in other resource groups need this read there.

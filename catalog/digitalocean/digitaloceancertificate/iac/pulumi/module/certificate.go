@@ -2,53 +2,48 @@ package module
 
 import (
 	"github.com/pkg/errors"
-	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
 	"github.com/pulumi/pulumi-digitalocean/sdk/v4/go/digitalocean"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // certificate provisions the DigitalOcean SSL certificate and exports its outputs.
 //
-// NOTE: The DigitalOcean Pulumi provider currently lacks fields for tags
-// and automatic‑renew configuration, so spec.tags and disable_auto_renew are ignored.
+// The spec's certificate_source oneof picks the branch, and the branch derives
+// DigitalOcean's `type` argument. Every argument is create-only, so any change
+// replaces the certificate; DeleteBeforeReplace stays false (the default) so the
+// replacement is created first and consumers referencing the certificate by its
+// stable name never observe a gap.
 func certificate(
 	ctx *pulumi.Context,
 	locals *Locals,
 	digitalOceanProvider *digitalocean.Provider,
 ) (*digitalocean.Certificate, error) {
-	var domains pulumi.StringArray
-
-	if locals.DigitalOceanCertificate.Spec.GetLetsEncrypt() != nil {
-		for _, d := range locals.DigitalOceanCertificate.Spec.GetLetsEncrypt().Domains {
-			domains = append(domains, pulumi.String(d))
-		}
-	}
-
-	// Determine certificate type and convert enum to string for DigitalOcean API
-	var certType string
-	if locals.DigitalOceanCertificate.Spec.Type == digitaloceancertificatev1alpha1.DigitalOceanCertificateType_lets_encrypt {
-		certType = "lets_encrypt"
-	} else if locals.DigitalOceanCertificate.Spec.Type == digitaloceancertificatev1alpha1.DigitalOceanCertificateType_custom {
-		certType = "custom"
-	}
+	spec := locals.DigitalOceanCertificate.Spec
 
 	certArgs := &digitalocean.CertificateArgs{
-		Name: pulumi.String(locals.DigitalOceanCertificate.Spec.CertificateName),
-		Type: pulumi.String(certType),
+		Name: pulumi.String(spec.CertificateName),
 	}
-	if locals.DigitalOceanCertificate.Spec.Type == digitaloceancertificatev1alpha1.DigitalOceanCertificateType_lets_encrypt {
+
+	if letsEncrypt := spec.GetLetsEncrypt(); letsEncrypt != nil {
+		certArgs.Type = pulumi.String("lets_encrypt")
+		var domains pulumi.StringArray
+		for _, d := range letsEncrypt.Domains {
+			domains = append(domains, pulumi.String(d))
+		}
 		certArgs.Domains = domains
 	}
 
-	if locals.DigitalOceanCertificate.Spec.Type == digitaloceancertificatev1alpha1.DigitalOceanCertificateType_custom {
-		certArgs.LeafCertificate = pulumi.String(locals.DigitalOceanCertificate.Spec.GetCustom().LeafCertificate)
-		certArgs.PrivateKey = pulumi.String(locals.DigitalOceanCertificate.Spec.GetCustom().PrivateKey)
-		if locals.DigitalOceanCertificate.Spec.GetCustom().CertificateChain != "" {
-			certArgs.CertificateChain = pulumi.StringPtr(locals.DigitalOceanCertificate.Spec.GetCustom().CertificateChain)
+	if custom := spec.GetCustom(); custom != nil {
+		certArgs.Type = pulumi.String("custom")
+		// The provider stores only hashes of the PEM material (the
+		// DigitalOcean API never returns it).
+		certArgs.LeafCertificate = pulumi.String(custom.LeafCertificate)
+		certArgs.PrivateKey = pulumi.String(custom.PrivateKey)
+		if custom.CertificateChain != "" {
+			certArgs.CertificateChain = pulumi.StringPtr(custom.CertificateChain)
 		}
 	}
 
-	// 4. Create the certificate.
 	createdCertificate, err := digitalocean.NewCertificate(
 		ctx,
 		"certificate",
@@ -59,7 +54,8 @@ func certificate(
 		return nil, errors.Wrap(err, "failed to create digitalocean certificate")
 	}
 
-	// 5. Export required stack outputs.
+	// The resource id is the certificate NAME at the current provider pin (a
+	// Let's Encrypt certificate's UUID rotates on every auto-renewal).
 	ctx.Export(OpCertificateId, createdCertificate.ID())
 	ctx.Export(OpExpiryRfc3339, createdCertificate.NotAfter)
 

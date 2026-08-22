@@ -1,0 +1,17 @@
+# Minimal CloudflareMtlsCertificate scenario: upload an env-supplied
+# self-signed CA certificate to the account store (a self-signed CA is the
+# product's own use case -- this store holds YOUR trust material). The PEM
+# enters by env reference, never a literal in the manifest; without the env
+# var the lane skips honestly. The name carries the run id so concurrent
+# runs cannot collide in the shared account store.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareMtlsCertificate
+metadata:
+  name: e2e-mtls-ca-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_MTLS_CA_CERT_PEM
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-mtls-ca-${E2E_RUN_ID}
+  ca: true
+  certificates: ${E2E_ENV:PLANTON_E2E_MTLS_CA_CERT_PEM}

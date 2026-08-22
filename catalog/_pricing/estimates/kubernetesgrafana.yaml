@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesgrafana
+spec:
+  presets:
+    - preset: 02-persistent-team
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        persistent_storage: 10Gi
+        basis: "1 replica x (100m CPU / 256Mi memory requests, 1 CPU / 1Gi limits); 1 state volume: 1 x 10Gi state volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 03-ha-external-db
+      capacity_footprint:
+        cpu_requests: 500m
+        memory_requests: 1Gi
+        cpu_limits: "4"
+        memory_limits: 4Gi
+        basis: 2 replicas x (250m CPU / 512Mi memory requests, 2 CPU / 2Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - state lives in the external database, whose capacity and storage ride its own component (a KubernetesPostgres composes naturally) -- nothing persistent is reserved here

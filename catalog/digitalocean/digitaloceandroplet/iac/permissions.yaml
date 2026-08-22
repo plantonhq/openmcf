@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandroplet
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDroplet
+        scopes:
+          - droplet:create
+          - droplet:read
+          - droplet:update
+          - droplet:delete
+        provenance: derived
+        notes: Covers digitalocean_droplet's create/read/update/delete/import paths in both the Terraform and Pulumi modules, waiters included -- create the droplet via POST /v2/droplets, where image, size, ssh keys, backups, volume ids, and tags all ride the create body (droplet:create), read the droplet via GET /v2/droplets/{id} on refresh/import and while the create waiter polls for active status (droplet:read), make in-place changes (rename, resize, backup toggles/policy, tag set, volume set) via PUT /v2/droplets/{id} and POST /v2/droplets/{id}/actions (droplet:update), and destroy via DELETE /v2/droplets/{id}, where graceful_shutdown first issues a shutdown action, which also needs droplet:update (droplet:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: ApplyTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: Both modules always apply the Planton label tags (plus spec tags); assigning a tag name the account has never used materializes it.
+      - purpose: ResolveSshKeys
+        scopes:
+          - ssh_key:read
+        provenance: derived
+        notes: "When ssh_keys are set: the provider resolves each ID/fingerprint against GET /v2/account/keys to build the create request."
+      - purpose: AttachVolumes
+        scopes:
+          - block_storage_action:create
+        provenance: derived
+        notes: "When volume_ids change after create: the provider attaches/detaches volumes via POST /v2/volumes/{id}/actions."

@@ -1,0 +1,88 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerMonitor
+metadata:
+  name: rules-https
+spec:
+  accountId: <cloudflare-account-id>
+  type: https
+  path: /healthz
+  expectedCodes: "2xx"
+---
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: web-pool
+spec:
+  accountId: <cloudflare-account-id>
+  name: web-pool
+  origins:
+    - name: web-1
+      address:
+        value: 192.0.2.1
+  monitor:
+    valueFrom:
+      kind: CloudflareLoadBalancerMonitor
+      name: rules-https
+      fieldPath: status.outputs.monitor_id
+---
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: api-pool
+spec:
+  accountId: <cloudflare-account-id>
+  name: api-pool
+  origins:
+    - name: api-1
+      address:
+        value: 192.0.2.2
+  monitor:
+    valueFrom:
+      kind: CloudflareLoadBalancerMonitor
+      name: rules-https
+      fieldPath: status.outputs.monitor_id
+---
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancer
+metadata:
+  name: my-rules-lb
+spec:
+  hostname: <app-subdomain>.<your-domain.com>
+  zoneId:
+    value: <cloudflare-zone-id>
+  defaultPools:
+    - valueFrom:
+        kind: CloudflareLoadBalancerPool
+        name: web-pool
+        fieldPath: status.outputs.pool_id
+  fallbackPool:
+    valueFrom:
+      kind: CloudflareLoadBalancerPool
+      name: web-pool
+      fieldPath: status.outputs.pool_id
+  proxied: true
+  sessionAffinity: cookie
+  rules:
+    # Route API traffic to its own pool and drop the session cookie there --
+    # stateless endpoints do not need affinity.
+    - name: api-to-api-pool
+      condition: http.request.uri.path contains "/api"
+      overrides:
+        sessionAffinity: none
+        defaultPools:
+          - valueFrom:
+              kind: CloudflareLoadBalancerPool
+              name: api-pool
+              fieldPath: status.outputs.pool_id
+        fallbackPool:
+          valueFrom:
+            kind: CloudflareLoadBalancerPool
+            name: api-pool
+            fieldPath: status.outputs.pool_id
+    # Serve a maintenance page at the edge without touching any origin.
+    - name: maintenance-page
+      condition: http.request.uri.path contains "/maintenance"
+      fixedResponse:
+        contentType: text/html
+        messageBody: "<h1>Down for maintenance</h1>"
+        statusCode: 503

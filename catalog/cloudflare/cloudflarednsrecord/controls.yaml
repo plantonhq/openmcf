@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarednsrecord
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A DNS record's value is public resolution data held in Cloudflare's control plane -- there is no customer data store here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Cloudflare exposes no KMS surface for DNS records.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The record terminates no connections. DNS answers travel on the resolver path (DNS/DoT/DoH is resolver posture), and TLS for proxied traffic is the zone's certificate and SSL-mode posture -- neither is a field on this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: private_routing
+      evidence:
+        type: spec_default
+        reference: private_routing restricts the record to Cloudflare's internal (private) routing so it is not served over the public internet -- the Internal DNS / Magic WAN surface. It defaults to false, so records are publicly resolvable unless this is explicitly set.
+      notes: No preset enables it; internal DNS is an Enterprise feature. For proxied records the origin IP is additionally hidden behind the edge (see edge-protection), but the name itself still resolves publicly.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A record answers queries; it has no ingress filter of its own. Source filtering for the traffic it steers is zone WAF/ruleset posture.
+    - control_id: edge-protection
+      status: configurable
+      field_path: proxied
+      evidence:
+        type: spec_default
+        reference: proxied (orange cloud) routes the record's traffic through Cloudflare's edge, placing the zone's WAF, DDoS mitigation, and CDN in front of the origin and hiding the origin IP; false (the default) serves a DNS-only record that exposes the origin address directly. Only valid for A/AAAA/CNAME (CEL rule spec.proxied_only_for_supported_types).
+      notes: Preset 01-proxied-a-record enables it; the MX/SRV/CAA presets are DNS-only by nature. Which filters actually run at the edge is the zone's ruleset posture, not this record's.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture; the record exposes no data plane of its own to govern.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials -- record values are public resolution data.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token over the legacy Global API Key when provisioning.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records DNS record changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface; DNS query analytics are zone-level Cloudflare features outside this object.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cloudflare serves every record from its global anycast network as provider behavior -- there is no zonal placement for this component to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag for records. Destroy is a real delete and the name stops resolving.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software of its own to patch; the nameservers answering for it are Cloudflare-operated.

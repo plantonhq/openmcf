@@ -35,7 +35,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 gaps:
   # (C) service env-var secret maps
-  - DigitalOceanFunction:spec.secret_environment_variables
   # (D) secret-holder kinds
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password

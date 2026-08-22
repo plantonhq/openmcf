@@ -1,0 +1,16 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Uptime
+      sku_meter: uptime checks
+      pricing_unit: months
+      description: "Each Uptime check costs $1.00 per month, billed in hourly increments (the monthly price prorated hourly while the check exists), for as long as the check exists -- the charge attaches to the check itself, regardless of target, check type, or how many probe regions it uses."
+  free_tier: "The account's invoice is credited 1 free Uptime check per month -- it appears as 672 hours of credit, split between multiple checks if none of them is active for the full month (https://docs.digitalocean.com/products/uptime/details/pricing/, fetched 2026-08-22). The first check on an account is effectively free; every additional check bills the full $1.00 per month."
+  notes: "Corrected from an earlier free claim: DigitalOcean's Uptime pricing page states 'Each Uptime check costs $1.00 per month, billed in hourly increments' (https://docs.digitalocean.com/products/uptime/details/pricing/, fetched 2026-08-22) -- the committed claim here is the list price, with the account's single monthly check credit carried in free_tier. What stays free is everything around the check: 'There is no additional cost for alerts', so the alert rules and their email/Slack delivery add nothing, and the probed target is an external endpoint DigitalOcean does not bill for reaching."

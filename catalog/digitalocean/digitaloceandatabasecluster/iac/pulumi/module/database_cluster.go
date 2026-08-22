@@ -14,49 +14,92 @@ func cluster(
 	locals *Locals,
 	digitalOceanProvider *digitalocean.Provider,
 ) (*digitalocean.DatabaseCluster, error) {
+	spec := locals.DigitalOceanDatabaseCluster.Spec
 
-	// 1. Get engine slug directly from enum (values match DigitalOcean API slugs).
-	if locals.DigitalOceanDatabaseCluster.Spec.Engine == 0 {
+	if spec.Engine == 0 {
 		return nil, errors.Errorf("database engine is required")
 	}
-	engineSlug := locals.DigitalOceanDatabaseCluster.Spec.Engine.String()
 
-	// 2. Convert label map → slice of "key:value" tags.
+	if spec.StorageAutoscale != nil {
+		return nil, errors.New("PARITY-EXCEPTION: spec.storage_autoscale is modeled and Terraform wires it; the Pulumi DigitalOcean SDK v4.49.0 has no storage_autoscale field on DatabaseCluster. Re-evaluate when the SDK exposes storage_autoscale.")
+	}
+
+	// User tags plus the standard Planton labels rendered as "key:value"
+	// tags — the exact set the Terraform module applies.
+	tagSet := map[string]bool{}
 	var tagInputs pulumi.StringArray
-	if len(locals.DigitalOceanLabels) > 0 {
-		for k, v := range locals.DigitalOceanLabels {
-			tagInputs = append(tagInputs, pulumi.String(k+":"+v))
+	for _, t := range spec.Tags {
+		if !tagSet[t] {
+			tagSet[t] = true
+			tagInputs = append(tagInputs, pulumi.String(t))
+		}
+	}
+	for k, v := range locals.DigitalOceanLabels {
+		t := k + ":" + v
+		if !tagSet[t] {
+			tagSet[t] = true
+			tagInputs = append(tagInputs, pulumi.String(t))
 		}
 	}
 
-	// 3. Build resource arguments straight from proto fields.
+	// Enum value names are exactly the DigitalOcean API slugs.
 	clusterArgs := &digitalocean.DatabaseClusterArgs{
-		Engine:    pulumi.String(engineSlug),
-		Name:      pulumi.String(locals.DigitalOceanDatabaseCluster.Spec.ClusterName),
-		Region:    pulumi.String(locals.DigitalOceanDatabaseCluster.Spec.Region.String()),
-		Version:   pulumi.String(locals.DigitalOceanDatabaseCluster.Spec.EngineVersion),
-		Size:      pulumi.String(locals.DigitalOceanDatabaseCluster.Spec.SizeSlug),
-		NodeCount: pulumi.Int(int(locals.DigitalOceanDatabaseCluster.Spec.NodeCount)),
+		Engine:    pulumi.String(spec.Engine.String()),
+		Name:      pulumi.String(spec.ClusterName),
+		Region:    pulumi.String(spec.Region.String()),
+		Version:   pulumi.String(spec.EngineVersion),
+		Size:      pulumi.String(spec.SizeSlug),
+		NodeCount: pulumi.Int(int(spec.NodeCount)),
 		Tags:      tagInputs,
 	}
 
-	// Optional storage override.
-	if locals.DigitalOceanDatabaseCluster.Spec.StorageGib != 0 {
-		clusterArgs.StorageSizeMib = pulumi.String(fmt.Sprintf("%dMib",
-			locals.DigitalOceanDatabaseCluster.Spec.StorageGib*1024))
+	// The provider's storage_size_mib is a string holding a bare MiB count;
+	// the spec carries GiB for ergonomics.
+	if spec.StorageGib != 0 {
+		clusterArgs.StorageSizeMib = pulumi.String(fmt.Sprintf("%d", uint64(spec.StorageGib)*1024))
 	}
 
-	// Optional VPC attachment.
-	if locals.DigitalOceanDatabaseCluster.Spec.Vpc != nil &&
-		locals.DigitalOceanDatabaseCluster.Spec.Vpc.GetValue() != "" {
-		clusterArgs.PrivateNetworkUuid = pulumi.StringPtr(locals.DigitalOceanDatabaseCluster.Spec.Vpc.GetValue())
+	// Optional VPC attachment (create-only).
+	if spec.Vpc != nil && spec.Vpc.GetValue() != "" {
+		clusterArgs.PrivateNetworkUuid = pulumi.StringPtr(spec.Vpc.GetValue())
 	}
 
-	// NOTE: DigitalOcean API does not yet expose a direct "disable public network" switch.
-	// Leaving the flag as‑is; see explanation in the differences section.
-	_ = locals.DigitalOceanDatabaseCluster.Spec.EnablePublicConnectivity
+	// Optional DigitalOcean project placement (create-only).
+	if spec.ProjectId != "" {
+		clusterArgs.ProjectId = pulumi.StringPtr(spec.ProjectId)
+	}
 
-	// 4. Provision the cluster.
+	// Weekly maintenance window. The SDK models a list; a cluster has
+	// exactly one window, so the spec carries a single message.
+	if spec.MaintenanceWindow != nil {
+		clusterArgs.MaintenanceWindows = digitalocean.DatabaseClusterMaintenanceWindowArray{
+			digitalocean.DatabaseClusterMaintenanceWindowArgs{
+				Day:  pulumi.String(spec.MaintenanceWindow.Day),
+				Hour: pulumi.String(spec.MaintenanceWindow.Hour),
+			},
+		}
+	}
+
+	// Provision-from-backup. Consumed only at creation; never read back.
+	if spec.BackupRestore != nil {
+		backupRestoreArgs := digitalocean.DatabaseClusterBackupRestoreArgs{
+			DatabaseName: pulumi.String(spec.BackupRestore.DatabaseName),
+		}
+		if spec.BackupRestore.BackupCreatedAt != "" {
+			backupRestoreArgs.BackupCreatedAt = pulumi.StringPtr(spec.BackupRestore.BackupCreatedAt)
+		}
+		clusterArgs.BackupRestore = backupRestoreArgs
+	}
+
+	// Engine-conditional tuning: spec CEL rules enforce the engine pairing,
+	// so these are simply passed through when set.
+	if spec.EvictionPolicy != "" {
+		clusterArgs.EvictionPolicy = pulumi.StringPtr(spec.EvictionPolicy)
+	}
+	if spec.SqlMode != "" {
+		clusterArgs.SqlMode = pulumi.StringPtr(spec.SqlMode)
+	}
+
 	createdCluster, err := digitalocean.NewDatabaseCluster(
 		ctx,
 		"cluster",
@@ -67,13 +110,21 @@ func cluster(
 		return nil, errors.Wrap(err, "failed to create digitalocean database cluster")
 	}
 
-	// 5. Export stack outputs.
 	ctx.Export(OpClusterId, createdCluster.ID())
 	ctx.Export(OpConnectionUri, createdCluster.Uri)
 	ctx.Export(OpHost, createdCluster.Host)
 	ctx.Export(OpPort, createdCluster.Port)
 	ctx.Export(OpDatabaseUser, createdCluster.User)
 	ctx.Export(OpDatabasePassword, createdCluster.Password)
+	ctx.Export(OpPrivateHost, createdCluster.PrivateHost)
+	ctx.Export(OpPrivateUri, createdCluster.PrivateUri)
+	ctx.Export(OpDatabaseName, createdCluster.Database)
+	ctx.Export(OpUiHost, createdCluster.UiHost)
+	ctx.Export(OpUiPort, createdCluster.UiPort)
+	ctx.Export(OpUiUri, createdCluster.UiUri)
+	ctx.Export(OpUiDatabase, createdCluster.UiDatabase)
+	ctx.Export(OpUiUser, createdCluster.UiUser)
+	ctx.Export(OpUiPassword, createdCluster.UiPassword)
 
 	return createdCluster, nil
 }

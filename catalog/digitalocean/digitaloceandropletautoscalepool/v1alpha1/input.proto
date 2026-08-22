@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandropletautoscalepool.v1alpha1;
+
+import "catalog/digitalocean/digitaloceandropletautoscalepool/v1alpha1/api.proto";
+import "catalog/digitalocean/provider.proto";
+
+//digital-ocean-droplet-autoscale-pool stack-input
+message DigitalOceanDropletAutoscalePoolStackInput {
+  //target cloud-resource
+  DigitalOceanDropletAutoscalePool target = 1;
+  //provider-config
+  dev.planton.digitalocean.DigitalOceanProviderConfig provider_config = 2;
+}

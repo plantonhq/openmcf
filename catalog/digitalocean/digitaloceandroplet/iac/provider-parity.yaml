@@ -1,0 +1,23 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+resources:
+  digitalocean_droplet:
+    mappings:
+      - spec: spec.droplet_name
+        arg: name
+      # The VPC reference is a StringValueOrRef FK to the DigitalOceanVpc
+      # kind.
+      - spec: spec.vpc
+        arg: vpc_uuid
+      - spec: spec.enable_ipv6
+        arg: ipv6
+      - spec: spec.enable_backups
+        arg: backups
+    exclusions:
+      - arg: ipv6_address
+        reason: Optional in the schema but inert at the pin -- the provider never expands it into any create or update API call; only Read writes it back from live state, so a spec field would be a do-nothing knob. The address is exported as the ipv6_address stack output.

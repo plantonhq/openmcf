@@ -1,0 +1,35 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The provider takes one polymorphic rule set of {type, value} rows; the
+# spec replaces it with one TYPED list per source kind so a value can never
+# be paired with the wrong type (and resources are wired by reference).
+# Each typed list therefore maps onto rule.value, and rule.type is
+# module-derived from WHICH list a value came from -- exactly the modules'
+# fan-out.
+resources:
+  digitalocean_database_firewall:
+    mappings:
+      # The cluster reference is a StringValueOrRef FK to the
+      # DigitalOceanDatabaseCluster kind.
+      - spec: spec.cluster
+        arg: cluster_id
+      - spec: spec.ip_rules
+        arg: rule.value
+      - spec: spec.droplet_ids
+        arg: rule.value
+      - spec: spec.kubernetes_cluster_ids
+        arg: rule.value
+      - spec: spec.app_ids
+        arg: rule.value
+      - spec: spec.tags
+        arg: rule.value
+    exclusions:
+      - arg: rule.type
+        reason: >-
+          Module-derived: the spec's five typed lists (ip_rules,
+          droplet_ids, kubernetes_cluster_ids, app_ids, tags) each fan out
+          to rows of their fixed type (ip_addr, droplet, k8s, app, tag) --
+          a type field in the spec would reintroduce the mismatched
+          type/value class the typed lists exist to kill.

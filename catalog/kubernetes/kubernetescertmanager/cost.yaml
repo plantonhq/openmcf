@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetescertmanager
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Extra controller replicas are leader-elected hot standbys, not throughput -- each one adds a pod carrying whatever resources are declared.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller container's CPU and memory requests are what the scheduler reserves per replica; empty means the chart's default of no explicit resources, so nothing is reserved.
+    - field_path: webhook.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The admission webhook runs its own Deployment (webhook.replicas, chart default 1); its requests reserve capacity per webhook replica.
+    - field_path: cainjector.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The cainjector runs its own Deployment (cainjector.replicas, chart default 1); its requests reserve capacity per cainjector replica.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - no committed preset declares resources for any of the three components -- the pods schedule with the chart's defaults (no explicit requests or limits), so the presets reserve nothing and no capacity derivation is shipped
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replica counts -- this profile describes the spec's declaration
+    - acmesolver challenge pods and the startupapicheck hook Job are ephemeral -- they consume capacity only while running
+  notes: "This component creates no cloud SKU of its own -- its footprint is the cert-manager control machinery: the controller, webhook, and cainjector pods. The certificates it issues and the signing authorities it uses are separate first-class resources (KubernetesCertificate, KubernetesIssuer, KubernetesClusterIssuer) whose cost story rides those components, never this one's."

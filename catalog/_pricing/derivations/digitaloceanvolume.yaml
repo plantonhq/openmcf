@@ -1,0 +1,31 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanVolume manifest's spec values into metered quantities and
+# price choices. Block storage is a single linear meter: the provisioned
+# size_gib times the flat 0.10 USD/GiB/mo rate (the pricing page publishes
+# 100 GiB at 10.00, 500 at 50.00, 1,000 at 100.00 -- one rate, stated as
+# flat across all data centers, so the entry is pinned "global").
+# Formatting, labels, tags, and attachment are free. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/digitaloceanvolume.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceanvolume
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  lines:
+    - sku_meter: provisioned storage
+      quantity:
+        - field_value:
+            field_path: size_gib
+      price_slug: do-volume-storage-gib-monthly
+      basis: "the provisioned size_gib bills flat per GiB-month from creation whether or not anything is written -- capacity is the entire meter"
+  exclusions:
+    - text: "volume snapshots bill 0.06 USD/GiB per month and are taken outside this spec; snapshot_id here only restores FROM one at create"
+  notes:
+    - text: "Priced at DigitalOcean's flat global rate of 0.10 USD/GiB/mo -- the pricing page's three published tiers (10.00/100 GiB, 50.00/500 GiB, 100.00/1,000 GiB) are one linear rate, stated as flat across all data centers. Size can only be expanded, so the bill ratchets up and never back down."

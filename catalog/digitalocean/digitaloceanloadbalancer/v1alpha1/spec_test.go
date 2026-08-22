@@ -1,6 +1,7 @@
 package digitaloceanloadbalancerv1alpha1
 
 import (
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -18,14 +19,19 @@ func TestDigitalOceanLoadBalancerSpec(t *testing.T) {
 
 var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 
-	// Helper function to create a minimal valid HTTP load balancer spec with tag-based targeting
+	val := func(s string) *foreignkeyv1.StringValueOrRef {
+		return &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: s},
+		}
+	}
+
+	// Minimal valid regional HTTP balancer with tag-based targeting. VPC is
+	// intentionally absent: it is optional and DigitalOcean falls back to the
+	// region's default VPC.
 	makeValidHTTPSpec := func() *DigitalOceanLoadBalancerSpec {
 		return &DigitalOceanLoadBalancerSpec{
 			LoadBalancerName: "prod-web-lb",
 			Region:           digitalocean.DigitalOceanRegion_nyc3,
-			Vpc: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-vpc-id"},
-			},
 			ForwardingRules: []*DigitalOceanLoadBalancerForwardingRule{
 				{
 					EntryPort:      80,
@@ -43,21 +49,20 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 		}
 	}
 
-	// Helper function to create a valid HTTPS load balancer spec with SSL termination
+	// HTTPS balancer terminating TLS with a certificate reference, placed in
+	// an explicit VPC, with cookie-based sticky sessions.
 	makeValidHTTPSSpec := func() *DigitalOceanLoadBalancerSpec {
 		return &DigitalOceanLoadBalancerSpec{
 			LoadBalancerName: "prod-https-lb",
 			Region:           digitalocean.DigitalOceanRegion_sfo3,
-			Vpc: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-vpc-id"},
-			},
+			Vpc:              val("test-vpc-id"),
 			ForwardingRules: []*DigitalOceanLoadBalancerForwardingRule{
 				{
 					EntryPort:       443,
 					EntryProtocol:   DigitalOceanLoadBalancerProtocol_https,
 					TargetPort:      80,
 					TargetProtocol:  DigitalOceanLoadBalancerProtocol_http,
-					CertificateName: "my-le-cert-name",
+					CertificateName: val("my-le-cert-name"),
 				},
 			},
 			HealthCheck: &DigitalOceanLoadBalancerHealthCheck{
@@ -66,19 +71,20 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 				Path:             "/health",
 				CheckIntervalSec: 10,
 			},
-			DropletTag:           "web-prod",
-			EnableStickySessions: true,
+			DropletTag: "web-prod",
+			StickySessions: &DigitalOceanLoadBalancerStickySessions{
+				Type:             "cookies",
+				CookieName:       "DO-LB",
+				CookieTtlSeconds: 300,
+			},
 		}
 	}
 
-	// Helper function to create a valid TCP load balancer spec for database
+	// TCP balancer fronting a database, targeting explicit Droplet IDs.
 	makeValidTCPSpec := func() *DigitalOceanLoadBalancerSpec {
 		return &DigitalOceanLoadBalancerSpec{
 			LoadBalancerName: "prod-db-lb",
 			Region:           digitalocean.DigitalOceanRegion_fra1,
-			Vpc: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-vpc-id"},
-			},
 			ForwardingRules: []*DigitalOceanLoadBalancerForwardingRule{
 				{
 					EntryPort:      3306,
@@ -91,62 +97,75 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 				Port:     3306,
 				Protocol: DigitalOceanLoadBalancerProtocol_tcp,
 			},
-			DropletTag: "db-prod",
+			DropletIds: []*foreignkeyv1.StringValueOrRef{val("123456"), val("789012")},
 		}
 	}
 
-	// Helper function to create a valid spec with droplet IDs instead of tag
-	makeValidDropletIdSpec := func() *DigitalOceanLoadBalancerSpec {
+	// GLOBAL balancer: no region, no forwarding rules; routed through
+	// glb_settings, domains, and regional target balancers.
+	makeValidGlobalSpec := func() *DigitalOceanLoadBalancerSpec {
 		return &DigitalOceanLoadBalancerSpec{
-			LoadBalancerName: "dev-lb",
-			Region:           digitalocean.DigitalOceanRegion_nyc3,
-			Vpc: &foreignkeyv1.StringValueOrRef{
-				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-vpc-id"},
+			LoadBalancerName: "prod-global-lb",
+			Type:             "GLOBAL",
+			GlbSettings: &DigitalOceanLoadBalancerGlbSettings{
+				TargetProtocol: "https",
+				TargetPort:     443,
+				RegionPriorities: map[string]uint32{
+					"nyc3": 1,
+					"fra1": 2,
+				},
+				FailoverThreshold: 50,
+				Cdn:               &DigitalOceanLoadBalancerGlbCdn{IsEnabled: true},
 			},
-			ForwardingRules: []*DigitalOceanLoadBalancerForwardingRule{
+			Domains: []*DigitalOceanLoadBalancerDomain{
 				{
-					EntryPort:      80,
-					EntryProtocol:  DigitalOceanLoadBalancerProtocol_http,
-					TargetPort:     8080,
-					TargetProtocol: DigitalOceanLoadBalancerProtocol_http,
+					Name:            "www.example.com",
+					IsManaged:       true,
+					CertificateName: val("my-cert-name"),
 				},
 			},
-			HealthCheck: &DigitalOceanLoadBalancerHealthCheck{
-				Port:     8080,
-				Protocol: DigitalOceanLoadBalancerProtocol_http,
-				Path:     "/",
-			},
-			DropletIds: []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "123456"}},
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "789012"}},
-			},
+			TargetLoadBalancerIds: []*foreignkeyv1.StringValueOrRef{val("regional-lb-uuid")},
 		}
 	}
 
 	ginkgo.Context("Valid configurations", func() {
 
 		ginkgo.It("should accept minimal valid HTTP load balancer with tag-based targeting", func() {
-			spec := makeValidHTTPSpec()
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(makeValidHTTPSpec())).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept valid HTTPS load balancer with SSL certificate", func() {
+		ginkgo.It("should accept valid HTTPS load balancer with certificate reference and sticky sessions", func() {
+			gomega.Expect(protovalidate.Validate(makeValidHTTPSSpec())).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept valid TCP load balancer with droplet IDs", func() {
+			gomega.Expect(protovalidate.Validate(makeValidTCPSpec())).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept valid GLOBAL load balancer", func() {
+			gomega.Expect(protovalidate.Validate(makeValidGlobalSpec())).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a fully-loaded regional balancer", func() {
 			spec := makeValidHTTPSSpec()
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept valid TCP load balancer for database", func() {
-			spec := makeValidTCPSpec()
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept valid load balancer with droplet IDs", func() {
-			spec := makeValidDropletIdSpec()
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.Type = "REGIONAL"
+			spec.SizeUnit = 4
+			spec.RedirectHttpToHttps = true
+			spec.EnableProxyProtocol = true
+			spec.EnableBackendKeepalive = true
+			spec.DisableLetsEncryptDnsRecords = true
+			spec.HttpIdleTimeoutSeconds = 120
+			spec.TlsCipherPolicy = "STRONG"
+			spec.Network = "EXTERNAL"
+			spec.NetworkStack = "DUALSTACK"
+			spec.ProjectId = "0a4b1c2d-1111-2222-3333-444455556666"
+			spec.SubnetUuid = "9f8e7d6c-1111-2222-3333-444455556666"
+			spec.Ip = "203.0.113.10"
+			spec.Firewall = &DigitalOceanLoadBalancerFirewall{
+				Allow: []string{"ip:203.0.113.5", "cidr:10.0.0.0/8"},
+				Deny:  []string{"cidr:192.0.2.0/24"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should accept multi-port forwarding rules (HTTP + HTTPS)", func() {
@@ -156,10 +175,9 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 				EntryProtocol:   DigitalOceanLoadBalancerProtocol_https,
 				TargetPort:      80,
 				TargetProtocol:  DigitalOceanLoadBalancerProtocol_http,
-				CertificateName: "my-cert",
+				CertificateName: val("my-cert"),
 			})
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
 
@@ -168,74 +186,151 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 		ginkgo.It("should reject spec with missing load_balancer_name", func() {
 			spec := makeValidHTTPSpec()
 			spec.LoadBalancerName = ""
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject spec with missing region", func() {
-			spec := makeValidHTTPSpec()
-			spec.Region = digitalocean.DigitalOceanRegion_digital_ocean_region_unspecified
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject spec with missing VPC", func() {
-			spec := makeValidHTTPSpec()
-			spec.Vpc = nil
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject spec with empty forwarding_rules", func() {
-			spec := makeValidHTTPSpec()
-			spec.ForwardingRules = []*DigitalOceanLoadBalancerForwardingRule{}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject spec with nil forwarding_rules", func() {
+		ginkgo.It("should reject spec with neither forwarding_rules nor glb_settings", func() {
 			spec := makeValidHTTPSpec()
 			spec.ForwardingRules = nil
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Context("Load balancer name validation", func() {
 
-		ginkgo.It("should reject name that is too short (empty)", func() {
-			spec := makeValidHTTPSpec()
-			spec.LoadBalancerName = ""
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
 		ginkgo.It("should reject name that is too long (>64 characters)", func() {
 			spec := makeValidHTTPSpec()
 			spec.LoadBalancerName = "this-is-a-very-long-load-balancer-name-that-exceeds-sixty-four-characters"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject name with uppercase letters", func() {
 			spec := makeValidHTTPSpec()
 			spec.LoadBalancerName = "Prod-Web-LB"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject name with special characters", func() {
 			spec := makeValidHTTPSpec()
 			spec.LoadBalancerName = "prod_web_lb"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("region_by_type coupling", func() {
+
+		ginkgo.It("should reject a regional balancer without a region", func() {
+			spec := makeValidHTTPSpec()
+			spec.Region = digitalocean.DigitalOceanRegion_digital_ocean_region_unspecified
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept valid lowercase alphanumeric name with hyphens", func() {
+		ginkgo.It("should reject an explicit REGIONAL balancer without a region", func() {
 			spec := makeValidHTTPSpec()
-			spec.LoadBalancerName = "prod-web-lb-2024"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.Type = "REGIONAL"
+			spec.Region = digitalocean.DigitalOceanRegion_digital_ocean_region_unspecified
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a GLOBAL balancer carrying a region", func() {
+			spec := makeValidGlobalSpec()
+			spec.Region = digitalocean.DigitalOceanRegion_nyc3
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid type token", func() {
+			spec := makeValidHTTPSpec()
+			spec.Type = "regional"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("forwarding_rules_xor_glb_settings coupling", func() {
+
+		ginkgo.It("should reject a balancer with both forwarding_rules and glb_settings", func() {
+			spec := makeValidGlobalSpec()
+			spec.ForwardingRules = makeValidHTTPSpec().ForwardingRules
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a GLOBAL balancer with neither", func() {
+			spec := makeValidGlobalSpec()
+			spec.GlbSettings = nil
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Sizing", func() {
+
+		ginkgo.It("should accept size slug alone", func() {
+			spec := makeValidHTTPSpec()
+			spec.Size = "lb-medium"
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept size_unit alone", func() {
+			spec := makeValidHTTPSpec()
+			spec.SizeUnit = 7
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject size and size_unit together", func() {
+			spec := makeValidHTTPSpec()
+			spec.Size = "lb-small"
+			spec.SizeUnit = 1
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid size slug", func() {
+			spec := makeValidHTTPSpec()
+			spec.Size = "lb-xlarge"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject size_unit above 200", func() {
+			spec := makeValidHTTPSpec()
+			spec.SizeUnit = 201
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Placement and networking", func() {
+
+		ginkgo.It("should reject subnet_uuid without vpc", func() {
+			spec := makeValidHTTPSpec()
+			spec.SubnetUuid = "9f8e7d6c-1111-2222-3333-444455556666"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept subnet_uuid with vpc", func() {
+			spec := makeValidHTTPSpec()
+			spec.Vpc = val("test-vpc-id")
+			spec.SubnetUuid = "9f8e7d6c-1111-2222-3333-444455556666"
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid network token", func() {
+			spec := makeValidHTTPSpec()
+			spec.Network = "PUBLIC"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid network_stack token", func() {
+			spec := makeValidHTTPSpec()
+			spec.NetworkStack = "IPV6"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid tls_cipher_policy token", func() {
+			spec := makeValidHTTPSpec()
+			spec.TlsCipherPolicy = "MODERN"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a BYOIP value that is not an IP address", func() {
+			spec := makeValidHTTPSpec()
+			spec.Ip = "not-an-ip"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 	})
 
@@ -244,61 +339,62 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 		ginkgo.It("should reject forwarding rule with port 0", func() {
 			spec := makeValidHTTPSpec()
 			spec.ForwardingRules[0].EntryPort = 0
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject forwarding rule with port > 65535", func() {
 			spec := makeValidHTTPSpec()
 			spec.ForwardingRules[0].EntryPort = 70000
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept forwarding rule with valid port 1", func() {
-			spec := makeValidHTTPSpec()
-			spec.ForwardingRules[0].EntryPort = 1
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept forwarding rule with valid port 65535", func() {
-			spec := makeValidHTTPSpec()
-			spec.ForwardingRules[0].EntryPort = 65535
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject forwarding rule with unspecified entry protocol", func() {
 			spec := makeValidHTTPSpec()
 			spec.ForwardingRules[0].EntryProtocol = DigitalOceanLoadBalancerProtocol_digitalocean_load_balancer_protocol_unspecified
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject forwarding rule with unspecified target protocol", func() {
 			spec := makeValidHTTPSpec()
 			spec.ForwardingRules[0].TargetProtocol = DigitalOceanLoadBalancerProtocol_digitalocean_load_balancer_protocol_unspecified
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept certificate_name with valid length", func() {
+		ginkgo.It("should accept http3 as an entry protocol", func() {
 			spec := makeValidHTTPSSpec()
-			spec.ForwardingRules[0].CertificateName = "my-certificate-name"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.ForwardingRules[0].EntryProtocol = DigitalOceanLoadBalancerProtocol_http3
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject certificate_name that is too long (>255 characters)", func() {
+		ginkgo.It("should reject http3 as a target protocol", func() {
+			spec := makeValidHTTPSpec()
+			spec.ForwardingRules[0].TargetProtocol = DigitalOceanLoadBalancerProtocol_http3
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept udp end to end", func() {
+			spec := makeValidHTTPSpec()
+			spec.ForwardingRules[0].EntryProtocol = DigitalOceanLoadBalancerProtocol_udp
+			spec.ForwardingRules[0].TargetProtocol = DigitalOceanLoadBalancerProtocol_udp
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a TLS passthrough rule without a certificate", func() {
+			spec := makeValidHTTPSpec()
+			spec.ForwardingRules[0].EntryProtocol = DigitalOceanLoadBalancerProtocol_https
+			spec.ForwardingRules[0].TargetProtocol = DigitalOceanLoadBalancerProtocol_https
+			spec.ForwardingRules[0].TlsPassthrough = true
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a certificate expressed as a reference", func() {
 			spec := makeValidHTTPSSpec()
-			longName := ""
-			for i := 0; i < 260; i++ {
-				longName += "a"
+			spec.ForwardingRules[0].CertificateName = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "my-certificate"},
+				},
 			}
-			spec.ForwardingRules[0].CertificateName = longName
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
 
@@ -307,93 +403,200 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 		ginkgo.It("should reject health check with port 0", func() {
 			spec := makeValidHTTPSpec()
 			spec.HealthCheck.Port = 0
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject health check with port > 65535", func() {
-			spec := makeValidHTTPSpec()
-			spec.HealthCheck.Port = 70000
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept health check with valid port range", func() {
-			spec := makeValidHTTPSpec()
-			spec.HealthCheck.Port = 8080
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject health check with unspecified protocol", func() {
 			spec := makeValidHTTPSpec()
 			spec.HealthCheck.Protocol = DigitalOceanLoadBalancerProtocol_digitalocean_load_balancer_protocol_unspecified
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept health check with path for HTTP protocol", func() {
+		ginkgo.It("should reject a forwarding-rule-only protocol", func() {
 			spec := makeValidHTTPSpec()
-			spec.HealthCheck.Path = "/healthz"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.HealthCheck.Protocol = DigitalOceanLoadBalancerProtocol_udp
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept health check without path for TCP protocol", func() {
-			spec := makeValidTCPSpec()
+		ginkgo.It("should reject an http health check without a path", func() {
+			spec := makeValidHTTPSpec()
 			spec.HealthCheck.Path = ""
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept health check with check_interval_sec", func() {
+		ginkgo.It("should reject a tcp health check with a path", func() {
+			spec := makeValidTCPSpec()
+			spec.HealthCheck.Path = "/health"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept full threshold tuning inside provider ranges", func() {
 			spec := makeValidHTTPSpec()
-			spec.HealthCheck.CheckIntervalSec = 10
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.HealthCheck.CheckIntervalSec = 30
+			spec.HealthCheck.ResponseTimeoutSeconds = 10
+			spec.HealthCheck.UnhealthyThreshold = 5
+			spec.HealthCheck.HealthyThreshold = 2
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject check_interval_sec below 3", func() {
+			spec := makeValidHTTPSpec()
+			spec.HealthCheck.CheckIntervalSec = 2
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject response_timeout_seconds above 300", func() {
+			spec := makeValidHTTPSpec()
+			spec.HealthCheck.ResponseTimeoutSeconds = 301
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject unhealthy_threshold outside 2-10", func() {
+			spec := makeValidHTTPSpec()
+			spec.HealthCheck.UnhealthyThreshold = 1
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject healthy_threshold outside 2-10", func() {
+			spec := makeValidHTTPSpec()
+			spec.HealthCheck.HealthyThreshold = 11
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Context("Backend targeting validation", func() {
+	ginkgo.Context("Sticky sessions", func() {
 
-		ginkgo.It("should accept spec with only droplet_tag", func() {
+		ginkgo.It("should accept type none with no cookie leaves", func() {
 			spec := makeValidHTTPSpec()
-			spec.DropletTag = "web-prod"
-			spec.DropletIds = nil
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{Type: "none"}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept spec with only droplet_ids", func() {
-			spec := makeValidDropletIdSpec()
-			spec.DropletIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "123456"}},
+		ginkgo.It("should reject type cookies without cookie_name", func() {
+			spec := makeValidHTTPSpec()
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{
+				Type:             "cookies",
+				CookieTtlSeconds: 300,
 			}
-			spec.DropletTag = ""
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept spec with both droplet_ids and droplet_tag (mutually exclusive handled by application logic)", func() {
+		ginkgo.It("should reject type cookies without cookie_ttl_seconds", func() {
 			spec := makeValidHTTPSpec()
-			spec.DropletTag = "web-prod"
-			spec.DropletIds = []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "123456"}},
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{
+				Type:       "cookies",
+				CookieName: "DO-LB",
 			}
-			// Note: Proto validation allows both, but application logic should enforce mutual exclusivity
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject type none carrying cookie leaves", func() {
+			spec := makeValidHTTPSpec()
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{
+				Type:       "none",
+				CookieName: "DO-LB",
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid affinity type", func() {
+			spec := makeValidHTTPSpec()
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{Type: "ip-hash"}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a cookie_name shorter than 2 characters", func() {
+			spec := makeValidHTTPSpec()
+			spec.StickySessions = &DigitalOceanLoadBalancerStickySessions{
+				Type:             "cookies",
+				CookieName:       "x",
+				CookieTtlSeconds: 300,
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Firewall rules", func() {
+
+		ginkgo.It("should accept well-formed ip and cidr rules", func() {
+			spec := makeValidHTTPSpec()
+			spec.Firewall = &DigitalOceanLoadBalancerFirewall{
+				Allow: []string{"ip:203.0.113.5", "cidr:10.0.0.0/8"},
+				Deny:  []string{"cidr:192.0.2.0/24"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a bare address without a prefix", func() {
+			spec := makeValidHTTPSpec()
+			spec.Firewall = &DigitalOceanLoadBalancerFirewall{Allow: []string{"203.0.113.5"}}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an ip rule whose value is not an address", func() {
+			spec := makeValidHTTPSpec()
+			spec.Firewall = &DigitalOceanLoadBalancerFirewall{Allow: []string{"ip:banana"}}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a cidr rule whose value is not a prefix", func() {
+			spec := makeValidHTTPSpec()
+			spec.Firewall = &DigitalOceanLoadBalancerFirewall{Deny: []string{"cidr:10.0.0.0"}}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Backend targeting", func() {
+
+		ginkgo.It("should reject both droplet_ids and droplet_tag together", func() {
+			spec := makeValidHTTPSpec()
+			spec.DropletIds = []*foreignkeyv1.StringValueOrRef{val("123456")}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject droplet_tag that is too long (>255 characters)", func() {
 			spec := makeValidHTTPSpec()
-			longTag := ""
-			for i := 0; i < 260; i++ {
-				longTag += "a"
-			}
-			spec.DropletTag = longTag
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			spec.DropletTag = strings.Repeat("a", 260)
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Global load balancer surfaces", func() {
+
+		ginkgo.It("should reject a domain without a name", func() {
+			spec := makeValidGlobalSpec()
+			spec.Domains[0].Name = ""
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a domain name that is not a hostname", func() {
+			spec := makeValidGlobalSpec()
+			spec.Domains[0].Name = "not a hostname"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject glb_settings without a target_protocol", func() {
+			spec := makeValidGlobalSpec()
+			spec.GlbSettings.TargetProtocol = ""
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject glb_settings with a tcp target_protocol", func() {
+			spec := makeValidGlobalSpec()
+			spec.GlbSettings.TargetProtocol = "tcp"
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject glb_settings with a target_port other than 80 or 443", func() {
+			spec := makeValidGlobalSpec()
+			spec.GlbSettings.TargetPort = 8080
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a failover_threshold above 99", func() {
+			spec := makeValidGlobalSpec()
+			spec.GlbSettings.FailoverThreshold = 100
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 	})
 
@@ -408,21 +611,19 @@ var _ = ginkgo.Describe("DigitalOceanLoadBalancerSpec validations", func() {
 				},
 				Spec: makeValidHTTPSpec(),
 			}
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept complete valid HTTPS load balancer resource with sticky sessions", func() {
+		ginkgo.It("should accept complete valid GLOBAL load balancer resource", func() {
 			input := &DigitalOceanLoadBalancer{
 				ApiVersion: "digital-ocean.planton.dev/v1alpha1",
 				Kind:       "DigitalOceanLoadBalancer",
 				Metadata: &shared.CloudResourceMetadata{
-					Name: "test-https-lb",
+					Name: "test-global-lb",
 				},
-				Spec: makeValidHTTPSSpec(),
+				Spec: makeValidGlobalSpec(),
 			}
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 })

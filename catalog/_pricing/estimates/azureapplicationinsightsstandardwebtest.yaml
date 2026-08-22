@@ -1,0 +1,55 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  presets:
+    - preset: 01-endpoint-availability
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: standard web test executions
+          pricing_unit: executions
+          pricing_quantity: "26280"
+          quantity_basis: every 300 seconds from each location is 2,628,000 / 300 = 8,760 executions per location per month, times the location count
+          list_unit_price: "0.0005"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Standard Web Test Execution' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "13.1400"
+      total_list_cost: "13.1400"
+      exclusions:
+        - test results and their traces are ingested into the bound Application Insights component and bill that component's per-GB Log Analytics ingestion meters
+        - retries of failed runs add executions that follow the endpoint's actual failure behavior -- the estimate prices the healthy-endpoint schedule
+        - the alert rule that pages on this test's failures is its own AzureMonitorMetricAlert component with its own monthly fee
+      notes: The schedule never stops on its own -- executions accrue whether anyone reads the results or not; enabled=false keeps the definition and stops the schedule (and the spend).
+    - preset: 02-content-check
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: standard web test executions
+          pricing_unit: executions
+          pricing_quantity: "8760"
+          quantity_basis: every 300 seconds from each location is 2,628,000 / 300 = 8,760 executions per location per month, times the location count
+          list_unit_price: "0.0005"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Standard Web Test Execution' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "4.3800"
+      total_list_cost: "4.3800"
+      exclusions:
+        - test results and their traces are ingested into the bound Application Insights component and bill that component's per-GB Log Analytics ingestion meters
+        - the alert rule that pages on this test's failures is its own AzureMonitorMetricAlert component with its own monthly fee
+      notes: The schedule never stops on its own -- executions accrue whether anyone reads the results or not; enabled=false keeps the definition and stops the schedule (and the spend).

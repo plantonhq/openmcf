@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustgatewaysettings
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageSettings
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Update the Gateway account configuration singleton via PUT /accounts/{account_id}/gateway/configuration, the logging singleton via PUT /accounts/{account_id}/gateway/logging, and create/update/delete custom PAC files via the Gateway PAC-file endpoints under /accounts/{account_id}/gateway; the reference publishes no narrower group for Gateway configuration (derived from the module's API surface). Covers the Terraform module's conditional cloudflare_zero_trust_gateway_settings and cloudflare_zero_trust_gateway_logging singletons plus per-row cloudflare_zero_trust_gateway_pacfile resources, and the Pulumi module's matching ZeroTrustGatewaySettings, ZeroTrustGatewayLogging, and ZeroTrustGatewayPacfile resources; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadSettings
+        name: Zero Trust Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the configuration, logging settings, and PAC files via GET on the same paths (derived from the module's API surface).

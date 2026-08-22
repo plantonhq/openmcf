@@ -39,7 +39,9 @@ and are re-verified by machine.
 - **At the explain-after (Phase 4a)** — or at the plan, when the user asked
   to review one first: alongside the built (or proposed) resource list, give
   the monthly picture — the total order of magnitude and the two or three
-  resources that dominate it, from the components' estimate documents. One
+  resources that dominate it, from the components' estimate documents. (The
+  catalog-availability disclosure, when there is one, rides this same block
+  — `catalog-availability.md`.) One
   short block, not a rate card:
 
   > Rough monthly cost: ~$150 at list prices. The EKS control plane and the

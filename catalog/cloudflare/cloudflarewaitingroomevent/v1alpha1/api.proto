@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewaitingroomevent.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareWaitingRoomEvent is a KRM-style resource for managing one scheduled
+// event on a Cloudflare waiting room: a time window with optional prequeue and
+// per-event overrides of the room's settings.
+message CloudflareWaitingRoomEvent {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareWaitingRoomEvent'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareWaitingRoomEventSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareWaitingRoomEventStatus status = 5;
+}
+
+// CloudflareWaitingRoomEventStatus represents the observed state of a waiting
+// room event.
+message CloudflareWaitingRoomEventStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareWaitingRoomEventStackOutputs outputs = 1;
+}

@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesnats
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: cluster
+      sku_meter: cluster CPU and memory reservations
+      impact: Clustering multiplies the footprint -- each server in the full mesh (3 by default when enabled) carries the declared resources and its own JetStream volume. A single server runs when cluster is empty.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per server -- the capacity is claimed whether the server is busy or idle. Limits set the burst ceiling, not the reservation. With a JetStream memory store, size the memory limit comfortably above memory_store_max_size.
+    - field_path: jet_stream.disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: JetStream is on by default for this kind -- every server provisions a file-store volume of this size (10Gi when unset) through the cluster's storage class; stream data lives here and survives pod restarts.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the config-reloader sidecar, the nats-box utility pod (enabled by default), and the prometheus-nats-exporter sidecar (metrics.exporter_enabled) carry chart-default reservations this spec does not declare
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: servers x (requests + JetStream file-store volume)."

@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesmongodb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The database's data rests on the PersistentVolumes the target cluster's storage class provisions (one per member); encryption at rest is a property of that storage (cloud-managed disks typically encrypt by default), owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: tls omitted means preferTLS with operator-generated certificates (the upstream default) -- connections are served over TLS out of the box. requireTLS is the production posture (clients must speak TLS), tls.issuer swaps in a cert-manager-issued chain for organization trust, and disabling TLS is rejected outright unless unsafe.tls explicitly opts in.
+      notes: The 02-replica-set preset sets requireTLS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- members are reachable through per-set headless Services (and mongos through its ClusterIP Service under sharding), in-cluster only. The per-set and mongos expose blocks are explicit opt-ins whose type defaults to ClusterIP.
+      notes: expose with type LoadBalancer is the documented managed-cloud and cross-cluster recipe surface, never a default.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network source-restriction surface is modeled -- the default posture is no exposure at all (see no-public-access), and in-cluster path restriction is Kubernetes NetworkPolicies, separate resources. Client authentication and roles gate access at the database layer (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: MongoDB's wire protocol is raw TCP -- web application firewalls filter HTTP and do not apply. Access control is TLS, authentication, and roles.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Access is governed by MongoDB's role system -- the operator bootstraps the built-in system accounts with generated passwords in the `<name>-secrets` Secret, and every declared user must carry at least one role grant scoped to a database (the spec rejects role-less users). Declared passwords travel as Kubernetes Secrets the operator watches; an empty password makes the operator generate one.
+      notes: The 02-replica-set preset declares an app user with readWrite on its own database and an operator-generated password. Management-plane access (the PerconaServerMongoDB CR) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: backup
+      evidence:
+        type: spec_default
+        reference: Omitting s3.access_keys makes the Percona Backup for MongoDB agents use the pods' ambient AWS identity (EKS IRSA or node instance profile) -- the keyless posture for real S3; likewise an empty gcs.service_account_key_json uses GKE Workload Identity. Declared static keys materialize as a Kubernetes Secret the agents read, never inline in the CR. S3-compatible endpoints (MinIO and friends) require static keys by necessity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication is MongoDB SCRAM against operator-managed users over TLS; no legacy or weaker authentication path is modeled in this spec to disable. The plaintext posture (tls.mode disabled) is fenced behind the explicit unsafe.tls opt-in (see enc-in-transit).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: mongod activity logs ship through the optional fluent-bit log-collector sidecar (log_collector) to the cluster's log collector; a provider-style audit trail is not a typed surface in this spec -- Percona Server's audit log is reachable only through the per-set mongod_config passthrough. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This spec models no metrics exporter -- there is no monitoring surface on the typed contract. Metrics composition (e.g. Percona Monitoring and Management) rides the operator's upstream surface, deliberately not modeled here.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup
+      evidence:
+        type: spec_default
+        reference: Omitted means no backups -- a deliberate choice, not a default. Configuring backup declares object-store destinations (S3/GCS/Azure), scheduled logical/physical/incremental tasks, and point-in-time recovery via continuously archived oplog chunks, all through Percona Backup for MongoDB.
+      notes: Neither preset declares backups; the 01-single-instance preset states the omission is a deliberate development choice. The e2e with-backup scenario exercises the full surface against MinIO.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup.tasks
+      evidence:
+        type: spec_default
+        reference: Each task's keep bounds how many backups survive; delete_from_storage (default true) prunes the store itself, not just the cluster's records.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replica_sets
+      evidence:
+        type: spec_default
+        reference: size defaults to 3 -- the production shape where a majority survives one member loss and a new primary is elected in seconds; smaller sets are rejected unless unsafe.replset_size opts in. scheduling.anti_affinity_topology_key set to topology.kubernetes.io/zone spreads members across zones instead of the upstream one-per-node default.
+      notes: The 02-replica-set preset runs 3 members spread across zones with a PDB holding voluntary disruptions to one member.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the Percona operator offers a deletion-protection flag on the PerconaServerMongoDB CR; protection is operational (namespace RBAC, change review). pause stops the cluster while keeping the data volumes -- an availability verb, not deletion protection. The upstream PodDisruptionBudget default (max one member down) guards against voluntary eviction, not deletion.
+    - control_id: managed-patching
+      status: configurable
+      field_path: update_strategy
+      evidence:
+        type: spec_default
+        reference: The default SmartUpdate has the operator order restarts safely across members; RollingUpdate and OnDelete fall back to StatefulSet semantics. Changing image_name on a live cluster performs a SmartUpdate rolling upgrade -- version changes are deliberate spec edits, never implicit.

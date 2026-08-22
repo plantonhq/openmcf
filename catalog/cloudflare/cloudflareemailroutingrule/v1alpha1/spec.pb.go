@@ -127,10 +127,13 @@ func (CloudflareEmailRoutingRuleMatcherType) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_cloudflare_cloudflareemailroutingrule_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-// CloudflareEmailRoutingRuleAction is the action a rule takes on a matched
-// message. The provider models this as a generic {type, value[]}; this typed
-// shape exposes real foreign keys (forward_to -> CloudflareEmailRoutingAddress,
-// worker -> CloudflareWorker) and the module maps it back to {type, value[]}.
+// CloudflareEmailRoutingRuleAction is one action a rule takes on a matched
+// message. A rule carries a LIST of actions (matching the Cloudflare API), so a
+// single rule can, for example, forward to addresses AND invoke an Email
+// Worker. The provider models each action as a generic {type, value[]}; this
+// typed shape exposes real foreign keys (forward_to ->
+// CloudflareEmailRoutingAddress, worker -> CloudflareWorker) and the module
+// maps it back to {type, value[]}.
 type CloudflareEmailRoutingRuleAction struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The action type.
@@ -280,8 +283,10 @@ type CloudflareEmailRoutingRuleSpec struct {
 	Priority int64 `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
 	// The patterns that select which messages this rule applies to (at least one).
 	Matchers []*CloudflareEmailRoutingRuleMatcher `protobuf:"bytes,5,rep,name=matchers,proto3" json:"matchers,omitempty"`
-	// The action taken on matched messages.
-	Action        *CloudflareEmailRoutingRuleAction `protobuf:"bytes,6,opt,name=action,proto3" json:"action,omitempty"`
+	// The actions taken on matched messages, applied in order (at least one).
+	// Multiple actions are legitimate — e.g. forward to an address AND invoke an
+	// Email Worker in the same rule.
+	Actions       []*CloudflareEmailRoutingRuleAction `protobuf:"bytes,6,rep,name=actions,proto3" json:"actions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -351,9 +356,9 @@ func (x *CloudflareEmailRoutingRuleSpec) GetMatchers() []*CloudflareEmailRouting
 	return nil
 }
 
-func (x *CloudflareEmailRoutingRuleSpec) GetAction() *CloudflareEmailRoutingRuleAction {
+func (x *CloudflareEmailRoutingRuleSpec) GetActions() []*CloudflareEmailRoutingRuleAction {
 	if x != nil {
-		return x.Action
+		return x.Actions
 	}
 	return nil
 }
@@ -378,15 +383,15 @@ const file_catalog_cloudflare_cloudflareemailroutingrule_v1alpha1_spec_proto_raw
 	"\x13matcher.field_valid\x12\x1bfield must be empty or 'to'\x1a\x1athis == '' || this == 'to'R\x05field\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\tR\x05value:\xa2\x02\xbaH\x9e\x02\x1a\x91\x01\n" +
 	"$matcher.literal_requires_field_value\x12/a literal matcher requires both field and value\x1a8this.type != 2 || (this.field != '' && this.value != '')\x1a\x87\x01\n" +
-	"\x1fmatcher.all_forbids_field_value\x12*an all matcher must not set field or value\x1a8this.type != 1 || (this.field == '' && this.value == '')\"\xcf\x04\n" +
+	"\x1fmatcher.all_forbids_field_value\x12*an all matcher must not set field or value\x1a8this.type != 1 || (this.field == '' && this.value == '')\"\xd4\x04\n" +
 	"\x1eCloudflareEmailRoutingRuleSpec\x12r\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12'\n" +
 	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12l\n" +
 	"\bpriority\x18\x04 \x01(\x03BP\xbaHM\xba\x01J\n" +
 	"\x1arule.priority_non_negative\x12!priority must be zero or positive\x1a\tthis >= 0R\bpriority\x12\x83\x01\n" +
-	"\bmatchers\x18\x05 \x03(\v2].dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleMatcherB\b\xbaH\x05\x92\x01\x02\b\x01R\bmatchers\x12|\n" +
-	"\x06action\x18\x06 \x01(\v2\\.dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleActionB\x06\xbaH\x03\xc8\x01\x01R\x06actionB\n" +
+	"\bmatchers\x18\x05 \x03(\v2].dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleMatcherB\b\xbaH\x05\x92\x01\x02\b\x01R\bmatchers\x12\x80\x01\n" +
+	"\aactions\x18\x06 \x03(\v2\\.dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleActionB\b\xbaH\x05\x92\x01\x02\b\x01R\aactionsB\n" +
 	"\n" +
 	"\b_enabled*k\n" +
 	"$CloudflareEmailRoutingRuleActionType\x12 \n" +
@@ -430,7 +435,7 @@ var file_catalog_cloudflare_cloudflareemailroutingrule_v1alpha1_spec_proto_depId
 	1, // 3: dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleMatcher.type:type_name -> dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleMatcherType
 	5, // 4: dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 5: dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleSpec.matchers:type_name -> dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleMatcher
-	2, // 6: dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleSpec.action:type_name -> dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleAction
+	2, // 6: dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleSpec.actions:type_name -> dev.planton.cloudflare.cloudflareemailroutingrule.v1alpha1.CloudflareEmailRoutingRuleAction
 	7, // [7:7] is the sub-list for method output_type
 	7, // [7:7] is the sub-list for method input_type
 	7, // [7:7] is the sub-list for extension type_name

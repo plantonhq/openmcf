@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageUptimeCheck
+        scopes:
+          - uptime:read
+          - uptime:create
+          - uptime:update
+          - uptime:delete
+        provenance: derived
+        notes: Covers digitalocean_uptime_check's and digitalocean_uptime_alert's create/read/update/delete/import paths -- read the check and its alerts through GET /v2/uptime/checks/{id} and .../alerts/{id} (uptime:read), create the check via POST /v2/uptime/checks where alert-row creation via POST .../alerts additionally requires uptime:update since DigitalOcean's own OpenAPI spec (uptime/create_alert.yml) declares both scopes on that endpoint (uptime:create), update the check and its alert rows via PUT with uptime:update also co-required (per the OpenAPI declarations) for alert-row create and delete (uptime:update), and delete the check (its alerts die with it) via DELETE /v2/uptime/checks/{id} where individual alert-row deletion via DELETE .../alerts/{id} additionally requires uptime:update per the OpenAPI spec (uptime/delete_alert.yml) (uptime:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

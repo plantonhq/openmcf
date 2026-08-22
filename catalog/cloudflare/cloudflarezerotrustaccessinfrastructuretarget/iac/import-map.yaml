@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustaccessinfrastructuretarget
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: target_id
+      derivations:
+        - from_stack_output: target_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/infrastructure/targets` on the
+        Cloudflare v4 API (the id field; filter by hostname), or the Zero
+        Trust dashboard -> Networks -> Targets.

@@ -152,6 +152,76 @@ var _ = ginkgo.Describe("DigitalOceanKubernetesNodePoolSpec Custom Validation Te
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for a valueless taint", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "valueless-taint-workers",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "valueless-taint-workers",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 1,
+						Taints: []*DigitalOceanKubernetesNodePoolTaint{
+							{
+								Key:    "dedicated",
+								Effect: "PreferNoSchedule",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a valid gpu_partition_mode", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "gpu-workers",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "gpu-workers",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:             "gpu-mi300x1-192gb",
+						NodeCount:        1,
+						GpuPartitionMode: "AMD_PARTITION_MODE_SPX_NPS1",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error when autoscale bounds are equal", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "pinned-autoscale-workers",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "pinned-autoscale-workers",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 2,
+						AutoScale: true,
+						MinNodes:  2,
+						MaxNodes:  2,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -279,6 +349,125 @@ var _ = ginkgo.Describe("DigitalOceanKubernetesNodePoolSpec Custom Validation Te
 								Value: "true",
 							},
 						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an invalid taint effect", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "test-pool",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "test-pool",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 3,
+						Taints: []*DigitalOceanKubernetesNodePoolTaint{
+							{
+								Key:    "dedicated",
+								Effect: "noschedule",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("autoscale bounds", func() {
+
+			ginkgo.It("should return a validation error when auto_scale is on without min_nodes", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "test-pool",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "test-pool",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 3,
+						AutoScale: true,
+						MaxNodes:  5,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when max_nodes is below min_nodes", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "test-pool",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "test-pool",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 3,
+						AutoScale: true,
+						MinNodes:  5,
+						MaxNodes:  2,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("value-restricted fields", func() {
+
+			ginkgo.It("should return a validation error for an invalid gpu_partition_mode", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "test-pool",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "test-pool",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:             "gpu-mi300x1-192gb",
+						NodeCount:        1,
+						GpuPartitionMode: "SPX",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a tag with illegal characters", func() {
+				input := &DigitalOceanKubernetesNodePool{
+					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+					Kind:       "DigitalOceanKubernetesNodePool",
+					Metadata: &shared.CloudResourceMetadata{
+						Name: "test-pool",
+					},
+					Spec: &DigitalOceanKubernetesNodePoolSpec{
+						NodePoolName: "test-pool",
+						Cluster: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "test-cluster-id"},
+						},
+						Size:      "s-2vcpu-4gb",
+						NodeCount: 3,
+						Tags:      []string{"has space"},
 					},
 				}
 				err := protovalidate.Validate(input)

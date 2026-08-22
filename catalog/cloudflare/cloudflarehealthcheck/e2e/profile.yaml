@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarehealthcheck
+spec:
+  # Health checks under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite, resolves zone_id, creates the check against a
+  # documentation-range origin (the probe target never needs to answer --
+  # the object's lifecycle is what the lane proves), verifies via the zone's
+  # healthchecks API, destroys (real delete, honest 404). Watch items for
+  # the proving session: (a) THE PLAN GATE -- standalone health checks are a
+  # paid zone feature (Pro+); on a free fixture zone the create may 403/402,
+  # which is the entitlement deferral class, not a module bug (record and
+  # defer, never skip silently); (b) THE API-TOKEN AUTH-DEFECT CLASS -- 4 of
+  # the provider's own 6 healthcheck acceptance tests blank
+  # CLOUDFLARE_API_TOKEN and run on legacy key/email credentials; our
+  # harness authenticates with a token, so a 403 on create/update despite
+  # correct scopes is the expected ambush (same class as the Zero Trust
+  # doors' rotation arms). Checks are seconds-fast, no per-object cost
+  # beyond the plan.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

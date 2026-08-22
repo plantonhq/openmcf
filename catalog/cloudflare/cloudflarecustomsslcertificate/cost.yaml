@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecustomsslcertificate
+spec:
+  billing_model: free
+  notes: The upload itself creates no charge -- custom certificates are included in the Business and Enterprise zone plans that gate the feature. The cost lever is the zone plan, billed on the zone, never through this component; applying to a lower-plan zone fails the apply rather than incurring cost. The certificate's issuance cost (your CA) is outside Cloudflare entirely.

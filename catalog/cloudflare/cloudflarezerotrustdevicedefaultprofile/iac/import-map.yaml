@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustdevicedefaultprofile
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field). The profile and its fallback list are account singletons
+        importing as the bare account id; the zone-certificates fold has NO
+        importer at v5.23.0 -- re-assert it from configuration after
+        import (the write is an idempotent PUT).
+    # No mechanical derivation: the fold's zone_id is a value-or-reference
+    # field, which from_spec_field cannot read (the AOP association
+    # precedent) -- the recipe is where_to_find-only.
+    - name: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone Overview (Zone ID in the API
+        panel), or `GET /zones?name=<domain>` on the Cloudflare v4 API.
+        Used only by the zone-certificates fold's API identity
+        (`GET /zones/<zone_id>/devices/policy/certificates`); the fold
+        itself cannot be imported.

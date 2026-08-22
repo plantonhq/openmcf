@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  aws:
+    statements:
+      - sid: ManageInferenceProfile
+        actions:
+          - bedrock:CreateInferenceProfile
+          - bedrock:GetInferenceProfile
+          - bedrock:DeleteInferenceProfile
+        resources:
+          - arn:aws:bedrock:*:*:application-inference-profile/*
+          - arn:aws:bedrock:*:*:inference-profile/*
+          - arn:aws:bedrock:*::foundation-model/*
+        provenance: derived
+        notes: Covers aws_bedrock_inference_profile / bedrock.InferenceProfile -- the module's single resource. Per the service reference, CreateInferenceProfile authorizes against the new application-inference-profile ARN AND the source it wraps (a foundation-model or a system-defined inference-profile ARN -- note foundation-model ARNs carry no account ID), GetInferenceProfile against application-inference-profile and inference-profile, and DeleteInferenceProfile against application-inference-profile only. Every spec field is create-time-immutable, so updates are destroy-and-recreate through these same three actions.
+      - sid: TagInferenceProfile
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:application-inference-profile/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh -- tags are the ONLY mutable surface on an application inference profile, and per-application cost attribution through tags is this component's whole point. The service reference scopes all three tagging actions to the application-inference-profile ARN format among others.

@@ -1,0 +1,31 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  presets:
+    - preset: 01-http-requests-to-r2
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the Workers Logpush delivery meter ($0.05 per million requests delivered past 10 million/month, Workers Paid plan) never starts -- this preset pins dataset http_requests, an Enterprise zone dataset that rides the plan entitlement with no per-delivery fee
+        - destination-side costs land at the R2 bucket the job ships to -- storage and operations bill on R2's own meters, driven by the zone's traffic volume no manifest can predict
+      notes: Zero committed cost -- the job object is free and the http_requests dataset carries no Cloudflare per-delivery fee; the plan entitlement (Enterprise for this dataset) is the gate, and the real spend accrues at the destination.
+    - preset: 02-audit-logs-to-siem
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the Workers Logpush delivery meter ($0.05 per million requests delivered past 10 million/month, Workers Paid plan) never starts -- this preset pins dataset audit_logs_v2, an account-scoped entitlement dataset, not workers_trace_events or an AI Gateway dataset
+        - destination-side costs land at the SIEM the job ships to -- Splunk ingest bills outside Cloudflare entirely
+      notes: Zero committed cost -- the job object is free and the audit_logs_v2 dataset carries no Cloudflare per-delivery fee; audit logs are low-volume relative to traffic datasets, and the vendor-side ingest bill is the spend to watch.

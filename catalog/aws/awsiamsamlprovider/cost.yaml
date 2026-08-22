@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsiamsamlprovider
+spec:
+  billing_model: free
+  free_tier: "A SAML identity provider is an IAM trust anchor, and the IAM FAQ is direct: 'IAM is offered at no additional charge.' No meter counts SAML providers, the size of the metadata XML, or the federated sign-ins that flow through it -- the sts:AssumeRoleWithSAML exchange rides AWS STS, part of the same no-charge IAM/STS feature set, so the anchor costs nothing whether it federates one user a month or the whole workforce daily."
+  notes: "The single meaningful field is a public trust document (the IdP's metadata XML -- issuer, endpoints, signing certificates), and certificate-rotation updates to it are equally unmetered. The real spend lives entirely downstream of the federation: what the federated sessions DO -- the AWS services those temporary credentials call -- bills on those services' own meters, and the roles being assumed are AwsIamRole objects (equally free). The identity provider side (Okta, Entra ID, Google Workspace) bills on ITS vendor's contract, entirely outside AWS. Nothing about this trust anchor ever appears on an AWS invoice."

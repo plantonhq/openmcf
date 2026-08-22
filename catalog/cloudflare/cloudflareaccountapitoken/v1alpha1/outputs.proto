@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1;
+
+// CloudflareAccountApiTokenStackOutputs captures the observable outputs
+// after creating the token.
+message CloudflareAccountApiTokenStackOutputs {
+  // The Cloudflare-assigned token ID (the token's identity for management
+  // calls -- NOT the credential itself).
+  string token_id = 1;
+
+  // The token's secret value -- the credential. Returned by Cloudflare
+  // EXACTLY ONCE, on create: it can never be fetched again, and an imported
+  // token has no value at all. Secret-marked by the modules. If the value
+  // is lost, rotate: roll the token (or delete and recreate) to mint a new
+  // one.
+  string value = 2;
+}

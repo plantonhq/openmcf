@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The spec pins the job to exactly ONE scope (account XOR zone), so a given
+# stack needs only that scope's entries. "Logs Read" / "Logs Write" exist
+# at BOTH account and zone scope -- grant the one matching the spec's
+# scope.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageZoneJob
+        name: Logs Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: "Needed only when the job is zone-scoped (spec.zone_id set) -- the reference describes this group as write access to Logpull and Logpush: create/update/delete the job via POST/PUT/DELETE /zones/{zone_id}/logpush/jobs[/{id}] and issue the one-shot ownership challenge via POST /zones/{zone_id}/logpush/ownership (derived from the module's API surface). Covers the Terraform module's cloudflare_logpush_job and conditional cloudflare_logpush_ownership_challenge resources and the Pulumi module's matching LogpushJob and LogpushOwnershipChallenge resources; neither engine performs secondary lookups. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22)."
+      - purpose: ReadZoneJob
+        name: Logs Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Needed only when the job is zone-scoped (spec.zone_id set) -- refresh/import the job via GET /zones/{zone_id}/logpush/jobs/{id}. The reference describes this group as Logpull log reads only, so whether job-config reads need it or are already covered by "Logs Write" is our inference (derived from the module's API surface).
+      - purpose: ManageAccountJob
+        name: Logs Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Needed only when the job is account-scoped (spec.account_id set) -- the reference describes this group as read AND write access to Logpull, Logpush, and Instant Logs: create/read/update/delete the job via /accounts/{account_id}/logpush/jobs[/{id}] and issue the ownership challenge via POST /accounts/{account_id}/logpush/ownership (derived from the module's API surface). Covers the Terraform module's cloudflare_logpush_job and conditional cloudflare_logpush_ownership_challenge resources and the Pulumi module's matching LogpushJob and LogpushOwnershipChallenge resources; neither engine performs secondary lookups."

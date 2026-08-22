@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A circuit is connectivity, not storage -- no customer data rests here. The one secret-shaped thing it holds is issued authorization keys, managed by ARM and surfaced only as sensitive outputs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: ExpressRoute is a PRIVATE layer-2/3 path, not an encrypted one -- traffic bypasses the public internet but is not encrypted by the circuit itself. Encryption is composed on top when the threat model demands it (MACsec on ExpressRoute Direct ports port-side, or IPsec/application TLS over the circuit) -- a composition fact worth hearing, not a field of this manifest.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The circuit's entire purpose is keeping traffic OFF the public internet -- a dedicated private path between the peering facility and Microsoft's network, unreachable from the internet by construction. Routing starts only when peerings are explicitly configured on it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The circuit carries whatever its configured peerings advertise -- there is no packet-filtering surface on the circuit itself. Route-level control lives on the AzureExpressRouteCircuitPeering component's filters, and packet-level control on the network appliances at either end.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A private WAN link offers no request surface for a WAF; edge filtering belongs to the HTTP-aware tiers composed in front of workloads.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation -- create, resize, issue or revoke authorizations, delete -- is authorized by Azure RBAC unconditionally. Cross-subscription use is itself RBAC-shaped -- a gateway in another subscription connects only by redeeming an authorization key this circuit explicitly issued.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The circuit runs no workloads and holds no cloud credentials. Authorization keys are connection tickets ARM generates, not workload identities -- reference authorization_key from a secret rather than embedding it in manifests.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: allow_classic_operations
+      evidence:
+        type: spec_default
+        reference: Off by default -- the classic (ASM) deployment model cannot use the circuit unless explicitly allowed. Leaving the legacy interop path closed is the modern posture, and every preset leaves it off.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action -- creation, bandwidth changes, authorization issuance and revocation, deletion -- lands in the Azure Activity Log unconditionally. Authorization issuance is the entry worth alerting on -- each one is standing permission for an external gateway to connect.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Monitor exposes circuit metrics (bits in/out per peering, ARP/BGP availability) for every circuit with no configuration; Network Insights renders circuit health from the same signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration over a physical service -- recovery is redeployment from this manifest plus the provider re-provisioning the cross-connect against a fresh service key. Nothing to back up; plenty to coordinate.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every circuit is provisioned as a redundant PAIR of connections to two Microsoft edge routers in the peering facility -- the monthly fee explicitly covers dual ports, and Microsoft's SLA rests on that built-in redundancy.
+      notes: The pair protects against device failure in ONE facility -- surviving a facility outage takes a second circuit in a different peering location, a composition (and disaster-recovery design) decision above this component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the circuits API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deletion economics cut the other way here -- an unused circuit BILLS until deleted and the provider deprovisions, so the operational risk is forgetting to delete, not deleting too eagerly.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft operates the edge routers and the circuit fabric; the connectivity provider operates the cross-connect. No customer-visible patch surface exists on the circuit.

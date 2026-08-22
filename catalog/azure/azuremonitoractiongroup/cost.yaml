@@ -1,0 +1,51 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The action group OBJECT is free to hold
+# -- Azure meters the NOTIFICATIONS it sends, per channel, each with its
+# own rate and monthly free grant, so the profile is usage_based with no
+# baseline charges: an action group no alert ever fires into costs
+# exactly nothing. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremonitoractiongroup
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: sms_receivers
+      sku_meter: SMS notifications by country code
+      pricing_unit: message
+      impact: "Every alert firing texts every SMS receiver, and each message bills that receiver's COUNTRY-CODE meter -- US (code 1) is \"0.00645\" USD per message after the first 100 free each month, India (91) \"0.0042\", Germany (49) \"0.09982\": the phone's country, not the resource's region, sets the rate. The most expensive human channel per receiver at alert-storm volumes."
+    - field_path: voice_receivers
+      sku_meter: voice call notifications by country code
+      pricing_unit: call
+      impact: "Each firing places a call to every voice receiver -- US calls bill \"0.013\" USD each after the first 10 free per month, and other country codes carry their own rates (UK 44 \"0.02\", India 91 \"0.05\"). Like SMS, the rate follows the phone number."
+    - field_path: webhook_receivers
+      sku_meter: web hook notifications
+      pricing_unit: 1,000,000 notifications
+      impact: "Plain webhooks are near-free (\"0.60\" USD per million after the first 100,000 each month), but adding the aad_auth block moves the receiver to the SECURE web hook meter -- \"6.00\" USD per million after only 1,000 free -- a 10x rate and a 100x smaller grant for the Entra-authenticated posture."
+    - field_path: email_receivers
+      sku_meter: email notifications
+      pricing_unit: 100,000 emails
+      impact: "Each firing emails every receiver; the first 1,000 emails per month are free, then \"0.00002\" USD each (\"2.00\" USD per 100,000) -- effectively noise-level until alert volume is enormous."
+    - field_path: arm_role_receivers
+      sku_meter: email notifications
+      pricing_unit: 100,000 emails
+      impact: "Role fan-out is an email multiplier with an invisible recipient list: every member of the role gets an email per firing on the same email meter, so a 40-member Owner role turns one alert into 40 billed (or grant-consuming) emails."
+    - field_path: itsm_receivers
+      sku_meter: ITSM connector create/update events
+      pricing_unit: event
+      impact: "Each work item created or updated in the connected ITSM system bills \"0.005\" USD after the first 1,000 events per month -- the priciest per-unit automation channel."
+    - field_path: azure_app_push_receivers
+      sku_meter: push notifications
+      pricing_unit: 100,000 notifications
+      impact: "Azure mobile app pushes bill like emails -- first 1,000 per month free, then \"0.00002\" USD each."
+  estimate_exclusions:
+    - SMS notifications bill per message by the receiver's country code (US code 1 "0.00645" USD after 100 free per month; each country code is its own meter and rate)
+    - voice calls bill per call by country code (US "0.013" USD after 10 free per month)
+    - emails and Azure-app push notifications each bill "0.00002" USD per message after their first 1,000 free per month
+    - plain webhooks bill "0.60" USD per million after 100,000 free per month; Entra-authenticated (aad_auth) webhooks bill on the SECURE web hook meter -- "6.00" USD per million after 1,000 free
+    - ITSM create/update events bill "0.005" USD each after 1,000 free per month
+    - automation receivers hand off to components that bill their own execution -- the Azure Function's executions, the Logic App's actions, the Automation runbook's job minutes, and the Event Hub's throughput all bill on those components
+    - the alert RULES that fire into this group carry their own Azure Monitor meters (metric alert rules, log-search alert rules) on their own components
+  notes: "The group is the free half of a per-message pattern: Azure bills notifications, not routing nodes, and every channel has a monthly free grant sized so a healthy platform's alerting usually costs nothing. The two claims worth respecting -- rates ride the RECEIVER (a phone's country code sets its SMS price, an aad_auth block silently moves a webhook to a 10x meter with a 100x smaller grant), and volume rides the ALERTS (an alert storm multiplies every human channel at once; role fan-out multiplies it again by role membership). All channel rates and free-grant boundaries verified live from the Retail Prices API (serviceName 'Azure Monitor', eastus/Global tier rows) on 2026-08-18, cross-checked against Microsoft's Azure Monitor pricing page's Notifications section."

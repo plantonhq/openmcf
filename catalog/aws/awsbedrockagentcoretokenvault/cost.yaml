@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcoretokenvault
+spec:
+  billing_model: free
+  free_tier: "The token vault is AWS-provisioned infrastructure every account already has -- AWS creates one default vault per account+region whether or not this component exists -- and no meter anywhere on the AgentCore pricing page counts vaults, vault settings, or stored credentials. AgentCore Identity's ONLY published meter bills token and API-key REQUESTS agents make ('you pay for only what you use and are charged based on the number of requests from the agent to AgentCore Identity'), and this component performs zero such requests: it is a pure settings write that names which KMS key encrypts the vault."
+  notes: "Neither field of this spec buys anything: key_type and kms_key_arn are one configuration write (SetTokenVaultCMK) against a vault AWS already runs for free. The conditional charge to know about is the key itself -- choosing CustomerManagedKey puts the vault under a KMS key whose monthly key charge and per-request encrypt/decrypt meters bill on the referenced AwsKmsKey, and AgentCore's own grants on that key generate KMS request traffic every time Identity reads or writes a vaulted credential. The spend the vault EXISTS FOR lives elsewhere entirely: agents requesting OAuth tokens and API keys bill AgentCore Identity's per-request meter, and that usage belongs to the identity and agent components, not to this setting. One operational caution that looks like a cost lever but is not: destroying this component is a no-op at AWS -- the last-applied key setting (and any KMS billing it causes on the referenced key) remains in effect until a ServiceManagedKey apply reverts it."

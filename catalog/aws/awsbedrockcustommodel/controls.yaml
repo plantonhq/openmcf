@@ -1,0 +1,73 @@
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockcustommodel
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The stored custom model is always encrypted -- with a Bedrock-managed key when custom_model_kms_key_arn is unset, or the named customer-managed key when set. There is no unencrypted option.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: custom_model_kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Setting custom_model_kms_key_arn encrypts the resulting model under a customer-managed KMS key (preset 02's posture); unset falls back to the Bedrock-managed key. Training/validation data encryption is those buckets' posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Job management rides the HTTPS-only Bedrock API and data movement between Bedrock, S3, and the training infrastructure is TLS on AWS's internal paths -- no plaintext option exists for this spec to harden.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The custom model is reachable only through IAM-authorized Bedrock APIs in this account -- it is never published or shareable. The job itself exposes no endpoint.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_config
+      evidence:
+        type: spec_default
+        reference: vpc_config places the job's data-access network interfaces inside your VPC behind your security groups (preset 02's posture) -- the fit for training data reachable only through private networking. Omitted, the job reads S3 over Bedrock's managed networking.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving surface exists -- serving traffic happens on the Provisioned Throughput or deployment component, not here.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Job creation, model access, and deletion are IAM-authorized on the job and model ARNs; invoking the finished model requires bedrock:InvokeModel on the custom model's ARN.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required -- the job reads training data and writes outputs exclusively by assuming that IAM role (which must trust bedrock.amazonaws.com), never through ambient or embedded credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Bedrock API path is SigV4-signed only; no legacy protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Job lifecycle and model operations are captured by account-level AWS CloudTrail -- a service behavior, not a manifest choice.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Bedrock reports job status and training/validation metrics (written to output_data_s3_uri) automatically; there is no monitoring dial in this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The model is deterministically re-creatable from the manifest plus the S3-held training data (at a fresh training cost); Bedrock offers no model export or snapshot surface.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The customization job is a batch process and the stored model is a regional AWS-operated artifact -- no zonal placement exists in the spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists -- deleting the component removes the job record and the custom model immediately. Note the name-history trap; job names are unique per account forever, so a recreate needs a fresh job_name.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the training and model-storage infrastructure; no customer-visible patch surface exists.

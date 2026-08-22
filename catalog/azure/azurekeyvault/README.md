@@ -124,9 +124,9 @@ spec:
   disabled.
 - `soft_delete_retention_days` can only be set at creation; changing it
   replaces the vault.
-- Switching authorization modes on a live vault requires
-  Microsoft.Authorization write permission (Owner / User Access
-  Administrator) on the vault.
+- The deployer permissions this component needs (including the extra grant
+  required to switch authorization modes on a live vault) are cataloged in
+  [`iac/permissions.yaml`](iac/permissions.yaml).
 
 ---
 

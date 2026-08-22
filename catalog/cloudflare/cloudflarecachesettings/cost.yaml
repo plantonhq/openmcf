@@ -1,0 +1,76 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecachesettings
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Argo Smart Routing
+      sku_meter: Argo Smart Routing monthly base fee
+      pricing_unit: months
+      description: >-
+        CONDITIONAL baseline -- it exists ONLY when argo_smart_routing is
+        enabled. Cloudflare bills Argo Smart Routing as a paid add-on with a
+        flat monthly fee charged at the start of each billing period
+        (https://developers.cloudflare.com/billing/understand/how-billing-works/,
+        retrieved 2026-08-22; the product page marks it "Add-on feature",
+        https://developers.cloudflare.com/argo-smart-routing/, retrieved
+        2026-08-22). The base fee is USD 5.00 per month at the entry tier:
+        the plans page lists "Smart Shield + Argo Smart Routing -- Starting
+        at $5/mo" (https://www.cloudflare.com/plans/, retrieved 2026-08-22)
+        and Cloudflare's own invoice example prices "Smart Shield Argo Zone
+        Level Plan - Basic" at $5.00
+        (https://developers.cloudflare.com/billing/understand/how-billing-works/,
+        retrieved 2026-08-22); "Starting at" means advanced selections can
+        set the subscription above the entry tier. Once started it survives
+        destroy: apply argo_smart_routing false first when retiring the
+        feature.
+  cost_drivers:
+    - field_path: argo_smart_routing
+      sku_meter: Argo Smart Routing data transfer
+      pricing_unit: GB of routed traffic
+      impact: >-
+        On top of the monthly base fee above, Argo meters every GB it
+        routes between Cloudflare and the origin, with the first 1 GB per
+        month included
+        (https://developers.cloudflare.com/billing/understand/usage-based-billing/,
+        retrieved 2026-08-22). Cloudflare's own billing documentation shows
+        the accelerated-gigabytes rate at $0.10 per GB in its invoice
+        example ("Smart Shield Argo Accelerated Gigabytes (First GB is
+        included) -- $0.10",
+        https://developers.cloudflare.com/billing/understand/how-billing-works/,
+        retrieved 2026-08-22). Cloudflare has NO delete for this setting --
+        destroying the resource with it still on KEEPS BILLING; apply false
+        first when retiring the feature.
+    - field_path: cache_reserve
+      sku_meter: Cache Reserve monthly subscription plus storage and operations
+      pricing_unit: months + GB-months + read/write operations
+      impact: >-
+        Cloudflare's billing documentation lists Cache Reserve among the
+        flat-monthly-fee add-ons billed in advance (alongside Load
+        Balancing and Argo), with its dollar amount not shown on the page
+        -- so enabling this toggle commits a monthly subscription fee on
+        top of the usage meters
+        (https://developers.cloudflare.com/billing/understand/how-billing-works/,
+        retrieved 2026-08-22). The usage side persists cached objects in
+        Cloudflare's durable storage tier, billing stored bytes and
+        operations while enabled (the same page's invoice example shows
+        Cache Reserve Reads at $0.36 per 1,000,000). Like Argo, it has no
+        delete -- turn it off explicitly to stop the charges.
+  estimate_exclusions:
+    - Argo per-GB charges are traffic-dependent
+    - Cache Reserve storage volume depends on the zone's cacheable content and eviction pattern
+  notes: >-
+    Tiered caching (smart and generic), regional tiered cache, and cache
+    variants are free features on every plan. The two paid toggles are the
+    only cost surface, and both keep billing until explicitly turned off --
+    destroy alone never stops them. The class is hybrid because each paid
+    toggle pins a subscription the moment it is enabled: argo_smart_routing
+    commits the Argo add-on's $5.00 entry-tier monthly base fee plus the
+    $0.10/GB meter, and cache_reserve commits its own flat monthly add-on
+    fee (dollar amount not published on the billing page) plus storage and
+    operation meters -- while a manifest that leaves both toggles off
+    commits nothing.

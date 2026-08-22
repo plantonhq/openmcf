@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustaccessidentityprovider
+spec:
+  # Dual-scope: the documented import ID carries a literal "accounts/" or
+  # "zones/" prefix. Live scenarios are account-scoped, so the accounts/ arm
+  # is the one recorded here (a zone-scoped provider imports via the zones/
+  # arm). scim_secret never survives import -- Cloudflare returns it only
+  # when SCIM is first enabled.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: identity_provider_id
+      derivations:
+        - from_stack_output: identity_provider_id
+      where_to_find: >-
+        Zero Trust dashboard -> Settings -> Authentication -> the identity
+        provider, or `GET /accounts/<account_id>/access/identity_providers`
+        on the Cloudflare v4 API (the id field of the entry whose name
+        matches).

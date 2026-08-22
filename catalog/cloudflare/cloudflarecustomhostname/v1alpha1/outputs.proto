@@ -32,4 +32,10 @@ message CloudflareCustomHostnameStackOutputs {
 
   // RFC3339 timestamp of when the custom hostname was created.
   string created_at = 9;
+
+  // The Cloudflare Zone ID the hostname was onboarded onto. A custom hostname's
+  // API identity is (zone_id, custom_hostname_id), so downstream consumers --
+  // verification tooling, imports, chart blocks composing on the hostname --
+  // need the zone alongside the hostname's own id.
+  string zone_id = 10;
 }

@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredatafactory
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Data Factory encrypts everything the factory stores at rest -- entity definitions (pipelines, linked services, datasets, triggers), any cached run data, and credential references -- with Microsoft-managed keys automatically; no configuration exists to turn it off. The data the factory's pipelines MOVE rests in the external stores, which own their own posture."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: "customer_managed_key swaps the factory's encryption to a Key Vault key you own, unwrapped by the named user-assigned identity (which must be attached in the identity block and hold get/unwrap/wrap on the vault BEFORE create -- Azure validates at deploy time)."
+      notes: "One-way door: once enabled, Azure has no decrypt path back to service-managed keys -- removing the key means recreating the factory. Prefer the versionless key reference (the AzureKeyVaultKey wiring default) so rotation propagates without touching the factory."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The factory's own endpoints -- the ARM management surface and the authoring/orchestration service endpoints -- are HTTPS-only; no plaintext listener exists to disable."
+      notes: "Transport for the data pipelines move is the linked services' territory: each connection's encryption posture rides the store's protocol and the linked service definition, not this manifest."
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_enabled
+      evidence:
+        type: spec_default
+        reference: "public_network_enabled defaults true (Azure's own default, sent explicitly); set false to refuse traffic from the public internet -- the 02-private-etl-workspace preset pairs false with managed private endpoints so the factory's only data path is private."
+      notes: "The switch closes the factory's INBOUND public surface. Reaching a closed factory (Studio, ARM data-plane) then requires a private endpoint to the factory itself -- a separate Private Link composition outside this spec. managed_private_endpoints point the other direction: private EGRESS from the managed network to the data stores."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "The factory offers no source-allowlist surface -- inbound exposure is the binary public_network_enabled switch (see no-public-access), and Azure Data Factory has no IP-firewall rules to declare. Source-scoped restriction is composed with a private endpoint to the factory plus the callers' network reach."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No WAF attachment point exists -- the factory's endpoints are Microsoft-operated service surfaces, not customer HTTP origins. Request filtering belongs to the web tiers pipelines feed, not the orchestrator."
+    - control_id: rbac
+      status: not_applicable
+      notes: "Authoring and operating the factory is governed by ARM RBAC on the factory's scope (Data Factory Contributor authors entities; factories/pipelines/createrun/action gates runs) -- subscription/resource-group posture, not a component choice. The factory exposes no additional authorization plane of its own to configure here."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "The identity block gives the factory a managed identity (system-assigned, user-assigned, or both) that linked services authenticate WITH -- keyless access to data stores by granting the identity_principal_id output instead of embedding secrets. user_managed_identity_credentials wrap attached user-assigned identities as named credentials linked services reference by name."
+      notes: "Both presets carry SYSTEM_ASSIGNED. The secret-bearing alternative -- service_principal_credentials with a Key Vault-resolved key -- exists on the same spec for stores that cannot take managed identities; every credential named there is a deliberate step away from keyless."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "No switch on the factory disables weaker authentication paths -- the identity-versus-secret choice is made per credential (this spec's two credential lists) and per linked service (the AzureDataFactoryLinkedService kind). The honest lever here is composition: prefer user_managed_identity_credentials and leave service_principal_credentials empty."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Authoring operations on the factory and everything inside it land in the Azure Activity Log automatically -- subscription-level posture. Per-run history (pipeline, activity, and trigger runs) is kept by the service for 45 days; keeping it longer means diagnostic settings exporting to a Log Analytics workspace, a separate composition this spec does not carry."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "The factory spec exposes no diagnostics or metrics knob -- run telemetry export (pipeline outcomes, activity durations, trigger fires to Log Analytics or Event Hubs) is a diagnostic-settings composition outside this manifest, and the one per-pipeline metric lever (monitor_metrics_after_duration) lives on the AzureDataFactoryPipeline kind."
+    - control_id: backup-recovery
+      status: configurable
+      field_path: github_configuration
+      evidence:
+        type: spec_default
+        reference: "Binding the factory to a git repository (github_configuration, or vsts_configuration for Azure DevOps -- at most one) versions every authored entity as JSON in the repository, giving the factory's contents durable, restorable history beyond the live service copy."
+      notes: "The binding is applied after create and REMOVING the block does not detach the repository (detach happens in Data Factory Studio). Unbound factories hold the only copy of authored entities in the service -- the manifests recreate what the platform deployed, but Studio-authored drift exists nowhere else."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No retention knob exists here -- a git-bound factory's history follows the repository's own retention, and the service's 45-day run-history window is fixed."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Data Factory's core service is zone-redundant automatically -- Microsoft spreads the service components across availability zones in supported regions at no extra cost and with no configuration surface, and Azure integration runtimes carry the same Microsoft-managed zone redundancy (Azure reliability documentation for Data Factory)."
+      notes: "Zone-redundant is not region-redundant: cross-region continuity is composed with a second factory in a paired region (git-bound factories make that redeployment mechanical). Self-hosted integration runtime resilience is customer infrastructure, outside this manifest."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Data Factory API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The blast radius is the whole workspace: deleting the factory deletes every pipeline, linked service, dataset, trigger, credential, and managed private endpoint inside it."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed service -- Microsoft operates and patches the Data Factory control plane, the authoring service, and Azure integration runtimes with no customer-visible patch surface."

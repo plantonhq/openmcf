@@ -1,0 +1,16 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The config block's 23 leaves match by name (the spec mirrors the provider
+# leaf for leaf; the string-vs-integer typing is a wire rendering detail the
+# modules own).
+resources:
+  digitalocean_database_kafka_topic:
+    mappings:
+      # The spec wires the owning cluster by reference.
+      - spec: spec.cluster
+        arg: cluster_id
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.topic_name
+        arg: name

@@ -16,7 +16,7 @@ spec:
           - Microsoft.Cache/redis/write
           - Microsoft.Cache/redis/delete
         provenance: derived
-        notes: Covers azurerm_redis_cache (Terraform) and redis.Cache (Pulumi) -- create, read/refresh, in-place updates, and destroy. Action spellings are the official Microsoft.Cache operations (the namespace is not yet in the shared action inventory).
+        notes: Covers azurerm_redis_cache (Terraform) and redis.Cache (Pulumi) -- create, read/refresh, in-place updates, and destroy. Action spellings are the official Microsoft.Cache operations; the committed action-inventory snapshot (pkg/iac/actioninventory/azure.yaml) carries the Microsoft.Cache namespace and lists every action here.
       - purpose: ListAccessKeys
         actions:
           - Microsoft.Cache/redis/listKeys/action

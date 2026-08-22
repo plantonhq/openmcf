@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandatabasedb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A logical database is a namespace inside the cluster; its data lives on the cluster's disk, which DigitalOcean encrypts at rest as a managed-service property (the DigitalOceanDatabaseCluster's posture).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage of its own (see enc-at-rest), and DigitalOcean Managed Databases offer no customer-managed keys.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Connection encryption is a property of the cluster's endpoints, not of the logical database.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A logical database has no network endpoint of its own; exposure is governed by the cluster's VPC placement and its DigitalOceanDatabaseFirewall rule set.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the cluster's DigitalOceanDatabaseFirewall rule set.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: The resource carries no access-control surface; per-user grants live on DigitalOceanDatabaseUser (Kafka/OpenSearch ACLs) or in-database GRANTs (data plane).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Authentication is the cluster's and users' concern; the logical database has no credential surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface (see workload-identity).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No per-database audit surface exists upstream.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Logical databases emit no metrics of their own; database monitoring targets the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The cluster's automatic backups include every logical database; backup posture is the DigitalOceanDatabaseCluster's. NOTE the kind's own hazard instead -- both spec fields are create-only, and a rename REPLACES the logical database, dropping its data (taught on the fields and in the GUIDE).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface of its own (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is the cluster topology's property.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for logical databases; deleting one drops its data immediately. Treat renames as migrations, never edits (spec comment + GUIDE).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Patching is the managed cluster's property.

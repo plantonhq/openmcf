@@ -1,0 +1,26 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: test-zone-tls-settings
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  total_tls:
+    enabled: true
+    certificate_authority: google
+  auto_origin_tls_kex: true
+  origin_tls_compliance_modes:
+    - fips
+  hostname_settings:
+    - hostname: api.example.com
+      min_tls_version: "1.3"
+      http2: true
+    - hostname: legacy.example.com
+      min_tls_version: "1.0"
+      ciphers:
+        - "ECDHE-RSA-AES128-GCM-SHA256"
+  ca_hostname_associations:
+    - hostnames:
+        - mtls.example.com
+      mtls_certificate_id:
+        value: "8d773bb3-90b2-4bd3-9d33-9c3ba33d5b9a"

@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceancertificate
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` uploads a CUSTOM certificate from a
+  # throwaway self-signed pair embedded in the scenario (no domain needed --
+  # fully live-provable, and the reserved `minimal` name doubles as the
+  # fixture install profile for future certificate consumers); `lets-encrypt`
+  # proves the Let's Encrypt branch offline (plan-only) -- its LIVE arm is an
+  # ENVIRONMENTAL-GATE DEFERRAL: issuance requires every domain to be
+  # DigitalOcean-DNS-managed in the test account (a delegated domain), which
+  # does not exist yet. Unblock condition: a domain delegated to the test
+  # account's DigitalOcean DNS. Certificates are free API objects creating in
+  # seconds. Watch on first live run: the blind import round-trip addresses
+  # the certificate by NAME (the catalog's first name-addressed import), and
+  # the PEM trio stays empty on import (config-only tolerances).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

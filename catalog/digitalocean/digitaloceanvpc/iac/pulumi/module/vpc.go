@@ -6,31 +6,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// vpc provisions the VPC itself and exports its ID.
+// vpc provisions the VPC and exports its outputs.
+//
+// The IP range is immutable: DigitalOcean assigns one when ip_range is unset
+// (the assigned range is reported through the ip_range output), and a change
+// to a set range REPLACES the VPC.
 func vpc(
 	ctx *pulumi.Context,
 	locals *Locals,
 	digitalOceanProvider *digitalocean.Provider,
 ) (*digitalocean.Vpc, error) {
+	spec := locals.DigitalOceanVpc.Spec
 
-	// 1. Build the resource arguments straight from the proto fields.
+	// The VPC's name is its Planton identity -- it comes from metadata.name,
+	// never from separate spec surface.
 	vpcArgs := &digitalocean.VpcArgs{
 		Name:   pulumi.String(locals.DigitalOceanVpc.Metadata.Name),
-		Region: pulumi.String(locals.DigitalOceanVpc.Spec.Region.String()),
+		Region: pulumi.String(spec.Region.String()),
 	}
 
-	// 2. Add optional description if provided
-	if locals.DigitalOceanVpc.Spec.Description != "" {
-		vpcArgs.Description = pulumi.String(locals.DigitalOceanVpc.Spec.Description)
+	if spec.Description != "" {
+		vpcArgs.Description = pulumi.String(spec.Description)
 	}
 
-	// 3. Add IP range if explicitly specified (80/20: optional for auto-generation)
-	// When omitted, DigitalOcean auto-generates a non-conflicting /20 CIDR block
-	if locals.DigitalOceanVpc.Spec.IpRangeCidr != "" {
-		vpcArgs.IpRange = pulumi.String(locals.DigitalOceanVpc.Spec.IpRangeCidr)
+	if spec.IpRangeCidr != "" {
+		vpcArgs.IpRange = pulumi.String(spec.IpRangeCidr)
 	}
 
-	// 4. Create the VPC.
 	createdVpc, err := digitalocean.NewVpc(
 		ctx,
 		"vpc",
@@ -41,8 +43,11 @@ func vpc(
 		return nil, errors.Wrap(err, "failed to create digitalocean vpc")
 	}
 
-	// 5. Export stack output.
+	// Stack outputs -- exactly the DigitalOceanVpcStackOutputs contract,
+	// from the SDK's real field names (the urn output is VpcUrn).
 	ctx.Export(OpVpcId, createdVpc.ID())
+	ctx.Export(OpIpRange, createdVpc.IpRange)
+	ctx.Export(OpUrn, createdVpc.VpcUrn)
 
 	return createdVpc, nil
 }

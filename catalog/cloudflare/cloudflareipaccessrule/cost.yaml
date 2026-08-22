@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareipaccessrule
+spec:
+  billing_model: free
+  notes: IP Access rules are included on every Cloudflare plan. Creating a rule and choosing a mode creates no charge of its own. Zone-plan upgrades and paid security add-ons bill on the zone, never through this component.

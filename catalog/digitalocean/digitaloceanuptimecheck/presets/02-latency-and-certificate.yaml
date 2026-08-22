@@ -1,0 +1,26 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: api-latency-and-certificate
+spec:
+  checkName: api
+  target: https://api.example.com
+  regions:
+    - us_east
+    - eu_west
+  alerts:
+    - alertName: api-slow
+      type: latency
+      threshold: 800
+      comparison: greater_than
+      period: 5m
+      notifications:
+        emails:
+          - ops@example.com
+    - alertName: api-cert-expiring
+      type: ssl_expiry
+      threshold: 21
+      comparison: less_than
+      notifications:
+        emails:
+          - ops@example.com

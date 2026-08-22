@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareemailroutingrule
+spec:
+  billing_model: free
+  free_tier: "Email Routing is available on both the Workers Free and Workers Paid plans, and inbound routed email is Unlimited on both (https://developers.cloudflare.com/email-service/platform/pricing/, retrieved 2026-08-22). A rule costs nothing to exist, and matching, dropping, or forwarding mail through it is never metered."
+  notes: "No field of this spec commits spend: matchers select recipients, and the forward and drop actions ride the free inbound-routing surface. The one conditional is the worker action -- the same pricing page states \"Email Routing Workers is billed according to Workers pricing\", so every message a rule hands to an Email Worker is a metered Worker invocation. That usage bills through the referenced CloudflareWorker kind on the account's Workers plan, not through this rule; a rule with only forward or drop actions (preset 01) never touches a meter, while presets 02 and 03 route their matched mail into Workers metering via the referenced script."

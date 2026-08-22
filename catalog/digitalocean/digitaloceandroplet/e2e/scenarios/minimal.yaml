@@ -1,0 +1,23 @@
+# Minimal DigitalOceanDroplet: name + size + image only. No region
+# (DigitalOcean chooses one with available capacity) and no VPC (the
+# droplet lands in the chosen region's default VPC -- exported as the
+# vpc_uuid output). Proves the create/verify/destroy lifecycle and the
+# droplet_id / ipv4_address outputs.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDroplet
+metadata:
+  name: planton-oss-e2e-digitaloceandroplet-min
+  id: planton-oss-e2e-digitaloceandroplet-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandroplet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dropletName: pltn-e2e-dodrop-min
+  size: s-1vcpu-1gb
+  image: ubuntu-24-04-x64

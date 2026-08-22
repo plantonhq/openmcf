@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccessinfrastructuretarget
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An inventory row (hostname + IP) -- no customer data stored.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management traffic to the Cloudflare API is HTTPS; brokered SSH sessions ride Cloudflare Tunnel's encrypted transport unconditionally.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Targets carry PRIVATE addresses reachable only through the account's tunnels behind Access policy -- registering one exposes nothing publicly.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only ingress to a target is an Access-brokered session; there is no direct network path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An inventory row, not a traffic-serving surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may reach a target is decided by the Access infrastructure application and its policies, not by the target row.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Targets identify servers; connecting identity is Access's concern.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Access infrastructure applications issue short-lived SSH certificates through the brokered flow -- no static SSH keys are involved in the Cloudflare path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Target changes land in the account audit log, and brokered SSH sessions are logged (and optionally recorded) by Access.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An inventory row, reproducible from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Access control plane is Cloudflare's global anycast network; target reachability inherits the tunnel's redundancy.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No provider-side deletion guard; a deleted target row is recreated from the manifest without data loss.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it; the target server's patching is outside Cloudflare.

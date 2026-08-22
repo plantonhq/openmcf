@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasedb.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseDbSpec models the full digitalocean_database_db
+// resource surface: an additional logical database inside a DigitalOcean
+// managed database cluster.
+//
+// The resource is deliberately minimal upstream: both fields are
+// create-only (any change replaces the logical database, which DROPS its
+// data -- treat renames as migrations, never edits), and DigitalOcean's
+// read is a bare existence check. Connection credentials live on the
+// cluster and its users, not here.
+message DigitalOceanDatabaseDbSpec {
+  // The database cluster to create the logical database in. Use a literal
+  // cluster UUID or a reference to a DigitalOceanDatabaseCluster resource.
+  // Changing it replaces the logical database.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the logical database. Unique within the cluster; the name IS
+  // the database's API identity. Changing it replaces the database and
+  // drops the old one's data.
+  string database_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

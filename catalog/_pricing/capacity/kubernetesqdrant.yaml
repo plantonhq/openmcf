@@ -1,0 +1,52 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesQdrant manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesqdrant.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every node in the
+# Raft cluster carries the declared resources plus its own data volume
+# (and a separate snapshots volume when declared). Collection-level
+# properties (shards, replication factor, quantization) are data
+# operations through the Qdrant API, outside deployment scope. Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesqdrant
+spec:
+  workloads:
+    - label: node
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+      volumes:
+        - label: data
+          size_path: storage.size
+        - label: snapshots
+          size_path: snapshots.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes:
+    - text: collection-level shards, replication factor, and quantization are data operations declared per collection through the Qdrant API -- they shape how the reserved capacity is used, never how much is reserved
+    - applies_when:
+        - field_path: storage
+          op: is_set
+        - field_path: storage.size
+          op: is_unset
+      text: the data volume is stated at its 10Gi spec-declared default size when storage declares no size
+    - applies_when:
+        - field_path: storage
+          op: is_unset
+      text: the chart still provisions a 10Gi data volume per pod with no storage block at all -- a reservation this footprint cannot count
+    - applies_when:
+        - field_path: snapshots
+          op: is_set
+        - field_path: snapshots.size
+          op: is_unset
+      text: the snapshots volume declared without a size is stated at its 10Gi spec-declared default

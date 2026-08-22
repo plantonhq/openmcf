@@ -1,0 +1,18 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationPolicy
+metadata:
+  name: tunnel-down-page-oncall
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: tunnel-down-page-oncall
+  alert_type: tunnel_health_event
+  description: page on-call the moment a Cloudflare Tunnel goes unhealthy
+  alert_interval: 30m
+  mechanisms:
+    pagerduty_ids:
+      - "REPLACE_WITH_PAGERDUTY_SERVICE_UUID"
+    emails:
+      - oncall@example.com
+  filters:
+    new_status:
+      - unhealthy

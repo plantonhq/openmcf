@@ -4,9 +4,7 @@ metadata:
   name: my-lets-encrypt-cert
 spec:
   certificateName: my-lets-encrypt-cert
-  type: lets_encrypt
   letsEncrypt:
     domains:
-      - <your-domain.com>
-      - <www.your-domain.com>
-    disableAutoRenew: false  # Keep auto-renewal enabled
+      - example.com
+      - www.example.com

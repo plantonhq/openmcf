@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsssmassociation
+spec:
+  billing_model: free
+  free_tier: "A State Manager association is free at any fleet size -- the Systems Manager pricing page's whole entry for State Manager reads \"No additional charges. Limits may apply.\", and the features an association typically drives are equally free: Run Command on EC2 instances (\"No additional charges for usage on Amazon EC2 instances\"), Patch Manager on EC2, and Compliance reporting all carry no meter. No charge counts associations, their schedules, their versions, or their runs against EC2 targets."
+  notes: "The conditional charges are precise and live at the edges of what the association invokes. (1) Bind an AUTOMATION document and every scheduled application becomes an Automation execution billing $0.002 per step, plus $0.00003 per second for aws:executeScript steps -- the pricing page publishes no per-step free allotment today. (2) Run Command against HYBRID and multicloud nodes bills $0.002 per invocation starting September 30, 2026 (usage is unbilled during AWS's June 30 - September 30, 2026 transition period, and the old advanced-instances tier was removed June 30, 2026 -- hybrid registration itself is now free). (3) output_location writes command output to the referenced AwsS3Bucket, which bills its own storage and requests. (4) The real spend of a patch-scan association is the fleet itself -- the EC2 instances it targets bill as their own components, and any OpsItems a downstream workflow opens bill $2.97 per 1,000 on OpsCenter's meter, not here."

@@ -1,0 +1,605 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarezerotrustgatewaypolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZeroTrustGatewayPolicySpec defines one Gateway policy (Cloudflare
+// calls them rules): a filter expression over employee traffic (DNS queries,
+// HTTP requests, or network connections) plus the action to take when it
+// matches -- block, allow, isolate, redirect, override, resolve, and kin.
+//
+// Two provider behaviors deserve loud warnings:
+//   - `enabled` DEFAULTS TO FALSE at Cloudflare. A policy authored without
+//     enabled: true deploys DISABLED and filters nothing.
+//   - The wirefilter expressions (traffic, identity, device_posture) are
+//     reformatted by the API before storing. An expression that round-trips
+//     differently from how it was written shows as permanent plan drift; use
+//     the API-formatted form when that happens.
+message CloudflareZeroTrustGatewayPolicySpec {
+  // The Cloudflare account ID that owns this policy (Gateway policies are
+  // account-scoped).
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The display name of the policy.
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The action performed when the traffic, identity, and device-posture
+  // expressions match (absent expressions count as matching). Which actions are
+  // valid depends on the filter: dns takes allow/block/override/safesearch/
+  // ytrestricted, http takes allow/block/isolate/redirect/quarantine/scan,
+  // l4 takes allow/block/audit_ssh (via "on")/l4_override, egress rules take
+  // egress, dns_resolver rules take resolve.
+  string action = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "on",
+        "off",
+        "allow",
+        "block",
+        "scan",
+        "noscan",
+        "safesearch",
+        "ytrestricted",
+        "isolate",
+        "noisolate",
+        "override",
+        "l4_override",
+        "egress",
+        "resolve",
+        "quarantine",
+        "redirect"
+      ]
+    }
+  ];
+
+  // Optional description of what the policy does.
+  string description = 4;
+
+  // The protocol / layer this policy evaluates: dns (DNS queries), http (HTTP
+  // requests), l4 (network connections), egress (dedicated egress IP
+  // selection), or dns_resolver (custom DNS resolver policies). Cloudflare
+  // models this as a list that can only contain a single value, so the module
+  // sends [filter]. Leave empty to let Cloudflare infer it from the action.
+  string filter = 5 [(buf.validate.field).cel = {
+    id: "filter.enum"
+    message: "filter must be http, dns, l4, egress, or dns_resolver"
+    expression: "this == '' || this in ['http', 'dns', 'l4', 'egress', 'dns_resolver']"
+  }];
+
+  // Whether the policy is active. CLOUDFLARE DEFAULTS THIS TO FALSE: a policy
+  // authored without enabled: true deploys disabled and filters nothing. Set it
+  // explicitly.
+  optional bool enabled = 6;
+
+  // Evaluation order among the account's policies: LOWER values run EARLIER.
+  // Leave unset to let Cloudflare assign one -- but for any account with more
+  // than a few policies, manage precedence explicitly so rule order is
+  // deliberate instead of accidental.
+  optional int64 precedence = 7 [(buf.validate.field).int64.gte = 0];
+
+  // The wirefilter expression matching the traffic (e.g.
+  // 'any(dns.domains[*] == "example.com")'). The API reformats expressions
+  // before storing -- if the plan shows drift, adopt the API-returned form.
+  string traffic = 8;
+
+  // The wirefilter expression matching the user's identity (e.g.
+  // 'identity.email == "jane@example.com"'). Same API-reformat caveat as
+  // traffic.
+  string identity = 9;
+
+  // The wirefilter expression over device-posture check results. Same
+  // API-reformat caveat as traffic.
+  string device_posture = 10;
+
+  // Expiration for DNS policies: a timestamp after which the policy stops
+  // applying (takes precedence over `schedule`). Settable only for dns rules.
+  CloudflareZeroTrustGatewayPolicyExpiration expiration = 11;
+
+  // Activation schedule for DNS policies: per-weekday time intervals and an
+  // optional time zone. Settable only for dns and dns_resolver rules.
+  CloudflareZeroTrustGatewayPolicySchedule schedule = 12;
+
+  // Action-specific settings (block page, browser-isolation controls, custom
+  // resolvers, egress IPs, header rewrites, and kin). Each setting applies only
+  // to specific filter/action combinations -- the field comments carry the
+  // pairing.
+  CloudflareZeroTrustGatewayPolicyRuleSettings rule_settings = 13;
+}
+
+// CloudflareZeroTrustGatewayPolicyExpiration expires a DNS policy at a fixed
+// time, globally (client time zones are ignored).
+message CloudflareZeroTrustGatewayPolicyExpiration {
+  // When the policy expires and stops applying, as RFC3339 with a UTC offset
+  // (non-zero offsets are converted to UTC by the API and returned with a
+  // trailing Z).
+  string expires_at = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "expires_at.rfc3339"
+      message: "expires_at must be an RFC3339 timestamp (e.g. 2026-09-01T00:00:00Z)"
+      expression: "this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+    }
+  ];
+
+  // Default active duration in minutes (minimum 5). Required to use the
+  // API's reset_expiration endpoint on this policy.
+  optional int32 duration = 2 [(buf.validate.field).int32.gte = 5];
+}
+
+// CloudflareZeroTrustGatewayPolicySchedule activates a DNS policy only during
+// the given per-weekday time intervals. A day left empty deactivates the policy
+// that day. Intervals are strings like "08:00-12:30,13:30-17:00" in increasing
+// order (at most 6 splits per day). The API returns a formatted version of each
+// string -- adopt the formatted form if the plan shows drift.
+message CloudflareZeroTrustGatewayPolicySchedule {
+  // Active intervals on Mondays (e.g. "08:00-17:00").
+  string mon = 1;
+
+  // Active intervals on Tuesdays.
+  string tue = 2;
+
+  // Active intervals on Wednesdays.
+  string wed = 3;
+
+  // Active intervals on Thursdays.
+  string thu = 4;
+
+  // Active intervals on Fridays.
+  string fri = 5;
+
+  // Active intervals on Saturdays.
+  string sat = 6;
+
+  // Active intervals on Sundays.
+  string sun = 7;
+
+  // The tz-database city name used to evaluate the intervals (e.g.
+  // "America/New_York"). Omit to use the time zone inferred from each user's
+  // IP address (falling back to the Cloudflare data center's zone).
+  string time_zone = 8;
+}
+
+// CloudflareZeroTrustGatewayPolicyRuleSettings carries the action-specific
+// knobs. Every field is optional; each applies only to the filter/action
+// combinations named in its comment. When no settings are configured the
+// module still sends Cloudflare the empty settings object it expects (the
+// provider's own workaround for API drift).
+message CloudflareZeroTrustGatewayPolicyRuleSettings {
+  // At most one DNS resolution mechanism applies to a resolve policy: custom
+  // upstream resolvers, the internal DNS service, or Cloudflare's public
+  // resolver.
+  option (buf.validate.message).cel = {
+    id: "rule_settings.one_resolver_mechanism"
+    message: "set at most one of dns_resolvers, resolve_dns_internally, or resolve_dns_through_cloudflare"
+    expression: "(has(this.dns_resolvers) ? 1 : 0) + (has(this.resolve_dns_internally) ? 1 : 0) + ((has(this.resolve_dns_through_cloudflare) && this.resolve_dns_through_cloudflare) ? 1 : 0) <= 1"
+  };
+
+  // Add custom headers to allowed requests: header name -> list of values.
+  // At most 20 header operations (add + set + delete) per policy; names up to
+  // 256 bytes. Only for http rules with action allow. KNOWN UPSTREAM DRIFT:
+  // the v5 provider shows computed-field drift on policies carrying
+  // add_headers even on first apply.
+  map<string, CloudflareZeroTrustGatewayPolicyStringList> add_headers = 1;
+
+  // Let MSP child accounts bypass this rule (settable only by parent MSP
+  // accounts). Applies to all rule types.
+  optional bool allow_child_bypass = 2;
+
+  // Audit SSH settings. Only for l4 rules with the audit_ssh action.
+  CloudflareZeroTrustGatewayPolicyAuditSsh audit_ssh = 3;
+
+  // Browser-isolation behavior controls. Only for http rules with action
+  // isolate.
+  CloudflareZeroTrustGatewayPolicyBisoAdminControls biso_admin_controls = 4;
+
+  // Custom block page (overriding the account-level page). Only for http
+  // rules with action block.
+  CloudflareZeroTrustGatewayPolicyBlockPage block_page = 5;
+
+  // Show the custom block page for blocked DNS queries. Only for dns rules
+  // with action block.
+  optional bool block_page_enabled = 6;
+
+  // Why the rule blocks the request; shown on the block page when enabled.
+  // For dns, l4, and http rules with action block.
+  string block_reason = 7;
+
+  // Let this MSP child account bypass its parent's rules (settable only by
+  // child accounts). Applies to all rule types.
+  optional bool bypass_parent_rule = 8;
+
+  // Session-freshness enforcement. Only for l4 and http rules with action
+  // allow. The API normalizes duration strings (e.g. "24h" becomes "24h0m0s").
+  CloudflareZeroTrustGatewayPolicyCheckSession check_session = 9;
+
+  // Remove headers from allowed requests, by name. Counts toward the 20
+  // header-operation budget. Only for http rules with action allow.
+  repeated string delete_headers = 10;
+
+  // Custom upstream resolvers for matched queries (routed to the resolver
+  // closest to the query's origin). Only for dns_resolver rules with action
+  // resolve; mutually exclusive with the other resolution mechanisms.
+  CloudflareZeroTrustGatewayPolicyDnsResolvers dns_resolvers = 11;
+
+  // Dedicated egress IPs for matched proxy traffic; omit for local egress via
+  // WARP IPs. Only for egress rules.
+  CloudflareZeroTrustGatewayPolicyEgress egress = 12;
+
+  // Send a copy of the matched HTTP request to storage. Only for http rules.
+  CloudflareZeroTrustGatewayPolicyForensicCopy forensic_copy = 13;
+
+  // Ignore category matches on CNAME domains in the response (evaluate only
+  // the queried domain's categories). Only for dns and dns_resolver rules.
+  optional bool ignore_cname_category_matches = 14;
+
+  // Disable DNSSEC validation for allowed queries. INSECURE. Only for dns
+  // rules.
+  optional bool insecure_disable_dnssec_validation = 15;
+
+  // Block IPs in DNS category blocks, not just domain names. Only for dns and
+  // dns_resolver rules.
+  optional bool ip_categories = 16;
+
+  // Include IPs in DNS indicator-feed blocks, not just domain names. Only for
+  // dns and dns_resolver rules.
+  optional bool ip_indicator_feeds = 17;
+
+  // Destination override for matched traffic. Only for l4 rules with action
+  // l4_override.
+  CloudflareZeroTrustGatewayPolicyL4Override l4override = 18;
+
+  // Device notification shown when the rule matches. For any rule type with
+  // action block.
+  CloudflareZeroTrustGatewayPolicyNotificationSettings notification_settings = 19;
+
+  // Hostname answered for matched DNS queries. Only for dns rules with action
+  // override.
+  string override_host = 20;
+
+  // IP(s) answered for matched DNS queries. Only for dns rules with action
+  // override. KNOWN UPSTREAM DRIFT: the v5 provider shows computed-field
+  // drift on policies carrying override_ips even on first apply.
+  repeated string override_ips = 21;
+
+  // DLP payload logging. Only for http rules.
+  CloudflareZeroTrustGatewayPolicyPayloadLog payload_log = 22;
+
+  // Quarantine (sandbox) settings. Only for http rules with action quarantine.
+  CloudflareZeroTrustGatewayPolicyQuarantine quarantine = 23;
+
+  // Redirect settings. Only for http rules with action redirect.
+  CloudflareZeroTrustGatewayPolicyRedirect redirect = 24;
+
+  // Forward matched queries to the internal DNS service. Only for
+  // dns_resolver rules with action resolve; mutually exclusive with the other
+  // resolution mechanisms.
+  CloudflareZeroTrustGatewayPolicyResolveDnsInternally resolve_dns_internally = 25;
+
+  // Send matched queries to Cloudflare's public 1.1.1.1 resolver. Only for
+  // dns_resolver rules with action resolve; mutually exclusive with the other
+  // resolution mechanisms.
+  optional bool resolve_dns_through_cloudflare = 26;
+
+  // Replace (or add) headers on allowed requests: header name -> list of
+  // values. Values may interpolate `@{selector.name}` variables at the edge
+  // (escape a literal `@{` as `@@{`). Counts toward the 20 header-operation
+  // budget; values up to 4 KB. Only for http rules with action allow.
+  map<string, CloudflareZeroTrustGatewayPolicyStringList> set_headers = 27;
+
+  // Behavior when the upstream certificate is invalid or an SSL error occurs.
+  // Only for http rules with action allow.
+  CloudflareZeroTrustGatewayPolicyUntrustedCert untrusted_cert = 28;
+}
+
+// CloudflareZeroTrustGatewayPolicyStringList wraps a list of strings so it can
+// be a map value (proto maps cannot hold repeated values directly). The modules
+// unwrap it to the provider's plain map-of-lists shape.
+message CloudflareZeroTrustGatewayPolicyStringList {
+  // The values for this key.
+  repeated string values = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareZeroTrustGatewayPolicyAuditSsh configures the Audit SSH action.
+message CloudflareZeroTrustGatewayPolicyAuditSsh {
+  // Log the SSH commands executed in the session.
+  bool command_logging = 1;
+}
+
+// CloudflareZeroTrustGatewayPolicyBisoAdminControls tunes what users can do
+// inside an isolated browser session. Two generations coexist: the v2 string
+// controls (copy/download/paste/keyboard/printing/upload) apply when version is
+// v2; the v1 booleans (dcp/dd/dk/dp/du) apply when version is v1 (Cloudflare's
+// default). An absent v2 control leaves that capability ENABLED.
+message CloudflareZeroTrustGatewayPolicyBisoAdminControls {
+  // Which control generation applies. Leave empty for Cloudflare's default
+  // (v1). The v2 string controls below require "v2"; the v1 booleans require
+  // "v1".
+  string version = 1 [(buf.validate.field).cel = {
+    id: "biso.version_enum"
+    message: "version must be v1 or v2"
+    expression: "this == '' || this in ['v1', 'v2']"
+  }];
+
+  // v2: copy behavior. remote_only blocks copying isolated content to the
+  // local clipboard; absent leaves copying enabled.
+  string copy = 2 [(buf.validate.field).cel = {
+    id: "biso.copy_enum"
+    message: "copy must be enabled, disabled, or remote_only"
+    expression: "this == '' || this in ['enabled', 'disabled', 'remote_only']"
+  }];
+
+  // v2: download behavior. remote_only lets users view but not save downloads;
+  // absent leaves downloading enabled.
+  string download = 3 [(buf.validate.field).cel = {
+    id: "biso.download_enum"
+    message: "download must be enabled, disabled, or remote_only"
+    expression: "this == '' || this in ['enabled', 'disabled', 'remote_only']"
+  }];
+
+  // v2: paste behavior. remote_only blocks pasting local-clipboard content
+  // into isolated pages; absent leaves pasting enabled.
+  string paste = 4 [(buf.validate.field).cel = {
+    id: "biso.paste_enum"
+    message: "paste must be enabled, disabled, or remote_only"
+    expression: "this == '' || this in ['enabled', 'disabled', 'remote_only']"
+  }];
+
+  // v2: keyboard behavior; absent leaves keyboard usage enabled.
+  string keyboard = 5 [(buf.validate.field).cel = {
+    id: "biso.keyboard_enum"
+    message: "keyboard must be enabled or disabled"
+    expression: "this == '' || this in ['enabled', 'disabled']"
+  }];
+
+  // v2: print behavior; absent leaves printing enabled.
+  string printing = 6 [(buf.validate.field).cel = {
+    id: "biso.printing_enum"
+    message: "printing must be enabled or disabled"
+    expression: "this == '' || this in ['enabled', 'disabled']"
+  }];
+
+  // v2: upload behavior; absent leaves uploading enabled.
+  string upload = 7 [(buf.validate.field).cel = {
+    id: "biso.upload_enum"
+    message: "upload must be enabled or disabled"
+    expression: "this == '' || this in ['enabled', 'disabled']"
+  }];
+
+  // v1: set false to ENABLE copy-paste (the double negative is Cloudflare's).
+  optional bool dcp = 8;
+
+  // v1: set false to ENABLE downloading.
+  optional bool dd = 9;
+
+  // v1: set false to ENABLE keyboard usage.
+  optional bool dk = 10;
+
+  // v1: set false to ENABLE printing.
+  optional bool dp = 11;
+
+  // v1: set false to ENABLE uploading.
+  optional bool du = 12;
+
+  // Watermark ID (UUID) rendered over the isolated browser session, when set.
+  string wm_id = 13;
+}
+
+// CloudflareZeroTrustGatewayPolicyBlockPage redirects blocked users to a custom
+// page instead of the account-level block page.
+message CloudflareZeroTrustGatewayPolicyBlockPage {
+  // The URI the blocked user is redirected to.
+  string target_uri = 1 [(buf.validate.field).required = true];
+
+  // Pass the block context (rule, user, categories) as query parameters.
+  bool include_context = 2;
+}
+
+// CloudflareZeroTrustGatewayPolicyCheckSession enforces session freshness on
+// allowed traffic.
+message CloudflareZeroTrustGatewayPolicyCheckSession {
+  // The required session freshness threshold (e.g. "24h"). The API returns a
+  // normalized form ("24h0m0s") -- use it if the plan shows drift.
+  string duration = 1;
+
+  // Enforce the session check.
+  bool enforce = 2;
+}
+
+// CloudflareZeroTrustGatewayPolicyDnsResolvers routes matched queries to custom
+// upstream resolvers. Queries go to the resolver closest to their origin.
+message CloudflareZeroTrustGatewayPolicyDnsResolvers {
+  // IPv4 upstream resolvers.
+  repeated CloudflareZeroTrustGatewayPolicyDnsResolverV4 ipv4 = 1;
+
+  // IPv6 upstream resolvers.
+  repeated CloudflareZeroTrustGatewayPolicyDnsResolverV6 ipv6 = 2;
+}
+
+// CloudflareZeroTrustGatewayPolicyDnsResolverV4 is one IPv4 upstream resolver.
+message CloudflareZeroTrustGatewayPolicyDnsResolverV4 {
+  // Reaching a resolver inside a private network requires saying so.
+  option (buf.validate.message).cel = {
+    id: "resolver.vnet_requires_private_route"
+    message: "route_through_private_network must be true when vnet_id is set"
+    expression: "!has(this.vnet_id) || this.route_through_private_network"
+  };
+
+  // The resolver's IPv4 address.
+  string ip = 1 [(buf.validate.field).required = true];
+
+  // The resolver's port. Omit for 53.
+  optional int32 port = 2 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  // Connect to this resolver over a private network (a Zero Trust tunnel).
+  // Must be true when vnet_id is set.
+  bool route_through_private_network = 3;
+
+  // The virtual network the private resolver lives in: a literal virtual
+  // network UUID, or a reference to a CloudflareZeroTrustTunnelVirtualNetwork.
+  // Omit to use the account's default virtual network.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnelVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+}
+
+// CloudflareZeroTrustGatewayPolicyDnsResolverV6 is one IPv6 upstream resolver.
+message CloudflareZeroTrustGatewayPolicyDnsResolverV6 {
+  // Reaching a resolver inside a private network requires saying so.
+  option (buf.validate.message).cel = {
+    id: "resolver.vnet_requires_private_route"
+    message: "route_through_private_network must be true when vnet_id is set"
+    expression: "!has(this.vnet_id) || this.route_through_private_network"
+  };
+
+  // The resolver's IPv6 address.
+  string ip = 1 [(buf.validate.field).required = true];
+
+  // The resolver's port. Omit for 53.
+  optional int32 port = 2 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  // Connect to this resolver over a private network (a Zero Trust tunnel).
+  // Must be true when vnet_id is set.
+  bool route_through_private_network = 3;
+
+  // The virtual network the private resolver lives in: a literal virtual
+  // network UUID, or a reference to a CloudflareZeroTrustTunnelVirtualNetwork.
+  // Omit to use the account's default virtual network.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vnet_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnelVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+}
+
+// CloudflareZeroTrustGatewayPolicyEgress selects the dedicated egress IPs
+// matched proxy traffic leaves through.
+message CloudflareZeroTrustGatewayPolicyEgress {
+  // The dedicated IPv4 address to egress through.
+  string ipv4 = 1;
+
+  // The fallback IPv4 address when the primary fails. "0.0.0.0" means fall
+  // back to local egress via WARP IPs.
+  string ipv4_fallback = 2;
+
+  // The IPv6 range to egress through.
+  string ipv6 = 3;
+}
+
+// CloudflareZeroTrustGatewayPolicyForensicCopy sends a copy of the matched HTTP
+// request to storage.
+message CloudflareZeroTrustGatewayPolicyForensicCopy {
+  // Enable sending the copy to storage.
+  bool enabled = 1;
+}
+
+// CloudflareZeroTrustGatewayPolicyL4Override redirects matched network traffic
+// to a fixed destination.
+message CloudflareZeroTrustGatewayPolicyL4Override {
+  // The destination IPv4 or IPv6 address.
+  string ip = 1;
+
+  // The destination port for TCP/UDP overrides.
+  optional int32 port = 2 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+}
+
+// CloudflareZeroTrustGatewayPolicyNotificationSettings shows a notification on
+// the user's device when the rule matches.
+message CloudflareZeroTrustGatewayPolicyNotificationSettings {
+  // Enable the notification.
+  bool enabled = 1;
+
+  // Pass the block context as query parameters on the support URL.
+  bool include_context = 2;
+
+  // The message shown in the notification.
+  string msg = 3;
+
+  // A URL directing users to more information. Omit to open the block page.
+  string support_url = 4;
+}
+
+// CloudflareZeroTrustGatewayPolicyPayloadLog configures DLP payload logging.
+message CloudflareZeroTrustGatewayPolicyPayloadLog {
+  // Enable DLP payload logging for this rule.
+  bool enabled = 1;
+}
+
+// CloudflareZeroTrustGatewayPolicyQuarantine sandboxes matched file downloads.
+message CloudflareZeroTrustGatewayPolicyQuarantine {
+  // The file types to sandbox.
+  repeated string file_types = 1 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "exe",
+        "pdf",
+        "doc",
+        "docm",
+        "docx",
+        "rtf",
+        "ppt",
+        "pptx",
+        "xls",
+        "xlsm",
+        "xlsx",
+        "zip",
+        "rar"
+      ]
+    }
+  }];
+}
+
+// CloudflareZeroTrustGatewayPolicyRedirect redirects the matched request.
+message CloudflareZeroTrustGatewayPolicyRedirect {
+  // The URI the user is redirected to.
+  string target_uri = 1 [(buf.validate.field).required = true];
+
+  // Pass the block context as query parameters.
+  bool include_context = 2;
+
+  // Append the original request's path and query to target_uri.
+  bool preserve_path_and_query = 3;
+}
+
+// CloudflareZeroTrustGatewayPolicyResolveDnsInternally forwards matched queries
+// to the internal DNS service.
+message CloudflareZeroTrustGatewayPolicyResolveDnsInternally {
+  // Fallback when the internal response is not NOERROR, or when an A/AAAA
+  // answer carries only CNAMEs: none (return as-is) or public_dns.
+  string fallback = 1 [(buf.validate.field).cel = {
+    id: "resolve_internally.fallback_enum"
+    message: "fallback must be none or public_dns"
+    expression: "this == '' || this in ['none', 'public_dns']"
+  }];
+
+  // The internal DNS view ID passed to the internal DNS service.
+  string view_id = 2;
+}
+
+// CloudflareZeroTrustGatewayPolicyUntrustedCert decides what happens when the
+// upstream certificate is invalid or an SSL error occurs.
+message CloudflareZeroTrustGatewayPolicyUntrustedCert {
+  // The action taken: pass_through, block, or error (the default, an HTTP 526).
+  string action = 1 [(buf.validate.field).cel = {
+    id: "untrusted_cert.action_enum"
+    message: "action must be pass_through, block, or error"
+    expression: "this == '' || this in ['pass_through', 'block', 'error']"
+  }];
+}

@@ -1,0 +1,42 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsbedrockguardrail
+spec:
+  presets:
+    - preset: 01-content-safety-baseline
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the six content filters bill as ONE family at $0.15 per 1,000 text units evaluated (a text unit is up to 1,000 characters) -- traffic-driven, with no free allotment
+        - the managed profanity word filter is permanently free per AWS's pricing table, so only the content-filter meter bills on this preset
+        - publishing the prod version costs nothing -- versions are immutable snapshots with no meter
+      notes: Zero committed cost -- the guardrail and its published version bill nothing at rest; the text-unit meter starts with the first model input or output evaluated, which the manifest cannot see.
+    - preset: 02-pii-redaction
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the PII entity list bills as one family at $0.10 per 1,000 text units evaluated -- eleven entity types cost the same as one, and BLOCK versus ANONYMIZE changes behavior, not price
+        - the internal-ticket-id regex filter is permanently free per AWS's pricing table -- custom-pattern redaction adds no meter
+      notes: Zero committed cost -- a redaction guardrail is free at rest, and the zero is commitment-absence; spend scales with the characters of model traffic screened, at one $0.10-per-1,000-unit meter.
+    - preset: 03-topic-denylist-rag
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - denied topics bill at $0.15 per 1,000 text units (STANDARD tier prices identically to CLASSIC) and grounding checks add a second, independent $0.10-per-1,000-unit meter on the same traffic
+        - grounding text units count the COMBINED retrieved source material, query, and response -- RAG contexts make this the preset's dominant meter well beyond visible message length
+        - cross-region evaluation through us.guardrail.v1:0 carries no premium -- AWS documents no additional routing cost, priced from the calling region
+      notes: Zero committed cost -- the two-family RAG guardrail bills nothing at rest; per-conversation spend is additive across families ($0.25 per 1,000 text units when both fire), started only by guarded traffic.

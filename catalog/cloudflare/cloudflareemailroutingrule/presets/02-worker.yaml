@@ -13,10 +13,10 @@ spec:
     - type: literal
       field: to
       value: <matched-address>
-  action:
-    type: worker
-    worker:
-      valueFrom:
-        kind: CloudflareWorker
-        name: <email-worker-name>
-        fieldPath: status.outputs.script_name
+  actions:
+    - type: worker
+      worker:
+        valueFrom:
+          kind: CloudflareWorker
+          name: <email-worker-name>
+          fieldPath: status.outputs.script_name

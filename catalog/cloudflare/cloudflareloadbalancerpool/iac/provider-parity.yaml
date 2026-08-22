@@ -1,0 +1,57 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  cloudflare_load_balancer_pool:
+    mappings:
+      # The provider's nested object attributes (each a single configurable
+      # argument) are modeled as typed messages in the spec; fan-in mappings
+      # record every spec leaf each argument realizes.
+      - spec: spec.load_shedding.default_percent
+        arg: load_shedding
+      - spec: spec.load_shedding.default_policy
+        arg: load_shedding
+      - spec: spec.load_shedding.session_percent
+        arg: load_shedding
+      - spec: spec.load_shedding.session_policy
+        arg: load_shedding
+      - spec: spec.notification_filter.origin.disable
+        arg: notification_filter
+      - spec: spec.notification_filter.origin.healthy
+        arg: notification_filter
+      - spec: spec.notification_filter.pool.disable
+        arg: notification_filter
+      - spec: spec.notification_filter.pool.healthy
+        arg: notification_filter
+      - spec: spec.origin_steering.policy
+        arg: origin_steering
+      # origins: the provider's per-origin header block (a nested object
+      # holding a `host` string list) is flattened to one host_header string
+      # per origin, matching Cloudflare's actual constraint of a single Host
+      # override per origin.
+      - spec: spec.origins.address
+        arg: origins
+      - spec: spec.origins.enabled
+        arg: origins
+      - spec: spec.origins.flatten_cname
+        arg: origins
+      - spec: spec.origins.host_header
+        arg: origins
+      - spec: spec.origins.name
+        arg: origins
+      - spec: spec.origins.port
+        arg: origins
+      - spec: spec.origins.virtual_network_id
+        arg: origins
+      - spec: spec.origins.weight
+        arg: origins
+    exclusions:
+      - arg: monitor_group
+        reason: deliberately unmodeled -- the spec reserves the field (an account-scoped monitor-group is a niche enterprise feature; a single monitor reference serves the common case) until a CloudflareLoadBalancerMonitorGroup kind exists to reference
+      - arg: notification_email
+        reason: deprecated by Cloudflare in the argument's own provider documentation -- health notifications moved to the account-level Centralized Notification service, which is not per-pool surface

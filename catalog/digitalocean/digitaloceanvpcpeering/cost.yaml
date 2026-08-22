@@ -1,0 +1,17 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanvpcpeering
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: vpc_2
+      sku_meter: cross-datacenter peering bandwidth
+      pricing_unit: GiB
+      impact: "Where the two peered VPCs sit decides whether traffic bills at all. VPCs in the same datacenter exchange traffic free; when vpc_1 and vpc_2 live in different datacenters, every GiB crossing the peering costs $0.01. The peering is symmetric, so the pairing -- not which side is which -- is the whole decision."
+  estimate_exclusions:
+    - "cross-datacenter peering traffic bills $0.01 per GiB and is pure runtime behavior no manifest can predict; same-datacenter peerings meter nothing"
+  notes: "Corrected from an earlier blanket-free claim: the peering connection itself is free to create and hold, and DigitalOcean's VPC pricing page confirms 'Network traffic is free within a VPC network or between peered VPC networks in the same datacenter' -- but the same page states 'Bandwidth between peered VPC networks in two different datacenters costs $0.01 per GiB' (https://docs.digitalocean.com/products/networking/vpc/details/pricing/, fetched 2026-08-22). So a same-datacenter peering never appears on an invoice, while a cross-datacenter peering is a usage meter waiting on traffic: an idle one still costs nothing, which is why the class is usage_based rather than free."

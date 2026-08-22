@@ -1,0 +1,23 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskarapace
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a registry pod carrying the declared resource requests. Replicas elect a leader through a consumer group and followers forward writes -- more than one replica is an availability measure, not a write-scaling one.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per registry pod. Karapace is deliberately lightweight -- modest requests go far.
+    - field_path: rest_proxy
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, the REST-proxy role deploys a SECOND, independently-sized Deployment of the same engine -- rest_proxy.replicas x rest_proxy.resources adds its own reservation on top of the registry's.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "schema storage is Kafka-native -- the compacted schemas topic lives on the connected Kafka cluster and its bytes ride that cluster's footprint, not this one"
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its pods reserve, realized on the cluster's bill. No PVCs and no database: the registry's entire state is a compacted topic on the connected Kafka cluster. An honest manifest-time statement is the capacity footprint: replicas x requests, plus the proxy Deployment when rest_proxy is enabled."

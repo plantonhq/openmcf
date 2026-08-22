@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication paths of its own; the namespace's SAS-versus-Entra switch is unrelated to how Azure unwraps encryption keys.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Applying or changing the encryption configuration lands in the Azure Activity Log as subscription-level posture; the service's wrap/unwrap calls against the vault are auditable in the VAULT's diagnostic logs, a separate kind's posture.

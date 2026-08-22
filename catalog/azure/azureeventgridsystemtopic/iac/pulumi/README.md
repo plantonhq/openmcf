@@ -26,4 +26,4 @@ Creates an Azure Event Grid system topic -- the subscription surface for events 
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.EventGrid/systemTopics/*` (EventGrid Contributor covers it) plus read access on the source resource.
+The deployer permissions this module needs are cataloged in [`../permissions.yaml`](../permissions.yaml).

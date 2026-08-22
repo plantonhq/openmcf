@@ -1,0 +1,76 @@
+# Routing CloudflareAiGateway scenario: a gateway carrying retries, log
+# management, gateway authentication, guardrails, a spend cap, and one
+# dynamic route with a conditional graph -- the folded per-route object's
+# first live proof (the provider ships no acceptance tests for it). Free
+# tier: guardrails/spend-limits/routing are gateway-config features, and no
+# model traffic ever flows in the lane.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: planton-oss-e2e-cloudflareaigateway-routing
+  id: planton-oss-e2e-cloudflareaigateway-routing
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  gateway_id: e2e-aig-rt-${E2E_RUN_ID}
+  cache_invalidate_on_update: true
+  cache_ttl: 0
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 100
+  rate_limiting_technique: sliding
+  retry:
+    backoff: exponential
+    delay: 500
+    max_attempts: 2
+  log_management:
+    max_records: 10000
+    strategy: DELETE_OLDEST
+  authentication: true
+  guardrails:
+    prompt:
+      p1: FLAG
+    response: {}
+  spend_limits:
+    enabled: true
+    rules:
+      - id: e2e-daily-cap
+        limit: 1
+        limit_type: cost
+        window: 86400
+  dynamic_routes:
+    - name: e2e-route
+      elements:
+        - id: start
+          type: start
+          outputs:
+            next:
+              element_id: check
+        - id: check
+          type: conditional
+          outputs:
+            on_true:
+              element_id: cheap
+            on_false:
+              element_id: done
+          properties:
+            conditions: '{"metadata.tier": {"$eq": "free"}}'
+        - id: cheap
+          type: model
+          outputs:
+            success:
+              element_id: done
+          properties:
+            model: "@cf/meta/llama-3.1-8b-instruct"
+            provider: workers-ai
+        - id: done
+          type: end
+          outputs: {}

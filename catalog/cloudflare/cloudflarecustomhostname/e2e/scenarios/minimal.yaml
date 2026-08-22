@@ -1,0 +1,26 @@
+# Minimal CloudflareCustomHostname scenario: hostname only -- Cloudflare
+# provisions a DV certificate with defaults. The zone_id resolves from the
+# CloudflareDnsZone prerequisite. The hostname composes the SAME run token
+# the zone fixture uses (Access self-hosted precedent). Ownership
+# verification sits pending on an undelegated zone.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCustomHostname
+metadata:
+  name: planton-oss-e2e-cloudflarecustomhostname-minimal
+  id: planton-oss-e2e-cloudflarecustomhostname-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarecustomhostname
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  hostname: saas.planton-e2e-${E2E_RUN_ID}.com

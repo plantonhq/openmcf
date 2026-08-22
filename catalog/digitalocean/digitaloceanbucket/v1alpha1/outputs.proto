@@ -2,11 +2,27 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceanbucket.v1alpha1;
 
-// DigitalOceanBucketStackOutputs captures the resulting bucket info after provisioning.
+// DigitalOceanBucketStackOutputs captures the bucket's identity and
+// addressing endpoints after provisioning.
 message DigitalOceanBucketStackOutputs {
-  // Unique identifier for the bucket (UUID format)
+  // The provider's resource id for the bucket, which IS the bucket name --
+  // Spaces buckets have no separate UUID. Import addressing pairs it with
+  // the region ("<region>,<name>").
   string bucket_id = 1;
 
-  // Regional endpoint URL for the bucket (e.g., "https://<region>.digitaloceanspaces.com")
+  // The region-level Spaces endpoint host ("<region>.digitaloceanspaces.com",
+  // without the bucket name or a scheme). Pair it with the bucket name for
+  // path-style access.
   string endpoint = 2;
+
+  // The region slug the bucket lives in, read back from the API -- set even
+  // when spec.region was omitted and the provider default applied.
+  string region = 3;
+
+  // The bucket's virtual-host-style FQDN
+  // ("<bucket>.<region>.digitaloceanspaces.com").
+  string bucket_domain_name = 4;
+
+  // The uniform resource name of the bucket ("do:space:<name>").
+  string urn = 5;
 }

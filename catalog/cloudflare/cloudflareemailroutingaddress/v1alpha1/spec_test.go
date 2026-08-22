@@ -33,6 +33,18 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingAddressSpec Custom Validation Tes
 		ginkgo.It("accepts a valid destination address", func() {
 			gomega.Expect(protovalidate.Validate(validAddress())).To(gomega.BeNil())
 		})
+
+		ginkgo.It("accepts an explicit unverified status", func() {
+			in := validAddress()
+			in.Spec.Status = "unverified"
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an explicit verified status", func() {
+			in := validAddress()
+			in.Spec.Status = "verified"
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -51,6 +63,12 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingAddressSpec Custom Validation Tes
 		ginkgo.It("rejects a malformed email", func() {
 			in := validAddress()
 			in.Spec.Email = "not-an-email"
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an unknown status value", func() {
+			in := validAddress()
+			in.Spec.Status = "pending"
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 	})

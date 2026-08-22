@@ -1,0 +1,15 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- mode, size, db_name, and user all match
+# by exact name; the two renames below are the whole story.
+resources:
+  digitalocean_database_connection_pool:
+    mappings:
+      # The cluster reference is a StringValueOrRef FK to the
+      # DigitalOceanDatabaseCluster kind.
+      - spec: spec.cluster
+        arg: cluster_id
+      - spec: spec.pool_name
+        arg: name

@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The catalog page additionally names the account-scoped "Load Balancing:
+# Monitors and Pools Edit" group -- that group belongs to the companion
+# CloudflareLoadBalancerPool and CloudflareLoadBalancerMonitor components
+# (this load balancer only REFERENCES pools by ID; its modules never call
+# the account-level pool or monitor APIs), so it lives in those components'
+# inventories, not this one.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareloadbalancer
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageLoadBalancer
+        name: Load Balancers Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_load_balancer resource and the Pulumi module's matching LoadBalancer resource -- create/update/delete the zone's load balancer via POST/PUT/DELETE /zones/{zone_id}/load_balancers[/{id}] (derived from the module's API surface; neither engine performs secondary lookups -- pool references arrive pre-resolved as IDs; the shared create endpoint reference's "Accepted Permissions" section names "Load Balancers Account Write" for its account-level arm -- https://developers.cloudflare.com/api/resources/load_balancers/methods/create/, retrieved 2026-08-22 -- while these modules use only the zone-scoped arm, which the general reference covers with this group). Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadLoadBalancer
+        name: Load Balancers Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the load balancer via GET /zones/{zone_id}/load_balancers/{id} (derived from the module's API surface).

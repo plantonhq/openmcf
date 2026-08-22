@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsroute53resolverfirewall
+spec:
+  presets:
+    - preset: 01-blocklist-sinkhole
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AmazonRoute53
+          sku_meter: firewall domain storage
+          pricing_unit: domain-months
+          pricing_quantity: "2"
+          quantity_basis: the blocked-domains list stores 2 domains (malware.example. and phishing.example.), each billing per domain-month while the list exists
+          list_unit_price: "0.0005"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "0.0010"
+      total_list_cost: "0.0010"
+      exclusions:
+        - every DNS query from the associated app VPC that the firewall inspects bills $0.60 per million (first billion each month, then $0.40) -- query volume is the VPC's workload behavior
+        - the sinkhole OVERRIDE response and the block action itself cost nothing extra; visibility into blocked queries rides Resolver Query Logging, a separate resource
+      notes: "All rules match by owned domain list, so the group is a STANDARD firewall -- the VPC association is free to exist and no hourly meter runs. Committed spend is the two stored domains: $0.001 a month; the real bill is the per-query inspection on traffic."
+    - preset: 02-advanced-threat-alert
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AmazonRoute53
+          sku_meter: advanced threat protection hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: both rules match by dns_threat_protection (DGA and DNS_TUNNELING), making this a DNS Firewall Advanced group -- its single app-vpc association bills every hour of the month; a second associated VPC would add another 730 hours
+          list_unit_price: "0.16"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "116.8000"
+      total_list_cost: "116.8000"
+      exclusions:
+        - the group owns no domain lists and its threat rules carry no per-query inspection meter in the offer -- but adding any list-based rule later would start the per-domain storage and per-query inspection charges
+        - ALERT matches surface through Resolver Query Logging, a separate resource whose log destinations bill their own components
+      notes: "The Advanced fee follows the ASSOCIATION, not the rule count: one threat rule or ten, each associated VPC bills the same $0.16/hour (~$116.80 a month). Both rules alert at HIGH confidence -- tightening to LOW/MEDIUM changes detection sensitivity, never the price."

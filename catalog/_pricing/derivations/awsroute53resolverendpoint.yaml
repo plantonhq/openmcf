@@ -1,0 +1,40 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsRoute53ResolverEndpoint manifest's spec values into metered
+# quantities and price choices. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/awsroute53resolverendpoint.yaml; a server-side estimator
+# evaluates the same rules against live manifests. Prices live in the
+# provider's price book (../pricebook/). Grammar-reachable: the
+# committed meter is one ENI per ip_addresses entry x hours in the
+# month. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: resolver network interface hours
+      quantity:
+        - count_of: ip_addresses
+        - hours_in_month: true
+      price_slug: route53-resolver-eni-hours-us-east-1
+      basis: one resolver network interface per ip_addresses entry (AWS requires 2-10), each billing every hour of the month from creation -- queries or none
+  exclusions:
+    - text: queries through the endpoint bill $0.40 per million for the first billion each month and $0.20 per million beyond (us-east-1) -- query volume is workload DNS behavior no manifest can know
+    - applies_when:
+        - field_path: rni_enhanced_metrics_enabled
+          op: equals
+          value: "true"
+      text: enhanced resolver-network-interface metrics publish extra CloudWatch vended metrics, billed on the account's CloudWatch meters
+    - applies_when:
+        - field_path: rules
+          op: is_set
+      text: forwarding rules and their VPC associations are free to exist -- their cost effect is the per-query meter on the traffic they steer through the endpoint
+  notes:
+    - text: DoH and DoH-FIPS interfaces meter under the security-enabled usage type at the same $0.125/hour us-east-1 rate as plain Do53 -- a SKU distinction, not a price one, so the estimate's dollars hold for every protocols choice there.
+    - text: The two-ENI minimum makes $182.50/month the committed floor of every endpoint; each ENI beyond it adds $91.25.

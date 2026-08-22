@@ -1,0 +1,21 @@
+# CloudflareLoadBalancerMonitor install profile used as a scenario-declared
+# prerequisite by CloudflareLoadBalancerPool's `monitored` arm (a pool does
+# not require a monitor, so the edge is per-scenario, never registry). HTTP
+# defaults; no port. The existing load-balancer pool fixture does NOT use
+# this file. Requires the Load Balancing add-on.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerMonitor
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancermonitor-prereq
+  id: planton-oss-e2e-cloudflareloadbalancermonitor-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancermonitor
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

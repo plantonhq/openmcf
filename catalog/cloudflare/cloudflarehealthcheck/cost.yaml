@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarehealthcheck
+spec:
+  billing_model: free
+  notes: Standalone health checks are a paid zone feature -- Pro plans include a small allotment, Business and Enterprise more. Creating a check within the allotment creates no charge of its own; extra checks and the Health Checks add-on bill on the zone plan, never through this component. Applying this resource to a free zone fails the apply rather than incurring cost.

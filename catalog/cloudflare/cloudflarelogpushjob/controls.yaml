@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The job stores nothing; encryption at rest is the destination's posture (the R2/S3/GCS bucket the logs land in).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface of its own.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare delivers batches over HTTPS to every supported destination type; the destination URI schemes the API accepts are TLS-backed.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A delivery pipeline with no listener of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface; the job pushes outbound to the configured destination.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Logs originate inside Cloudflare's edge with its standard DDoS posture; the job is a control-plane object.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create jobs is Cloudflare account-membership and API-token-scope posture (Logs Write).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Cloudflare authenticates to the destination with the credentials embedded in destination_conf; there is no federated identity option at the provider.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No user-auth surface.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Job create/update/delete land in the Cloudflare account audit log; the component's whole purpose is exporting the platform's own logs.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: dataset
+      evidence:
+        type: spec_default
+        reference: This component IS the monitoring-integration surface -- it ships Cloudflare's log datasets to the operator's own SIEM or analytics stack.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Configuration-only surface, reproducible from the manifest; shipped log objects are the destination's to retain.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention belongs to the destination bucket's lifecycle policy, not to the job.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare-operated SaaS delivery on its global network; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No provider-side deletion guard; deleting a job silently stops log delivery (see GUIDE.md).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

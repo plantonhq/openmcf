@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecomputegalleryimage
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Image version replicas are stored as managed-disk snapshots, encrypted at rest by Azure's always-on server-side encryption with platform-managed keys by default -- no configuration can disable it."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: versions.target_regions.disk_encryption_set_id
+      evidence:
+        type: spec_default
+        reference: "Unset, replicas encrypt under platform-managed keys. Set per target region, that region's replicas encrypt under the referenced disk encryption set's customer-managed key -- per-region key custody for the image bytes. A spec validation rule makes the incompatible combination unrepresentable: Shallow replication_mode forbids disk_encryption_set_id in target_regions."
+      notes: "Neither preset sets it -- base-image content rarely warrants CMK; regulated image pipelines opt in per region. VMs deployed FROM a CMK-encrypted version need access to the same disk encryption set, a composition fact on the consumer side."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "The image has no client data plane; cross-region replication is Microsoft-operated transfer inside Azure's storage infrastructure, with no customer transport surface. VMs consume versions through ARM-mediated platform reads."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "Definitions and versions have no network endpoint. WHO can deploy from them is the parent gallery's sharing posture (private RBAC, direct-share, or Community) -- a deliberate choice on the AzureComputeGallery component, not here."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "No inbound network path exists to restrict."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No request path exists to filter."
+    - control_id: rbac
+      status: not_applicable
+      notes: "Deploying from, reading, and managing the image are ARM RBAC decisions at the gallery/resource-group scope -- subscription-side posture, with no authentication plane on the image itself. Community-shared galleries deliberately widen deploy access; that lever lives on the gallery kind."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The image runs no workloads and holds no credentials. What the baked OS contains is the build pipeline's responsibility -- a hardened base image should ship WITHOUT static cloud credentials, which is image content, not spec posture."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "No authentication paths of its own. The definition's security flags (trusted_launch_supported/enabled, confidential_vm_supported/enabled) govern the SECURITY POSTURE OF VMS deployed from it -- the Linux Gen2 preset ships trusted-launch SUPPORTED so consumers can choose secure boot and vTPM without being forced."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Definition and version create/update/delete land in the Azure Activity Log automatically as ARM operations; no per-image log toggle exists."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Images publish no platform metrics. Replication progress per region is readable on the version resource during publish -- an ARM status surface, not a metric export, with no toggle in this spec."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Versions are immutable release artifacts, rebuildable from their declared sources (the disk snapshot, managed image, or VHD) plus this manifest -- treat versions as cattle, publish a new one per build, never rebuild in place. Multi-region target_regions incidentally gives every version off-region copies; there is no backup surface to configure."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain. end_of_life_date is advisory metadata to consumers, not a retention or deletion mechanism -- expired versions keep existing (and billing) until deleted."
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: versions.target_regions.storage_account_type
+      evidence:
+        type: spec_default
+        reference: "Unset, a region's replicas store as Standard_LRS -- locally redundant, single-zone durability. Standard_ZRS spreads that region's replicas across availability zones; and independently, listing multiple target_regions replicates the version across regions entirely."
+      notes: "Azure cannot change a region's storage_account_type in place -- remove and re-add the region to migrate. Both presets ride the LRS default with a single region, appropriate while the fleet is single-region; add regions or ZRS as consumers spread."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists on definitions or versions; ARM locks are subscription-side governance. The spec's related levers are softer: exclude_from_latest retires a version from \"latest\" resolution without deleting it (the safe first step), and deletion_of_replicated_locations_enabled gates whether a version delete may sweep its regional replicas."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: "Two layers, deliberately split: the gallery/replication machinery is Microsoft-managed with no customer patch surface, but the IMAGE CONTENT -- the OS and packages VMs boot from -- is patched by the owner's pipeline publishing a NEW version (and steering consumers with exclude_from_latest), never by mutating an existing one. Calling this control satisfied would hide exactly the responsibility the component exists to carry."

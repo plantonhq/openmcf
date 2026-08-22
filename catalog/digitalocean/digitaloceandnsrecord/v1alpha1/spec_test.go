@@ -15,442 +15,251 @@ func TestDigitalOceanDnsRecordSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "DigitalOceanDnsRecordSpec Custom Validation Tests")
 }
 
-// Helper to create StringValueOrRef with direct value
+// strVal builds a StringValueOrRef carrying a literal value.
 func strVal(s string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: s},
 	}
 }
 
-// Helper function for optional int32 fields
+// int32Ptr returns a pointer for optional int32 fields.
 func int32Ptr(i int32) *int32 {
 	return &i
+}
+
+// record returns a valid A record the tests mutate per case.
+func record() *DigitalOceanDnsRecord {
+	return &DigitalOceanDnsRecord{
+		ApiVersion: "digital-ocean.planton.dev/v1alpha1",
+		Kind:       "DigitalOceanDnsRecord",
+		Metadata: &shared.CloudResourceMetadata{
+			Name: "test-record",
+		},
+		Spec: &DigitalOceanDnsRecordSpec{
+			Domain: strVal("example.com"),
+			Name:   "www",
+			Type:   DigitalOceanDnsRecordSpec_A,
+			Value:  strVal("192.0.2.1"),
+		},
+	}
 }
 
 var _ = ginkgo.Describe("DigitalOceanDnsRecordSpec Custom Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("digitalocean_dns_record", func() {
 
-			ginkgo.It("should not return a validation error for minimal valid A record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-a-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "www",
-						Type:   DigitalOceanDnsRecordSpec_A,
-						Value:  strVal("192.0.2.1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a minimal A record", func() {
+			gomega.Expect(protovalidate.Validate(record())).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for AAAA record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-aaaa-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "www",
-						Type:   DigitalOceanDnsRecordSpec_AAAA,
-						Value:  strVal("2001:db8::1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an AAAA record", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_AAAA
+			input.Spec.Value = strVal("2001:db8::1")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for CNAME record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-cname-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "app",
-						Type:   DigitalOceanDnsRecordSpec_CNAME,
-						Value:  strVal("target.example.com"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a CNAME record", func() {
+			input := record()
+			input.Spec.Name = "app"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CNAME
+			input.Spec.Value = strVal("target.example.com")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for MX record with priority", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-mx-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "@",
-						Type:     DigitalOceanDnsRecordSpec_MX,
-						Value:    strVal("mail.example.com"),
-						Priority: 10,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an MX record with a priority", func() {
+			input := record()
+			input.Spec.Name = "@"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_MX
+			input.Spec.Value = strVal("mail.example.com")
+			input.Spec.Priority = int32Ptr(10)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for TXT record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-txt-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_TXT,
-						Value:  strVal("v=spf1 include:_spf.google.com ~all"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an MX record with an explicit zero priority", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_MX
+			input.Spec.Value = strVal("mail.example.com")
+			input.Spec.Priority = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for SRV record with required fields", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-srv-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "_sip._tcp",
-						Type:     DigitalOceanDnsRecordSpec_SRV,
-						Value:    strVal("sipserver.example.com"),
-						Priority: 10,
-						Weight:   5,
-						Port:     5060,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a TXT record", func() {
+			input := record()
+			input.Spec.Name = "@"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_TXT
+			input.Spec.Value = strVal("v=spf1 include:_spf.google.com ~all")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for CAA record with tag", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-caa-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_CAA,
-						Value:  strVal("letsencrypt.org"),
-						Flags:  0,
-						Tag:    "issue",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an SRV record with priority, weight, and port", func() {
+			input := record()
+			input.Spec.Name = "_sip._tcp"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SRV
+			input.Spec.Value = strVal("sip.example.com")
+			input.Spec.Priority = int32Ptr(10)
+			input.Spec.Weight = int32Ptr(60)
+			input.Spec.Port = int32Ptr(5060)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for record with custom TTL", func() {
-				ttlSeconds := int32(3600)
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ttl-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:     strVal("example.com"),
-						Name:       "www",
-						Type:       DigitalOceanDnsRecordSpec_A,
-						Value:      strVal("192.0.2.1"),
-						TtlSeconds: &ttlSeconds,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts a CAA record with flags and tag", func() {
+			input := record()
+			input.Spec.Name = "@"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CAA
+			input.Spec.Value = strVal("letsencrypt.org")
+			input.Spec.Flags = int32Ptr(0)
+			input.Spec.Tag = "issue"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for root domain record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-root-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_A,
-						Value:  strVal("192.0.2.1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an NS record", func() {
+			input := record()
+			input.Spec.Name = "sub"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_NS
+			input.Spec.Value = strVal("ns1.example.com")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should not return a validation error for NS record", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-ns-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_NS,
-						Value:  strVal("ns1.digitalocean.com"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts an SOA record", func() {
+			input := record()
+			input.Spec.Name = "@"
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SOA
+			input.Spec.Value = strVal("ns1.digitalocean.com")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the provider's TTL floor of 1 second", func() {
+			input := record()
+			input.Spec.TtlSeconds = int32Ptr(1)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a domain reference instead of a literal", func() {
+			input := record()
+			input.Spec.Domain = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "my-zone"},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("digitalocean_dns_record", func() {
 
-			ginkgo.It("should return a validation error when domain is missing", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Name:  "www",
-						Type:  DigitalOceanDnsRecordSpec_A,
-						Value: strVal("192.0.2.1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a missing domain", func() {
+			input := record()
+			input.Spec.Domain = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when name is missing", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Type:   DigitalOceanDnsRecordSpec_A,
-						Value:  strVal("192.0.2.1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a missing name", func() {
+			input := record()
+			input.Spec.Name = ""
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when type is unspecified", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "www",
-						Type:   DigitalOceanDnsRecordSpec_record_type_unspecified,
-						Value:  strVal("192.0.2.1"),
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a missing value", func() {
+			input := record()
+			input.Spec.Value = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error when value is missing", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "www",
-						Type:   DigitalOceanDnsRecordSpec_A,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an unspecified type", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_record_type_unspecified
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for TTL below minimum", func() {
-				ttlSeconds := int32(10)
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:     strVal("example.com"),
-						Name:       "www",
-						Type:       DigitalOceanDnsRecordSpec_A,
-						Value:      strVal("192.0.2.1"),
-						TtlSeconds: &ttlSeconds,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a TTL of zero", func() {
+			input := record()
+			input.Spec.TtlSeconds = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for TTL exceeding max", func() {
-				ttlSeconds := int32(100000)
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:     strVal("example.com"),
-						Name:       "www",
-						Type:       DigitalOceanDnsRecordSpec_A,
-						Value:      strVal("192.0.2.1"),
-						TtlSeconds: &ttlSeconds,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an MX record without priority", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_MX
+			input.Spec.Value = strVal("mail.example.com")
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for negative priority", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "@",
-						Type:     DigitalOceanDnsRecordSpec_MX,
-						Value:    strVal("mail.example.com"),
-						Priority: -1,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an SRV record without port", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SRV
+			input.Spec.Priority = int32Ptr(10)
+			input.Spec.Weight = int32Ptr(60)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for priority exceeding max", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "@",
-						Type:     DigitalOceanDnsRecordSpec_MX,
-						Value:    strVal("mail.example.com"),
-						Priority: 70000,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an SRV record without weight", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SRV
+			input.Spec.Priority = int32Ptr(10)
+			input.Spec.Port = int32Ptr(5060)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for SRV record without port", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "_sip._tcp",
-						Type:     DigitalOceanDnsRecordSpec_SRV,
-						Value:    strVal("sipserver.example.com"),
-						Priority: 10,
-						Weight:   5,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an SRV record without priority", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SRV
+			input.Spec.Weight = int32Ptr(60)
+			input.Spec.Port = int32Ptr(5060)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for CAA record without tag", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_CAA,
-						Value:  strVal("letsencrypt.org"),
-						Flags:  0,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a CAA record without tag", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CAA
+			input.Spec.Flags = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for port exceeding max", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain:   strVal("example.com"),
-						Name:     "_sip._tcp",
-						Type:     DigitalOceanDnsRecordSpec_SRV,
-						Value:    strVal("sipserver.example.com"),
-						Priority: 10,
-						Weight:   5,
-						Port:     70000,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a CAA record without flags", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CAA
+			input.Spec.Tag = "issue"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			ginkgo.It("should return a validation error for flags exceeding max", func() {
-				input := &DigitalOceanDnsRecord{
-					ApiVersion: "digital-ocean.planton.dev/v1alpha1",
-					Kind:       "DigitalOceanDnsRecord",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "test-record",
-					},
-					Spec: &DigitalOceanDnsRecordSpec{
-						Domain: strVal("example.com"),
-						Name:   "@",
-						Type:   DigitalOceanDnsRecordSpec_CAA,
-						Value:  strVal("letsencrypt.org"),
-						Flags:  256,
-						Tag:    "issue",
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an invalid CAA tag value", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CAA
+			input.Spec.Flags = int32Ptr(0)
+			input.Spec.Tag = "invalid"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative priority", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_MX
+			input.Spec.Priority = int32Ptr(-1)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a priority above 65535", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_MX
+			input.Spec.Priority = int32Ptr(65536)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a port above 65535", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_SRV
+			input.Spec.Priority = int32Ptr(10)
+			input.Spec.Weight = int32Ptr(60)
+			input.Spec.Port = int32Ptr(65536)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects flags above 255", func() {
+			input := record()
+			input.Spec.Type = DigitalOceanDnsRecordSpec_CAA
+			input.Spec.Flags = int32Ptr(256)
+			input.Spec.Tag = "issue"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 })

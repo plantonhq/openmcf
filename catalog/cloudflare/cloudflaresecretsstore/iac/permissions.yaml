@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The general API token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22) lists NO Secrets Store group; the group names below
+# are verbatim from the Secrets Store access-control page
+# (https://developers.cloudflare.com/secrets-store/access-control/,
+# retrieved 2026-08-22), which documents the product's two API token
+# permission levels.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflaresecretsstore
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageStore
+        name: Secrets Store Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Covers the Terraform module's single cloudflare_secrets_store resource and the Pulumi module's matching SecretsStore resource -- create the store via POST /accounts/{account_id}/secrets_store/stores and delete it via DELETE /accounts/{account_id}/secrets_store/stores/{store_id} (both spec fields are create-only, so every change is a replace -- delete + create) (derived from the module's API surface; neither engine performs secondary lookups or data-source reads). Name note: the docs-site permissions reference spells this group \"Account Secrets Store Edit\" (retrieved 2026-08-22), but the provider's own permission-group inventory -- the source token creation validates against and this catalog's gate proves against -- defines \"Secrets Store Write\" at account scope (retrieved 2026-08-22); the docs page carries the dashboard-flavored spelling."
+      - purpose: ReadStore
+        name: Secrets Store Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Read-side of the same resources -- refresh/import the store via GET /accounts/{account_id}/secrets_store/stores (derived from the module's API surface). Name note: the docs page spells it \"Account Secrets Store Read\"; the provider's inventory defines \"Secrets Store Read\" (retrieved 2026-08-22)."

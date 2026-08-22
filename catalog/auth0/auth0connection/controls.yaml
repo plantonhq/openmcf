@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: auth0connection
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The connection's configuration -- including the upstream identity-provider secrets the spec marks sensitive (social_options.client_secret, oidc_options.client_secret, azure_ad_options.client_secret) and, for auth0-strategy connections, the user store itself -- lives inside Auth0's managed cloud, which encrypts all data at rest with AES-256 at multiple layers per Auth0's published platform security statements (auth0.com/blog/securing-auth0s-new-private-cloud-platform and the support.auth0.com 'Security questions' article, both retrieved 2026-08-22). No customer toggle exists."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "No spec field selects an encryption key. Auth0 offers tenant-level bring-your-own-key (a customer-imported root key wrapping the tenant's data encryption keys) only through the Enterprise Highly Regulated Identity add-on (auth0.com/blog/bring-your-own-key-byok-in-auth0, retrieved 2026-08-22) -- tenant posture configured outside this component, not a per-connection seam."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every path to this component travels TLS: the modules manage it through the Auth0 Management API, served exclusively over HTTPS (the endpoint contract at auth0.com/docs/api/management/v2/connections/post-connections, retrieved 2026-08-22, addresses only https://{tenant-domain}/api/v2/...), and the sign-in flows the connection powers run against the tenant's HTTPS endpoints -- Auth0 states all data in transit is encrypted with TLS 1.2+ (auth0.com/blog/securing-auth0s-new-private-cloud-platform, retrieved 2026-08-22)."
+      notes: The upstream endpoints the AUTHOR supplies for enterprise strategies (saml_options.sign_in_endpoint, oidc_options.issuer and endpoint overrides) are free-text URLs the spec does not force to https -- pointing them at plain-http identity providers would move credentials in the clear. Production values should be HTTPS-only; that discipline lives in the manifest author's hands.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A connection is a configuration object with no network endpoint of its own. The tenant's login endpoints it powers are public by design -- Auth0 is a SaaS identity provider whose reachability is a property of the tenant, configured nowhere in this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "No inbound network surface exists to filter. The nearest analogue in this spec is enabled_clients, which pins WHICH APPLICATIONS may offer this connection as a login option -- application scoping, not network-source filtering."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The connection receives no HTTP requests directly. Auth0 operates WAF rules, DDoS protection, bot detection, and rate limiting at its own network edge as platform posture (auth0.com/blog/securing-auth0s-new-private-cloud-platform, retrieved 2026-08-22); nothing in this spec attaches or configures a request filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: "The spec carries no surface governing WHO may manage this connection -- that is the Auth0 tenant's own control plane (Management API scopes on credentials, dashboard roles for humans; the deploy credential's least-privilege scope set is documented in iac/permissions.yaml). enabled_clients scopes which applications may USE the connection, a usage boundary rather than access control over the component."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "No seam exists for platform-issued identities. The connection authenticates to upstream identity providers with the static secrets carried in the spec (social_options.client_secret, oidc_options.client_secret, azure_ad_options.client_secret -- all marked sensitive); Auth0 exposes no federated alternative through this contract. The credential the IaC runner presents is an M2M client secret, documented in iac/permissions.yaml."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: saml_options.signature_algorithm
+      evidence:
+        type: spec_default
+        reference: "The weak paths the spec models are SAML signing algorithms, and the defaults avoid them: signature_algorithm empty means rsa-sha256 and digest_algorithm empty means sha256 per the spec contract, with rsa-sha1 and sha1 accepted only for legacy identity providers and explicitly marked deprecated in the contract itself. Keeping both fields unset (or set to the sha256 variants) keeps the deprecated algorithms off."
+      notes: "Applies to samlp-strategy connections; other strategies carry no algorithm choice in this spec. Password-quality legacy paths on database connections (password_policy accepting 'none'/'low') are adjudicated under strong-user-auth."
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: database_options.password_policy
+      evidence:
+        type: spec_default
+        reference: "This component owns real end-user credential policy for auth0-strategy (username/password database) connections: database_options.password_policy empty means 'good' (8+ characters with lower, upper, numeric; 'excellent' raises it, 'none'/'low' weaken it), database_options.brute_force_protection blocks login attempts after repeated failures, and database_options.mfa_enabled adds a second factor prompt at login. KNOW THE BOOL TRAP: the contract documents brute_force_protection true as the recommended state, but an omitted boolean serializes false and the modules pass it straight through -- declaring database_options without brute_force_protection: true explicitly DISABLES the protection Auth0's platform enables by default, so always set it deliberately."
+      notes: "Three reinforcing fields -- database_options.password_history_size (blocks reuse of up to 24 prior passwords), database_options.password_no_personal_info, and database_options.password_dictionary -- each require Auth0's paid 'password-advanced-options' entitlement per the spec contract's own comments: on free/lower-tier tenants the API returns 403, so leave them unset unless the tenant carries the entitlement. All of database_options governs only auth0-strategy connections; social and enterprise strategies delegate credential strength to the upstream identity provider (Google, the SAML/OIDC IdP, Entra ID), where this spec has no reach."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface -- there is no per-connection logging toggle in the Management API contract the modules drive. Whether and how long management and sign-in events are retained is the Auth0 tenant's log posture, configured at the tenant level outside this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No per-connection metric surface exists in the spec or the Management API contract the modules drive; exporting tenant events to a monitoring system is tenant-level log-stream configuration, outside this component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The connection's CONFIGURATION is declaratively re-creatable from the manifest (upstream secrets re-supplied from wherever the manifest's inputs are managed). The sharp edge is auth0-strategy connections: the user accounts live in Auth0's hosted database behind the connection, and neither this spec nor the Management API contract the modules drive exposes a backup surface for them -- exporting users is a separate Auth0 channel outside this component. Treat the user store as data this manifest cannot restore."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery); there is no retention seam in the spec.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A connection has no placement to configure -- it is served wherever the Auth0 tenant runs. Availability of the platform is the SaaS provider's posture, with no seam in this spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Auth0 Management API contract the modules drive nor the auth0 Terraform provider's connection resource exposes a deletion-protection flag, and the module sets none: a destroy proceeds when issued. For auth0-strategy connections that is data-destructive beyond configuration -- the user accounts stored behind the connection go with it (see backup-recovery) -- so protection, where wanted, is operational review in front of destroy."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A connection is a pure configuration object with no software of its own to patch; the platform serving it is Auth0-managed SaaS, patched by the provider on its own channel.

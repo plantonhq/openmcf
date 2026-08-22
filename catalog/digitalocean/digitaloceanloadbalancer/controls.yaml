@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanloadbalancer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A load balancer holds no data at rest -- it forwards traffic. TLS certificates it terminates with live in DigitalOcean's certificate store as DigitalOceanCertificate resources, outside this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing at rest (see enc-at-rest) and no customer-managed-key service on DigitalOcean, no CMK surface exists.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: forwarding_rules
+      evidence:
+        type: spec_default
+        reference: Each rule chooses its transport -- https/http2 entry with a certificate_name terminates TLS at the balancer, tls_passthrough forwards encrypted traffic untouched to the backends, and plain http/tcp rules carry no encryption. Nothing forces an encrypted rule.
+      notes: "redirect_http_to_https forces port-80 traffic onto the HTTPS rule, and tls_cipher_policy STRONG restricts the handshake to modern ciphers. The https-ssl-termination preset terminates TLS and redirects HTTP; the http-basic preset is plaintext by design."
+    - control_id: no-public-access
+      status: configurable
+      field_path: network
+      evidence:
+        type: spec_default
+        reference: Unset defaults to EXTERNAL (a public address); INTERNAL keeps the balancer reachable only inside its VPC. Create-only, and never reported back by the API, so drift on it is invisible.
+      notes: Both presets take the EXTERNAL default -- fronting public traffic is the kind's usual job.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall
+      evidence:
+        type: spec_default
+        reference: Unset admits all traffic; the firewall block's allow/deny lists ("ip:<address>" / "cidr:<block>" rules, validated at manifest time) restrict which sources may reach the balancer at all.
+      notes: Neither preset restricts sources. Backend-side restriction (droplets accepting traffic only from the balancer) lives on DigitalOceanFirewall resources outside this spec.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DigitalOcean attaches no WAF or request filter to load balancers -- the GLOBAL type's CDN setting is edge caching, not filtering. Request inspection belongs to what the balancer fronts or an external edge tier.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management-plane actions on the balancer are governed by DigitalOcean team roles and API token scopes on the caller's side, outside this spec; the balancer itself authenticates nobody.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A load balancer runs no workload code -- there is no identity to federate.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The balancer performs no authentication -- there is no legacy auth path to close. Plaintext-vs-TLS transport is enc-in-transit's concern.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no access-log or audit-log configuration on load balancers -- neither the API nor the provider carries a logging surface, and management-plane actions land in the team's account activity outside this component.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Balancer metrics (requests, connections, backend health) flow to the DigitalOcean control panel's built-in monitoring graphs automatically for every load balancer -- not a spec choice.
+      notes: Health checks (the health_check block, tunable probe thresholds) feed backend health into those graphs; alert policies are DigitalOceanMonitorAlert resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The balancer is stateless routing configuration -- there is nothing to back up. Its whole state is this manifest, recreatable by an apply.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With nothing to back up (see backup-recovery), no retention knob exists.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: REGIONAL (the default) is a managed balancer redundant within one region; GLOBAL is anycast across DigitalOcean's edge with per-region priorities and a failover_threshold steering traffic away from failing regions.
+      notes: "Within a region, DigitalOcean operates the balancer as a managed service and size_unit adds capacity nodes. Cross-region redundancy requires the GLOBAL type over regional targets -- no catalog preset is global."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a deletion-protection flag for load balancers -- nothing exists to refuse a delete.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The balancer is a fully managed service -- DigitalOcean operates and updates its software invisibly, with no version, image, or patch surface exposed anywhere in the API.
+      notes: There is nothing for the operator to patch, and nothing to misconfigure.

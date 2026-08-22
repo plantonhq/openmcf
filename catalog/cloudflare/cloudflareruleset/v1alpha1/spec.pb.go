@@ -806,7 +806,7 @@ func (x *CloudflareRulesetExposedCredentialCheck) GetPasswordExpression() string
 //	block:             response
 //	rewrite:           uri, headers
 //	redirect:          from_value, from_list
-//	skip:              phases, products, ruleset, rulesets
+//	skip:              phases, products, ruleset, rulesets, rules
 //	execute:           id, overrides, matched_data
 //	score:             increment
 //	compress_response: algorithms
@@ -840,6 +840,10 @@ type CloudflareRulesetActionParameters struct {
 	Ruleset string `protobuf:"bytes,10,opt,name=ruleset,proto3" json:"ruleset,omitempty"`
 	// Multiple ruleset IDs to skip.
 	Rulesets []string `protobuf:"bytes,11,rep,name=rulesets,proto3" json:"rulesets,omitempty"`
+	// Skip specific rules INSIDE other rulesets: a map of ruleset ID (32-char
+	// hex) to the rule IDs (32-char hex) in that ruleset to skip. Incompatible
+	// with the single `ruleset` option — use one or the other.
+	Rules map[string]*CloudflareRulesetStringList `protobuf:"bytes,79,rep,name=rules,proto3" json:"rules,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The ID of the managed ruleset to execute.
 	Id string `protobuf:"bytes,12,opt,name=id,proto3" json:"id,omitempty"`
 	// Overrides to apply when executing a managed ruleset.
@@ -1084,6 +1088,13 @@ func (x *CloudflareRulesetActionParameters) GetRuleset() string {
 func (x *CloudflareRulesetActionParameters) GetRulesets() []string {
 	if x != nil {
 		return x.Rulesets
+	}
+	return nil
+}
+
+func (x *CloudflareRulesetActionParameters) GetRules() map[string]*CloudflareRulesetStringList {
+	if x != nil {
+		return x.Rules
 	}
 	return nil
 }
@@ -3915,7 +3926,7 @@ const file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc = ""
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x9c\x02\n" +
 	"'CloudflareRulesetExposedCredentialCheck\x128\n" +
 	"\x13username_expression\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12usernameExpression\x12\xb6\x01\n" +
-	"\x13password_expression\x18\x02 \x01(\tB\x84\x01\xbaH\x04r\x02\x10\x01\xaa\xa6\x1dya wirefilter expression locating the password field in the request (e.g. http.request.body.form[...]), not a secret valueR\x12passwordExpression\"\xbe;\n" +
+	"\x13password_expression\x18\x02 \x01(\tB\x84\x01\xbaH\x04r\x02\x10\x01\xaa\xa6\x1dya wirefilter expression locating the password field in the request (e.g. http.request.body.form[...]), not a secret valueR\x12passwordExpression\"\xfc@\n" +
 	"!CloudflareRulesetActionParameters\x12\x1f\n" +
 	"\vhost_header\x18\x01 \x01(\tR\n" +
 	"hostHeader\x12b\n" +
@@ -3930,7 +3941,9 @@ const file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc = ""
 	"\bproducts\x18\t \x03(\tR\bproducts\x12\x18\n" +
 	"\aruleset\x18\n" +
 	" \x01(\tR\aruleset\x12\x1a\n" +
-	"\brulesets\x18\v \x03(\tR\brulesets\x12\x0e\n" +
+	"\brulesets\x18\v \x03(\tR\brulesets\x12\x89\x03\n" +
+	"\x05rules\x18O \x03(\v2_.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.RulesEntryB\x91\x02\xbaH\x8d\x02\xba\x01\x89\x02\n" +
+	"\"action_parameters_skip_rules.valid\x12gskip rules: keys and rule IDs must be 32-character hex ruleset/rule IDs, each with at least one rule ID\x1azthis.all(k, k.matches('^[0-9a-f]{32}$') && size(this[k].values) > 0 && this[k].values.all(v, v.matches('^[0-9a-f]{32}$')))R\x05rules\x12\x0e\n" +
 	"\x02id\x18\f \x01(\tR\x02id\x12k\n" +
 	"\toverrides\x18\r \x01(\v2M.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverridesR\toverrides\x12\x14\n" +
 	"\x05cache\x18\x0e \x01(\bR\x05cache\x12f\n" +
@@ -4020,7 +4033,12 @@ const file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc = ""
 	"expression\x1a\x86\x01\n" +
 	"\fHeadersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12`\n" +
-	"\x05value\x18\x02 \x01(\v2J.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetHeaderR\x05value:\x028\x01B\x1b\n" +
+	"\x05value\x18\x02 \x01(\v2J.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetHeaderR\x05value:\x028\x01\x1a\x88\x01\n" +
+	"\n" +
+	"RulesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12d\n" +
+	"\x05value\x18\x02 \x01(\v2N.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStringListR\x05value:\x028\x01:\xa4\x01\xbaH\xa0\x01\x1a\x9d\x01\n" +
+	"6action_parameters_skip.rules_incompatible_with_ruleset\x126skip rules map is incompatible with the ruleset option\x1a+size(this.rules) == 0 || this.ruleset == ''B\x1b\n" +
 	"\x19_automatic_https_rewritesB\x06\n" +
 	"\x04_bicB\x14\n" +
 	"\x12_content_converterB\x0f\n" +
@@ -4235,7 +4253,7 @@ func file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDescGZIP()
 }
 
 var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
+var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_goTypes = []any{
 	(CloudflareRulesetSpec_RulesetKind)(0),             // 0: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.RulesetKind
 	(CloudflareRulesetSpec_Phase)(0),                   // 1: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.Phase
@@ -4285,12 +4303,13 @@ var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_goTypes = []an
 	(*CloudflareRulesetCacheControlQualifiers)(nil),    // 45: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlQualifiers
 	(*CloudflareRulesetCacheControlFlag)(nil),          // 46: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
 	nil,                         // 47: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.HeadersEntry
-	nil,                         // 48: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry
-	nil,                         // 49: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry
-	(*v1.StringValueOrRef)(nil), // 50: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                         // 48: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.RulesEntry
+	nil,                         // 49: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry
+	nil,                         // 50: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry
+	(*v1.StringValueOrRef)(nil), // 51: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_depIdxs = []int32{
-	50, // 0: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	51, // 0: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 1: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.ruleset_kind:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.RulesetKind
 	1,  // 2: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.phase:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.Phase
 	4,  // 3: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.rules:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetRule
@@ -4305,62 +4324,64 @@ var file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_depIdxs = []in
 	12, // 12: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.uri:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUri
 	47, // 13: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.headers:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.HeadersEntry
 	15, // 14: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.from_value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromValue
-	21, // 15: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.overrides:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides
-	24, // 16: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.edge_ttl:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetEdgeTtl
-	27, // 17: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.browser_ttl:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetBrowserTtl
-	28, // 18: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.serve_stale:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetServeStale
-	17, // 19: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.from_list:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromList
-	18, // 20: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.algorithms:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetAlgorithm
-	19, // 21: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.matched_data:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetMatchedData
-	20, // 22: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.autominify:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetAutominify
-	29, // 23: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cache_key:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKey
-	38, // 24: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cache_reserve:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheReserve
-	39, // 25: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.vary:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary
-	42, // 26: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cookie_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
-	43, // 27: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.raw_response_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogResponseField
-	42, // 28: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.request_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
-	43, // 29: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.response_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogResponseField
-	42, // 30: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.transformed_request_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
-	44, // 31: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.max_age:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
-	44, // 32: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.s_maxage:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
-	44, // 33: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.stale_while_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
-	44, // 34: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.stale_if_error:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
-	45, // 35: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.private:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlQualifiers
-	45, // 36: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_cache:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlQualifiers
-	46, // 37: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.must_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 38: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.proxy_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 39: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.must_understand:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 40: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_transform:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 41: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.immutable:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 42: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_store:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	46, // 43: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.public:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
-	13, // 44: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUri.path:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUriComponent
-	13, // 45: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUri.query:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUriComponent
-	16, // 46: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromValue.target_url:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetTargetUrl
-	50, // 47: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromList.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	22, // 48: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides.categories:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCategoryOverride
-	23, // 49: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides.rules:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetRuleOverride
-	25, // 50: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetEdgeTtl.status_code_ttls:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeTtl
-	26, // 51: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeTtl.status_code_range:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeRange
-	30, // 52: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKey.custom_key:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey
-	31, // 53: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.cookie:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCookie
-	32, // 54: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.header:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader
-	34, // 55: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.host:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHost
-	35, // 56: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.query_string:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString
-	37, // 57: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.user:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyUser
-	48, // 58: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.contains:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry
-	36, // 59: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString.include:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryStringFilter
-	36, // 60: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString.exclude:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryStringFilter
-	40, // 61: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.default:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVaryDefault
-	49, // 62: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.headers:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry
-	14, // 63: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.HeadersEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetHeader
-	33, // 64: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStringList
-	41, // 65: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVaryHeader
-	66, // [66:66] is the sub-list for method output_type
-	66, // [66:66] is the sub-list for method input_type
-	66, // [66:66] is the sub-list for extension type_name
-	66, // [66:66] is the sub-list for extension extendee
-	0,  // [0:66] is the sub-list for field type_name
+	48, // 15: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.rules:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.RulesEntry
+	21, // 16: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.overrides:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides
+	24, // 17: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.edge_ttl:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetEdgeTtl
+	27, // 18: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.browser_ttl:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetBrowserTtl
+	28, // 19: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.serve_stale:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetServeStale
+	17, // 20: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.from_list:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromList
+	18, // 21: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.algorithms:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetAlgorithm
+	19, // 22: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.matched_data:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetMatchedData
+	20, // 23: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.autominify:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetAutominify
+	29, // 24: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cache_key:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKey
+	38, // 25: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cache_reserve:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheReserve
+	39, // 26: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.vary:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary
+	42, // 27: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.cookie_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
+	43, // 28: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.raw_response_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogResponseField
+	42, // 29: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.request_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
+	43, // 30: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.response_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogResponseField
+	42, // 31: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.transformed_request_fields:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetLogField
+	44, // 32: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.max_age:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
+	44, // 33: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.s_maxage:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
+	44, // 34: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.stale_while_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
+	44, // 35: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.stale_if_error:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlValue
+	45, // 36: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.private:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlQualifiers
+	45, // 37: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_cache:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlQualifiers
+	46, // 38: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.must_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 39: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.proxy_revalidate:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 40: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.must_understand:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 41: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_transform:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 42: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.immutable:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 43: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.no_store:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	46, // 44: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.public:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheControlFlag
+	13, // 45: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUri.path:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUriComponent
+	13, // 46: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUri.query:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetUriComponent
+	16, // 47: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromValue.target_url:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetTargetUrl
+	51, // 48: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetFromList.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 49: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides.categories:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCategoryOverride
+	23, // 50: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetOverrides.rules:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetRuleOverride
+	25, // 51: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetEdgeTtl.status_code_ttls:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeTtl
+	26, // 52: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeTtl.status_code_range:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStatusCodeRange
+	30, // 53: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKey.custom_key:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey
+	31, // 54: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.cookie:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCookie
+	32, // 55: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.header:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader
+	34, // 56: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.host:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHost
+	35, // 57: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.query_string:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString
+	37, // 58: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyCustomKey.user:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyUser
+	49, // 59: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.contains:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry
+	36, // 60: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString.include:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryStringFilter
+	36, // 61: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryString.exclude:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyQueryStringFilter
+	40, // 62: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.default:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVaryDefault
+	50, // 63: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.headers:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry
+	14, // 64: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.HeadersEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetHeader
+	33, // 65: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetActionParameters.RulesEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStringList
+	33, // 66: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetCacheKeyHeader.ContainsEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetStringList
+	41, // 67: dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVary.HeadersEntry.value:type_name -> dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetVaryHeader
+	68, // [68:68] is the sub-list for method output_type
+	68, // [68:68] is the sub-list for method input_type
+	68, // [68:68] is the sub-list for extension type_name
+	68, // [68:68] is the sub-list for extension extendee
+	0,  // [0:68] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_init() }
@@ -4383,7 +4404,7 @@ func file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc), len(file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   47,
+			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

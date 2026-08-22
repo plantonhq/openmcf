@@ -1,0 +1,3 @@
+name: kubernetes-planton-operator
+runtime: go
+description: Planton operator installation from the official planton-operator Helm chart (OCI) — the lifecycle manager that reconciles PlantonPlatform declarations into running self-hosted Planton platforms, with the module-owned PlantonPlatform CRD

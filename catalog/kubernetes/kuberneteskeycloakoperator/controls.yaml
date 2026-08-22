@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskeycloakoperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its state is the custom resources it reconciles, held in the cluster's etcd. Keycloak's data at rest lives in the database each server declares, owned by KubernetesKeycloak resources and their database components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The bundle ships NO admission webhooks and no TLS surface of its own -- the operator's only traffic is the Kubernetes API, TLS by construction. TLS on the Keycloak servers (hostname, certificates, reverse-proxy posture) is declared on KubernetesKeycloak resources.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The applied bundle renders no external exposure -- its only service surface is the in-cluster metrics/health Service, and the spec offers no ingress or LoadBalancer seam.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no client-facing traffic to restrict. Network exposure of the Keycloak servers is declared on KubernetesKeycloak resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cluster-internal controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: cluster_wide
+      evidence:
+        type: spec_default
+        reference: "False (the default) keeps the operator watching ONLY its own namespace -- KubernetesKeycloak resources live beside it, and several teams can run isolated operator+Keycloak stacks in separate namespaces. True installs upstream's cluster-wide variant (per-controller ClusterRoleBindings and JOSDK_ALL_NAMESPACES); run at most one per cluster."
+      notes: "An upstream constraint worth knowing: in cluster-wide mode the operator refuses custom ServiceAccounts on Keycloak pod templates. Access to the operator's own resources is governed by the target cluster's Kubernetes RBAC."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator calls no cloud APIs -- it authenticates to the Kubernetes API with its ServiceAccount; there is no cloud identity to federate.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator exposes no authentication surface of its own. Keycloak IS an identity provider -- but every authentication concern (admin credentials, realms, clients, token policy) belongs to the servers, declared on KubernetesKeycloak resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, Services, and Secrets for managed servers -- captured by the target cluster's audit policy; the spec models no separate audit-log seam. Keycloak's own event/audit logging is a server concern.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The bundle ships the operator's metrics/health Service, applied verbatim with the rest of the documents -- the endpoint exists out of the box.
+      notes: Scrape wiring (ServiceMonitor or scrape config) is the target cluster's monitoring stack; the spec models no scrape seam.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up; its own configuration is this manifest, re-appliable at any time. Keycloak's state lives in its database -- backup is that database component's concern, declared alongside KubernetesKeycloak resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The bundle runs the operator as a single-replica Deployment and this spec models no replica count. A brief operator outage pauses reconciliation only -- running Keycloak servers keep serving; Kubernetes reschedules the pod.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Kubernetes nor the bundle offers a deletion-protection flag, and the deletion posture matches the manifest-distributed operators, not the chart ones: the four k8s.keycloak.org CRDs are bundle documents and DELETE with the resource -- destroying the operator cascade-deletes every Keycloak, KeycloakRealmImport, KeycloakOidcClient, and KeycloakSamlClient CR on the cluster. The module at least orders the teardown so CRD deletion drains finalizers while the operator still runs; even so, destroy KubernetesKeycloak resources FIRST."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: "The spec deliberately has NO version field: the KubernetesKeycloak declaration kind's CR rendering is built against the CRD schema this bundle installs -- a selectable operator version would drift the schema away from what the declaration kind renders. The module pins the release; upgrades arrive as module updates, never as per-manifest drift."
+      notes: operator_image can re-point the image at a mirror, but the tag must stay at the pinned release or the CRD schema drifts.

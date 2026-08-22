@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandatabasefirewall
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDatabaseFirewall
+        scopes:
+          - database:read
+          - database:update
+        provenance: derived
+        notes: Covers digitalocean_database_firewall's create/read/update/delete/import paths -- read the rule set through GET /v2/databases/{c}/firewall (database:read); create, update, AND destroy are all PUT /v2/databases/{c}/firewall -- the rule set is a property of the cluster, and "destroy" PUTs an empty list (database:update). A full-access token also works; it is never least-privilege.

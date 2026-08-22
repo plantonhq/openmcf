@@ -1,0 +1,24 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: planton-operator
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+  chart_version: "0.7.1"
+  # Two leader-elected replicas: the standby takes over within the lease
+  # window when the leader's node dies, instead of waiting for the
+  # Deployment to reschedule. Extra replicas add no reconciliation
+  # throughput — they shorten failover of the OPERATOR itself.
+  replicas: 2
+  leader_election: true # required for multi-replica (also the chart default)
+  # The chart's defaults raised: a manager reconciling several platforms
+  # holds more informer state.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 384Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi

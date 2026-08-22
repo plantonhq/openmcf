@@ -1,41 +1,30 @@
-# DigitalOcean Volume Resource
-# This module creates a block storage volume in DigitalOcean with the specified configuration
-
+# DigitalOcean block storage volume.
+#
+# Attachment to Droplets is a property of the Droplet (its volume_ids list),
+# never of the volume. Size can only be EXPANDED after creation -- the
+# provider rejects a shrink at plan time. Every other argument is create-only
+# and replaces the volume when changed.
 resource "digitalocean_volume" "this" {
-  # Volume identification
-  name        = var.spec.volume_name
-  description = local.volume_description
+  name = var.spec.volume_name
 
-  # Region placement - volume can only attach to Droplets in the same region
+  # Create-only at the current provider pin: a description change REPLACES
+  # the volume. Empty stays unset (the provider rejects empty strings).
+  description = var.spec.description != "" ? var.spec.description : null
+
+  # Volumes attach only to Droplets in the same region.
   region = var.spec.region
 
-  # Size in GiB (1-16000)
   size = var.spec.size_gib
 
-  # Filesystem pre-formatting
-  # If set, DigitalOcean will format the volume before making it available
-  # Options: "" (none), "ext4", or "xfs"
-  # Recommended: Use "xfs" for databases, "ext4" for general purpose
-  initial_filesystem_type = local.filesystem_type
+  # Formatting happens once at creation; the API never reports these
+  # arguments back (the resulting filesystem is observable through separate
+  # computed attributes).
+  initial_filesystem_type  = local.filesystem_type
+  initial_filesystem_label = local.filesystem_label
 
-  # Optional: Create volume from snapshot
-  # If snapshot_id is provided, the new volume will be created from the snapshot
-  # The volume must be at least as large as the snapshot
-  snapshot_id = local.from_snapshot ? var.spec.snapshot_id : null
+  # When set, the volume is created from the snapshot, inheriting its region
+  # and minimum size. Create-only, never reported back by the API.
+  snapshot_id = var.spec.snapshot_id != "" ? var.spec.snapshot_id : null
 
-  # Tags for organization and cost allocation
-  tags = local.resource_tags
-
-  # Lifecycle management
-  lifecycle {
-    # Prevent accidental destruction of volumes with data
-    # Remove this if you need to force replacement
-    prevent_destroy = false
-
-    # Ignore changes to tags from external sources
-    ignore_changes = [
-      # Allow external tag modifications without Terraform drift
-    ]
-  }
+  tags = local.tags
 }
-

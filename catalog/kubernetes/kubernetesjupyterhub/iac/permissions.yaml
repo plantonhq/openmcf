@@ -1,0 +1,161 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesjupyterhub
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.jupyterhub -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces (and deleting it deletes every user's home PVC living in it).
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the module-owned Secrets composed BEFORE the release -- kubernetes_secret_v1.shared_password (the generated sign-in password, only on the shared-password arm without a BYO Secret) and kubernetes_secret_v1.hub_secret (the hub.db.password existing-secret, only on the postgres/mysql arms) -- plus read access for the referenced database credential (data.kubernetes_secret_v1.db_password). The chart manages its own hub Secret (proxy token, cookie secret, crypt keys) inside the release.
+      - api_groups:
+          - ""
+        resources:
+          - configmaps
+          - services
+          - serviceaccounts
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_config_map_v1.read_anchor (the module's marker ConfigMap deferring credential reads to apply time, rendered on the external database arms) and the release-owned core objects the jupyterhub chart manages through helm_release.jupyterhub -- the hub, proxy-api, and proxy-public Services (chart-fixed bare names), component ConfigMaps and ServiceAccounts, and the hub-db-dir PVC on the default sqlite arm. Per-user claim-<username> PVCs are created by the HUB at runtime under the hub's own ServiceAccount, not by the runner.
+      - api_groups:
+          - ""
+        resources:
+          - pods
+          - events
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Read access supports the modules' wait/atomic install (helm_release.jupyterhub, timeout 1200s, covering the pre-puller hook). The write verbs exist because of Kubernetes RBAC escalation prevention -- the chart's hub Role grants pod and PVC create/delete (KubeSpawner spawns one pod per user at login) and events read, and a principal can only create a Role granting permissions it already holds (or carries the escalate verb).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+          - daemonsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workloads inside helm_release.jupyterhub -- the hub, proxy, and user-scheduler Deployments; the user-placeholder StatefulSet (rendered when scheduling.user_placeholder_replicas is above 0); and the image-puller DaemonSets (the hook puller during install/upgrade and the continuous puller, both on by default via spec.pre_puller).
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's image-awaiter hook Job -- the release waits on it while the hook image-puller DaemonSet lands the notebook image on every node (spec.pre_puller.hook_enabled defaults true).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's namespaced RBAC -- the hub's Role and RoleBinding granting KubeSpawner its pod/PVC/events permissions (see the pods rule for the escalation-prevention consequence), and the image-awaiter's read access.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers the user-scheduler's cluster-scoped RBAC -- it runs a kube-scheduler binary that must read nodes cluster-wide, which no namespaced Role can grant; rendered while scheduling.user_scheduler_enabled holds (the spec default is true). Escalation prevention applies here too -- the runner must hold the node/pod read permissions that ClusterRole grants.
+      - api_groups:
+          - scheduling.k8s.io
+        resources:
+          - priorityclasses
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers the chart's pod-priority machinery -- PriorityClasses rendered only when scheduling.user_placeholder_replicas is above 0 (the modules enable the chart's podPriority exactly then, so real users can evict placeholder pods).
+      - api_groups:
+          - networking.k8s.io
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's NetworkPolicies for the hub, proxy, and user pods -- rendered while spec.network_policy_enabled holds (the default is true; the modules render explicit disables only on false). The helm_values overlay can extend the chart's object surface beyond these rules (egress shaping, extra services) -- grants for such extensions ride the operator's review of the overlay, not this manifest.

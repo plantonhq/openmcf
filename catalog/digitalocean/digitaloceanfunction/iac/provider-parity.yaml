@@ -1,0 +1,75 @@
+# Provider-parity manifest: DigitalOceanFunction against digitalocean_app at
+# provider v2.99.1. The provider has no standalone Functions resource; this
+# kind deploys one functions component inside an app. Every other component
+# family on digitalocean_app is excluded as another kind's surface
+# (DigitalOceanApp). The functions slice is mapped onto spec.function.
+resources:
+  digitalocean_app:
+    mappings:
+      - spec: spec
+        arg: spec
+      - spec: spec.function_name
+        arg: spec.function.name
+      - spec: spec.git
+        arg: spec.function.git
+      - spec: spec.github
+        arg: spec.function.github
+      - spec: spec.gitlab
+        arg: spec.function.gitlab
+      - spec: spec.bitbucket
+        arg: spec.function.bitbucket
+      - spec: spec.source_directory
+        arg: spec.function.source_dir
+      - spec: spec.envs
+        arg: spec.function.env
+      - spec: spec.alerts
+        arg: spec.function.alert
+      - spec: spec.log_destinations
+        arg: spec.function.log_destination
+      - spec: spec.project_id
+        arg: project_id
+      - spec: spec.envs.plaintext
+        arg: spec.function.env.value
+      - spec: spec.envs.secret
+        arg: spec.function.env.value
+    exclusions:
+      - arg: spec.name
+        reason: wired by the module from metadata.name -- the App Platform app name is the Function's Planton identity, never separate spec surface
+      - arg: spec.function.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.service
+        reason: service components belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.worker
+        reason: worker components belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.job
+        reason: job components belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.static_site
+        reason: static sites belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.database
+        reason: in-app databases belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.ingress
+        reason: ingress routing belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.egress
+        reason: app-level egress belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.maintenance
+        reason: app-level maintenance belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.vpc
+        reason: app-level VPC placement belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.domain
+        reason: custom domains belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.alert
+        reason: app-level alerts belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.env
+        reason: app-level env vars belong to DigitalOceanApp -- this kind puts env vars on the functions component
+      - arg: spec.features
+        reason: app-level feature flags belong to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.disable_edge_cache
+        reason: app-level edge toggle belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.disable_email_obfuscation
+        reason: app-level email obfuscation belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: spec.enhanced_threat_control_enabled
+        reason: app-level threat-control toggle belongs to DigitalOceanApp -- this kind deploys a single functions component
+      - arg: dedicated_ips
+        reason: assignment read-back of dedicated egress IPs -- this kind never requests dedicated egress
+      - arg: deployment_per_page
+        reason: Terraform polling page size for deployment wait loops, not App Platform configuration

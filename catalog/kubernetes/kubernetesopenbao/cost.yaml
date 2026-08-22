@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesopenbao
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: server.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: Each server replica reserves the declared requests. When omitted, the module applies the spec's declared defaults (100m CPU / 256Mi memory requests, 1000m CPU / 512Mi limits) -- modest laboratory sizing; size real deployments explicitly.
+    - field_path: server.ha
+      sku_meter: cluster CPU and memory reservations
+      impact: HA mode runs a Raft cluster of `replicas` servers (default 3) -- each carries the full per-replica reservation and its own volumes. Dev and standalone modes run exactly one.
+    - field_path: server.data_storage
+      sku_meter: provisioned storage capacity
+      impact: One data PVC per replica (default 10Gi) holding the Raft or file storage. Ignored in dev mode, which is entirely in-memory.
+    - field_path: server.audit_storage
+      sku_meter: provisioned storage capacity
+      impact: When set, a second PVC per replica (default 10Gi) for audit device output.
+    - field_path: injector
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling the agent injector adds its own Deployment (webhook server) to the namespace, plus an agent sidecar in every pod that opts into injection annotations -- reservations outside this manifest.
+    - field_path: snapshot_agent
+      sku_meter: object storage
+      impact: When enabled, a CronJob ships Raft snapshots to the configured S3-compatible bucket on the declared schedule -- snapshot storage grows with data size across the s3_expire_days window (default 14 days) and bills on the object store.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - dev mode is in-memory -- no volumes are provisioned and ALL data is lost on pod restart
+    - auto-unseal KMS keys (AWS, GCP, Azure) and snapshot object storage bill on their own cloud accounts, outside the cluster
+  notes: "This component installs the OpenBao Helm chart -- its cost is the share of the cluster its server replicas and their volumes reserve, realized on the cluster's bill. The manifest-time statement is replicas x (per-replica resources + data and audit volumes)."

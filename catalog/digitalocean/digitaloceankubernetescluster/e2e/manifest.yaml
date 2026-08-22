@@ -1,26 +1,79 @@
+# Example DigitalOceanKubernetesCluster manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real cluster (one node, everything else
+# at DigitalOcean defaults). The second exercises the full surface: HA
+# control plane, maintenance policy, control-plane firewall, custom pod and
+# service subnets, cluster-autoscaler tuning, SSO, managed addons, and a
+# default node pool with labels, a taint, tags, and autoscaling.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
-  name: first-cluster                 # K8s resource name (unique per namespace)
+  name: example-doks-minimal
 spec:
-  clusterName: first-cluster          # Must be unique in your DigitalOcean account
-  region: blr1                       # Any valid DigitalOceanRegion slug (nyc3, sfo3, blr1, …)
-  kubernetesVersion: "1.33"        # Must match a version currently offered by DigitalOcean
+  clusterName: example-doks-minimal
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
   vpc:
     value: b5648f9e-a28a-4760-bb87-b2fad07ae295
-  highlyAvailable: false              # HA control plane (extra cost)
-  autoUpgrade: false                  # Automatic patch upgrades
-  disableSurgeUpgrade: false         # Keep surge nodes for zero‑downtime upgrades
-  maintenanceWindow: "sunday=02:00"  # Scheduled maintenance window (optional)
-  registryIntegration: false         # Enable DOCR integration (optional)
-  # controlPlaneFirewallAllowedIps:  # Restrict API access to specific IPs (optional)
-  #   - "203.0.113.5/32"
-  #   - "198.51.100.0/24"
+  defaultNodePool:
+    size: s-1vcpu-2gb
+    nodeCount: 1
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesCluster
+metadata:
+  name: example-doks-full
+spec:
+  clusterName: example-doks-full
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
+  vpc:
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
+  highlyAvailable: true
+  autoUpgrade: true
+  surgeUpgrade: true
+  registryIntegration: true
+  maintenancePolicy:
+    day: sunday
+    startTime: "02:00"
+  controlPlaneFirewall:
+    enabled: true
+    allowedAddresses:
+      - "203.0.113.5/32"
+      - "198.51.100.0/24"
+  clusterSubnet: "10.100.0.0/16"
+  serviceSubnet: "10.200.0.0/16"
+  kubeconfigExpireSeconds: 3600
+  clusterAutoscalerConfiguration:
+    scaleDownUtilizationThreshold: 0.5
+    scaleDownUnneededTime: "1m30s"
+    expanders:
+      - least-waste
+      - random
+  sso:
+    enabled: true
+    required: false
+    issuerUrl: "https://sso.example.com"
+    clientId: "example-client-id"
+  routingAgent:
+    enabled: true
+  corednsAutoscaler:
+    enabled: true
   tags:
-    - planton
+    - env:example
   defaultNodePool:
     size: s-2vcpu-4gb
     nodeCount: 3
     autoScale: true
-    minNodes: 1
+    minNodes: 2
     maxNodes: 5
+    labels:
+      workload: general
+    taints:
+      - key: dedicated
+        value: platform
+        effect: NoSchedule
+    tags:
+      - pool:default

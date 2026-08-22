@@ -55,6 +55,41 @@ func Terminal(desc protoreflect.MessageDescriptor, dotPath string) (protoreflect
 	return nil, fmt.Errorf("unreachable")
 }
 
+// ResolvableTerminal walks dotPath from desc under Resolve's OWN
+// traversal contract -- refusing to continue THROUGH repeated or map
+// fields while allowing a repeated terminal -- and returns the terminal
+// field's descriptor. Gates over paths that a live evaluator will later
+// hand to Resolve must validate with THIS function, not Terminal: the
+// permissive Terminal accepts a path Resolve refuses (which element
+// would the value come from?), and that disagreement surfaces only at
+// replay, as an engine error instead of a CI failure naming the file.
+func ResolvableTerminal(desc protoreflect.MessageDescriptor, dotPath string) (protoreflect.FieldDescriptor, error) {
+	if dotPath == "" {
+		return nil, fmt.Errorf("empty path")
+	}
+	current := desc
+	segments := strings.Split(dotPath, ".")
+	for i, segment := range segments {
+		field := current.Fields().ByName(protoreflect.Name(segment))
+		if field == nil {
+			return nil, fmt.Errorf("no field %q on %s", segment, current.FullName())
+		}
+		if i == len(segments)-1 {
+			return field, nil
+		}
+		if field.IsList() || field.IsMap() {
+			return nil, fmt.Errorf("segment %q on %s is %s -- resolution cannot pick an element; only the terminal segment may be repeated",
+				segment, current.FullName(), cardinality(field))
+		}
+		next := fieldMessage(field)
+		if next == nil {
+			return nil, fmt.Errorf("segment %q on %s is a scalar but the path continues", segment, current.FullName())
+		}
+		current = next
+	}
+	return nil, fmt.Errorf("unreachable")
+}
+
 // fieldMessage returns the message descriptor a path can continue into, or
 // nil for scalar leaves. Map fields continue into their value type when the
 // value is a message.

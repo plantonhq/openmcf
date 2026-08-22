@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: auth0connection
+spec:
+  billing_model: free
+  free_tier: "A connection is a configuration object inside an Auth0 tenant, and Auth0 meters no per-connection charge: the platform bills by tenant plan and monthly active users (Free up to 25,000 MAUs; Essentials from $35/month B2C or $150/month B2B; Professional from $240/month B2C or $800/month B2B; Enterprise custom; yearly billing is 11x the monthly price -- verified at auth0.com/pricing, retrieved 2026-08-22). Social connections are explicitly unlimited on every tier including Free."
+  notes: "The real spend lives in the Auth0 tenant subscription the connection is created in -- plan tier times MAU volume, billed at the tenant level, outside this component. Plan choice gates this spec in two verified places. First, QUANTITY for enterprise strategies: the Free plan includes 1 Enterprise Connection (auth0.com/pricing, retrieved 2026-08-22), so a second samlp/oidc/waad/ad/adfs connection needs a paid tier, while social strategies stay unlimited. Second, FEATURES: database_options.password_history_size, password_no_personal_info, and password_dictionary each require Auth0's paid 'password-advanced-options' entitlement per the spec contract's own field comments -- on free/lower-tier tenants the API returns 403, so setting them is a plan decision, not a meter. Nothing else in this spec (strategy, enabled_clients, saml/oidc/azure_ad options) prices on its own."

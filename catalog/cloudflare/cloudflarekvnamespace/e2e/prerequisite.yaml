@@ -1,0 +1,23 @@
+# CloudflareKvNamespace install profile used as a prerequisite by
+# CloudflareWorkersKvPair (its registry prerequisite): a KV pair is written
+# into a namespace, so the namespace must exist before the pair's lane
+# deploys. The title is run-scoped (namespace titles are unique within an
+# account) so concurrent lanes cannot collide. metadata.name stays stable --
+# it is the key consumers' valueFrom references resolve against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareKvNamespace
+metadata:
+  name: planton-oss-e2e-cloudflarekvnamespace-prereq
+  id: planton-oss-e2e-cloudflarekvnamespace-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarekvnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceName: planton-e2e-${E2E_RUN_ID}-kv-prereq
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

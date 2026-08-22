@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakermlflowapp
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The app's own experiment and run metadata is encrypted at rest by AWS-managed keys as part of the managed serverless service; MLflow artifacts live in the customer's S3 location (artifact_store_uri), where S3 default encryption applies.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The MLflow app API exposes no customer-managed-key surface for the app's own storage -- there is no KMS field on the spec because AWS offers none. Customer-key coverage for the artifacts belongs to the artifact bucket's own component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The MLflow UI and REST API are reached over HTTPS -- through presigned URLs or SigV4-authenticated calls to the app's endpoint -- and management rides the SageMaker API over TLS; no plaintext path exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The app exposes no anonymously reachable surface -- access requires IAM authorization, either a presigned URL minted through the SageMaker API or SigV4-signed MLflow calls authorized as sagemaker:CallMlflowAppApi against the app's ARN; there is no public-network toggle to get wrong.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec carries no VPC, subnet, or security-group surface -- AWS operates the serverless capability's network entirely, and source restriction happens through IAM on the callers, not through network rules on the app.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The MLflow endpoint is fronted by AWS's managed service surface -- no web ACL can attach to it, and no spec field exposes one.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path in is IAM-authorized against the mlflow-app ARN -- presigned-URL issuance (CreatePresignedMlflowAppUrl), the MLflow API surface (CallMlflowAppApi), and all management calls; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: role_arn is required by the spec and is the app's only credential path -- SageMaker assumes that role with short-lived credentials to read and write the artifact store; no static credentials exist anywhere in the component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access paths are SigV4-signed HTTPS and IAM-minted presigned URLs -- no legacy or weaker authentication path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management call (CreateMlflowApp, UpdateMlflowApp, DeleteMlflowApp, presigned-URL issuance) is a control-plane API operation recorded by CloudTrail by default, and MLflow REST calls authorize through the sagemaker:CallMlflowAppApi action, leaving the same account-level trail.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: AWS operates the serverless capability's health and scaling -- the component exposes no customer-facing metric or log stream of its own to wire into a monitoring system; operational visibility is the MLflow UI and API themselves.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No customer-facing backup or restore exists for the app's experiment and run metadata -- AWS manages the store with no snapshot control on the API. The artifacts themselves persist independently in the customer's S3 location (artifact_store_uri) and survive app deletion.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The app is serverless with automatic scaling -- the spec holds no capacity or placement control at all, and AWS manages availability inside its own service infrastructure; there is no HA form to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists -- DeleteMlflowApp succeeds whenever IAM allows it, soft-deleting the app to status DELETED (lifecycle bookkeeping, not protection; a DELETED app reads as absent upstream). The artifact store survives deletion because it lives in the customer's own S3 bucket.
+    - control_id: managed-patching
+      status: configurable
+      field_path: weekly_maintenance_window_start
+      evidence:
+        type: spec_default
+        reference: AWS applies maintenance to the managed app on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
+      notes: MLflow version upgrades are automatic and in-place on this serverless app (the launch post names automatic upgrades; MLflow 3.4 at launch) -- unlike the sibling tracking server there is no version pin, so currency is provider-managed, not a drift risk this manifest carries. The 02-studio-default-mlflow preset pins SUN:03:00.

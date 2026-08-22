@@ -1,0 +1,65 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrdsproxy
+spec:
+  aws:
+    statements:
+      - sid: CreateDBProxy
+        actions:
+          - rds:CreateDBProxy
+        resources:
+          - "*"
+        provenance: derived
+        notes: NON-SCOPABLE per the service reference (the proxy's ARN does not exist until the call returns), so the wildcard is the narrowest possible scope. One aws_db_proxy per manifest.
+      - sid: ManageDBProxy
+        actions:
+          - rds:DescribeDBProxies
+          - rds:ModifyDBProxy
+          - rds:DeleteDBProxy
+        resources:
+          - arn:aws:rds:*:*:db-proxy:*
+        provenance: derived
+        notes: DescribeDBProxies serves every plan/refresh; ModifyDBProxy applies auth, require_tls, idle_client_timeout, and debug_logging changes; DeleteDBProxy tears down.
+      - sid: ManageProxyEndpoints
+        actions:
+          - rds:CreateDBProxyEndpoint
+          - rds:DescribeDBProxyEndpoints
+          - rds:ModifyDBProxyEndpoint
+          - rds:DeleteDBProxyEndpoint
+        resources:
+          - arn:aws:rds:*:*:db-proxy:*
+          - arn:aws:rds:*:*:db-proxy-endpoint:*
+        provenance: derived
+        notes: Exercised only when endpoints entries exist (aws_db_proxy_endpoint for_each). CreateDBProxyEndpoint and DescribeDBProxyEndpoints authorize against BOTH the proxy and proxy-endpoint ARNs per the service reference.
+      - sid: ManageTargetGroupAndTargets
+        actions:
+          - rds:DescribeDBProxyTargetGroups
+          - rds:ModifyDBProxyTargetGroup
+          - rds:RegisterDBProxyTargets
+          - rds:DeregisterDBProxyTargets
+          - rds:DescribeDBProxyTargets
+        resources:
+          - arn:aws:rds:*:*:db-proxy:*
+          - arn:aws:rds:*:*:target-group:*
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: aws_db_proxy_default_target_group applies the connection_pool settings (ModifyDBProxyTargetGroup on the target-group ARN); aws_db_proxy_target registers the fronted database -- RegisterDBProxyTargets authorizes against the db/target-group ARNs and DeregisterDBProxyTargets additionally against cluster and proxy, so all four resource shapes are in scope.
+      - sid: TagProxyResources
+        actions:
+          - rds:AddTagsToResource
+          - rds:RemoveTagsFromResource
+          - rds:ListTagsForResource
+        resources:
+          - arn:aws:rds:*:*:db-proxy:*
+          - arn:aws:rds:*:*:db-proxy-endpoint:*
+        provenance: derived
+        notes: The proxy and each endpoint are tagged (tags = local.aws_tags); the tag actions scope to the resource carrying the tags.
+      - sid: PassSecretsRoleToProxy
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateDBProxy/ModifyDBProxy hand role_arn to the RDS service so the proxy can read the auth secrets -- iam:PassRole on that role is mandatory. The role ARN is a manifest value (often a foreign-key reference), so the honest static scope is the wildcard; platforms that template per-deployment policies should substitute the concrete role ARN.

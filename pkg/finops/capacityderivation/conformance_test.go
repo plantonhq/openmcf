@@ -14,6 +14,7 @@ import (
 	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	costprofilev1 "github.com/plantonhq/planton/finops/componentcostprofile/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/finops/capacityestimator"
 	"github.com/plantonhq/planton/pkg/finops/costderivation"
 	"github.com/plantonhq/planton/pkg/finops/costprofile"
 	"github.com/plantonhq/planton/pkg/finops/estimatemodel"
@@ -138,13 +139,15 @@ func checkWorkload(t *testing.T, specDescriptor protoreflect.MessageDescriptor, 
 	}
 
 	if path := workload.GetResourcesPath(); path != "" {
-		terminal, err := specpath.Terminal(specDescriptor, path)
+		terminal, err := specpath.ResolvableTerminal(specDescriptor, path)
 		if err != nil {
 			t.Errorf("workload %d resources_path: %v", index, err)
 		} else if terminal.Kind() != protoreflect.MessageKind ||
 			string(terminal.Message().FullName()) != containerResourcesMessage {
 			t.Errorf("workload %d resources_path %q terminates at %s, want the shared %s -- capacity is read by type",
 				index, path, describeTerminal(terminal), containerResourcesMessage)
+		} else if err := capacityestimator.CheckDeclaredDefaults(terminal); err != nil {
+			t.Errorf("workload %d resources_path %q: the spec's own default annotation is malformed -- %v", index, path, err)
 		}
 	} else if len(workload.GetVolumes()) == 0 {
 		t.Errorf("workload %d binds neither a resources block nor volumes -- it reserves nothing", index)
@@ -165,13 +168,16 @@ func checkWorkload(t *testing.T, specDescriptor protoreflect.MessageDescriptor, 
 		if strings.TrimSpace(volume.GetLabel()) == "" {
 			t.Errorf("workload %d volume %d has no label", index, j)
 		}
-		terminal, err := specpath.Terminal(specDescriptor, volume.GetSizePath())
+		terminal, err := specpath.ResolvableTerminal(specDescriptor, volume.GetSizePath())
 		if err != nil {
 			t.Errorf("workload %d volume %d size_path: %v", index, j, err)
 		} else if terminal.Kind() != protoreflect.StringKind || terminal.IsList() || terminal.IsMap() {
 			t.Errorf("workload %d volume %d size_path %q is not a string scalar -- volume sizes are Kubernetes quantity strings",
 				index, j, volume.GetSizePath())
+		} else if err := capacityestimator.CheckDeclaredDefaults(terminal); err != nil {
+			t.Errorf("workload %d volume %d size_path %q: the spec's own default annotation is malformed -- %v", index, j, volume.GetSizePath(), err)
 		}
+		checkConditions(t, specDescriptor, volume.GetAppliesWhen())
 	}
 }
 
@@ -179,7 +185,7 @@ func checkWorkload(t *testing.T, specDescriptor protoreflect.MessageDescriptor, 
 // numeric path and a decimal default.
 func checkNumericField(t *testing.T, specDescriptor protoreflect.MessageDescriptor, index int, field *derivationv1.FieldValue) {
 	t.Helper()
-	terminal, err := specpath.Terminal(specDescriptor, field.GetFieldPath())
+	terminal, err := specpath.ResolvableTerminal(specDescriptor, field.GetFieldPath())
 	if err != nil {
 		t.Errorf("workload %d instance field: %v", index, err)
 		return
@@ -209,7 +215,7 @@ func checkNumericField(t *testing.T, specDescriptor protoreflect.MessageDescript
 func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor, conditions []*derivationv1.Condition) {
 	t.Helper()
 	for _, condition := range conditions {
-		terminal, err := specpath.Terminal(specDescriptor, condition.GetFieldPath())
+		terminal, err := specpath.ResolvableTerminal(specDescriptor, condition.GetFieldPath())
 		if err != nil {
 			t.Errorf("condition: %v", err)
 			continue

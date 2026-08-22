@@ -1,0 +1,12 @@
+# Provider-parity manifest for CloudflareCustomSslCertificate.
+# Records only divergences from exact-name matching against
+# cloudflare_custom_ssl at the pinned provider version. Unlisted arguments
+# (zone_id, certificate, private_key, type, bundle_method, policy,
+# custom_csr_id, deploy) match spec fields by exact name.
+resources:
+  cloudflare_custom_ssl:
+    mappings:
+      # The provider's geo_restrictions is a single nested object with one
+      # leaf; the spec mirrors it as a message whose label carries the value.
+      - spec: spec.geo_restrictions.label
+        arg: geo_restrictions

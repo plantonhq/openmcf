@@ -1,0 +1,89 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesmlflow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Tracking state and local artifacts rest on PersistentVolumes the target cluster's storage class provisions (or in the composed database/object-store components on the external arms); encryption at rest is a property of that storage, owned by the cluster and the composed stores, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The tracking server serves plain HTTP on its ClusterIP Service inside the cluster -- TLS for user-facing traffic terminates at the composed exposure layer (KubernetesService, Gateway API kinds over the exported handle), and the composed backend-store URI carries no TLS parameters in this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: service.type
+      evidence:
+        type: spec_default
+        reference: Unset means ClusterIP -- nothing is internet-reachable until exposure is composed explicitly; "LoadBalancer" or "NodePort" opts into direct exposure with service.annotations carrying the cloud LB configuration.
+      notes: Both presets keep the default ClusterIP posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The modules render no NetworkPolicies and the spec has no seam for them -- restricting which sources may reach the ClusterIP Service is the cluster's NetworkPolicy posture (a KubernetesNetworkPolicy on the namespace composes naturally). Access to the API itself requires basic-auth sign-in by default (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component itself terminates no edge traffic -- exposure happens through separate kinds and a web application firewall belongs to that layer, not to this component.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: auth.enabled defaults to true -- every request authenticates against MLflow's basic-auth app, a bootstrap admin is created with a module-generated password, and default_permission (READ unless set) governs what newly-created users may do with resources they did not create; NO_PERMISSIONS makes every experiment private to its creator until shared.
+      notes: Disabling auth leaves EVERY experiment and model writable by anyone who can reach the Service -- an explicit opt-out.
+    - control_id: workload-identity
+      status: configurable
+      field_path: artifact_store
+      evidence:
+        type: spec_default
+        reference: On the aws_s3 and gcs arms, an empty credentials_secret means KEYLESS -- the pod's ambient identity (EKS IRSA / Pod Identity, GKE Workload Identity) must grant bucket access, so artifact traffic reaches cloud storage without stored keys; declared credential Secrets ride environment variables, never rendered manifests.
+      notes: The s3_compatible and azure_blob arms require declared key Secrets by nature of their backends.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Upstream's server is OPEN unless auth is configured and upstream's own auth example ships admin/password1234 -- neither ever ships; both modules enable basic auth by default and generate the admin password into a Secret (<name>-admin-auth), with the auth ini Secret-mounted and the Flask CSRF signing key env-wired, nothing credential-bearing in any rendered manifest.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Login existence is modeled (auth -- basic authentication on by default with a module-generated admin password) but MLflow's basic-auth layer carries no password-strength rules, brute-force lockout, or MFA; credential strength is not a surface the product or this spec exposes.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: A provider-style audit trail is not modeled in this spec -- server activity streams to stdout for the cluster's log collector, and changes to the deployment itself are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; enabling exposes Prometheus metrics on the server's /metrics path, and metrics.service_monitor_enabled additionally renders a ServiceMonitor for operator-based scraping (requires the Prometheus operator CRDs -- a KubernetesKubePrometheusStack composes naturally).
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backend_store
+      evidence:
+        type: spec_default
+        reference: The default sqlite arm keeps tracking state (and auth state) on a single PVC with no backup story; the postgres arm moves it into a KubernetesPostgres whose backup posture rides that component -- the production path.
+      notes: Artifact durability follows the artifact store the same way -- object-store arms inherit their backend's durability; the local PVC arm has none beyond storage-layer snapshots.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery) -- retention policy belongs to the composed database component. The gc retention window (gc.older_than) governs soft-delete recovery, not backups.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: server.replicas
+      evidence:
+        type: spec_default
+        reference: Defaults to 1; the server is stateless once both stores are external, so more replicas scale API availability -- and the spec contract enforces that more than one replica requires the postgres backend AND an object artifact store (the PVC arms are ReadWriteOnce).
+      notes: The 02-production-postgres-s3 preset runs 2 replicas. Spreading replicas across zones is the cluster scheduler's topology behavior -- this spec models node_selector and tolerations, not anti-affinity.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on these module-owned manifests; protection is operational (namespace RBAC, change review). Enabling gc makes soft-deleted runs UNRECOVERABLE once collected -- a deliberate data-lifecycle opt-in, off by default.
+    - control_id: managed-patching
+      status: configurable
+      field_path: server.image
+      evidence:
+        type: spec_default
+        reference: The image defaults to the official ghcr.io/mlflow/mlflow at the kind's pinned release ("v3.15.0-full" -- the -full variant carrying the database drivers, object-store clients, and auth dependency); version changes are deliberate manifest edits, and the modules wait on the rollout so a broken image fails the apply.

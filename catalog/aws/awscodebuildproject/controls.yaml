@@ -59,6 +59,9 @@ spec:
         type: spec_default
         reference: CODECONNECTIONS authenticates source access through a CodeConnections connection with no stored token; OAUTH is the legacy account-level OAuth grant and SECRETS_MANAGER stores a long-lived provider token. Omitting the block falls back to the account-wide source credential, whatever mechanism that credential uses.
       notes: The 04-fork-pr-gated-oss-ci preset pins CODECONNECTIONS; the other GitHub presets ride the account-level credential.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

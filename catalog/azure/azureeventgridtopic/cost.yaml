@@ -1,0 +1,22 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no cost
+# drivers: an Event Grid custom topic is free at rest -- the Basic tier's
+# single meter bills OPERATIONS (publishes, delivery attempts, advanced
+# filtering), and no field of this spec scales or selects that meter; the
+# traffic does. It also ships no estimate quantities -- volume is
+# unknowable from a manifest, stated in exclusions.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgridtopic
+spec:
+  billing_model: usage_based
+  free_tier: "The Event Grid Basic tier's first 100,000 operations per month are free (published on the Event Grid pricing page and visible as the zero-priced first tier of the Standard Operations meter in the Retail Prices API); beyond the grant, operations bill 0.60 USD per million."
+  estimate_exclusions:
+    - "every event published to the topic is a billed operation at 0.60 USD per million past the monthly 100,000-operation free grant, counted in 64 KB units -- a 256 KB event bills as four operations"
+    - "every delivery attempt an event subscription makes from this topic is another billed operation on the same meter -- one publish fanned out to three subscribers bills at least four operations, and retries against a failing endpoint each bill again"
+    - "advanced filtering (conditions on the event's data payload) and subject-ends-with filtering bill one operation per evaluation on the subscriptions attached to this topic; event-type matching and subject-begins-with filtering are free"
+    - "rejected events that require dead-lettering bill as delivery operations, and the dead-letter blobs land storage charges on the destination storage account's own component"
+  notes: "The topic is free to exist: no hourly meter, no per-topic charge -- an idle endpoint with zero publishes costs exactly nothing, and modest workloads can live entirely inside the monthly free grant. Past that, the bill is pure arithmetic on one meter: publishes plus delivery attempts plus billable filter evaluations, at 0.60 USD per million in 64 KB units. The knobs of this spec (input schema, IP rules, local auth, identity) move security and shape, never price. Delivery-side operations are shared economics with the AzureEventgridEventSubscription components attached here -- the meter is one, the components are two. Rates are eastus retail, retrieved 2026-08-18 from the Azure Retail Prices API and the Event Grid pricing page."

@@ -19,3 +19,8 @@ output "proxied" {
   description = "Whether the record is proxied through Cloudflare"
   value       = cloudflare_dns_record.main.proxied
 }
+
+output "zone_id" {
+  description = "The Cloudflare zone ID the record lives in (a record's API identity is zone_id + record_id)"
+  value       = cloudflare_dns_record.main.zone_id
+}

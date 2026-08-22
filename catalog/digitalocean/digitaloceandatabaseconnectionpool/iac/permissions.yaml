@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandatabaseconnectionpool
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageConnectionPool
+        scopes:
+          - database:read
+          - database:create
+          - database:delete
+        provenance: derived
+        notes: "Covers digitalocean_database_connection_pool's create/read/delete/import paths -- read the pool through GET /v2/databases/{c}/pools/{n} (database:read), create the pool via POST /v2/databases/{c}/pools (database:create), and delete it via DELETE /v2/databases/{c}/pools/{n} (database:delete). No update scope: every argument is create-only upstream (no update path is registered). A full-access token also works; it is never least-privilege."

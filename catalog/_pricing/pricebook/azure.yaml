@@ -109,13 +109,13 @@ spec:
       region: eastus
       currency: USD
       list_unit_price: "0.115"
-      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
-      retrieved_on: "2026-08-14"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for PostgreSQL Flex Server Storage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-22"
       azure_selector:
         service_name: Azure Database for PostgreSQL
         arm_region_name: eastus
         meter_name: Storage Data Stored
-        product_name: Az DB for PostgreSQL Flexible Server Storage
+        product_name: Azure Database for PostgreSQL Flex Server Storage
     - name: managed-redis-balanced-b1-eastus
       service_name: Redis Cache
       pricing_unit: hours
@@ -1051,3 +1051,305 @@ spec:
       list_unit_price: "10.0"
       price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Standard Base Unit' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-18"
+    - name: managed-disk-p15-eastus
+      service_name: Storage
+      pricing_unit: disk-months
+      region: eastus
+      currency: USD
+      list_unit_price: "38.012142"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P15 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: P15 LRS Disk
+        product_name: Premium SSD Managed Disks
+    - name: managed-disk-premium-v2-capacity-eastus
+      service_name: Storage
+      pricing_unit: GiB-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.00011"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'Premium LRS Provisioned Capacity' and productName eq 'Azure Premium SSD v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: Premium LRS Provisioned Capacity
+        product_name: Azure Premium SSD v2
+    - name: managed-disk-premium-v2-iops-eastus
+      service_name: Storage
+      pricing_unit: IOPS-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.000007"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'Premium LRS Provisioned IOPS' and productName eq 'Azure Premium SSD v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: Premium LRS Provisioned IOPS
+        product_name: Azure Premium SSD v2
+        tier_minimum_units: "3000"
+    - name: managed-disk-premium-v2-throughput-eastus
+      service_name: Storage
+      pricing_unit: MBps-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.000055"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'Premium LRS Provisioned Throughput (MBps)' and productName eq 'Azure Premium SSD v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: Premium LRS Provisioned Throughput (MBps)
+        product_name: Azure Premium SSD v2
+        tier_minimum_units: "125"
+    - name: monitor-metric-alert-time-series-eastus
+      service_name: Azure Monitor
+      pricing_unit: time-series-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Metric Monitored' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Monitor
+        arm_region_name: eastus
+        meter_name: Alerts Metric Monitored
+        tier_minimum_units: "10"
+    - name: monitor-dynamic-threshold-eastus
+      service_name: Azure Monitor
+      pricing_unit: time-series-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Dynamic Threshold' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Monitor
+        arm_region_name: eastus
+        meter_name: Alerts Dynamic Threshold
+    - name: monitor-log-alert-5min-eastus
+      service_name: Azure Monitor
+      pricing_unit: time-series-months
+      region: eastus
+      currency: USD
+      list_unit_price: "1.5"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts System Log Monitored at 5 Minute Frequency' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Monitor
+        arm_region_name: eastus
+        meter_name: Alerts System Log Monitored at 5 Minute Frequency
+    - name: monitor-standard-web-test-execution-eastus
+      service_name: Azure Monitor
+      pricing_unit: executions
+      region: eastus
+      currency: USD
+      list_unit_price: "0.0005"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Standard Web Test Execution' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Monitor
+        arm_region_name: eastus
+        meter_name: Standard Web Test Execution
+    - name: expressroute-standard-metered-1gbps-circuit-zone1
+      service_name: ExpressRoute
+      pricing_unit: circuit-months
+      region: zone-1
+      currency: USD
+      list_unit_price: "436"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'ExpressRoute' and armRegionName eq 'Zone 1' and meterName eq 'Standard Metered Data 1 Gbps Circuit' and productName eq 'ExpressRoute' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: ExpressRoute
+        arm_region_name: Zone 1
+        meter_name: Standard Metered Data 1 Gbps Circuit
+        product_name: ExpressRoute
+    - name: expressroute-local-unlimited-1gbps-circuit-zone1
+      service_name: ExpressRoute
+      pricing_unit: circuit-months
+      region: zone-1
+      currency: USD
+      list_unit_price: "1200"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'ExpressRoute' and armRegionName eq 'Zone 1' and meterName eq 'Local Unlimited Data 1 Gbps Circuit' and productName eq 'ExpressRoute' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: ExpressRoute
+        arm_region_name: Zone 1
+        meter_name: Local Unlimited Data 1 Gbps Circuit
+        product_name: ExpressRoute
+    - name: cosmosdb-standard-100rus-hour-eastus
+      service_name: Azure Cosmos DB
+      pricing_unit: 100-RU/s-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.008"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and meterName eq '100 RU/s' and productName eq 'Azure Cosmos DB' and skuName eq 'RUs' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Cosmos DB
+        arm_region_name: eastus
+        meter_name: 100 RU/s
+        product_name: Azure Cosmos DB
+        sku_name: RUs
+    - name: cosmosdb-autoscale-100rus-hour-eastus
+      service_name: Azure Cosmos DB
+      pricing_unit: 100-RU/s-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.012"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and meterName eq 'AP1 100 RUs' and productName eq 'Azure Cosmos DB autoscale' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Cosmos DB
+        arm_region_name: eastus
+        meter_name: AP1 100 RUs
+        product_name: Azure Cosmos DB autoscale
+    - name: containerapps-consumption-idle-vcpu-second-eastus
+      service_name: Azure Container Apps
+      pricing_unit: vCPU-seconds
+      region: eastus
+      currency: USD
+      list_unit_price: "0.000003"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Idle Usage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Container Apps
+        arm_region_name: eastus
+        meter_name: Standard vCPU Idle Usage
+    - name: containerapps-consumption-idle-memory-gib-second-eastus
+      service_name: Azure Container Apps
+      pricing_unit: GiB-seconds
+      region: eastus
+      currency: USD
+      list_unit_price: "0.000003"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Idle Usage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Container Apps
+        arm_region_name: eastus
+        meter_name: Standard Memory Idle Usage
+    - name: containerapps-dedicated-vcpu-hour-eastus
+      service_name: Azure Container Apps
+      pricing_unit: vCPU-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.057077"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated vCPU Usage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Container Apps
+        arm_region_name: eastus
+        meter_name: Dedicated vCPU Usage
+    - name: containerapps-dedicated-memory-gib-hour-eastus
+      service_name: Azure Container Apps
+      pricing_unit: GiB-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.004978"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated Memory Usage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Container Apps
+        arm_region_name: eastus
+        meter_name: Dedicated Memory Usage
+    - name: containerapps-dedicated-plan-management-hour-eastus
+      service_name: Azure Container Apps
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated Plan Management' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Container Apps
+        arm_region_name: eastus
+        meter_name: Dedicated Plan Management
+    - name: monitor-100gb-commitment-tier-day-eastus
+      service_name: Azure Monitor
+      pricing_unit: days
+      region: eastus
+      currency: USD
+      list_unit_price: "196"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq '100 GB Commitment Tier Capacity Reservation' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Monitor
+        arm_region_name: eastus
+        meter_name: 100 GB Commitment Tier Capacity Reservation
+    - name: functions-flex-always-ready-baseline-gb-second-eastus
+      service_name: Functions
+      pricing_unit: GB-seconds
+      region: eastus
+      currency: USD
+      list_unit_price: "0.000004"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Functions' and armRegionName eq 'eastus' and meterName eq 'Always Ready Baseline' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Functions
+        arm_region_name: eastus
+        meter_name: Always Ready Baseline
+    - name: keyvault-premium-hsm-rsa2048-key-month-eastus
+      service_name: Key Vault
+      pricing_unit: key-months
+      region: eastus
+      currency: USD
+      list_unit_price: "1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Key Vault' and armRegionName eq 'eastus' and meterName eq 'Premium HSM-protected RSA 2048-bit key' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Key Vault
+        arm_region_name: eastus
+        meter_name: Premium HSM-protected RSA 2048-bit key
+    - name: keyvault-automated-key-rotation-premium-eastus
+      service_name: Key Vault
+      pricing_unit: rotations
+      region: eastus
+      currency: USD
+      list_unit_price: "1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Key Vault' and armRegionName eq 'eastus' and meterName eq 'Automated Key Rotation' and skuName eq 'Premium' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Key Vault
+        arm_region_name: eastus
+        meter_name: Automated Key Rotation
+        sku_name: Premium
+    - name: files-premium-lrs-provisioned-gb-month-eastus
+      service_name: Storage
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.16"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'Premium LRS Provisioned' and productName eq 'Premium Files' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: Premium LRS Provisioned
+        product_name: Premium Files
+    - name: backup-aks-protected-instance-namespace-month-eastus
+      service_name: Backup
+      pricing_unit: namespace-months
+      region: eastus
+      currency: USD
+      list_unit_price: "12"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Backup' and armRegionName eq 'eastus' and meterName eq 'AKS Namespace' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Backup
+        arm_region_name: eastus
+        meter_name: AKS Namespace
+    - name: backup-blob-vaulted-protected-instance-month-eastus
+      service_name: Backup
+      pricing_unit: instance-months
+      region: eastus
+      currency: USD
+      list_unit_price: "10"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Backup' and armRegionName eq 'eastus' and meterName eq 'Azure Blob Protected Instance' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Backup
+        arm_region_name: eastus
+        meter_name: Azure Blob Protected Instance

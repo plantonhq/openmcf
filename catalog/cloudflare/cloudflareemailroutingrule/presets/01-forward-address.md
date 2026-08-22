@@ -10,8 +10,9 @@ verified destination mailboxes.
 ## Key choices
 
 - `matchers`: a `literal` matcher on `field: to` with the matched address.
-- `action.type: forward` with `forwardTo` destination addresses (each must be a
-  verified `CloudflareEmailRoutingAddress`).
+- `actions`: one `forward` action with `forwardTo` destination addresses (each
+  must be a verified `CloudflareEmailRoutingAddress`). A rule can carry
+  multiple actions — see the multi-action preset.
 
 ## Placeholders
 

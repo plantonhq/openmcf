@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareturnstilewidget
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The widget stores no customer data -- it is challenge configuration. Its secret key lives inside Cloudflare's control plane and is exported only as a sensitive stack output.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Turnstile exposes no KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The widget embed script, challenge traffic, and server-side /siteverify verification calls are all served over HTTPS as provider behavior; the component has no toggle that would carry a challenge or a token in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The site key is public by design -- it is embedded in page frontends. The sensitive half is the secret key, which never appears client-side and is handled as a sensitive output (see no-legacy-auth for its rotation caveat).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: domains
+      evidence:
+        type: spec_default
+        reference: domains is a hostname allowlist -- the widget may only be served on the listed domains, and challenge tokens are only issued there, so a stolen site key is useless on an unlisted host. At least one domain is required by the spec.
+      notes: This is a hostname restriction, not a network-source filter -- there are no IP or CIDR controls on a widget. Use "localhost" entries for development widgets only.
+    - control_id: edge-protection
+      status: configurable
+      field_path: mode
+      evidence:
+        type: spec_default
+        reference: The widget IS the request filter for whatever form or endpoint it fronts -- mode picks the challenge posture (managed, non-interactive, invisible), clearance_level sets the clearance granted on Cloudflare-proxied sites, and bot_fight_mode (Enterprise) issues computationally expensive challenges to malicious bots.
+      notes: A widget only protects endpoints whose backend actually verifies the token via /siteverify -- rendering the widget without server-side verification filters nothing.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture; the widget exposes no data plane of its own to authorize.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no cloud-API credentials; the secret key authenticates token verification, not workload identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own to harden. Operational caveat -- the secret key is a static long-lived credential by design; the spec has no rotation field, so rotate it out of band (Cloudflare dashboard or API) if it leaks.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records widget configuration changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring toggle in the spec; Turnstile analytics (challenge issuance and pass rates, 7-day lookback on the free tier) are built into the dashboard unconditionally.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest. Recreating the widget mints a NEW site key and secret -- pages embedding the old site key must be updated.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Challenges are served by Cloudflare's global edge. The region field selects a jurisdiction ("world" or "china"), not an availability placement, and is immutable after creation.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete -- the site key stops serving challenges and the secret stops validating tokens, so forms still embedding the widget fail verification. Migrate embeds to a replacement widget before destroying this one.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and evolves the Turnstile challenge logic; no customer-visible patch surface exists.

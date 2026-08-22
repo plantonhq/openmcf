@@ -52,6 +52,13 @@ spec:
         type: spec_default
         reference: OFF (AWS's default) leaves single-factor password sign-in as a complete authentication path; OPTIONAL lets users enroll a second factor and ON requires one for every user. allowed_first_auth_factors can additionally replace passwords entirely with EMAIL_OTP, SMS_OTP, or WEB_AUTHN passkeys on the ESSENTIALS tier and above.
       notes: Which token flows an application may use (SRP versus plain-password ADMIN flows) is app-client configuration, governed on the AwsCognitoUserPoolClient components.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: password_policy
+      evidence:
+        type: spec_default
+        reference: Unset leaves AWS's baseline in force (8-character minimum); the policy raises minimum_length up to 99, requires each of the four character classes, enforces password_history_size up to 24 generations (ESSENTIALS tier or higher), and bounds temporary-password validity. mfa_configuration layers a second factor on top -- OPTIONAL lets users enroll, ON requires one for every sign-in -- with TOTP (software_token_mfa_enabled), email (email_mfa), and WebAuthn passkey factors.
+      notes: Both hardened presets (03-production-hardened, 04-threat-protected) pin a 12-character all-class policy with 5-generation history and OPTIONAL TOTP MFA; 04 adds the brute-force story -- ENFORCED threat protection with risk_configuration blocking compromised-credential sign-ins and forcing MFA on risky account-takeover attempts.
     - control_id: audit-logging
       status: configurable
       field_path: log_configurations

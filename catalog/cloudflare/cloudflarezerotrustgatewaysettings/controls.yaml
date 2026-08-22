@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustgatewaysettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Configuration-only surface (settings, logging switches, PAC file text) -- no customer data stored.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: settings.fips.tls
+      evidence:
+        type: spec_default
+        reference: settings.fips.tls restricts proxied traffic to FIPS-approved TLS ciphers and versions (certificate-gated); management traffic is HTTPS unconditionally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An account configuration panel; PAC files are deliberately public downloads (device bootstrap requires it).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Gateway filtering runs on Cloudflare's edge with its standard DDoS and TLS posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may change Gateway settings is Cloudflare account-membership posture; per-traffic decisions live in Gateway policies.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A configuration panel, not an identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface of its own.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging.settings_by_rule_type
+      evidence:
+        type: spec_default
+        reference: logging.settings_by_rule_type's per-rule-type log_all/log_blocks switches ARE the Gateway audit-trail configuration; redact_pii tunes what the logs carry.
+      notes: Configuration changes land in the account audit log unconditionally.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: settings.activity_log.enabled
+      evidence:
+        type: spec_default
+        reference: settings.activity_log.enabled is the master switch feeding Gateway analytics and Logpush consumers.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Configuration-only surface, reproducible from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Log retention is a Cloudflare-side product setting, not part of this resource.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Gateway runs on Cloudflare's global anycast network; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The settings and logging singletons have NO-OP deletes at the provider -- the Gateway posture cannot be destroyed from IaC (PAC files delete for real, by design).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

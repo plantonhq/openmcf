@@ -7,7 +7,7 @@ account-scoped decision plus its access rules, attached to applications by refer
 
 ```
 iac/tf/
-├── provider.tf    # cloudflare provider ~> 5.0
+├── provider.tf    # cloudflare provider ~> 5.23
 ├── variables.tf   # metadata + spec
 ├── locals.tf      # labels + rule pass-through + approval/connection/mfa shaping
 ├── main.tf        # the cloudflare_zero_trust_access_policy resource

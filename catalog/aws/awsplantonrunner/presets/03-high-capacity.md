@@ -27,18 +27,21 @@ audit.
   workloads need, auditable in one place
 - **`logRetentionDays: 90`** -- the runner's logs are the audit trail of
   every infrastructure change it executed
+- **Token as a managed-secret reference** -- the token authorizes
+  joining only; the runner registers itself on first boot and receives
+  its own individually revocable identity, and task replacement re-joins
+  with the same token
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<runner-name>` | Name for the runner appliance | Match the runner registration's name |
+| `<runner-name>` | Name for the runner appliance | Any name you choose |
 | `<aws-region>` | AWS region code | The region hosting the private targets |
 | `<private-subnet-a/b-resource-name>` | Names of the private AwsSubnet resources | Your subnet manifests' `metadata.name` |
-| `<runner-credentials-secret-slug>` | The managed secret holding the credentials JSON | Created from `planton runner generate-credentials <runner-name>` |
 | `<runtime-role-resource-name>` | Name of the AwsIamRole resource for the runner's runtime identity | Your role manifest's `metadata.name` |
 
 ## Related Presets
 
 - `01-private-vpc-worker` -- the default-sized starting point
-- `02-dual-mode` -- adds the real-time CloudOps channel
+- `02-public-subnet` -- same worker on public subnets, for VPCs without NAT

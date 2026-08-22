@@ -11,19 +11,21 @@ This preset creates an SSL certificate from user-provided PEM content. Use when 
 
 ## Key Configuration Choices
 
-- **Custom type** (`type: custom`, `custom`) -- you supply the PEM content; no auto-renewal.
+- **Custom branch** (`custom`) -- setting this branch makes the certificate a custom one; you supply the PEM content, and there is no auto-renewal.
 - **Leaf certificate** (`leafCertificate`) -- PEM-encoded server certificate; required.
-- **Private key** (`privateKey`) -- PEM-encoded private key; must match the leaf certificate; keep secure.
-- **Certificate chain** (`certificateChain`) -- optional; include intermediate(s) if your CA provides them (e.g., DigiCert, Sectigo).
-- **No auto-renewal** -- you must manually replace the certificate before expiry; consider external secret management (e.g., Vault, sealed secrets).
+- **Private key** (`privateKey`) -- PEM-encoded private key; must match the leaf certificate. It is a secret: DigitalOcean never returns it, and Planton state stores only a hash.
+- **Certificate chain** (`certificateChain`) -- optional; include intermediate(s) if your CA provides them (e.g., DigiCert, Sectigo), ordered from issuing CA upward.
+- **No auto-renewal** -- replace the certificate before expiry by re-applying with the new material; every field is create-only, and the replacement is created before the old certificate is destroyed, so load balancers referencing the name never observe a gap.
 
 ## Placeholders to Replace
 
+The preset ships with a THROWAWAY self-signed pair (issued for `planton-e2e.invalid`) so it validates and dry-runs as-is -- it secures nothing and must be replaced.
+
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<paste-your-leaf-certificate-pem>` | PEM content of the leaf/server certificate | Your CA or certificate issuer |
-| `<paste-your-private-key-pem>` | PEM content of the private key | Generated with the cert or from your CA |
-| `<paste-intermediate-chain-pem-optional>` | PEM content of intermediate certificates | Your CA; often included in the cert package |
+| `leafCertificate` value | PEM content of the leaf/server certificate | Your CA or certificate issuer |
+| `privateKey` value | PEM content of the private key | Generated with the cert or from your CA |
+| `certificateChain` (add if needed) | PEM content of intermediate certificates | Your CA; often included in the cert package |
 | `my-custom-cert` | Human-readable certificate identifier | Choose a name; used when referencing in load balancers |
 
 ## Related Presets

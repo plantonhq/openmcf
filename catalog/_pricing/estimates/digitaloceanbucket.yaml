@@ -1,0 +1,56 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: digitaloceanbucket
+spec:
+  presets:
+    - preset: 01-private
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Spaces Object Storage
+          sku_meter: Spaces subscription
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: the flat monthly Spaces subscription this bucket requires -- account-level, covering up to 100 buckets with shared 250 GiB storage and 1 TiB transfer allowances, so an account already subscribed adds this bucket at no new committed cost
+          list_unit_price: "5.00"
+          price_source: https://www.digitalocean.com/pricing/spaces-object-storage
+          retrieved_on: "2026-08-22"
+          list_cost: "5.0000"
+      total_list_cost: "5.0000"
+      exclusions:
+        - storage beyond the subscription's included 250 GiB bills 0.02 USD/GiB/mo, following object volume; versioning keeps noncurrent versions as billable storage
+        - outbound transfer beyond the included 1 TiB bills 0.01 USD/GiB; inbound is free
+        - cold storage bills 0.007 USD/GiB/mo on its own meter, selected per object outside this spec
+      notes: Priced at DigitalOcean's global Spaces rate -- the pricing page carries no region dimension. ACL, versioning, lifecycle rules, CORS, policy, and access logging are all free configuration; the subscription is the entire committed bill.
+    - preset: 02-public-static-website
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Spaces Object Storage
+          sku_meter: Spaces subscription
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: the flat monthly Spaces subscription this bucket requires -- account-level, covering up to 100 buckets with shared 250 GiB storage and 1 TiB transfer allowances, so an account already subscribed adds this bucket at no new committed cost
+          list_unit_price: "5.00"
+          price_source: https://www.digitalocean.com/pricing/spaces-object-storage
+          retrieved_on: "2026-08-22"
+          list_cost: "5.0000"
+      total_list_cost: "5.0000"
+      exclusions:
+        - storage beyond the subscription's included 250 GiB bills 0.02 USD/GiB/mo, following object volume; versioning keeps noncurrent versions as billable storage
+        - outbound transfer beyond the included 1 TiB bills 0.01 USD/GiB; inbound is free
+        - cold storage bills 0.007 USD/GiB/mo on its own meter, selected per object outside this spec
+      notes: Priced at DigitalOcean's global Spaces rate -- the pricing page carries no region dimension. ACL, versioning, lifecycle rules, CORS, policy, and access logging are all free configuration; the subscription is the entire committed bill.

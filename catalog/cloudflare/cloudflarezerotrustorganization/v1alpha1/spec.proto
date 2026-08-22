@@ -1,0 +1,227 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustorganization.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZeroTrustOrganizationSpec configures the Zero Trust organization:
+// the account-wide (or zone-wide) Access login experience -- the team domain,
+// login page design, session defaults, MFA policy, and the Access
+// service-key rotation cadence.
+//
+// Three provider facts shape how this resource behaves:
+//   - It is a SINGLETON UPSERT: Cloudflare has no create call for an
+//     organization -- both create and update are the same PUT, so applying
+//     this resource mutates whatever organization already exists on the
+//     account. The organization itself is born when Zero Trust is first
+//     enabled (the team-name onboarding step), never by this resource.
+//   - Destroy is a NO-OP: deleting this resource abandons the live
+//     configuration exactly as last applied; nothing is reverted at
+//     Cloudflare.
+//   - The API accepts every field on the same upsert -- there is no partial
+//     surface. Unset fields are simply not sent, leaving the live value
+//     untouched.
+message CloudflareZeroTrustOrganizationSpec {
+  // Exactly one of account_id or zone_id must be set: the organization is
+  // account-wide in the canonical case, or scoped to a single zone.
+  option (buf.validate.message).cel = {
+    id: "spec.account_xor_zone"
+    message: "set exactly one of account_id or zone_id"
+    expression: "(this.account_id != '') != has(this.zone_id)"
+  };
+
+  // The Access service-key rotation cadence is account-level configuration
+  // at Cloudflare -- a zone-scoped organization cannot carry it.
+  option (buf.validate.message).cel = {
+    id: "spec.key_rotation_account_only"
+    message: "key_rotation_interval_days applies only to an account-scoped organization -- unset it or switch to account_id"
+    expression: "!has(this.key_rotation_interval_days) || this.account_id != ''"
+  };
+
+  // The Cloudflare account that owns this organization. Set this for the
+  // account-wide organization (the common case). Mutually exclusive with
+  // zone_id.
+  string account_id = 1 [(buf.validate.field).cel = {
+    id: "account_id.hex32"
+    message: "account_id must be a 32-character hex string"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{32}$')"
+  }];
+
+  // The Cloudflare zone this organization is scoped to, as a literal zone ID
+  // or a reference to a CloudflareDnsZone. Mutually exclusive with
+  // account_id. NOTE: a zone-scoped organization cannot be adopted by
+  // import -- the provider's importer is account-only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The team domain users sign in through, WITHOUT the .cloudflareaccess.com
+  // suffix (e.g. "acme" serves acme.cloudflareaccess.com). This is the
+  // closest thing the organization has to an identity: the upsert mutates
+  // whatever organization exists, keyed only by the account or zone.
+  string auth_domain = 3;
+
+  // The organization's display name, shown on the Access login page.
+  string name = 4;
+
+  // How long an Access session lasts before users re-authenticate, as a Go
+  // duration (e.g. "24h", "2h45m"; ns/us/ms/s/m/h units).
+  string session_duration = 5;
+
+  // How long a WARP-authenticated session lasts, as a duration using minutes
+  // or hours only (e.g. "30m", "12h").
+  string warp_auth_session_duration = 6;
+
+  // How long a user can be inactive before their seat is released, as a Go
+  // duration. Cloudflare requires at least one month (730h).
+  string user_seat_expiration_inactive_time = 7;
+
+  // When true, requests that match no Access application are denied instead
+  // of passed through.
+  optional bool deny_unmatched_requests = 8;
+
+  // Zone names exempted from deny_unmatched_requests.
+  repeated string deny_unmatched_requests_exempted_zone_names = 9;
+
+  // Custom Access pages shown instead of the default block screens. Values
+  // are custom-page UIDs (Cloudflare's Access custom pages, managed outside
+  // this resource today).
+  CloudflareZeroTrustOrganizationCustomPages custom_pages = 10;
+
+  // The look of the Access login page.
+  CloudflareZeroTrustOrganizationLoginDesign login_design = 11;
+
+  // Organization-wide multi-factor authentication policy.
+  CloudflareZeroTrustOrganizationMfaConfig mfa_config = 12;
+
+  // Hardware requirements applied when ssh_piv_key is an allowed
+  // authenticator.
+  CloudflareZeroTrustOrganizationMfaSshPivKeyRequirements mfa_ssh_piv_key_requirements = 13;
+
+  // When true, users can authenticate to Access applications through an
+  // active WARP session instead of the login page.
+  optional bool allow_authenticate_via_warp = 14;
+
+  // When true, users skip the identity-provider picker and are sent straight
+  // to the sole configured provider.
+  optional bool auto_redirect_to_identity = 15;
+
+  // When true, global MFA settings apply to applications by default. The
+  // organization must have MFA enabled with at least one authentication
+  // method and a session duration configured. Cloudflare rejects
+  // allowed_authenticators containing ONLY ssh_piv_key when the organization
+  // has any non-infrastructure applications (PIV keys pair with
+  // infrastructure apps only).
+  optional bool mfa_required_for_all_apps = 16;
+
+  // When true, every Zero Trust setting becomes read-only in the dashboard
+  // regardless of user permission -- changes can then only land through the
+  // API or IaC. The natural companion of managing the organization from
+  // this resource.
+  optional bool is_ui_read_only = 17;
+
+  // The reason shown in the dashboard for the read-only lock.
+  string ui_read_only_toggle_reason = 18;
+
+  // The Access service-key rotation cadence in days (21-365). This folds
+  // Cloudflare's key-configuration surface into the organization: like the
+  // organization itself it is a singleton upsert with a no-op destroy.
+  // Unset leaves the account's current cadence unmanaged. Account scope
+  // only.
+  optional int32 key_rotation_interval_days = 19 [
+    (buf.validate.field).int32.gte = 21,
+    (buf.validate.field).int32.lte = 365
+  ];
+}
+
+// CloudflareZeroTrustOrganizationCustomPages selects custom Access pages by
+// their UIDs.
+message CloudflareZeroTrustOrganizationCustomPages {
+  // The UID of the custom page shown when a user is denied after failing a
+  // non-identity rule.
+  string forbidden = 1;
+
+  // The UID of the custom page shown when a user's identity is denied.
+  string identity_denied = 2;
+}
+
+// CloudflareZeroTrustOrganizationLoginDesign styles the Access login page.
+message CloudflareZeroTrustOrganizationLoginDesign {
+  // The page background color, as a CSS color (e.g. "#1e293b").
+  string background_color = 1;
+
+  // The text color, as a CSS color.
+  string text_color = 2;
+
+  // The path to the logo shown on the page.
+  string logo_path = 3;
+
+  // The heading text above the login options.
+  string header_text = 4;
+
+  // The footer text below the login options.
+  string footer_text = 5;
+}
+
+// CloudflareZeroTrustOrganizationMfaConfig is the organization-wide MFA
+// policy referenced by applications and policies that require MFA.
+message CloudflareZeroTrustOrganizationMfaConfig {
+  // The authenticator methods users may satisfy MFA with. Cloudflare accepts
+  // exactly: totp, biometrics, security_key, ssh_piv_key.
+  repeated string allowed_authenticators = 1 [(buf.validate.field).cel = {
+    id: "allowed_authenticators.values"
+    message: "allowed_authenticators entries must be drawn from totp, biometrics, security_key, ssh_piv_key"
+    expression: "this.all(v, v in ['totp', 'biometrics', 'security_key', 'ssh_piv_key'])"
+  }];
+
+  // How long an MFA assertion stays valid, as a duration using minutes or
+  // hours only (min "0m", max "720h").
+  string session_duration = 2;
+
+  // How long an authentication-method-reference match stays valid, as a
+  // duration using minutes or hours only (min "0m", max "720h").
+  string amr_matching_session_duration = 3;
+
+  // The NAME of a Cloudflare List of FIDO2 AAGUIDs restricting which
+  // security keys are accepted. A single list name, not the AAGUIDs
+  // themselves.
+  string required_aaguids = 4;
+}
+
+// CloudflareZeroTrustOrganizationMfaSshPivKeyRequirements constrains the
+// hardware PIV keys accepted when ssh_piv_key is an allowed authenticator.
+message CloudflareZeroTrustOrganizationMfaSshPivKeyRequirements {
+  // When the key requires its PIN: never, once (per session), or always.
+  string pin_policy = 1 [(buf.validate.field).cel = {
+    id: "pin_policy.values"
+    message: "pin_policy must be one of never, once, always"
+    expression: "this == '' || this in ['never', 'once', 'always']"
+  }];
+
+  // When the key requires a touch: never, always, or cached.
+  string touch_policy = 2 [(buf.validate.field).cel = {
+    id: "touch_policy.values"
+    message: "touch_policy must be one of never, always, cached"
+    expression: "this == '' || this in ['never', 'always', 'cached']"
+  }];
+
+  // The accepted key algorithms: ecdsa, ed25519, rsa.
+  repeated string ssh_key_type = 3 [(buf.validate.field).cel = {
+    id: "ssh_key_type.values"
+    message: "ssh_key_type entries must be drawn from ecdsa, ed25519, rsa"
+    expression: "this.all(v, v in ['ecdsa', 'ed25519', 'rsa'])"
+  }];
+
+  // The accepted key sizes in bits: 256, 384, 521 (ECDSA), 2048, 3072, 4096
+  // (RSA).
+  repeated int64 ssh_key_size = 4 [(buf.validate.field).cel = {
+    id: "ssh_key_size.values"
+    message: "ssh_key_size entries must be drawn from 256, 384, 521, 2048, 3072, 4096"
+    expression: "this.all(v, v in [256, 384, 521, 2048, 3072, 4096])"
+  }];
+
+  // When true, only FIPS-certified hardware keys are accepted.
+  optional bool require_fips_device = 5;
+}

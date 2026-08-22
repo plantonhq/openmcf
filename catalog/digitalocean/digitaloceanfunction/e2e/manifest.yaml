@@ -1,15 +1,24 @@
+# DigitalOcean Function -- examples
+#
+# DigitalOceanFunction deploys serverless functions as an App Platform
+# app with a single functions component. There is no standalone
+# Functions resource; both engines create digitalocean_app.
+#
+# Runtime, memory, timeout, entrypoint, and schedules live in the
+# repo's project.yml inside sourceDirectory. Putting those knobs on
+# this spec would silently do nothing.
+#
+# Usage:
+#   planton apply -f manifest.yaml
+
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
-  name: test-function
+  name: hello
 spec:
-  functionName: test-function
-  region: blr1
-  runtime: nodejs_20
-  githubSource:
-    repo: example-org/functions
-    branch: main
-    deployOnPush: true
-  sourceDirectory: packages/test-function
-  memoryMb: 256
-  isWeb: true
+  functionName: hello
+  region: nyc3
+  git:
+    repoCloneUrl: https://github.com/digitalocean/sample-functions-nodejs-helloworld.git
+    branch: master
+  sourceDirectory: packages

@@ -1,0 +1,52 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: a runtime deployed from a direct code bundle (the 01 preset's
+# shape) commits real spend -- AWS stores the deployed artifact and bills
+# it monthly at S3 Standard rates from the moment it deploys, at zero
+# traffic -- but the committed QUANTITY is the bundle's size, and the
+# manifest states only an S3 key (bundles/my-agent.zip), never a size,
+# so a dollar figure here would be a guess wearing a dollar sign.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagentcoreruntime
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Bedrock AgentCore
+      sku_meter: code artifact storage
+      pricing_unit: GB-months
+      description: "The pricing page states it plainly: \"Direct code deployment bills you for the size of the code artifacts you deployed at S3 Standard rates\" (effective February 27, 2026), and its own example prices the charge -- \"for a 100MB agent, this adds up to $0.0023/month in storage costs.\" The rate is published; the quantity is not manifest-visible, because the spec locates the bundle by S3 key, never by size. Container deployments sidestep this meter entirely -- image storage bills on your own ECR repository."
+  cost_drivers:
+    - field_path: artifact.code
+      sku_meter: code artifact storage
+      pricing_unit: GB-months
+      impact: The committed arm -- deploying a code bundle hands AWS the artifact to store, and the stored copy bills monthly at S3 Standard rates on its size while the runtime version exists, sessions or none. The source object in the referenced AwsS3Bucket bills that bucket separately; this meter is AgentCore's own copy.
+    - field_path: artifact.container
+      sku_meter: ECR image storage
+      pricing_unit: GB-months
+      impact: The container path carries no AgentCore-side storage meter -- the image bills its GB-months on YOUR ECR repository, a referenced concern outside this kind. Choosing container over code is what keeps this manifest's committed spend at zero.
+    - field_path: lifecycle
+      sku_meter: microVM memory consumption
+      pricing_unit: GB-hours
+      impact: "Memory bills per second for the peak consumed, across the ENTIRE session lifetime -- boot, active processing, and idle alike ($0.00945 per GB-hour, 128 MB minimum). CPU is different: I/O-wait and idle CPU is free. So the idle timeout is a real money lever -- every idle second a session survives keeps its memory metering until AWS reclaims it."
+    - field_path: filesystems
+      sku_meter: managed session storage
+      pricing_unit: GB-months
+      impact: "A session_storage mount uses AWS-managed scratch storage that is in public preview -- AWS says pricing to that experience changes before GA, so the rate is not yet published (honest absence, not $0). EFS and S3 access-point mounts bill on their referenced components, never here."
+    - field_path: network
+      sku_meter: network data transfer
+      pricing_unit: GB
+      impact: Session traffic bills at standard EC2 data transfer rates in both modes. VPC mode additionally routes egress through YOUR network topology -- NAT gateway processing and cross-AZ transfer land on those referenced components, not on this kind.
+  free_tier: "No permanent free allotment exists -- microVM CPU bills from the first second of actual consumption and memory from the first second of a session (1-second minimum, 128 MB memory floor), though I/O-wait and idle CPU is free by design when no background process runs. The up-to-$200 AWS Free Tier credit for new customers is a one-time trial credit, not a permanent tier."
+  estimate_exclusions:
+    - compute is genuinely scale-to-zero -- microVM CPU bills $0.0895 per vCPU-hour on ACTUAL consumption and memory $0.00945 per GB-hour on per-second peak, only across session lifetimes; a runtime with no sessions bills no compute, and session volume is entirely workload-driven
+    - the committed code-artifact quantity (the bundle's size) is not stated in the manifest -- only an S3 key -- which is why no estimate document exists for this component
+    - the spec has no Instances/capacity-provider surface, so the EC2-instance-plus-management-fee compute type cannot start from this manifest
+    - managed session storage is in public preview with pricing not yet published -- AWS states the experience changes, including pricing, before GA
+    - the source code bundle bills the referenced AwsS3Bucket's storage; container images bill your ECR repository; EFS and S3 access-point mounts bill their referenced components
+    - network data transfer bills at standard EC2 rates
+    - endpoints, resource policies, JWT authorizer rules, and environment variables carry no meter of their own
+  notes: "The headline is real: AgentCore Runtime compute scales to zero, and its consumption-based pricing makes I/O wait -- 30-70% of a typical agent's life -- free CPU time. What moves this kind to hybrid is a small, certain storage meter the compute story hides: a direct code deployment (preset 01's shape) stores the artifact AgentCore-side and bills it monthly at S3 Standard rates from deploy, at zero traffic. The magnitude is fractions of a cent per 100 MB per month; the honesty is the point -- committed spend with an unknowable manifest-side quantity gets a stated meter, not a fabricated estimate. The honest estimate lives at composition time: the deployment arm from this manifest, the bundle size from the artifact itself, and the published S3 Standard rate. The other cost teaching worth keeping: memory bills through idle while CPU does not, so lifecycle.idle_runtime_session_timeout_seconds -- not vCPU count -- is the lever teams forget."

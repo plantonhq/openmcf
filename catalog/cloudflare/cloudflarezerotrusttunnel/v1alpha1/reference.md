@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareZeroTrustTunnelSpec configures a Cloudflare Tunnel (cloudflared): a secure,
 outbound-only connection from a private network to Cloudflare's edge. A tunnel exposes
 private HTTP/TCP/SSH/RDP services via public hostnames (ingress rules) and/or makes
@@ -483,6 +485,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareWorker | `spec.vpcNetworks[].tunnelId` | `status.outputs.tunnel_id` |
 | CloudflareZeroTrustTunnelRoute | `spec.tunnelId` | `status.outputs.tunnel_id` |
 
 ## See Also

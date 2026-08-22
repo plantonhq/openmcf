@@ -1,0 +1,16 @@
+# The zone-toggle arm: enable Authenticated Origin Pulls zone-wide on the
+# run-scoped fixture zone. Free-plan surface, no certificate needed -- the
+# always-runnable live arm. Destroy is a no-op at Cloudflare (the toggle
+# stays); the abandoned value rides the throwaway fixture zone's own
+# destroy, so the lane still ends zero-orphan.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAuthenticatedOriginPulls
+metadata:
+  name: e2e-aop-toggle-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  zone_enabled: true

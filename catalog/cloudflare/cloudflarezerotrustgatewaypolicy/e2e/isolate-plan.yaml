@@ -1,0 +1,24 @@
+# Offline-plan arm: an HTTP isolate policy with v2 browser-isolation controls.
+# Offline because Remote Browser Isolation is a PAID add-on the E2E account
+# does not carry -- an entitlement-gated recorded deferral, never a silent
+# skip. The full biso_admin_controls shape is proven by offline `tofu plan`.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: test-gateway-policy-isolate
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: isolate-risky-sites
+  action: isolate
+  filter: http
+  enabled: true
+  traffic: any(http.request.uri.security_category[*] in {32 33})
+  rule_settings:
+    biso_admin_controls:
+      version: v2
+      copy: remote_only
+      download: remote_only
+      paste: disabled
+      keyboard: enabled
+      printing: disabled
+      upload: disabled

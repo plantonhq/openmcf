@@ -1,0 +1,45 @@
+# IaC runner permissions: the least-privilege statements a provisioning
+# identity needs to manage this component's full lifecycle (create, read,
+# update, delete, tag) through the official modules. Resource patterns use
+# catalog placeholders; NON-SCOPABLE facts are verified against the AWS
+# service reference (servicereference.us-east-1.amazonaws.com/v1/ce/ce.json).
+# Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscostcategory
+spec:
+  aws:
+    statements:
+      - sid: CreateCategory
+        actions:
+          - ce:CreateCostCategoryDefinition
+        resources:
+          - "*"
+        provenance: derived
+        notes: "NON-SCOPABLE: the service reference lists no resource type for the create action -- the category's ARN identifier does not exist until the call returns, so it requires '*'. It honors aws:RequestTag/${TagKey} and aws:TagKeys for tag-on-create governance; the module tags the category with the platform's standard tag set. Exercised on some routine updates too: category_name is create-only, so a rename replaces the category (and severs its AWS-side reporting history -- deletion cannot be undone)."
+      - sid: OperateCategory
+        actions:
+          - ce:DescribeCostCategoryDefinition
+          - ce:UpdateCostCategoryDefinition
+          - ce:DeleteCostCategoryDefinition
+        resources:
+          - "arn:aws:ce::{account_id}:costcategory/*"
+        provenance: derived
+        notes: "Read, in-place update (rules, split_charge_rules, default_value, effective_start all update without replacement -- only the name replaces), and delete, scoped to the costcategory resource type. Cost Explorer ARNs carry NO region segment (account-global service) and identifiers are service-generated, hence the account-wide wildcard. All three honor aws:ResourceTag condition keys for tag-fenced (ABAC) runner policies -- worth using here, since update permission decides cost ATTRIBUTION between teams."
+      - sid: ListCategories
+        actions:
+          - ce:ListCostCategoryDefinitions
+        resources:
+          - "*"
+        provenance: derived
+        notes: "NON-SCOPABLE: the list call carries no resource type in the service reference and requires '*'. Read-only; used by import and drift workflows that locate a category before describing it by ARN."
+      - sid: TagCategory
+        actions:
+          - ce:TagResource
+          - ce:UntagResource
+          - ce:ListTagsForResource
+        resources:
+          - "arn:aws:ce::{account_id}:costcategory/*"
+        provenance: derived
+        notes: "The module maintains the platform's standard tags (resource ID, org, env) on the category across updates; the service reference scopes all three actions to the costcategory resource type."

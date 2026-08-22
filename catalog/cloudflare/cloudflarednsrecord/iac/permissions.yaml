@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The component's README states the same requirement in prose ("a Cloudflare
+# API token with DNS:Edit") -- migrated here losslessly; "DNS:Edit" is the
+# dashboard-name spelling of the same write grant on the permissions
+# reference.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarednsrecord
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageRecord
+        name: DNS Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_dns_record resource and the Pulumi module's matching DnsRecord resource -- create/update/delete the DNS record via POST/PATCH/DELETE /zones/{zone_id}/dns_records[/{id}] (dedicated group, direct name match; the path mapping is derived from the module's API surface; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadRecord
+        name: DNS Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the record via GET /zones/{zone_id}/dns_records/{id}.

@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockguardrail
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock encrypts the guardrail definition -- topic definitions, custom word lists, regex patterns, blocked messaging -- at rest by default; with kms_key_arn unset it rests under a Bedrock-managed key, and an unencrypted guardrail is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the Bedrock-managed key; referencing a KMS key moves the guardrail under a customer-managed key you own and can revoke. Updates in place -- switching keys does not replace the guardrail.
+      notes: Revoking the key's grant makes the stored policy definition unreadable to the service, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The bedrock control plane (create, update, versions) and the bedrock-runtime data plane (ApplyGuardrail, guarded model invocations) are HTTPS-only SigV4 endpoints; the evaluated text never travels a plaintext path.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every surface requires authentication: applying the guardrail is an IAM-authorized ApplyGuardrail call scoped to the guardrail ARN, and all management operations are IAM-authorized. No anonymous or internet-open endpoint is representable."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a guardrail -- it is policy configuration evaluated inline by the Bedrock service on model traffic; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The guardrail exposes no request-serving surface a WAF could front. It IS a content-level protection layer (prompt-attack detection, harmful-content filtering) applied inside model invocations -- a different layer than edge filtering, and one this component provides rather than consumes.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, version publishing, deletion, application -- is IAM-authorized, and the bedrock service reference scopes Get/Update/Delete/CreateGuardrailVersion/ApplyGuardrail to the guardrail ARN, so per-guardrail grants (including who may apply which guardrail) are enforceable.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A guardrail runs no workload and references no execution role -- the Bedrock service evaluates its policies inline on model traffic under AWS's own service identity. There is no credential surface on this manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication generation -- SigV4-signed IAM requests on both control and data planes; no legacy or weaker protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All guardrail control-plane operations -- who created it, weakened a filter, published or deleted a version -- are management events CloudTrail records unconditionally in the account's event history.
+      notes: What the guardrail catches at runtime is separately observable -- interventions surface in invocation traces and in the AWS/Bedrock/Guardrails metrics, and full model I/O capture is the account-level AwsBedrockInvocationLogging component's job.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Guardrails publish runtime metrics to the AWS/Bedrock/Guardrails CloudWatch namespace automatically -- Invocations, InvocationLatency, TextUnitCount (the cost meter), and InvocationsIntervened, dimensioned by guardrail ARN, version, content source, and policy type -- with no field to enable. Alarming on InvocationsIntervened spikes is the standard jailbreak/data-leak tripwire.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The guardrail stores no unrecoverable state -- it is a declarative policy definition recreated from this manifest, and published versions are immutable snapshots AWS keeps until deliberately deleted.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists by design -- nothing accumulates inside a guardrail to expire. Published versions persist until removed from `versions` (or indefinitely with keep_on_delete).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock is a regional managed service AWS operates across availability zones -- guardrail evaluation has no zonal footprint the manifest could configure, and cross_region_profile extends evaluation across regions for cross-region inference traffic.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Guardrails carry no deletion-protection flag, but two guards soften deletion: AWS fails deletion of a version still in use by an agent server-side, and versions.keep_on_delete preserves a published version in AWS when its entry is removed or the guardrail destroyed. Both are delete-time behaviors, not a configurable protection switch."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the classifier models behind every policy family (and ships new tiers like STANDARD as service updates); the guardrail exposes no runtime, version, or maintenance surface of its own.

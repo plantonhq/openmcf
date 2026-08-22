@@ -12,6 +12,8 @@ go_library(
         "//finops/componentcostestimatemodel/v1:componentcostestimatemodel",
         "//finops/pricebook/v1:pricebook",
         "//pkg/crkreflect",
+        "//pkg/finops/capacityderivation",
+        "//pkg/finops/capacityestimator",
         "//pkg/finops/costderivation",
         "//pkg/finops/costestimate",
         "//pkg/finops/costestimator",
@@ -37,9 +39,13 @@ go_test(
     ],
     embed = [":estimategen_lib"],
     deps = [
+        "//catalog/azure/azureeventhubnamespace/v1alpha1",
         "//finops/componentcostestimate/v1:componentcostestimate",
         "//pkg/finops/costderivation",
         "//pkg/finops/costestimate",
+        "//pkg/finops/costestimator",
+        "//pkg/finops/pricebook",
         "//pkg/protobufyaml",
+        "//shared/foreignkey/v1:foreignkey",
     ],
 )

@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: Omitted means unsigned DNS (the default), where resolvers cannot verify response authenticity; setting dnssec_config.state=on has Google sign the zone and serve the DS chain for validating resolvers.
       notes: DNSSEC retires trust in unauthenticated DNS responses -- the protocol's legacy trust model. The 03-public-dnssec preset enables it with NSEC non-existence proofs.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: cloud_logging_config.enable_logging

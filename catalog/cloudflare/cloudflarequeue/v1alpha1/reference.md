@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareQueueSpec configures a Cloudflare Queue: a managed, guaranteed-delivery
 message queue for Cloudflare Workers. Producers (a Worker's `queues` binding or an R2
 bucket's event notifications) write messages; a single consumer reads them.

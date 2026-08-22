@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awss3tablebucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table data is always server-side encrypted -- an unset encryption block means S3-managed keys (SSE-S3), per the spec contract and AWS's default; unencrypted table storage is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Setting sse_algorithm aws:kms with a referenced AwsKmsKey puts the whole bucket (and, via each table's own encryption block, individual tables) under a customer managed key; the spec's CEL keeps the key-and-algorithm pairing honest.
+      notes: The documented trap rides the key policy, not this manifest -- the S3 Tables maintenance service must be granted use of the key (kms:GenerateDataKey/Decrypt for maintenance.s3tables.amazonaws.com) or compaction silently stops.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: resource_policy
+      evidence:
+        type: spec_default
+        reference: The bucket resource policy is a full policy surface -- a deny on insecure transport (the standard aws:SecureTransport condition pattern) makes TLS mandatory for every caller; per-table policies (namespaces.tables.resource_policy) can layer the same requirement.
+      notes: Absent such a statement, transport security rides clients using the HTTPS endpoints -- the API accepts no unauthenticated path either way.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A table bucket has no public-access surface at all -- no ACLs, no website hosting, no anonymous read path; every request is IAM-authorized, and cross-account access exists only where a resource policy explicitly grants it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No listener or port surface exists to restrict -- reachability is the S3 Tables API endpoints, request-authorized per principal. Network-conditioned access (source-VPC conditions) is a resource_policy statement, assessed under the policy-bearing controls.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Analytics storage fronts no web application -- query engines, not browsers, address the tables; there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Access is deny-by-default IAM on real ARNs at two grains -- the bucket (arn:...:bucket/name) and each table (arn:...:bucket/name/table/id) -- so grants can distinguish the analyst who queries one table from the pipeline that owns the bucket. resource_policy and per-table policies layer explicit cross-account grants on top."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The bucket runs no workloads and holds no credentials. The one principal it TAKES is the replication role: AWS's replication service assumes the IAM role the replication block references -- a granted identity on its own AwsIamRole component, not one this bucket mints."
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every request is SigV4-signed IAM against the S3 Tables API -- no anonymous, ACL-based, or legacy authentication path exists for table buckets.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit dial. Control-plane operations (bucket, namespace, table lifecycle) land in AWS CloudTrail as account-level management events; capturing table DATA access is account CloudTrail territory -- none of it configurable on this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface. The service's own action inventory accepts metrics configurations (PutTableBucketMetricsConfiguration), so the gap is this component's spec, not the service's capability; maintenance-job status is readable per table through the S3 Tables API.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: replication
+      evidence:
+        type: spec_default
+        reference: Bucket-level replication copies every table to 1-5 destination table buckets (cross-region included) under the referenced IAM role; per-table replication blocks do the same at table grain. The 02-replicated-lake preset models exactly this posture.
+      notes: Iceberg snapshots add point-in-time recovery within a table -- time travel back through retained snapshots -- governed by snapshot_management, assessed under backup-retention-policy.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: namespaces.tables.snapshot_management
+      evidence:
+        type: spec_default
+        reference: max_snapshot_age_hours and min_snapshots_to_keep ARE the retention dials -- how far back time travel reaches (AWS defaults 120 hours, 1 snapshot) before expiry reclaims history. Raising them holds more recoverable history; the storage meter carries the cost of what they pin.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table buckets store data in the S3 Tables Standard class with S3's regional redundancy across multiple availability zones -- the deliberate opposite of the single-zone directory bucket; no zonal placement exists on the spec to get wrong.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Off by default -- destroying a bucket that still holds tables or namespaces FAILS until they are removed. Setting force_destroy true removes the guard by deleting every table and namespace first; the spec's own comment says destroying data should hurt.
+      notes: force_destroy is config-only at AWS (never read back), so an imported bucket does not round-trip it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed -- AWS operates the storage and runs the continuous maintenance itself (compaction, snapshot expiry, unreferenced-file removal); the component exposes maintenance DIALS but no runtime, version, or patch surface.

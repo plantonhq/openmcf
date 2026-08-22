@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsauroradsql
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: region
+      sku_meter: DPUs
+      pricing_unit: DPUs
+      impact: "All database activity -- query compute, read and write I/O, even background statistics and index maintenance -- consolidates into one meter, the Distributed Processing Unit, billed at $8 per million in us-east-1. AWS's own words: 'When your cluster is idle, usage automatically scales to zero and you incur no DPU charges.' There are no capacity dials anywhere on this spec -- the workload alone decides the DPU bill."
+    - field_path: region
+      sku_meter: storage
+      pricing_unit: GB-month
+      impact: Stored data bills $0.33 per GB-month in us-east-1 for ONE logical copy -- the three-Availability-Zone replication inside the region is included, not billed. The meter runs on actual bytes stored, so an empty-on-create cluster stores nothing and bills nothing.
+    - field_path: multi_region
+      sku_meter: DPUs
+      pricing_unit: DPUs
+      impact: Pairing doubles the write-side metering surface -- every write replicated to a peered cluster bills MultiRegionWriteDPU equal to the cost of the originating write, in the originating region. Cross-region replication carries no separate data transfer charge; it is all DPUs.
+    - field_path: multi_region.peer_cluster_arns
+      sku_meter: storage
+      pricing_unit: GB-month
+      impact: A multi-region pair stores a full copy in EACH peered region, and each region bills its own GB-month storage meter. This manifest is one half of the pair -- the peer cluster's DPUs and storage bill on its own manifest in its own region.
+    - field_path: multi_region.witness_region
+      sku_meter: DPUs
+      pricing_unit: DPUs
+      impact: The witness region is the one part of a multi-region setup that bills NOTHING -- AWS states you are not charged for DPUs or storage in the witness region, because it stores only transaction logs and executes no transactions. Choosing it is a placement decision, not a cost decision.
+  free_tier: "A recurring monthly allotment, not a trial: the first 100,000 DPUs and 1 GB of storage are free EACH MONTH, applied automatically to the bill (per management account under AWS Organizations). AWS's own sizing note puts 100,000 DPUs at roughly 700,000 TPC-C-style transactions -- enough that a development cluster or small application can ride the free tier indefinitely."
+  estimate_exclusions:
+    - DPU volume is entirely workload-driven -- $8.00 per million DPUs in us-east-1 as queries, writes, and background maintenance run; an idle cluster meters zero
+    - storage bills $0.33 per GB-month in us-east-1 on actual stored bytes, growing with the data
+    - a multi-region pairing bills MultiRegionWriteDPU equal to every originating write and a full storage meter in each peered region
+    - change data capture, if enabled on the cluster, meters StreamDPU at the same DPU rate, and the receiving Kinesis stream bills separately on its own component
+    - data transfer out to the internet or across regions bills at standard AWS data transfer rates (inter-AZ replication inside the region is free)
+    - AWS Backup jobs against the cluster bill on AWS Backup's own meters
+    - customer-managed key encryption bills the key's rental and requests on the referenced AwsKmsKey
+  notes: "Aurora DSQL is serverless in the strictest billing sense: no instances, no capacity dials, no hourly floor. The spec's only levers are placement (region, multi-region pairing) and safety (deletion protection, KMS key) -- nothing on it commits a dollar. An empty cluster's existence bills ~$0: it meters no DPUs while idle (AWS's stated behavior, verbatim on the pricing page) and stores nothing until the first insert, and the recurring monthly free tier (100,000 DPUs + 1 GB) absorbs residual activity. The real cost story is the multi-region flip: pairing doubles every write's DPU cost and duplicates the storage meter per region, while the witness region stays free. DPU sub-components (ComputeDPU, ReadDPU, WriteDPU, MultiRegionWriteDPU, StreamDPU) all bill at the same rate -- the CloudWatch breakdown is for visibility, not differential pricing."

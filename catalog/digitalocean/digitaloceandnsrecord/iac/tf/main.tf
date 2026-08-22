@@ -1,43 +1,21 @@
-# Create the DigitalOcean DNS record
+# A single DNS record inside an existing DigitalOcean DNS zone. The per-type
+# fields (priority/weight/port/flags/tag) carry the spec's presence semantics:
+# unset arrives as null and is simply not sent, matching the provider's own
+# GetOk-guarded request building. Spec CEL rules already guarantee the fields
+# each record type requires are present.
 resource "digitalocean_record" "dns_record" {
   domain = local.domain
   type   = local.type
-  name   = local.name
+  name   = var.spec.name
   value  = local.value
-  ttl    = local.ttl_seconds
 
-  # Priority for MX and SRV records
-  priority = (
-    local.type == "MX" || local.type == "SRV"
-    ? coalesce(local.priority, 0)
-    : null
-  )
+  # When null, the ttl attribute is Computed: DigitalOcean applies its
+  # default (1800 seconds) and the applied value reads back into state.
+  ttl = var.spec.ttl_seconds
 
-  # Weight for SRV records
-  weight = (
-    local.type == "SRV"
-    ? coalesce(local.weight, 0)
-    : null
-  )
-
-  # Port for SRV records
-  port = (
-    local.type == "SRV"
-    ? coalesce(local.port, 0)
-    : null
-  )
-
-  # Flags for CAA records
-  flags = (
-    local.type == "CAA"
-    ? coalesce(local.flags, 0)
-    : null
-  )
-
-  # Tag for CAA records
-  tag = (
-    local.type == "CAA"
-    ? local.tag
-    : null
-  )
+  priority = var.spec.priority
+  weight   = var.spec.weight
+  port     = var.spec.port
+  flags    = var.spec.flags
+  tag      = var.spec.tag != "" ? var.spec.tag : null
 }

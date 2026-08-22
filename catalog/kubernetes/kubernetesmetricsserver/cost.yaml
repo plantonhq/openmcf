@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesmetricsserver
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: One replica is standard; a second (with pod_disruption_budget) buys failover for the metrics API -- each replica carries the declared resources.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The metrics-server container's requests are reserved per replica. Empty means the CHART's defaults apply (100m CPU / 200Mi memory requests, no limits) -- upstream's envelope for clusters up to 100 nodes, growing +1m CPU and +2Mi memory per additional node beyond that.
+    - field_path: metric_resolution
+      sku_meter: kubelet CPU consumption
+      impact: Every scrape cycle costs CPU on EVERY node's kubelet; shortening the resolution below the 15s default burns kubelet CPU cluster-wide for little HPA-freshness gain.
+  estimate_exclusions:
+    - no committed preset declares resources -- the presets rely on the chart's own defaults (100m CPU / 200Mi memory requests per pod), a real reservation the manifest-value footprint cannot state, so no capacity derivation is shipped
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is one small Deployment (usually a single pod) serving the metrics.k8s.io API. Its consumption scales with cluster size (it scrapes every kubelet), not with the workloads whose metrics it serves; GKE and AKS ship metrics-server built-in, so this component belongs on EKS, kind, k3s, and self-managed clusters."

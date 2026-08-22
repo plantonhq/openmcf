@@ -1,0 +1,24 @@
+# Provider-parity manifest for CloudflareAuthenticatedOriginPulls.
+# The kind folds two provider resources: the per-hostname association
+# (cloudflare_authenticated_origin_pulls) and the zone-wide toggle
+# (cloudflare_authenticated_origin_pulls_settings). Unlisted arguments
+# (zone_id on both) match spec fields by exact name.
+resources:
+  cloudflare_authenticated_origin_pulls:
+    mappings:
+      # The provider's config is a list constrained to exactly one element
+      # per resource; the spec's association rows fan out one resource per
+      # row, so every row leaf realizes the config argument.
+      - spec: spec.hostname_associations.hostname
+        arg: config
+      - spec: spec.hostname_associations.certificate_id
+        arg: config
+      - spec: spec.hostname_associations.enabled
+        arg: config
+  cloudflare_authenticated_origin_pulls_settings:
+    mappings:
+      # The zone-wide toggle folds in as zone_enabled -- a plain "enabled"
+      # spec field would collide with the association rows' enabled and hide
+      # which surface it drives.
+      - spec: spec.zone_enabled
+        arg: enabled

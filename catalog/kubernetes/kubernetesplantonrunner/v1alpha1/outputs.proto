@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonrunner.v1alpha1;
+
+// KubernetesPlantonRunnerStackOutputs captures the observable identifiers
+// of a deployed runner — the handles for day-2 operations: finding the
+// release, the namespace it lives in, and the name it registered itself
+// under with the control plane.
+message KubernetesPlantonRunnerStackOutputs {
+  // The namespace the runner is installed in.
+  string namespace = 1;
+
+  // The Helm release name (metadata.name) — the handle for
+  // `helm status`/`helm get values` inspection.
+  string release_name = 2;
+
+  // The name of the Kubernetes Secret holding the runner token. The
+  // chart's Deployment reads PLANTON_RUNNER_TOKEN from this Secret; the
+  // token authorizes joining and is never the runner's identity.
+  string token_secret_name = 3;
+
+  // The name the runner registers itself under with the control plane —
+  // the value shown by `planton runner list` the moment it joins.
+  string runner_name = 4;
+}

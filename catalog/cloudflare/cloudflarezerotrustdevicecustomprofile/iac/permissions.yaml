@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustdevicecustomprofile
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageProfile
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the WARP custom device profile via POST/PUT/DELETE /accounts/{account_id}/devices/policy[/{policy_id}] and replace its local-domain fallback list via PUT /accounts/{account_id}/devices/policy/{policy_id}/fallback_domains. The reference publishes no narrower group for WARP device settings profiles (derived from the module's API surface). Covers the Terraform module's cloudflare_zero_trust_device_custom_profile resource plus its cloudflare_zero_trust_device_custom_profile_local_domain_fallback companion, and the Pulumi module's matching ZeroTrustDeviceCustomProfile and ZeroTrustDeviceCustomProfileLocalDomainFallback resources; neither engine performs secondary lookups. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadProfile
+        name: Zero Trust Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the profile and its fallback-domain list via GET on the same paths (derived from the module's API surface).

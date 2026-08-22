@@ -1,0 +1,47 @@
+# Estimate model: hand-computed capacity footprints for this
+# cluster-capacity component's presets. A derivation cannot state this
+# kind honestly: the chart SHIPS real default operator resources
+# (limits 100m CPU / 512Mi memory; it sets no requests, and Kubernetes
+# defaults requests to the limits when only limits are declared),
+# applied whenever a manifest omits resources, and the derivation
+# grammar reads only explicit manifest values -- a derivation would
+# show a zero footprint for both shipped presets while the operator
+# pod actually reserves the chart defaults. Each preset's totals are
+# therefore computed by hand: the single operator pod's declared
+# resources, or the chart defaults when omitted. Upstream sizes the
+# operator at ~500MB per 500 managed Ray pods -- large fleets need
+# explicit resources scaled with fleet size. The operator binds no
+# persistent volumes; the Ray clusters it reconciles reserve their own
+# capacity on their KubernetesRayCluster resources. Cluster-capacity
+# components carry no priced lines -- the dollar value of the
+# reservation is the target cluster's node economics, which this
+# catalog cannot know.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kuberneteskuberayoperator
+spec:
+  presets:
+    - preset: 01-default
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 512Mi
+        cpu_limits: 100m
+        memory_limits: 512Mi
+        basis: 1 operator pod x the chart-default limits (100m CPU / 512Mi memory; the chart sets no requests, so Kubernetes reserves the limits as requests too) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - "the Ray clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRayCluster resource"
+        - upstream sizes the operator at ~500MB per 500 managed Ray pods -- fleets past that scale need explicit resources beyond the modeled defaults
+    - preset: 02-private-mirror
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 512Mi
+        cpu_limits: 100m
+        memory_limits: 512Mi
+        basis: 1 operator pod x the chart-default limits (100m CPU / 512Mi memory; requests default to the limits) -- the mirrored registry and the ServiceMonitor change discovery and pulls, not the reservation; no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - "the Ray clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRayCluster resource"
+        - upstream sizes the operator at ~500MB per 500 managed Ray pods -- fleets past that scale need explicit resources beyond the modeled defaults

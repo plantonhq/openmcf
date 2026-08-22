@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustlist
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageList
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the Zero Trust list and its items via POST/PUT/PATCH/DELETE /accounts/{account_id}/gateway/lists[/{list_id}]; the reference publishes no narrower group for Zero Trust lists (derived from the module's API surface). Covers the Terraform module's single cloudflare_zero_trust_list resource and the Pulumi module's matching ZeroTrustList resource; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadList
+        name: Zero Trust Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the list via GET /accounts/{account_id}/gateway/lists/{list_id} (derived from the module's API surface).

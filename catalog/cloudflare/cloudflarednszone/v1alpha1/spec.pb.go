@@ -134,42 +134,84 @@ func (CloudflareDnsZoneSpec_ZoneMode) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{0, 1}
 }
 
-// Common DNS record types for inline records.
+// Supported DNS record types. Names match Cloudflare's API values exactly
+// (UPPERCASE, per DNS convention) and are used directly via `.String()`.
+// Numbering matches the standalone CloudflareDnsRecord kind's RecordType so
+// the two surfaces stay mechanically comparable.
 type CloudflareDnsZoneRecord_RecordType int32
 
 const (
 	// Unspecified record type (invalid).
 	CloudflareDnsZoneRecord_record_type_unspecified CloudflareDnsZoneRecord_RecordType = 0
-	// IPv4 address record.
+	// IPv4 address record. Uses `content`.
 	CloudflareDnsZoneRecord_A CloudflareDnsZoneRecord_RecordType = 1
-	// IPv6 address record.
+	// IPv6 address record. Uses `content`.
 	CloudflareDnsZoneRecord_AAAA CloudflareDnsZoneRecord_RecordType = 2
-	// Canonical name (alias) record.
+	// Canonical name (alias) record. Uses `content`.
 	CloudflareDnsZoneRecord_CNAME CloudflareDnsZoneRecord_RecordType = 3
-	// Mail exchange record.
+	// Mail exchange record. Uses `content` (mail host) plus `priority`.
 	CloudflareDnsZoneRecord_MX CloudflareDnsZoneRecord_RecordType = 4
-	// Text record (SPF, DKIM, verification, etc.).
+	// Text record (SPF, DKIM, verification, etc.). Uses `content`.
 	CloudflareDnsZoneRecord_TXT CloudflareDnsZoneRecord_RecordType = 5
-	// Service locator record.
+	// Service locator record. Uses `data.srv`.
 	CloudflareDnsZoneRecord_SRV CloudflareDnsZoneRecord_RecordType = 6
-	// Nameserver record.
+	// Nameserver record. Uses `content`.
 	CloudflareDnsZoneRecord_NS CloudflareDnsZoneRecord_RecordType = 7
-	// Certification Authority Authorization record.
+	// Certification Authority Authorization record. Uses `data.caa`.
 	CloudflareDnsZoneRecord_CAA CloudflareDnsZoneRecord_RecordType = 8
+	// Pointer record (reverse DNS). Uses `content`.
+	CloudflareDnsZoneRecord_PTR CloudflareDnsZoneRecord_RecordType = 9
+	// OpenPGP public-key record. Uses `content` (base64 OpenPGP key).
+	CloudflareDnsZoneRecord_OPENPGPKEY CloudflareDnsZoneRecord_RecordType = 10
+	// Certificate record. Uses `data.cert`.
+	CloudflareDnsZoneRecord_CERT CloudflareDnsZoneRecord_RecordType = 11
+	// DNSSEC public key record. Uses `data.dnskey`.
+	CloudflareDnsZoneRecord_DNSKEY CloudflareDnsZoneRecord_RecordType = 12
+	// Delegation Signer record. Uses `data.ds`.
+	CloudflareDnsZoneRecord_DS CloudflareDnsZoneRecord_RecordType = 13
+	// HTTPS service binding record. Uses `data.https`.
+	CloudflareDnsZoneRecord_HTTPS CloudflareDnsZoneRecord_RecordType = 14
+	// Location record. Uses `data.loc`.
+	CloudflareDnsZoneRecord_LOC CloudflareDnsZoneRecord_RecordType = 15
+	// Naming Authority Pointer record. Uses `data.naptr`.
+	CloudflareDnsZoneRecord_NAPTR CloudflareDnsZoneRecord_RecordType = 16
+	// S/MIME certificate association record. Uses `data.smimea`.
+	CloudflareDnsZoneRecord_SMIMEA CloudflareDnsZoneRecord_RecordType = 17
+	// SSH public key fingerprint record. Uses `data.sshfp`.
+	CloudflareDnsZoneRecord_SSHFP CloudflareDnsZoneRecord_RecordType = 18
+	// Service binding record. Uses `data.svcb`.
+	CloudflareDnsZoneRecord_SVCB CloudflareDnsZoneRecord_RecordType = 19
+	// TLSA (DANE) certificate association record. Uses `data.tlsa`.
+	CloudflareDnsZoneRecord_TLSA CloudflareDnsZoneRecord_RecordType = 20
+	// Uniform Resource Identifier record. Uses `data.uri`.
+	CloudflareDnsZoneRecord_URI CloudflareDnsZoneRecord_RecordType = 21
 )
 
 // Enum value maps for CloudflareDnsZoneRecord_RecordType.
 var (
 	CloudflareDnsZoneRecord_RecordType_name = map[int32]string{
-		0: "record_type_unspecified",
-		1: "A",
-		2: "AAAA",
-		3: "CNAME",
-		4: "MX",
-		5: "TXT",
-		6: "SRV",
-		7: "NS",
-		8: "CAA",
+		0:  "record_type_unspecified",
+		1:  "A",
+		2:  "AAAA",
+		3:  "CNAME",
+		4:  "MX",
+		5:  "TXT",
+		6:  "SRV",
+		7:  "NS",
+		8:  "CAA",
+		9:  "PTR",
+		10: "OPENPGPKEY",
+		11: "CERT",
+		12: "DNSKEY",
+		13: "DS",
+		14: "HTTPS",
+		15: "LOC",
+		16: "NAPTR",
+		17: "SMIMEA",
+		18: "SSHFP",
+		19: "SVCB",
+		20: "TLSA",
+		21: "URI",
 	}
 	CloudflareDnsZoneRecord_RecordType_value = map[string]int32{
 		"record_type_unspecified": 0,
@@ -181,6 +223,19 @@ var (
 		"SRV":                     6,
 		"NS":                      7,
 		"CAA":                     8,
+		"PTR":                     9,
+		"OPENPGPKEY":              10,
+		"CERT":                    11,
+		"DNSKEY":                  12,
+		"DS":                      13,
+		"HTTPS":                   14,
+		"LOC":                     15,
+		"NAPTR":                   16,
+		"SMIMEA":                  17,
+		"SSHFP":                   18,
+		"SVCB":                    19,
+		"TLSA":                    20,
+		"URI":                     21,
 	}
 )
 
@@ -239,7 +294,16 @@ type CloudflareDnsZoneSpec struct {
 	DnsSettings *CloudflareDnsZoneDnsSettings `protobuf:"bytes,7,opt,name=dns_settings,json=dnsSettings,proto3" json:"dns_settings,omitempty"`
 	// Optional DNSSEC configuration. Enable to have Cloudflare sign the zone; the
 	// DS record material to hand to your registrar is published as stack outputs.
-	Dnssec        *CloudflareDnsZoneDnssec `protobuf:"bytes,8,opt,name=dnssec,proto3" json:"dnssec,omitempty"`
+	Dnssec *CloudflareDnsZoneDnssec `protobuf:"bytes,8,opt,name=dnssec,proto3" json:"dnssec,omitempty"`
+	// Optional zone hold. While enabled, Cloudflare blocks this zone's hostname
+	// (and optionally its subdomains) from being created as a zone in any other
+	// Cloudflare account — protection against hostname takeover during
+	// migrations or account consolidation.
+	Hold *CloudflareDnsZoneHold `protobuf:"bytes,9,opt,name=hold,proto3" json:"hold,omitempty"`
+	// Optional zone plan subscription. Omit to stay on the account's default
+	// (free) plan. Setting a paid rate plan creates a real Cloudflare
+	// subscription with real billing; the API token needs Billing Write scope.
+	Subscription  *CloudflareDnsZoneSubscription `protobuf:"bytes,10,opt,name=subscription,proto3" json:"subscription,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -330,17 +394,41 @@ func (x *CloudflareDnsZoneSpec) GetDnssec() *CloudflareDnsZoneDnssec {
 	return nil
 }
 
-// CloudflareDnsZoneRecord is a DNS record managed inline with the zone. It
-// covers the common record types; for the full v5 record surface (structured
-// data, tags, settings, the long-tail types) use a standalone CloudflareDnsRecord.
+func (x *CloudflareDnsZoneSpec) GetHold() *CloudflareDnsZoneHold {
+	if x != nil {
+		return x.Hold
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneSpec) GetSubscription() *CloudflareDnsZoneSubscription {
+	if x != nil {
+		return x.Subscription
+	}
+	return nil
+}
+
+// CloudflareDnsZoneRecord is a DNS record managed inline with the zone,
+// carrying the full record surface: a record is either a "simple" record whose
+// value is a presentation-format string in `content` (A, AAAA, CNAME, MX, NS,
+// PTR, TXT, OPENPGPKEY) or a "structured" record whose fields are supplied
+// through the typed `data` oneof (CAA, CERT, DNSKEY, DS, HTTPS, LOC, NAPTR,
+// SMIMEA, SRV, SSHFP, SVCB, TLSA, URI). Exactly one of `content` or a `data`
+// case is set, and the chosen representation must match `type`. Records with
+// lifecycles independent of the zone are better modeled as standalone
+// CloudflareDnsRecord resources; this inline surface is identical in depth.
 type CloudflareDnsZoneRecord struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The record name (or "@" for the zone apex).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The DNS record type.
+	// The DNS record type, which determines whether the value comes from `content`
+	// or from the matching `data` block.
 	Type CloudflareDnsZoneRecord_RecordType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord_RecordType" json:"type,omitempty"`
-	// The record's value/target in presentation format. For A: an IPv4 address.
-	// For AAAA: an IPv6 address. For CNAME/MX/NS: a hostname. For TXT: text.
+	// Presentation-format value for simple record types. Set this for A/AAAA/
+	// CNAME/MX/NS/PTR/TXT/OPENPGPKEY; leave empty for structured types (use `data`).
+	// For A: IPv4 (e.g. "192.0.2.1"). For AAAA: IPv6 (e.g. "2001:db8::1").
+	// For CNAME/MX/NS/PTR: a hostname. For TXT: the text value. For OPENPGPKEY:
+	// the base64-encoded key.
 	Content string `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
 	// Whether the record is proxied through Cloudflare (orange cloud). Only valid
 	// for A, AAAA, and CNAME records.
@@ -348,12 +436,43 @@ type CloudflareDnsZoneRecord struct {
 	// Time to live (TTL) in seconds. Leave 0 or set 1 for automatic; otherwise
 	// 30-86400.
 	Ttl int32 `protobuf:"varint,5,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	// Priority for MX records (lower is preferred). Required for MX.
+	// Priority for MX records (lower is preferred). Required for MX; ignored for
+	// other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
 	Priority int32 `protobuf:"varint,6,opt,name=priority,proto3" json:"priority,omitempty"`
 	// Optional comment/note for the record. Has no effect on DNS responses.
-	Comment       string `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Comment string `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
+	// Structured data for record types that are not expressible as a single
+	// `content` string. Exactly one case is set, and it must match `type`.
+	// Field numbers 9-21 align with the standalone CloudflareDnsRecord kind's
+	// data oneof (8 is left unassigned for that alignment).
+	//
+	// Types that are valid to be assigned to Data:
+	//
+	//	*CloudflareDnsZoneRecord_Caa
+	//	*CloudflareDnsZoneRecord_Cert
+	//	*CloudflareDnsZoneRecord_Dnskey
+	//	*CloudflareDnsZoneRecord_Ds
+	//	*CloudflareDnsZoneRecord_Https
+	//	*CloudflareDnsZoneRecord_Loc
+	//	*CloudflareDnsZoneRecord_Naptr
+	//	*CloudflareDnsZoneRecord_Smimea
+	//	*CloudflareDnsZoneRecord_Srv
+	//	*CloudflareDnsZoneRecord_Sshfp
+	//	*CloudflareDnsZoneRecord_Svcb
+	//	*CloudflareDnsZoneRecord_Tlsa
+	//	*CloudflareDnsZoneRecord_Uri
+	Data isCloudflareDnsZoneRecord_Data `protobuf_oneof:"data"`
+	// Custom tags for the record. Have no effect on DNS responses; useful for
+	// organizing and filtering records.
+	Tags []string `protobuf:"bytes,22,rep,name=tags,proto3" json:"tags,omitempty"`
+	// Optional record-level settings controlling how proxied records are served.
+	Settings *CloudflareDnsZoneRecordSettings `protobuf:"bytes,23,opt,name=settings,proto3" json:"settings,omitempty"`
+	// Whether the record is restricted to Cloudflare's internal (private) routing
+	// and not served over the public internet — used for internal DNS / Magic WAN
+	// scenarios. Defaults to false (public).
+	PrivateRouting bool `protobuf:"varint,24,opt,name=private_routing,json=privateRouting,proto3" json:"private_routing,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CloudflareDnsZoneRecord) Reset() {
@@ -435,6 +554,315 @@ func (x *CloudflareDnsZoneRecord) GetComment() string {
 	return ""
 }
 
+func (x *CloudflareDnsZoneRecord) GetData() isCloudflareDnsZoneRecord_Data {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetCaa() *CaaData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Caa); ok {
+			return x.Caa
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetCert() *CertData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Cert); ok {
+			return x.Cert
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetDnskey() *DnskeyData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Dnskey); ok {
+			return x.Dnskey
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetDs() *DsData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Ds); ok {
+			return x.Ds
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetHttps() *HttpsData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Https); ok {
+			return x.Https
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetLoc() *LocData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Loc); ok {
+			return x.Loc
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetNaptr() *NaptrData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Naptr); ok {
+			return x.Naptr
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetSmimea() *SmimeaData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Smimea); ok {
+			return x.Smimea
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetSrv() *SrvData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Srv); ok {
+			return x.Srv
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetSshfp() *SshfpData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Sshfp); ok {
+			return x.Sshfp
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetSvcb() *SvcbData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Svcb); ok {
+			return x.Svcb
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetTlsa() *TlsaData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Tlsa); ok {
+			return x.Tlsa
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetUri() *UriData {
+	if x != nil {
+		if x, ok := x.Data.(*CloudflareDnsZoneRecord_Uri); ok {
+			return x.Uri
+		}
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetSettings() *CloudflareDnsZoneRecordSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *CloudflareDnsZoneRecord) GetPrivateRouting() bool {
+	if x != nil {
+		return x.PrivateRouting
+	}
+	return false
+}
+
+type isCloudflareDnsZoneRecord_Data interface {
+	isCloudflareDnsZoneRecord_Data()
+}
+
+type CloudflareDnsZoneRecord_Caa struct {
+	// CAA record data.
+	Caa *CaaData `protobuf:"bytes,9,opt,name=caa,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Cert struct {
+	// CERT record data.
+	Cert *CertData `protobuf:"bytes,10,opt,name=cert,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Dnskey struct {
+	// DNSKEY record data.
+	Dnskey *DnskeyData `protobuf:"bytes,11,opt,name=dnskey,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Ds struct {
+	// DS record data.
+	Ds *DsData `protobuf:"bytes,12,opt,name=ds,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Https struct {
+	// HTTPS record data.
+	Https *HttpsData `protobuf:"bytes,13,opt,name=https,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Loc struct {
+	// LOC record data.
+	Loc *LocData `protobuf:"bytes,14,opt,name=loc,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Naptr struct {
+	// NAPTR record data.
+	Naptr *NaptrData `protobuf:"bytes,15,opt,name=naptr,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Smimea struct {
+	// SMIMEA record data.
+	Smimea *SmimeaData `protobuf:"bytes,16,opt,name=smimea,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Srv struct {
+	// SRV record data.
+	Srv *SrvData `protobuf:"bytes,17,opt,name=srv,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Sshfp struct {
+	// SSHFP record data.
+	Sshfp *SshfpData `protobuf:"bytes,18,opt,name=sshfp,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Svcb struct {
+	// SVCB record data.
+	Svcb *SvcbData `protobuf:"bytes,19,opt,name=svcb,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Tlsa struct {
+	// TLSA record data.
+	Tlsa *TlsaData `protobuf:"bytes,20,opt,name=tlsa,proto3,oneof"`
+}
+
+type CloudflareDnsZoneRecord_Uri struct {
+	// URI record data.
+	Uri *UriData `protobuf:"bytes,21,opt,name=uri,proto3,oneof"`
+}
+
+func (*CloudflareDnsZoneRecord_Caa) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Cert) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Dnskey) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Ds) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Https) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Loc) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Naptr) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Smimea) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Srv) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Sshfp) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Svcb) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Tlsa) isCloudflareDnsZoneRecord_Data() {}
+
+func (*CloudflareDnsZoneRecord_Uri) isCloudflareDnsZoneRecord_Data() {}
+
+// CloudflareDnsZoneRecordSettings holds record-level behavior toggles. These
+// only affect proxied records.
+type CloudflareDnsZoneRecordSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When enabled, only A records are generated and AAAA records are suppressed.
+	// For exceptional cases; applies only to proxied records.
+	Ipv4Only bool `protobuf:"varint,1,opt,name=ipv4_only,json=ipv4Only,proto3" json:"ipv4_only,omitempty"`
+	// When enabled, only AAAA records are generated and A records are suppressed.
+	// For exceptional cases; applies only to proxied records.
+	Ipv6Only bool `protobuf:"varint,2,opt,name=ipv6_only,json=ipv6Only,proto3" json:"ipv6_only,omitempty"`
+	// When enabled, a CNAME is resolved externally and the resulting address
+	// records are returned instead of the CNAME. Unavailable for proxied records
+	// (which are always flattened).
+	FlattenCname  bool `protobuf:"varint,3,opt,name=flatten_cname,json=flattenCname,proto3" json:"flatten_cname,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareDnsZoneRecordSettings) Reset() {
+	*x = CloudflareDnsZoneRecordSettings{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareDnsZoneRecordSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareDnsZoneRecordSettings) ProtoMessage() {}
+
+func (x *CloudflareDnsZoneRecordSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareDnsZoneRecordSettings.ProtoReflect.Descriptor instead.
+func (*CloudflareDnsZoneRecordSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CloudflareDnsZoneRecordSettings) GetIpv4Only() bool {
+	if x != nil {
+		return x.Ipv4Only
+	}
+	return false
+}
+
+func (x *CloudflareDnsZoneRecordSettings) GetIpv6Only() bool {
+	if x != nil {
+		return x.Ipv6Only
+	}
+	return false
+}
+
+func (x *CloudflareDnsZoneRecordSettings) GetFlattenCname() bool {
+	if x != nil {
+		return x.FlattenCname
+	}
+	return false
+}
+
 // CloudflareDnsZoneDnsSettings holds zone-wide DNS settings. All fields are
 // optional; an omitted field leaves Cloudflare's default in place.
 type CloudflareDnsZoneDnsSettings struct {
@@ -466,7 +894,7 @@ type CloudflareDnsZoneDnsSettings struct {
 
 func (x *CloudflareDnsZoneDnsSettings) Reset() {
 	*x = CloudflareDnsZoneDnsSettings{}
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -478,7 +906,7 @@ func (x *CloudflareDnsZoneDnsSettings) String() string {
 func (*CloudflareDnsZoneDnsSettings) ProtoMessage() {}
 
 func (x *CloudflareDnsZoneDnsSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -491,7 +919,7 @@ func (x *CloudflareDnsZoneDnsSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareDnsZoneDnsSettings.ProtoReflect.Descriptor instead.
 func (*CloudflareDnsZoneDnsSettings) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CloudflareDnsZoneDnsSettings) GetFlattenAllCnames() bool {
@@ -582,7 +1010,7 @@ type CloudflareDnsZoneSoa struct {
 
 func (x *CloudflareDnsZoneSoa) Reset() {
 	*x = CloudflareDnsZoneSoa{}
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -594,7 +1022,7 @@ func (x *CloudflareDnsZoneSoa) String() string {
 func (*CloudflareDnsZoneSoa) ProtoMessage() {}
 
 func (x *CloudflareDnsZoneSoa) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -607,7 +1035,7 @@ func (x *CloudflareDnsZoneSoa) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareDnsZoneSoa.ProtoReflect.Descriptor instead.
 func (*CloudflareDnsZoneSoa) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CloudflareDnsZoneSoa) GetExpire() uint32 {
@@ -673,7 +1101,7 @@ type CloudflareDnsZoneNameservers struct {
 
 func (x *CloudflareDnsZoneNameservers) Reset() {
 	*x = CloudflareDnsZoneNameservers{}
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -685,7 +1113,7 @@ func (x *CloudflareDnsZoneNameservers) String() string {
 func (*CloudflareDnsZoneNameservers) ProtoMessage() {}
 
 func (x *CloudflareDnsZoneNameservers) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -698,7 +1126,7 @@ func (x *CloudflareDnsZoneNameservers) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareDnsZoneNameservers.ProtoReflect.Descriptor instead.
 func (*CloudflareDnsZoneNameservers) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CloudflareDnsZoneNameservers) GetNsSet() uint32 {
@@ -727,7 +1155,7 @@ type CloudflareDnsZoneInternalDns struct {
 
 func (x *CloudflareDnsZoneInternalDns) Reset() {
 	*x = CloudflareDnsZoneInternalDns{}
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -739,7 +1167,7 @@ func (x *CloudflareDnsZoneInternalDns) String() string {
 func (*CloudflareDnsZoneInternalDns) ProtoMessage() {}
 
 func (x *CloudflareDnsZoneInternalDns) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -752,7 +1180,7 @@ func (x *CloudflareDnsZoneInternalDns) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareDnsZoneInternalDns.ProtoReflect.Descriptor instead.
 func (*CloudflareDnsZoneInternalDns) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CloudflareDnsZoneInternalDns) GetReferenceZoneId() *v1.StringValueOrRef {
@@ -783,7 +1211,7 @@ type CloudflareDnsZoneDnssec struct {
 
 func (x *CloudflareDnsZoneDnssec) Reset() {
 	*x = CloudflareDnsZoneDnssec{}
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +1223,7 @@ func (x *CloudflareDnsZoneDnssec) String() string {
 func (*CloudflareDnsZoneDnssec) ProtoMessage() {}
 
 func (x *CloudflareDnsZoneDnssec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +1236,7 @@ func (x *CloudflareDnsZoneDnssec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareDnsZoneDnssec.ProtoReflect.Descriptor instead.
 func (*CloudflareDnsZoneDnssec) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CloudflareDnsZoneDnssec) GetEnabled() bool {
@@ -839,11 +1267,1151 @@ func (x *CloudflareDnsZoneDnssec) GetUseNsec3() bool {
 	return false
 }
 
+// CloudflareDnsZoneHold configures a hold on the zone's hostname. While the
+// hold is active, Cloudflare rejects attempts to create this zone's hostname as
+// a zone in any other account (and optionally any subdomain of it) — the guard
+// against hostname takeover while a domain migrates between accounts.
+type CloudflareDnsZoneHold struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether the hold is active. Removing the hold (or this whole block) lifts
+	// the protection.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Extend the hold to all subdomains of the zone's hostname, not just the
+	// apex hostname itself.
+	IncludeSubdomains bool `protobuf:"varint,2,opt,name=include_subdomains,json=includeSubdomains,proto3" json:"include_subdomains,omitempty"`
+	// RFC3339 timestamp (e.g. "2026-01-31T00:00:00Z"). When future-dated, the
+	// hold is temporarily disabled and automatically re-enabled by Cloudflare at
+	// this time — a planned migration window. A past-dated value has no effect
+	// on an enabled hold. Leave empty for an immediate, indefinite hold.
+	HoldAfter     string `protobuf:"bytes,3,opt,name=hold_after,json=holdAfter,proto3" json:"hold_after,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareDnsZoneHold) Reset() {
+	*x = CloudflareDnsZoneHold{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareDnsZoneHold) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareDnsZoneHold) ProtoMessage() {}
+
+func (x *CloudflareDnsZoneHold) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareDnsZoneHold.ProtoReflect.Descriptor instead.
+func (*CloudflareDnsZoneHold) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CloudflareDnsZoneHold) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CloudflareDnsZoneHold) GetIncludeSubdomains() bool {
+	if x != nil {
+		return x.IncludeSubdomains
+	}
+	return false
+}
+
+func (x *CloudflareDnsZoneHold) GetHoldAfter() string {
+	if x != nil {
+		return x.HoldAfter
+	}
+	return ""
+}
+
+// CloudflareDnsZoneSubscription selects the zone's Cloudflare plan. Creating a
+// paid rate plan is a real billing action: the deploying API token needs
+// Billing Write scope, and charges begin at apply. Omit the whole block to
+// stay on the account's default (free) plan.
+type CloudflareDnsZoneSubscription struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The rate plan to subscribe the zone to. Cloudflare's plan identifiers:
+	// "free", "lite", "pro", "pro_plus", "business", "enterprise", plus the
+	// partner variants ("partners_free", "partners_pro", "partners_business",
+	// "partners_enterprise", "partners_ent").
+	RatePlan string `protobuf:"bytes,1,opt,name=rate_plan,json=ratePlan,proto3" json:"rate_plan,omitempty"`
+	// How often the subscription renews automatically. Leave empty for
+	// Cloudflare's default; some plans ignore frequency entirely.
+	Frequency string `protobuf:"bytes,2,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	// The scope the rate plan applies to. Rarely needed; leave empty for
+	// Cloudflare's default scope for the chosen plan.
+	Scope         string `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareDnsZoneSubscription) Reset() {
+	*x = CloudflareDnsZoneSubscription{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareDnsZoneSubscription) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareDnsZoneSubscription) ProtoMessage() {}
+
+func (x *CloudflareDnsZoneSubscription) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareDnsZoneSubscription.ProtoReflect.Descriptor instead.
+func (*CloudflareDnsZoneSubscription) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CloudflareDnsZoneSubscription) GetRatePlan() string {
+	if x != nil {
+		return x.RatePlan
+	}
+	return ""
+}
+
+func (x *CloudflareDnsZoneSubscription) GetFrequency() string {
+	if x != nil {
+		return x.Frequency
+	}
+	return ""
+}
+
+func (x *CloudflareDnsZoneSubscription) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+// CaaData is the data for a CAA (Certification Authority Authorization) record.
+type CaaData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Flags for the CAA record (0-255). 128 marks the property critical.
+	Flags uint32 `protobuf:"varint,1,opt,name=flags,proto3" json:"flags,omitempty"`
+	// The property controlled by this record: "issue", "issuewild", or "iodef".
+	Tag string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	// The value for the tag (e.g. a CA domain like "letsencrypt.org", or an
+	// "iodef" reporting URL).
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CaaData) Reset() {
+	*x = CaaData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CaaData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CaaData) ProtoMessage() {}
+
+func (x *CaaData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CaaData.ProtoReflect.Descriptor instead.
+func (*CaaData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CaaData) GetFlags() uint32 {
+	if x != nil {
+		return x.Flags
+	}
+	return 0
+}
+
+func (x *CaaData) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+func (x *CaaData) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// CertData is the data for a CERT record.
+type CertData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Certificate type (e.g. 1 = PKIX).
+	Type uint32 `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
+	// Key tag identifying the certificate's key (0-65535).
+	KeyTag uint32 `protobuf:"varint,2,opt,name=key_tag,json=keyTag,proto3" json:"key_tag,omitempty"`
+	// Algorithm code (0-255).
+	Algorithm uint32 `protobuf:"varint,3,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// The base64-encoded certificate or CRL.
+	Certificate   string `protobuf:"bytes,4,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CertData) Reset() {
+	*x = CertData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CertData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CertData) ProtoMessage() {}
+
+func (x *CertData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CertData.ProtoReflect.Descriptor instead.
+func (*CertData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *CertData) GetType() uint32 {
+	if x != nil {
+		return x.Type
+	}
+	return 0
+}
+
+func (x *CertData) GetKeyTag() uint32 {
+	if x != nil {
+		return x.KeyTag
+	}
+	return 0
+}
+
+func (x *CertData) GetAlgorithm() uint32 {
+	if x != nil {
+		return x.Algorithm
+	}
+	return 0
+}
+
+func (x *CertData) GetCertificate() string {
+	if x != nil {
+		return x.Certificate
+	}
+	return ""
+}
+
+// DnskeyData is the data for a DNSKEY record.
+type DnskeyData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Flags for the DNSKEY record (e.g. 256 = ZSK, 257 = KSK).
+	Flags uint32 `protobuf:"varint,1,opt,name=flags,proto3" json:"flags,omitempty"`
+	// Protocol field; must be 3 for DNSSEC.
+	Protocol uint32 `protobuf:"varint,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	// Algorithm code (0-255).
+	Algorithm uint32 `protobuf:"varint,3,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// The base64-encoded public key.
+	PublicKey     string `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DnskeyData) Reset() {
+	*x = DnskeyData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DnskeyData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DnskeyData) ProtoMessage() {}
+
+func (x *DnskeyData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DnskeyData.ProtoReflect.Descriptor instead.
+func (*DnskeyData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DnskeyData) GetFlags() uint32 {
+	if x != nil {
+		return x.Flags
+	}
+	return 0
+}
+
+func (x *DnskeyData) GetProtocol() uint32 {
+	if x != nil {
+		return x.Protocol
+	}
+	return 0
+}
+
+func (x *DnskeyData) GetAlgorithm() uint32 {
+	if x != nil {
+		return x.Algorithm
+	}
+	return 0
+}
+
+func (x *DnskeyData) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+// DsData is the data for a DS (Delegation Signer) record.
+type DsData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key tag of the referenced DNSKEY (0-65535).
+	KeyTag uint32 `protobuf:"varint,1,opt,name=key_tag,json=keyTag,proto3" json:"key_tag,omitempty"`
+	// Algorithm code of the referenced DNSKEY (0-255).
+	Algorithm uint32 `protobuf:"varint,2,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// Digest algorithm type (0-255, e.g. 2 = SHA-256).
+	DigestType uint32 `protobuf:"varint,3,opt,name=digest_type,json=digestType,proto3" json:"digest_type,omitempty"`
+	// Hex-encoded digest of the referenced DNSKEY.
+	Digest        string `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DsData) Reset() {
+	*x = DsData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DsData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DsData) ProtoMessage() {}
+
+func (x *DsData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DsData.ProtoReflect.Descriptor instead.
+func (*DsData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DsData) GetKeyTag() uint32 {
+	if x != nil {
+		return x.KeyTag
+	}
+	return 0
+}
+
+func (x *DsData) GetAlgorithm() uint32 {
+	if x != nil {
+		return x.Algorithm
+	}
+	return 0
+}
+
+func (x *DsData) GetDigestType() uint32 {
+	if x != nil {
+		return x.DigestType
+	}
+	return 0
+}
+
+func (x *DsData) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
+// HttpsData is the data for an HTTPS service binding record.
+type HttpsData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Priority (0-65535). 0 selects AliasMode; higher values are ServiceMode
+	// records evaluated in ascending priority order.
+	Priority uint32 `protobuf:"varint,1,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Target hostname (".": the owner name; or a specific endpoint).
+	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// SvcParams string (e.g. "alpn=\"h2,h3\" port=8443").
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HttpsData) Reset() {
+	*x = HttpsData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HttpsData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HttpsData) ProtoMessage() {}
+
+func (x *HttpsData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HttpsData.ProtoReflect.Descriptor instead.
+func (*HttpsData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *HttpsData) GetPriority() uint32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *HttpsData) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *HttpsData) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// LocData is the data for a LOC (geographic location) record.
+type LocData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Latitude direction: "N" or "S".
+	LatDirection string `protobuf:"bytes,1,opt,name=lat_direction,json=latDirection,proto3" json:"lat_direction,omitempty"`
+	// Degrees of latitude (0-90).
+	LatDegrees uint32 `protobuf:"varint,2,opt,name=lat_degrees,json=latDegrees,proto3" json:"lat_degrees,omitempty"`
+	// Minutes of latitude (0-59).
+	LatMinutes uint32 `protobuf:"varint,3,opt,name=lat_minutes,json=latMinutes,proto3" json:"lat_minutes,omitempty"`
+	// Seconds of latitude (0-59.999).
+	LatSeconds float64 `protobuf:"fixed64,4,opt,name=lat_seconds,json=latSeconds,proto3" json:"lat_seconds,omitempty"`
+	// Longitude direction: "E" or "W".
+	LongDirection string `protobuf:"bytes,5,opt,name=long_direction,json=longDirection,proto3" json:"long_direction,omitempty"`
+	// Degrees of longitude (0-180).
+	LongDegrees uint32 `protobuf:"varint,6,opt,name=long_degrees,json=longDegrees,proto3" json:"long_degrees,omitempty"`
+	// Minutes of longitude (0-59).
+	LongMinutes uint32 `protobuf:"varint,7,opt,name=long_minutes,json=longMinutes,proto3" json:"long_minutes,omitempty"`
+	// Seconds of longitude (0-59.999).
+	LongSeconds float64 `protobuf:"fixed64,8,opt,name=long_seconds,json=longSeconds,proto3" json:"long_seconds,omitempty"`
+	// Altitude in meters (-100000 to 42849672.95).
+	Altitude float64 `protobuf:"fixed64,9,opt,name=altitude,proto3" json:"altitude,omitempty"`
+	// Diameter of a sphere enclosing the location, in meters (0-90000000).
+	Size float64 `protobuf:"fixed64,10,opt,name=size,proto3" json:"size,omitempty"`
+	// Horizontal precision in meters (0-90000000).
+	PrecisionHorz float64 `protobuf:"fixed64,11,opt,name=precision_horz,json=precisionHorz,proto3" json:"precision_horz,omitempty"`
+	// Vertical precision in meters (0-90000000).
+	PrecisionVert float64 `protobuf:"fixed64,12,opt,name=precision_vert,json=precisionVert,proto3" json:"precision_vert,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LocData) Reset() {
+	*x = LocData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LocData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LocData) ProtoMessage() {}
+
+func (x *LocData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LocData.ProtoReflect.Descriptor instead.
+func (*LocData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *LocData) GetLatDirection() string {
+	if x != nil {
+		return x.LatDirection
+	}
+	return ""
+}
+
+func (x *LocData) GetLatDegrees() uint32 {
+	if x != nil {
+		return x.LatDegrees
+	}
+	return 0
+}
+
+func (x *LocData) GetLatMinutes() uint32 {
+	if x != nil {
+		return x.LatMinutes
+	}
+	return 0
+}
+
+func (x *LocData) GetLatSeconds() float64 {
+	if x != nil {
+		return x.LatSeconds
+	}
+	return 0
+}
+
+func (x *LocData) GetLongDirection() string {
+	if x != nil {
+		return x.LongDirection
+	}
+	return ""
+}
+
+func (x *LocData) GetLongDegrees() uint32 {
+	if x != nil {
+		return x.LongDegrees
+	}
+	return 0
+}
+
+func (x *LocData) GetLongMinutes() uint32 {
+	if x != nil {
+		return x.LongMinutes
+	}
+	return 0
+}
+
+func (x *LocData) GetLongSeconds() float64 {
+	if x != nil {
+		return x.LongSeconds
+	}
+	return 0
+}
+
+func (x *LocData) GetAltitude() float64 {
+	if x != nil {
+		return x.Altitude
+	}
+	return 0
+}
+
+func (x *LocData) GetSize() float64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *LocData) GetPrecisionHorz() float64 {
+	if x != nil {
+		return x.PrecisionHorz
+	}
+	return 0
+}
+
+func (x *LocData) GetPrecisionVert() float64 {
+	if x != nil {
+		return x.PrecisionVert
+	}
+	return 0
+}
+
+// NaptrData is the data for a NAPTR (Naming Authority Pointer) record.
+type NaptrData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Order in which records are processed (0-65535).
+	Order uint32 `protobuf:"varint,1,opt,name=order,proto3" json:"order,omitempty"`
+	// Preference among records with the same order (0-65535).
+	Preference uint32 `protobuf:"varint,2,opt,name=preference,proto3" json:"preference,omitempty"`
+	// Flags controlling rewrite behavior (e.g. "U", "S", "A", "P").
+	Flags string `protobuf:"bytes,3,opt,name=flags,proto3" json:"flags,omitempty"`
+	// The service parameters (e.g. "E2U+sip").
+	Service string `protobuf:"bytes,4,opt,name=service,proto3" json:"service,omitempty"`
+	// The substitution regular expression.
+	Regex string `protobuf:"bytes,5,opt,name=regex,proto3" json:"regex,omitempty"`
+	// The replacement domain name (or "." when regex is used).
+	Replacement   string `protobuf:"bytes,6,opt,name=replacement,proto3" json:"replacement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NaptrData) Reset() {
+	*x = NaptrData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NaptrData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NaptrData) ProtoMessage() {}
+
+func (x *NaptrData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NaptrData.ProtoReflect.Descriptor instead.
+func (*NaptrData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *NaptrData) GetOrder() uint32 {
+	if x != nil {
+		return x.Order
+	}
+	return 0
+}
+
+func (x *NaptrData) GetPreference() uint32 {
+	if x != nil {
+		return x.Preference
+	}
+	return 0
+}
+
+func (x *NaptrData) GetFlags() string {
+	if x != nil {
+		return x.Flags
+	}
+	return ""
+}
+
+func (x *NaptrData) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+func (x *NaptrData) GetRegex() string {
+	if x != nil {
+		return x.Regex
+	}
+	return ""
+}
+
+func (x *NaptrData) GetReplacement() string {
+	if x != nil {
+		return x.Replacement
+	}
+	return ""
+}
+
+// SmimeaData is the data for an SMIMEA (S/MIME certificate association) record.
+type SmimeaData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Certificate usage (0-255).
+	Usage uint32 `protobuf:"varint,1,opt,name=usage,proto3" json:"usage,omitempty"`
+	// Selector specifying which part of the certificate is matched (0-255).
+	Selector uint32 `protobuf:"varint,2,opt,name=selector,proto3" json:"selector,omitempty"`
+	// Matching type for the association data (0-255).
+	MatchingType uint32 `protobuf:"varint,3,opt,name=matching_type,json=matchingType,proto3" json:"matching_type,omitempty"`
+	// Hex-encoded certificate association data.
+	Certificate   string `protobuf:"bytes,4,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SmimeaData) Reset() {
+	*x = SmimeaData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SmimeaData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SmimeaData) ProtoMessage() {}
+
+func (x *SmimeaData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SmimeaData.ProtoReflect.Descriptor instead.
+func (*SmimeaData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SmimeaData) GetUsage() uint32 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *SmimeaData) GetSelector() uint32 {
+	if x != nil {
+		return x.Selector
+	}
+	return 0
+}
+
+func (x *SmimeaData) GetMatchingType() uint32 {
+	if x != nil {
+		return x.MatchingType
+	}
+	return 0
+}
+
+func (x *SmimeaData) GetCertificate() string {
+	if x != nil {
+		return x.Certificate
+	}
+	return ""
+}
+
+// SrvData is the data for an SRV (service locator) record.
+type SrvData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Priority of the target host (0-65535, lower preferred).
+	Priority uint32 `protobuf:"varint,1,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Relative weight among targets with the same priority (0-65535).
+	Weight uint32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
+	// TCP/UDP port of the service (0-65535).
+	Port uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// Hostname of the machine providing the service.
+	Target        string `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SrvData) Reset() {
+	*x = SrvData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SrvData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SrvData) ProtoMessage() {}
+
+func (x *SrvData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SrvData.ProtoReflect.Descriptor instead.
+func (*SrvData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *SrvData) GetPriority() uint32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *SrvData) GetWeight() uint32 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *SrvData) GetPort() uint32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *SrvData) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+// SshfpData is the data for an SSHFP (SSH public-key fingerprint) record.
+type SshfpData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Algorithm of the SSH public key (0-255, e.g. 1 = RSA, 4 = Ed25519).
+	Algorithm uint32 `protobuf:"varint,1,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// Fingerprint hash type (0-255, e.g. 2 = SHA-256).
+	Type uint32 `protobuf:"varint,2,opt,name=type,proto3" json:"type,omitempty"`
+	// Hex-encoded fingerprint of the SSH public key.
+	Fingerprint   string `protobuf:"bytes,3,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SshfpData) Reset() {
+	*x = SshfpData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SshfpData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SshfpData) ProtoMessage() {}
+
+func (x *SshfpData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SshfpData.ProtoReflect.Descriptor instead.
+func (*SshfpData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *SshfpData) GetAlgorithm() uint32 {
+	if x != nil {
+		return x.Algorithm
+	}
+	return 0
+}
+
+func (x *SshfpData) GetType() uint32 {
+	if x != nil {
+		return x.Type
+	}
+	return 0
+}
+
+func (x *SshfpData) GetFingerprint() string {
+	if x != nil {
+		return x.Fingerprint
+	}
+	return ""
+}
+
+// SvcbData is the data for an SVCB (service binding) record.
+type SvcbData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Priority (0-65535). 0 selects AliasMode; higher values are ServiceMode.
+	Priority uint32 `protobuf:"varint,1,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Target hostname (".": the owner name; or a specific endpoint).
+	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	// SvcParams string (e.g. "alpn=\"h2\" ipv4hint=\"192.0.2.1\"").
+	Value         string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SvcbData) Reset() {
+	*x = SvcbData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SvcbData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SvcbData) ProtoMessage() {}
+
+func (x *SvcbData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SvcbData.ProtoReflect.Descriptor instead.
+func (*SvcbData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SvcbData) GetPriority() uint32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *SvcbData) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+func (x *SvcbData) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// TlsaData is the data for a TLSA (DANE certificate association) record.
+type TlsaData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Certificate usage (0-255).
+	Usage uint32 `protobuf:"varint,1,opt,name=usage,proto3" json:"usage,omitempty"`
+	// Selector specifying which part of the certificate is matched (0-255).
+	Selector uint32 `protobuf:"varint,2,opt,name=selector,proto3" json:"selector,omitempty"`
+	// Matching type for the association data (0-255).
+	MatchingType uint32 `protobuf:"varint,3,opt,name=matching_type,json=matchingType,proto3" json:"matching_type,omitempty"`
+	// Hex-encoded certificate association data.
+	Certificate   string `protobuf:"bytes,4,opt,name=certificate,proto3" json:"certificate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TlsaData) Reset() {
+	*x = TlsaData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TlsaData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TlsaData) ProtoMessage() {}
+
+func (x *TlsaData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TlsaData.ProtoReflect.Descriptor instead.
+func (*TlsaData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *TlsaData) GetUsage() uint32 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *TlsaData) GetSelector() uint32 {
+	if x != nil {
+		return x.Selector
+	}
+	return 0
+}
+
+func (x *TlsaData) GetMatchingType() uint32 {
+	if x != nil {
+		return x.MatchingType
+	}
+	return 0
+}
+
+func (x *TlsaData) GetCertificate() string {
+	if x != nil {
+		return x.Certificate
+	}
+	return ""
+}
+
+// UriData is the data for a URI record.
+type UriData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Priority of the target URI (0-65535, lower preferred).
+	Priority uint32 `protobuf:"varint,1,opt,name=priority,proto3" json:"priority,omitempty"`
+	// Relative weight among URIs with the same priority (0-65535).
+	Weight uint32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
+	// The target URI (e.g. "https://example.com/path").
+	Target        string `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UriData) Reset() {
+	*x = UriData{}
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UriData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UriData) ProtoMessage() {}
+
+func (x *UriData) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UriData.ProtoReflect.Descriptor instead.
+func (*UriData) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *UriData) GetPriority() uint32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *UriData) GetWeight() uint32 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *UriData) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/cloudflare/cloudflarednszone/v1alpha1/spec.proto\x121dev.planton.cloudflare.cloudflarednszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xaa\a\n" +
+	"8catalog/cloudflare/cloudflarednszone/v1alpha1/spec.proto\x121dev.planton.cloudflare.cloudflarednszone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xfe\b\n" +
 	"\x15CloudflareDnsZoneSpec\x12\xd0\x01\n" +
 	"\tzone_name\x18\x01 \x01(\tB\xb2\x01\xbaH\xae\x01\xba\x01\xa7\x01\n" +
 	"\tzone_name\x125zone_name must be a valid fully qualified domain name\x1acthis.matches('^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?[.])+(?:[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?)$')\xc8\x01\x01R\bzoneName\x12%\n" +
@@ -854,7 +2422,10 @@ const file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc = ""
 	"\x04type\x18\x05 \x01(\x0e2Q.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneTypeR\x04type\x12.\n" +
 	"\x13vanity_name_servers\x18\x06 \x03(\tR\x11vanityNameServers\x12r\n" +
 	"\fdns_settings\x18\a \x01(\v2O.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettingsR\vdnsSettings\x12b\n" +
-	"\x06dnssec\x18\b \x01(\v2J.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssecR\x06dnssec\"Y\n" +
+	"\x06dnssec\x18\b \x01(\v2J.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssecR\x06dnssec\x12\\\n" +
+	"\x04hold\x18\t \x01(\v2H.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneHoldR\x04hold\x12t\n" +
+	"\fsubscription\x18\n" +
+	" \x01(\v2P.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSubscriptionR\fsubscription\"Y\n" +
 	"\bZoneType\x12\x19\n" +
 	"\x15zone_type_unspecified\x10\x00\x12\b\n" +
 	"\x04full\x10\x01\x12\v\n" +
@@ -865,18 +2436,35 @@ const file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc = ""
 	"\x15zone_mode_unspecified\x10\x00\x12\f\n" +
 	"\bstandard\x10\x01\x12\f\n" +
 	"\bcdn_only\x10\x02\x12\f\n" +
-	"\bdns_only\x10\x03\"\x97\b\n" +
+	"\bdns_only\x10\x03\"\x9a\x1e\n" +
 	"\x17CloudflareDnsZoneRecord\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\xd6\x01\n" +
 	"\x04type\x18\x02 \x01(\x0e2U.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.RecordTypeBk\xbaHh\xba\x01]\n" +
-	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12 \n" +
-	"\acontent\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\acontent\x12\x18\n" +
+	"\x14type.not_unspecified\x12:type must be specified (cannot be record_type_unspecified)\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12\x18\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\x12\x18\n" +
 	"\aproxied\x18\x04 \x01(\bR\aproxied\x12\xa5\x01\n" +
 	"\x03ttl\x18\x05 \x01(\x05B\x92\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +
 	"\x0fttl.valid_range\x12>ttl must be 0 or 1 (automatic) or between 30 and 86400 seconds\x1a7this == 0 || this == 1 || (this >= 30 && this <= 86400)R\x03ttl\x12z\n" +
 	"\bpriority\x18\x06 \x01(\x05B^\xbaH[\xba\x01X\n" +
 	"\x14priority.valid_range\x12$priority must be between 0 and 65535\x1a\x1athis >= 0 && this <= 65535R\bpriority\x12\x18\n" +
-	"\acomment\x18\a \x01(\tR\acomment\"p\n" +
+	"\acomment\x18\a \x01(\tR\acomment\x12N\n" +
+	"\x03caa\x18\t \x01(\v2:.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CaaDataH\x00R\x03caa\x12Q\n" +
+	"\x04cert\x18\n" +
+	" \x01(\v2;.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CertDataH\x00R\x04cert\x12W\n" +
+	"\x06dnskey\x18\v \x01(\v2=.dev.planton.cloudflare.cloudflarednszone.v1alpha1.DnskeyDataH\x00R\x06dnskey\x12K\n" +
+	"\x02ds\x18\f \x01(\v29.dev.planton.cloudflare.cloudflarednszone.v1alpha1.DsDataH\x00R\x02ds\x12T\n" +
+	"\x05https\x18\r \x01(\v2<.dev.planton.cloudflare.cloudflarednszone.v1alpha1.HttpsDataH\x00R\x05https\x12N\n" +
+	"\x03loc\x18\x0e \x01(\v2:.dev.planton.cloudflare.cloudflarednszone.v1alpha1.LocDataH\x00R\x03loc\x12T\n" +
+	"\x05naptr\x18\x0f \x01(\v2<.dev.planton.cloudflare.cloudflarednszone.v1alpha1.NaptrDataH\x00R\x05naptr\x12W\n" +
+	"\x06smimea\x18\x10 \x01(\v2=.dev.planton.cloudflare.cloudflarednszone.v1alpha1.SmimeaDataH\x00R\x06smimea\x12N\n" +
+	"\x03srv\x18\x11 \x01(\v2:.dev.planton.cloudflare.cloudflarednszone.v1alpha1.SrvDataH\x00R\x03srv\x12T\n" +
+	"\x05sshfp\x18\x12 \x01(\v2<.dev.planton.cloudflare.cloudflarednszone.v1alpha1.SshfpDataH\x00R\x05sshfp\x12Q\n" +
+	"\x04svcb\x18\x13 \x01(\v2;.dev.planton.cloudflare.cloudflarednszone.v1alpha1.SvcbDataH\x00R\x04svcb\x12Q\n" +
+	"\x04tlsa\x18\x14 \x01(\v2;.dev.planton.cloudflare.cloudflarednszone.v1alpha1.TlsaDataH\x00R\x04tlsa\x12N\n" +
+	"\x03uri\x18\x15 \x01(\v2:.dev.planton.cloudflare.cloudflarednszone.v1alpha1.UriDataH\x00R\x03uri\x12\x12\n" +
+	"\x04tags\x18\x16 \x03(\tR\x04tags\x12n\n" +
+	"\bsettings\x18\x17 \x01(\v2R.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecordSettingsR\bsettings\x12'\n" +
+	"\x0fprivate_routing\x18\x18 \x01(\bR\x0eprivateRouting\"\xfa\x01\n" +
 	"\n" +
 	"RecordType\x12\x1b\n" +
 	"\x17record_type_unspecified\x10\x00\x12\x05\n" +
@@ -887,9 +2475,34 @@ const file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc = ""
 	"\x03TXT\x10\x05\x12\a\n" +
 	"\x03SRV\x10\x06\x12\x06\n" +
 	"\x02NS\x10\a\x12\a\n" +
-	"\x03CAA\x10\b:\x9a\x02\xbaH\x96\x02\x1a\xa6\x01\n" +
+	"\x03CAA\x10\b\x12\a\n" +
+	"\x03PTR\x10\t\x12\x0e\n" +
+	"\n" +
+	"OPENPGPKEY\x10\n" +
+	"\x12\b\n" +
+	"\x04CERT\x10\v\x12\n" +
+	"\n" +
+	"\x06DNSKEY\x10\f\x12\x06\n" +
+	"\x02DS\x10\r\x12\t\n" +
+	"\x05HTTPS\x10\x0e\x12\a\n" +
+	"\x03LOC\x10\x0f\x12\t\n" +
+	"\x05NAPTR\x10\x10\x12\n" +
+	"\n" +
+	"\x06SMIMEA\x10\x11\x12\t\n" +
+	"\x05SSHFP\x10\x12\x12\b\n" +
+	"\x04SVCB\x10\x13\x12\b\n" +
+	"\x04TLSA\x10\x14\x12\a\n" +
+	"\x03URI\x10\x15:\xab\r\xbaH\xa7\r\x1a\xa6\x01\n" +
 	"'record.proxied_only_for_supported_types\x126proxied can only be true for A, AAAA, or CNAME records\x1aC!this.proxied || this.type == 1 || this.type == 2 || this.type == 3\x1ak\n" +
-	"\x1frecord.priority_required_for_mx\x12#priority is required for MX records\x1a#this.type != 4 || this.priority > 0\"\x9e\x06\n" +
+	"\x1frecord.priority_required_for_mx\x12#priority is required for MX records\x1a#this.type != 4 || this.priority > 0\x1a\xef\x02\n" +
+	"\x17record.content_xor_data\x12Pset exactly one of content (simple records) or a data block (structured records)\x1a\x81\x02(this.content != '') != (has(this.caa) || has(this.cert) || has(this.dnskey) || has(this.ds) || has(this.https) || has(this.loc) || has(this.naptr) || has(this.smimea) || has(this.srv) || has(this.sshfp) || has(this.svcb) || has(this.tlsa) || has(this.uri))\x1a\xbb\x03\n" +
+	"$record.structured_types_require_data\x12athis record type requires its structured data block (e.g. SRV needs data.srv, CAA needs data.caa)\x1a\xaf\x02!(this.type in [6, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]) || (has(this.caa) || has(this.cert) || has(this.dnskey) || has(this.ds) || has(this.https) || has(this.loc) || has(this.naptr) || has(this.smimea) || has(this.srv) || has(this.sshfp) || has(this.svcb) || has(this.tlsa) || has(this.uri))\x1a\xde\x04\n" +
+	"\x1erecord.data_block_matches_type\x126the supplied data block does not match the record type\x1a\x83\x04(!has(this.caa) || this.type == 8) && (!has(this.cert) || this.type == 11) && (!has(this.dnskey) || this.type == 12) && (!has(this.ds) || this.type == 13) && (!has(this.https) || this.type == 14) && (!has(this.loc) || this.type == 15) && (!has(this.naptr) || this.type == 16) && (!has(this.smimea) || this.type == 17) && (!has(this.srv) || this.type == 6) && (!has(this.sshfp) || this.type == 18) && (!has(this.svcb) || this.type == 19) && (!has(this.tlsa) || this.type == 20) && (!has(this.uri) || this.type == 21)B\x06\n" +
+	"\x04data\"\x80\x01\n" +
+	"\x1fCloudflareDnsZoneRecordSettings\x12\x1b\n" +
+	"\tipv4_only\x18\x01 \x01(\bR\bipv4Only\x12\x1b\n" +
+	"\tipv6_only\x18\x02 \x01(\bR\bipv6Only\x12#\n" +
+	"\rflatten_cname\x18\x03 \x01(\bR\fflattenCname\"\x9e\x06\n" +
 	"\x1cCloudflareDnsZoneDnsSettings\x12,\n" +
 	"\x12flatten_all_cnames\x18\x01 \x01(\bR\x10flattenAllCnames\x12%\n" +
 	"\x0efoundation_dns\x18\x02 \x01(\bR\rfoundationDns\x12%\n" +
@@ -925,7 +2538,100 @@ const file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc = ""
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
 	"\fmulti_signer\x18\x02 \x01(\bR\vmultiSigner\x12\x1c\n" +
 	"\tpresigned\x18\x03 \x01(\bR\tpresigned\x12\x1b\n" +
-	"\tuse_nsec3\x18\x04 \x01(\bR\buseNsec3B\x91\x03\n" +
+	"\tuse_nsec3\x18\x04 \x01(\bR\buseNsec3\"\xe9\x02\n" +
+	"\x15CloudflareDnsZoneHold\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12-\n" +
+	"\x12include_subdomains\x18\x02 \x01(\bR\x11includeSubdomains\x12\x86\x02\n" +
+	"\n" +
+	"hold_after\x18\x03 \x01(\tB\xe6\x01\xbaH\xe2\x01\xba\x01\xde\x01\n" +
+	"\x12hold_after.rfc3339\x12Lhold_after must be an RFC3339 timestamp (e.g. 2026-01-31T00:00:00Z) or empty\x1azthis == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')R\tholdAfter\"\xc2\x06\n" +
+	"\x1dCloudflareDnsZoneSubscription\x12\xa8\x03\n" +
+	"\trate_plan\x18\x01 \x01(\tB\x8a\x03\xbaH\x86\x03\xba\x01\x82\x03\n" +
+	"\x0frate_plan.valid\x12\xbb\x01rate_plan must be one of Cloudflare's plan identifiers (free, lite, pro, pro_plus, business, enterprise, partners_free, partners_pro, partners_business, partners_enterprise, partners_ent)\x1a\xb0\x01this == '' || this in ['free', 'lite', 'pro', 'pro_plus', 'business', 'enterprise', 'partners_free', 'partners_pro', 'partners_business', 'partners_enterprise', 'partners_ent']R\bratePlan\x12\xc1\x01\n" +
+	"\tfrequency\x18\x02 \x01(\tB\xa2\x01\xbaH\x9e\x01\xba\x01\x9a\x01\n" +
+	"\x0ffrequency.valid\x12Cfrequency must be one of \"weekly\", \"monthly\", \"quarterly\", \"yearly\"\x1aBthis == '' || this in ['weekly', 'monthly', 'quarterly', 'yearly']R\tfrequency\x12\x14\n" +
+	"\x05scope\x18\x03 \x01(\tR\x05scope:\x9b\x01\xbaH\x97\x01\x1a\x94\x01\n" +
+	"\x16subscription.not_empty\x12Lset rate_plan and/or frequency — an empty subscription block has no effect\x1a,this.rate_plan != '' || this.frequency != ''\"a\n" +
+	"\aCaaData\x12\x1e\n" +
+	"\x05flags\x18\x01 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\x05flags\x12\x18\n" +
+	"\x03tag\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03tag\x12\x1c\n" +
+	"\x05value\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\x9f\x01\n" +
+	"\bCertData\x12\x1d\n" +
+	"\x04type\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x04type\x12\"\n" +
+	"\akey_tag\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x06keyTag\x12&\n" +
+	"\talgorithm\x18\x03 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\talgorithm\x12(\n" +
+	"\vcertificate\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vcertificate\"\xa2\x01\n" +
+	"\n" +
+	"DnskeyData\x12\x1f\n" +
+	"\x05flags\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x05flags\x12$\n" +
+	"\bprotocol\x18\x02 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\bprotocol\x12&\n" +
+	"\talgorithm\x18\x03 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\talgorithm\x12%\n" +
+	"\n" +
+	"public_key\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tpublicKey\"\x9f\x01\n" +
+	"\x06DsData\x12\"\n" +
+	"\akey_tag\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x06keyTag\x12&\n" +
+	"\talgorithm\x18\x02 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\talgorithm\x12)\n" +
+	"\vdigest_type\x18\x03 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\n" +
+	"digestType\x12\x1e\n" +
+	"\x06digest\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06digest\"h\n" +
+	"\tHttpsData\x12%\n" +
+	"\bpriority\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\bpriority\x12\x1e\n" +
+	"\x06target\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06target\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"\xf4\x04\n" +
+	"\aLocData\x120\n" +
+	"\rlat_direction\x18\x01 \x01(\tB\v\xbaH\br\x06R\x01NR\x01SR\flatDirection\x12(\n" +
+	"\vlat_degrees\x18\x02 \x01(\rB\a\xbaH\x04*\x02\x18ZR\n" +
+	"latDegrees\x12(\n" +
+	"\vlat_minutes\x18\x03 \x01(\rB\a\xbaH\x04*\x02\x18;R\n" +
+	"latMinutes\x128\n" +
+	"\vlat_seconds\x18\x04 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x1dZd;\xdf\xffM@)\x00\x00\x00\x00\x00\x00\x00\x00R\n" +
+	"latSeconds\x122\n" +
+	"\x0elong_direction\x18\x05 \x01(\tB\v\xbaH\br\x06R\x01ER\x01WR\rlongDirection\x12+\n" +
+	"\flong_degrees\x18\x06 \x01(\rB\b\xbaH\x05*\x03\x18\xb4\x01R\vlongDegrees\x12*\n" +
+	"\flong_minutes\x18\a \x01(\rB\a\xbaH\x04*\x02\x18;R\vlongMinutes\x12:\n" +
+	"\flong_seconds\x18\b \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x1dZd;\xdf\xffM@)\x00\x00\x00\x00\x00\x00\x00\x00R\vlongSeconds\x123\n" +
+	"\baltitude\x18\t \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x9a\x99\x99G\xacn\x84A)\x00\x00\x00\x00\x00j\xf8\xc0R\baltitude\x12+\n" +
+	"\x04size\x18\n" +
+	" \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00*u\x95A)\x00\x00\x00\x00\x00\x00\x00\x00R\x04size\x12>\n" +
+	"\x0eprecision_horz\x18\v \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00*u\x95A)\x00\x00\x00\x00\x00\x00\x00\x00R\rprecisionHorz\x12>\n" +
+	"\x0eprecision_vert\x18\f \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00*u\x95A)\x00\x00\x00\x00\x00\x00\x00\x00R\rprecisionVert\"\xbf\x01\n" +
+	"\tNaptrData\x12\x1f\n" +
+	"\x05order\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x05order\x12)\n" +
+	"\n" +
+	"preference\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\n" +
+	"preference\x12\x14\n" +
+	"\x05flags\x18\x03 \x01(\tR\x05flags\x12\x18\n" +
+	"\aservice\x18\x04 \x01(\tR\aservice\x12\x14\n" +
+	"\x05regex\x18\x05 \x01(\tR\x05regex\x12 \n" +
+	"\vreplacement\x18\x06 \x01(\tR\vreplacement\"\xab\x01\n" +
+	"\n" +
+	"SmimeaData\x12\x1e\n" +
+	"\x05usage\x18\x01 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\x05usage\x12$\n" +
+	"\bselector\x18\x02 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\bselector\x12-\n" +
+	"\rmatching_type\x18\x03 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\fmatchingType\x12(\n" +
+	"\vcertificate\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vcertificate\"\x92\x01\n" +
+	"\aSrvData\x12%\n" +
+	"\bpriority\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\bpriority\x12!\n" +
+	"\x06weight\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x06weight\x12\x1d\n" +
+	"\x04port\x18\x03 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x04port\x12\x1e\n" +
+	"\x06target\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06target\"{\n" +
+	"\tSshfpData\x12&\n" +
+	"\talgorithm\x18\x01 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\talgorithm\x12\x1c\n" +
+	"\x04type\x18\x02 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\x04type\x12(\n" +
+	"\vfingerprint\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vfingerprint\"g\n" +
+	"\bSvcbData\x12%\n" +
+	"\bpriority\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\bpriority\x12\x1e\n" +
+	"\x06target\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06target\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"\xa9\x01\n" +
+	"\bTlsaData\x12\x1e\n" +
+	"\x05usage\x18\x01 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\x05usage\x12$\n" +
+	"\bselector\x18\x02 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\bselector\x12-\n" +
+	"\rmatching_type\x18\x03 \x01(\rB\b\xbaH\x05*\x03\x18\xff\x01R\fmatchingType\x12(\n" +
+	"\vcertificate\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vcertificate\"s\n" +
+	"\aUriData\x12%\n" +
+	"\bpriority\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\bpriority\x12!\n" +
+	"\x06weight\x18\x02 \x01(\rB\t\xbaH\x06*\x04\x18\xff\xff\x03R\x06weight\x12\x1e\n" +
+	"\x06target\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06targetB\x91\x03\n" +
 	"5com.dev.planton.cloudflare.cloudflarednszone.v1alpha1B\tSpecProtoP\x01Zdgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarednszone/v1alpha1;cloudflarednszonev1alpha1\xa2\x02\x04DPCC\xaa\x021Dev.Planton.Cloudflare.Cloudflarednszone.V1alpha1\xca\x021Dev\\Planton\\Cloudflare\\Cloudflarednszone\\V1alpha1\xe2\x02=Dev\\Planton\\Cloudflare\\Cloudflarednszone\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Cloudflare::Cloudflarednszone::V1alpha1b\x06proto3"
 
 var (
@@ -941,36 +2647,68 @@ func file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDescGZIP()
 }
 
 var file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_goTypes = []any{
 	(CloudflareDnsZoneSpec_ZoneType)(0),     // 0: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneType
 	(CloudflareDnsZoneSpec_ZoneMode)(0),     // 1: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneMode
 	(CloudflareDnsZoneRecord_RecordType)(0), // 2: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.RecordType
 	(*CloudflareDnsZoneSpec)(nil),           // 3: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec
 	(*CloudflareDnsZoneRecord)(nil),         // 4: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord
-	(*CloudflareDnsZoneDnsSettings)(nil),    // 5: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings
-	(*CloudflareDnsZoneSoa)(nil),            // 6: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSoa
-	(*CloudflareDnsZoneNameservers)(nil),    // 7: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneNameservers
-	(*CloudflareDnsZoneInternalDns)(nil),    // 8: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns
-	(*CloudflareDnsZoneDnssec)(nil),         // 9: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssec
-	(*v1.StringValueOrRef)(nil),             // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*CloudflareDnsZoneRecordSettings)(nil), // 5: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecordSettings
+	(*CloudflareDnsZoneDnsSettings)(nil),    // 6: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings
+	(*CloudflareDnsZoneSoa)(nil),            // 7: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSoa
+	(*CloudflareDnsZoneNameservers)(nil),    // 8: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneNameservers
+	(*CloudflareDnsZoneInternalDns)(nil),    // 9: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns
+	(*CloudflareDnsZoneDnssec)(nil),         // 10: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssec
+	(*CloudflareDnsZoneHold)(nil),           // 11: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneHold
+	(*CloudflareDnsZoneSubscription)(nil),   // 12: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSubscription
+	(*CaaData)(nil),                         // 13: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CaaData
+	(*CertData)(nil),                        // 14: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CertData
+	(*DnskeyData)(nil),                      // 15: dev.planton.cloudflare.cloudflarednszone.v1alpha1.DnskeyData
+	(*DsData)(nil),                          // 16: dev.planton.cloudflare.cloudflarednszone.v1alpha1.DsData
+	(*HttpsData)(nil),                       // 17: dev.planton.cloudflare.cloudflarednszone.v1alpha1.HttpsData
+	(*LocData)(nil),                         // 18: dev.planton.cloudflare.cloudflarednszone.v1alpha1.LocData
+	(*NaptrData)(nil),                       // 19: dev.planton.cloudflare.cloudflarednszone.v1alpha1.NaptrData
+	(*SmimeaData)(nil),                      // 20: dev.planton.cloudflare.cloudflarednszone.v1alpha1.SmimeaData
+	(*SrvData)(nil),                         // 21: dev.planton.cloudflare.cloudflarednszone.v1alpha1.SrvData
+	(*SshfpData)(nil),                       // 22: dev.planton.cloudflare.cloudflarednszone.v1alpha1.SshfpData
+	(*SvcbData)(nil),                        // 23: dev.planton.cloudflare.cloudflarednszone.v1alpha1.SvcbData
+	(*TlsaData)(nil),                        // 24: dev.planton.cloudflare.cloudflarednszone.v1alpha1.TlsaData
+	(*UriData)(nil),                         // 25: dev.planton.cloudflare.cloudflarednszone.v1alpha1.UriData
+	(*v1.StringValueOrRef)(nil),             // 26: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_depIdxs = []int32{
 	4,  // 0: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.records:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord
 	0,  // 1: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.type:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneType
-	5,  // 2: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.dns_settings:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings
-	9,  // 3: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.dnssec:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssec
-	2,  // 4: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.type:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.RecordType
-	1,  // 5: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.zone_mode:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneMode
-	6,  // 6: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.soa:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSoa
-	7,  // 7: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.nameservers:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneNameservers
-	8,  // 8: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.internal_dns:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns
-	10, // 9: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns.reference_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	6,  // 2: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.dns_settings:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings
+	10, // 3: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.dnssec:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnssec
+	11, // 4: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.hold:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneHold
+	12, // 5: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.subscription:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSubscription
+	2,  // 6: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.type:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.RecordType
+	13, // 7: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.caa:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CaaData
+	14, // 8: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.cert:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CertData
+	15, // 9: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.dnskey:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.DnskeyData
+	16, // 10: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.ds:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.DsData
+	17, // 11: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.https:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.HttpsData
+	18, // 12: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.loc:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.LocData
+	19, // 13: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.naptr:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.NaptrData
+	20, // 14: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.smimea:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.SmimeaData
+	21, // 15: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.srv:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.SrvData
+	22, // 16: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.sshfp:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.SshfpData
+	23, // 17: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.svcb:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.SvcbData
+	24, // 18: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.tlsa:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.TlsaData
+	25, // 19: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.uri:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.UriData
+	5,  // 20: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecord.settings:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneRecordSettings
+	1,  // 21: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.zone_mode:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSpec.ZoneMode
+	7,  // 22: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.soa:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneSoa
+	8,  // 23: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.nameservers:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneNameservers
+	9,  // 24: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneDnsSettings.internal_dns:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns
+	26, // 25: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneInternalDns.reference_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_init() }
@@ -978,13 +2716,28 @@ func file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_init() {
 	if File_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{
+		(*CloudflareDnsZoneRecord_Caa)(nil),
+		(*CloudflareDnsZoneRecord_Cert)(nil),
+		(*CloudflareDnsZoneRecord_Dnskey)(nil),
+		(*CloudflareDnsZoneRecord_Ds)(nil),
+		(*CloudflareDnsZoneRecord_Https)(nil),
+		(*CloudflareDnsZoneRecord_Loc)(nil),
+		(*CloudflareDnsZoneRecord_Naptr)(nil),
+		(*CloudflareDnsZoneRecord_Smimea)(nil),
+		(*CloudflareDnsZoneRecord_Srv)(nil),
+		(*CloudflareDnsZoneRecord_Sshfp)(nil),
+		(*CloudflareDnsZoneRecord_Svcb)(nil),
+		(*CloudflareDnsZoneRecord_Tlsa)(nil),
+		(*CloudflareDnsZoneRecord_Uri)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc), len(file_catalog_cloudflare_cloudflarednszone_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   7,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

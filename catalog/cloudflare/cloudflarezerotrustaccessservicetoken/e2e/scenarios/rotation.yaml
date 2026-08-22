@@ -1,0 +1,26 @@
+# Rotation scenario: creates the token already at secret version 2 with a
+# fixed future expiry for the previous secret -- proves the rotation pair
+# travels correctly through both engines. WATCH ITEM (recorded in the
+# profile): the provider's own rotation tests unset the API token for this
+# path; if the apply 403s under our api_token credential, record the defect
+# and defer this arm with the reason.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessServiceToken
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessservicetoken-rotation
+  id: planton-oss-e2e-cloudflarezerotrustaccessservicetoken-rotation
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessservicetoken
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-token-rot
+  duration: 720h
+  clientSecretVersion: 2
+  previousClientSecretExpiresAt: "2027-12-31T00:00:00Z"

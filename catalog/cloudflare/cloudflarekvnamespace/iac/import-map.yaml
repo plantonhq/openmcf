@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarekvnamespace
+spec:
+  # A KV namespace's import identity is {account_id}/{namespace_id}.
+  # account_id is spec-relative (from_spec_field) -- the harness already
+  # knows the account; namespace_id is the deploy's own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: namespace_id
+      derivations:
+        - from_stack_output: namespace_id
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> KV (the namespace ID
+        column), or `GET /accounts/<account_id>/storage/kv/namespaces` on the
+        Cloudflare v4 API (the id field).

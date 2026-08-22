@@ -1,0 +1,56 @@
+# Capacity derivation: machine-executable rules turning any
+# KubernetesOpenBao manifest's spec values into the cluster capacity the
+# deployment reserves. Field paths are spec-relative proto field names,
+# held to the served contract by the conformance gate. The server's
+# resources field carries the (default_container_resources) annotation --
+# the sizing the modules apply when a manifest omits resources -- and the
+# estimator states those defaults with their origin named in the basis.
+# The replica count reads the HA block's replicas with a single-server
+# floor of 1 (dev mode and standalone run one pod); volume sizes read
+# the storage blocks, falling back to their spec-declared default sizes
+# when a PRESENT block omits its size.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesopenbao
+spec:
+  workloads:
+    - label: server replica
+      resources_path: server.resources
+      instances:
+        field_value:
+          field_path: server.ha.replicas
+          default_when_unset: "1"
+      volumes:
+        - label: data
+          size_path: server.data_storage.size
+        - label: audit
+          size_path: server.audit_storage.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: server.dev
+          op: is_set
+      text: dev mode persists NOTHING -- all data is lost on pod restart; never run it beyond a laboratory
+    - applies_when:
+        - field_path: server.ha
+          op: is_set
+      text: the chart's default required anti-affinity places each replica on a distinct node -- the cluster needs at least 3 schedulable nodes
+    - applies_when:
+        - field_path: auto_unseal.gcp_kms
+          op: is_set
+      text: the GCP Cloud KMS unseal key bills on the GCP account, outside the cluster
+  notes:
+    - applies_when:
+        - field_path: server.ha
+          op: is_set
+        - field_path: server.ha.replicas
+          op: is_unset
+      text: "the HA block omits its replica count -- the chart defaults it to 3, a multiplier this manifest-value footprint states at the single-server floor of 1"
+    - applies_when:
+        - field_path: server.dev
+          op: is_unset
+        - field_path: server.data_storage
+          op: is_unset
+      text: "no data_storage block is declared -- the chart still provisions a default data volume for a non-dev server, a reservation this manifest-value footprint cannot state"

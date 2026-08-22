@@ -1,0 +1,28 @@
+# Minimal DigitalOceanDnsRecord: an A record on the zone registry
+# prerequisite (the DigitalOceanDnsZone minimal profile). Proves the full
+# create/verify/destroy lifecycle, the domain reference resolution, and the
+# record_id + domain outputs the verifier addresses the record with.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsRecord
+metadata:
+  name: planton-oss-e2e-digitaloceandnsrecord-min
+  id: planton-oss-e2e-digitaloceandnsrecord-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandnsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domain:
+    valueFrom:
+      kind: DigitalOceanDnsZone
+      name: planton-oss-e2e-digitaloceandnszone-min
+      fieldPath: status.outputs.zone_name
+  name: app
+  type: A
+  value:
+    value: 192.0.2.5

@@ -10,11 +10,10 @@ account-scoped pools. Pools and monitors are separate modules
 iac/pulumi/
 ├── main.go            # entrypoint (loads stack-input, calls module.Resources)
 ├── Pulumi.yaml
-├── Makefile
 └── module/
     ├── main.go            # Resources(): provider setup + load_balancer()
     ├── locals.go          # stack-input references
-    ├── load_balancer.go   # the cloudflare.LoadBalancer + geoPoolMap helper
+    ├── load_balancer.go   # the cloudflare.LoadBalancer + rules/geoPoolMap helpers
     └── outputs.go         # output constant names
 ```
 
@@ -24,11 +23,20 @@ A `CloudflareLoadBalancerStackInput` (target + provider config). Required spec
 fields: `hostname`, `zoneId`, `defaultPools`, `fallbackPool`. Pool/zone references
 arrive resolved via `StringValueOrRef.GetValue()`.
 
+`spec.rules[]` is converted by `ruleArray`/`ruleOverridesArgs` in
+[module/load_balancer.go](./module/load_balancer.go). Rule OVERRIDES keep real
+presence: an unset override inherits the load balancer's setting, while an
+explicit value — including `none`/`off`/`0` for the presence-carrying
+`session_affinity`, `steering_policy`, and `priority` fields — is sent as a
+real override. `terminates`/`disabled` are sent only when true (a
+`fixed_response` rule is auto-marked terminating server-side).
+
 ## Outputs
 
 - `load_balancer_id` — the load balancer ID.
 - `load_balancer_dns_record_name` — the hostname.
 - `load_balancer_cname_target` — the hostname clients point their DNS at.
+- `zone_id` — the owning zone (the API identity is `zones/{zone_id}/load_balancers/{id}`).
 
 ## Requirements
 

@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecosmosdbsqldatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Cosmos DB encrypts all data at rest -- documents, indexes, and backups in every database -- with service-managed keys, always on, with no disable switch at any configuration level."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Customer-managed keys are an account-level choice fixed at account creation (the AzureCosmosdbAccount's customer_managed_key), covering every database under it -- the database offers no per-database key lever."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Transport is the ACCOUNT's endpoint: Cosmos DB accepts only TLS connections and the minimum TLS version is set on the AzureCosmosdbAccount. The database has no endpoint or transport lever of its own."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "Network reachability is account-level posture -- public network access, IP firewall, VNet rules, and private endpoints all live on the AzureCosmosdbAccount, whose single endpoint serves every database. Nothing at the database grain opens or closes the network."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Inbound source restriction (IP ranges, VNet service endpoints, Private Link) is the account's firewall posture; the database exposes no network filter of its own."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The Cosmos endpoint accepts database API requests, not application traffic -- there is no WAF attachment point at the database grain."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every data-plane request must be authorized -- Entra ID via Cosmos DB's native data-plane RBAC, resource tokens, or the account's keys -- and Cosmos DB data-plane role assignments scope down to individual databases, so least-privilege grants can name exactly this database and everything in it."
+      notes: "Data-plane role assignments are created against the ACCOUNT (scope path narrows to this database); management-plane access is ARM RBAC. Key-based access is governed by the account's local-authentication posture (see no-legacy-auth)."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The database holds no credentials and runs no workloads. Keyless access is composed caller-side -- a managed identity plus a Cosmos DB data-plane role assignment scoped to this database's path."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Disabling key-based (local) authentication in favor of Entra ID is the AzureCosmosdbAccount's account-wide switch; the database exposes no authentication toggles of its own."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Database create/update/delete land in the Azure Activity Log automatically. Data-plane auditing (DataPlaneRequests) is an Azure Monitor diagnostic setting configured on the ACCOUNT -- account-side posture with no per-database toggle."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Cosmos DB metrics (RU consumption, throttled requests, storage) emit at the account grain with database and collection dimensions -- Microsoft defines no per-database metric resource, and this spec carries no monitoring toggle. Watching this database's shared budget means filtering the account's metrics on its name."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Backups are automatic and account-level: the AzureCosmosdbAccount's backup field picks periodic or continuous mode and every database rides that policy. Deleting the database deletes every container in it -- continuous mode restores it point-in-time; periodic mode requires a Microsoft support ticket."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "Retention (periodic interval/retention hours, continuous 7-vs-30-day tier) is configured on the account's backup field; no retention lever exists on this spec."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone redundancy and region replication follow the ACCOUNT's geo_locations (zone_redundant per region) -- the database's data is replicated wherever the account replicates, with no per-database lever."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Cosmos DB API nor this spec offers a database-grain deletion-protection flag; ARM resource locks are subscription-side governance outside the manifest. The blast radius is total: a database delete takes every container and document under it."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Cosmos DB is a fully managed multi-tenant service -- Microsoft operates and patches the storage and query engines with no customer-visible patch surface."

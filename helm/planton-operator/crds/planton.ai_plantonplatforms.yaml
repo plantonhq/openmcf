@@ -27,6 +27,10 @@ spec:
       jsonPath: .status.consoleUrl
       name: URL
       type: string
+    - description: License delivery mode (Community when none configured)
+      jsonPath: .status.license
+      name: License
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -173,6 +177,24 @@ spec:
                         && size(self.awsSecretsManager.region) > 0 && size(self.awsSecretsManager.kmsKeyArn)
                         > 0)
                 type: object
+              build:
+                description: |-
+                  build configures the pipeline-build capability: Tekton on this cluster,
+                  the runner's build worker and webhook, and the seeded build routing.
+                  Enabled by default -- builds power Service Hub, and an install without
+                  them is half a product; every field is optional.
+                properties:
+                  enabled:
+                    default: true
+                    description: |-
+                      enabled controls whether the build capability is deployed. Default
+                      true: builds power Service Hub -- an install without them can deploy
+                      infrastructure but never build a service from source, which is half
+                      the product. Opting OUT is the deliberate act (e.g. an install that
+                      only manages infrastructure). Builds also require the runner: with
+                      spec.runner disabled, builds follow it off.
+                    type: boolean
+                type: object
               components:
                 description: |-
                   components toggles optional platform capabilities that are disabled by default
@@ -283,14 +305,6 @@ spec:
                             x-kubernetes-int-or-string: true
                         type: object
                     type: object
-                  tekton:
-                    description: tekton enables Tekton for CI/CD pipelines.
-                    properties:
-                      enabled:
-                        default: false
-                        description: enabled controls whether this component is deployed.
-                        type: boolean
-                    type: object
                 type: object
               console:
                 description: |-
@@ -377,56 +391,18 @@ spec:
               database:
                 description: |-
                   database configures storage for the data-layer components
-                  (PostgreSQL, Redis, and the NATS JetStream message store).
+                  (PostgreSQL and Redis).
                 properties:
-                  nats:
-                    description: nats configures storage for the NATS JetStream message
-                      store.
-                    properties:
-                      storageClassName:
-                        description: |-
-                          storageClassName pins the JetStream volume to a StorageClass.
-                          Defaults to spec.storage.storageClassName, then the cluster default.
-                        type: string
-                      storageSize:
-                        anyOf:
-                        - type: integer
-                        - type: string
-                        description: |-
-                          storageSize is the persistent volume size for the JetStream file
-                          store. Defaults to spec.storage.size, then 10Gi.
-                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                        x-kubernetes-int-or-string: true
-                    type: object
                   postgresql:
-                    description: |-
-                      postgresql configures storage for the three PostgreSQL instances
-                      (api-resources, fga, temporal).
+                    description: postgresql configures the platform's PostgreSQL cluster.
                     properties:
-                      mode:
-                        allOf:
-                        - enum:
-                          - standalone
-                          - operator
-                        - enum:
-                          - standalone
-                          - operator
-                        default: standalone
-                        description: |-
-                          mode controls how PostgreSQL is deployed.
-                          "standalone" (default): Bitnami PostgreSQL Helm chart, single instance
-                            with all databases. Lightweight, no external operator dependencies.
-                            Suitable for development, evaluation, and Kind clusters.
-                          "operator": Zalando Postgres Operator with 3 dedicated PostgreSQL
-                            clusters (planton, fga, temporal). Supports HA, automated failover,
-                            and backups. The Zalando operator is deployed automatically unless
-                            spec.prerequisites.postgresOperator is set to "skip".
-                        type: string
                       replicas:
                         default: 1
                         description: |-
-                          replicas is the number of PostgreSQL instances per cluster (primary + replicas).
-                          Only used in operator mode. Ignored in standalone mode (always 1).
+                          replicas is the number of PostgreSQL instances in the cluster: a
+                          primary plus streaming-replication hot standbys with automated
+                          failover. 1 (the default) is a single instance; raising it after
+                          install grows the topology live.
                         format: int32
                         minimum: 1
                         type: integer
@@ -440,10 +416,11 @@ spec:
                         - type: integer
                         - type: string
                         description: |-
-                          storageSize is the persistent volume size for each PostgreSQL
-                          instance. Defaults to spec.storage.size, then 10Gi. (Defaults resolve
-                          in the operator, not in this schema, so the platform-wide size can
-                          tell "unset" apart from "chosen".)
+                          storageSize is the persistent volume size per PostgreSQL instance.
+                          Defaults to spec.storage.size, then 10Gi. (Defaults resolve in the
+                          operator, not in this schema, so the platform-wide size can tell
+                          "unset" apart from "chosen".) Sizes can grow after install by editing
+                          this field; they can never shrink.
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                     type: object
@@ -622,23 +599,52 @@ spec:
                     "")'
               license:
                 description: |-
-                  license holds an optional license key for enterprise features.
-                  Without a license key, Planton runs in Community mode.
+                  license delivers the deployment's license key -- inline or by Secret
+                  reference (at most one). Without it, Planton runs in Community mode.
                 properties:
                   key:
-                    description: key is the Planton enterprise license key.
+                    description: |-
+                      key is the license key pasted verbatim (the compact signed token from
+                      the purchase email). Convenient for a first install; prefer
+                      secretKeyRef in GitOps trees so the key never lives in the CR.
                     type: string
+                  secretKeyRef:
+                    description: |-
+                      secretKeyRef points at an entry in an existing Secret (same
+                      namespace) holding the license key. Rotating the Secret's value
+                      re-delivers the key on the next control-plane restart -- a renewal is
+                      a Secret edit, never a reinstall.
+                    properties:
+                      key:
+                        description: key within the Secret whose value is the license
+                          key.
+                        minLength: 1
+                        type: string
+                      name:
+                        description: name of the Secret.
+                        minLength: 1
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
                 type: object
+                x-kubernetes-validations:
+                - message: set at most one of key or secretKeyRef
+                  rule: '!has(self.key) || !has(self.secretKeyRef)'
               prerequisites:
                 description: |-
                   prerequisites controls how the operator deploys its own dependencies
-                  (sub-operators like Zalando Postgres Operator). Defaults to auto-detection.
+                  (sub-operators like CloudNativePG). Defaults to auto-detection.
                 properties:
                   postgresOperator:
                     default: auto
                     description: |-
-                      postgresOperator controls deployment of the Zalando Postgres Operator.
-                      "auto" (default): detect if installed, deploy if missing.
+                      postgresOperator controls deployment of the CloudNativePG operator
+                      (the engine behind the platform's PostgreSQL cluster).
+                      "auto" (default): detect if installed, deploy if missing. A
+                      CloudNativePG installed by any other means (Helm, GitOps) is detected
+                      and respected automatically.
                       "skip": assume already installed, do not deploy.
                     enum:
                     - auto
@@ -651,6 +657,19 @@ spec:
                       "auto" (default): detect if installed, deploy if missing.
                       "skip": assume already installed, do not deploy.
                       Only relevant when spec.components.search.mode is "operator".
+                    enum:
+                    - auto
+                    - skip
+                    type: string
+                  tektonPipelines:
+                    default: auto
+                    description: |-
+                      tektonPipelines controls deployment of Tekton Pipelines (the build
+                      engine behind spec.build).
+                      "auto" (default): detect if installed, deploy if missing.
+                      "skip": assume already installed, do not deploy. The operator still
+                      points Tekton's CloudEvents sink at the runner webhook -- sink wiring
+                      is the build capability's job regardless of who installed Tekton.
                     enum:
                     - auto
                     - skip
@@ -919,25 +938,6 @@ spec:
                     required:
                     - phase
                     type: object
-                  nats:
-                    description: ComponentStatus describes the observed state of an
-                      individual component.
-                    properties:
-                      message:
-                        description: message provides human-readable detail about
-                          the component's current state.
-                        type: string
-                      phase:
-                        description: phase is the lifecycle phase of this component.
-                        enum:
-                        - Pending
-                        - Deploying
-                        - Ready
-                        - Error
-                        type: string
-                    required:
-                    - phase
-                    type: object
                   neo4j:
                     description: ComponentStatus describes the observed state of an
                       individual component.
@@ -1071,6 +1071,25 @@ spec:
                     required:
                     - phase
                     type: object
+                  tekton:
+                    description: ComponentStatus describes the observed state of an
+                      individual component.
+                    properties:
+                      message:
+                        description: message provides human-readable detail about
+                          the component's current state.
+                        type: string
+                      phase:
+                        description: phase is the lifecycle phase of this component.
+                        enum:
+                        - Pending
+                        - Deploying
+                        - Ready
+                        - Error
+                        type: string
+                    required:
+                    - phase
+                    type: object
                   temporal:
                     description: ComponentStatus describes the observed state of an
                       individual component.
@@ -1158,6 +1177,14 @@ spec:
                   consoleUrl is the URL the web console is reachable at once ingress is
                   configured and admitted. The platform tells you your URL -- with an
                   auto-derived hostname this is where the derived address is published.
+                type: string
+              license:
+                description: |-
+                  license echoes how the license key is delivered to the control plane
+                  (Community, InlineKey, or SecretRef) -- configuration echo like
+                  version, feeding the kubectl column. Whether the key VERIFIES and
+                  what it grants is the control plane's own answer, served by its
+                  entitlements advertisement, never guessed here.
                 type: string
               phase:
                 description: phase is the high-level lifecycle phase of the entire

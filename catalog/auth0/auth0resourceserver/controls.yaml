@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: auth0resourceserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A resource server is an API definition (audience, scopes, token settings) inside Auth0's SaaS control plane -- it stores no data of its own. The tenant configuration it rests in is Auth0's provider-managed storage posture, with no encryption seam in this spec; the actual API workload's data belongs to whatever component runs it.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest at this component's level to key (see enc-at-rest); Auth0 exposes no customer-managed-key surface on resource server objects in the spec or the modules.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A resource server terminates no connections -- it NAMES an audience that access tokens are minted for. TLS on the real API endpoint is the posture of the service that serves it; the Management API calls that manage this object travel to Auth0's HTTPS-only API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The object has no network endpoint to expose; the identifier is an audience string (typically a URI), not a reachable address. Whether the API it represents is internet-facing is that workload's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network surface exists to filter; the resource server is a configuration object addressed only through Auth0's Management API.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The object receives no HTTP requests -- request filtering belongs to the edge in front of the actual API workload, a separate component.
+    - control_id: rbac
+      status: configurable
+      field_path: enforce_policies
+      evidence:
+        type: spec_default
+        reference: "enforce_policies defaults to false (spec.proto); set true, Auth0 evaluates role and permission assignments during login and enforces its built-in RBAC for this API. Pair it with a token_dialect ending in _authz (access_token_authz or rfc9068_profile_authz) so granted permissions appear as token claims, and define the grantable permissions in scopes."
+      notes: WHO may manage this object itself is governed at the Auth0 tenant level -- Management API tokens scoped with the resource_servers scopes (documented in iac/permissions.yaml) and dashboard admin roles. The roles that feed the RBAC evaluation are authored by the auth0role kind.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The resource server holds no credentials and authenticates to nothing -- it is the AUDIENCE others authenticate to. The credential the IaC runner presents is the provider connection's concern, documented in iac/permissions.yaml; no spec field selects between static and federated auth.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: signing_alg
+      evidence:
+        type: spec_default
+        reference: "signing_alg empty means RS256 (spec.proto), the asymmetric, recommended posture where only Auth0 holds the signing key; HS256 opts into a symmetric shared secret that every verifier must hold -- a possessor of that secret can mint valid tokens. PS256 (RSA-PSS) is the third accepted value; the spec validation admits nothing else."
+      notes: token_lifetime (default 86400s) and token_lifetime_for_web (default 7200s) bound how long an issued token stays valid; allow_offline_access (default false) keeps refresh tokens off unless deliberately enabled.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: "A resource server is an API audience and scope definition -- it signs nobody in and carries no end-user credential surface. Credential strength for the tenant's end users (password policy, brute-force protection, MFA) lives on the tenant's connections: the auth0connection kind carries that stance."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit toggle. Changes to the resource server are Management API operations captured in Auth0's tenant logs, whose retention and streaming are tenant-plan posture (exported, where wanted, by the auth0eventstream kind).
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Neither the spec nor the modules expose a metrics surface for this object; token issuance telemetry is Auth0's tenant-level dashboard and log data, and the API workload's own metrics belong to the component that runs it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The object is declaratively re-creatable from the manifest and accumulates no stored data to restore. Note the identifier is immutable once set (spec.proto) -- changing it means a new resource server, and tokens minted for the old audience stop matching.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The object has no placement to configure -- availability of token issuance is Auth0's SaaS platform posture, and the API workload's availability belongs to the component that runs it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Auth0 Management API's resource-servers endpoints nor the auth0 provider exposes a deletion-protection flag: a delete request proceeds when issued, removing the API definition -- applications can no longer be granted tokens for its audience. Protection, where wanted, is an operational concern outside this spec."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software of its own to patch; the token-issuing platform is Auth0's SaaS, patched by Auth0.

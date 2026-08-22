@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The Gateway has no authentication path of its own to harden. Its one weaker-mode knob is tls.frontend validation mode, where "AllowValidOnly" is the default and "AllowInsecureFallback" (accepting connections without a valid client certificate) is an explicit spec-marked-risk opt-in.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the Gateway are Kubernetes API operations captured by the target cluster's audit policy; access logs for the traffic it carries belong to the implementing controller and its infrastructure.

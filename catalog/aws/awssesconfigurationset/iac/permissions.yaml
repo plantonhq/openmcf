@@ -1,0 +1,54 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssesconfigurationset
+spec:
+  aws:
+    statements:
+      - sid: ManageConfigurationSet
+        actions:
+          - ses:CreateConfigurationSet
+          - ses:GetConfigurationSet
+          - ses:DeleteConfigurationSet
+          - ses:PutConfigurationSetDeliveryOptions
+          - ses:PutConfigurationSetReputationOptions
+          - ses:PutConfigurationSetSendingOptions
+          - ses:PutConfigurationSetSuppressionOptions
+          - ses:PutConfigurationSetTrackingOptions
+          - ses:PutConfigurationSetVdmOptions
+        resources:
+          - arn:aws:ses:*:*:configuration-set/*
+          - arn:aws:ses:*:*:dedicated-ip-pool/*
+        provenance: derived
+        notes: Covers aws_sesv2_configuration_set / sesv2.ConfigurationSet. Create carries the full initial shape; the provider reconciles each later option change through its dedicated Put call (delivery, reputation, sending, suppression, tracking, VDM), and GetConfigurationSet serves every plan/refresh. All actions scope to the configuration-set ARN per the service reference; CreateConfigurationSet and PutConfigurationSetDeliveryOptions additionally authorize against the dedicated-ip-pool ARN when delivery_options.sending_pool_name routes the set through a pool, which is why the pool ARN format is granted alongside.
+      - sid: TagConfigurationSet
+        actions:
+          - ses:TagResource
+          - ses:UntagResource
+          - ses:ListTagsForResource
+        resources:
+          - arn:aws:ses:*:*:configuration-set/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three to many SES resource types; only the configuration-set ARN format is needed here.
+      - sid: ManageEventDestinations
+        actions:
+          - ses:CreateConfigurationSetEventDestination
+          - ses:GetConfigurationSetEventDestinations
+          - ses:UpdateConfigurationSetEventDestination
+          - ses:DeleteConfigurationSetEventDestination
+        resources:
+          - arn:aws:ses:*:*:configuration-set/*
+        provenance: derived
+        notes: Covers aws_sesv2_configuration_set_event_destination / sesv2.ConfigurationSetEventDestination -- one AWS sub-resource per named entry in event_destinations, each independently created, read on refresh, updated in place, and deleted. All four actions scope to the parent set's ARN per the service reference.
+      - sid: PassFirehoseDeliveryRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "Needed only when an event_destinations entry uses the firehose arm: the destination's IamRoleArn hands SES a role to assume (trusting ses.amazonaws.com, with firehose:PutRecordBatch on the stream), and IAM's standard rule is that a caller passing a role to a service must hold iam:PassRole on that role. Tighten the resource to the specific delivery role's ARN in hardened deployments; sets without a Firehose destination need this statement not at all."

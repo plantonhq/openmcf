@@ -1,0 +1,38 @@
+# Estimate model: hand-computed capacity footprints for this
+# cluster-capacity component's presets. The derivation grammar cannot
+# traverse this kind's repeated replica_sets list (per-set size,
+# resources, and storage), nor add the config-server, mongos, and arbiter
+# terms a sharded topology brings, so each preset's totals are computed
+# by hand from its manifest: the sum over replica sets of size x
+# (resources + storage volume), plus config_server.size and mongos.size
+# terms when sharding is enabled (neither shipped preset shards).
+# Cluster-capacity components carry no priced lines -- the dollar value
+# of the reservation is the target cluster's node and storage-class
+# economics, which this catalog cannot know.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesmongodb
+spec:
+  presets:
+    - preset: 01-single-instance
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        persistent_storage: 5Gi
+        basis: 1 member (replica set rs0) x (100m CPU / 256Mi memory requests, 500m CPU / 512Mi limits) + 1 x 5Gi data volume; no sharding, no arbiter, no log collector
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 02-replica-set
+      capacity_footprint:
+        cpu_requests: "3"
+        memory_requests: 6Gi
+        cpu_limits: "6"
+        memory_limits: 12Gi
+        persistent_storage: 300Gi
+        basis: 3 members (replica set rs0) x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits) + 3 x 100Gi data volumes; no sharding, no arbiter, no log collector
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics

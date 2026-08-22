@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandatabasekafkaschema
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageKafkaSchemaSubject
+        scopes:
+          - database:read
+          - database:create
+          - database:delete
+        provenance: derived
+        notes: Covers digitalocean_database_kafka_schema_registry's create/read/delete paths (the resource has no update) -- read the subject via GET /v2/databases/{cluster}/schema-registry/{subject} (database:read), register the subject via POST /v2/databases/{cluster}/schema-registry, where DigitalOcean's own OpenAPI spec (databases_create_kafka_schema.yml) declares database:create -- not database:update -- on this endpoint (database:create), and delete the subject via DELETE /v2/databases/{cluster}/schema-registry/{subject}, where the OpenAPI spec (databases_delete_kafka_schema.yml) declares database:delete (database:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

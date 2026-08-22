@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceandropletautoscalepool
+spec:
+  # The pool imports by its UUID (passthrough importer). One recorded
+  # tolerance: the template's image reads back as a NUMERIC image id even
+  # when a slug was configured (the provider itself persists the
+  # configured value on refresh to hide the drift, but a fresh import has
+  # no configured value to keep) -- expect an image diff on the first
+  # post-import plan when the spec uses a slug.
+  values:
+    - name: pool_id
+      derivations:
+        - from_stack_output: pool_id
+      where_to_find: >-
+        DigitalOcean control panel -> Droplets -> Autoscale pools -> the
+        pool's Settings, or the API (GET /v2/droplets/autoscale_pools).

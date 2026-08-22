@@ -5,10 +5,12 @@ go_library(
     srcs = [
         "dns_settings.go",
         "dnssec.go",
+        "hold.go",
         "locals.go",
         "main.go",
         "outputs.go",
         "records.go",
+        "subscription.go",
         "zone.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/cloudflare/cloudflarednszone/iac/pulumi/module",

@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskeycloak
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - k8s.keycloak.org
+        resources:
+          - keycloaks
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.keycloak -- the k8s.keycloak.org/v2beta1 Keycloak custom resource applied via server-side apply with Background delete cascade. The StatefulSet, Services, NetworkPolicy, and initial-admin Secret are created by the OPERATOR reconciling this CR, not by the runner -- their permissions ride the KubernetesKeycloakOperator component.

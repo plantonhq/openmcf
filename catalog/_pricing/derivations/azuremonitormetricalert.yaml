@@ -1,0 +1,69 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMonitorMetricAlert manifest's spec values into metered quantities
+# and price choices. A metric alert bills per monitored time series per
+# month: each static criterion on each scoped resource is one series,
+# a dynamic criterion is one series billed TWICE (base meter plus the
+# dynamic-threshold add-on meter), and a web-test availability rule
+# monitors the referenced test's availability signal as one series.
+# Multi-resource, resource-group, and subscription scopes refuse
+# honestly: they bill one series set per MATCHING resource, a count
+# only the live subscription knows -- and every such manifest declares
+# itself by setting target_resource_type. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/azuremonitormetricalert.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremonitormetricalert
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: target_resource_type
+          op: is_set
+      reason: a multi-resource, resource-group, or subscription scope (which is what setting target_resource_type declares) bills one time-series set per MATCHING resource the scope resolves to -- a count that follows the live subscription's contents, not this manifest
+  lines:
+    - sku_meter: metric alert time series
+      applies_when:
+        - field_path: static_criteria
+          op: is_set
+      quantity:
+        - count_of: static_criteria
+        - count_of: scopes
+      price_slug: monitor-metric-alert-time-series-eastus
+      basis: each static criterion evaluates one metric per scoped resource, and each pairing is one billed time series per month -- criteria count x scope count (single-resource scopes only; multi-resource shapes refuse above)
+    - sku_meter: metric alert time series
+      applies_when:
+        - field_path: dynamic_criteria
+          op: is_set
+      quantity:
+        - count_of: scopes
+      price_slug: monitor-metric-alert-time-series-eastus
+      basis: the one dynamic criterion a rule may carry monitors one time series per scoped resource on the base metric-alert meter
+    - sku_meter: dynamic threshold
+      applies_when:
+        - field_path: dynamic_criteria
+          op: is_set
+      quantity:
+        - count_of: scopes
+      price_slug: monitor-dynamic-threshold-eastus
+      basis: the dynamic-threshold capability bills a second monthly fee for the same time series -- Microsoft's pricing page prices a dynamic alert as the base rule plus the dynamic-threshold add-on
+    - sku_meter: metric alert time series
+      applies_when:
+        - field_path: web_test_availability_criteria
+          op: is_set
+      quantity:
+        - constant: "1"
+      price_slug: monitor-metric-alert-time-series-eastus
+      basis: a web-test availability rule monitors the referenced test's availability signal as one time series; the test's own scheduled executions bill on the web-test component, and Microsoft's pricing page states alert-rule charges are separate from test charges
+  exclusions:
+    - text: notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup component
+    - text: dimension filters that split the evaluation (INCLUDE with several values, or "*") bill each matching dimension value as its own time series -- these rules price the undimensioned series count, and the split multiplier follows the live metric's dimension values
+    - text: the first 10 monitored metric time-series per subscription per month are free -- a subscription-wide allowance shared across every rule, so the estimate prices the list rate without netting it out
+  notes:
+    - text: The meter runs from rule creation until deletion whether the alert ever fires or not; enabled=false suspends both evaluation and billing, which is why pausing beats deleting during maintenance windows.

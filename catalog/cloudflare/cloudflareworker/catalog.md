@@ -1,44 +1,40 @@
 # Worker on Cloudflare
 
-Deploys a Cloudflare Worker with script bundle loading from R2, optional KV namespace bindings, custom domain routing, and environment variable and secret injection. Integrates with Planton's Provider Connections for Cloudflare credential management and supports ValueFromRef wiring to KV namespaces for cross-resource dependency resolution.
+Deploys a Cloudflare Worker — a script that runs on Cloudflare's edge — with its bindings, routing, schedules, and runtime settings. Bindings are grouped by type (the wrangler.toml grain) and each cross-resource binding accepts a literal or a reference to the producing resource, so a Worker composes as a real node in the resource graph.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Workers Script** -- the serverless function deployed to Cloudflare's edge network, loaded from a pre-built script bundle in an R2 bucket, with module syntax and Node.js compatibility enabled
-- **KV Namespace Bindings** -- created only when `kvBindings` entries are provided; binds one or more Workers KV namespaces to the script for edge key-value storage access
-- **Plain-Text Variable Bindings** -- created only when `env.variables` entries are provided; injects non-sensitive configuration as Worker bindings
-- **Secrets** -- created only when `env.secrets` entries are provided; uploaded via the Cloudflare Secrets API, encrypted at rest, and never logged
-- **DNS Record** -- created only when `dns.enabled` is `true`; a proxied A record pointing the custom hostname to Cloudflare's edge
-- **Workers Route** -- created only when `dns.enabled` is `true`; attaches the Worker to a URL pattern on the custom domain
-- **Observability** -- Workers Logs enabled by default with 100% head sampling rate for full request visibility
+- **Workers Script** -- the serverless function, from inline `content` or an R2 `r2Bundle`, with optional static `assets`
+- **Bindings** -- typed lists (vars, secrets, KV, R2, D1, Hyperdrive, services, queues, Durable Objects, and the rest of the provider's binding types) flattened into the script's bindings array
+- **workers.dev subdomain** -- created only when `workersDev.enabled` is true
+- **Custom domains** -- one managed hostname (automatic TLS) per `customDomains` entry
+- **Routes** -- one pattern-based route per `routes` entry
+- **Cron trigger** -- created only when `schedules` is set
+- **Observability** -- Workers Logs and traces when `observability` is set
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Workers and R2 permissions. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
-- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
+- **Cloudflare Provider Connection** -- an active connection with a Cloudflare API token that has Workers Scripts Write (and Routes / DNS Edit if you attach custom domains or routes).
 
 ### Cloudflare Account
 
-- **A pre-built script bundle in R2** -- the Worker code must be compiled and uploaded to an R2 bucket before deployment. The `scriptBundle` field specifies the bucket name and object path (e.g., `dist/worker.js`).
-- **KV namespaces** (optional) -- if the Worker needs KV storage, create CloudflareKvNamespace resources first. Provide namespace IDs directly or reference them via ValueFromRef.
-- **A Cloudflare DNS zone** (optional) -- required only when using custom domain routing (`dns.enabled: true`). Provide the zone ID directly in the `dns.zoneId` field.
+- **A script source or assets** -- inline `content`, an R2 `r2Bundle`, a static `assets` directory, or a combination. A Worker with none of these is rejected.
+- **Upstream resources** (optional) -- KV, D1, R2, Hyperdrive, another Worker, a Queue, or a Zero Trust tunnel, referenced via `valueFrom`.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Worker on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Minimal** preset in the [Presets](#presets) tab for a bare Worker deployment.
+Open the deployment store, find **Worker on Cloudflare**, and click **Deploy**. Start from the **Minimal** preset for an inline hello-world, or **API with Custom Domain** for a production-shaped Worker.
 
 ### CLI
 
-Create a manifest and apply it:
-
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareWorker
 metadata:
   name: api-gateway
@@ -47,43 +43,40 @@ metadata:
 spec:
   accountId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
   workerName: api-gateway
-  scriptBundle:
-    bucket: deploy-bundles
-    path: api-gateway/v1.0.0/worker.js
+  content: |
+    export default { async fetch() { return new Response("ok"); } }
+  workersDev:
+    enabled: true
 ```
 
 ```shell
 planton apply -f cloudflare-worker.yaml
 ```
 
-This creates a Worker with the script loaded from R2. No KV bindings, DNS routes, or environment variables are configured. The Worker runs but has no route -- attach routes via the Cloudflare dashboard or a subsequent update. A Stack Job tracks the provisioning in real time.
-
 ### InfraChart
 
-When deploying with KV namespace dependencies, use ValueFromRef to wire the Worker to KV namespaces deployed in the same InfraPipeline:
+Wire a Worker to a KV namespace deployed in the same pipeline:
 
 ```yaml
 spec:
-  kvBindings:
-    - valueFrom:
-        kind: CloudflareKvNamespace
-        name: session-cache
-        fieldPath: status.outputs.namespace_id
+  kvNamespaces:
+    - name: CONFIG
+      namespaceId:
+        valueFrom:
+          kind: CloudflareKvNamespace
+          name: session-cache
+          fieldPath: status.outputs.namespace_id
 ```
-
-The InfraPipeline resolves the dependency graph, deploys the KV namespace first, then provisions the Worker with the resolved namespace ID bound as a KV binding.
 
 ## Key Configuration
 
-These are the most important decisions when configuring a Worker. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+**Script source** -- `content` for inline ES modules, `r2Bundle` for a CI-built artifact (`bucket` is a CloudflareR2Bucket reference or a literal name), `assets` for a static site or full-stack app.
 
-**Script bundle source** -- The `scriptBundle` field references a pre-built Worker bundle stored in an R2 bucket. Build and upload your Worker code (e.g., via Wrangler or CI/CD) before deploying. The module uses ES module syntax with `index.js` as the main module entry point.
+**Bindings** -- grouped by type. Cross-resource fields take a literal or `valueFrom`. Secrets and secret-key material are sensitive.
 
-**KV bindings** -- Each entry in `kvBindings` attaches a Workers KV namespace to the script. Use ValueFromRef to reference CloudflareKvNamespace resources, or provide literal namespace IDs. Multiple KV namespaces can be bound to a single Worker for different data stores (cache, sessions, configuration).
+**Routing** -- `workersDev` for `*.workers.dev`, `customDomains` for managed hostnames, `routes` for zone patterns.
 
-**Custom domain routing** -- Set `dns.enabled: true` with a `dns.zoneId` and `dns.hostname` to create a proxied DNS record and Workers Route for the custom domain. The `dns.routePattern` defaults to `hostname/*` if omitted. Omit the `dns` block entirely for Workers that run via Cron Triggers, Queues, or workers.dev subdomain only.
-
-**Environment variables and secrets** -- Use `env.variables` for non-sensitive configuration (plain-text bindings) and `env.secrets` for sensitive values (encrypted at rest via Cloudflare Secrets API). Both support Planton's `$variables-group/` and `$secrets-group/` reference syntax for centralized configuration management.
+**Migrations** -- Durable Object class create/rename/transfer/delete. Cloudflare treats the tag as a one-shot; a second apply of the same `newTag` is rejected.
 
 ## Outputs and Dependencies
 
@@ -91,25 +84,35 @@ These are the most important decisions when configuring a Worker. Explore the fu
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **CloudflareKvNamespace** (optional) | `kvBindings` | `status.outputs.namespace_id` |
+| **CloudflareKvNamespace** (optional) | `kvNamespaces[].namespaceId` | `status.outputs.namespace_id` |
+| **CloudflareD1Database** (optional) | `d1Databases[].databaseId` | `status.outputs.database_id` |
+| **CloudflareR2Bucket** (optional) | `r2Buckets[].bucketName`, `r2Bundle.bucket` | `status.outputs.bucket_name` |
+| **CloudflareHyperdriveConfig** (optional) | `hyperdriveConfigs[].configId` | `status.outputs.hyperdrive_id` |
+| **CloudflareQueue** (optional) | `queues[].queueName` | `status.outputs.queue_name` |
+| **CloudflareWorker** (optional) | `services[].service`, `durableObjects[].scriptName`, `tailConsumers[].service` | `status.outputs.script_name` |
+| **CloudflareDnsZone** (optional) | `customDomains[].zoneId`, `routes[].zoneId` | `status.outputs.zone_id` |
+| **CloudflareZeroTrustTunnel** (optional) | `vpcNetworks[].tunnelId` | `status.outputs.tunnel_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `script_id` | The Cloudflare-assigned identifier of the deployed Worker script | Worker management, monitoring dashboards |
-| `route_urls` | The route URL patterns where this Worker is active | DNS verification, application endpoint configuration |
+| `script_id` | The Cloudflare-assigned identifier of the deployed Worker | Worker management |
+| `script_name` | The script name | Service bindings and tail consumers on other Workers |
+| `custom_domain_hostnames` | Managed hostnames attached to this Worker | DNS verification |
+| `route_patterns` | Route patterns mapped to this Worker | Application endpoint configuration |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**API with custom domain** -- CI-built bundle in R2, KV + D1 by reference, managed custom domain. Start from the **API with Custom Domain** preset.
 
-**API with custom domain** -- A full-featured Worker with KV bindings, custom domain DNS routing, and environment variables. Use for production REST or GraphQL APIs that need edge storage and a branded hostname. Start from the **API with Custom Domain** preset.
+**Minimal worker** -- inline content, workers.dev only. Start from the **Minimal** preset.
 
-**Minimal worker** -- A bare Worker with only the script bundle. No KV bindings, DNS routes, or environment variables. Use for initial deployments, Cron Trigger workers, or when routes are managed separately. Start from the **Minimal** preset.
+**Static site / full-stack** -- `assets` alone, or `assets` plus a script. Start from the **Static Site** or **Full-stack App** presets.
 
 ## Works With
 
-- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace) -- provides KV namespace IDs for Worker storage bindings
+- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace)
+- [**D1 Database on Cloudflare**](/cloud-catalog/cloudflare-d1-database)
+- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket)
+- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone)

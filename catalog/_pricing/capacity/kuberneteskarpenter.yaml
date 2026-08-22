@@ -1,0 +1,35 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKarpenter manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kuberneteskarpenter.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. The footprint is the
+# controller Deployment only -- the chart-default 2 replicas are an active
+# leader plus a warm standby, each reserving the declared resources. The
+# NODES Karpenter launches are deliberately NOT here: their economics ride
+# the KubernetesKarpenterNodePool resources that declare the fleet.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskarpenter
+spec:
+  workloads:
+    - label: controller replica
+      resources_path: controller.resources
+      instances:
+        field_value:
+          field_path: controller.replicas
+          default_when_unset: "2"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: the cloud instances Karpenter launches and terminates are not this footprint -- they bill at the cloud provider's rates and ride the KubernetesKarpenterNodePool resources that declare the fleet
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can change replica counts and resources beyond what this footprint states
+  notes:
+    - applies_when:
+        - field_path: controller.resources
+          op: is_unset
+      text: no resources are declared -- the chart applies no requests or limits of its own, so the controller pods schedule unbounded and this footprint states zero reservation

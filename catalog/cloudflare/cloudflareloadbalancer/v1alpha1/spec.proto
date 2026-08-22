@@ -138,11 +138,143 @@ message CloudflareLoadBalancerSpec {
   // Pool weighting for random / least-* steering policies.
   CloudflareLoadBalancerRandomSteering random_steering = 20;
 
-  // 21: rules is reserved — the v5 load-balancer rules[] surface is "BETA Field
-  // Not General Access". Model it as a typed list here once it reaches general
-  // availability in the provider.
-  reserved 21;
-  reserved "rules";
+  // Ordered list of traffic rules evaluated per request (the dashboard's
+  // "Custom Rules"). Each rule has a condition expression; when it matches, the
+  // rule either overrides this load balancer's steering for that request or
+  // answers directly with a fixed response. Note: the provider schema labels
+  // this field "BETA Field Not General Access", but load-balancing rules are a
+  // long-standing GA Cloudflare product feature in production use.
+  repeated CloudflareLoadBalancerRule rules = 21;
+
+  // Networks where this load balancer is enabled. Used with Cloudflare private
+  // networking (e.g. Magic WAN / WARP connector networks); leave empty for
+  // ordinary public load balancers.
+  repeated string networks = 22;
+}
+
+// CloudflareLoadBalancerRule is one entry in the load balancer's ordered rules
+// list. A rule matches requests with a condition expression
+// (https://developers.cloudflare.com/load-balancing/understand-basics/load-balancing-rules/expressions)
+// and applies either steering overrides or a fixed response to matched traffic.
+message CloudflareLoadBalancerRule {
+  // Human-readable rule name, used only for dashboard readability.
+  string name = 1;
+
+  // The condition expression to evaluate (e.g. `http.request.uri.path contains
+  // "/api"`). An empty condition always matches.
+  string condition = 2;
+
+  // Execution order relative to other rules: lower values run first; values
+  // need not be sequential. LEAVE UNSET to let the array order of `rules`
+  // assign priorities (Cloudflare's behavior when no rule provides one) — an
+  // explicit 0 is a real priority, not "unset".
+  optional int32 priority = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Disable this rule without deleting it; a disabled rule is not evaluated.
+  bool disabled = 4;
+
+  // Stop evaluating later rules when this rule's condition matches. A rule
+  // with a fixed_response is always terminating regardless of this flag.
+  bool terminates = 5;
+
+  // Respond to the client directly instead of routing to a pool. Supplying a
+  // fixed response marks the rule as terminating.
+  CloudflareLoadBalancerRuleFixedResponse fixed_response = 6;
+
+  // Steering overrides applied to this load balancer while the rule's
+  // condition is true. All override fields are optional; unset fields inherit
+  // the load balancer's own configuration.
+  CloudflareLoadBalancerRuleOverrides overrides = 7;
+}
+
+// CloudflareLoadBalancerRuleFixedResponse answers matched requests directly at
+// the edge instead of routing them to a pool.
+message CloudflareLoadBalancerRuleFixedResponse {
+  // The HTTP Content-Type header to include in the response (e.g.
+  // "application/json").
+  string content_type = 1;
+
+  // The HTTP Location header to include in the response (for redirects).
+  string location = 2;
+
+  // Text to include as the HTTP response body.
+  string message_body = 3;
+
+  // The HTTP status code to respond with (e.g. 200, 301, 503). Leave 0 to use
+  // Cloudflare's default.
+  int32 status_code = 4 [(buf.validate.field).cel = {
+    id: "rule.fixed_response.status_code_valid"
+    message: "status_code must be 0 (default) or a valid HTTP status code (100-599)"
+    expression: "this == 0 || (this >= 100 && this <= 599)"
+  }];
+}
+
+// CloudflareLoadBalancerRuleOverrides overrides the load balancer's steering
+// configuration for requests matched by a rule. Every field is optional; an
+// unset field inherits the load balancer's top-level setting. The shapes mirror
+// the top-level fields exactly.
+message CloudflareLoadBalancerRuleOverrides {
+  // Adaptive-routing override (zero-downtime failover across pools).
+  CloudflareLoadBalancerAdaptiveRouting adaptive_routing = 1;
+
+  // Country-code (ISO 3166-1 alpha-2) -> ordered pool list override.
+  repeated CloudflareLoadBalancerGeoPools country_pools = 2;
+
+  // Ordered default pool list override (by failover priority). Each is a
+  // literal pool ID or a reference to a CloudflareLoadBalancerPool.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef default_pools = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareLoadBalancerPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.pool_id"
+  ];
+
+  // Fallback (pool-of-last-resort) override. A literal pool ID or a reference
+  // to a CloudflareLoadBalancerPool.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef fallback_pool = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareLoadBalancerPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.pool_id"
+  ];
+
+  // Location-steering override for non-proxied requests.
+  CloudflareLoadBalancerLocationStrategy location_strategy = 5;
+
+  // Cloudflare PoP code -> ordered pool list override (Enterprise only).
+  repeated CloudflareLoadBalancerGeoPools pop_pools = 6;
+
+  // Pool-weighting override for random / least-* steering policies.
+  CloudflareLoadBalancerRandomSteering random_steering = 7;
+
+  // Region-code -> ordered pool list override.
+  repeated CloudflareLoadBalancerGeoPools region_pools = 8;
+
+  // Session-affinity mode override. UNSET inherits the load balancer's mode;
+  // an explicit `none` switches affinity OFF for matched traffic — the two
+  // differ, which is why this field carries explicit presence.
+  optional CloudflareLoadBalancerSessionAffinity session_affinity = 9 [(buf.validate.field).enum.defined_only = true];
+
+  // Session-affinity attribute overrides (drain, headers, cookie flags,
+  // zero-downtime failover).
+  CloudflareLoadBalancerSessionAffinityAttributes session_affinity_attributes = 10;
+
+  // Session-affinity TTL override (seconds). Leave 0 to inherit.
+  double session_affinity_ttl = 11 [(buf.validate.field).cel = {
+    id: "rule.overrides.session_affinity_ttl_non_negative"
+    message: "session_affinity_ttl must be 0 (inherit) or a positive number of seconds"
+    expression: "this >= 0.0"
+  }];
+
+  // Steering-policy override. UNSET inherits the load balancer's policy; an
+  // explicit `off` forces static failover over default_pools for matched
+  // traffic — the two differ, which is why this field carries explicit
+  // presence.
+  optional CloudflareLoadBalancerSteeringPolicy steering_policy = 12 [(buf.validate.field).enum.defined_only = true];
+
+  // DNS TTL override (seconds; gray-clouded load balancers only). Leave 0 to
+  // inherit.
+  double ttl = 13 [(buf.validate.field).cel = {
+    id: "rule.overrides.ttl_non_negative"
+    message: "ttl must be 0 (inherit) or a positive number of seconds"
+    expression: "this >= 0.0"
+  }];
 }
 
 // CloudflareLoadBalancerGeoPools maps one geo code (region, country, or PoP) to an
@@ -164,6 +296,14 @@ message CloudflareLoadBalancerGeoPools {
 
 // CloudflareLoadBalancerSessionAffinityAttributes tunes session-affinity behavior.
 message CloudflareLoadBalancerSessionAffinityAttributes {
+  // Cloudflare API constraint: a SameSite=None affinity cookie must be sendable
+  // cross-site, so its Secure attribute cannot be forced off.
+  option (buf.validate.message).cel = {
+    id: "saa.samesite_none_secure_never"
+    message: "samesite \"None\" cannot be combined with secure \"Never\""
+    expression: "!(this.samesite == 'None' && this.secure == 'Never')"
+  };
+
   // Drain duration (seconds) applied when affinity is enabled.
   double drain_duration = 1 [(buf.validate.field).cel = {
     id: "saa.drain_duration_non_negative"

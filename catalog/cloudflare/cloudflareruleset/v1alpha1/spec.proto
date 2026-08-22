@@ -274,7 +274,7 @@ message CloudflareRulesetExposedCredentialCheck {
 //   block:             response
 //   rewrite:           uri, headers
 //   redirect:          from_value, from_list
-//   skip:              phases, products, ruleset, rulesets
+//   skip:              phases, products, ruleset, rulesets, rules
 //   execute:           id, overrides, matched_data
 //   score:             increment
 //   compress_response: algorithms
@@ -327,6 +327,15 @@ message CloudflareRulesetActionParameters {
 
   // Multiple ruleset IDs to skip.
   repeated string rulesets = 11;
+
+  // Skip specific rules INSIDE other rulesets: a map of ruleset ID (32-char
+  // hex) to the rule IDs (32-char hex) in that ruleset to skip. Incompatible
+  // with the single `ruleset` option — use one or the other.
+  map<string, CloudflareRulesetStringList> rules = 79 [(buf.validate.field).cel = {
+    id: "action_parameters_skip_rules.valid"
+    message: "skip rules: keys and rule IDs must be 32-character hex ruleset/rule IDs, each with at least one rule ID"
+    expression: "this.all(k, k.matches('^[0-9a-f]{32}$') && size(this[k].values) > 0 && this[k].values.all(v, v.matches('^[0-9a-f]{32}$')))"
+  }];
 
   // ---- Execute (action: execute) ----
 
@@ -583,6 +592,14 @@ message CloudflareRulesetActionParameters {
 
   // Expression that evaluates to additional cache tags.
   string expression = 78;
+
+  // The per-rule skip map targets specific rules inside rulesets; the single
+  // `ruleset` option skips a whole ruleset — the API accepts one or the other.
+  option (buf.validate.message).cel = {
+    id: "action_parameters_skip.rules_incompatible_with_ruleset"
+    message: "skip rules map is incompatible with the ruleset option"
+    expression: "size(this.rules) == 0 || this.ruleset == ''"
+  };
 }
 
 // CloudflareRulesetOrigin identifies the origin server to route traffic to.

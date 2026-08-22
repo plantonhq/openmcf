@@ -1,0 +1,23 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanApp
+metadata:
+  name: my-container-app
+spec:
+  appName: my-container-app
+  region: nyc3
+  services:
+    - name: web
+      image:
+        registryType: docker_hub
+        registry: library
+        repository: nginx
+        tag: latest
+      instanceSizeSlug: professional-xs
+      autoscaling:
+        minInstanceCount: 2
+        maxInstanceCount: 5
+        cpuPercent: 80
+      httpPort: 80
+      envs:
+        - key: APP_ENV
+          plaintext: production

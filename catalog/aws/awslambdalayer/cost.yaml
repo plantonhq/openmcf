@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awslambdalayer
+spec:
+  billing_model: free
+  free_tier: "A Lambda layer version is a stored code archive inside Lambda's managed code storage, and no Lambda meter counts it: the Lambda pricing page enumerates every meter the service bills -- requests, GB-second duration, MicroVM instance-seconds, tenant-isolation environments, ephemeral storage, durable-function storage -- and layer versions appear on none of them. What a published layer consumes is Lambda's code-storage QUOTA (300 GB unzipped per region, shared with function zip packages, per the Lambda quotas page) -- a capacity limit, not a billing meter. Dormant versions retained by skip_destroy keep billing nothing; the only pressure they create is against that quota, relieved by DeleteLayerVersion."
+  notes: "No field of this spec buys anything: the S3 pointer, hash, runtimes, architectures, license text, and share grants are all Lambda control-plane configuration, and share grants (even an organization-wide principal \"*\" grant) are free resource-policy statements. The real spend lives next door: the source zip bills S3 storage and requests on the referenced AwsS3Bucket -- and only needs to exist at publish time, since Lambda copies the archive into its own storage -- and every function that attaches the layer bills its own Lambda usage on its own component (the layer's bytes add cold-start weight and count against the function's 250 MB unzipped package limit, but never add a line to the bill). Nothing about the layer itself ever appears on an invoice."

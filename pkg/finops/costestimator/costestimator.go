@@ -101,6 +101,13 @@ func Evaluate(
 // evaluateLines applies every line rule, merges same-meter-same-price
 // lines, and drops zero quantities. One unpriceable applicable line
 // refuses the WHOLE estimate: a total missing a line it owes is a lie.
+//
+// A rule with expand_over evaluates once per element of the named
+// repeated message field: applies_when gates the whole rule from the
+// spec root, element_applies_when filters elements, and the element is
+// the scope for the rule's value-carrying paths -- elements resolving
+// to the same meter and price merge by the ordinary rule, so identical
+// instances collapse to one line whose quantity is the sum.
 func evaluateLines(
 	specMsg protoreflect.Message,
 	spec *derivationv1.ComponentCostDerivationSpec,
@@ -124,33 +131,52 @@ func evaluateLines(
 			continue
 		}
 
-		quantity, err := evaluateQuantity(specMsg, spec, rule)
+		scopes, err := ruleScopes(specMsg, rule)
 		if err != nil {
 			return nil, nil, err
 		}
-		if quantity.Sign() == 0 {
-			continue
-		}
+		for _, scope := range scopes {
+			holds, err := conditionsHold(scope, rule.GetElementAppliesWhen())
+			if err != nil {
+				return nil, nil, err
+			}
+			if !holds {
+				continue
+			}
 
-		slug, refusal, err := resolvePrice(specMsg, rule, entries, region, spec.GetCurrency())
-		if err != nil || refusal != nil {
-			return nil, refusal, err
-		}
+			quantity, err := evaluateQuantity(scope, spec, rule)
+			if err != nil {
+				return nil, nil, err
+			}
+			if quantity.Sign() == 0 {
+				continue
+			}
 
-		key := rule.GetSkuMeter() + "\x00" + slug
-		if existing, ok := mergedByKey[key]; ok {
-			existing.quantity.Add(existing.quantity, quantity)
-			existing.bases = append(existing.bases, rule.GetBasis())
-			continue
-		}
-		mergedByKey[key] = &merged{
-			line: &estimatemodelv1.QuantityLine{
-				SkuMeter: rule.GetSkuMeter(),
-				Price:    slug,
-			},
-			quantity: quantity,
-			bases:    []string{rule.GetBasis()},
-			order:    len(mergedByKey),
+			slug, refusal, err := resolvePrice(scope, rule, entries, region, spec.GetCurrency())
+			if err != nil || refusal != nil {
+				return nil, refusal, err
+			}
+
+			key := rule.GetSkuMeter() + "\x00" + slug
+			if existing, ok := mergedByKey[key]; ok {
+				existing.quantity.Add(existing.quantity, quantity)
+				// One rule expanding over identical elements would repeat
+				// its own basis verbatim; the audit trail needs each
+				// sentence once, not once per element.
+				if !containsString(existing.bases, rule.GetBasis()) {
+					existing.bases = append(existing.bases, rule.GetBasis())
+				}
+				continue
+			}
+			mergedByKey[key] = &merged{
+				line: &estimatemodelv1.QuantityLine{
+					SkuMeter: rule.GetSkuMeter(),
+					Price:    slug,
+				},
+				quantity: quantity,
+				bases:    []string{rule.GetBasis()},
+				order:    len(mergedByKey),
+			}
 		}
 	}
 
@@ -167,6 +193,46 @@ func evaluateLines(
 		lines = append(lines, m.line)
 	}
 	return lines, nil, nil
+}
+
+// ruleScopes returns the messages a rule evaluates against: the spec
+// itself for an ordinary rule, or each element of the expand_over
+// repeated message field -- the element becomes the scope every one of
+// the rule's paths resolves from, so per-element identity (an
+// instance's own class picking its own rate) needs no special path
+// syntax. An empty list yields no scopes and the rule emits nothing.
+func ruleScopes(specMsg protoreflect.Message, rule *derivationv1.LineRule) ([]protoreflect.Message, error) {
+	path := rule.GetExpandOver()
+	if path == "" {
+		return []protoreflect.Message{specMsg}, nil
+	}
+	resolved, err := specpath.Resolve(specMsg, path)
+	if err != nil {
+		return nil, fmt.Errorf("line %q: expand_over: %w", rule.GetSkuMeter(), err)
+	}
+	if !resolved.Field.IsList() || resolved.Field.IsMap() || resolved.Field.Kind() != protoreflect.MessageKind {
+		return nil, fmt.Errorf("line %q: expand_over %q is not a repeated message field",
+			rule.GetSkuMeter(), path)
+	}
+	if !resolved.Value.IsValid() {
+		return nil, nil
+	}
+	list := resolved.Value.List()
+	scopes := make([]protoreflect.Message, 0, list.Len())
+	for i := 0; i < list.Len(); i++ {
+		scopes = append(scopes, list.Get(i).Message())
+	}
+	return scopes, nil
+}
+
+// containsString reports whether values already carries s.
+func containsString(values []string, s string) bool {
+	for _, v := range values {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
 
 // resolvePrice returns the slug of the one book entry pricing a rule --
@@ -398,6 +464,41 @@ func factorValue(
 		}
 		return big.NewRat(int64(spec.GetHoursPerMonth()), 1), nil
 
+	case *derivationv1.QuantityFactor_SubtractBaseline:
+		sb := f.SubtractBaseline
+		resolved, err := specpath.Resolve(specMsg, sb.GetFieldPath())
+		if err != nil {
+			return nil, fmt.Errorf("line %q: %w", rule.GetSkuMeter(), err)
+		}
+		if resolved.Field.IsList() || resolved.Field.IsMap() {
+			return nil, fmt.Errorf("line %q: subtract_baseline %q is not a scalar",
+				rule.GetSkuMeter(), sb.GetFieldPath())
+		}
+		text, err := effectiveString(resolved)
+		if err != nil {
+			return nil, fmt.Errorf("line %q: %w", rule.GetSkuMeter(), err)
+		}
+		value := big.NewRat(0, 1)
+		if text != "" {
+			var ok bool
+			value, ok = parseDecimal(text)
+			if !ok {
+				return nil, fmt.Errorf("line %q: field %q reads %q, not a number", rule.GetSkuMeter(), sb.GetFieldPath(), text)
+			}
+		}
+		baseline, ok := parseDecimal(sb.GetBaseline())
+		if !ok || baseline.Sign() <= 0 {
+			return nil, fmt.Errorf("line %q: subtract_baseline baseline %q is not a positive decimal string",
+				rule.GetSkuMeter(), sb.GetBaseline())
+		}
+		// Only the excess over the included allotment bills; at or under
+		// the baseline the factor is an honest zero, which drops the line.
+		excess := new(big.Rat).Sub(value, baseline)
+		if excess.Sign() < 0 {
+			return big.NewRat(0, 1), nil
+		}
+		return excess, nil
+
 	default:
 		return nil, fmt.Errorf("line %q has a quantity factor with no arm set", rule.GetSkuMeter())
 	}
@@ -425,7 +526,41 @@ func conditionsHold(specMsg protoreflect.Message, conditions []*derivationv1.Con
 // the presence ops when EITHER arm is populated: a manifest that wires
 // the field by reference has configured it, even though the referenced
 // value itself stays unknowable to comparisons, quantities, and lookups.
+//
+// With any_element_of set, the condition is existential: it ranges over
+// the elements of the named repeated message field and holds when ANY
+// element satisfies field_path/op/value read against that element -- an
+// empty list satisfies nothing.
 func conditionHolds(specMsg protoreflect.Message, condition *derivationv1.Condition) (bool, error) {
+	if listPath := condition.GetAnyElementOf(); listPath != "" {
+		resolved, err := specpath.Resolve(specMsg, listPath)
+		if err != nil {
+			return false, fmt.Errorf("condition: any_element_of %q: %w", listPath, err)
+		}
+		if !resolved.Field.IsList() || resolved.Field.IsMap() || resolved.Field.Kind() != protoreflect.MessageKind {
+			return false, fmt.Errorf("condition: any_element_of %q is not a repeated message field", listPath)
+		}
+		if !resolved.Value.IsValid() {
+			return false, nil
+		}
+		elementCondition := &derivationv1.Condition{
+			FieldPath: condition.GetFieldPath(),
+			Op:        condition.GetOp(),
+			Value:     condition.GetValue(),
+		}
+		list := resolved.Value.List()
+		for i := 0; i < list.Len(); i++ {
+			holds, err := conditionHolds(list.Get(i).Message(), elementCondition)
+			if err != nil {
+				return false, err
+			}
+			if holds {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
 	resolved, err := specpath.Resolve(specMsg, condition.GetFieldPath())
 	if err != nil {
 		return false, fmt.Errorf("condition on %q: %w", condition.GetFieldPath(), err)
@@ -464,6 +599,18 @@ func conditionHolds(specMsg protoreflect.Message, condition *derivationv1.Condit
 			return text == condition.GetValue(), nil
 		}
 		return text != condition.GetValue(), nil
+
+	case derivationv1.Condition_starts_with:
+		if condition.GetValue() == "" {
+			return false, fmt.Errorf("condition on %q: starts_with requires a non-empty value", condition.GetFieldPath())
+		}
+		text, err := effectiveString(resolved)
+		if err != nil {
+			return false, fmt.Errorf("condition on %q: %w", condition.GetFieldPath(), err)
+		}
+		// An unset field renders empty and never matches a non-empty
+		// prefix -- absence is not membership in a version family.
+		return strings.HasPrefix(text, condition.GetValue()), nil
 
 	default:
 		return false, fmt.Errorf("condition on %q has no op", condition.GetFieldPath())
@@ -506,6 +653,14 @@ func zoneToRegion(location string) string {
 		}
 	}
 	return location
+}
+
+// ConditionsHold evaluates a condition set against a scope message; ALL
+// must hold, and an empty set holds vacuously. Exported because the
+// capacity estimator's volume bindings gate on the same Condition
+// vocabulary -- condition semantics have exactly one home, this package.
+func ConditionsHold(scope protoreflect.Message, conditions []*derivationv1.Condition) (bool, error) {
+	return conditionsHold(scope, conditions)
 }
 
 // MatchingTexts returns the texts whose conditions hold, in authored

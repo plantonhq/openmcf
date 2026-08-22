@@ -853,7 +853,9 @@ type AzureFunctionAppFlexConsumptionSpec struct {
 	// (both enforced here, exactly as Azure enforces them at apply time);
 	// SYSTEM_ASSIGNED_IDENTITY needs neither -- grant the app's
 	// system-assigned identity "Storage Blob Data Contributor" on the
-	// storage account instead.
+	// storage account instead. Live-proven: ARM does NOT check that
+	// grant at app create -- the site object succeeds without it. The
+	// grant is still required before a package deploy (day-2).
 	StorageAuthenticationType AzureFunctionAppFlexConsumptionStorageAuthenticationType `protobuf:"varint,6,opt,name=storage_authentication_type,json=storageAuthenticationType,proto3,enum=dev.planton.azure.azurefunctionappflexconsumption.v1alpha1.AzureFunctionAppFlexConsumptionStorageAuthenticationType" json:"storage_authentication_type,omitempty"`
 	// The storage account access key, required when
 	// storage_authentication_type is STORAGE_ACCOUNT_CONNECTION_STRING.

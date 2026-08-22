@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareemailroutingaddress
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The component stores one email address string and its verification state in Cloudflare's control plane -- no customer data store exists here to encrypt. Mail content is never stored by this object.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The address terminates no connections. Transport security for the verification email and for forwarded mail is SMTP/TLS behavior between Cloudflare and the destination mail provider -- provider-side, with no field on this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No endpoint is exposed -- the address is an entry in the account's destination-address book that routing rules reference.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own to filter (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The address receives no HTTP requests; web request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management is Cloudflare account-membership and API-token posture. Cloudflare itself gates the status field's escalation path -- only account admins may force an address to verified; non-admins can only revert to unverified -- but that is the provider's API authorization, not a data plane this component governs.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own -- ownership is proven by the emailed verification link. Prefer a scoped API token over the legacy Global API Key when provisioning.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records destination-address changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface; Email Routing analytics are zone-level Cloudflare features outside this object.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, re-creatable from the manifest -- though a re-created address must be verified again by its owner before rules can forward to it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The address lives in Cloudflare's global control plane; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag. Destroy is a real delete -- rules still forwarding to the address start failing their action.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration entry with no software of its own to patch; the mail-handling pipeline is Cloudflare-operated.

@@ -209,8 +209,19 @@ type CloudflareLoadBalancerSpec struct {
 	LocationStrategy *CloudflareLoadBalancerLocationStrategy `protobuf:"bytes,19,opt,name=location_strategy,json=locationStrategy,proto3" json:"location_strategy,omitempty"`
 	// Pool weighting for random / least-* steering policies.
 	RandomSteering *CloudflareLoadBalancerRandomSteering `protobuf:"bytes,20,opt,name=random_steering,json=randomSteering,proto3" json:"random_steering,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Ordered list of traffic rules evaluated per request (the dashboard's
+	// "Custom Rules"). Each rule has a condition expression; when it matches, the
+	// rule either overrides this load balancer's steering for that request or
+	// answers directly with a fixed response. Note: the provider schema labels
+	// this field "BETA Field Not General Access", but load-balancing rules are a
+	// long-standing GA Cloudflare product feature in production use.
+	Rules []*CloudflareLoadBalancerRule `protobuf:"bytes,21,rep,name=rules,proto3" json:"rules,omitempty"`
+	// Networks where this load balancer is enabled. Used with Cloudflare private
+	// networking (e.g. Magic WAN / WARP connector networks); leave empty for
+	// ordinary public load balancers.
+	Networks      []string `protobuf:"bytes,22,rep,name=networks,proto3" json:"networks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareLoadBalancerSpec) Reset() {
@@ -369,6 +380,373 @@ func (x *CloudflareLoadBalancerSpec) GetRandomSteering() *CloudflareLoadBalancer
 	return nil
 }
 
+func (x *CloudflareLoadBalancerSpec) GetRules() []*CloudflareLoadBalancerRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerSpec) GetNetworks() []string {
+	if x != nil {
+		return x.Networks
+	}
+	return nil
+}
+
+// CloudflareLoadBalancerRule is one entry in the load balancer's ordered rules
+// list. A rule matches requests with a condition expression
+// (https://developers.cloudflare.com/load-balancing/understand-basics/load-balancing-rules/expressions)
+// and applies either steering overrides or a fixed response to matched traffic.
+type CloudflareLoadBalancerRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Human-readable rule name, used only for dashboard readability.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The condition expression to evaluate (e.g. `http.request.uri.path contains
+	// "/api"`). An empty condition always matches.
+	Condition string `protobuf:"bytes,2,opt,name=condition,proto3" json:"condition,omitempty"`
+	// Execution order relative to other rules: lower values run first; values
+	// need not be sequential. LEAVE UNSET to let the array order of `rules`
+	// assign priorities (Cloudflare's behavior when no rule provides one) — an
+	// explicit 0 is a real priority, not "unset".
+	Priority *int32 `protobuf:"varint,3,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
+	// Disable this rule without deleting it; a disabled rule is not evaluated.
+	Disabled bool `protobuf:"varint,4,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// Stop evaluating later rules when this rule's condition matches. A rule
+	// with a fixed_response is always terminating regardless of this flag.
+	Terminates bool `protobuf:"varint,5,opt,name=terminates,proto3" json:"terminates,omitempty"`
+	// Respond to the client directly instead of routing to a pool. Supplying a
+	// fixed response marks the rule as terminating.
+	FixedResponse *CloudflareLoadBalancerRuleFixedResponse `protobuf:"bytes,6,opt,name=fixed_response,json=fixedResponse,proto3" json:"fixed_response,omitempty"`
+	// Steering overrides applied to this load balancer while the rule's
+	// condition is true. All override fields are optional; unset fields inherit
+	// the load balancer's own configuration.
+	Overrides     *CloudflareLoadBalancerRuleOverrides `protobuf:"bytes,7,opt,name=overrides,proto3" json:"overrides,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareLoadBalancerRule) Reset() {
+	*x = CloudflareLoadBalancerRule{}
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareLoadBalancerRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareLoadBalancerRule) ProtoMessage() {}
+
+func (x *CloudflareLoadBalancerRule) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareLoadBalancerRule.ProtoReflect.Descriptor instead.
+func (*CloudflareLoadBalancerRule) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CloudflareLoadBalancerRule) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareLoadBalancerRule) GetCondition() string {
+	if x != nil {
+		return x.Condition
+	}
+	return ""
+}
+
+func (x *CloudflareLoadBalancerRule) GetPriority() int32 {
+	if x != nil && x.Priority != nil {
+		return *x.Priority
+	}
+	return 0
+}
+
+func (x *CloudflareLoadBalancerRule) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *CloudflareLoadBalancerRule) GetTerminates() bool {
+	if x != nil {
+		return x.Terminates
+	}
+	return false
+}
+
+func (x *CloudflareLoadBalancerRule) GetFixedResponse() *CloudflareLoadBalancerRuleFixedResponse {
+	if x != nil {
+		return x.FixedResponse
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRule) GetOverrides() *CloudflareLoadBalancerRuleOverrides {
+	if x != nil {
+		return x.Overrides
+	}
+	return nil
+}
+
+// CloudflareLoadBalancerRuleFixedResponse answers matched requests directly at
+// the edge instead of routing them to a pool.
+type CloudflareLoadBalancerRuleFixedResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The HTTP Content-Type header to include in the response (e.g.
+	// "application/json").
+	ContentType string `protobuf:"bytes,1,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	// The HTTP Location header to include in the response (for redirects).
+	Location string `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	// Text to include as the HTTP response body.
+	MessageBody string `protobuf:"bytes,3,opt,name=message_body,json=messageBody,proto3" json:"message_body,omitempty"`
+	// The HTTP status code to respond with (e.g. 200, 301, 503). Leave 0 to use
+	// Cloudflare's default.
+	StatusCode    int32 `protobuf:"varint,4,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) Reset() {
+	*x = CloudflareLoadBalancerRuleFixedResponse{}
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareLoadBalancerRuleFixedResponse) ProtoMessage() {}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareLoadBalancerRuleFixedResponse.ProtoReflect.Descriptor instead.
+func (*CloudflareLoadBalancerRuleFixedResponse) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) GetMessageBody() string {
+	if x != nil {
+		return x.MessageBody
+	}
+	return ""
+}
+
+func (x *CloudflareLoadBalancerRuleFixedResponse) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+// CloudflareLoadBalancerRuleOverrides overrides the load balancer's steering
+// configuration for requests matched by a rule. Every field is optional; an
+// unset field inherits the load balancer's top-level setting. The shapes mirror
+// the top-level fields exactly.
+type CloudflareLoadBalancerRuleOverrides struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Adaptive-routing override (zero-downtime failover across pools).
+	AdaptiveRouting *CloudflareLoadBalancerAdaptiveRouting `protobuf:"bytes,1,opt,name=adaptive_routing,json=adaptiveRouting,proto3" json:"adaptive_routing,omitempty"`
+	// Country-code (ISO 3166-1 alpha-2) -> ordered pool list override.
+	CountryPools []*CloudflareLoadBalancerGeoPools `protobuf:"bytes,2,rep,name=country_pools,json=countryPools,proto3" json:"country_pools,omitempty"`
+	// Ordered default pool list override (by failover priority). Each is a
+	// literal pool ID or a reference to a CloudflareLoadBalancerPool.
+	DefaultPools []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=default_pools,json=defaultPools,proto3" json:"default_pools,omitempty"`
+	// Fallback (pool-of-last-resort) override. A literal pool ID or a reference
+	// to a CloudflareLoadBalancerPool.
+	FallbackPool *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=fallback_pool,json=fallbackPool,proto3" json:"fallback_pool,omitempty"`
+	// Location-steering override for non-proxied requests.
+	LocationStrategy *CloudflareLoadBalancerLocationStrategy `protobuf:"bytes,5,opt,name=location_strategy,json=locationStrategy,proto3" json:"location_strategy,omitempty"`
+	// Cloudflare PoP code -> ordered pool list override (Enterprise only).
+	PopPools []*CloudflareLoadBalancerGeoPools `protobuf:"bytes,6,rep,name=pop_pools,json=popPools,proto3" json:"pop_pools,omitempty"`
+	// Pool-weighting override for random / least-* steering policies.
+	RandomSteering *CloudflareLoadBalancerRandomSteering `protobuf:"bytes,7,opt,name=random_steering,json=randomSteering,proto3" json:"random_steering,omitempty"`
+	// Region-code -> ordered pool list override.
+	RegionPools []*CloudflareLoadBalancerGeoPools `protobuf:"bytes,8,rep,name=region_pools,json=regionPools,proto3" json:"region_pools,omitempty"`
+	// Session-affinity mode override. UNSET inherits the load balancer's mode;
+	// an explicit `none` switches affinity OFF for matched traffic — the two
+	// differ, which is why this field carries explicit presence.
+	SessionAffinity *CloudflareLoadBalancerSessionAffinity `protobuf:"varint,9,opt,name=session_affinity,json=sessionAffinity,proto3,enum=dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinity,oneof" json:"session_affinity,omitempty"`
+	// Session-affinity attribute overrides (drain, headers, cookie flags,
+	// zero-downtime failover).
+	SessionAffinityAttributes *CloudflareLoadBalancerSessionAffinityAttributes `protobuf:"bytes,10,opt,name=session_affinity_attributes,json=sessionAffinityAttributes,proto3" json:"session_affinity_attributes,omitempty"`
+	// Session-affinity TTL override (seconds). Leave 0 to inherit.
+	SessionAffinityTtl float64 `protobuf:"fixed64,11,opt,name=session_affinity_ttl,json=sessionAffinityTtl,proto3" json:"session_affinity_ttl,omitempty"`
+	// Steering-policy override. UNSET inherits the load balancer's policy; an
+	// explicit `off` forces static failover over default_pools for matched
+	// traffic — the two differ, which is why this field carries explicit
+	// presence.
+	SteeringPolicy *CloudflareLoadBalancerSteeringPolicy `protobuf:"varint,12,opt,name=steering_policy,json=steeringPolicy,proto3,enum=dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSteeringPolicy,oneof" json:"steering_policy,omitempty"`
+	// DNS TTL override (seconds; gray-clouded load balancers only). Leave 0 to
+	// inherit.
+	Ttl           float64 `protobuf:"fixed64,13,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) Reset() {
+	*x = CloudflareLoadBalancerRuleOverrides{}
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareLoadBalancerRuleOverrides) ProtoMessage() {}
+
+func (x *CloudflareLoadBalancerRuleOverrides) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareLoadBalancerRuleOverrides.ProtoReflect.Descriptor instead.
+func (*CloudflareLoadBalancerRuleOverrides) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetAdaptiveRouting() *CloudflareLoadBalancerAdaptiveRouting {
+	if x != nil {
+		return x.AdaptiveRouting
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetCountryPools() []*CloudflareLoadBalancerGeoPools {
+	if x != nil {
+		return x.CountryPools
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetDefaultPools() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.DefaultPools
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetFallbackPool() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FallbackPool
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetLocationStrategy() *CloudflareLoadBalancerLocationStrategy {
+	if x != nil {
+		return x.LocationStrategy
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetPopPools() []*CloudflareLoadBalancerGeoPools {
+	if x != nil {
+		return x.PopPools
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetRandomSteering() *CloudflareLoadBalancerRandomSteering {
+	if x != nil {
+		return x.RandomSteering
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetRegionPools() []*CloudflareLoadBalancerGeoPools {
+	if x != nil {
+		return x.RegionPools
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetSessionAffinity() CloudflareLoadBalancerSessionAffinity {
+	if x != nil && x.SessionAffinity != nil {
+		return *x.SessionAffinity
+	}
+	return CloudflareLoadBalancerSessionAffinity_none
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetSessionAffinityAttributes() *CloudflareLoadBalancerSessionAffinityAttributes {
+	if x != nil {
+		return x.SessionAffinityAttributes
+	}
+	return nil
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetSessionAffinityTtl() float64 {
+	if x != nil {
+		return x.SessionAffinityTtl
+	}
+	return 0
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetSteeringPolicy() CloudflareLoadBalancerSteeringPolicy {
+	if x != nil && x.SteeringPolicy != nil {
+		return *x.SteeringPolicy
+	}
+	return CloudflareLoadBalancerSteeringPolicy_off
+}
+
+func (x *CloudflareLoadBalancerRuleOverrides) GetTtl() float64 {
+	if x != nil {
+		return x.Ttl
+	}
+	return 0
+}
+
 // CloudflareLoadBalancerGeoPools maps one geo code (region, country, or PoP) to an
 // ordered list of pools for that location.
 type CloudflareLoadBalancerGeoPools struct {
@@ -386,7 +764,7 @@ type CloudflareLoadBalancerGeoPools struct {
 
 func (x *CloudflareLoadBalancerGeoPools) Reset() {
 	*x = CloudflareLoadBalancerGeoPools{}
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +776,7 @@ func (x *CloudflareLoadBalancerGeoPools) String() string {
 func (*CloudflareLoadBalancerGeoPools) ProtoMessage() {}
 
 func (x *CloudflareLoadBalancerGeoPools) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +789,7 @@ func (x *CloudflareLoadBalancerGeoPools) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareLoadBalancerGeoPools.ProtoReflect.Descriptor instead.
 func (*CloudflareLoadBalancerGeoPools) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CloudflareLoadBalancerGeoPools) GetCode() string {
@@ -454,7 +832,7 @@ type CloudflareLoadBalancerSessionAffinityAttributes struct {
 
 func (x *CloudflareLoadBalancerSessionAffinityAttributes) Reset() {
 	*x = CloudflareLoadBalancerSessionAffinityAttributes{}
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -466,7 +844,7 @@ func (x *CloudflareLoadBalancerSessionAffinityAttributes) String() string {
 func (*CloudflareLoadBalancerSessionAffinityAttributes) ProtoMessage() {}
 
 func (x *CloudflareLoadBalancerSessionAffinityAttributes) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -479,7 +857,7 @@ func (x *CloudflareLoadBalancerSessionAffinityAttributes) ProtoReflect() protore
 
 // Deprecated: Use CloudflareLoadBalancerSessionAffinityAttributes.ProtoReflect.Descriptor instead.
 func (*CloudflareLoadBalancerSessionAffinityAttributes) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CloudflareLoadBalancerSessionAffinityAttributes) GetDrainDuration() float64 {
@@ -536,7 +914,7 @@ type CloudflareLoadBalancerAdaptiveRouting struct {
 
 func (x *CloudflareLoadBalancerAdaptiveRouting) Reset() {
 	*x = CloudflareLoadBalancerAdaptiveRouting{}
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -548,7 +926,7 @@ func (x *CloudflareLoadBalancerAdaptiveRouting) String() string {
 func (*CloudflareLoadBalancerAdaptiveRouting) ProtoMessage() {}
 
 func (x *CloudflareLoadBalancerAdaptiveRouting) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -561,7 +939,7 @@ func (x *CloudflareLoadBalancerAdaptiveRouting) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use CloudflareLoadBalancerAdaptiveRouting.ProtoReflect.Descriptor instead.
 func (*CloudflareLoadBalancerAdaptiveRouting) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CloudflareLoadBalancerAdaptiveRouting) GetFailoverAcrossPools() bool {
@@ -587,7 +965,7 @@ type CloudflareLoadBalancerLocationStrategy struct {
 
 func (x *CloudflareLoadBalancerLocationStrategy) Reset() {
 	*x = CloudflareLoadBalancerLocationStrategy{}
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -599,7 +977,7 @@ func (x *CloudflareLoadBalancerLocationStrategy) String() string {
 func (*CloudflareLoadBalancerLocationStrategy) ProtoMessage() {}
 
 func (x *CloudflareLoadBalancerLocationStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -612,7 +990,7 @@ func (x *CloudflareLoadBalancerLocationStrategy) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use CloudflareLoadBalancerLocationStrategy.ProtoReflect.Descriptor instead.
 func (*CloudflareLoadBalancerLocationStrategy) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CloudflareLoadBalancerLocationStrategy) GetMode() string {
@@ -645,7 +1023,7 @@ type CloudflareLoadBalancerRandomSteering struct {
 
 func (x *CloudflareLoadBalancerRandomSteering) Reset() {
 	*x = CloudflareLoadBalancerRandomSteering{}
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -657,7 +1035,7 @@ func (x *CloudflareLoadBalancerRandomSteering) String() string {
 func (*CloudflareLoadBalancerRandomSteering) ProtoMessage() {}
 
 func (x *CloudflareLoadBalancerRandomSteering) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -670,7 +1048,7 @@ func (x *CloudflareLoadBalancerRandomSteering) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use CloudflareLoadBalancerRandomSteering.ProtoReflect.Descriptor instead.
 func (*CloudflareLoadBalancerRandomSteering) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CloudflareLoadBalancerRandomSteering) GetDefaultWeight() float64 {
@@ -691,7 +1069,7 @@ var File_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto protorefl
 
 const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/cloudflare/cloudflareloadbalancer/v1alpha1/spec.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x86\x11\n" +
+	"=catalog/cloudflare/cloudflareloadbalancer/v1alpha1/spec.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xff\x11\n" +
 	"\x1aCloudflareLoadBalancerSpec\x12\"\n" +
 	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12r\n" +
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12'\n" +
@@ -713,14 +1091,53 @@ const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc
 	"\tpop_pools\x18\x11 \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\bpopPools\x12\x88\x01\n" +
 	"\x10adaptive_routing\x18\x12 \x01(\v2].dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRoutingR\x0fadaptiveRouting\x12\x8b\x01\n" +
 	"\x11location_strategy\x18\x13 \x01(\v2^.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategyR\x10locationStrategy\x12\x85\x01\n" +
-	"\x0frandom_steering\x18\x14 \x01(\v2\\.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteeringR\x0erandomSteeringB\n" +
+	"\x0frandom_steering\x18\x14 \x01(\v2\\.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteeringR\x0erandomSteering\x12h\n" +
+	"\x05rules\x18\x15 \x03(\v2R.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleR\x05rules\x12\x1a\n" +
+	"\bnetworks\x18\x16 \x03(\tR\bnetworksB\n" +
 	"\n" +
 	"\b_proxiedB\n" +
 	"\n" +
-	"\b_enabledJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06J\x04\b\x15\x10\x16R\aoriginsR\x11health_probe_pathR\x05rules\"\xb4\x01\n" +
+	"\b_enabledJ\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\aoriginsR\x11health_probe_path\"\xc5\x03\n" +
+	"\x1aCloudflareLoadBalancerRule\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
+	"\tcondition\x18\x02 \x01(\tR\tcondition\x12(\n" +
+	"\bpriority\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\bpriority\x88\x01\x01\x12\x1a\n" +
+	"\bdisabled\x18\x04 \x01(\bR\bdisabled\x12\x1e\n" +
+	"\n" +
+	"terminates\x18\x05 \x01(\bR\n" +
+	"terminates\x12\x86\x01\n" +
+	"\x0efixed_response\x18\x06 \x01(\v2_.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleFixedResponseR\rfixedResponse\x12y\n" +
+	"\toverrides\x18\a \x01(\v2[.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverridesR\toverridesB\v\n" +
+	"\t_priority\"\xd1\x02\n" +
+	"'CloudflareLoadBalancerRuleFixedResponse\x12!\n" +
+	"\fcontent_type\x18\x01 \x01(\tR\vcontentType\x12\x1a\n" +
+	"\blocation\x18\x02 \x01(\tR\blocation\x12!\n" +
+	"\fmessage_body\x18\x03 \x01(\tR\vmessageBody\x12\xc3\x01\n" +
+	"\vstatus_code\x18\x04 \x01(\x05B\xa1\x01\xbaH\x9d\x01\xba\x01\x99\x01\n" +
+	"%rule.fixed_response.status_code_valid\x12Estatus_code must be 0 (default) or a valid HTTP status code (100-599)\x1a)this == 0 || (this >= 100 && this <= 599)R\n" +
+	"statusCode\"\xf3\x0e\n" +
+	"#CloudflareLoadBalancerRuleOverrides\x12\x88\x01\n" +
+	"\x10adaptive_routing\x18\x01 \x01(\v2].dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRoutingR\x0fadaptiveRouting\x12{\n" +
+	"\rcountry_pools\x18\x02 \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\fcountryPools\x12x\n" +
+	"\rdefault_pools\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\fdefaultPools\x12x\n" +
+	"\rfallback_pool\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\ffallbackPool\x12\x8b\x01\n" +
+	"\x11location_strategy\x18\x05 \x01(\v2^.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategyR\x10locationStrategy\x12s\n" +
+	"\tpop_pools\x18\x06 \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\bpopPools\x12\x85\x01\n" +
+	"\x0frandom_steering\x18\a \x01(\v2\\.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteeringR\x0erandomSteering\x12y\n" +
+	"\fregion_pools\x18\b \x03(\v2V.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPoolsR\vregionPools\x12\x97\x01\n" +
+	"\x10session_affinity\x18\t \x01(\x0e2].dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\x0fsessionAffinity\x88\x01\x01\x12\xa7\x01\n" +
+	"\x1bsession_affinity_attributes\x18\n" +
+	" \x01(\v2g.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributesR\x19sessionAffinityAttributes\x12\xc4\x01\n" +
+	"\x14session_affinity_ttl\x18\v \x01(\x01B\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"0rule.overrides.session_affinity_ttl_non_negative\x12Hsession_affinity_ttl must be 0 (inherit) or a positive number of seconds\x1a\vthis >= 0.0R\x12sessionAffinityTtl\x12\x94\x01\n" +
+	"\x0fsteering_policy\x18\f \x01(\x0e2\\.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSteeringPolicyB\b\xbaH\x05\x82\x01\x02\x10\x01H\x01R\x0esteeringPolicy\x88\x01\x01\x12\x7f\n" +
+	"\x03ttl\x18\r \x01(\x01Bm\xbaHj\xba\x01g\n" +
+	"\x1frule.overrides.ttl_non_negative\x127ttl must be 0 (inherit) or a positive number of seconds\x1a\vthis >= 0.0R\x03ttlB\x13\n" +
+	"\x11_session_affinityB\x12\n" +
+	"\x10_steering_policy\"\xb4\x01\n" +
 	"\x1eCloudflareLoadBalancerGeoPools\x12\x1a\n" +
 	"\x04code\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\x12v\n" +
-	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xa5\x06\n" +
+	"\bpool_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe36\x92\xd4a\x16status.outputs.pool_idR\apoolIds\"\xbd\a\n" +
 	"/CloudflareLoadBalancerSessionAffinityAttributes\x12\x95\x01\n" +
 	"\x0edrain_duration\x18\x01 \x01(\x01Bn\xbaHk\xba\x01h\n" +
 	"\x1fsaa.drain_duration_non_negative\x128drain_duration must be 0 or a positive number of seconds\x1a\vthis >= 0.0R\rdrainDuration\x12\x18\n" +
@@ -731,7 +1148,8 @@ const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc
 	"\x06secure\x18\x05 \x01(\tB|\xbaHy\xba\x01v\n" +
 	"\x10saa.secure_valid\x12/secure must be one of \"Auto\", \"Always\", \"Never\"\x1a1this == '' || this in ['Auto', 'Always', 'Never']R\x06secure\x12\xca\x01\n" +
 	"\x16zero_downtime_failover\x18\x06 \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
-	"\rsaa.zdf_valid\x12Czero_downtime_failover must be one of \"none\", \"temporary\", \"sticky\"\x1a5this == '' || this in ['none', 'temporary', 'sticky']R\x14zeroDowntimeFailover\"[\n" +
+	"\rsaa.zdf_valid\x12Czero_downtime_failover must be one of \"none\", \"temporary\", \"sticky\"\x1a5this == '' || this in ['none', 'temporary', 'sticky']R\x14zeroDowntimeFailover:\x95\x01\xbaH\x91\x01\x1a\x8e\x01\n" +
+	"\x1esaa.samesite_none_secure_never\x126samesite \"None\" cannot be combined with secure \"Never\"\x1a4!(this.samesite == 'None' && this.secure == 'Never')\"[\n" +
 	"%CloudflareLoadBalancerAdaptiveRouting\x122\n" +
 	"\x15failover_across_pools\x18\x01 \x01(\bR\x13failoverAcrossPools\"\xe6\x02\n" +
 	"&CloudflareLoadBalancerLocationStrategy\x12|\n" +
@@ -778,39 +1196,56 @@ func file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDescG
 }
 
 var file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_goTypes = []any{
 	(CloudflareLoadBalancerSteeringPolicy)(0),               // 0: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSteeringPolicy
 	(CloudflareLoadBalancerSessionAffinity)(0),              // 1: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinity
 	(*CloudflareLoadBalancerSpec)(nil),                      // 2: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec
-	(*CloudflareLoadBalancerGeoPools)(nil),                  // 3: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
-	(*CloudflareLoadBalancerSessionAffinityAttributes)(nil), // 4: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributes
-	(*CloudflareLoadBalancerAdaptiveRouting)(nil),           // 5: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRouting
-	(*CloudflareLoadBalancerLocationStrategy)(nil),          // 6: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategy
-	(*CloudflareLoadBalancerRandomSteering)(nil),            // 7: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering
-	nil,                         // 8: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.PoolWeightsEntry
-	(*v1.StringValueOrRef)(nil), // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*CloudflareLoadBalancerRule)(nil),                      // 3: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRule
+	(*CloudflareLoadBalancerRuleFixedResponse)(nil),         // 4: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleFixedResponse
+	(*CloudflareLoadBalancerRuleOverrides)(nil),             // 5: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides
+	(*CloudflareLoadBalancerGeoPools)(nil),                  // 6: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	(*CloudflareLoadBalancerSessionAffinityAttributes)(nil), // 7: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributes
+	(*CloudflareLoadBalancerAdaptiveRouting)(nil),           // 8: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRouting
+	(*CloudflareLoadBalancerLocationStrategy)(nil),          // 9: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategy
+	(*CloudflareLoadBalancerRandomSteering)(nil),            // 10: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering
+	nil,                         // 11: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.PoolWeightsEntry
+	(*v1.StringValueOrRef)(nil), // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 0: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.session_affinity:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinity
 	0,  // 2: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.steering_policy:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSteeringPolicy
-	9,  // 3: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.default_pools:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 4: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.fallback_pool:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 5: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.session_affinity_attributes:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributes
-	3,  // 6: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.region_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
-	3,  // 7: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.country_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
-	3,  // 8: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.pop_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
-	5,  // 9: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.adaptive_routing:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRouting
-	6,  // 10: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.location_strategy:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategy
-	7,  // 11: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.random_steering:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering
-	9,  // 12: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools.pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 13: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.pool_weights:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.PoolWeightsEntry
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	12, // 3: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.default_pools:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 4: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.fallback_pool:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 5: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.session_affinity_attributes:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributes
+	6,  // 6: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.region_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	6,  // 7: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.country_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	6,  // 8: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.pop_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	8,  // 9: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.adaptive_routing:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRouting
+	9,  // 10: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.location_strategy:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategy
+	10, // 11: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.random_steering:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering
+	3,  // 12: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSpec.rules:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRule
+	4,  // 13: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRule.fixed_response:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleFixedResponse
+	5,  // 14: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRule.overrides:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides
+	8,  // 15: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.adaptive_routing:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerAdaptiveRouting
+	6,  // 16: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.country_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	12, // 17: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.default_pools:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 18: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.fallback_pool:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 19: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.location_strategy:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerLocationStrategy
+	6,  // 20: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.pop_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	10, // 21: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.random_steering:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering
+	6,  // 22: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.region_pools:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools
+	1,  // 23: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.session_affinity:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinity
+	7,  // 24: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.session_affinity_attributes:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSessionAffinityAttributes
+	0,  // 25: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRuleOverrides.steering_policy:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerSteeringPolicy
+	12, // 26: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerGeoPools.pool_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 27: dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.pool_weights:type_name -> dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1.CloudflareLoadBalancerRandomSteering.PoolWeightsEntry
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_init() }
@@ -819,13 +1254,15 @@ func file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc), len(file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareauthenticatedoriginpulls
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageOriginPulls
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's cloudflare_authenticated_origin_pulls_settings and cloudflare_authenticated_origin_pulls resources and the Pulumi module's matching AuthenticatedOriginPullsSettings and AuthenticatedOriginPulls resources -- set the zone-wide Authenticated Origin Pulls toggle via PUT /zones/{zone_id}/origin_tls_client_auth/settings and write/revert per-hostname certificate associations via PUT /zones/{zone_id}/origin_tls_client_auth/hostnames (derived from the module's API surface; origin_tls_client_auth is an SSL/TLS product surface; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadOriginPulls
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the toggle and associations via GET on the same paths (derived from the module's API surface).

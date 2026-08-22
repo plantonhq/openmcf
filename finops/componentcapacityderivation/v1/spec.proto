@@ -92,5 +92,15 @@ message VolumeBinding {
   // Spec-relative snake_case dotted path to the volume's size field, a
   // Kubernetes quantity string ("100Gi"). An unresolved path (the
   // volume is optional and the manifest omits it) contributes nothing.
+  // A PRESENT size on a manifest whose configuration provisions no
+  // volume at all is a different case -- gate it with applies_when.
   string size_path = 2;
+
+  // The conditions under which this volume EXISTS; ALL must hold; empty
+  // means the volume always binds when its size resolves. For modes
+  // that provision no persistent volume regardless of the size field
+  // (an ephemeral cluster on emptyDir keeps its disk_size value AND its
+  // spec-declared default while binding nothing) -- a size without a
+  // volume must contribute nothing, never a fabricated reservation.
+  repeated dev.planton.finops.componentcostderivation.v1.Condition applies_when = 3;
 }

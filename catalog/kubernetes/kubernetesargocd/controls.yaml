@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesargocd
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Argo CD's state is Kubernetes custom resources (Applications, AppProjects) and Secrets in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Redis is a disposable cache holding no durable state.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption, owned by the cluster.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: server.insecure
+      evidence:
+        type: spec_default
+        reference: False (the default) keeps the server's own TLS listener (self-signed). Set true ONLY when a composed ingress/gateway terminates TLS in front -- the standard exposure pattern; leaving the self-signed listener behind a TLS-terminating proxy double-encrypts and breaks gRPC CLI traffic.
+      notes: Both SSO presets set insecure=true because their TLS terminates at the composed edge -- transport stays encrypted to the user; only the in-cluster hop behind the proxy is plain.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every Service the chart renders stays ClusterIP -- exposure is a deliberate composition through KubernetesIngress or Gateway API kinds over the exported server service handle, never something this module creates.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: "The pinned chart (10.2.1) defaults global.networkPolicy.create to true, so every install renders six NetworkPolicies scoping each component's ingress to its expected peers -- the repo server admits only the server, application controller, notifications and ApplicationSet controllers; Dex admits only the server; Redis admits only its Argo CD clients; metrics ports stay reachable for scraping. The server's own policy admits all ingress (it is the front door; fence it at the composed exposure)."
+      notes: NetworkPolicies restrict traffic only on clusters whose CNI enforces them. global.networkPolicy.defaultDenyIngress stays false by chart default; tighten or disable the policies via helm_values (global.networkPolicy, per-component networkPolicy blocks).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: This module serves no HTTP edge traffic of its own; when the server is exposed through a composed ingress, web application firewalls belong to that resource.
+    - control_id: rbac
+      status: configurable
+      field_path: rbac
+      evidence:
+        type: spec_default
+        reference: Argo CD's OWN RBAC (who may do what inside Argo CD, distinct from Kubernetes RBAC). policy_default empty means NO fallback role -- authenticated users see nothing until a policy grants access, the safe default; policy_csv binds SSO groups and users to roles.
+      notes: The 02-team-sso-rbac preset grants role:readonly as the fallback and binds the platform group to role:admin. exec_enabled (default false) gates the UI terminal into managed pods -- a serious capability; enable deliberately and pair with an RBAC exec rule. The chart's own Kubernetes RBAC gives the controller cluster-wide management access by design.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Argo CD authenticates to its target clusters through kubeconfig-style cluster Secrets (the in-cluster default needs none), and repository credentials ride labeled Kubernetes Secrets composed separately -- no cloud API credential seam is modeled on this spec.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: admin_enabled
+      evidence:
+        type: spec_default
+        reference: True (the default) keeps the local admin user and its generated argocd-initial-admin-secret -- necessary for first login. Disable it AFTER SSO works (the 02-team-sso-rbac preset does) so the shared-password path retires; disabling before SSO locks everyone out.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Argo CD signs users in through its local accounts or SSO, and credential strength -- local-account password policy, IdP-side MFA -- is product and identity-provider configuration, not modeled here. This spec's lever is admin_enabled, which retires the shared local-admin path once SSO works (see no-legacy-auth).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Argo CD records sync and app events on the Application resources and its API audit rides the target cluster's Kubernetes audit policy; a dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitors_enabled
+      evidence:
+        type: spec_default
+        reference: False (the chart default) renders no ServiceMonitors. True creates one per component's /metrics -- requires the Prometheus Operator CRDs on the cluster (deploy KubernetesKubePrometheusStack first).
+      notes: The 03-scaled-platform preset enables them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The control plane's desired state IS this manifest plus the Application/AppProject declarations in Git -- the GitOps model makes Git the backup. Redis is disposable (losing it costs a re-sync); the argocd-secret and composed credential Secrets ride the cluster's Secret backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: server.autoscaling
+      evidence:
+        type: spec_default
+        reference: The chart's defaults run every component single-replica. The HA recipe is server and repo_server autoscaling with min_replicas 2 (the 03-scaled-platform preset), controller replicas for cluster sharding, and the redis.ha arm (a 3-replica Sentinel cluster behind HAProxy -- REQUIRES 3+ schedulable worker nodes or its pods stay Pending).
+      notes: Zone spread rides scheduling and the cluster's topology.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: crds.keep
+      evidence:
+        type: spec_default
+        reference: True (the default) stamps helm.sh/resource-policy keep on the Application/AppProject/ApplicationSet CRDs so destroying this resource strands but never deletes them -- REMOVING the CRDs deletes every Application in the cluster with them. Turn off only on throwaway clusters.
+      notes: There is no deletion-protection flag on the release itself; crds.keep is the blast-radius control that matters.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default 10.2.1 (Argo CD v3.4.5) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits; with crds.install true (the default) a chart upgrade also upgrades the templated CRDs.

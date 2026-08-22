@@ -1,0 +1,60 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKeda manifest's spec values into the capacity footprint it
+# reserves from its target cluster. KEDA runs three fixed pod classes --
+# the operator, the external-metrics API server, and the admission
+# webhooks (enabled by default) -- each with its own replica count and
+# resources block. The workloads KEDA scales carry their own capacity on
+# their own components; scaling declarations (ScaledObject, ScaledJob,
+# TriggerAuthentication) are separate resources.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskeda
+spec:
+  workloads:
+    - label: operator replica
+      resources_path: operator.resources
+      instances:
+        field_value:
+          field_path: operator.replicas
+          default_when_unset: "1"
+    - label: metrics API server replica
+      resources_path: metrics_server.resources
+      instances:
+        field_value:
+          field_path: metrics_server.replicas
+          default_when_unset: "1"
+    - label: admission webhook replica
+      resources_path: webhooks.resources
+      instances:
+        field_value:
+          field_path: webhooks.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "KEDA's purpose is changing OTHER workloads' replica counts (including to zero) -- its dominant cost effect lands on those workloads' own components, never in this footprint"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this footprint states the spec's declaration"
+  notes:
+    - applies_when:
+        - field_path: operator.resources
+          op: is_unset
+      text: "the operator declares no resources -- the CHART then applies its own defaults (100m CPU / 100Mi memory requests, 1 CPU / 1000Mi limits per pod), a reservation this manifest-value footprint cannot state"
+    - applies_when:
+        - field_path: metrics_server.resources
+          op: is_unset
+      text: "the metrics API server declares no resources -- the CHART then applies its own defaults (100m CPU / 100Mi memory requests, 1 CPU / 1000Mi limits per pod), a reservation this manifest-value footprint cannot state"
+    - applies_when:
+        - field_path: webhooks.resources
+          op: is_unset
+      text: "the webhooks declare no resources -- the chart then applies its own defaults, a reservation this manifest-value footprint cannot state"
+    - applies_when:
+        - field_path: webhooks.enabled
+          op: is_set
+        - field_path: webhooks.enabled
+          op: equals
+          value: "false"
+      text: "the admission webhooks are disabled -- no webhook pods run, so any webhook term in this footprint overstates by that amount"

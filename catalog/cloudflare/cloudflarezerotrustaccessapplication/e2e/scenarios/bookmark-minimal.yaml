@@ -1,0 +1,24 @@
+# Bookmark-minimal CloudflareZeroTrustAccessApplication scenario: a bookmark
+# tile in the app launcher -- the cheapest application type (no domain
+# ownership, no policies, no fixtures; the domain is just the URL the tile
+# opens). Proves the kind's bare create/verify/destroy lifecycle before the
+# self-hosted arm adds fixtures. The name carries the run id.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessApplication
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessapplication-bookmark-minimal
+  id: planton-oss-e2e-cloudflarezerotrustaccessapplication-bookmark-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessapplication
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-app-bkm
+  type: bookmark
+  domain: https://developers.cloudflare.com

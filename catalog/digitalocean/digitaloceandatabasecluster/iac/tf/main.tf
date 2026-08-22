@@ -1,19 +1,16 @@
-# DigitalOcean Managed Database Cluster Resource
+# DigitalOcean Managed Database Cluster
 #
-# This module provisions a fully-managed database cluster on DigitalOcean.
+# Provisions a fully-managed database cluster on DigitalOcean, modeling the
+# complete digitalocean_database_cluster resource surface: engine/version/
+# size/region/node topology, private networking, custom storage with
+# autoscale, maintenance windows, backup-restore provisioning,
+# engine-conditional tuning (sql_mode, eviction_policy), project placement,
+# and tags.
 #
-# Supported engines:
-# - PostgreSQL (pg): ACID-compliant relational database
-# - MySQL: Popular open-source RDBMS
-# - Redis: In-memory data store for caching
-# - MongoDB: Document-oriented NoSQL database
-#
-# Key features:
-# - Automated daily backups (7-day retention)
-# - Automatic security patching
-# - Multi-node HA with automatic failover
-# - VPC-private networking
-# - PgBouncer connection pooling (PostgreSQL)
+# Related DigitalOcean resources (database users, logical databases,
+# connection pools, replicas, firewall rules, per-engine config settings)
+# are separate resources with independent lifecycles and are not part of
+# this module.
 
 resource "digitalocean_database_cluster" "cluster" {
   name       = var.spec.cluster_name
@@ -23,31 +20,54 @@ resource "digitalocean_database_cluster" "cluster" {
   region     = local.region_slug
   node_count = var.spec.node_count
 
-  # Optional: VPC integration for private networking
+  # Optional VPC integration for private networking (create-only).
   private_network_uuid = local.vpc_uuid
 
-  # Optional: Custom storage size (if not specified, uses default for size_slug)
-  # Note: Storage can only be increased, never decreased
-  dynamic "storage" {
-    for_each = local.has_custom_storage ? [1] : []
+  # Optional DigitalOcean project placement (create-only).
+  project_id = local.project_id
+
+  # storage_size_mib is a string in the provider schema; the spec carries
+  # GiB for ergonomics, converted here. Storage can only be increased.
+  storage_size_mib = local.storage_size_mib
+
+  # Engine-conditional tuning: the provider rejects sql_mode on non-MySQL
+  # and eviction_policy on non-Redis/Valkey clusters at plan time, so both
+  # are passed only when set (spec CEL rules enforce the engine pairing).
+  eviction_policy = local.eviction_policy
+  sql_mode        = local.sql_mode
+
+  # Weekly maintenance window. The provider models this as a list; a
+  # cluster has exactly one window, so the spec carries a single message.
+  dynamic "maintenance_window" {
+    for_each = var.spec.maintenance_window != null ? [var.spec.maintenance_window] : []
     content {
-      size_gib = var.spec.storage_gib
+      day  = maintenance_window.value.day
+      hour = maintenance_window.value.hour
     }
   }
 
-  # Lifecycle management for safe cluster updates
-  # Prevents accidental deletion during apply operations
-  lifecycle {
-    prevent_destroy = false  # Set to true for production clusters
+  # Provision-from-backup. Consumed only at creation; DigitalOcean never
+  # reports it back, so it produces no drift after create.
+  dynamic "backup_restore" {
+    for_each = var.spec.backup_restore != null ? [var.spec.backup_restore] : []
+    content {
+      database_name     = backup_restore.value.database_name
+      backup_created_at = backup_restore.value.backup_created_at
+    }
   }
+
+  # Automatic storage growth. threshold_percent and increment_gib are
+  # optional; DigitalOcean applies its own defaults when they are unset.
+  dynamic "storage_autoscale" {
+    for_each = var.spec.storage_autoscale != null ? [var.spec.storage_autoscale] : []
+    content {
+      enabled           = storage_autoscale.value.enabled
+      threshold_percent = storage_autoscale.value.threshold_percent != null && storage_autoscale.value.threshold_percent > 0 ? storage_autoscale.value.threshold_percent : null
+      increment_gib     = storage_autoscale.value.increment_gib != null && storage_autoscale.value.increment_gib > 0 ? storage_autoscale.value.increment_gib : null
+    }
+  }
+
+  # User tags plus the standard Planton labels (identical set in both
+  # provisioners).
+  tags = local.tags
 }
-
-# Note: The following resources are NOT included in this module to keep it focused on the 80/20 principle:
-# - digitalocean_database_firewall (separate resource for network access rules)
-# - digitalocean_database_user (separate resource for additional users)
-# - digitalocean_database_db (separate resource for additional databases)
-# - digitalocean_database_connection_pool (separate resource for PgBouncer pools)
-# - digitalocean_database_replica (separate resource for read replicas)
-#
-# These should be managed separately to allow independent lifecycle management.
-

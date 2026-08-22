@@ -1,0 +1,34 @@
+# Provider-parity manifest for CloudflareZeroTrustMcpServer.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_access_ai_controls_mcp_server at the pinned provider
+# version. Unlisted arguments (account_id, name, hostname, auth_type,
+# auth_credentials, client_secret, description,
+# is_shared_oauth_callback_enabled, secure_web_gateway) match spec fields by
+# exact name.
+resources:
+  cloudflare_zero_trust_access_ai_controls_mcp_server:
+    mappings:
+      # updated_prompts is a nested list attribute; fan-in of every spec
+      # leaf.
+      - spec: spec.updated_prompts.name
+        arg: updated_prompts
+      - spec: spec.updated_prompts.alias
+        arg: updated_prompts
+      - spec: spec.updated_prompts.description
+        arg: updated_prompts
+      - spec: spec.updated_prompts.enabled
+        arg: updated_prompts
+      # updated_tools is a nested list attribute; fan-in of every spec leaf.
+      - spec: spec.updated_tools.name
+        arg: updated_tools
+      - spec: spec.updated_tools.alias
+        arg: updated_tools
+      - spec: spec.updated_tools.description
+        arg: updated_tools
+      - spec: spec.updated_tools.enabled
+        arg: updated_tools
+specExclusions:
+  # The server's user-supplied identity: the module wires it into the
+  # provider's resource id (not an accounted argument).
+  - field: spec.server_id
+    reason: "realized as the provider resource's user-supplied id by both modules"

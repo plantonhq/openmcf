@@ -2,7 +2,7 @@
 
 *Effective date: March 25, 2026*
 
-*Last updated: March 25, 2026*
+*Last updated: August 20, 2026*
 
 Welcome, and thank you for your interest in Planton Cloud, Inc. ("**Planton**", "**we**", or "**us**"). These Terms of Service ("**Terms**") govern your access to and use of Planton's platform, APIs, documentation, and related tools, including the website at [planton.ai](https://planton.ai) and all related software made available by Planton to deploy infrastructure, manage services, and automate DevOps workflows (collectively, the "**Service**").
 
@@ -21,7 +21,7 @@ Planton is a DevOps automation platform that provides infrastructure deployment,
 - **Infrastructure Hub** — self-service deployment of cloud infrastructure resources across AWS, GCP, Azure, Kubernetes, and other providers using pre-built modules backed by Terraform and Pulumi.
 - **Service Hub** — Git-connected CI/CD pipelines for building, containerizing, and deploying backend services using Tekton and Cloud Native BuildPacks.
 - **Runner** — the execution engine that performs infrastructure and service deployment operations, available in Planton-hosted or customer-hosted configurations.
-- **AI Assistant** (Beta) — AI-powered assistance for operating the platform, troubleshooting pipelines, and debugging deployments.
+- **AI Assistant** (Beta) — AI-powered assistance for operating the platform, troubleshooting pipelines, and debugging deployments. Currently available on Planton-hosted organizations and the Planton desktop app; not yet available on Self-Hosted Platform deployments.
 - **Self-Hosted Platform** — the Planton platform deployed in infrastructure you own and control. The free community edition requires no license; org-scale capabilities unlock with a paid license key (Section 3.3).
 
 The Service also leverages **Planton open source**, an open-source multi-cloud infrastructure framework licensed under the Apache License 2.0, which provides the infrastructure-as-code modules used by the platform. Planton open source is available at [github.com/plantonhq/planton](https://github.com/plantonhq/planton) and is governed by its own open-source license, independent of these Terms.
@@ -94,7 +94,7 @@ A self-hosted license is a yearly purchase that unlocks org-scale capabilities o
 
 ### 3.4 Prepaid AI Credits
 
-AI-powered features consume prepaid credits purchased as packs. Credits are dollar-denominated, drawn down as AI usage occurs, and do not expire while your account exists. Spend protection is on by default: automatic top-up occurs only if you enable it, at the threshold and amount you configure. Credit purchases are refundable as described in the [Refund Policy](/refund-policy); consumed credits are not refundable. Credits carry no cash value and are not transferable between accounts.
+AI-powered features consume prepaid credits purchased as packs. Credits fund AI usage on Planton-hosted organizations and the Planton desktop app; Self-Hosted Platform deployments do not use credits. Credits are dollar-denominated, drawn down as AI usage occurs, and do not expire while your account exists. Spend protection is on by default: automatic top-up occurs only if you enable it, at the threshold and amount you configure. Credit purchases are refundable as described in the [Refund Policy](/refund-policy); consumed credits are not refundable. Credits carry no cash value and are not transferable between accounts.
 
 ### 3.5 Payment Processing
 

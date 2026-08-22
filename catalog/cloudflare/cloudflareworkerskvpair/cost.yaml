@@ -1,0 +1,19 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareworkerskvpair
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: value
+      sku_meter: stored data
+      pricing_unit: GB-months
+      impact: "The value's size (up to 25 MiB per entry) joins the account-wide Workers KV stored-data meter -- \"1 GB, + $0.50/ GB-month\" past the Paid plan's included gigabyte (https://developers.cloudflare.com/kv/platform/pricing/, retrieved 2026-08-22). Each create or update of the entry is also one keys-written operation on the same account allotments."
+  free_tier: "The Workers Free plan permanently includes 1,000 keys written/day, 100,000 keys read/day, and 1 GB stored data -- hard quotas that make further operations FAIL when exceeded, never bill (limits reset daily at 00:00 UTC). The Workers Paid plan's monthly included allotments -- 1 million writes, 10 million reads, 1 GB stored -- are conditional on holding that $5/mo subscription (https://developers.cloudflare.com/kv/platform/pricing/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - runtime reads of this key by Workers bill as keys-read operations on the account's KV allotments ("10 million/month, + $0.50/million" on the Paid plan), driven entirely by application traffic against the parent namespace
+    - the $5/mo Workers Paid subscription is account-level plan spend chosen at the account -- no field in this spec pins or creates it
+  notes: "A seeded KV entry is configuration data riding the parent CloudflareKvNamespace's meters -- this kind exists so configuration keys can be versioned through infrastructure, distinct from high-churn runtime data. The operations this manifest itself causes are tiny and deploy-tied: one keys-written operation per apply (\"1 million/month, + $5.00/million\" past the Paid plan's included allotment), one keys-deleted operation on destroy (same rate), and keys-read operations on refresh -- a single entry sits comfortably inside even the Free plan's daily quotas. The value contributes its bytes (plus up to 1024 bytes of metadata) to stored data. All rates are list-price overage past included allotments, never netted, and Workers KV charges nothing for data transfer or egress (the KV pricing FAQ answers \"Does Workers KV charge for data transfer / egress?\" with \"No.\"). The spec's own contract warns values are not treated as secrets -- credentials belong in a Worker secret binding or Secrets Store, not here."

@@ -6,10 +6,9 @@ Deploys an SSL/TLS certificate on DigitalOcean, supporting both free auto-renewi
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DigitalOcean Certificate** -- a `digitalocean_certificate` resource with the specified name and type (Let's Encrypt or custom)
-- **Let's Encrypt Certificate** -- created only when `type` is `lets_encrypt`; includes the specified domains with automatic ACME validation and renewal managed by DigitalOcean
-- **Custom Certificate** -- created only when `type` is `custom`; uploads the provided PEM-encoded leaf certificate, private key, and optional intermediate chain with `create_before_destroy` lifecycle for zero-downtime rotation
-- **DigitalOcean Tags** -- applied when `tags` are specified for organizational grouping
+- **DigitalOcean Certificate** -- a `digitalocean_certificate` resource; the manifest's source branch (`letsEncrypt` or `custom`) determines the certificate type
+- **Let's Encrypt Certificate** -- created when the `letsEncrypt` branch is set; includes the specified domains with automatic ACME validation and renewal managed by DigitalOcean
+- **Custom Certificate** -- created when the `custom` branch is set; uploads the provided PEM-encoded leaf certificate, private key, and optional intermediate chain with `create_before_destroy` lifecycle for zero-downtime rotation
 
 ## Before You Deploy
 
@@ -34,7 +33,7 @@ Open the deployment store, find **Certificate on DigitalOcean**, and click **Dep
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: my-cert
@@ -42,7 +41,6 @@ metadata:
   env: prod
 spec:
   certificateName: my-cert
-  type: lets_encrypt
   letsEncrypt:
     domains:
       - example.com
@@ -59,13 +57,13 @@ This creates a free Let's Encrypt certificate covering `example.com` and `www.ex
 
 These are the most important decisions when configuring a DigitalOcean certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Certificate type** -- Set `type` to `lets_encrypt` for a free, auto-renewing certificate managed by DigitalOcean, or `custom` when providing your own PEM-encoded certificate from an enterprise CA or purchased provider. Only one source branch (`letsEncrypt` or `custom`) can be specified.
+**Certificate source** -- Set exactly one branch: `letsEncrypt` for a free, auto-renewing certificate managed by DigitalOcean, or `custom` when providing your own PEM-encoded certificate from an enterprise CA or purchased provider. The branch determines the certificate type; there is no separate type field to keep consistent.
 
-**Let's Encrypt domains** -- The `letsEncrypt.domains` field accepts multiple FQDNs and wildcard domains (e.g., `*.example.com`). All domains must have DNS managed by DigitalOcean for ACME validation. Set `disableAutoRenew` to `true` only if you need manual control over renewal timing.
+**Let's Encrypt domains** -- The `letsEncrypt.domains` field accepts multiple FQDNs and wildcard domains (e.g., `*.example.com`). All domains must have DNS managed by DigitalOcean in the same account for ACME validation. DigitalOcean always auto-renews Let's Encrypt certificates.
 
 **Custom certificate materials** -- When using `custom` type, provide `leafCertificate` (server cert), `privateKey` (matching key), and optionally `certificateChain` (intermediate certs). Custom certificates have no automatic renewal -- plan for manual rotation before expiry.
 
-**Certificate naming** -- Use a stable, descriptive `certificateName` since load balancers reference certificates by name. This ensures IaC state survives Let's Encrypt renewals without breaking load balancer configuration.
+**Certificate naming** -- Use a stable, descriptive `certificateName` since load balancers reference certificates by name, and the name IS the certificate's resource identity (a Let's Encrypt certificate's UUID rotates on every auto-renewal; the name never does).
 
 ## Outputs and Dependencies
 
@@ -79,8 +77,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `certificate_id` | Unique identifier (UUID) of the certificate in DigitalOcean | Load balancer HTTPS listener configuration, API operations |
-| `expiry_rfc3339` | Expiration timestamp in RFC 3339 format | Certificate rotation monitoring, alerting dashboards |
+| `certificate_id` | The certificate's resource identifier -- the NAME, not a UUID | Load balancer forwarding-rule `certificateName` references, API operations |
+| `expiry_rfc3339` | Expiration timestamp in RFC 3339 format (moves forward on auto-renewal) | Certificate rotation monitoring, alerting dashboards |
 
 ## Common Patterns
 
@@ -92,4 +90,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-This component operates independently and does not reference other components.
+- [**Load Balancer on DigitalOcean**](/cloud-catalog/digital-ocean-load-balancer) -- HTTPS forwarding rules reference this certificate by name via the `certificate_id` output

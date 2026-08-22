@@ -7,7 +7,7 @@ Access rules referenced by policies and other groups.
 
 ```
 iac/tf/
-├── provider.tf    # cloudflare provider ~> 5.0
+├── provider.tf    # cloudflare provider ~> 5.23
 ├── variables.tf   # metadata + spec (rules typed as list(object(...)))
 ├── locals.tf      # labels + scope + rule pass-through
 ├── main.tf        # the cloudflare_zero_trust_access_group resource

@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureapplicationinsights
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Workspace-based Application Insights stores no telemetry itself -- every byte rests in the LINKED Log Analytics workspace, encrypted by that service (Microsoft-managed keys by default). The at-rest posture, including any upgrade to customer-managed keys, is the AzureLogAnalyticsWorkspace's to declare. One privacy lever does live here -- ip_masking_enabled (default true) stores client IPs as 0.0.0.0, reducing what there is to protect.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for telemetry are a Log Analytics DEDICATED CLUSTER feature configured on the workspace side; no CMK surface exists on the Application Insights resource.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Telemetry ingestion and query travel exclusively through Azure Monitor's HTTPS endpoints -- Microsoft enforces TLS (legacy TLS 1.0/1.1 retired platform-wide for Azure Monitor endpoints), and neither the SDKs' connection strings nor this spec offer a plaintext channel.
+    - control_id: no-public-access
+      status: configurable
+      field_path: internet_ingestion_enabled
+      evidence:
+        type: spec_default
+        reference: Setting internet_ingestion_enabled false rejects telemetry from the public internet, forcing ingestion through an Azure Monitor Private Link Scope (AMPLS) private endpoint; internet_query_enabled false does the same for the query path. Both default true (Azure's default) -- public reachability is the out-of-box posture, and the private posture is a deliberate pair of flags plus AMPLS composition outside this spec.
+      notes: Flip both flags for a fully private resource; flipping only ingestion leaves dashboards and API queries public, and vice versa.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no source-list surface -- ingestion is either public (gated by authentication) or private through AMPLS (see no-public-access); IP allowlisting is not offered on this resource.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The ingestion and query endpoints are Microsoft-operated service endpoints, not a customer web tier; no WAF attachment point exists.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management and telemetry-query access are governed by Azure RBAC on the resource and the linked workspace (resource-context access lets app teams query only their own telemetry) -- platform posture, not a spec lever. The workspace must run in the resource-or-workspace access-control mode for that per-resource scoping to work, a workspace-side setting.
+    - control_id: workload-identity
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Setting local_authentication_enabled false forces every telemetry sender to authenticate with a Microsoft Entra identity -- platform-issued, rotated tokens -- instead of the bearer-style instrumentation key baked into connection strings. Default true (Azure's default), because most SDK setups still ingest by key.
+      notes: The keyless posture requires the sending applications to be configured for Entra authentication (SDK-side work); flipping the flag first silently drops their telemetry.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: The instrumentation-key-only ingestion path IS the legacy authentication surface -- anyone holding the key (it ships in client-side connection strings) can write telemetry. local_authentication_enabled false disables it outright, leaving Entra-authenticated ingestion as the only door.
+      notes: Preset 02 ships this false -- the keyless production posture.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log automatically, and query access against the telemetry is auditable through the linked workspace's own audit surface (LAQueryLogs) -- a workspace-side diagnostic setting, not a toggle here.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This resource IS the monitoring integration -- the APM layer other components' telemetry flows into. Its own operational signals (ingestion volume, cap hits) surface through Azure Monitor metrics and the daily_data_cap_notifications_enabled email automatically.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Telemetry is operational, append-only data in the linked workspace with no backup/restore surface anywhere in Azure Monitor; the resource itself is recreated declaratively. The blast radius worth knowing -- recreation issues a NEW instrumentation key and connection string, so every instrumented application must be re-wired; treat the name as permanent (documented ForceNew on the spec).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain; how long TELEMETRY is kept is retention_in_days here plus the workspace's governing retention -- data lifecycle, not backup policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The ingestion, processing, and query pipeline is Microsoft-operated Azure Monitor with no zonal lever on this resource; the stored telemetry's resilience is the linked workspace's posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag; deleting the resource invalidates its connection string (instrumented apps go dark, not down) while already-ingested telemetry survives in the workspace until its retention expires.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The APM pipeline -- ingestion endpoints, processing, the portal experiences -- is Microsoft-operated Azure Monitor; no customer-visible patch surface exists. (The SDK versions inside instrumented applications are those applications' dependency hygiene, not this resource's.)

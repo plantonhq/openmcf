@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesraycluster
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: head
+      sku_meter: cluster CPU and memory reservations
+      impact: The head pod's required resources are reserved for the cluster's whole lifetime -- it runs the GCS, dashboard, and job server whether any task executes or not. Upstream guidance starts production heads at 4 CPU / 8Gi.
+    - field_path: worker_groups
+      sku_meter: cluster CPU and memory reservations
+      impact: Every group contributes replicas x its required resources. Each group's extra_resource_limits is the accelerator surface (nvidia.com/gpu and friends) -- GPUs reserved there are invisible to CPU/memory arithmetic and carry the cluster's accelerator-node economics, typically the largest cost in the whole topology.
+    - field_path: autoscaling
+      sku_meter: cluster CPU and memory reservations
+      impact: With autoscaling enabled, each group's replicas is only the INITIAL size -- the Ray autoscaler owns the count between min_replicas and max_replicas afterwards, so the real reservation floats with task demand. The autoscaler sidecar itself rides the head pod.
+    - field_path: suspend
+      sku_meter: cluster CPU and memory reservations
+      impact: Suspending deletes every head and worker pod while keeping the declaration (and, with GCS fault tolerance, the external state) -- the idle-GPU cost lever; the reservation drops to zero until resumed.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and (where declared) GPU capacity is the target cluster's node economics, which this catalog cannot know
+    - "GPUs are INVISIBLE to the CPU/memory footprint: a worker group's extra_resource_limits (e.g. nvidia.com/gpu) reserves accelerators the cluster's GPU-node economics price -- at a group's autoscaling ceiling that reservation multiplies accordingly"
+    - with autoscaling enabled, the footprint states the declared initial group sizes; the Ray autoscaler changes replica counts at runtime between each group's min_replicas and max_replicas
+    - the autoscaler sidecar rides the head pod with operator-default resources unless autoscaling.resources declares them
+  notes: "This component creates no cloud SKU of its own and provisions NO persistent volumes -- Ray's control state lives in head-pod memory (or the composed external store). Its cost is the share of the cluster it reserves: head resources + the sum over worker groups of replicas x resources, plus any declared accelerators. GCS fault-tolerance state rides the composed KubernetesValkey, which carries its own footprint; the KubeRay operator is its own component (kuberneteskuberayoperator)."

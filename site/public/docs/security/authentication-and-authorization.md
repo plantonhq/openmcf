@@ -105,7 +105,7 @@ Service account keys work like user API keys — they are displayed once at crea
 
 #### When Runners Use Service Accounts
 
-When you generate credentials for a [Runner](/docs/runner), Planton auto-provisions a service account for that runner and mints an API key embedded in the credentials file. The runner uses this key to authenticate with the control plane at startup and to resolve secrets and variables at runtime. You do not need to create the service account manually — credential generation handles everything.
+When a [Runner](/docs/runner) enrolls — started with a runner token, it registers itself on arrival — Planton auto-provisions a service account for that runner and mints an API key delivered in the runner's identity document. The runner uses this key to authenticate with the control plane at startup and to resolve secrets and variables at runtime. You do not need to create the service account manually — enrollment handles everything.
 
 For details on how this fits into the runner's security model, see [Runner Security Model](/docs/runner/security-model).
 
@@ -155,7 +155,7 @@ Both user API keys and service account API keys can be used to authenticate the 
 
 ```bash
 # Authenticate with an API key (user or service account)
-planton auth login --api-key pck_abc123...
+planton auth login --api-key pak_abc123...
 
 # Verify the authenticated identity
 planton auth who

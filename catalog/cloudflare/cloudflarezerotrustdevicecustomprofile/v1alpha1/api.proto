@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdevicecustomprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustDeviceCustomProfile is a KRM-style resource for
+// creating targeted WARP device profiles: device settings applied only to
+// the devices matched by a wirefilter expression.
+message CloudflareZeroTrustDeviceCustomProfile {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustDeviceCustomProfile'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustDeviceCustomProfileSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustDeviceCustomProfileStatus status = 5;
+}
+
+// CloudflareZeroTrustDeviceCustomProfileStatus represents the observed
+// state of the custom device profile.
+message CloudflareZeroTrustDeviceCustomProfileStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustDeviceCustomProfileStackOutputs outputs = 1;
+}

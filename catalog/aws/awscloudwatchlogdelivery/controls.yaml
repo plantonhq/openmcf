@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pipeline stores nothing -- sources, destinations, and deliveries are routing configuration, and events rest only where they land. At-rest posture is the destination components' -- the S3 bucket's SSE, the log group's encryption, the Firehose stream's -- decided on those components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "No KMS surface exists on any delivery object. CMK choices live on the destinations, with one contract worth knowing from AWS's delivery docs: an S3 destination bucket using SSE-KMS must use a CUSTOMER-managed key -- under an AWS-managed key the delivered logs arrive unreadable."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CloudWatch Logs management API is HTTPS-only, and delivery itself rides AWS's internal TLS service channels from the producing service (as delivery.logs.amazonaws.com) into S3, CloudWatch Logs, Firehose, or X-Ray -- no plaintext hop exists anywhere in the pipeline.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No delivery object exposes an endpoint. Whether delivered logs are internet-reachable is the destination's posture (the bucket's public-access block, the log group's IAM surface), decided on those components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a delivery pipeline; there is no inbound network surface to restrict. What may WRITE into it is identity territory -- see rbac.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for log-routing plumbing.
+    - control_id: rbac
+      status: configurable
+      field_path: cross_account_destination.access_policy
+      evidence:
+        type: spec_default
+        reference: Cross-account write access is explicit policy, never default. The legacy destination's required access_policy is the gate -- only the accounts and principals it allows may logs:PutSubscriptionFilter against the endpoint (the 02 preset names two allowed accounts). On the vended arm, a destination's optional policy plays the same role, granting producer accounts logs:CreateDelivery; unset means same-account pipelines only.
+      notes: Management of every object is separately IAM-authorized with resource-level scoping on delivery, delivery-source, delivery-destination, and destination ARNs -- the two policy documents govern the DATA path, IAM governs the control path.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The pipeline runs no user workload. The cross-account arm's role_arn is assumed by logs.amazonaws.com with short-lived credentials to write into Kinesis -- service plumbing fixed by AWS's design, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudWatch Logs has a single authentication path -- SigV4-signed IAM requests. The cross_account_destination arm is "legacy" as a delivery MECHANISM (pre-vended subscription tech), not a weaker authentication protocol; nothing exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Every management call on sources, destinations, deliveries, and policies is recorded by AWS CloudTrail as account-level posture, not per-object configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The component IS observability plumbing -- it routes other services' logs -- and publishes no operational metrics about itself; AWS documents no per-delivery CloudWatch metrics for the vended framework. Signals about the DATA live in the destinations.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing is stored to back up -- all six object types are declarative configuration fully re-creatable from the manifest; delivered events persist in the destinations under those components' durability posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists on any delivery object by design -- delivered logs persist per the destination's lifecycle rules (bucket lifecycle, log group retention), configured on those components.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The delivery framework is a regional managed service AWS operates across availability zones -- routing has no zonal footprint the manifest could configure, and delivered data inherits the destination stores' multi-AZ durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No delivery object carries a deletion-protection flag. One asymmetry deserves care: the cross-account destination's access policy PERSISTS at AWS when only the policy resource is destroyed (a provider no-op delete) -- revoking cross-account access for real means destroying the destination itself."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the vended-delivery and subscription-forwarding infrastructure; no delivery object exposes a runtime, version, or maintenance surface.

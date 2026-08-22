@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezonetlssettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezonetlssettings/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezonetlssettings/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZoneTlsSettings is a KRM-style resource for managing a Cloudflare
+// zone's edge TLS posture: Universal SSL issuance, Total TLS, automatic origin TLS
+// key exchange, origin TLS compliance modes, per-hostname TLS overrides, and
+// certificate-authority hostname associations.
+message CloudflareZoneTlsSettings {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZoneTlsSettings'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZoneTlsSettingsSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZoneTlsSettingsStatus status = 5;
+}
+
+// CloudflareZoneTlsSettingsStatus represents the observed state of a zone's TLS settings.
+message CloudflareZoneTlsSettingsStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZoneTlsSettingsStackOutputs outputs = 1;
+}

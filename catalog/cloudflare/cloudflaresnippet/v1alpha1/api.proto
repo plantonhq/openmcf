@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresnippet.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflaresnippet/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflaresnippet/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareSnippet is a KRM-style resource for managing one Cloudflare Snippet:
+// a small JavaScript module at the zone's edge, invoked by snippet rules.
+message CloudflareSnippet {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareSnippet'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareSnippetSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareSnippetStatus status = 5;
+}
+
+// CloudflareSnippetStatus represents the observed state of a snippet.
+message CloudflareSnippetStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareSnippetStackOutputs outputs = 1;
+}

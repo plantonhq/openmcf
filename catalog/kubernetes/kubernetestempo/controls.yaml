@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetestempo
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Trace blocks rest on the PersistentVolume the cluster's storage class provisions, or in the declared object-storage backend -- encryption at rest is a property of that storage (the storage class, or the bucket's own encryption settings), not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys live on the cluster's storage class or the object-storage bucket's encryption configuration (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: No TLS seam is typed for the ingest and query listeners -- traffic is in-cluster ClusterIP by design, and TLS composes at the exposure layer (or rides helm_values for per-receiver tuning). Object-store connections use HTTPS unless s3.insecure deliberately opts into plain HTTP for in-cluster stores.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Everything stays ClusterIP -- the spec has no service-type field at all; external exposure composes from first-class kinds (KubernetesIngress, Gateway API) over the exported endpoint handles, never from this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may send spans or query traces; source restriction lives on the composed exposure layer or Kubernetes NetworkPolicies declared as separate resources.
+    - control_id: rbac
+      status: not_applicable
+      notes: Tempo has no built-in authentication -- multi_tenancy_enabled requires an X-Scope-OrgID header on every push and query, which scopes data per tenant but does not authenticate anyone. Access control composes at the exposure layer (an authenticating proxy or gateway).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A tracing backend serves no public HTTP edge traffic of its own -- when its endpoints are exposed through composed kinds, request filtering lives on that exposure layer.
+    - control_id: workload-identity
+      status: configurable
+      field_path: storage
+      evidence:
+        type: spec_default
+        reference: Object-storage backends declared WITHOUT credentials use the pod's ambient identity -- IRSA on EKS, workload identity on GKE, federated identity on AKS -- the recommended keyless posture. Declared credentials are injected as environment variables from existing Secrets and never land in the rendered Tempo config.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      field_path: jaeger_receivers_enabled
+      evidence:
+        type: spec_default
+        reference: False by default -- the four legacy Jaeger receiver ports stay closed, deliberately narrowing the chart's all-receivers default. OTLP (gRPC 4317, HTTP 4318) is the only ingest surface until Jaeger is explicitly enabled for fleets still emitting it.
+      notes: This governs the legacy protocol surface -- Tempo has no authentication to be legacy or otherwise (see rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- Tempo logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy. usage_reporting is false by default, so no telemetry leaves the cluster without an explicit opt-in.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: False by default; true renders a ServiceMonitor so a Prometheus Operator scrapes Tempo's own metrics (requires the monitoring.coreos.com CRDs -- deploy KubernetesKubePrometheusStack first).
+      notes: Separately, metrics_generator derives service-graph and span metrics FROM the trace stream and remote-writes them to a Prometheus -- the seam that lights up Grafana's service map.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Traces are ephemeral telemetry with a lifecycle governed by retention -- no backup surface exists or is expected; durability beyond a pod's life comes from the object-storage backend.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). Trace-block lifecycle is governed by the retention field -- compaction deletes blocks after the window (24h when unset) -- a data-lifecycle setting, not a backup policy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: 1 by default. More than one replica REQUIRES an object-storage backend (the spec's own validation -- replicas cannot share local trace storage); with one, replicas share the backend and scale ingest and query, so losing a pod loses no traces.
+      notes: Zone-level topology spread is not typed; scheduling covers node selection and tolerations only.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release; protection is operational (namespace RBAC, change review). With an object-storage backend the trace blocks outlive the release in the bucket.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version defaults to the module's pin (2.2.3, pairing with Tempo 2.10.7); upgrading is a deliberate act of changing the pin to another served chart version, which re-runs the release.

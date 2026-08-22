@@ -1,0 +1,33 @@
+# Reference manifests for DigitalOceanReservedIp -- protovalidate-valid,
+# embedded as the reference page's Example block, and the documents the
+# offline tofu plans render. Three documents covering the module's three
+# shapes: unassigned IPv4, droplet-assigned IPv4 (inline, mutable), and
+# droplet-assigned IPv6 (via the separate assignment resource).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: ingress-standby-ip
+spec:
+  region: nyc3
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: web-frontdoor-ip
+spec:
+  ipVersion: ipv4
+  region: nyc3
+  # Literal numeric droplet id; use valueFrom to reference a
+  # DigitalOceanDroplet resource instead.
+  droplet:
+    value: "123456789"
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: web-frontdoor-ipv6
+spec:
+  ipVersion: ipv6
+  region: nyc3
+  droplet:
+    value: "123456789"

@@ -1,0 +1,24 @@
+# Minimal KubernetesPlantonRunner scenario: the runner installed from the
+# published chart into its own namespace with an obviously-fake runner
+# token (the pod's join is refused and it restarts, but the release
+# installs without waiting on pod readiness -- see ../profile.yaml for why
+# install-level verification makes that the right lane shape).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonRunner
+metadata:
+  name: e2e-k8s-runner
+  id: e2e-k8s-runner
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: kubernetesplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespace:
+    value: e2e-k8s-runner
+  createNamespace: true
+  token: prt_FAKE_E2E_PLACEHOLDER

@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremanageddisk
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every managed disk is encrypted at rest with storage-side encryption (platform-managed keys) unconditionally -- Azure offers no way to store a managed disk unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: disk_encryption_set_id
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; referencing a disk encryption set encrypts the disk with a Key Vault key you own and can revoke. Confidential-VM OS disks use secure_vm_disk_encryption_set_id for the customer-key variant instead (spec validation makes the two mutually exclusive).
+      notes: None of the presets pin a disk encryption set -- customer keys are an explicit choice composed with an AzureDiskEncryptionSet component.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A disk exposes no client-facing protocol surface -- attachment I/O rides Azure's internal storage fabric between the VM host and storage, not a network connection this manifest configures. The one network surface the disk has (SAS-based export of its contents) is HTTPS-only by the service's contract.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network_access_policy
+      evidence:
+        type: spec_default
+        reference: Unspecified applies Azure's default ALLOW_ALL -- the disk's EXPORT endpoint (SAS download of the disk contents) is reachable over the network with proper authorization. ALLOW_PRIVATE restricts export to a disk-access resource's private endpoints (disk_access_id required, enforced by spec validation), and DENY_ALL disables network export entirely.
+      notes: public_network_access_enabled (default true) is the second half of the posture -- false pairs with ALLOW_PRIVATE for fully private export. This governs only the export surface; attached-VM I/O never touches the network path. The presets ride the Azure default.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The disk has no inbound network listener to filter -- no ports, no endpoints for traffic. The export surface's reachability is governed by network_access_policy (see no-public-access); source-level network filtering has nothing to attach to on a disk.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A block storage volume serves no requests -- there is no HTTP surface for a WAF or request filter to protect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation -- create, resize, re-SKU, attach (via the VM), snapshot, export-SAS grant, delete -- is authorized by Azure RBAC on the disk's scope unconditionally. Data on the disk is read through the attached VM, whose own access controls govern it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A disk runs no workloads and holds no credentials -- identity questions belong to the VM that attaches it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The disk has no authentication paths of its own to strengthen or disable; export access is SAS-token-based and gated by RBAC-authorized grant operations.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the disk -- creation, resize, SAS export grants, deletion -- lands in the Azure Activity Log unconditionally. Block-level data access through the attached VM leaves no disk-side audit trail (it is host I/O, not API traffic).
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Monitor exposes per-disk platform metrics (Composite Disk Read/Write Bytes and Operations, burst credit percentages for burstable SKUs) for every managed disk with no configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Neither the disks API nor this spec carries a backup facility -- Azure Backup enrolls disks vault-side (a Backup vault with a disk backup policy), and incremental snapshots are separate resources, both composed outside this manifest. The create_option COPY/RESTORE arms are the RESTORE half of that story -- this spec can materialize a snapshot or recovery point into a new disk.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup facility in the spec means no retention to configure here -- retention lives on the vault-side backup policy when Azure Backup is composed.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: storage_account_type
+      evidence:
+        type: spec_default
+        reference: The ZRS SKUs (STANDARD_SSD_ZRS, PREMIUM_ZRS) replicate the disk synchronously across three availability zones and survive a zone outage; the LRS SKUs keep three copies inside one zone. Spec validation forbids pinning a ZRS disk to a single zone -- the two postures are mutually exclusive by construction.
+      notes: All three presets deploy LRS SKUs zone-pinned to match their VM -- the common pattern, where zone resilience is composed at the workload layer rather than the disk layer.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the disks API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Worth knowing -- deleting the disk deletes the DATA, and the disk's whole purpose is outliving any one VM, so lifecycle discipline (snapshots before teardown) is the real protection.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed storage -- Microsoft operates the storage fabric behind the disk with no customer-visible patch surface. What is inside the disk (the guest OS on an OS disk) is patched VM-side, never here.

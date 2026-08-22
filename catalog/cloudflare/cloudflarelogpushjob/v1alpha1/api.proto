@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarelogpushjob.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarelogpushjob/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarelogpushjob/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareLogpushJob is a KRM-style resource for creating Logpush jobs:
+// continuous delivery of a Cloudflare log dataset to storage or an
+// analytics endpoint you own.
+message CloudflareLogpushJob {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareLogpushJob'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareLogpushJobSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareLogpushJobStatus status = 5;
+}
+
+// CloudflareLogpushJobStatus represents the observed state of the job.
+message CloudflareLogpushJobStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareLogpushJobStackOutputs outputs = 1;
+}

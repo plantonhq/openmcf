@@ -1,0 +1,30 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarelistitem
+spec:
+  # A list item's import identity is {account_id}/{list_id}/{item_id}.
+  # account_id is spec-relative; list_id is a StringValueOrRef on the spec
+  # so it comes from the item's own stack output (echoed from the parent
+  # list); item_id is the deploy's assigned id.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: list_id
+      derivations:
+        - from_stack_output: list_id
+      where_to_find: >-
+        The parent CloudflareList's status.outputs.list_id, or
+        `GET /accounts/<account_id>/rules/lists` on the Cloudflare v4 API
+        (the id field of the entry whose name matches).
+    - name: item_id
+      derivations:
+        - from_stack_output: item_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/rules/lists/<list_id>/items` on the
+        Cloudflare v4 API (the id field of the entry whose ip/asn/hostname
+        /redirect matches). The dashboard does not surface item ids.

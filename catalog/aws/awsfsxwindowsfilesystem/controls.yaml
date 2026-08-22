@@ -56,6 +56,9 @@ spec:
       evidence:
         type: provider_default
         reference: FSx for Windows negotiates SMB versions 2.0 through 3.1.1 only -- SMB 1 and its legacy authentication paths are not supported by the service and cannot be enabled.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: audit_log_configuration

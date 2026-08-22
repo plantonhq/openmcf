@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustorganization.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustorganization/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustorganization/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustOrganization is a KRM-style resource for managing the
+// Zero Trust organization: the Access login experience (team domain, login
+// design, session defaults, MFA policy) and the Access service-key rotation
+// cadence.
+message CloudflareZeroTrustOrganization {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustOrganization'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustOrganizationSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustOrganizationStatus status = 5;
+}
+
+// CloudflareZeroTrustOrganizationStatus represents the observed state of the
+// organization.
+message CloudflareZeroTrustOrganizationStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustOrganizationStackOutputs outputs = 1;
+}

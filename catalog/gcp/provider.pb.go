@@ -26,9 +26,10 @@ const (
 //
 // Used as the provider_config in stack inputs for all GCP-based IaC modules. The runner or
 // IaC module uses this to configure the Pulumi/Terraform GCP provider.
-// The credential is supplied by exactly one of {service_account_key, web_identity}. If neither
-// is set, providers fall back to the ambient Google Application Default Credentials chain
-// (e.g. a self-hosted runner's attached service account or `gcloud auth application-default`).
+// The credential is supplied by exactly one of {service_account_key, web_identity,
+// access_token}. If none is set, providers fall back to the ambient Google Application
+// Default Credentials chain (e.g. a self-hosted runner's attached service account or
+// `gcloud auth application-default`).
 type GcpProviderConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// JSON content of a Google Service Account key file.
@@ -46,9 +47,20 @@ type GcpProviderConfig struct {
 	// Keyless web-identity (OIDC) authentication. When set, the provider authenticates via GCP
 	// Workload Identity Federation instead of a static service-account key -- so
 	// service_account_key is left empty in this mode. Exactly one of {service_account_key,
-	// web_identity} is populated; if neither is set the provider falls back to the ambient
-	// Application Default Credentials chain.
-	WebIdentity   *GcpWebIdentityProviderConfig `protobuf:"bytes,2,opt,name=web_identity,json=webIdentity,proto3" json:"web_identity,omitempty"`
+	// web_identity, access_token} is populated; if none is set the provider falls back to the
+	// ambient Application Default Credentials chain.
+	WebIdentity *GcpWebIdentityProviderConfig `protobuf:"bytes,2,opt,name=web_identity,json=webIdentity,proto3" json:"web_identity,omitempty"`
+	// A pre-minted, short-lived Google OAuth2 access token, supplied inline (in memory) and
+	// never written to disk. This is the carrier for credentials issued OUTSIDE the provider's
+	// own exchange machinery -- e.g. a credential broker that mints Google access tokens at
+	// deploy time -- where neither a key file nor an OIDC federation exchange applies. Both
+	// engines consume it natively: the Terraform/OpenTofu google provider through its
+	// access_token argument (env form GOOGLE_OAUTH_ACCESS_TOKEN), the pulumi-gcp provider
+	// through its accessToken field (which its SDK auto-wraps as a secret). Google access
+	// tokens have a fixed ~1h lifetime and cannot be renewed or revoked, so callers running
+	// longer than a token's remaining life must re-mint and re-supply per operation. The
+	// requirement is skipped when empty (IGNORE_IF_ZERO_VALUE) so the other arms validate.
+	AccessToken   string `protobuf:"bytes,3,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,6 +107,13 @@ func (x *GcpProviderConfig) GetWebIdentity() *GcpWebIdentityProviderConfig {
 		return x.WebIdentity
 	}
 	return nil
+}
+
+func (x *GcpProviderConfig) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
 }
 
 // GcpWebIdentityProviderConfig holds the input for keyless OIDC federation: the caller mints a
@@ -194,10 +213,11 @@ var File_catalog_gcp_provider_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x1acatalog/gcp/provider.proto\x12\x0fdev.planton.gcp\x1a\x1bbuf/validate/validate.proto\"\x9d\x01\n" +
+	"\x1acatalog/gcp/provider.proto\x12\x0fdev.planton.gcp\x1a\x1bbuf/validate/validate.proto\"\xc8\x01\n" +
 	"\x11GcpProviderConfig\x126\n" +
 	"\x13service_account_key\x18\x01 \x01(\tB\x06\xbaH\x03\xd8\x01\x01R\x11serviceAccountKey\x12P\n" +
-	"\fweb_identity\x18\x02 \x01(\v2-.dev.planton.gcp.GcpWebIdentityProviderConfigR\vwebIdentity\"\xb4\x01\n" +
+	"\fweb_identity\x18\x02 \x01(\v2-.dev.planton.gcp.GcpWebIdentityProviderConfigR\vwebIdentity\x12)\n" +
+	"\faccess_token\x18\x03 \x01(\tB\x06\xbaH\x03\xd8\x01\x01R\vaccessToken\"\xb4\x01\n" +
 	"\x1cGcpWebIdentityProviderConfig\x124\n" +
 	"\x12web_identity_token\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10webIdentityToken\x12\"\n" +
 	"\baudience\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\baudience\x12:\n" +

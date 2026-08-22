@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsiamsamlprovider
+spec:
+  aws:
+    statements:
+      - sid: ManageSamlProvider
+        actions:
+          - iam:CreateSAMLProvider
+          - iam:GetSAMLProvider
+          - iam:UpdateSAMLProvider
+          - iam:DeleteSAMLProvider
+        resources:
+          - arn:aws:iam::*:saml-provider/*
+        provenance: derived
+        notes: "Covers aws_iam_saml_provider / iam.SamlProvider -- the module's single resource. CreateSAMLProvider registers the trust anchor under its write-once name; UpdateSAMLProvider serves the in-place metadata-document updates (certificate rotations); GetSAMLProvider runs on every plan/refresh (it returns the stored metadata and validity window); DeleteSAMLProvider serves destroy and the replacement a rename forces. All four actions take resource-level scoping on the saml-provider ARN format per the service reference. What the provider FEDERATES -- which roles trust it, what sessions may do -- is spec content on the trusting AwsIamRole objects, never a grant the runner needs here."
+      - sid: TagSamlProvider
+        actions:
+          - iam:TagSAMLProvider
+          - iam:UntagSAMLProvider
+          - iam:ListSAMLProviderTags
+        resources:
+          - arn:aws:iam::*:saml-provider/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh (the module tags the provider with the platform's standard tag set). All three tagging actions scope to the saml-provider ARN format per the service reference.

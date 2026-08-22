@@ -1,0 +1,54 @@
+# Capacity derivation: machine-executable rules turning any
+# KubernetesGrafana manifest's spec values into the cluster capacity the
+# deployment reserves. Field paths are spec-relative proto field names,
+# held to the served contract by the conformance gate.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesgrafana
+spec:
+  workloads:
+    - label: replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+    # The state PVC is a separate volumes-only binding at constant 1: the
+    # modules provision ONE persistent volume for the deployment however
+    # many replicas run, so binding it under the replica workload would
+    # multiply the reservation by the replica count and overstate it.
+    - label: state volume
+      instances:
+        constant: "1"
+      volumes:
+        - label: state
+          size_path: storage.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources, replicas, and persistence -- this footprint states the spec's declaration"
+    - applies_when:
+        - field_path: database
+          op: is_set
+      text: "state lives in the external database, whose capacity and storage ride its own component (a KubernetesPostgres composes naturally) -- nothing persistent is reserved here"
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the manifest declares no resource requests or limits (the chart default) -- the pods schedule unbounded and the cluster reserves nothing for them"
+    - applies_when:
+        - field_path: storage
+          op: is_set
+        - field_path: storage.size
+          op: is_unset
+      text: "storage is declared without a size -- the footprint states the 10Gi spec-declared default the modules apply, named in its basis"
+    - applies_when:
+        - field_path: storage
+          op: is_unset
+        - field_path: database
+          op: is_unset
+      text: "no storage and no database -- state is EPHEMERAL on the pod's own disk: nothing is reserved, and everything hand-built vanishes on pod restart"

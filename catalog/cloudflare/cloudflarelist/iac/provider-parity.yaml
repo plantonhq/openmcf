@@ -1,0 +1,18 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  cloudflare_list:
+    exclusions:
+      # The inline bulk items mode is deliberately unmodeled: entries are
+      # managed one-per-resource through the CloudflareListItem kind, and the
+      # provider's own documentation warns against mixing the inline items
+      # attribute with list_item resources. One judgment covers the whole
+      # items subtree.
+      - arg: items
+        reason: list entries are managed through the CloudflareListItem kind; the provider forbids mixing inline items with list_item resources

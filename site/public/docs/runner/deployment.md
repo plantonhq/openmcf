@@ -1,6 +1,6 @@
 ---
 title: "Deployment"
-description: "Generate credentials, install, and deploy Planton Runner to Kubernetes, AWS ECS, GCP Cloud Run, or Azure Container Apps"
+description: "Enroll runners with a runner token, install, and deploy Planton Runner to Kubernetes, AWS ECS, GCP Cloud Run, or Azure Container Apps"
 icon: server
 order: 30
 tags:
@@ -14,72 +14,34 @@ tags:
 
 # Deployment
 
-Getting a runner operational involves three phases: registering it with Planton, generating credentials (which produces a single JSON credentials file), and deploying the runner to your infrastructure. This page walks through each phase.
+Getting a runner operational involves two phases: creating a runner token once, and starting runners with it — each runner enrolls itself on arrival. This page walks through the model and the target-specific deployment mechanics.
 
-## Generating Credentials
+## Enrollment: the Runner Token
 
-Before you can deploy a runner, you need to register it and generate its credentials. Registration creates the runner's identity in Planton. Credential generation produces a single JSON file containing everything the runner needs to authenticate: mTLS certificates for the secure tunnel connection, an API key for control-plane authentication, and organizational context.
+A runner token is a named, revocable secret that authorizes runners to join your organization. You create it once (in the console: Organization Settings → Runner Tokens, or `planton runner token create`); every runner started with it registers ITSELF with Planton on arrival and receives its own identity — a dedicated [service account](/docs/security/authentication-and-authorization#service-accounts), an API key, and mTLS certificates for the secure tunnel connection, delivered together in the runner's identity document.
 
-During credential generation, Planton auto-provisions a [service account](/docs/security/authentication-and-authorization#service-accounts) for the runner and mints an API key. The runner uses this key to authenticate with the control plane for secret and variable resolution at runtime.
+Three properties define the model:
 
-### Using the CLI
+- **The token is never a runner's identity.** It cannot authenticate a single API call; its only power is admitting runners through the enrollment door. One token starting ten runners yields ten distinct identities, each revocable on its own.
+- **Every arrival is attributed.** Each runner permanently records which token admitted it — who created that token and when is visible history, never an application-log archaeology exercise.
+- **Re-admission is guarded by lineage.** A runner that loses its stored identity (a container that lost its disk) can re-enroll under its original name — but only through the same token that admitted it originally. A different token gets a closed door, so a leaked token can never hijack another token's runner.
 
-```bash
-planton runner generate-credentials prod-runner
-```
-
-This generates credentials for the runner named `prod-runner` in your current organization. By default, the credentials JSON is printed to stdout. To save it to a directory:
-
-```bash
-planton runner generate-credentials prod-runner --output-dir ./runner-creds
-```
-
-This writes a single `credentials.json` file to the specified directory. The file contains the tunnel certificates, the API key, the control-plane endpoint, and the runner's organizational context.
-
-You can also output credentials as a Kubernetes Secret for direct deployment:
-
-```bash
-planton runner generate-credentials prod-runner --output-format k8s-secret
-```
-
-Each call to `generate-credentials` mints a new API key. Previous keys remain valid, so you can generate multiple credentials files (for example, one per deployment environment) without invalidating existing ones.
-
-### Using the Web Console
-
-Navigate to **Connections** in the sidebar, then click **Deploy Runner**. The deployment wizard walks through:
-
-1. **Name** — Choose a slug for the runner (e.g., `prod-runner`)
-2. **Credentials** — Generate and download the credentials file
-3. **Target** — Select your deployment target (Kubernetes, AWS, GCP, or Azure)
-4. **Deploy Guide** — Follow the target-specific instructions
-
-<!-- SCREENSHOT: Runner deployment wizard
-  Page: /resource/connect/runner-registration/create
-  Action: Show the wizard at the Target selection step
-  Focus: The four deployment target options
-  Alt: Runner deployment wizard showing Kubernetes, AWS ECS, GCP Cloud Run, and Azure Container Apps as deployment target options
--->
+The runner needs exactly two inputs at start: the token and the control-plane address. Everything else — organization, identity, endpoints, work-queue coordinates — arrives in the enrollment response, derived server-side from the token's record.
 
 ### Credential Security
 
-The credentials file contains sensitive material: the runner's private key and an API key. Both are generated server-side and returned only once. Planton does not store the private key or the raw API key after generation.
+The identity document contains sensitive material: the runner's private key and an API key. Both are minted server-side at enrollment and delivered only to the runner — they never pass through a person's browser, clipboard, or download folder. Planton does not store the private key or the raw API key after minting.
 
-If you lose the credentials file, generate a new one. If you need to invalidate all previous credentials (for example, after a security incident), use `regenerate-credentials`:
+There is no separate credential-rotation ceremony: **re-enrolling IS rotating**. When a runner re-enrolls, it receives a fresh identity and every prior API key for that runner is revoked in the same act — a runner can never accumulate multiple live keys. If both a runner's identity and its admitting token are compromised, revoke the token, reset the runner's enrollment from its detail page (an audited action that clears its lineage), and let it re-enroll with a new token.
 
-```bash
-planton runner regenerate-credentials prod-runner --output-dir ./runner-creds
-```
+The deployment targets below store only the runner TOKEN in the target's secret store — the identity document is born where the runner runs (minted at enrollment, persisted on the runner's own writable storage) and never moves between machines:
 
-Regeneration creates new certificates and a new API key, and revokes all previous API keys for the runner's service account. Any deployed runner using old credentials will lose both tunnel connectivity and control-plane authentication. Plan for a brief connectivity gap during credential rotation.
-
-Store the credentials file securely using your platform's secrets management:
-
-| Deployment Target | Recommended Storage |
+| Deployment Target | Where the token lives |
 |-------------------|-------------------|
-| Kubernetes | Kubernetes Secret with a `credentials.json` key |
+| Kubernetes | Kubernetes Secret |
 | AWS ECS | AWS Secrets Manager |
 | GCP Cloud Run | GCP Secret Manager |
-| Azure Container Apps | Azure Key Vault |
+| Azure Container Apps | Container App built-in secret |
 
 ## Installation
 
@@ -97,35 +59,29 @@ planton runner install --version 0.1.5
 
 ## Starting a Runner Locally
 
-For development or testing, you can start a runner directly from your machine. The runner resolves credentials in this order:
+For development or testing, you can start a runner directly from your machine. On first start with a runner token, the runner enrolls itself and persists its identity document into the local store (`~/.planton/`). On later starts it resolves its identity in this order:
 
 1. `--credentials-file` flag or `PLANTON_RUNNER_CREDENTIALS_FILE` environment variable pointing to the JSON file
 2. `PLANTON_RUNNER_CREDENTIALS` environment variable containing the raw JSON inline
-3. Named runner from the local credential store (scans `~/.planton/`)
+3. Named runner from the local store (scans `~/.planton/`)
 
-The simplest approach after generating credentials with `--output-dir`:
-
-```bash
-planton runner start --credentials-file ./runner-creds/credentials.json
-```
-
-Or if the credentials are already in the local store:
+Once enrolled, start it by name:
 
 ```bash
 planton runner start prod-runner --org acme
 ```
 
-The runner loads the credentials, establishes the secure tunnel, authenticates with the control plane, and begins accepting operations.
+The runner loads its identity, establishes the secure tunnel, authenticates with the control plane, and begins accepting operations.
 
 ## Deployment Targets
 
 For production use, deploy the runner as a long-running container. The CLI supports four deployment targets through `planton runner deploy`:
 
 ```bash
-planton runner deploy prod-runner
+planton runner deploy prod-runner --token prt_...
 ```
 
-This command prompts you to select a deployment target and walks through the target-specific configuration. You can also specify `--image-tag` to pin a specific runner version.
+This command ships the runner token into the target's secret store and deploys the runner container — the runner enrolls itself on first boot and appears in your Runners list the moment it joins. The runner does not need to exist yet: deploying a new name registers it on arrival. The command prompts you to select a deployment target and walks through the target-specific configuration; you can also specify `--image-tag` to pin a specific runner version. Re-deploys (image bumps) never re-ask for the token — they reuse the secret already sitting in the target.
 
 ### Kubernetes
 
@@ -134,11 +90,11 @@ Deploys the runner using a Helm chart. This is the most common deployment target
 **Prerequisites:**
 - `kubectl` configured with access to the target cluster
 - Helm 3 installed
-- Runner credentials (generated during registration)
+- A runner token
 
 **What gets deployed:**
-- A Deployment running the runner container
-- A Secret containing the `credentials.json` file
+- A Deployment running the runner container, with a writable volume where the runner persists the identity document it receives at enrollment
+- A Secret containing the runner token
 - A Kubernetes ServiceAccount (if using runner-delegated auth with Workload Identity or IRSA)
 
 **When to use Kubernetes:**
@@ -184,6 +140,31 @@ Deploys the runner as an always-on Container App. Similar to Cloud Run, minimum 
 - Your infrastructure is primarily on Azure
 - You want a managed container runtime with Azure-native identity integration
 - You need the runner to use Managed Identity for authentication
+
+## Declarative Deployment from the Catalog
+
+Every deployment target above also exists as a first-class catalog component, so a runner can be declared in a manifest, composed into an infra-chart beside the network it serves, and managed through the same deploy pipeline as everything else:
+
+| Catalog Kind | Substrate |
+|--------------|-----------|
+| `AwsPlantonRunner` | AWS ECS (Fargate) |
+| `GcpPlantonRunner` | GCP Cloud Run |
+| `AzurePlantonRunner` | Azure Container Apps |
+| `KubernetesPlantonRunner` | Any Kubernetes cluster (the official Helm chart) |
+
+Each kind's spec carries the runner token as a managed-secret reference — on Planton, the platform mints a token and writes it at exactly that reference before the infrastructure applies, so declaring a runner is genuinely one step:
+
+```yaml
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: vpc-runner
+spec:
+  region: us-central1
+  token: $secret/vpc-runner-token
+```
+
+The deployed runner enrolls itself on first boot and appears in your Runners list the moment it joins — exactly the same arrival story as a CLI deploy. Each kind models its substrate's real placement surface (subnets and task roles on AWS, direct VPC egress and service accounts on GCP, the Container App Environment on Azure, the namespace and chart values on Kubernetes); see each component's catalog page for the full specification.
 
 ## Default Runner Binding
 

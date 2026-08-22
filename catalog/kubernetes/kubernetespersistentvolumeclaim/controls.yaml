@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetespersistentvolumeclaim
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: storage_class_name
+      evidence:
+        type: spec_default
+        reference: Encryption at rest is the provisioning StorageClass's property, carried in its driver parameters (e.g. `encrypted "true"` on the AWS EBS driver) -- the claim inherits whatever the selected class declares. Omitted means the cluster's default class, whose encryption posture the claim cannot see.
+      notes: The claim itself has no encryption field -- selecting an encrypting class is how this control is satisfied.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: storage_class_name
+      evidence:
+        type: spec_default
+        reference: Customer-managed keys are likewise StorageClass driver parameters (e.g. a KMS key ID on cloud CSI drivers) -- satisfied by selecting a class configured with the customer's key, not by any field on the claim.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A volume is attached to nodes over the driver's storage protocol -- whether that path is encrypted is the CSI driver's and the cloud fabric's property, with no seam on the claim.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: A PersistentVolumeClaim is never network-reachable -- it is mountable only by pods in its own namespace on the cluster. The module (iac/tf/main.tf, iac/pulumi/module/persistentvolumeclaim.go) creates the claim and nothing else.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network endpoint exists to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Storage serves no edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec models no identity seam -- who may read or mutate the claim (and mount it, via pod scheduling) is governed by the target cluster's namespace RBAC, outside this manifest.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A volume runs no code and holds no identity -- workload identity belongs to the pods that mount it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication protocol exists on a volume.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the claim are Kubernetes API operations, captured by the target cluster's audit policy -- no component-level audit seam exists.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Capacity and usage metrics for bound claims (kubelet_volume_stats_*) are exported by the kubelet automatically wherever the volume is mounted -- there is no exporter to wire on the claim itself.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: data_source
+      evidence:
+        type: spec_default
+        reference: "Unset provisions an empty volume. Setting data_source populates the new claim from a VolumeSnapshot (restore) or an existing claim (clone) -- the RECOVERY half of the control, exercised by the 04-clone-from-claim preset. Producing snapshots is a separate VolumeSnapshot object outside this spec, and the operation's constraints are the CSI driver's (verified on EBS: clones are snapshot-then-restore and refuse unencrypted sources)."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: This component creates no backups (see backup-recovery) -- snapshot retention lives with the VolumeSnapshot objects and the driver's snapshot store, outside this spec.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A dynamically provisioned block volume is typically ZONAL -- it lives in one zone and pins its consumers there. Replication across zones is the backing driver's property (shared-filesystem classes like EFS are regional), with no seam on the claim.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes' pvc-protection finalizer blocks deletion only WHILE a pod uses the claim. Whether the underlying volume survives the claim's deletion is the StorageClass's reclaim policy (Retain vs Delete) -- the class's property, not the claim's. No deletion-protection flag exists on the claim itself.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A volume has no software to patch -- CSI driver upgrades are cluster operations.

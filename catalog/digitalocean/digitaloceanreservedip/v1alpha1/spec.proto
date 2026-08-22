@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanreservedip.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/region.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// DigitalOceanReservedIpSpec models a DigitalOcean reserved IP address --
+// one product concept covering the provider's four resources
+// (digitalocean_reserved_ip / digitalocean_reserved_ipv6 and their
+// assignment resources): a static public IP reserved in a region, IPv4 or
+// IPv6, optionally assigned to a droplet. The v4/v6 API asymmetries
+// (argument names, inline-assign vs assignment-resource, read-back and
+// delete behavior) are absorbed by the IaC modules, never surfaced here.
+//
+// BILLING: an UNASSIGNED reserved IPv4 accrues charges (~$5/month,
+// prorated hourly) precisely because it holds capacity without a droplet;
+// an assigned one is free. Reserved IPv6 addresses are free either way.
+// Destroy the resource when the address is no longer needed -- an orphaned
+// reservation bills forever.
+message DigitalOceanReservedIpSpec {
+  // (Optional) IP version to reserve: ipv4 or ipv6. When unset, ipv4 is
+  // reserved. Cannot be changed after creation -- switching versions
+  // replaces the reservation with a new address.
+  string ip_version = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ipv4",
+        "ipv6"
+      ]
+    },
+    (dev.planton.shared.options.recommended_default) = "ipv4"
+  ];
+
+  // The DigitalOcean region to reserve the address in. A reserved IP can
+  // only be assigned to droplets in the same region. Changing it replaces
+  // the reservation with a new address.
+  DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
+
+  // (Optional) The droplet to assign the reserved IP to. Use a literal
+  // numeric droplet ID or a reference to a DigitalOceanDroplet resource.
+  // Assigning, re-pointing, and unassigning all apply in place -- the
+  // reserved address itself never changes. When unset, the address stays
+  // reserved but unassigned (which is exactly the state that BILLS for
+  // IPv4 -- see the message comment).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef droplet = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
+  ];
+}

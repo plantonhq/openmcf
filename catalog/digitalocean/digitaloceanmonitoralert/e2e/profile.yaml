@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanmonitoralert
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` is a droplet CPU alert with the
+  # droplet targeted by REFERENCE (annotation-composed fixture, ~1 min
+  # create, ~$0.009/hour); `tag-targeted` proves the tags-only targeting
+  # path plus enabled=false with no fixture at all. Deliberately not in
+  # the live lanes: slack delivery (needs a real webhook URL -- an
+  # environmental gate), load-balancer and database metric families (same
+  # entities wiring the droplet lane proves; LB/cluster fixtures cost
+  # minutes for no new code path -- ride whichever proof session pays for
+  # those fixtures). Watch item: alert emails may need to be verified
+  # account members -- if the API rejects e2e@planton.cloud, switch to the
+  # account's own email and record the constraint. Policies are free API
+  # objects; the droplet fixture dominates lane time.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

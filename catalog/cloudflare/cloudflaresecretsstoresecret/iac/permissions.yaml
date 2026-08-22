@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflaresecretsstoresecret
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageSecret
+        name: Secrets Store Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Create the secret via POST /accounts/{account_id}/secrets_store/stores/{store_id}/secrets, update value/scopes/comment via PATCH /accounts/{account_id}/secrets_store/stores/{store_id}/secrets/{secret_id}, and delete it via DELETE on the same path (derived from the module's API surface). Covers the Terraform module's single cloudflare_secrets_store_secret resource and the Pulumi module's matching SecretsStoreSecret resource; neither engine performs secondary lookups or data-source reads. Name note: the Secrets Store access-control page (https://developers.cloudflare.com/secrets-store/access-control/, retrieved 2026-08-22) spells the product's write level \"Account Secrets Store Edit\", but the provider's own permission-group inventory -- the source token creation validates against and this catalog's gate proves against -- defines \"Secrets Store Write\" at account scope (retrieved 2026-08-22); the docs carry the dashboard-flavored spelling."
+      - purpose: ReadSecret
+        name: Secrets Store Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Refresh/import the secret's metadata (name, scopes, comment -- the value is write-only and never returned) via GET /accounts/{account_id}/secrets_store/stores/{store_id}/secrets/{secret_id} (derived from the module's API surface). Name note: the access-control page spells it \"Account Secrets Store Read\"; the provider's inventory defines \"Secrets Store Read\" (retrieved 2026-08-22)."

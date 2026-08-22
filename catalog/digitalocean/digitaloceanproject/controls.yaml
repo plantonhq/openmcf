@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanproject
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A project is an organizational container storing no data of its own; data at rest lives on the member resources, each with its own posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A project has no endpoints and serves no traffic.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A project has no network surface; exposure is a property of the member resources.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: DigitalOcean projects group resources for organization and billing views; they carry no access-control grants (team member permissions are account-level, outside this resource).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A project authenticates nothing; there is no identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface at all.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-project audit surface through this resource; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Projects emit no metrics; monitoring targets the member resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A project is metadata, recreated by IaC. Destroying it relocates members to the account's default project -- nothing inside is ever destroyed, so there is nothing to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A project is account metadata with no placement or availability posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for projects, but deletion is inherently non-destructive -- members are relocated to the default project, never destroyed, and the API refuses to delete the account's default project.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing to patch; a project runs no software.

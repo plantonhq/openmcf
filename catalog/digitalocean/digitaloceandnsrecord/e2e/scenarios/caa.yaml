@@ -1,0 +1,31 @@
+# CAA DigitalOceanDnsRecord: proves the flags/tag argument class (the one
+# per-type surface the SRV scenario does not touch) on the zone registry
+# prerequisite. flags=0 is the standard non-critical value; the provider
+# drops an explicit 0 from the create request and the API defaults it to 0,
+# so the round-trip must agree.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsRecord
+metadata:
+  name: planton-oss-e2e-digitaloceandnsrecord-caa
+  id: planton-oss-e2e-digitaloceandnsrecord-caa
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandnsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domain:
+    valueFrom:
+      kind: DigitalOceanDnsZone
+      name: planton-oss-e2e-digitaloceandnszone-min
+      fieldPath: status.outputs.zone_name
+  name: "@"
+  type: CAA
+  value:
+    value: letsencrypt.org
+  flags: 0
+  tag: issue

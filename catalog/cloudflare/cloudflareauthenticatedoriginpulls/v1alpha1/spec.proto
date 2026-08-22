@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareAuthenticatedOriginPullsSpec manages a zone's Authenticated
+// Origin Pulls enablement: the zone-wide toggle that makes Cloudflare present
+// a client certificate when pulling from your origin, and the per-hostname
+// associations that pin specific hostnames to specific uploaded certificates.
+// The origin server completes the story by requiring and validating that
+// client certificate -- Cloudflare's side alone protects nothing.
+//
+// Destroy semantics differ per surface, and neither is a delete: the
+// zone-wide toggle has NO delete at Cloudflare (destroying this resource
+// abandons whatever value is live), and a hostname association is removed by
+// a revert write (enabled: null) that voids it. Plan teardown accordingly --
+// disable explicitly before destroying when the zone outlives this resource.
+message CloudflareAuthenticatedOriginPullsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_surface"
+    message: "set zone_enabled and/or at least one hostname association -- an empty spec manages nothing"
+    expression: "has(this.zone_enabled) || this.hostname_associations.size() > 0"
+  };
+
+  // The zone whose Authenticated Origin Pulls surface is managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The zone-wide Authenticated Origin Pulls toggle. Leave unset to not
+  // manage the toggle at all (associations can be managed independently);
+  // set true/false to assert it. The toggle uses the zone's Universal SSL
+  // client certificate unless hostname associations pin uploaded ones.
+  optional bool zone_enabled = 2;
+
+  // Per-hostname associations pinning hostnames to uploaded client
+  // certificates (see CloudflareAuthenticatedOriginPullsCertificate). Each
+  // row is its own association at Cloudflare; hostnames must be unique.
+  repeated CloudflareAuthenticatedOriginPullsHostnameAssociation hostname_associations = 3;
+}
+
+// CloudflareAuthenticatedOriginPullsHostnameAssociation pins one hostname to
+// an uploaded client certificate.
+message CloudflareAuthenticatedOriginPullsHostnameAssociation {
+  // The hostname the association covers. Must belong to the zone.
+  string hostname = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The uploaded client certificate the hostname uses (a hostname-scoped
+  // upload from CloudflareAuthenticatedOriginPullsCertificate). Leave unset
+  // to toggle the hostname using the zone-level certificate material.
+  // When using value_from, defaults to CloudflareAuthenticatedOriginPullsCertificate
+  // kind and status.outputs.certificate_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareAuthenticatedOriginPullsCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_id"
+  ];
+
+  // Whether the association is active. Unset means active (true) -- both
+  // engines send true when omitted, because Cloudflare treats a null here as
+  // "void the association" and a declared row is meant to exist. Set false
+  // to keep the row present but inactive.
+  optional bool enabled = 3;
+}

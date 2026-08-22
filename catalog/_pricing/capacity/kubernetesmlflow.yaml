@@ -1,0 +1,53 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesMlflow manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesmlflow.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. The tracking server is
+# the one scalable pod class; the sqlite backend and local artifact
+# volumes are singleton PVCs (the spec contract caps replicas at 1
+# whenever either exists), so they bind as constant-1 workloads.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesmlflow
+spec:
+  workloads:
+    - label: server
+      resources_path: server.resources
+      instances:
+        field_value:
+          field_path: server.replicas
+          default_when_unset: "1"
+    - label: backend store
+      instances:
+        constant: "1"
+      volumes:
+        - label: tracking data
+          size_path: backend_store.sqlite_pvc.storage_size
+    - label: artifact store
+      instances:
+        constant: "1"
+      volumes:
+        - label: artifacts
+          size_path: artifact_store.pvc.storage_size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: a backend or artifact pvc block declared without a size is stated at its 5Gi or 10Gi spec-declared default; with no pvc block at all the modules still provision the volume, a reservation this footprint cannot count
+    - applies_when:
+        - field_path: artifact_store
+          op: is_set
+        - field_path: artifact_store.pvc
+          op: is_unset
+      text: object storage in the configured artifact bucket grows with every logged model and dataset
+    - applies_when:
+        - field_path: backend_store
+          op: is_set
+        - field_path: backend_store.sqlite_pvc
+          op: is_unset
+      text: the external backend store is a separate component whose capacity rides its own footprint
+    - applies_when:
+        - field_path: gc
+          op: is_set
+      text: the gc CronJob pod reserves capacity only while a scheduled run executes

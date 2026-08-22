@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The profile carries the QUERY side of
+# Traffic Manager's split bill: DNS queries answered bill here per million,
+# while the per-endpoint health-check fees (basic, fast-interval add-on,
+# HTTPS add-on, nested) land on each AzureTrafficManagerEndpoint -- even
+# though two of those add-ons are switched by THIS spec's monitor
+# configuration. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuretrafficmanagerprofile
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: dns_config.ttl_seconds
+      sku_meter: DNS queries
+      pricing_unit: 1M queries
+      impact: "Queries that reach Traffic Manager's name servers bill $0.54 per million for the first billion each month and $0.375 per million beyond (Global meter, Retail Prices API, retrieved 2026-08-18) -- and the TTL is the throttle: recursive resolvers answer from cache for ttl_seconds free of charge, so halving the TTL (faster failover visibility) roughly doubles the billable query count."
+    - field_path: monitor_config.interval_in_seconds
+      sku_meter: fast interval health check add-on
+      pricing_unit: endpoint-months
+      impact: "30 (the default) is included in each endpoint's basic monitoring fee; 10 switches on the fast-interval add-on -- $1.00 per Azure endpoint-month, $2.00 per external endpoint-month (Global meters) -- billed on EVERY endpoint this profile monitors. A profile-level switch whose money lands per endpoint, on the endpoint components."
+    - field_path: monitor_config.protocol
+      sku_meter: HTTPS health check add-on
+      pricing_unit: endpoint-months
+      impact: "HTTPS probes bill their own add-on -- $1.00 per Azure endpoint-month, $2.00 per external endpoint-month (Global meters) -- on every monitored endpoint; HTTP and TCP probe within the basic fee alone. The same profile-switch-endpoint-charge coupling as the fast interval."
+    - field_path: traffic_view_enabled
+      sku_meter: Traffic View data points processed
+      pricing_unit: 1M data points
+      impact: "On, every query the profile receives becomes a Traffic View data point at $2.00 per million (Global meter) -- roughly quadrupling the marginal per-query cost at first-tier query rates in exchange for per-region latency and volume analytics. Off (the default and both presets) it bills nothing."
+    - field_path: enabled
+      sku_meter: DNS queries
+      pricing_unit: 1M queries
+      impact: "False parks the profile -- its DNS name stops resolving to endpoints, so the query meter stops accruing while the configuration survives. The endpoints' monthly monitoring fees are governed on the endpoint components (each has its own enabled drain switch)."
+  estimate_exclusions:
+    - DNS query volume follows client traffic shaped by resolver caching -- no manifest can predict it, and it is the only meter that bills against the profile object itself
+    - every monitored endpoint bills its flat monthly health-check fee on its own AzureTrafficManagerEndpoint component -- $0.36 per Azure endpoint-month, $0.54 per external endpoint-month, $10.00 per nested endpoint-month (Global meters)
+    - the fast-interval and HTTPS probe add-ons this profile's monitor configuration switches ($1.00 Azure / $2.00 external per endpoint-month each) multiply across every monitored endpoint, landing on the endpoint components' lines
+    - Traffic View, when enabled, bills $2.00 per million data points processed (one per query received)
+    - Real User Measurements is a separate opt-in ingestion outside this spec, currently listed at $0.00 per million measurements on the Global meter
+    - the destinations the profile steers toward -- app services, gateways, external systems, child profiles -- bill on their own components; Traffic Manager never carries their traffic
+  notes: "Traffic Manager's bill splits cleanly along the component boundary: queries answered bill against the profile (this component), monitoring fees bill per endpoint (the AzureTrafficManagerEndpoint component) -- with the one crossing worth knowing: the fast-interval and HTTPS probe add-ons are SWITCHED here in monitor_config but CHARGED per monitored endpoint, so changing this profile's probe settings repriced every endpoint it monitors. Because the steering happens in DNS, there is no data-processing meter anywhere: the profile answers a lookup and steps out of the path. All rates are Global meters with one worldwide price, read from the Retail Prices API on 2026-08-18; source pages https://azure.microsoft.com/en-us/pricing/details/traffic-manager/ and https://prices.azure.com."

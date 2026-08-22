@@ -1,0 +1,33 @@
+# Offline-plan-only manifest exercising the skip action's per-rule targeting:
+# the rules map (ruleset ID -> rule IDs to skip) plus the sibling skip
+# surfaces. Skipping specific rules requires REAL ruleset/rule IDs from the
+# account (32-char hex), so this arm is proven by `tofu plan` rather than a
+# live scenario -- a live arm would first have to create and introspect a
+# second ruleset to learn its rule IDs.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareRuleset
+metadata:
+  name: test-skip-rules
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  ruleset_kind: zone
+  phase: http_request_firewall_custom
+  name: "Test skip specific rules"
+  rules:
+    - ref: "skip-managed-rules-for-webhooks"
+      expression: 'http.request.uri.path starts_with "/webhooks"'
+      action: skip
+      description: "Skip two noisy managed rules for the webhook path"
+      enabled: true
+      action_parameters:
+        rules:
+          "4814384a9e5d4991b9815dcfc25d2f1f":
+            values:
+              - "8ac8bc2a661e475d940980f9317f28e1"
+              - "c5c99e838a1c45f18708dc96f26a8925"
+    - ref: "block-scrapers"
+      expression: '(cf.client.bot) and not (cf.verified_bot_category in {"Search Engine Crawler"})'
+      action: block
+      description: "Block unverified bots"
+      enabled: true

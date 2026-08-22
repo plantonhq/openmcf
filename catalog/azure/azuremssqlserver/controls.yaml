@@ -67,6 +67,9 @@ spec:
         type: spec_default
         reference: Default false -- SQL password logins stay accepted alongside Entra. Setting true disables SQL authentication server-wide, making directory tokens the ONLY way in; the spec's CELs then force the SQL credentials (administrator_login/administrator_password) to be omitted entirely, so no password exists even in configuration.
       notes: Azure's recommended posture for passwordless estates, and the switch auditors look for -- ARM also rejects password changes while it is true.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: extended_auditing

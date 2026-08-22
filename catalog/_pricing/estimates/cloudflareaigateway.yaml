@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: cloudflareaigateway
+spec:
+  presets:
+    - preset: 01-guarded-gateway
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - "ARMED by this preset: guardrails (prompt.p1 BLOCK) runs every guarded prompt and response through Workers AI token-based inference -- zero requests bill zero dollars, but the first guarded request starts this Cloudflare-side meter, and cost scales with prompt and response length"
+        - the AI Gateway Logpush delivery meter (Workers Paid plan, $0.05 per million requests past 10 million/month) never starts -- this preset leaves logpush unset
+        - spend at the model providers the gateway fronts tracks request and token volume no manifest can predict -- the gateway meters none of it on Cloudflare's side; this preset's spend_limits rules exist to cap exactly that provider-side spend
+      notes: Zero committed cost -- guardrails carries no flat fee and bills only per evaluation (zero traffic means zero evaluations, per Cloudflare's AI Gateway pricing, retrieved 2026-08-22), so an idle guarded gateway costs nothing. The zero states commitment-absence, not freedom from metering -- see the armed-meter exclusion.
+    - preset: 02-routed-gateway
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the Workers AI token-based inference meter for guardrail evaluations never starts -- this preset leaves guardrails unset
+        - the AI Gateway Logpush delivery meter (Workers Paid plan, $0.05 per million requests past 10 million/month) never starts -- this preset leaves logpush unset
+        - spend at the model providers the gateway routes to (Workers AI llama for the cheap tier, OpenAI gpt-4o for the smart tier) tracks request and token volume no manifest can predict -- the gateway meters none of it on Cloudflare's side
+      notes: Zero committed cost -- the gateway's core features (routing, caching, rate limiting, log collection within the stored-log cap) are free on every Cloudflare plan; this preset configures dynamic routing between providers, not a Cloudflare-side meter.

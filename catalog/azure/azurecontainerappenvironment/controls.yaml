@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappenvironment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "The environment is a hosting boundary, not a data store -- workload logs land in the linked Log Analytics workspace (encrypted at rest there, under that component's posture), and app data lives wherever the apps write it. The two secret-bearing spec fields (the Dapr Application Insights connection string and the custom-domain certificate blob) are write-only configuration handled as secrets by the platform."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "No data at rest of its own to key (see enc-at-rest). CMK for the log store is the AzureLogAnalyticsWorkspace component's choice."
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: mutual_tls_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is false: app-to-app traffic inside the environment rides the platform network unencrypted. Setting it true makes Azure issue per-app certificates and encrypt plus authenticate ALL east-west traffic (mTLS)."
+      notes: "Preset 02-workload-profiles-vnet enables it; 01-consumption leaves the default. Inbound TLS to apps is the apps' own ingress posture (HTTPS-only by their default); mTLS costs latency and peak throughput under load, which is why it is a choice."
+    - control_id: no-public-access
+      status: configurable
+      field_path: internal_load_balancer_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is false (external mode: apps can be given public endpoints). True puts the environment behind an internal load balancer -- every app resolves to a private IP and nothing is internet-reachable; requires VNet injection (infrastructure_subnet_id), spec-enforced."
+      notes: "Preset 02 is VNet-injected and internal; preset 01 is external. public_network_access DISABLED additionally pins the platform-level answer for private-endpoint compositions (ENABLED cannot be combined with the internal load balancer, spec-enforced)."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Source filtering happens at the layers around the environment, not on it: per-app ip_security_restrictions on each app's ingress, and NSGs on the infrastructure subnet for VNet-injected environments -- both are other components' manifests. What THIS spec decides is the exposure class (external, internal, private-endpoint-only via public_network_access)."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No WAF attachment point exists on the environment -- request filtering is composed in front (Azure Front Door or Application Gateway with a WAF policy), typically with an internal environment so traffic cannot bypass the edge."
+    - control_id: rbac
+      status: not_applicable
+      notes: "Management access is subscription/resource-group RBAC posture, not a component choice. Worth knowing when operating one: destroying or replacing the environment takes every app, job, storage registration, and Dapr component in it down -- who holds write on it matters more than on any single app."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset, the environment holds no Azure identity; the identity block attaches a system-assigned and/or user-assigned managed identity used by environment-level platform operations (for example Key Vault certificate reads for custom domains, image pulls for jobs)."
+      notes: "Preset 02 attaches a system-assigned identity. Per-app workload identity is each app's own identity block on its own component."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The environment exposes no authentication plane of its own to strengthen or disable. Custody teaching for its two static-credential fields: dapr_application_insights_connection_string embeds an instrumentation key (a telemetry write credential, ForceNew because ARM never returns it), and custom_domain.certificate_blob_base64 bundles a private key -- both ride the manifest as secrets, so manifest custody is their access control."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Control-plane changes land in the Azure Activity Log as subscription-level posture; the environment offers no separate audit knob. What the workloads do is visible through the log destination this spec wires (see monitoring-integration)."
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: logs_destination
+      evidence:
+        type: spec_default
+        reference: "Unspecified without a workspace, application logs are streaming-only -- visible live, never stored. LOG_ANALYTICS (with log_analytics_workspace_id, pairing spec-enforced) persists every app's console and system logs for KQL queries, alert rules, and dashboards; AZURE_MONITOR routes through diagnostic settings configured on the environment."
+      notes: "Both presets wire LOG_ANALYTICS to a workspace. This is the single logging switch for every workload in the environment -- apps and jobs inherit it with no field of their own."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Configuration-only -- the environment recreates from infrastructure-as-code. The blast radius worth knowing: name, region, resource group, subnet, ILB mode, and zone redundancy are all ForceNew, and recreating the environment destroys every app in it and changes the default domain (and static IP), breaking whatever DNS pointed at it."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery). Log retention is the linked workspace's policy on its own component."
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zone_redundancy_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is false. True spreads the environment's infrastructure across the region's availability zones (typically 3); requires VNet injection (infrastructure_subnet_id), spec-enforced, and is ForceNew."
+      notes: "Preset 02 enables it. Zone redundancy makes zone spread AVAILABLE -- individual apps still need 2+ replicas (their own min_replicas) to actually stand in more than one zone at once."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Microsoft.App/managedEnvironments nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the environment deletes every workload in it -- the strongest argument for a lock at the resource-group level."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed platform -- Microsoft owns and patches the hosts, orchestration layer, and platform infrastructure beneath the environment; no customer-visible patch surface exists, on Consumption or Dedicated profiles alike."
+      notes: "Container image contents remain each workload's build responsibility."

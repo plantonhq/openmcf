@@ -60,6 +60,9 @@ spec:
       evidence:
         type: spec_default
         reference: Anonymous plaintext NFS -- the protocol's own baseline -- stays open until a policy closes it. A file system policy that requires IAM authentication and denies aws:SecureTransport false disables both weak paths at once, which is exactly the pattern the spec documents for this field.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

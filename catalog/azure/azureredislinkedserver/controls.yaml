@@ -36,6 +36,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication paths of its own; the access-key-versus-Entra decision is each cache's posture and should match across the pair so a failover does not change the accepted auth methods.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Link creation and deletion (including failover-by-unlink) are control-plane operations landing in the Azure Activity Log as subscription-level posture.

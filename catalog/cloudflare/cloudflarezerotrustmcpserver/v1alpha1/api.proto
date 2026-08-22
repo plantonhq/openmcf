@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustmcpserver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustmcpserver/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustmcpserver/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustMcpServer is a KRM-style resource for registering MCP
+// tool servers with Access AI Controls, to be published through MCP portals.
+message CloudflareZeroTrustMcpServer {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustMcpServer'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustMcpServerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustMcpServerStatus status = 5;
+}
+
+// CloudflareZeroTrustMcpServerStatus represents the observed state of the
+// server registration.
+message CloudflareZeroTrustMcpServerStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustMcpServerStackOutputs outputs = 1;
+}

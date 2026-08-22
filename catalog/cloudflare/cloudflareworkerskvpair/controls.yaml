@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract, the official modules, and Cloudflare's own documentation
+# (Workers KV data security page, retrieved 2026-08-22). Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareworkerskvpair
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The entry's value is stored in Workers KV, and Cloudflare's KV data security page states \"All values stored in KV are encrypted at rest. Encryption and decryption are automatic, do not require user configuration to enable\" using AES-256 in GCM mode (https://developers.cloudflare.com/kv/reference/data-security/, retrieved 2026-08-22)."
+      notes: Encryption at rest is not secrecy in the manifest -- the spec's own contract states KV values are not treated as secrets and directs credentials to a Worker secret binding or Cloudflare Secrets Store instead of this kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Workers KV exposes no customer-managed-key surface -- the same data security page states \"Encryption keys are managed by Cloudflare and securely stored in the same key management systems we use for managing encrypted data across Cloudflare internally.\""
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The KV data security page states data transfer between a Worker (or nodes within Cloudflare's network) and KV is secured with TLS/SSL, and \"API access via the HTTP API or using the wrangler command-line interface is also over TLS/SSL (HTTPS)\" (https://developers.cloudflare.com/kv/reference/data-security/, retrieved 2026-08-22)."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The entry has no public endpoint -- it is readable only through a Worker's kv_namespace binding on the parent namespace inside Cloudflare's network, or the token-authenticated HTTPS management API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network listener to filter -- access is governed by identity (Worker bindings and API-token scopes), not by network sources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The entry receives no HTTP requests of its own -- a web application firewall would sit in front of the Worker that reads it, not the store.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access is governed by Cloudflare's account-level token model (the Workers KV Storage Read/Write permission groups) and by which Workers bind the parent namespace -- there is no per-key access control anywhere in Workers KV, so the spec has no field for it.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A Worker reads the entry exclusively through its kv_namespace binding on the parent namespace -- a platform-issued capability. No store credential exists for a workload to hold.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workers KV exposes no wire protocol and no username/password authentication -- the only access paths are the Worker binding and the token-authenticated HTTPS API, so no weaker legacy path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations land in Cloudflare's account-level audit logs as account-wide posture; no per-entry audit surface exists.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: KV analytics are namespace- and account-level dashboard/GraphQL features; a single entry has no monitoring surface of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Cloudflare offers no backup or point-in-time recovery for Workers KV -- but this kind exists precisely so the entry is versioned INFRASTRUCTURE: the manifest is the recoverable source of truth, and re-applying it restores the entry exactly."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The entry lives in Workers KV's globally distributed store with no placement for this spec to configure -- there is no availability topology to choose.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Cloudflare API nor either official module exposes deletion protection for KV entries; deleting the pair (or its parent namespace) succeeds whenever the credential allows.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workers KV is a fully managed serverless service -- Cloudflare operates and patches the storage and serving infrastructure; no version or maintenance surface exists on an entry.

@@ -1,0 +1,45 @@
+# Safe-surfaces scenario: proves all three folded lifecycles in one lane --
+# drift-safe settings toggles (activity_log, protocol_detection -- the
+# fields the provider's own tests exercise without permanent drift), the
+# COMPLETE logging tree, and one PAC file (the real-delete arm). The
+# drifting block_page fields and the certificate-gated hazards
+# (tls_decrypt / fips / deep body_scanning) stay in the offline plan arm
+# (e2e/hazard-plan.yaml). The proof lane captures prior settings/logging
+# values before this runs and restores them afterward.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewaySettings
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustgatewaysettings-safe-surfaces
+  id: planton-oss-e2e-cloudflarezerotrustgatewaysettings-safe-surfaces
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustgatewaysettings
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  settings:
+    activity_log:
+      enabled: true
+    protocol_detection:
+      enabled: false
+  logging:
+    redact_pii: false
+    settings_by_rule_type:
+      dns:
+        log_all: false
+        log_blocks: true
+      http:
+        log_all: false
+        log_blocks: true
+      l4:
+        log_all: false
+        log_blocks: false
+  pac_files:
+    - name: e2e-pac-${E2E_RUN_ID}
+      contents: 'function FindProxyForURL(url, host) { return "DIRECT"; }'
+      description: planton-e2e run-scoped PAC file

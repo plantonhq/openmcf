@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetescronjob
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A scheduled run stores no data of its own -- pods write wherever the job's code writes (an object store, a database), and encryption at rest is those targets' property. Secret env material rests in etcd under the cluster's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data at rest of its own (see enc-at-rest), there is no key to manage; keys apply to the systems the job writes to.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Run pods make outbound connections with whatever protocol the job's code speaks -- the spec models no TLS seam. Transport encryption is the job code's own configuration toward its targets.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no Service and no exposure of any kind -- run pods are unreachable except pod-to-pod inside the cluster network, and they exist only while a scheduled run executes.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Run pods accept no inbound traffic -- there is no ingress path to restrict. Kubernetes NetworkPolicies (separate resources) can restrict the pods' outbound reach.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Scheduled batch work serves no edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: job_template.pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset runs each run's pods as the namespace's default ServiceAccount, which carries no Kubernetes API permissions; setting it binds them to a dedicated identity whose permissions are granted declaratively through KubernetesRbac resources. The module itself never creates ServiceAccounts or RBAC objects.
+      notes: Management-plane access (the CronJob object itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: job_template.pod.service_account
+      evidence:
+        type: spec_default
+        reference: Unset means run pods hold no cloud identity; referencing a KubernetesServiceAccount resource attaches an identity whose own workload_identity configuration federates to cloud APIs (EKS IRSA, GKE Workload Identity, AKS Workload Identity) without static credentials -- how a nightly backup reaches its object store keylessly.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec models no authentication protocol -- how the job's code authenticates to its targets is the job's own configuration.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the CronJob and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. Run logs stream to stdout; successful_jobs_history_limit and failed_jobs_history_limit retain finished Jobs (and their pod logs) for inspection -- the 01-nightly-backup preset keeps 7 successes and 3 failures.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: job_template.pod.annotations
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; prometheus.io scrape annotations stamped on the run pods are the conventional discovery seam, though short-lived pods usually report through a push gateway or the job code's own emission instead. The module wires no exporter.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A run has no state of its own to back up -- its entire definition is the declarative manifest. Whether the work's OUTPUT is durable (e.g. the backups a backup job produces) is the property of the target the job writes to.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so no retention applies.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Scheduled run-to-completion work has no replica set to spread -- a run's pods schedule wherever the cluster places them, and a failed run retries per backoff_limit. Missing a zone outage is handled by the next scheduled run, optionally bounded by starting_deadline_seconds.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on CronJobs; protection is operational (namespace RBAC, change review). suspend pauses future scheduling without deleting anything -- a safer lever than deletion for stopping a schedule.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Each run executes exactly the image the manifest pins -- there is no managed patch channel. Patch cadence is the image owner's build pipeline (the deploy-target contract injects fresh artifacts at spec.job_template.container.app.image); the next scheduled run picks up whatever the manifest then declares.

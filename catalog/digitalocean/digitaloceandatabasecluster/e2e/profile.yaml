@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceandatabasecluster
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. THREE scenarios: `minimal` is a single-node PostgreSQL on
+  # the cheapest slug proving the create/verify/destroy lifecycle and the
+  # connection outputs; `mysql-full` composes the VPC fixture and proves
+  # private networking, custom storage (the bare-MiB string wiring), a
+  # maintenance window, sql_mode, and tag composition; `valkey` proves one
+  # of the newer engines plus eviction_policy. Deliberately not in the
+  # live lanes: storage_autoscale (Pulumi SDK v4.49.0 gap -- Terraform
+  # wires it; Pulumi fails loudly if set), backup_restore (needs an
+  # existing cluster backup in the account), project_id (needs an existing
+  # DigitalOcean project UUID), kafka (3-node minimum makes it the most
+  # expensive arm -- prove after the cheap lanes are green), opensearch
+  # ui_* outputs (opensearch lane deferred with kafka for the same cost
+  # reason). Managed clusters take ~5 minutes to create and bill hourly;
+  # db-s-1vcpu-1gb is ~$0.02/hour, so a full three-scenario dual-engine
+  # sweep costs well under a dollar.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 35

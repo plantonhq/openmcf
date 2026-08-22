@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesvalkey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The dataset rests on the PersistentVolumes the target cluster's storage class provisions (when persistence is declared at all); encryption at rest is a property of that storage, owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Unset serves plaintext (the chart default); tls.enabled with certificate_secret serves client connections over TLS from a kubernetes.io/tls Secret -- the cert-manager seam (issue a KubernetesCertificate and wire its secret here) -- and require_client_certificate adds mutual TLS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders only in-cluster exposure -- the write, read, headless, and metrics Services default to ClusterIP. LoadBalancer or NodePort exposure is an explicit opt-in through service.type or replication.read_service.type.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may connect; access control is ACL authentication (see rbac) and Kubernetes NetworkPolicies composed as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An in-memory data store serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: Unset means AUTH OFF -- the chart default, where anyone with network reach has full access (acceptable only behind NetworkPolicies or for development). Declaring ACL users requires credentials, with per-user permission rule strings scoping commands and keys; passwords land in the <name>-auth Secret, never in rendered chart values.
+      notes: Both presets declare the default user with a password. The spec's own validation requires the "default" user whenever auth is declared.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component reaches no cloud APIs -- there is no backup-to-object-store or other cloud surface to authenticate, so there is nothing to federate a workload identity for.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: Unset leaves the chart's auth-off posture, where unauthenticated clients have full access; declaring auth.users closes that path, and the spec's validation forces the "default" user to be among them -- without an explicit default user, unauthenticated clients would retain full access and enabling auth would be meaningless.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- server logs stream to stdout at the declared log_level for the cluster's log collector. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics
+      evidence:
+        type: spec_default
+        reference: Unset ships no metrics; metrics.enabled runs the chart's redis_exporter sidecar with a metrics Service, and metrics.service_monitor_enabled adds a ServiceMonitor for the Prometheus operator (whose CRDs must exist on the cluster).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No backup mechanism is modeled -- durability comes from append-only-file and RDB persistence on the PersistentVolume (config.append_only, persistence), which makes pod restarts lossless but is not a restorable backup archive. Volume snapshots are the cluster's storage-class concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replication
+      evidence:
+        type: spec_default
+        reference: Omitted runs a single standalone instance; the replication block runs one primary plus N replicas (chart default 2) with streaming replication and a read Service. Note what replication is NOT -- automated failover; the chart ships no Sentinel, so a dead primary is restarted by Kubernetes rather than a replica being promoted.
+      notes: Spreading pods across zones needs the chart's topology fields through the helm_values escape hatch -- the typed spec has no anti-affinity seam. The 02-persistent-with-replicas preset runs 2 replicas with min_replicas_to_write=1.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release. persistence.keep_on_uninstall retains the standalone PVC (and the dataset on it) when the release is uninstalled -- a data-survival seam, not deletion protection. The PodDisruptionBudget (replication mode only) guards against voluntary eviction, not deletion.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version defaults to the module's pinned chart (0.11.0, shipping Valkey 9.1.1); upgrading is a deliberate act -- change the pin and the release re-runs with the new chart, and image.tag pins a specific Valkey version independently.

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasereplica.v1alpha1;
+
+// DigitalOceanDatabaseReplicaStackOutputs captures the key outputs after
+// provisioning a read-only replica of a DigitalOcean database cluster. The
+// primary's cluster id and the replica name are echoed so consumers (and
+// verification tooling) can address the replica -- DigitalOcean's replica
+// reads and deletes go through the (cluster, name) pair; the replica's own
+// UUID is exported for resize operations and cross-references.
+//
+// The connection URIs are assembled by the provisioners from the replica's
+// live connection details and embed credentials, so equality across
+// engines is asserted on host/port, never on the full URI.
+message DigitalOceanDatabaseReplicaStackOutputs {
+  // UUID of the replica itself.
+  string replica_id = 1;
+
+  // UUID of the primary database cluster this replica follows.
+  string cluster_id = 2;
+
+  // Name of the replica (its API identity within the cluster).
+  string replica_name = 3;
+
+  // Public hostname of the replica endpoint.
+  string host = 4;
+
+  // Private-network hostname of the replica endpoint, reachable from
+  // resources in the same VPC.
+  string private_host = 5;
+
+  // Port the replica listens on.
+  uint32 port = 6;
+
+  // Name of the default database served by the replica.
+  string database = 7;
+
+  // Username of the replica's default user.
+  string user = 8;
+
+  // Password of the replica's default user. Secret.
+  string password = 9;
+
+  // Full public connection URI for the replica, including credentials.
+  // Secret.
+  string uri = 10;
+
+  // Full private-network connection URI for the replica, including
+  // credentials. Secret.
+  string private_uri = 11;
+}

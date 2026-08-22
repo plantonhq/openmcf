@@ -1,0 +1,33 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: AWS prices Flows entirely
+# by the resources the nodes invoke ("Pricing for Amazon Bedrock Flows is
+# dependent on the resources that you use" -- the Flows user guide), so the
+# graph itself commits nothing and every meter starts with the first
+# invocation -- stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbedrockflow
+spec:
+  presets:
+    - preset: 01-summarize-pipeline
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - each invocation runs the single prompt node's inference at amazon.nova-micro-v1:0's published per-1M token rate -- entirely run-driven, and Bedrock on-demand inference carries no free allotment
+        - the Input and Output nodes are structural plumbing with no meter of their own
+      notes: Zero committed cost -- a one-prompt-node graph bills nothing at rest; the token meter starts with the first document summarized, and per-run cost is one model call's tokens.
+    - preset: 02-classify-and-route
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every run pays the Classify prompt node's tokens at amazon.nova-micro-v1:0's rate; the Condition node then makes the rest path-dependent -- only runs classified "docs" reach the knowledge-base node
+        - the knowledge-base branch embeds the query at the KB's embedding model, searches the vector store (which bills on the referenced AwsBedrockKnowledgeBase's backing component), and generates the answer at amazon.nova-lite-v1:0's token rate
+        - the Condition node itself and the structural Input/Output nodes publish no meter
+      notes: Zero committed cost -- the routing graph bills nothing at rest, and the zero is commitment-absence; per-run spend depends on which branch fires, which only traffic decides.

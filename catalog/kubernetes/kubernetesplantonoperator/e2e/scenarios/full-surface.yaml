@@ -1,0 +1,33 @@
+# The full typed surface on a kind cluster: HA replicas with leader
+# election, explicit sizing, scheduling constraints that still schedule on
+# a single-node kind cluster (the toleration matches no taint — a no-op by
+# design; a node_selector beyond kubernetes.io/os would leave the pod
+# Pending forever on the lane's cluster).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: e2e-planton-operator-full
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+  chart_version: 0.7.1
+  replicas: 2
+  leader_election: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  common_labels:
+    team: platform
+  pod_annotations:
+    example.com/inject: "false"
+  node_selector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: platform
+      operator: Exists
+      effect: NoSchedule

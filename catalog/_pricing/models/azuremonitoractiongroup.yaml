@@ -1,0 +1,42 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: the action
+# group object carries no meter -- Azure bills per NOTIFICATION SENT, per
+# channel, each with a monthly free grant, and firing volume is the alert
+# rules' behavior, unknowable from this manifest -- stated in exclusions,
+# never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azuremonitoractiongroup
+spec:
+  presets:
+    - preset: 01-oncall-team
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - each alert firing emails the on-call address ("0.00002" USD per email after the first 1,000 free per month), texts the US number (SMS country code 1 -- "0.00645" USD per message after the first 100 free), and pushes to the Azure app ("0.00002" USD per push after the first 1,000 free)
+        - firing volume belongs to the alert RULES that reference this group -- an alert storm multiplies all three channels at once, with SMS the first meter to matter
+        - the alert rules themselves bill their own Azure Monitor meters on their own components
+      notes: "Zero committed cost -- an action group nothing fires into sends nothing and bills nothing; at healthy paging volume all three channels sit inside their free grants."
+    - preset: 02-automation-hooks
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "the Entra-authenticated webhook bills the SECURE web hook meter -- \"6.00\" USD per million notifications after only 1,000 free per month (a 10x rate and 100x smaller grant than plain webhooks, the price of the keyless posture)"
+        - the Azure Function receiver's delivery is free-grant webhook territory, but the FUNCTION'S executions bill on the AzureFunctionApp component per invocation
+        - firing volume belongs to the referencing alert rules; downstream automation (incident platform calls, remediation actions) bills wherever it runs
+      notes: "Zero committed cost -- machine channels are the cheapest per notification; the money in an automation group is always in what the automation DOES, on those components."
+    - preset: 03-role-fanout
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "ARM-role fan-out emails EVERY member of the Owner role per firing on the email meter (\"0.00002\" USD each after the first 1,000 free per month) -- the recipient count is RBAC membership, invisible to this manifest and changing as people join and leave"
+        - firing volume belongs to the referencing alert rules
+      notes: "Zero committed cost -- the role receiver keeps no address list and carries no meter of its own; emails-per-firing equals role membership, so governance-event volume times Owner count is the whole cost story."

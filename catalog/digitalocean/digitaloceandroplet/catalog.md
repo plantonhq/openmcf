@@ -1,15 +1,17 @@
 # Droplet/VM on DigitalOcean
 
-Deploys a DigitalOcean Droplet with configurable sizing, VPC placement, optional backups, IPv6 networking, block storage volume attachments, and cloud-init user data. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC and volume dependency wiring.
+Deploys a DigitalOcean Droplet with configurable sizing, region and VPC placement, SSH key injection, automated backups with a policy window, IPv6 and public-networking toggles, the monitoring and web-console agents, block storage volume attachments, cloud-init user data, tags, and GPU partitioning. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC and volume dependency wiring.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DigitalOcean Droplet** -- a virtual machine in the specified region and VPC, using the configured size slug, base image, and optional cloud-init user data script
+- **DigitalOcean Droplet** -- a virtual machine using the configured size slug, base image, and optional cloud-init user data; placed in the specified region and VPC, or DigitalOcean's choice of region and its default VPC when omitted
+- **SSH Key Injection** -- created only when `sshKeys` are provided; injects account-registered keys at first boot
+- **Automated Backups** -- enabled by `enableBackups`, with an optional `backupPolicy` window (daily, or weekly with weekday and hour)
 - **Block Storage Volume Attachments** -- created only when `volumeIds` are provided; attaches existing volumes to the Droplet (volumes must reside in the same region)
-- **DigitalOcean Monitoring Agent** -- enabled by default unless `disableMonitoring` is set to true
-- **DigitalOcean Tags** -- user-supplied tags applied to the Droplet for firewall targeting and resource organization
+- **Monitoring and Web-Console Agents** -- opt-in via `monitoring` and `dropletAgent`
+- **DigitalOcean Tags** -- user-supplied tags plus the standard Planton labels, applied for firewall targeting and resource organization
 
 ## Before You Deploy
 
@@ -20,8 +22,9 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### DigitalOcean Account
 
-- **A VPC network** in the target region. Provide the VPC UUID directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef.
-- **A valid Droplet size slug** (e.g., `"s-2vcpu-4gb"`) -- check available sizes via the DigitalOcean API or CLI (`doctl compute size list`).
+- **A VPC network** (optional) -- provide the VPC UUID directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef; omit to use the region's default VPC.
+- **SSH keys** (recommended) -- registered on your account (`doctl compute ssh-key list`); keys are injected at create only.
+- **A valid Droplet size slug** (e.g., `"s-2vcpu-4gb"`) -- check available sizes via `doctl compute size list`.
 - **A valid image slug** (e.g., `"ubuntu-24-04-x64"`) -- check available images via `doctl compute image list --public`.
 - **Block storage volumes** (optional) -- must be pre-created in the same region if you plan to attach them via `volumeIds`.
 
@@ -29,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Droplet/VM on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production** preset in the [Presets](#presets) tab to pre-populate a working configuration with backups and VPC isolation.
+Open the deployment store, find **Droplet/VM on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production** preset in the [Presets](#presets) tab to pre-populate a working configuration with SSH keys, backups, and VPC isolation.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digitalocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
   name: app-server
@@ -44,9 +47,11 @@ metadata:
   env: prod
 spec:
   dropletName: app-server
-  region: nyc1
+  region: nyc3
   size: s-2vcpu-4gb
   image: ubuntu-24-04-x64
+  sshKeys:
+    - "3b:16:bf:e4:8b:00:8b:b8:59:8c:a9:d3:f0:19:45:fa"
   vpc:
     value: "abc12345-6789-def0-1234-567890abcdef"
 ```
@@ -55,7 +60,7 @@ spec:
 planton apply -f do-droplet.yaml
 ```
 
-This creates a Droplet with the specified size and image in the NYC1 region. No backups, IPv6, or volume attachments are configured. A Stack Job tracks the provisioning in real time.
+This creates a Droplet with the specified size and image in the NYC3 region, reachable with your SSH key. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -76,13 +81,15 @@ The InfraPipeline resolves the dependency graph, deploys the VPC first, then pro
 
 These are the most important decisions when configuring a Droplet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Sizing** -- The `size` field sets the Droplet's CPU and memory (e.g., `"s-1vcpu-1gb"` for development, `"s-2vcpu-4gb"` for production web servers, `"c-4vcpu-8gb"` for CPU-intensive workloads). Droplets can be resized after creation, but disk-only downgrades are not supported.
+**SSH keys** -- `sshKeys` takes IDs or fingerprints of keys already registered on the account and is create-only: changing it recreates the Droplet. A Droplet without keys falls back to a root password email.
 
-**Backups** -- Set `enableBackups: true` to enable DigitalOcean's automated weekly snapshots with 4-week retention. Recommended for production. Disabled by default to reduce cost in development.
+**Sizing** -- The `size` field sets the Droplet's CPU and memory (e.g., `"s-1vcpu-1gb"` for development, `"s-2vcpu-4gb"` for production web servers, `"c-4vcpu-8gb"` for CPU-intensive workloads). Resizing powers the Droplet off briefly; whether the disk also grows (permanently) is governed by `resizeDisk`, which defaults ON.
 
-**Cloud-init user data** -- The `userData` field accepts a cloud-init script (up to 32 KiB) for bootstrapping the Droplet on first boot. Use it to install packages, configure services, or pull application code.
+**Backups** -- Set `enableBackups: true` for automated snapshots, and pin the window with `backupPolicy` (`daily`, or `weekly` with `weekday` and an `hour` on the 0/4/8/12/16/20 grid). A policy without the toggle is rejected.
 
-**Volume attachments** -- The `volumeIds` field accepts a list of block storage volume UUIDs or ValueFromRef references. Volumes must be in the same region as the Droplet and are attached at creation time.
+**Cloud-init user data** -- The `userData` field accepts a cloud-init script (up to 32 KiB) for bootstrapping the Droplet on first boot. Create-only; DigitalOcean stores only a hash.
+
+**Volume attachments** -- The `volumeIds` field accepts a list of block storage volume UUIDs or ValueFromRef references. Volumes must be in the same region as the Droplet.
 
 ## Outputs and Dependencies
 
@@ -90,7 +97,7 @@ These are the most important decisions when configuring a Droplet. Explore the f
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **DigitalOceanVpc** | `vpc` | `status.outputs.vpc_id` |
+| **DigitalOceanVpc** (optional) | `vpc` | `status.outputs.vpc_id` |
 | **DigitalOceanVolume** (optional) | `volumeIds` | `status.outputs.volume_id` |
 
 ### What This Component Provides
@@ -100,20 +107,23 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `droplet_id` | Unique Droplet identifier on DigitalOcean | Load balancer backend attachment, firewall rules |
-| `ipv4_address` | Primary IPv4 address (public or private) | DNS records, application configuration |
-| `ipv6_address` | IPv6 address (if IPv6 was enabled) | IPv6 DNS records |
-| `image_id` | Image ID of the Droplet's base image | Audit logs, image tracking |
-| `vpc_uuid` | VPC network UUID the Droplet resides in | Verifying network placement |
+| `ipv4_address` | Public IPv4 address | DNS records, application configuration |
+| `ipv6_address` | Public IPv6 address (if IPv6 was enabled) | IPv6 DNS records |
+| `ipv4_address_private` | Private IPv4 address inside the VPC | Internal service wiring, private DNS |
+| `urn` | Uniform resource name (`do:droplet:<id>`) | DigitalOcean project resources |
+| `vpc_uuid` | VPC the Droplet landed in (the region's default when `vpc` was omitted) | Verifying network placement, downstream VPC wiring |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production server** -- 2 vCPU / 4 GB instance with automated backups, VPC isolation, and tags for firewall targeting. Suitable for web servers, API backends, and application hosts. Start from the **Production** preset.
+**Production server** -- 2 vCPU / 4 GB instance with SSH keys, weekly backups in a fixed window, VPC isolation, monitoring, and tags for firewall targeting. Start from the **Production** preset.
 
-**Development instance** -- 1 vCPU / 1 GB instance with no backups, minimal cost for dev/test workloads, CI/CD build agents, and experimentation. Start from the **Development** preset.
+**Development instance** -- 1 vCPU / 1 GB instance with no backups and no pinned region or VPC — the smallest real Droplet. Start from the **Development** preset.
 
 ## Works With
 
 - [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the private network for Droplet placement
 - [**DigitalOcean Volume**](/cloud-catalog/digital-ocean-volume) -- provides block storage volumes attached to the Droplet
+- [**DigitalOcean Load Balancer**](/cloud-catalog/digital-ocean-load-balancer) -- routes traffic to Droplets by ID or tag
+- [**DigitalOcean Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures Droplets by ID or tag

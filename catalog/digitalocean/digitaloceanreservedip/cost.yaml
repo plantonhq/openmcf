@@ -1,0 +1,21 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanreservedip
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: droplet
+      sku_meter: unassigned reserved IPv4 hours
+      pricing_unit: hours
+      impact: Assignment is the whole bill switch -- while the reservation is assigned to a droplet the charge is suspended; unassign it (or leave the field unset) and the hourly charge runs.
+    - field_path: ip_version
+      sku_meter: unassigned reserved IPv4 hours
+      pricing_unit: hours
+      impact: Only IPv4 reservations bill; reserved IPv6 addresses are free whether assigned or not.
+  estimate_exclusions:
+    - "unassigned hours are a runtime state no manifest can pin: a reserved IPv4 bills $5.00 per month ($0.01 per hour) only for the hours it exists without a droplet assignment, and DigitalOcean waives the charge entirely until at least $1 accrues per reserved IP"
+  notes: "Corrected from an earlier always_on classification: DigitalOcean's Reserved IPs pricing page states 'All reserved IPs are free when assigned to a Droplet' and 'Reserved IPv4 addresses cost $5.00 per month ($0.01 per hour) when reserved but not assigned to a Droplet', with reserved IPv6 free even when unassigned (https://docs.digitalocean.com/products/networking/reserved-ips/details/pricing/, fetched 2026-08-22). The object commits nothing in its intended steady state (assigned), so the charge is a state-conditional meter, not an existence baseline -- usage_based with unassigned hours as the metered quantity, with the honest inversion that a freshly created, not-yet-assigned IPv4 reservation starts that meter immediately. The orphan trap on this kind is inverted from most -- an idle, forgotten reservation is the EXPENSIVE state and an actively used one is free. Destroy reservations the moment they stop being needed."

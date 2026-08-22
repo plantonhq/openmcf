@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: openfgaauthorizationmodel
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "An authorization model stores no customer data of its own -- it is a policy document persisted inside the OpenFGA server's backing datastore (Postgres, MySQL, or SQLite); encryption at rest is that datastore deployment's posture, not a choice any of this spec's fields (store_id, model_dsl, model_json) can make."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest for this component to key (see enc-at-rest); key management belongs to the datastore behind the customer-run OpenFGA server.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "The model terminates no connections. The API call that writes it travels to the OpenFGA server, whose TLS posture is server deployment configuration -- outside this spec."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A model has no network endpoint to expose; it is addressed only through the OpenFGA server's API, whose exposure is the server deployment's concern.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the model is a logical object inside the OpenFGA server.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A model receives no HTTP requests directly -- request filtering would attach to the OpenFGA server deployment or the proxy in front of it, neither of which this spec configures.
+    - control_id: rbac
+      status: configurable
+      field_path: model_dsl
+      evidence:
+        type: spec_default
+        reference: "The model IS the access-control policy -- the spec requires exactly one of model_dsl or model_json, and that document defines every type, relation, and rewrite rule (unions, usersets like group#member, optional conditions) the OpenFGA server evaluates on each permission check against the store. The shipped presets (01-rbac-dsl, 02-document-access-dsl) compose role-based and hierarchical access patterns from it."
+      notes: "A model document is mandatory, but its quality is the operator's -- a model whose relations admit overly broad subjects grants exactly that, so the control is configurable rather than enforced. Who may WRITE the model to the server is the OpenFGA server's authentication posture (see iac/permissions.yaml), not a spec field. Models are immutable: each change creates a new version, and prior versions remain readable in the store."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The model holds no credentials and authenticates to nothing. The credential the IaC runner presents to the OpenFGA server is the provider connection's concern, documented in iac/permissions.yaml -- no spec field selects between static and federated auth."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "A model carries no credential path of its own to weaken or disable. The OpenFGA server's authentication method (none, pre-shared key, or OIDC) is server deployment configuration outside this spec."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "The spec exposes no audit surface. The OpenFGA server emits structured logs as server-level posture; there is no per-model audit toggle in the OpenFGA API or the modules. The API's retention of every immutable model version does leave a durable history of policy changes, but that is storage behavior, not configurable audit logging."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: OpenFGA publishes Prometheus metrics and optional OTLP traces at the server level; no per-model metric surface exists in the API or this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The model is declarative configuration fully re-creatable from the manifest (writing it again produces an equivalent new version), and its persisted versions live in the OpenFGA server's backing datastore, whose backups are that database deployment's posture. No per-model backup surface exists."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery); retention is the backing datastore's policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A model has no placement to configure. Availability is the OpenFGA server deployment's posture (server replicas plus datastore replication), none of it reachable from this spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Deletion is structurally impossible rather than protected: the OpenFGA API has no delete endpoint for authorization models, and the provider treats destroy as a no-op that only removes the resource from state (verified in the provider source). The version persists in the store regardless."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A model is a pure configuration object with no software of its own to patch; upgrading the OpenFGA server binary is the server deployment's channel.

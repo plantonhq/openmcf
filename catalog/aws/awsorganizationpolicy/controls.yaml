@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsorganizationpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A policy stores no customer data -- its document and attachments are Organizations control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); Organizations exposes no KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy terminates no connections of its own. The only wire traffic involving it -- Organizations management API calls -- happens on AWS API endpoints, which serve exclusively over TLS as provider behavior, not per-policy configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network endpoint to expose; it is a governance document evaluated inside AWS's authorization pipeline.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: content
+      evidence:
+        type: spec_default
+        reference: "The policy IS an access-control instrument -- the required content document is the organization-level authority ceiling for every principal in the attached subtree: an SCP caps what IAM can grant (including member-account root in most respects), an RCP caps what resource policies can allow. Managing the policy itself is IAM-authorized and locked to the organization's management account (or a delegated principal); member accounts cannot loosen the guardrails that bind them."
+      notes: The guardrail is only as strong as its statements and its attachments -- an SCP attached nowhere governs nothing, so attachments is the other half of this control. A policy type must be enabled on the AwsOrganization before attachments succeed.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A policy runs no workload; there is no principal to give an identity to.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Organizations has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable on a policy object. (An SCP's CONTENT can deny legacy patterns account-wide -- that is the document author's choice, not a switch on this component.)
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Policy creates, updates, attachments, and detachments are recorded by AWS CloudTrail as account-level posture, not per-policy configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Organizations publishes no CloudWatch metrics for policies; change signals surface through CloudTrail events, outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A policy holds no data to back up -- the document lives in the manifest and is fully re-creatable from it; attachments re-apply with it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Organizations is a global control-plane service -- the policy is evaluated everywhere AWS authorizes requests, with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither AWS nor the modules expose a deletion-protection flag. AWS does refuse DeletePolicy while attachments remain, and destroy is deliberately modeled as detach-then-delete (the provider's skip_destroy escape hatches are not exposed). One systemic guard exists at the organization level: AWS never lets the LAST SCP detach from a target that has the type enabled (FullAWSAccess or a replacement must remain)."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A policy is a pure configuration object with no software to patch.

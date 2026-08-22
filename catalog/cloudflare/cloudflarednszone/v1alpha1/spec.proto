@@ -65,11 +65,28 @@ message CloudflareDnsZoneSpec {
   // Optional DNSSEC configuration. Enable to have Cloudflare sign the zone; the
   // DS record material to hand to your registrar is published as stack outputs.
   CloudflareDnsZoneDnssec dnssec = 8;
+
+  // Optional zone hold. While enabled, Cloudflare blocks this zone's hostname
+  // (and optionally its subdomains) from being created as a zone in any other
+  // Cloudflare account — protection against hostname takeover during
+  // migrations or account consolidation.
+  CloudflareDnsZoneHold hold = 9;
+
+  // Optional zone plan subscription. Omit to stay on the account's default
+  // (free) plan. Setting a paid rate plan creates a real Cloudflare
+  // subscription with real billing; the API token needs Billing Write scope.
+  CloudflareDnsZoneSubscription subscription = 10;
 }
 
-// CloudflareDnsZoneRecord is a DNS record managed inline with the zone. It
-// covers the common record types; for the full v5 record surface (structured
-// data, tags, settings, the long-tail types) use a standalone CloudflareDnsRecord.
+// CloudflareDnsZoneRecord is a DNS record managed inline with the zone,
+// carrying the full record surface: a record is either a "simple" record whose
+// value is a presentation-format string in `content` (A, AAAA, CNAME, MX, NS,
+// PTR, TXT, OPENPGPKEY) or a "structured" record whose fields are supplied
+// through the typed `data` oneof (CAA, CERT, DNSKEY, DS, HTTPS, LOC, NAPTR,
+// SMIMEA, SRV, SSHFP, SVCB, TLSA, URI). Exactly one of `content` or a `data`
+// case is set, and the chosen representation must match `type`. Records with
+// lifecycles independent of the zone are better modeled as standalone
+// CloudflareDnsRecord resources; this inline surface is identical in depth.
 message CloudflareDnsZoneRecord {
   // Cross-field validation: proxied only valid for A, AAAA, CNAME records.
   option (buf.validate.message).cel = {
@@ -85,32 +102,97 @@ message CloudflareDnsZoneRecord {
     expression: "this.type != 4 || this.priority > 0"
   };
 
-  // Common DNS record types for inline records.
+  // Cross-field validation: exactly one of `content` or a `data` case is set.
+  option (buf.validate.message).cel = {
+    id: "record.content_xor_data"
+    message: "set exactly one of content (simple records) or a data block (structured records)"
+    expression:
+      "(this.content != '') != (has(this.caa) || has(this.cert) || has(this.dnskey) || has(this.ds) || "
+      "has(this.https) || has(this.loc) || has(this.naptr) || has(this.smimea) || has(this.srv) || "
+      "has(this.sshfp) || has(this.svcb) || has(this.tlsa) || has(this.uri))"
+  };
+
+  // Cross-field validation: structured record types must use the matching data block.
+  option (buf.validate.message).cel = {
+    id: "record.structured_types_require_data"
+    message: "this record type requires its structured data block (e.g. SRV needs data.srv, CAA needs data.caa)"
+    expression:
+      "!(this.type in [6, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]) || "
+      "(has(this.caa) || has(this.cert) || has(this.dnskey) || has(this.ds) || has(this.https) || "
+      "has(this.loc) || has(this.naptr) || has(this.smimea) || has(this.srv) || has(this.sshfp) || "
+      "has(this.svcb) || has(this.tlsa) || has(this.uri))"
+  };
+
+  // Cross-field validation: each data block matches its record type.
+  option (buf.validate.message).cel = {
+    id: "record.data_block_matches_type"
+    message: "the supplied data block does not match the record type"
+    expression:
+      "(!has(this.caa) || this.type == 8) && (!has(this.cert) || this.type == 11) && "
+      "(!has(this.dnskey) || this.type == 12) && (!has(this.ds) || this.type == 13) && "
+      "(!has(this.https) || this.type == 14) && (!has(this.loc) || this.type == 15) && "
+      "(!has(this.naptr) || this.type == 16) && (!has(this.smimea) || this.type == 17) && "
+      "(!has(this.srv) || this.type == 6) && (!has(this.sshfp) || this.type == 18) && "
+      "(!has(this.svcb) || this.type == 19) && (!has(this.tlsa) || this.type == 20) && "
+      "(!has(this.uri) || this.type == 21)"
+  };
+
+  // Supported DNS record types. Names match Cloudflare's API values exactly
+  // (UPPERCASE, per DNS convention) and are used directly via `.String()`.
+  // Numbering matches the standalone CloudflareDnsRecord kind's RecordType so
+  // the two surfaces stay mechanically comparable.
   enum RecordType {
     // Unspecified record type (invalid).
     record_type_unspecified = 0;
-    // IPv4 address record.
+    // IPv4 address record. Uses `content`.
     A = 1;
-    // IPv6 address record.
+    // IPv6 address record. Uses `content`.
     AAAA = 2;
-    // Canonical name (alias) record.
+    // Canonical name (alias) record. Uses `content`.
     CNAME = 3;
-    // Mail exchange record.
+    // Mail exchange record. Uses `content` (mail host) plus `priority`.
     MX = 4;
-    // Text record (SPF, DKIM, verification, etc.).
+    // Text record (SPF, DKIM, verification, etc.). Uses `content`.
     TXT = 5;
-    // Service locator record.
+    // Service locator record. Uses `data.srv`.
     SRV = 6;
-    // Nameserver record.
+    // Nameserver record. Uses `content`.
     NS = 7;
-    // Certification Authority Authorization record.
+    // Certification Authority Authorization record. Uses `data.caa`.
     CAA = 8;
+    // Pointer record (reverse DNS). Uses `content`.
+    PTR = 9;
+    // OpenPGP public-key record. Uses `content` (base64 OpenPGP key).
+    OPENPGPKEY = 10;
+    // Certificate record. Uses `data.cert`.
+    CERT = 11;
+    // DNSSEC public key record. Uses `data.dnskey`.
+    DNSKEY = 12;
+    // Delegation Signer record. Uses `data.ds`.
+    DS = 13;
+    // HTTPS service binding record. Uses `data.https`.
+    HTTPS = 14;
+    // Location record. Uses `data.loc`.
+    LOC = 15;
+    // Naming Authority Pointer record. Uses `data.naptr`.
+    NAPTR = 16;
+    // S/MIME certificate association record. Uses `data.smimea`.
+    SMIMEA = 17;
+    // SSH public key fingerprint record. Uses `data.sshfp`.
+    SSHFP = 18;
+    // Service binding record. Uses `data.svcb`.
+    SVCB = 19;
+    // TLSA (DANE) certificate association record. Uses `data.tlsa`.
+    TLSA = 20;
+    // Uniform Resource Identifier record. Uses `data.uri`.
+    URI = 21;
   }
 
   // The record name (or "@" for the zone apex).
   string name = 1 [(buf.validate.field).required = true];
 
-  // The DNS record type.
+  // The DNS record type, which determines whether the value comes from `content`
+  // or from the matching `data` block.
   RecordType type = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.defined_only = true,
@@ -121,9 +203,12 @@ message CloudflareDnsZoneRecord {
     }
   ];
 
-  // The record's value/target in presentation format. For A: an IPv4 address.
-  // For AAAA: an IPv6 address. For CNAME/MX/NS: a hostname. For TXT: text.
-  string content = 3 [(buf.validate.field).required = true];
+  // Presentation-format value for simple record types. Set this for A/AAAA/
+  // CNAME/MX/NS/PTR/TXT/OPENPGPKEY; leave empty for structured types (use `data`).
+  // For A: IPv4 (e.g. "192.0.2.1"). For AAAA: IPv6 (e.g. "2001:db8::1").
+  // For CNAME/MX/NS/PTR: a hostname. For TXT: the text value. For OPENPGPKEY:
+  // the base64-encoded key.
+  string content = 3;
 
   // Whether the record is proxied through Cloudflare (orange cloud). Only valid
   // for A, AAAA, and CNAME records.
@@ -137,7 +222,8 @@ message CloudflareDnsZoneRecord {
     expression: "this == 0 || this == 1 || (this >= 30 && this <= 86400)"
   }];
 
-  // Priority for MX records (lower is preferred). Required for MX.
+  // Priority for MX records (lower is preferred). Required for MX; ignored for
+  // other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
   int32 priority = 6 [(buf.validate.field).cel = {
     id: "priority.valid_range"
     message: "priority must be between 0 and 65535"
@@ -146,6 +232,68 @@ message CloudflareDnsZoneRecord {
 
   // Optional comment/note for the record. Has no effect on DNS responses.
   string comment = 7;
+
+  // Structured data for record types that are not expressible as a single
+  // `content` string. Exactly one case is set, and it must match `type`.
+  // Field numbers 9-21 align with the standalone CloudflareDnsRecord kind's
+  // data oneof (8 is left unassigned for that alignment).
+  oneof data {
+    // CAA record data.
+    CaaData caa = 9;
+    // CERT record data.
+    CertData cert = 10;
+    // DNSKEY record data.
+    DnskeyData dnskey = 11;
+    // DS record data.
+    DsData ds = 12;
+    // HTTPS record data.
+    HttpsData https = 13;
+    // LOC record data.
+    LocData loc = 14;
+    // NAPTR record data.
+    NaptrData naptr = 15;
+    // SMIMEA record data.
+    SmimeaData smimea = 16;
+    // SRV record data.
+    SrvData srv = 17;
+    // SSHFP record data.
+    SshfpData sshfp = 18;
+    // SVCB record data.
+    SvcbData svcb = 19;
+    // TLSA record data.
+    TlsaData tlsa = 20;
+    // URI record data.
+    UriData uri = 21;
+  }
+
+  // Custom tags for the record. Have no effect on DNS responses; useful for
+  // organizing and filtering records.
+  repeated string tags = 22;
+
+  // Optional record-level settings controlling how proxied records are served.
+  CloudflareDnsZoneRecordSettings settings = 23;
+
+  // Whether the record is restricted to Cloudflare's internal (private) routing
+  // and not served over the public internet — used for internal DNS / Magic WAN
+  // scenarios. Defaults to false (public).
+  bool private_routing = 24;
+}
+
+// CloudflareDnsZoneRecordSettings holds record-level behavior toggles. These
+// only affect proxied records.
+message CloudflareDnsZoneRecordSettings {
+  // When enabled, only A records are generated and AAAA records are suppressed.
+  // For exceptional cases; applies only to proxied records.
+  bool ipv4_only = 1;
+
+  // When enabled, only AAAA records are generated and A records are suppressed.
+  // For exceptional cases; applies only to proxied records.
+  bool ipv6_only = 2;
+
+  // When enabled, a CNAME is resolved externally and the resulting address
+  // records are returned instead of the CNAME. Unavailable for proxied records
+  // (which are always flattened).
+  bool flatten_cname = 3;
 }
 
 // CloudflareDnsZoneDnsSettings holds zone-wide DNS settings. All fields are
@@ -278,4 +426,306 @@ message CloudflareDnsZoneDnssec {
 
   // Use NSEC3 rather than NSEC for authenticated denial of existence.
   bool use_nsec3 = 4;
+}
+
+// CloudflareDnsZoneHold configures a hold on the zone's hostname. While the
+// hold is active, Cloudflare rejects attempts to create this zone's hostname as
+// a zone in any other account (and optionally any subdomain of it) — the guard
+// against hostname takeover while a domain migrates between accounts.
+message CloudflareDnsZoneHold {
+  // Whether the hold is active. Removing the hold (or this whole block) lifts
+  // the protection.
+  bool enabled = 1;
+
+  // Extend the hold to all subdomains of the zone's hostname, not just the
+  // apex hostname itself.
+  bool include_subdomains = 2;
+
+  // RFC3339 timestamp (e.g. "2026-01-31T00:00:00Z"). When future-dated, the
+  // hold is temporarily disabled and automatically re-enabled by Cloudflare at
+  // this time — a planned migration window. A past-dated value has no effect
+  // on an enabled hold. Leave empty for an immediate, indefinite hold.
+  string hold_after = 3 [(buf.validate.field).cel = {
+    id: "hold_after.rfc3339"
+    message: "hold_after must be an RFC3339 timestamp (e.g. 2026-01-31T00:00:00Z) or empty"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+  }];
+}
+
+// CloudflareDnsZoneSubscription selects the zone's Cloudflare plan. Creating a
+// paid rate plan is a real billing action: the deploying API token needs
+// Billing Write scope, and charges begin at apply. Omit the whole block to
+// stay on the account's default (free) plan.
+message CloudflareDnsZoneSubscription {
+  // At least one lever must be set — an empty subscription block would create a
+  // no-op resource.
+  option (buf.validate.message).cel = {
+    id: "subscription.not_empty"
+    message: "set rate_plan and/or frequency — an empty subscription block has no effect"
+    expression: "this.rate_plan != '' || this.frequency != ''"
+  };
+
+  // The rate plan to subscribe the zone to. Cloudflare's plan identifiers:
+  // "free", "lite", "pro", "pro_plus", "business", "enterprise", plus the
+  // partner variants ("partners_free", "partners_pro", "partners_business",
+  // "partners_enterprise", "partners_ent").
+  string rate_plan = 1 [(buf.validate.field).cel = {
+    id: "rate_plan.valid"
+    message: "rate_plan must be one of Cloudflare's plan identifiers (free, lite, pro, pro_plus, business, enterprise, partners_free, partners_pro, partners_business, partners_enterprise, partners_ent)"
+    expression:
+      "this == '' || this in ['free', 'lite', 'pro', 'pro_plus', 'business', 'enterprise', "
+      "'partners_free', 'partners_pro', 'partners_business', 'partners_enterprise', 'partners_ent']"
+  }];
+
+  // How often the subscription renews automatically. Leave empty for
+  // Cloudflare's default; some plans ignore frequency entirely.
+  string frequency = 2 [(buf.validate.field).cel = {
+    id: "frequency.valid"
+    message: "frequency must be one of \"weekly\", \"monthly\", \"quarterly\", \"yearly\""
+    expression: "this == '' || this in ['weekly', 'monthly', 'quarterly', 'yearly']"
+  }];
+
+  // The scope the rate plan applies to. Rarely needed; leave empty for
+  // Cloudflare's default scope for the chosen plan.
+  string scope = 3;
+}
+
+// CaaData is the data for a CAA (Certification Authority Authorization) record.
+message CaaData {
+  // Flags for the CAA record (0-255). 128 marks the property critical.
+  uint32 flags = 1 [(buf.validate.field).uint32.lte = 255];
+
+  // The property controlled by this record: "issue", "issuewild", or "iodef".
+  string tag = 2 [(buf.validate.field).required = true];
+
+  // The value for the tag (e.g. a CA domain like "letsencrypt.org", or an
+  // "iodef" reporting URL).
+  string value = 3 [(buf.validate.field).required = true];
+}
+
+// CertData is the data for a CERT record.
+message CertData {
+  // Certificate type (e.g. 1 = PKIX).
+  uint32 type = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Key tag identifying the certificate's key (0-65535).
+  uint32 key_tag = 2 [(buf.validate.field).uint32.lte = 65535];
+
+  // Algorithm code (0-255).
+  uint32 algorithm = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // The base64-encoded certificate or CRL.
+  string certificate = 4 [(buf.validate.field).required = true];
+}
+
+// DnskeyData is the data for a DNSKEY record.
+message DnskeyData {
+  // Flags for the DNSKEY record (e.g. 256 = ZSK, 257 = KSK).
+  uint32 flags = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Protocol field; must be 3 for DNSSEC.
+  uint32 protocol = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Algorithm code (0-255).
+  uint32 algorithm = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // The base64-encoded public key.
+  string public_key = 4 [(buf.validate.field).required = true];
+}
+
+// DsData is the data for a DS (Delegation Signer) record.
+message DsData {
+  // Key tag of the referenced DNSKEY (0-65535).
+  uint32 key_tag = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Algorithm code of the referenced DNSKEY (0-255).
+  uint32 algorithm = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Digest algorithm type (0-255, e.g. 2 = SHA-256).
+  uint32 digest_type = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // Hex-encoded digest of the referenced DNSKEY.
+  string digest = 4 [(buf.validate.field).required = true];
+}
+
+// HttpsData is the data for an HTTPS service binding record.
+message HttpsData {
+  // Priority (0-65535). 0 selects AliasMode; higher values are ServiceMode
+  // records evaluated in ascending priority order.
+  uint32 priority = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Target hostname (".": the owner name; or a specific endpoint).
+  string target = 2 [(buf.validate.field).required = true];
+
+  // SvcParams string (e.g. "alpn=\"h2,h3\" port=8443").
+  string value = 3;
+}
+
+// LocData is the data for a LOC (geographic location) record.
+message LocData {
+  // Latitude direction: "N" or "S".
+  string lat_direction = 1 [(buf.validate.field).string = {
+    in: [
+      "N",
+      "S"
+    ]
+  }];
+
+  // Degrees of latitude (0-90).
+  uint32 lat_degrees = 2 [(buf.validate.field).uint32.lte = 90];
+
+  // Minutes of latitude (0-59).
+  uint32 lat_minutes = 3 [(buf.validate.field).uint32.lte = 59];
+
+  // Seconds of latitude (0-59.999).
+  double lat_seconds = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 59.999
+  }];
+
+  // Longitude direction: "E" or "W".
+  string long_direction = 5 [(buf.validate.field).string = {
+    in: [
+      "E",
+      "W"
+    ]
+  }];
+
+  // Degrees of longitude (0-180).
+  uint32 long_degrees = 6 [(buf.validate.field).uint32.lte = 180];
+
+  // Minutes of longitude (0-59).
+  uint32 long_minutes = 7 [(buf.validate.field).uint32.lte = 59];
+
+  // Seconds of longitude (0-59.999).
+  double long_seconds = 8 [(buf.validate.field).double = {
+    gte: 0
+    lte: 59.999
+  }];
+
+  // Altitude in meters (-100000 to 42849672.95).
+  double altitude = 9 [(buf.validate.field).double = {
+    gte: -100000
+    lte: 42849672.95
+  }];
+
+  // Diameter of a sphere enclosing the location, in meters (0-90000000).
+  double size = 10 [(buf.validate.field).double = {
+    gte: 0
+    lte: 90000000
+  }];
+
+  // Horizontal precision in meters (0-90000000).
+  double precision_horz = 11 [(buf.validate.field).double = {
+    gte: 0
+    lte: 90000000
+  }];
+
+  // Vertical precision in meters (0-90000000).
+  double precision_vert = 12 [(buf.validate.field).double = {
+    gte: 0
+    lte: 90000000
+  }];
+}
+
+// NaptrData is the data for a NAPTR (Naming Authority Pointer) record.
+message NaptrData {
+  // Order in which records are processed (0-65535).
+  uint32 order = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Preference among records with the same order (0-65535).
+  uint32 preference = 2 [(buf.validate.field).uint32.lte = 65535];
+
+  // Flags controlling rewrite behavior (e.g. "U", "S", "A", "P").
+  string flags = 3;
+
+  // The service parameters (e.g. "E2U+sip").
+  string service = 4;
+
+  // The substitution regular expression.
+  string regex = 5;
+
+  // The replacement domain name (or "." when regex is used).
+  string replacement = 6;
+}
+
+// SmimeaData is the data for an SMIMEA (S/MIME certificate association) record.
+message SmimeaData {
+  // Certificate usage (0-255).
+  uint32 usage = 1 [(buf.validate.field).uint32.lte = 255];
+
+  // Selector specifying which part of the certificate is matched (0-255).
+  uint32 selector = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Matching type for the association data (0-255).
+  uint32 matching_type = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // Hex-encoded certificate association data.
+  string certificate = 4 [(buf.validate.field).required = true];
+}
+
+// SrvData is the data for an SRV (service locator) record.
+message SrvData {
+  // Priority of the target host (0-65535, lower preferred).
+  uint32 priority = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Relative weight among targets with the same priority (0-65535).
+  uint32 weight = 2 [(buf.validate.field).uint32.lte = 65535];
+
+  // TCP/UDP port of the service (0-65535).
+  uint32 port = 3 [(buf.validate.field).uint32.lte = 65535];
+
+  // Hostname of the machine providing the service.
+  string target = 4 [(buf.validate.field).required = true];
+}
+
+// SshfpData is the data for an SSHFP (SSH public-key fingerprint) record.
+message SshfpData {
+  // Algorithm of the SSH public key (0-255, e.g. 1 = RSA, 4 = Ed25519).
+  uint32 algorithm = 1 [(buf.validate.field).uint32.lte = 255];
+
+  // Fingerprint hash type (0-255, e.g. 2 = SHA-256).
+  uint32 type = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Hex-encoded fingerprint of the SSH public key.
+  string fingerprint = 3 [(buf.validate.field).required = true];
+}
+
+// SvcbData is the data for an SVCB (service binding) record.
+message SvcbData {
+  // Priority (0-65535). 0 selects AliasMode; higher values are ServiceMode.
+  uint32 priority = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Target hostname (".": the owner name; or a specific endpoint).
+  string target = 2 [(buf.validate.field).required = true];
+
+  // SvcParams string (e.g. "alpn=\"h2\" ipv4hint=\"192.0.2.1\"").
+  string value = 3;
+}
+
+// TlsaData is the data for a TLSA (DANE certificate association) record.
+message TlsaData {
+  // Certificate usage (0-255).
+  uint32 usage = 1 [(buf.validate.field).uint32.lte = 255];
+
+  // Selector specifying which part of the certificate is matched (0-255).
+  uint32 selector = 2 [(buf.validate.field).uint32.lte = 255];
+
+  // Matching type for the association data (0-255).
+  uint32 matching_type = 3 [(buf.validate.field).uint32.lte = 255];
+
+  // Hex-encoded certificate association data.
+  string certificate = 4 [(buf.validate.field).required = true];
+}
+
+// UriData is the data for a URI record.
+message UriData {
+  // Priority of the target URI (0-65535, lower preferred).
+  uint32 priority = 1 [(buf.validate.field).uint32.lte = 65535];
+
+  // Relative weight among URIs with the same priority (0-65535).
+  uint32 weight = 2 [(buf.validate.field).uint32.lte = 65535];
+
+  // The target URI (e.g. "https://example.com/path").
+  string target = 3 [(buf.validate.field).required = true];
 }

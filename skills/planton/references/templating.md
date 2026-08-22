@@ -79,6 +79,20 @@ Loops are rare in the fleet -- most charts write each subnet/AZ explicitly
 because they need distinct CIDR params anyway. Prefer explicit resources
 unless the count itself is a parameter.
 
+## Config references compose with templating
+
+`$var`/`$secret` reference strings (`config-references.md`) are plain field
+values, and slugs can never contain `@` — so the env-scope sigil composes
+cleanly with substitution. The canonical per-environment secret:
+
+```yaml
+spec:
+  password: $secret/@{{ values.env }}/db-password
+```
+
+The template renders to `$secret/@staging/db-password` in staging; the
+reference resolves inside the deployment runner, never at render time.
+
 ## Filters
 
 The ones the fleet actually uses: `| bool`, `| trim`, `| upper`, `| lower`.

@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+# Rates from https://cloud.google.com/identity-platform/pricing (read
+# 2026-08-22).
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: sign_in
+      sku_meter: Tier 1 monthly active users
+      pricing_unit: MAU
+      impact: Email, phone, and anonymous sign-in bill per Monthly Active User at Google's Tier 1 rates -- 0 to 50,000 MAU free, 50,000 to 100,000 at $0.0055 per MAU, 100,000 to 1,000,000 at $0.0046, 1,000,000 to 10,000,000 at $0.0032, and $0.0025 above that, each per month per account. Any account that signs in within the month counts once; inactive users are stored at no cost.
+    - field_path: default_supported_idps
+      sku_meter: Tier 1 monthly active users
+      pricing_unit: MAU
+      impact: Social providers (Google, Facebook, Apple, and the rest of the default-supported list) are Tier 1 -- their users pool into the same MAU count and tiered rates as email, phone, and anonymous sign-in. Enabling a popular social door changes how fast the project climbs the tiers, not the rate card.
+    - field_path: oauth_idp_configs
+      sku_meter: Tier 2 monthly active users
+      pricing_unit: MAU
+      impact: Custom OIDC sign-in is Tier 2 -- 0 to 50 MAU free per project, then $0.015 per MAU per month. Roughly three times the top Tier 1 rate and with a free tier a thousand times smaller, so federated enterprise users are the expensive population; Google's own pricing example prices 77,000 OIDC/SAML MAU at $1154 per month.
+    - field_path: inbound_saml_configs
+      sku_meter: Tier 2 monthly active users
+      pricing_unit: MAU
+      impact: Enterprise SAML SSO bills on the same Tier 2 meter as OIDC -- the 50-MAU free allotment is shared per project across both, then every SAML MAU is $0.015 per month. Preset 03 wires exactly this surface; its cost follows headcount actually signing in, not the config's existence.
+    - field_path: mfa
+      sku_meter: phone and multi-factor authentication SMS
+      pricing_unit: SMS messages
+      impact: Enabling PHONE_SMS as a second factor makes every SMS verification a per-message charge from Google's country-keyed table (e.g. United States $0.01 per SMS sent; rates range to $0.52 for unlisted regions). The first ten SMS sent per day are not billed. TOTP authenticator apps via provider_configs verify without SMS -- MANDATORY MFA on a TOTP provider costs nothing per challenge.
+    - field_path: sign_in.phone_number
+      sku_meter: phone and multi-factor authentication SMS
+      pricing_unit: SMS messages
+      impact: Phone-number sign-in sends a code SMS per attempt, billed from the same per-country table as MFA (first ten per day not billed). sms_region_config is the cost brake as much as the fraud brake -- an allowlist_only policy stops SMS to the expensive regions toll fraud targets.
+    - field_path: autodelete_anonymous_users
+      sku_meter: Tier 1 monthly active users
+      impact: Google's pricing page states that anonymous users are NOT counted as monthly active users when automatic clean-up is enabled -- setting this true is a published cost reducer for guest-heavy apps, not just hygiene.
+    - field_path: blocking_functions
+      sku_meter: Cloud Run functions invocations
+      impact: The functions the triggers invoke bill at the normal Cloud Run functions rate on their own component -- and they run synchronously on every sign-up or sign-in they hook, so their invocation volume equals the project's authentication traffic.
+  estimate_exclusions:
+    - Tier 1 MAU charges (email, phone, anonymous, social) follow real sign-in traffic -- 0 to 50,000 MAU free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month per account by tier
+    - Tier 2 MAU charges (OIDC, SAML) follow federated sign-in traffic -- 50 MAU free per project, then $0.015 per MAU per month
+    - SMS for phone sign-in and PHONE_SMS MFA bills per message from Google's published country-keyed table (US $0.01 per SMS; first ten per day not billed)
+    - blocking-function invocations bill as Cloud Run functions on the referenced component
+    - request_logging_enabled writes sign-in/sign-up requests to Cloud Logging, which meters ingestion on its own service
+  notes: "The configuration itself has no meter: initializing Identity Platform requires the project to have billing ENABLED, but the config resource, its authorized domains, quotas, SMS-region policy, and IdP config objects cost nothing at rest -- Google's pricing page bills only per Monthly Active User and per SMS sent. Spend starts when real users sign in, and the split that matters is tier: first-party and social users ride the generous Tier 1 tiers (50,000 free), while OIDC/SAML federation is Tier 2 ($0.015 per MAU after just 50 free per project). Rates read live from https://cloud.google.com/identity-platform/pricing on 2026-08-22. Destroying the resource abandons the configuration in place and changes nothing on the bill; users keep signing in and metering."

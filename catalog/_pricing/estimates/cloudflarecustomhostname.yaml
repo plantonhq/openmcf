@@ -1,0 +1,41 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: cloudflarecustomhostname
+spec:
+  presets:
+    - preset: 01-saas-vanity-domain
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloudflare for SaaS
+          sku_meter: custom hostnames
+          pricing_unit: hostname-months
+          pricing_quantity: "1"
+          quantity_basis: one custom hostname held for the month, priced at the past-allotment rate -- Cloudflare includes the zone's first 100 custom hostnames at no charge on the Free, Pro, and Business SaaS plans, so this line prices hostname number 101 and beyond; the same hostname landing within the included 100 bills 0.00
+          list_unit_price: "0.10"
+          price_source: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/plans/
+          retrieved_on: "2026-08-22"
+          list_cost: "0.1000"
+      total_list_cost: "0.1000"
+      exclusions:
+        - whether this hostname lands inside or past the zone's 100 included hostnames depends on how many custom hostnames the zone already carries -- no single manifest can know its position in the allotment
+        - traffic-dependent charges (requests, WAF, caching) ride the SaaS zone's plan, not this object
+      notes: The hostname counts toward billing from creation until deleted, including while pending validation. The $0.10 rate is identical on Free, Pro, and Business and is priced globally; the estimate assumes the zone's included allotment is already consumed -- the steady state of a SaaS platform at scale.
+    - preset: 02-byo-certificate
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - this preset uploads its own certificate (ssl.customCertificate), an Enterprise-only SaaS feature -- Enterprise per-hostname pricing is "Custom pricing" (contract) with custom allotments per Cloudflare's SaaS plans page, so no publishable committed rate exists for this hostname
+        - traffic-dependent charges (requests, WAF, caching) ride the SaaS zone's plan, not this object
+      notes: Zero publishable committed cost -- the BYO-certificate surface exists only on Enterprise SaaS plans, whose per-hostname rate Cloudflare does not publish. The hostname still bills by existing under that contract; the absence of a number here is the honest refusal, not a claim of free.

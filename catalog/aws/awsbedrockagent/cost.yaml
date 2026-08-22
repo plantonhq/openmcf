@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockagent
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: foundation_model
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: The dominant meter -- every InvokeAgent request fans out into SEVERAL model calls (pre-processing, orchestration loops, knowledge-base response generation, post-processing), and each call bills input and output tokens at this model's published per-1M rate. The agent object adds no fee of its own; which model this field names IS the price of every conversation.
+    - field_path: collaborators
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: Multi-agent delegation multiplies token spend -- the supervisor burns tokens planning, then every delegated sub-task runs the collaborator agent's own model with its own orchestration loop. Relaying conversation history (relay_conversation_history) grows each delegated call's input-token count by the whole transcript.
+    - field_path: memory
+      sku_meter: on-demand model inference tokens
+      pricing_unit: tokens
+      impact: Session memory adds a MEMORY_SUMMARIZATION model call per session -- AWS summarizes the conversation with the same foundation model, and those tokens bill like any other inference. storage_days retains the summaries but the storage itself carries no published meter; the summarization tokens are the cost.
+    - field_path: guardrail
+      sku_meter: guardrail text units evaluated
+      pricing_unit: text units
+      impact: Attaching a guardrail evaluates every model input and output the agent produces -- each enabled policy type meters per 1,000 text units (1 text unit = up to 1,000 characters) at the rates on the referenced AwsBedrockGuardrail. A chatty agent multiplies text units fast because every orchestration step's traffic is checked.
+    - field_path: knowledge_base_associations
+      sku_meter: knowledge-base retrieval queries
+      pricing_unit: queries
+      impact: Each retrieval the agent decides to run embeds the query (embedding-model tokens at that model's rate) and searches the vector store -- which bills on ITS backing component (OpenSearch Serverless and friends), not here. The retrieved passages then ride back into the orchestration prompt as more input tokens.
+    - field_path: action_groups
+      sku_meter: Lambda invocation requests
+      pricing_unit: requests
+      impact: Every tool call against a Lambda-backed group invokes the referenced AwsLambda, which bills requests and GB-seconds on its own component. return_control groups shift execution to YOUR application and cost nothing here; reserved groups (user input, code interpreter) publish no meter of their own.
+    - field_path: aliases.routing.provisioned_throughput
+      sku_meter: provisioned model units
+      pricing_unit: model-unit-hours
+      impact: Routing an alias through provisioned throughput swaps per-token billing for reserved capacity -- the model units bill every hour on the referenced AwsBedrockProvisionedThroughput component whether the agent is busy or idle. Without this, aliases serve on-demand and pay per token.
+  free_tier: "No permanent free tier exists on any meter an agent starts -- Bedrock on-demand inference has no free allotment, and guardrail text units bill from the first unit checked. The agent OBJECT is free at rest: creating the agent, its versions, aliases, action groups, and associations carries no charge (the Bedrock pricing page publishes no per-agent meter) -- that is commitment-absence, not a trial."
+  estimate_exclusions:
+    - token volume is entirely conversation-driven -- the same manifest costs nothing idle and real money under traffic, and orchestration multiplies each user request into several model calls before any answer comes back
+    - the per-token rate belongs to whatever foundation_model names -- an inference-profile reference prices at the underlying model's rate with no routing premium
+    - guardrail text units bill per enabled policy type at the rates on the referenced AwsBedrockGuardrail
+    - knowledge-base retrieval bills embedding tokens at the KB's embedding model, and the vector store bills on the referenced AwsBedrockKnowledgeBase's backing component
+    - action-group executions bill requests and duration on each referenced AwsLambda
+    - provisioned-throughput routing commits hourly model units on the referenced AwsBedrockProvisionedThroughput
+    - collaborator agents run their own models -- a supervisor's bill fans out across every agent it delegates to
+  notes: "The agent is orchestration wearing a resource name: AWS publishes no meter for the object itself, and the real bill is the model-inference tokens its conversations consume -- billed where inference happens, at the rate of whatever foundation_model resolves to. The classic surprise is token MULTIPLICATION, not token price: one user question becomes a pre-processing call, one or more orchestration loops (each carrying the growing conversation plus tool results), and a post-processing call, so an agent burns several times the tokens of a bare model call answering the same question. Guardrails then meter every one of those exchanges per text unit, and multi-agent collaboration repeats the whole pattern per collaborator. Note AWS closed Bedrock Agents (now Agents Classic) to new customers in 2026 -- existing accounts keep running, and the successor (AgentCore) bills on entirely different meters as its own components."

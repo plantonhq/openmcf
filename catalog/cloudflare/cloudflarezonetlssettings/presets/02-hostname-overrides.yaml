@@ -1,0 +1,11 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: my-hostname-overrides
+spec:
+  zoneId:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your zone id
+  hostnameSettings:
+    - hostname: api.example.com
+      minTlsVersion: "1.3"
+      http2: true

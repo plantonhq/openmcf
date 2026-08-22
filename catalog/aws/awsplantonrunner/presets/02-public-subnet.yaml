@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  region: <aws-region>
+  subnets:
+    - valueFrom:
+        kind: AwsSubnet
+        name: <public-subnet-a-resource-name>
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: <public-subnet-b-resource-name>
+        fieldPath: status.outputs.subnet_id
+  # Public subnets have no NAT path, so the public IP is what lets the
+  # runner pull its image and dial the control plane. It is egress-only:
+  # the deployment's security group still refuses ALL ingress.
+  assignPublicIp: true
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token

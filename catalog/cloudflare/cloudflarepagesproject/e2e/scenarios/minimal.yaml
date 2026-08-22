@@ -1,0 +1,22 @@
+# Minimal CloudflarePagesProject scenario: a bare direct-upload project
+# (name + production_branch) -- the provider's own minimal fixture, no git
+# source. Project names are unique within an account and CEL-constrained to
+# lowercase alnum/hyphens, so the name carries the run id.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflarePagesProject
+metadata:
+  name: planton-oss-e2e-cloudflarepagesproject-minimal
+  id: planton-oss-e2e-cloudflarepagesproject-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarepagesproject
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: plante2e-${E2E_RUN_ID}-pg-min
+  productionBranch: main

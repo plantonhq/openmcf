@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarelist
+spec:
+  billing_model: free
+  free_tier: "Lists are available on every plan and are quota-limited, never priced. Cloudflare's Lists availability table (https://developers.cloudflare.com/waf/tools/lists/, retrieved 2026-08-22) shows Availability -- Yes on Free/Pro/Business/Enterprise with per-plan QUOTAS: 1 custom list on Free, 10 on Pro/Business, 1,000 on Enterprise, and 10,000 items across all custom lists (500,000 on Enterprise). Redirect-kind lists are Bulk Redirect Lists, equally available on all plans with their own quotas -- 5 lists and 10,000 URL redirects on Free, up to 25 lists and 1,000,000 redirects on Enterprise (https://developers.cloudflare.com/rules/url-forwarding/, retrieved 2026-08-22). No fee attaches at any quota level."
+  notes: "No field of this spec can spend: kind fixes the item shape, name and description label the container. Two kind values are plan-GATED rather than billed -- the Lists page marks hostname and asn lists (and Cloudflare-managed IP lists) Enterprise-only, so creating one on a lower plan fails the apply rather than incurring cost. Entries live in CloudflareListItem resources and count against the plan quotas above; the rules that consume the list (WAF custom rules, Bulk Redirect rulesets) are their own kinds and carry their own plan posture. An unused list is inert configuration that never appears on an invoice."

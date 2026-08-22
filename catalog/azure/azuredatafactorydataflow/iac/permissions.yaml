@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactorydataflow
+spec:
+  azure:
+    groups:
+      - purpose: ManageDataFlow
+        actions:
+          - Microsoft.DataFactory/factories/dataflows/read
+          - Microsoft.DataFactory/factories/dataflows/write
+          - Microsoft.DataFactory/factories/dataflows/delete
+        provenance: derived
+        notes: Covers both provider forms the module fans out on the flowlet flag -- azurerm_data_factory_data_flow and azurerm_data_factory_flowlet_data_flow (datafactory.NewDataFlow / NewFlowletDataFlow) -- because Azure stores mapping data flows and flowlets in the same factory-scoped dataflows namespace with the same three child operations for create, read/refresh, in-place update, and destroy. The module parses data_factory_id client-side and performs no factory read; dataset, linked-service, and flowlet references travel as names in the payload, resolved by Data Factory at run time, so no read on those entities is needed either. Held at the factory's scope; Data Factory Contributor carries them. Executing the flow (a pipeline run or debug session) is an operator grant, never the deployer's.

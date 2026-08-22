@@ -1,0 +1,7 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: failover-ip
+spec:
+  ipVersion: ipv4
+  region: nyc3

@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareKvNamespaceSpec provisions a Workers KV namespace: a low-latency,
 eventually-consistent key-value store readable from Workers at the edge. The
 namespace is the container; individual entries are seeded as

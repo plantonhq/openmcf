@@ -38,12 +38,17 @@ output "task_role_arn" {
   value       = local.task_role_arn
 }
 
-output "credentials_secret_arn" {
-  description = "The Secrets Manager secret holding the runner's credentials document."
-  value       = aws_secretsmanager_secret.credentials.arn
+output "token_secret_arn" {
+  description = "The Secrets Manager secret holding the runner token -- the token authorizes joining and is never the runner's identity."
+  value       = aws_secretsmanager_secret.token.arn
 }
 
 output "region" {
   description = "The AWS region the runner was deployed in."
   value       = var.spec.region
+}
+
+output "runner_name" {
+  description = "The name the runner registers itself under with the control plane -- shown by `planton runner list` the moment it joins."
+  value       = local.registration_name
 }

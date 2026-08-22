@@ -25,4 +25,14 @@ message CloudflareEmailRoutingAddressSpec {
     (buf.validate.field).required = true,
     (buf.validate.field).string.email = true
   ];
+
+  // Explicit verification-state override. Leave empty to let the normal
+  // verification flow (the emailed link) manage the state. Cloudflare permits
+  // non-admin callers only to set a verified address back to "unverified";
+  // setting "verified" requires admin privileges on the account.
+  string status = 3 [(buf.validate.field).cel = {
+    id: "address.status_valid"
+    message: "status must be empty, 'unverified', or 'verified'"
+    expression: "this == '' || this in ['unverified', 'verified']"
+  }];
 }

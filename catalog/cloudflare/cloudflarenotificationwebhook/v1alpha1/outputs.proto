@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarenotificationwebhook.v1alpha1;
+
+// CloudflareNotificationWebhookStackOutputs captures the observable outputs
+// after registering the webhook destination.
+message CloudflareNotificationWebhookStackOutputs {
+  // The Cloudflare-assigned UUID of the webhook destination (what
+  // notification policies reference).
+  string webhook_id = 1;
+
+  // The destination type Cloudflare inferred from the URL: one of datadog,
+  // discord, feishu, gchat, generic, opsgenie, slack, splunk.
+  string type = 2;
+}

@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseventbridgescheduler
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The schedule's stored data -- the static target input payload delivered on every fire -- is encrypted at rest with AWS-owned keys by default; an unencrypted schedule is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Setting a customer-managed KMS key re-encrypts the schedule's target input under a key you own and can revoke; unset keeps AWS-owned keys.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every invocation the schedule makes is an AWS service API call over TLS -- Scheduler has no plaintext delivery path.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A schedule exposes no endpoint -- it is a trigger, not a receiver. The one network surface it can CREATE is the Fargate tasks an ECS target launches, whose exposure is governed by ecs_parameters.network_configuration (private subnets, security groups, assign_public_ip false) -- posture that lives on the launched task's networking, declared here but owned by the referenced VPC design.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists to filter. The security groups under target.ecs_parameters.network_configuration govern the LAUNCHED TASKS' traffic, not ingress to the schedule.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The schedule receives no HTTP requests -- web ACLs have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: "target.role_arn is REQUIRED -- a schedule cannot exist without an execution role, and each fire can only do what that role allows; the trust policy admits only scheduler.amazonaws.com. The blast radius of a hijacked or overbroad schedule is exactly the role's policy."
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Scheduler authenticates every invocation by ASSUMING the execution role -- short-lived STS credentials minted per fire, no static keys anywhere in the spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The schedule's only auth path is IAM role assumption -- nothing legacy or weaker exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls on schedules and groups are recorded by AWS CloudTrail as account-level posture, not per-schedule configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no metrics or logging knob. The schedule's failure-observability lever is target.dead_letter_queue_arn -- undeliverable events land in the referenced SQS queue where they can be alarmed on; service-side invocation metrics are AWS's own account-level behavior.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "A schedule holds no durable data -- it is declarative configuration fully re-creatable from the manifest. The delivery-loss guard is the retry policy (AWS defaults: 24-hour event age, 185 attempts) backed by the dead-letter queue, which captures fires the target never accepted."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); dead-letter retention is the referenced queue's own setting.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge Scheduler is a regional managed service AWS operates across availability zones; the schedule has no zonal placement, and only an ECS target's network_configuration pins subnets -- spreading those is the referenced network's design.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists. Two lifecycle facts matter: state DISABLED pauses firing WITHOUT deleting (the safe alternative), and action_after_completion DELETE makes a one-time schedule remove ITSELF -- out from under IaC state, so the next deploy recreates it; reserve DELETE for fire-and-forget schedules."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the scheduling and delivery machinery; nothing here runs software the operator maintains.

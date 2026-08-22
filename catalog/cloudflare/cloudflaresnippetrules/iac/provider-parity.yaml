@@ -1,0 +1,24 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider's `rules` is one nested attribute (one configurable
+# argument); the spec models each row as a typed {expression, snippet_name,
+# description, enabled} message. Fan-in mappings record every spec leaf
+# the argument realizes.
+
+resources:
+  cloudflare_snippet_rules:
+    mappings:
+      - spec: spec.rules.expression
+        arg: rules
+      - spec: spec.rules.snippet_name
+        arg: rules
+      - spec: spec.rules.description
+        arg: rules
+      - spec: spec.rules.enabled
+        arg: rules

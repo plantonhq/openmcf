@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresnippetrules.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflaresnippetrules/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflaresnippetrules/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareSnippetRules is a KRM-style resource for managing a zone's snippet
+// routing table: the ordered rules deciding which requests invoke which snippet.
+// One per zone -- the table is a zone singleton and every apply replaces it whole.
+message CloudflareSnippetRules {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareSnippetRules'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareSnippetRulesSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareSnippetRulesStatus status = 5;
+}
+
+// CloudflareSnippetRulesStatus represents the observed state of the zone's
+// snippet routing table.
+message CloudflareSnippetRulesStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareSnippetRulesStackOutputs outputs = 1;
+}

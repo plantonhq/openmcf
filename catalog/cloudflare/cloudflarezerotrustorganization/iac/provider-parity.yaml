@@ -1,0 +1,56 @@
+# Provider-parity manifest for CloudflareZeroTrustOrganization.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_organization and the folded
+# cloudflare_zero_trust_access_key_configuration at the pinned provider
+# version. Unlisted arguments (account_id, zone_id, auth_domain, name, the
+# session durations, deny_unmatched_requests + its exempted zone names, the
+# top-level toggles, key_rotation_interval_days) match spec fields by exact
+# name.
+resources:
+  cloudflare_zero_trust_organization:
+    mappings:
+      # custom_pages is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.custom_pages.forbidden
+        arg: custom_pages
+      - spec: spec.custom_pages.identity_denied
+        arg: custom_pages
+      # login_design is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.login_design.background_color
+        arg: login_design
+      - spec: spec.login_design.text_color
+        arg: login_design
+      - spec: spec.login_design.logo_path
+        arg: login_design
+      - spec: spec.login_design.header_text
+        arg: login_design
+      - spec: spec.login_design.footer_text
+        arg: login_design
+      # mfa_config is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.mfa_config.allowed_authenticators
+        arg: mfa_config
+      - spec: spec.mfa_config.session_duration
+        arg: mfa_config
+      - spec: spec.mfa_config.amr_matching_session_duration
+        arg: mfa_config
+      - spec: spec.mfa_config.required_aaguids
+        arg: mfa_config
+      # mfa_ssh_piv_key_requirements is a nested attribute; fan-in of every
+      # spec leaf. The spec's singular ssh_key_type/ssh_key_size are the
+      # wire names; the provider Go SDK pluralizes them.
+      - spec: spec.mfa_ssh_piv_key_requirements.pin_policy
+        arg: mfa_ssh_piv_key_requirements
+      - spec: spec.mfa_ssh_piv_key_requirements.touch_policy
+        arg: mfa_ssh_piv_key_requirements
+      - spec: spec.mfa_ssh_piv_key_requirements.ssh_key_type
+        arg: mfa_ssh_piv_key_requirements
+      - spec: spec.mfa_ssh_piv_key_requirements.ssh_key_size
+        arg: mfa_ssh_piv_key_requirements
+      - spec: spec.mfa_ssh_piv_key_requirements.require_fips_device
+        arg: mfa_ssh_piv_key_requirements
+    exclusions:
+      # The provider's own description says "Indicates if this organization
+      # can enforce MFA" -- a server-reported capability flag (an
+      # entitlement echo), not a configuration decision a manifest should
+      # carry.
+      - arg: mfa_configuration_allowed
+        reason: "server-reported capability indicator (whether the organization may enforce MFA at application/policy level); not a user decision"

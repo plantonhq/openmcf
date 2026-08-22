@@ -1,18 +1,15 @@
-# Output the zone name
 output "zone_name" {
-  description = "The domain name of the created DNS zone"
+  description = "The domain name of the DNS zone"
   value       = digitalocean_domain.dns_zone.name
 }
 
-# Output the zone ID (same as name for DigitalOcean)
 output "zone_id" {
-  description = "The ID of the created DNS zone"
+  description = "The zone's resource identifier — DigitalOcean addresses domains by name, so this is the domain name itself"
   value       = digitalocean_domain.dns_zone.id
 }
 
-# Output the DigitalOcean nameservers
 output "name_servers" {
-  description = "DigitalOcean nameservers for this zone"
+  description = "DigitalOcean's authoritative name servers (a fixed platform-wide set the API does not return per zone); set these at the registrar to delegate"
   value = [
     "ns1.digitalocean.com",
     "ns2.digitalocean.com",
@@ -20,23 +17,7 @@ output "name_servers" {
   ]
 }
 
-# Output the URN (DigitalOcean Universal Resource Name)
 output "urn" {
-  description = "The uniform resource name (URN) of the domain"
+  description = "The uniform resource name of the domain (e.g. do:domain:example.com)"
   value       = digitalocean_domain.dns_zone.urn
 }
-
-# Output all created DNS records for reference
-output "dns_records" {
-  description = "Map of all created DNS records"
-  value = {
-    for k, v in digitalocean_record.dns_records : k => {
-      id    = v.id
-      fqdn  = v.fqdn
-      type  = v.type
-      name  = v.name
-      value = v.value
-    }
-  }
-}
-

@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: ExpressRoute
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      description: A service-provider circuit bills a flat monthly fee set by bandwidth, SKU tier, and billing family -- 436.00 for Standard Metered 1 Gbps, 1200.00 for Local Unlimited 1 Gbps in Zone 1 at list -- from the moment the service key is issued, even while the provider side sits unprovisioned. The fee covers a redundant port PAIR and is priced by the peering FACILITY's zone (Zone 1 through 4), not the ARM region. Circuits on an ExpressRoute Direct port are different -- Local and Standard circuit fees are included in the port's fee, billed on the AzureExpressRoutePort component.
+  cost_drivers:
+    - field_path: bandwidth_in_mbps
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: The bandwidth step is the fee ladder's rung -- each published step (50 through 10000 Mbps) has its own monthly price, roughly doubling every two steps. It can be INCREASED in place mid-month; decreasing means deleting and re-buying, which is why right-sizing starts small.
+    - field_path: sku_family
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: The metered-vs-unlimited decision is the circuit's biggest arithmetic -- UNLIMITED_DATA multiplies the flat fee severalfold to erase per-GB egress, and Microsoft's own guidance is that it pays off only at sustained high utilization (roughly two-thirds and up). Switching metered to unlimited is an in-place update; the reverse requires circuit replacement.
+    - field_path: sku_tier
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: LOCAL buys metro-only reach with NO egress metering at a price between Standard metered and unlimited; STANDARD reaches the whole geopolitical area; PREMIUM adds global reach, more routes, and more VNet links for a higher fee on every bandwidth step. BASIC is a legacy constrained tier.
+    - field_path: service_provider_name
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: Provider mode is what makes THIS component the billed object -- and the provider charges its own connectivity fee on top of Azure's, contracted outside Azure entirely. The peering_location the provider serves decides the pricing zone the fee and egress rates key to.
+    - field_path: express_route_port_id
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: Direct mode moves the committed money OFF this component -- Local and Standard circuit fees are included in the port's monthly fee (billed on the AzureExpressRoutePort component), so the circuit itself commits nothing; only a PREMIUM circuit on a Direct port adds its own monthly fee here.
+    - field_path: bandwidth_in_gbps
+      sku_meter: circuit fee
+      pricing_unit: circuit-months
+      impact: On a Direct port the carved bandwidth is free at Local/Standard tiers (the port fee covers it) -- the dial sizes throughput against the port's capacity, not a meter of its own.
+  estimate_exclusions:
+    - METERED_DATA circuits bill outbound data per GB by the peering location's zone (0.025 Zone 1, 0.05 Zone 2, 0.14 Zone 3, 0.1 Zone 4 at list) -- inbound is always free, and LOCAL circuits meter no egress at all
+    - the connectivity provider's own charges for the physical cross-connect are contracted outside Azure
+    - the ExpressRoute gateway that terminates private peering in a VNet bills hourly on its own component
+    - Global Reach (linking circuits) adds its own add-on fee and per-GB rates, outside this spec
+  notes: "Two very different bills wear this one resource shape. A service-provider circuit is the billed object itself: the monthly fee starts when the service key is issued -- Microsoft's pricing FAQ is explicit that billing runs from key issuance until the circuit is deleted AND the provider deprovisions -- so an unprovisioned circuit nobody hooked up bills at full rate, the classic ExpressRoute waste pattern. A Direct-port circuit inverts it: the port (its own component) carries the committed fee, Local and Standard circuits ride included, and only Premium adds a circuit-level fee. Fees key to the peering facility's pricing zone (Zone 1-4), a mapping from peering_location the manifest cannot resolve -- estimates state Zone 1 as an assumption. On the metered family the flat fee buys the pipe and egress is the usage half -- which is what makes this component hybrid rather than purely always-on. Prices verified from Microsoft's Retail Prices API and the ExpressRoute pricing page on 2026-08-18."

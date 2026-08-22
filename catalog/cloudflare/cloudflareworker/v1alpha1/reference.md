@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareWorkerSpec deploys a Cloudflare Worker script and everything that
 hangs off it: its resource bindings, routing (workers.dev, custom domains,
 routes), scheduled (cron) invocations, and runtime settings. Bindings are
@@ -50,7 +52,7 @@ spec:
 | `spec.compatibilityDate` | `string` |  |  |  |
 | `spec.content` | `string` |  |  |  |
 | `spec.r2Bundle` | `CloudflareWorkerScriptBundle` |  |  |  |
-| `spec.r2Bundle.bucket` | `string` | yes |  |  |
+| `spec.r2Bundle.bucket` | `string \| valueFrom` | yes |  | CloudflareR2Bucket (`status.outputs.bucket_name`) |
 | `spec.r2Bundle.path` | `string` | yes |  |  |
 | `spec.mainModule` | `string` |  | `index.js` |  |
 | `spec.compatibilityFlags` | `[]string` |  |  |  |
@@ -82,8 +84,10 @@ spec:
 | `spec.durableObjects` | `[]CloudflareWorkerDurableObjectBinding` |  |  |  |
 | `spec.durableObjects[].name` | `string` | yes |  |  |
 | `spec.durableObjects[].className` | `string` | yes |  |  |
-| `spec.durableObjects[].scriptName` | `string` |  |  |  |
+| `spec.durableObjects[].scriptName` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
 | `spec.durableObjects[].environment` | `string` |  |  |  |
+| `spec.durableObjects[].namespaceId` | `string` |  |  |  |
+| `spec.durableObjects[].dispatchNamespace` | `string` |  |  |  |
 | `spec.analyticsEngineDatasets` | `[]CloudflareWorkerAnalyticsEngineBinding` |  |  |  |
 | `spec.analyticsEngineDatasets[].name` | `string` | yes |  |  |
 | `spec.analyticsEngineDatasets[].dataset` | `string` | yes |  |  |
@@ -107,6 +111,18 @@ spec:
 | `spec.observability` | `CloudflareWorkerObservability` |  |  |  |
 | `spec.observability.enabled` | `bool` |  |  |  |
 | `spec.observability.headSamplingRate` | `double` |  |  |  |
+| `spec.observability.logs` | `CloudflareWorkerObservabilityLogs` |  |  |  |
+| `spec.observability.logs.enabled` | `bool` |  |  |  |
+| `spec.observability.logs.invocationLogs` | `bool` |  |  |  |
+| `spec.observability.logs.destinations` | `[]string` |  |  |  |
+| `spec.observability.logs.headSamplingRate` | `double` |  |  |  |
+| `spec.observability.logs.persist` | `bool` |  |  |  |
+| `spec.observability.traces` | `CloudflareWorkerObservabilityTraces` |  |  |  |
+| `spec.observability.traces.destinations` | `[]string` |  |  |  |
+| `spec.observability.traces.enabled` | `bool` |  |  |  |
+| `spec.observability.traces.headSamplingRate` | `double` |  |  |  |
+| `spec.observability.traces.persist` | `bool` |  |  |  |
+| `spec.observability.traces.propagationPolicy` | `string` |  |  |  |
 | `spec.placement` | `CloudflareWorkerPlacement` |  |  |  |
 | `spec.placement.mode` | `string` |  |  |  |
 | `spec.limits` | `CloudflareWorkerLimits` |  |  |  |
@@ -114,7 +130,7 @@ spec:
 | `spec.limits.subrequests` | `int64` |  |  |  |
 | `spec.logpush` | `bool` |  |  |  |
 | `spec.tailConsumers` | `[]CloudflareWorkerTailConsumer` |  |  |  |
-| `spec.tailConsumers[].service` | `string` | yes |  |  |
+| `spec.tailConsumers[].service` | `string \| valueFrom` | yes |  | CloudflareWorker (`status.outputs.script_name`) |
 | `spec.tailConsumers[].environment` | `string` |  |  |  |
 | `spec.tailConsumers[].namespace` | `string` |  |  |  |
 | `spec.assets` | `CloudflareWorkerAssets` |  |  |  |
@@ -127,6 +143,129 @@ spec:
 | `spec.assets.config.runWorkerFirst` | `bool` |  |  |  |
 | `spec.assets.config.runWorkerFirstRules` | `[]string` |  |  |  |
 | `spec.assets.bindingName` | `string` |  |  |  |
+| `spec.migrations` | `CloudflareWorkerMigrations` |  |  |  |
+| `spec.migrations.deletedClasses` | `[]string` |  |  |  |
+| `spec.migrations.newClasses` | `[]string` |  |  |  |
+| `spec.migrations.newSqliteClasses` | `[]string` |  |  |  |
+| `spec.migrations.newTag` | `string` |  |  |  |
+| `spec.migrations.oldTag` | `string` |  |  |  |
+| `spec.migrations.renamedClasses` | `[]CloudflareWorkerRenamedClass` |  |  |  |
+| `spec.migrations.renamedClasses[].from` | `string` |  |  |  |
+| `spec.migrations.renamedClasses[].to` | `string` |  |  |  |
+| `spec.migrations.transferredClasses` | `[]CloudflareWorkerTransferredClass` |  |  |  |
+| `spec.migrations.transferredClasses[].from` | `string` |  |  |  |
+| `spec.migrations.transferredClasses[].fromScript` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.migrations.transferredClasses[].to` | `string` |  |  |  |
+| `spec.migrations.steps` | `[]CloudflareWorkerMigrationStep` |  |  |  |
+| `spec.migrations.steps[].deletedClasses` | `[]string` |  |  |  |
+| `spec.migrations.steps[].newClasses` | `[]string` |  |  |  |
+| `spec.migrations.steps[].newSqliteClasses` | `[]string` |  |  |  |
+| `spec.migrations.steps[].renamedClasses` | `[]CloudflareWorkerRenamedClass` |  |  |  |
+| `spec.migrations.steps[].renamedClasses[].from` | `string` |  |  |  |
+| `spec.migrations.steps[].renamedClasses[].to` | `string` |  |  |  |
+| `spec.migrations.steps[].transferredClasses` | `[]CloudflareWorkerTransferredClass` |  |  |  |
+| `spec.migrations.steps[].transferredClasses[].from` | `string` |  |  |  |
+| `spec.migrations.steps[].transferredClasses[].fromScript` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.migrations.steps[].transferredClasses[].to` | `string` |  |  |  |
+| `spec.keepAssets` | `bool` |  |  |  |
+| `spec.keepBindings` | `[]string` |  |  |  |
+| `spec.usageModel` | `string` |  |  |  |
+| `spec.cacheOptions` | `CloudflareWorkerCacheOptions` |  |  |  |
+| `spec.cacheOptions.enabled` | `bool` |  |  |  |
+| `spec.cacheOptions.crossVersionCache` | `bool` |  |  |  |
+| `spec.exports` | `map<string, CloudflareWorkerExport>` |  |  |  |
+| `spec.exports.*.type` | `string` | yes |  |  |
+| `spec.exports.*.cache` | `CloudflareWorkerExportCache` |  |  |  |
+| `spec.exports.*.cache.enabled` | `bool` |  |  |  |
+| `spec.packageDependencies` | `[]CloudflareWorkerPackageDependency` |  |  |  |
+| `spec.packageDependencies[].name` | `string` | yes |  |  |
+| `spec.packageDependencies[].installedVersion` | `string` | yes |  |  |
+| `spec.packageDependencies[].packageJsonVersion` | `string` | yes |  |  |
+| `spec.annotations` | `CloudflareWorkerAnnotations` |  |  |  |
+| `spec.annotations.workersMessage` | `string` |  |  |  |
+| `spec.annotations.workersTag` | `string` |  |  |  |
+| `spec.bodyPart` | `string` |  |  |  |
+| `spec.contentType` | `string` |  |  |  |
+| `spec.mtlsCertificates` | `[]CloudflareWorkerMtlsCertificateBinding` |  |  |  |
+| `spec.mtlsCertificates[].name` | `string` | yes |  |  |
+| `spec.mtlsCertificates[].certificateId` | `string` | yes |  |  |
+| `spec.dispatchNamespaces` | `[]CloudflareWorkerDispatchNamespaceBinding` |  |  |  |
+| `spec.dispatchNamespaces[].name` | `string` | yes |  |  |
+| `spec.dispatchNamespaces[].namespace` | `string` | yes |  |  |
+| `spec.dispatchNamespaces[].outbound` | `CloudflareWorkerDispatchOutbound` |  |  |  |
+| `spec.dispatchNamespaces[].outbound.params` | `[]string` |  |  |  |
+| `spec.dispatchNamespaces[].outbound.worker` | `CloudflareWorkerDispatchOutboundWorker` |  |  |  |
+| `spec.dispatchNamespaces[].outbound.worker.service` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.dispatchNamespaces[].outbound.worker.environment` | `string` |  |  |  |
+| `spec.rateLimits` | `[]CloudflareWorkerRateLimitBinding` |  |  |  |
+| `spec.rateLimits[].name` | `string` | yes |  |  |
+| `spec.rateLimits[].namespace` | `string` | yes |  |  |
+| `spec.rateLimits[].simple` | `CloudflareWorkerRateLimitSimple` | yes |  |  |
+| `spec.rateLimits[].simple.limit` | `double` | yes |  |  |
+| `spec.rateLimits[].simple.period` | `int64` | yes |  |  |
+| `spec.rateLimits[].simple.mitigationTimeout` | `int64` |  |  |  |
+| `spec.sendEmail` | `[]CloudflareWorkerSendEmailBinding` |  |  |  |
+| `spec.sendEmail[].name` | `string` | yes |  |  |
+| `spec.sendEmail[].destinationAddress` | `string` |  |  |  |
+| `spec.sendEmail[].allowedDestinationAddresses` | `[]string` |  |  |  |
+| `spec.sendEmail[].allowedSenderAddresses` | `[]string` |  |  |  |
+| `spec.secretsStoreSecrets` | `[]CloudflareWorkerSecretsStoreBinding` |  |  |  |
+| `spec.secretsStoreSecrets[].name` | `string` | yes |  |  |
+| `spec.secretsStoreSecrets[].storeId` | `string` | yes |  |  |
+| `spec.secretsStoreSecrets[].secretName` | `string` | yes |  |  |
+| `spec.secretKeys` | `[]CloudflareWorkerSecretKeyBinding` |  |  |  |
+| `spec.secretKeys[].name` | `string` | yes |  |  |
+| `spec.secretKeys[].algorithm` | `string` | yes |  |  |
+| `spec.secretKeys[].format` | `string` | yes |  |  |
+| `spec.secretKeys[].usages` | `[]string` |  |  |  |
+| `spec.secretKeys[].keyBase64` | `string` (sensitive) |  |  |  |
+| `spec.secretKeys[].keyJwk` | `string` (sensitive) |  |  |  |
+| `spec.workflows` | `[]CloudflareWorkerWorkflowBinding` |  |  |  |
+| `spec.workflows[].name` | `string` | yes |  |  |
+| `spec.workflows[].workflowName` | `string` | yes |  |  |
+| `spec.pipelines` | `[]CloudflareWorkerPipelineBinding` |  |  |  |
+| `spec.pipelines[].name` | `string` | yes |  |  |
+| `spec.pipelines[].pipeline` | `string` | yes |  |  |
+| `spec.jsonBindings` | `[]CloudflareWorkerJsonBinding` |  |  |  |
+| `spec.jsonBindings[].name` | `string` | yes |  |  |
+| `spec.jsonBindings[].json` | `string` | yes |  |  |
+| `spec.inheritBindings` | `[]CloudflareWorkerInheritBinding` |  |  |  |
+| `spec.inheritBindings[].name` | `string` | yes |  |  |
+| `spec.inheritBindings[].oldName` | `string` |  |  |  |
+| `spec.inheritBindings[].versionId` | `string` |  |  |  |
+| `spec.dataBlobs` | `[]CloudflareWorkerBlobBinding` |  |  |  |
+| `spec.dataBlobs[].name` | `string` | yes |  |  |
+| `spec.dataBlobs[].part` | `string` | yes |  |  |
+| `spec.textBlobs` | `[]CloudflareWorkerBlobBinding` |  |  |  |
+| `spec.textBlobs[].name` | `string` | yes |  |  |
+| `spec.textBlobs[].part` | `string` | yes |  |  |
+| `spec.browsers` | `[]CloudflareWorkerNamedBinding` |  |  |  |
+| `spec.browsers[].name` | `string` | yes |  |  |
+| `spec.aiSearch` | `[]CloudflareWorkerAiSearchBinding` |  |  |  |
+| `spec.aiSearch[].name` | `string` | yes |  |  |
+| `spec.aiSearch[].instanceName` | `string` | yes |  |  |
+| `spec.aiSearch[].namespace` | `string` |  |  |  |
+| `spec.aiSearch[].appId` | `string` |  |  |  |
+| `spec.aiSearchNamespaces` | `[]CloudflareWorkerAiSearchNamespaceBinding` |  |  |  |
+| `spec.aiSearchNamespaces[].name` | `string` | yes |  |  |
+| `spec.aiSearchNamespaces[].namespace` | `string` | yes |  |  |
+| `spec.images` | `[]CloudflareWorkerNamedBinding` |  |  |  |
+| `spec.images[].name` | `string` | yes |  |  |
+| `spec.media` | `[]CloudflareWorkerNamedBinding` |  |  |  |
+| `spec.media[].name` | `string` | yes |  |  |
+| `spec.wasmModules` | `[]CloudflareWorkerBlobBinding` |  |  |  |
+| `spec.wasmModules[].name` | `string` | yes |  |  |
+| `spec.wasmModules[].part` | `string` | yes |  |  |
+| `spec.vpcServices` | `[]CloudflareWorkerVpcServiceBinding` |  |  |  |
+| `spec.vpcServices[].name` | `string` | yes |  |  |
+| `spec.vpcServices[].serviceId` | `string` | yes |  |  |
+| `spec.vpcNetworks` | `[]CloudflareWorkerVpcNetworkBinding` |  |  |  |
+| `spec.vpcNetworks[].name` | `string` | yes |  |  |
+| `spec.vpcNetworks[].networkId` | `string` |  |  |  |
+| `spec.vpcNetworks[].tunnelId` | `string \| valueFrom` |  |  | CloudflareZeroTrustTunnel (`status.outputs.tunnel_id`) |
+| `spec.tailConsumerBindings` | `[]CloudflareWorkerTailConsumerBinding` |  |  |  |
+| `spec.tailConsumerBindings[].name` | `string` | yes |  |  |
+| `spec.tailConsumerBindings[].service` | `string \| valueFrom` | yes |  | CloudflareWorker (`status.outputs.script_name`) |
 
 ## Field Details
 
@@ -171,11 +310,14 @@ flow). The module fetches the object and deploys it.
 
 ### spec.r2Bundle.bucket
 
-`string` · required
+`string | valueFrom` · required
 
-The R2 bucket name where the script bundle is stored.
+The R2 bucket that holds the bundle, or a reference to a CloudflareR2Bucket.
+Widened from a plain string so a Worker can compose against a bucket Planton manages.
 
+- references: CloudflareR2Bucket (`status.outputs.bucket_name`)
 - rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareR2Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_name}} -- a bare string does not parse
 
 ### spec.r2Bundle.path
 
@@ -428,16 +570,33 @@ The Durable Object class name that implements the namespace.
 
 ### spec.durableObjects[].scriptName
 
-`string`
+`string | valueFrom`
 
 Script that defines the class, when it lives in a different Worker. Leave
-empty when the class is defined in this Worker.
+empty when the class is defined in this Worker. Widened to a Worker FK so
+a Durable Object defined in another Planton Worker composes as a graph edge.
+
+- references: CloudflareWorker (`status.outputs.script_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
 
 ### spec.durableObjects[].environment
 
 `string`
 
 Optional environment of the defining script.
+
+### spec.durableObjects[].namespaceId
+
+`string`
+
+Durable Object namespace identifier. Optional alternative to class_name
+when binding an already-created namespace by id.
+
+### spec.durableObjects[].dispatchNamespace
+
+`string`
+
+Dispatch namespace the Durable Object script belongs to (Workers for Platforms).
 
 ### spec.analyticsEngineDatasets
 
@@ -609,6 +768,69 @@ Fraction of requests sampled for logging, 0.0–1.0. Leave 0 for the default
 
 - rule: head_sampling_rate must be between 0 and 1
 
+### spec.observability.logs
+
+`CloudflareWorkerObservabilityLogs`
+
+Nested log export / persistence settings. Distinct from the top-level
+enabled + head_sampling_rate pair — Cloudflare lets you turn logs on
+independently of the overall observability switch.
+
+### spec.observability.logs.enabled
+
+`bool`
+
+### spec.observability.logs.invocationLogs
+
+`bool`
+
+### spec.observability.logs.destinations
+
+`[]string`
+
+### spec.observability.logs.headSamplingRate
+
+`double`
+
+- rule: head_sampling_rate must be between 0 and 1
+
+### spec.observability.logs.persist
+
+`bool`
+
+### spec.observability.traces
+
+`CloudflareWorkerObservabilityTraces`
+
+Nested trace export / persistence settings.
+
+### spec.observability.traces.destinations
+
+`[]string`
+
+### spec.observability.traces.enabled
+
+`bool`
+
+### spec.observability.traces.headSamplingRate
+
+`double`
+
+- rule: head_sampling_rate must be between 0 and 1
+
+### spec.observability.traces.persist
+
+`bool`
+
+### spec.observability.traces.propagationPolicy
+
+`string`
+
+How inbound traceparent/tracestate headers are handled: "authenticated"
+(default) or "accept".
+
+- rule: propagation_policy must be "authenticated" or "accept"
+
 ### spec.placement
 
 `CloudflareWorkerPlacement`
@@ -621,9 +843,11 @@ calls, instead of closest to the user.
 `string`
 
 Placement mode. "smart" lets Cloudflare run the Worker near the backends it
-calls. Leave empty to keep the default (run near the user).
+calls. "targeted" pins it (region/hostname/host are computed-only on the
+provider and are not authorable here). Leave empty to keep the default
+(run near the user).
 
-- rule: placement mode must be "smart"
+- rule: placement mode must be "smart" or "targeted"
 
 ### spec.limits
 
@@ -662,11 +886,15 @@ Tail consumers: other Workers that receive this Worker's tail (trace) events.
 
 ### spec.tailConsumers[].service
 
-`string` · required
+`string | valueFrom` · required
 
-The consuming Worker's service (script) name.
+The consuming Worker's service (script) name, or a reference to a
+CloudflareWorker. Widened from a plain string so tail consumers compose
+as graph edges.
 
+- references: CloudflareWorker (`status.outputs.script_name`)
 - rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
 
 ### spec.tailConsumers[].environment
 
@@ -771,9 +999,719 @@ this JS variable name (so code can call e.g. env.ASSETS.fetch(request)).
 Leave empty for a pure static site that has no script. Only meaningful when
 a script source is also provided.
 
+### spec.migrations
+
+`CloudflareWorkerMigrations`
+
+Durable Object migrations applied on this upload. Cloudflare rejects a
+second apply of the same tag, so this is a one-shot plan — not something
+the live E2E harness can re-apply. Author it, plan it, prove it later by
+hand if needed.
+
+### spec.migrations.deletedClasses
+
+`[]string`
+
+### spec.migrations.newClasses
+
+`[]string`
+
+### spec.migrations.newSqliteClasses
+
+`[]string`
+
+### spec.migrations.newTag
+
+`string`
+
+### spec.migrations.oldTag
+
+`string`
+
+### spec.migrations.renamedClasses
+
+`[]CloudflareWorkerRenamedClass`
+
+### spec.migrations.renamedClasses[].from
+
+`string`
+
+### spec.migrations.renamedClasses[].to
+
+`string`
+
+### spec.migrations.transferredClasses
+
+`[]CloudflareWorkerTransferredClass`
+
+### spec.migrations.transferredClasses[].from
+
+`string`
+
+### spec.migrations.transferredClasses[].fromScript
+
+`string | valueFrom`
+
+Source Worker that currently owns the class. A CloudflareWorker FK so a
+transfer composes as a graph edge.
+
+- references: CloudflareWorker (`status.outputs.script_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
+
+### spec.migrations.transferredClasses[].to
+
+`string`
+
+### spec.migrations.steps
+
+`[]CloudflareWorkerMigrationStep`
+
+### spec.migrations.steps[].deletedClasses
+
+`[]string`
+
+### spec.migrations.steps[].newClasses
+
+`[]string`
+
+### spec.migrations.steps[].newSqliteClasses
+
+`[]string`
+
+### spec.migrations.steps[].renamedClasses
+
+`[]CloudflareWorkerRenamedClass`
+
+### spec.migrations.steps[].renamedClasses[].from
+
+`string`
+
+### spec.migrations.steps[].renamedClasses[].to
+
+`string`
+
+### spec.migrations.steps[].transferredClasses
+
+`[]CloudflareWorkerTransferredClass`
+
+### spec.migrations.steps[].transferredClasses[].from
+
+`string`
+
+### spec.migrations.steps[].transferredClasses[].fromScript
+
+`string | valueFrom`
+
+Source Worker that currently owns the class. A CloudflareWorker FK so a
+transfer composes as a graph edge.
+
+- references: CloudflareWorker (`status.outputs.script_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
+
+### spec.migrations.steps[].transferredClasses[].to
+
+`string`
+
+### spec.keepAssets
+
+`bool`
+
+Keep previously uploaded assets instead of sending a new bundle. An
+explicit assets upload wins over this flag.
+
+### spec.keepBindings
+
+`[]string`
+
+Binding types to keep from the previous upload (e.g. "secret_text") so a
+redeploy does not have to resend every secret.
+
+### spec.usageModel
+
+`string`
+
+Usage model for invocations: "standard", "bundled", or "unbound". Empty
+lets Cloudflare default to "standard".
+
+- rule: usage_model must be one of "standard", "bundled", "unbound"
+
+### spec.cacheOptions
+
+`CloudflareWorkerCacheOptions`
+
+Global CacheW settings. Pulumi's Cloudflare SDK v6.17.0 has no matching
+input — tofu honors this; Pulumi logs a PARITY-EXCEPTION and skips it.
+
+### spec.cacheOptions.enabled
+
+`bool`
+
+### spec.cacheOptions.crossVersionCache
+
+`bool`
+
+### spec.exports
+
+`map<string, CloudflareWorkerExport>`
+
+Per-entrypoint export configuration. Map key is the export name. Pulumi
+SDK v6.17.0 has no matching input — tofu honors this; Pulumi skips it.
+
+### spec.exports.*.type
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.exports.*.cache
+
+`CloudflareWorkerExportCache`
+
+### spec.exports.*.cache.enabled
+
+`bool`
+
+### spec.packageDependencies
+
+`[]CloudflareWorkerPackageDependency`
+
+npm packages recorded against this Worker build. Pulumi SDK v6.17.0 has
+no matching input — tofu honors this; Pulumi skips it.
+
+### spec.packageDependencies[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.packageDependencies[].installedVersion
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.packageDependencies[].packageJsonVersion
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.annotations
+
+`CloudflareWorkerAnnotations`
+
+Version annotations written on this upload (message + tag). The
+server-set workers_triggered_by leaf is computed-only and omitted.
+
+### spec.annotations.workersMessage
+
+`string`
+
+### spec.annotations.workersTag
+
+`string`
+
+### spec.bodyPart
+
+`string`
+
+Uploaded file that contains the service-worker-syntax script (the file
+that adds a fetch listener). Mutually exclusive with main_module.
+
+### spec.contentType
+
+`string`
+
+Content-Type of the Worker. Required when uploading a non-JavaScript
+Worker (e.g. Python). Empty is JavaScript.
+
+- rule: content_type must be one of the five Cloudflare Worker MIME types
+
+### spec.mtlsCertificates
+
+`[]CloudflareWorkerMtlsCertificateBinding`
+
+mTLS certificate bindings. certificate_id is a literal — Planton has no
+Cloudflare mTLS kind yet.
+
+### spec.mtlsCertificates[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.mtlsCertificates[].certificateId
+
+`string` · required
+
+Literal certificate id — Planton has no mTLS kind yet.
+
+- rule: {"required":true}
+
+### spec.dispatchNamespaces
+
+`[]CloudflareWorkerDispatchNamespaceBinding`
+
+Dispatch-namespace bindings (Workers for Platforms). The outbound worker
+service is a CloudflareWorker FK when set.
+
+### spec.dispatchNamespaces[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.dispatchNamespaces[].namespace
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.dispatchNamespaces[].outbound
+
+`CloudflareWorkerDispatchOutbound`
+
+### spec.dispatchNamespaces[].outbound.params
+
+`[]string`
+
+### spec.dispatchNamespaces[].outbound.worker
+
+`CloudflareWorkerDispatchOutboundWorker`
+
+### spec.dispatchNamespaces[].outbound.worker.service
+
+`string | valueFrom`
+
+Outbound Worker name, or a reference to a CloudflareWorker.
+
+- references: CloudflareWorker (`status.outputs.script_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
+
+### spec.dispatchNamespaces[].outbound.worker.environment
+
+`string`
+
+### spec.rateLimits
+
+`[]CloudflareWorkerRateLimitBinding`
+
+Rate-limit bindings (the Workers rate-limiting API).
+
+### spec.rateLimits[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.rateLimits[].namespace
+
+`string` · required
+
+Rate-limit namespace id (a Cloudflare-side identifier, not a Planton kind).
+
+- rule: {"required":true}
+
+### spec.rateLimits[].simple
+
+`CloudflareWorkerRateLimitSimple` · required
+
+- rule: {"required":true}
+
+### spec.rateLimits[].simple.limit
+
+`double` · required
+
+- rule: {"required":true}
+
+### spec.rateLimits[].simple.period
+
+`int64` · required
+
+- rule: {"required":true}
+
+### spec.rateLimits[].simple.mitigationTimeout
+
+`int64`
+
+### spec.sendEmail
+
+`[]CloudflareWorkerSendEmailBinding`
+
+send_email bindings: let the Worker send email through Email Routing.
+
+### spec.sendEmail[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.sendEmail[].destinationAddress
+
+`string`
+
+### spec.sendEmail[].allowedDestinationAddresses
+
+`[]string`
+
+### spec.sendEmail[].allowedSenderAddresses
+
+`[]string`
+
+### spec.secretsStoreSecrets
+
+`[]CloudflareWorkerSecretsStoreBinding`
+
+Secrets Store bindings. store_id and secret_name are literals — Planton
+has no Secrets Store kind yet.
+
+### spec.secretsStoreSecrets[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.secretsStoreSecrets[].storeId
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.secretsStoreSecrets[].secretName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.secretKeys
+
+`[]CloudflareWorkerSecretKeyBinding`
+
+SubtleCrypto secret-key bindings. Material fields are sensitive; the
+wrapper list is exempt like `secrets`.
+
+### spec.secretKeys[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.secretKeys[].algorithm
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.secretKeys[].format
+
+`string` · required
+
+- rule: format must be one of "raw", "pkcs8", "spki", "jwk"
+- rule: {"required":true}
+
+### spec.secretKeys[].usages
+
+`[]string`
+
+### spec.secretKeys[].keyBase64
+
+`string` · sensitive
+
+### spec.secretKeys[].keyJwk
+
+`string` · sensitive
+
+### spec.workflows
+
+`[]CloudflareWorkerWorkflowBinding`
+
+Workflow bindings. workflow_name is a literal — Planton has no Workflows kind yet.
+
+### spec.workflows[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.workflows[].workflowName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.pipelines
+
+`[]CloudflareWorkerPipelineBinding`
+
+Pipeline bindings. pipeline is a literal — Planton has no Pipelines kind yet.
+
+### spec.pipelines[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.pipelines[].pipeline
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.jsonBindings
+
+`[]CloudflareWorkerJsonBinding`
+
+JSON bindings: structured config exposed to the Worker as a parsed object.
+
+### spec.jsonBindings[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.jsonBindings[].json
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.inheritBindings
+
+`[]CloudflareWorkerInheritBinding`
+
+Inherit bindings: copy a binding from a previous version (optionally renamed).
+
+### spec.inheritBindings[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.inheritBindings[].oldName
+
+`string`
+
+### spec.inheritBindings[].versionId
+
+`string`
+
+### spec.dataBlobs
+
+`[]CloudflareWorkerBlobBinding`
+
+data_blob bindings (service-worker syntax). `part` is the uploaded file name.
+
+### spec.dataBlobs[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.dataBlobs[].part
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.textBlobs
+
+`[]CloudflareWorkerBlobBinding`
+
+text_blob bindings (service-worker syntax). `part` is the uploaded file name.
+
+### spec.textBlobs[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.textBlobs[].part
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.browsers
+
+`[]CloudflareWorkerNamedBinding`
+
+Browser Rendering bindings. Each entry is just the JS variable name.
+
+### spec.browsers[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.aiSearch
+
+`[]CloudflareWorkerAiSearchBinding`
+
+AI Search instance bindings. instance_name is a literal — Planton has no
+AI Search kind yet. app_id is the Flagship leaf the provider hangs on the
+same binding object.
+
+### spec.aiSearch[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.aiSearch[].instanceName
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.aiSearch[].namespace
+
+`string`
+
+Namespace the instance belongs to. Cloudflare defaults this to "default".
+
+### spec.aiSearch[].appId
+
+`string`
+
+Flagship app id — the provider hangs this leaf on the same binding object.
+
+### spec.aiSearchNamespaces
+
+`[]CloudflareWorkerAiSearchNamespaceBinding`
+
+AI Search namespace bindings.
+
+### spec.aiSearchNamespaces[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.aiSearchNamespaces[].namespace
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.images
+
+`[]CloudflareWorkerNamedBinding`
+
+Images bindings. Each entry is just the JS variable name.
+
+### spec.images[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.media
+
+`[]CloudflareWorkerNamedBinding`
+
+Media bindings. Each entry is just the JS variable name.
+
+### spec.media[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.wasmModules
+
+`[]CloudflareWorkerBlobBinding`
+
+wasm_module bindings (service-worker syntax). `part` is the uploaded file name.
+
+### spec.wasmModules[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.wasmModules[].part
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.vpcServices
+
+`[]CloudflareWorkerVpcServiceBinding`
+
+VPC service bindings. service_id is a literal — Planton has no VPC-service kind yet.
+
+### spec.vpcServices[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.vpcServices[].serviceId
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.vpcNetworks
+
+`[]CloudflareWorkerVpcNetworkBinding`
+
+VPC network bindings. network_id is a literal ("cf1:network"); tunnel_id
+is a CloudflareZeroTrustTunnel FK. The two are mutually exclusive.
+
+- rule: set network_id or tunnel_id, not both
+
+### spec.vpcNetworks[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.vpcNetworks[].networkId
+
+`string`
+
+Literal network id. Only "cf1:network" is currently supported by Cloudflare.
+
+### spec.vpcNetworks[].tunnelId
+
+`string | valueFrom`
+
+Cloudflare Tunnel to bind, or a reference to a CloudflareZeroTrustTunnel.
+
+- references: CloudflareZeroTrustTunnel (`status.outputs.tunnel_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareZeroTrustTunnel, name: <that resource's name>, fieldPath: status.outputs.tunnel_id}} -- a bare string does not parse
+
+### spec.tailConsumerBindings
+
+`[]CloudflareWorkerTailConsumerBinding`
+
+tail_consumer *bindings* (type=tail_consumer on the script). Distinct from
+the top-level tail_consumers list, which names Workers that consume this
+Worker's logs. This list binds another Worker as a tail consumer resource
+the script can call.
+
+### spec.tailConsumerBindings[].name
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.tailConsumerBindings[].service
+
+`string | valueFrom` · required
+
+Worker that is the tail-consumer resource, or a reference to a CloudflareWorker.
+
+- references: CloudflareWorker (`status.outputs.script_name`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `spec.code_or_assets_required`: provide a script source (content or r2_bundle) and/or a static-asset directory (assets)
+- `spec.body_part_xor_main_module`: set body_part (service-worker syntax) or main_module (ES-module syntax), not both
 
 ## Outputs
 
@@ -785,6 +1723,9 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareWorker
 | `status.outputs.script_name` | `string` | The Worker script name — the target a service binding references. |
 | `status.outputs.custom_domain_hostnames` | `[]string` | The custom-domain hostnames attached to this Worker. |
 | `status.outputs.route_patterns` | `[]string` | The route patterns mapped to this Worker. |
+| `status.outputs.custom_domain_ids` | `map<string, string>` | Cloudflare-assigned custom-domain ids, keyed by hostname (the for_each key). Needed so import can address cloudflare_workers_custom_domain as {account_id}/{domain_id}. |
+| `status.outputs.route_ids` | `map<string, string>` | Cloudflare-assigned route ids, keyed by the same index key the module uses for for_each (the list index as a string). Needed so import can address cloudflare_workers_route as {zone_id}/{route_id}. |
+| `status.outputs.route_zone_ids` | `map<string, string>` | Zone id of each route, keyed the same way as route_ids. Import needs both halves of {zone_id}/{route_id}. |
 
 ## References
 
@@ -792,14 +1733,22 @@ Fields that can point at another resource's outputs:
 
 | Field | Kind | Output |
 |---|---|---|
+| `spec.r2Bundle.bucket` | CloudflareR2Bucket | `status.outputs.bucket_name` |
 | `spec.kvNamespaces[].namespaceId` | CloudflareKvNamespace | `status.outputs.namespace_id` |
 | `spec.r2Buckets[].bucketName` | CloudflareR2Bucket | `status.outputs.bucket_name` |
 | `spec.d1Databases[].databaseId` | CloudflareD1Database | `status.outputs.database_id` |
 | `spec.hyperdriveConfigs[].configId` | CloudflareHyperdriveConfig | `status.outputs.hyperdrive_id` |
 | `spec.services[].service` | CloudflareWorker | `status.outputs.script_name` |
 | `spec.queues[].queueName` | CloudflareQueue | `status.outputs.queue_name` |
+| `spec.durableObjects[].scriptName` | CloudflareWorker | `status.outputs.script_name` |
 | `spec.customDomains[].zoneId` | CloudflareDnsZone | `status.outputs.zone_id` |
 | `spec.routes[].zoneId` | CloudflareDnsZone | `status.outputs.zone_id` |
+| `spec.tailConsumers[].service` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.migrations.transferredClasses[].fromScript` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.migrations.steps[].transferredClasses[].fromScript` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.dispatchNamespaces[].outbound.worker.service` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.vpcNetworks[].tunnelId` | CloudflareZeroTrustTunnel | `status.outputs.tunnel_id` |
+| `spec.tailConsumerBindings[].service` | CloudflareWorker | `status.outputs.script_name` |
 
 ## Referenced By
 
@@ -807,12 +1756,19 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| CloudflareEmailRoutingRule | `spec.action.worker` | `status.outputs.script_name` |
-| CloudflareEmailRoutingZone | `spec.catchAll.worker` | `status.outputs.script_name` |
+| CloudflareEmailRoutingRule | `spec.actions[].worker` | `status.outputs.script_name` |
+| CloudflareEmailRoutingZone | `spec.catchAll.actions[].worker` | `status.outputs.script_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.preview.services[].service` | `status.outputs.script_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.production.services[].service` | `status.outputs.script_name` |
 | CloudflareQueue | `spec.consumer.scriptName` | `status.outputs.script_name` |
 | CloudflareWorker | `spec.services[].service` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.durableObjects[].scriptName` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.tailConsumers[].service` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.migrations.transferredClasses[].fromScript` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.migrations.steps[].transferredClasses[].fromScript` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.dispatchNamespaces[].outbound.worker.service` | `status.outputs.script_name` |
+| CloudflareWorker | `spec.tailConsumerBindings[].service` | `status.outputs.script_name` |
+| CloudflareWorkflow | `spec.scriptName` | `status.outputs.script_name` |
 
 ## See Also
 

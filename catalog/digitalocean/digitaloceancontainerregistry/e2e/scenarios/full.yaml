@@ -1,0 +1,25 @@
+# Full registry: basic tier, explicit region, and minted docker credentials
+# (write access, 1-hour expiry -- proving both credential knobs without
+# leaving a long-lived token behind). Cannot run concurrently with the
+# minimal scenario: one registry per account.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanContainerRegistry
+metadata:
+  name: planton-oss-e2e-digitaloceancontainerregistry-full
+  id: planton-oss-e2e-digitaloceancontainerregistry-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceancontainerregistry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: pltn-e2e-reg-full-${E2E_RUN_ID}
+  subscriptionTier: basic
+  region: nyc3
+  dockerCredentials:
+    write: true
+    expirySeconds: 3600

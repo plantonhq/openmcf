@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceansshkey.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// DigitalOceanSshKeySpec models the full digitalocean_ssh_key resource
+// surface: an SSH public key registered on the DigitalOcean account, ready
+// to be injected into droplets (and droplet autoscale pools) at create time.
+//
+// Only the name can change in place. The key material is create-only:
+// DigitalOcean compares it after trimming only LEADING and TRAILING
+// whitespace, so any change inside the line -- a different key comment, a
+// re-encoded body, even casing -- REPLACES the key, which rotates the
+// numeric id and the fingerprint that droplets reference. Deleting a key
+// never touches droplets that were created with it; they keep the key in
+// their authorized_keys.
+message DigitalOceanSshKeySpec {
+  // Human-friendly name of the key, shown in the DigitalOcean console.
+  string key_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The SSH public key material in OpenSSH single-line format (for example
+  // "ssh-ed25519 AAAA... comment"). DigitalOcean validates the material
+  // server-side at create time; a malformed key fails the apply, never the
+  // validation here. Create-only: any change replaces the key.
+  string public_key = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

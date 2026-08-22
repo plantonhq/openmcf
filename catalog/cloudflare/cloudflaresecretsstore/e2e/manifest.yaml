@@ -1,0 +1,12 @@
+# Complete example manifest for CloudflareSecretsStore. Creates the
+# account-level Secrets Store -- the vault Worker bindings and AI Gateway
+# authentication consume secrets from. Both fields are create-only, and
+# Cloudflare allows one store per account: adopt an existing store by import
+# instead of creating a second.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSecretsStore
+metadata:
+  name: account-secrets
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: account-secrets

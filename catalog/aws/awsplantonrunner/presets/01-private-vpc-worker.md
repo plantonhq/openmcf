@@ -1,9 +1,9 @@
 # Private VPC Worker
 
-This preset deploys the standard runner appliance: a pull-based worker on
-two private subnets that receives deploy operations through its queue and
-executes them from inside the VPC. The 30-second decision for making a
-private-endpoint Kubernetes cluster (or any in-network target)
+This preset deploys the standard runner appliance: an always-on worker on
+two private subnets that receives deploy operations from the control
+plane and executes them from inside the VPC. The 30-second decision for
+making a private-endpoint Kubernetes cluster (or any in-network target)
 deployable.
 
 ## When to Use
@@ -16,15 +16,19 @@ deployable.
 
 ## Key Configuration Choices
 
-- **`executionMode: temporal`** -- the pull-based worker mode; operations
-  wait in the runner's queue until it polls, so nothing ever needs to
-  reach the runner
+- **Token as a managed-secret reference** -- the token authorizes the
+  runner to JOIN, nothing more: on first boot the runner registers
+  itself with the control plane and receives its own individually
+  revocable identity, and revoking the token never touches runners it
+  already admitted. On Planton the platform mints the token and writes
+  it at exactly this reference before the infrastructure applies.
+- **No mode or replica knobs** -- everything beyond the join (work
+  queue, tunnel, API endpoints) arrives in the join response, so the
+  runner self-configures on arrival; and it runs as exactly one instance
+  by design -- more capacity means more runners, not more copies
 - **Two private subnets in different AZs** -- the runner reschedules
   across an AZ event; private subnets need a NAT route for the runner's
-  outbound traffic (image pulls, control plane)
-- **Credentials as a managed-secret reference** -- the document from
-  `planton runner generate-credentials`, stored once as a secret and
-  resolved just-in-time; it never appears in plaintext anywhere
+  outbound traffic (image pulls, control-plane dial-out)
 - **Default sizing (0.5 vCPU / 1 GiB)** -- comfortable for typical IaC
   operations; see the high-capacity preset when stacks grow large
 
@@ -32,12 +36,15 @@ deployable.
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<runner-name>` | Name for the runner appliance | Match the runner registration's name |
+| `<runner-name>` | Name for the runner appliance | Any name you choose |
 | `<aws-region>` | AWS region code | The region hosting the private targets |
 | `<private-subnet-a/b-resource-name>` | Names of the private AwsSubnet resources | Your subnet manifests' `metadata.name` |
-| `<runner-credentials-secret-slug>` | The managed secret holding the credentials JSON | Created from `planton runner generate-credentials <runner-name>` |
+
+The `runner-token` secret slug is yours to choose -- on Planton the
+platform writes the token there automatically; elsewhere, create a token
+with `planton runner token create` and store it under that slug.
 
 ## Related Presets
 
-- `02-dual-mode` -- adds the real-time CloudOps channel (live resource browsing)
+- `02-public-subnet` -- same worker on public subnets, for VPCs without NAT
 - `03-high-capacity` -- pinned version and larger sizing for heavy IaC workloads

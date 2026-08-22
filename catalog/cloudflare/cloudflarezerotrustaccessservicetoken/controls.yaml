@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccessservicetoken
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The token is a credential Cloudflare stores; this component does not encrypt customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Clients present the token over HTTPS to Access-protected applications. The component has no toggle that would send the secret in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The token is a credential, not an endpoint. Applications the token unlocks are CloudflareZeroTrustAccessApplication territory.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Edge filtering is Gateway and Ruleset territory.
+    - control_id: rbac
+      status: not_applicable
+      notes: The token is a machine identity. Which applications accept it is decided by Access policies that match service_token rules, not by this component.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The resource IS a machine credential -- client_id plus client_secret presented in CF-Access-Client-ID / CF-Access-Client-Secret headers.
+      notes: Capture client_secret at deploy; Cloudflare never returns it again except on rotation.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Service tokens are the modern machine-auth path; there is no legacy alternative on this component.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records Access configuration changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration. The client_secret is create-only -- a lost secret means rotating the token (bump client_secret_version), not restoring from state.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Account-scoped (or zone-scoped) credential served by Cloudflare's global edge.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete. Rotation (client_secret_version + previous_client_secret_expires_at) is the operational alternative to deleting a live credential.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates Access; no customer-visible patch surface exists.

@@ -1,0 +1,31 @@
+# Minimal CloudflareSecretsStoreSecret scenario: one secret in the run's
+# store fixture, scoped to Workers. The value is a throwaway run-scoped
+# literal (not a real credential -- real values enter production manifests
+# as managed-secret references). Scopes ride the spec's canonical-order CEL.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSecretsStoreSecret
+metadata:
+  name: planton-oss-e2e-cloudflaresecretsstoresecret-minimal
+  id: planton-oss-e2e-cloudflaresecretsstoresecret-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflaresecretsstoresecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  store_id:
+    valueFrom:
+      kind: CloudflareSecretsStore
+      name: planton-oss-e2e-cloudflaresecretsstore-prereq
+      fieldPath: status.outputs.store_id
+  name: e2e-secret-${E2E_RUN_ID}
+  value:
+    value: e2e-throwaway-${E2E_RUN_ID}
+  scopes:
+    - workers
+  comment: E2E lane throwaway secret.

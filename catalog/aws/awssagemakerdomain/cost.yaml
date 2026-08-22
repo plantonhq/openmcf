@@ -1,0 +1,36 @@
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakerdomain
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AmazonSageMaker
+      sku_meter: provisioned ML storage
+      pricing_unit: GB-months
+      description: Each space entry provisions a gp3 EBS volume of its pinned ebsVolumeSizeInGb, billing $0.112 per GB-month (us-east-1) around the clock whether anyone opens the space or not -- the one committed meter on an otherwise free control-plane shell.
+  cost_drivers:
+    - field_path: spaces
+      sku_meter: provisioned ML storage
+      pricing_unit: GB-months
+      impact: The committed meter -- each space entry provisions a gp3 EBS volume of spaceSettings.spaceStorageSettings.ebsVolumeSizeInGb, billing $0.112 per GB-month (us-east-1) around the clock whether anyone opens the space or not. The domain, user profiles, and spaces themselves carry no existence fee.
+    - field_path: default_user_settings
+      sku_meter: studio instance hours
+      pricing_unit: instance-hours
+      impact: The settings pick WHICH instance type users' JupyterLab/KernelGateway apps run on (ml.t3.medium vs ml.g4dn.xlarge changes the hourly rate by an order of magnitude) and whether idle apps shut down -- but apps launch when humans work, so instance-hours are usage, not commitment. idleSettings is the single most important cost control on a domain.
+    - field_path: home_efs_retention_policy
+      sku_meter: EFS storage
+      pricing_unit: GB-months
+      impact: The domain auto-creates an EFS file system for home directories, billing per GB-month of data actually stored (starts near zero, grows with use). The default Retain keeps that file system -- and its bill -- ALIVE after the domain is deleted; Delete tears it down with the domain.
+    - field_path: region
+      sku_meter: provisioned ML storage
+      pricing_unit: GB-months
+      impact: Studio storage and instance rates are published per region under the AmazonSageMaker offer.
+  free_tier: "None on the domain itself -- it is a free control-plane shell. Money follows what runs and what is provisioned inside it."
+  estimate_exclusions:
+    - app instance-hours (JupyterLab, KernelGateway, CodeEditor, Canvas sessions) bill per hour while running at the chosen instance type's rate -- launched by humans, unknowable to the manifest
+    - the home EFS file system bills per GB-month of data stored -- data-dependent, starting near zero
+    - VpcOnly domains reach SageMaker/S3/STS through VPC interface endpoints billed on their own components
+    - a customer-managed kms_key_id bills its monthly fee and per-request charges on the referenced AwsKmsKey component
+    - Canvas workspaces store artifacts in the pinned S3 path, billing on that bucket's component
+  notes: "The one committed dollar lives in spaces[].spaceSettings.spaceStorageSettings.ebsVolumeSizeInGb -- a value nested inside a repeated field the derivation grammar cannot traverse, hence the hand model. defaultEbsVolumeSizeInGb in default_user_settings/default_space_settings is only a template for FUTURE volumes and commits nothing by itself."

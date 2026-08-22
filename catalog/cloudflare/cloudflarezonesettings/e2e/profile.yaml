@@ -1,0 +1,33 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezonesettings
+spec:
+  # Zone settings under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite (a run-scoped pending zone), resolves zone_id from its
+  # outputs, then runs deploy -> settings-surface verify -> destroy ->
+  # verify on both provisioners. THE CLASS CONTRACT: zone settings have NO
+  # delete at Cloudflare (the provider's Delete is literally empty and its
+  # plans warn about it), so verify-destroyed asserts the settings surface
+  # STILL ANSWERS -- never absence. Zero-orphan cleanup comes from the
+  # run-scoped zone fixture itself: the abandoned settings die with the
+  # throwaway zone. Scenario ordering is the revert discipline (the
+  # defaults-posture scenario sorts LAST and returns the shared surface to
+  # Cloudflare defaults before the lane ends). Scenarios stick to
+  # free-plan-safe setting ids (always_use_https, min_tls_version,
+  # browser_cache_ttl, security_header, security_level, ciphers); plan-gated
+  # ids (advanced_ddos, orange_to_orange, image_resizing, polish, aegis,
+  # automatic_platform_optimization) answer editable=false on the free plan
+  # and stay out of live lanes as recorded deferrals. Watch items for the
+  # proving session: (a) create==update is a PATCH -- the idempotency re-plan
+  # may see normalized/computed echoes on some ids; (b) value-level
+  # assertion (did the setting actually flip?) needs per-scenario
+  # expectations the harness does not carry -- proof-lane design authority
+  # decides whether to add a value-aware probe. Settings apply in seconds at
+  # zero cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

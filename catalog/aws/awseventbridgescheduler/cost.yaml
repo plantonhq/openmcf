@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseventbridgescheduler
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: schedule_expression
+      sku_meter: Scheduler invocations
+      pricing_unit: invocations
+      impact: "The cadence IS the volume: a cron, rate, or one-time expression commits a knowable number of fires per month, each one an invocation against the meter -- $1.00 per million on the EventBridge pricing page, after the free tier. A daily cron commits ~30; rate(1 minute) commits ~43,800; only schedule fleets in the millions ever leave the free allowance."
+    - field_path: state
+      sku_meter: Scheduler invocations
+      pricing_unit: invocations
+      impact: DISABLED pauses the schedule without deleting it -- zero fires, zero invocations, zero downstream target launches. The off switch for the whole cost chain.
+  free_tier: "A STANDING monthly allowance, not a trial: 'You can make 14,000,000 invocations per month for free' -- recalculated every month, permanently, aggregated across all regions except GovCloud; unused allowance does not roll over. Beyond it, invocations bill $1.00 per million. Most applications never leave it -- the pricing page itself says some 'may be able to operate within the Free Tier' entirely."
+  estimate_exclusions:
+    - what each fire LAUNCHES bills on its own component -- Lambda invocations and duration, ECS/Fargate task runtime (vCPU-seconds and GB-seconds per launched task), Kinesis puts, SQS requests, SageMaker pipeline executions, event-bus deliveries
+    - undeliverable events after the retry policy exhausts land in the dead-letter queue, billing SQS requests on the referenced AwsSqsQueue
+    - a customer-managed key on kms_key_arn bills its monthly fee and per-request charges on the referenced AwsKmsKey
+    - schedule groups are free containers -- no meter counts them
+  notes: "Scheduler is the cheapest part of everything it triggers: the invocation meter has a permanent 14M-per-month free allowance that a single schedule cannot realistically exhaust (even rate(1 minute) commits only ~43,800 fires), so the schedule's own line item is almost always $0.00. The real spend is DOWNSTREAM -- a schedule that launches a Fargate task every 15 minutes buys ~2,900 task runs a month on the ECS side, billed there. Cost review for this kind means reading the target, not the cron."

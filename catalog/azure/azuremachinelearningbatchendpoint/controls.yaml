@@ -49,6 +49,9 @@ spec:
       evidence:
         type: spec_default
         reference: The batch service REJECTS the weaker modes the shared ARM enum advertises -- Key (static keys that never expire) and AMLToken both fail with "AuthMode must be 'AADToken'" -- and the spec's allowlist encodes the service's real contract, making the legacy paths unexpressable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Control-plane changes land in the Azure Activity Log automatically as subscription-level posture; job-level audit trails ride the workspace and its Application Insights, separate kinds.

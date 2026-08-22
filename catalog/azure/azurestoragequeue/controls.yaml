@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestoragequeue
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Storage service-side encryption covers every queued message with 256-bit AES, always on, with no disable switch at any configuration level."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Customer-managed keys for the queue service are an ACCOUNT posture -- and one Azure only honors for queues when the account was created with the account-scoped key option for queues. This spec carries no key lever; key custody composes on the AzureStorageAccount."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Transport posture is account-level -- HTTPS-only enforcement and minimum TLS live on the AzureStorageAccount and cover the queue endpoint; the queue offers no transport lever of its own."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "Unlike blob containers, the queue data plane has NO anonymous mode -- every request requires authorization -- but internet REACHABILITY of the account's queue endpoint is the account's firewall and private-endpoint posture, with no per-queue network lever. The exposure decision lives on the AzureStorageAccount."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Network-source restriction (IP rules, VNet rules, private endpoints) is the account's firewall posture -- one queue endpoint serves every queue in the account."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every queue request must be authorized -- Entra ID RBAC, SAS, or the account's shared key; no anonymous path exists. The queue's ARM ID is a first-class role-assignment scope, so Storage Queue Data Message Sender / Processor grants can be issued per queue for least-privilege producer/consumer splits."
+      notes: "Compose per-queue grants via AzureRoleAssignment against the queue_id output -- Sender for producers, Processor for workers, Contributor only for owners."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The queue endpoint accepts storage API requests, not application traffic -- no WAF attachment point exists at this grain."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The queue holds no credentials and runs no workloads; keyless access is composed caller-side (a managed identity plus a queue data role). Shared-key and SAS alternatives are governed by the account's shared_access_key_enabled posture."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Disabling shared-key authorization is the AzureStorageAccount's shared_access_key_enabled switch, account-wide by design; the queue exposes no authentication toggles."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Queue create/update/delete land in the Azure Activity Log automatically; data-plane operation auditing is Azure Monitor resource logs on the account's queue service via diagnostic settings -- account-side, with no per-queue toggle."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Storage metrics emit at the account and queue-service grain (transactions, capacity, message counts are service-wide); Microsoft defines no per-queue metric surface and this spec carries no monitoring toggle. Depth-based autoscaling reads the approximate message count from the data plane, which is an application concern."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Queue Storage has no snapshot, versioning, or point-in-time-restore surface at all -- messages are transient work items by design, and a deleted message (or queue) is gone. Durability against infrastructure loss follows the account's replication; recovery of WORK is the application's idempotency and the poison-queue pattern (see the Poison Companion preset)."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery); message time-to-live is a per-message data-plane property set by producers, not a spec retention lever."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone and geo redundancy follow the ACCOUNT's replication choice (LRS through RA-GZRS); the queue inherits it with no per-queue lever."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the queue API nor this spec offers a deletion-protection flag; ARM locks are subscription-side governance. Deleting the queue deletes every message in it instantly and irrecoverably."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Queue Storage is a fully managed service -- Microsoft operates and patches the storage infrastructure with no customer-visible patch surface."

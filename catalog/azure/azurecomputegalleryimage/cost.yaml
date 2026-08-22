@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: the image DEFINITION is free (catalog metadata, like the
+# gallery that holds it), but every declared VERSION commits real spend --
+# Microsoft bills each version's regional replicas as managed-disk
+# snapshots, per GB-month of the version's occupied size, times replicas,
+# times regions -- and the occupied size is a build artifact this manifest
+# cannot see, so a dollar figure here would be a guess wearing a dollar
+# sign. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecomputegalleryimage
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Storage
+      sku_meter: image version replica storage
+      pricing_unit: GB-months
+      description: "Each entry in versions bills as managed-disk snapshot storage from publish until deletion, independent of how many VMs deploy from it: the version's occupied size, times each target region's replica count, times the number of target regions (Microsoft's compute-gallery billing statement). A version-less definition -- the Linux Gen2 Trusted Launch preset -- bills exactly nothing."
+  cost_drivers:
+    - field_path: versions
+      sku_meter: image version replica storage
+      pricing_unit: GB-months
+      impact: "Every declared version is a release artifact whose replicas bill on existence -- publish-per-build without pruning grows the bill monotonically, and exclude_from_latest hides a version from consumers WITHOUT stopping its storage charge; deletion is the only cost kill switch."
+    - field_path: versions.target_regions
+      sku_meter: image version replica storage
+      pricing_unit: GB-months
+      impact: "Each target region is a full extra copy set of the version -- and copying the FIRST replica into each additional region bills inter-region network egress once at publish (subsequent replicas materialize within the region for free, per Microsoft's billing rules)."
+    - field_path: versions.target_regions.regional_replica_count
+      sku_meter: image version replica storage
+      pricing_unit: GB-months
+      impact: "Multiplies the footprint within a region: replicas exist for deployment throughput (one replica serves roughly 20 concurrent VM creations), so scale-set fan-out regions trade storage cost for provisioning speed."
+    - field_path: versions.target_regions.storage_account_type
+      sku_meter: image version replica storage
+      pricing_unit: GB-months
+      impact: "Selects the replica storage rate per region: Standard_LRS (the default) bills the standard snapshot rate; Premium_LRS multiplies it (0.05 vs 0.132 USD per GB-month in eastus at verification); Standard_ZRS adds zone redundancy at its own rate."
+    - field_path: versions.replication_mode
+      sku_meter: network egress
+      pricing_unit: GB
+      impact: "Full (the default) materializes durable replicas -- storage in every region plus first-replica egress. Shallow references the source directly instead: instant publish, no replica storage, no egress -- but the source snapshot or image must live on (and keep billing) for the version's whole life."
+  estimate_exclusions:
+    - "the billed quantity is each version's OCCUPIED size -- a fact of the build artifact (the source snapshot, managed image, or VHD), invisible to this manifest -- which is why no estimate document exists for this component"
+    - "inter-region network egress bills once per additional target region when a version publishes (first replica only); intra-region replica copies are free"
+    - "the version's SOURCE bills on its own component -- the AzureDiskSnapshot per GB-month, the managed image or VHD on its storage -- and Shallow-mode versions keep that source billing for their whole life"
+    - "the definition's identity, security flags, recommended sizing, and the parent gallery are all free catalog metadata (Microsoft charges nothing for the Compute Gallery service itself)"
+  notes: "The definition is the free half of a paid pattern -- identity and posture for consumers to match -- and the versions array is where money enters: each version bills like the managed-disk snapshots it is stored as, occupied-GB times replicas times regions, for as long as it exists. The census called this kind usage_based; the honest classification is committed-on-existence for any manifest with a non-empty versions list, with zero charge only for the version-less definition shape. Retention discipline (delete superseded versions, or scope old versions to one region) is the real cost lever, and deleting a version consumers still reference breaks their deploys -- exclude_from_latest first, delete after the fleet moves."

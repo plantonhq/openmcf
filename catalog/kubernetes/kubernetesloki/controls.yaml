@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesloki
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Log chunks rest on the PersistentVolumes the cluster's storage class provisions (filesystem mode, WAL and compaction volumes) or in the declared object-storage backend -- encryption at rest is a property of that storage (the storage class, or the bucket's own encryption settings), not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys live on the cluster's storage class or the object-storage bucket's encryption configuration (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: No TLS seam is typed for the gateway or the internal listeners -- traffic is in-cluster ClusterIP by design, and TLS composes at the exposure layer (KubernetesIngress, Gateway API kinds) over the exported gateway handles. Object-store connections use HTTPS unless storage.s3.insecure deliberately opts into plain HTTP for in-cluster stores (the 02-production-scalable and 03-multitenant presets do, for an in-cluster SeaweedFS).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Everything stays ClusterIP -- the spec has no service-type field at all; the nginx gateway is the one front door, itself a ClusterIP Service, and external exposure composes from first-class kinds (KubernetesIngress, Gateway API) over the exported endpoint handles, never from this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may push or query logs; source restriction lives on the composed exposure layer or Kubernetes NetworkPolicies declared as separate resources. multi_tenancy gates the gateway with basic auth -- authentication, not a network-source restriction.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A log store serves no public HTTP edge traffic of its own -- when the gateway is exposed through composed kinds, request filtering lives on that exposure layer.
+    - control_id: rbac
+      status: not_applicable
+      notes: Loki has no role system. Single-tenant by default, pushes and queries carry no authentication at all (in-cluster access only); multi_tenancy adds per-tenant HTTP basic auth at the gateway, which authenticates clients and isolates tenants via the X-Scope-OrgID header but grants no roles. Management-plane access (the release itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: storage
+      evidence:
+        type: spec_default
+        reference: Object-storage backends declared WITHOUT credentials use the pod's ambient identity -- IRSA on EKS, workload identity on GKE, federated identity on AKS (the modules set the chart's federated-token switch when no Azure key is declared) -- the recommended keyless posture. Declared credentials are injected as environment variables from existing Secrets and never land in the rendered Loki config.
+      notes: The 02-production-scalable and 03-multitenant presets use static keys by necessity (an in-cluster SeaweedFS has no cloud identity to federate).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication exists by default to have a legacy path -- single-tenant Loki accepts unauthenticated in-cluster traffic by design (see rbac). The one typed auth surface, multi_tenancy tenants, refuses plaintext by contract -- password_hash must be a bcrypt htpasswd hash (the spec's own validation), so no weaker credential form can ship in a manifest.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- Loki logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy. usage_reporting is false by default (deliberately diverging from Loki's report-by-default), so no telemetry leaves the cluster without an explicit opt-in.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: False by default; true renders ServiceMonitor objects so a Prometheus Operator scrapes Loki's metrics (requires the monitoring.coreos.com CRDs -- deploy KubernetesKubePrometheusStack first).
+      notes: Separately, the canary (canary_enabled, true by default) continuously writes and reads test log lines through the full pipeline, turning silent log loss into a visible metric.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Logs are telemetry with a lifecycle governed by retention_period -- no backup surface exists or is expected; durability beyond a pod's life comes from the object-storage backend, where chunks outlive any single replica.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). Log lifecycle is governed by retention_period -- the compactor marks and asynchronously deletes past the window; empty keeps everything forever. A data-lifecycle setting, not a backup policy. The 02-production-scalable and 03-multitenant presets keep 31 days.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: simple_scalable
+      evidence:
+        type: spec_default
+        reference: The default is a single monolithic replica -- no failover. simple_scalable runs write/read/backend tiers (each defaulting to 3 replicas) that rendezvous in object storage, so losing a pod loses no logs; monolithic replicas of 2-3 with object storage give HA the smaller way. Both HA shapes REQUIRE an object-storage backend (the spec's own validation -- replicas cannot share a filesystem volume).
+      notes: Zone-level topology spread is not typed; scheduling covers node selection, tolerations and priority class only. The 02-production-scalable and 03-multitenant presets run 3/3/3 tiers.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release; protection is operational (namespace RBAC, change review). With an object-storage backend the log chunks outlive the release in the bucket.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version defaults to the module's pin (18.5.4, pairing with Loki 3.7.4); upgrading is a deliberate act of changing the pin to another served chart version, which re-runs the release.

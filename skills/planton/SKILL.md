@@ -74,6 +74,19 @@ postures:
   name (`cp`/`mv` -- a path the user gives you is an invitation under the
   boundary above).
 
+  **What already exists is checked out, never re-typed.** When the work
+  starts from a published chart or a deployed project, pull the real files
+  into their own top-level subfolder and work there: `planton chart
+  checkout <slug> --output-dir <chart-dir>` lays out a chart from the
+  catalog ready to customize, and `planton infra project checkout
+  <id-or-name> --output-dir <project-dir>` lays out a deployed project's
+  working copy (its hidden binding included, so the folder follows
+  `references/deployed-projects.md`). A checkout writes many files at
+  once, so the composing declaration below comes FIRST, exactly as for
+  files you author yourself. And it lands where your SHELL is: `cd` to the
+  folder you were given before running it (see the shell-location rule
+  below) so the subfolder is born inside the workspace, never beside it.
+
   **A chart is for an architecture; a single one-off resource is a loose
   manifest.** When the request names one thing ("an S3 bucket for our
   assets") rather than an architecture, a chart is ceremony: write ONE
@@ -97,9 +110,18 @@ postures:
   THAT project, saving starts a real deployment pipeline, and the workflow
   below bends -- read `references/deployed-projects.md` before doing
   anything.
-- **Neither exists -- the folder itself is the chart.** A chart checked out
-  from git, a scaffold, a folder the user picked: compose in place at its
-  root, exactly as the anatomy above shows.
+- **Neither exists -- the folder itself is the chart.** A chart pulled from
+  git or with `planton chart checkout`, a scaffold, a folder the user
+  picked: compose in place at its root, exactly as the anatomy above shows.
+
+**Your shell does not start in the folder you were given.** The shell's
+working directory is the host application's, not the workspace's -- a
+relative path in any command (a checkout's `--output-dir`, the declaration
+below, a build target) lands OUTSIDE the folder unless you anchor it. So
+before your first file-writing shell command, `cd` to the folder you were
+given (your file tools list its absolute path), or write every path
+workspace-absolute. Files created beside the workspace are invisible to
+the user's canvas -- work that simply never appears.
 
 **Will this turn write files? Then declare the span in the same breath as
 the check.** The identity check just told you where files go; when the turn
@@ -110,11 +132,12 @@ shell command is the declaration:
 mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml
 ```
 
-Run it at the root of the folder you were given, BEFORE grounding lookups
-and scaffolding -- it is how the user's canvas presents your work honestly
-(Phase 2's step 1 says why; Phase 4 rewrites it to `state: done` at the
-finish). A declaration written after your first chart file defeats it: the
-user watches error flashes from half-written work you meant to spare them.
+Run it at the root of the folder you were given (`cd` there first -- the
+shell-location rule above), BEFORE grounding lookups and scaffolding -- it
+is how the user's canvas presents your work honestly (Phase 2's step 1
+says why; Phase 4 rewrites it to `state: done` at the finish). A
+declaration written after your first chart file defeats it: the user
+watches error flashes from half-written work you meant to spare them.
 
 ## Know your instruments (check once, first)
 
@@ -126,7 +149,12 @@ missing instrument is a fact you adapt to, not a problem you report.
 
 1. **Is the `planton` CLI here?** `planton version` (or `command -v
    planton`). Found -- you are on the **CLI arm**: everything in this skill
-   reads exactly as written. Then probe the control plane cheaply: run
+   reads exactly as written, and `references/planton-cli.md` is your
+   COMPLETE command map -- read it before your first planton command and
+   trust it: never explore with `planton help`/`planton --help` (a
+   discovery journey wastes the user's turn on commands this skill already
+   wrote down; a specific command's own `--help` is for when a command
+   from the map fails). Then probe the control plane cheaply: run
    `planton chart build <dir> -o json` on any chart directory -- exit code 2
    with an empty stdout means the environment (not the chart) is the
    problem. Read `references/build-contract.md` for the full contract. No
@@ -181,8 +209,10 @@ step here is a lookup, not a question (read `references/discovery.md` for
 the full protocol):
 
 1. Look up their Planton (context, charts, projects and their deploy status,
-   connections — `references/planton-cli.md`). What you find shapes the
-   build: an existing green cluster is something to build ON, not duplicate.
+   connections — `references/planton-cli.md`; the organization's catalog
+   availability — `references/catalog-availability.md`). What you find
+   shapes the build: an existing green cluster is something to build ON,
+   not duplicate.
 2. Read the PERSON — the profile fact sheet first, their words second. The
    fact sheet (standing session context, when present) carries what no
    message reveals: companion mode, per-area experience numbers, the goal,
@@ -229,9 +259,13 @@ taken is a bug; an assumption named is an invitation to refine.
    skill is your research layer here: its provider indexes answer what
    exists (400+ kinds, PascalCase like `AwsVpc`, `AwsEksCluster`,
    `KubernetesCertManager`), its per-component pages answer what a kind
-   requires and exports, and its reference graph answers what can wire to
+   requires and exports, and its reference graph answers    what can wire to
    what — usually in one or two file reads. `planton explain --list` is the
-   offline fallback when no pack is reachable.
+   offline fallback when no pack is reachable. Map to the RIGHT kind even
+   when Phase 0's availability check showed the organization's catalog
+   policy disables it — availability never truncates a design; the
+   disclosure happens before deploy, not here
+   (`references/catalog-availability.md`).
 3. Ground every kind you are not certain about BEFORE writing YAML — the
    component's reference page first (the catalog skill names the reading
    order), and `planton explain` for the drill-down:
@@ -253,7 +287,10 @@ taken is a bug; an assumption named is an invitation to refine.
    infrastructure produces, run the cross-boundary check in
    `references/dependencies.md`: the producer may be in this chart, in a
    sibling chart of this workspace, or already deployed in the org — wire
-   `valueFrom` and that param never exists. What remains a param is only
+   `valueFrom` and that param never exists. Credential-shaped values
+   (passwords, API keys, tokens) are never params at all: they become
+   `$secret/` references, looked up or declared per
+   `references/config-references.md`. What remains a param is only
    what the person deploying genuinely decides (image, hostname, region,
    CIDRs, sizing, feature toggles); everything else is hardcoded or
    defaulted in the template. Prefer few, meaningful params with safe
@@ -405,6 +442,11 @@ every "Always keep in mind" line applies to this reply like any other.
    user's own vocabulary (application language for developers).
 2. **The cost picture**: rough monthly total, what dominates it, the levers
    that lower it (`references/cost-transparency.md`) — unasked, always.
+   When Phase 0's availability check found kinds this design uses disabled
+   by the organization's catalog policy, the disclosure rides this same
+   block (`references/catalog-availability.md`) — which components, that
+   the rest can deploy now, and that an Infrastructure Admin can enable
+   them; silence when the policy touches nothing the design uses.
 3. **The assumption register**: every default you took because the user did
    not say — purpose, region, sizing, redundancy — each phrased as an
    invitation: "I assumed dev-scale to keep this near $X/month; if this is
@@ -438,7 +480,10 @@ shared state and needs the user's explicit go-ahead:
   performed as part of composition -- and on the user's EXPLICIT ask you
   perform it yourself (`planton chart install`, one confirmation, then
   narrate the pipeline; `references/machine-deploy.md` has the command and
-  the follow-through). This is also the moment to notice the machine: on a
+  the follow-through). The availability disclosure is a precondition of the
+  deploy act: when the organization's catalog policy disables kinds this
+  chart uses, the user hears it BEFORE the deploy starts, never from the
+  refusal (`references/catalog-availability.md`). This is also the moment to notice the machine: on a
   signed-in instance, when the machine carries a login for the chart's
   cloud, the deploy offer takes its strongest form -- deploying from THIS
   machine with the login already here. The probe, the offer's grammar, and
@@ -459,6 +504,16 @@ shared state and needs the user's explicit go-ahead:
   org's deployed estate (`references/dependencies.md`, the cross-boundary
   check). A `vpc_id`-shaped param asks the user to hand-copy what the
   platform already knows; that hand-off is the failure, not a convenience.
+- **Sensitive fields hold `$secret/` references — never plaintext, never a
+  paste-your-credential param.** A password, API key, token, or private-key
+  field accepts ONLY a reference to a managed secret; the control plane
+  rejects plaintext before anything deploys. Scope lives in the reference
+  itself (`$secret/<slug>` org-wide, `$secret/@<env>/<slug>` per
+  environment — no fallback between them), so look up the real slug and
+  scope before writing (`planton secret list -o json`), and when the secret
+  does not exist yet, write the reference anyway and hand the user the
+  create command in the explain-after — never an invented value
+  (`references/config-references.md`).
 - **Cluster-scoped, shared-by-design components live in the shared chart.**
   Operators, CRDs, and controllers (Istio, cert-manager, external-dns, the
   gateway CRDs) belong in the shared-infrastructure chart, exactly once —
@@ -511,6 +566,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/chart-format.md` | Writing Chart.yaml or values.yaml; naming things |
 | `references/templating.md` | Writing template expressions, conditionals, loops |
 | `references/dependencies.md` | Wiring resources together, in-chart and ACROSS charts; the references-before-params check; valueFrom or relationships |
+| `references/config-references.md` | A field needs a credential or operator-managed config value; the `$var`/`$secret` grammar (org- and env-scoped); looking up or creating secrets and variables |
 | `references/kubernetes-on-cluster.md` | The chart has Kubernetes-kind resources; wiring workloads to a cluster |
 | `references/discovery.md` | Starting a conversation; learning the person, their Planton, and the motive |
 | `references/personalization.md` | A profile fact sheet is present; shaping ANY explanation — the explain-after, refinement answers, live narration |
@@ -525,6 +581,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/kubernetes-architecture.md` | What runs on the cluster: the Istio/external-dns paved road; the shared-infra vs environment-chart split |
 | `references/environments.md` | The user mentions environments; how many clusters; cross-env connection authorization |
 | `references/cost-transparency.md` | The monthly cost picture from the catalog's verified estimates (read, never recalled); honesty rules for money; saving levers |
+| `references/catalog-availability.md` | Working in an organization's context; which kinds its catalog policy disables; the check-design-disclose law; a deploy refused naming the catalog policy |
 | `references/filing-platform-gaps.md` | Planton fell short of a need; filing the gap as a GitHub issue |
 | `references/build-contract.md` | Parsing build output; exit codes; CI usage; endpoint pinning |
 | `references/issue-catalog.md` | A build failed and you need the fix pattern for an error |

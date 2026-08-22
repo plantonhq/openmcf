@@ -1,0 +1,25 @@
+# The live arm: a far-future prequeued event with the users-pair override
+# (both set together -- the API requires the pair). The fixed 2030 window is
+# deterministic and never activates during a lane.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoomEvent
+metadata:
+  name: e2e-wrevent-minimal-${E2E_RUN_ID}
+spec:
+  waiting_room_id:
+    valueFrom:
+      kind: CloudflareWaitingRoom
+      name: planton-oss-e2e-cloudflarewaitingroom-prereq
+      fieldPath: status.outputs.waiting_room_id
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-wrevent-${E2E_RUN_ID}
+  event_start_time: "2030-09-01T10:00:00Z"
+  event_end_time: "2030-09-01T14:00:00Z"
+  prequeue_start_time: "2030-09-01T09:30:00Z"
+  shuffle_at_event_start: true
+  new_users_per_minute: 300
+  total_active_users: 1500

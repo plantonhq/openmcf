@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessolroperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its state is the custom resources it reconciles, held in the cluster's etcd. Solr index data at rest is a property of the volumes the managed clusters provision, owned by KubernetesSolr resources and the cluster's storage classes.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); customer-managed keys for cluster volumes are configured on the target cluster's storage classes.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: mtls
+      evidence:
+        type: spec_default
+        reference: Unset means the operator calls Solr over whatever the clusters' listeners serve; declaring mtls equips the operator with a client certificate (client_cert_secret, required within the block) and a CA to trust for Solr clusters that enforce mutual TLS on their listeners.
+      notes: mtls.insecure_skip_verify defaults true (pod-IP calls rarely match certificate SANs) -- hostname verification is an explicit opt-in. TLS on the Solr listeners themselves is declared on KubernetesSolr resources.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the chart's only service surface is the in-cluster metrics endpoint (while metrics_enabled, the default), and the spec offers no ingress or LoadBalancer seam.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The operator serves no client-facing traffic to restrict. Network exposure of the managed Solr clusters is declared on KubernetesSolr resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cluster-internal controller serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: watch_namespaces
+      evidence:
+        type: spec_default
+        reference: Empty (the chart default) watches ALL namespaces with cluster-wide RBAC; naming namespaces fences the operator to that set -- KubernetesSolr resources anywhere else are ignored by the install. Unlike some operators, the watched namespaces need only exist by the time SolrCloud resources appear in them.
+      notes: The 03-namespace-fenced preset fences the operator to two search namespaces. The bundled zookeeper-operator's fixed-name cluster-scoped RBAC is why a second install conflicts (see the 02 preset's install=false posture).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator calls no cloud APIs -- it authenticates to the Kubernetes API with its ServiceAccount; there is no cloud identity to federate. Backup-repository credentials for Solr clusters are declared on KubernetesSolr resources.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator exposes no authentication surface of its own -- no credentials, no user-facing endpoint. Solr security (authentication, authorization plugins) is declared on KubernetesSolr resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, Services, ConfigMaps, and PVCs for managed clusters -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: metrics_enabled defaults to true -- the operator exposes its Prometheus metrics endpoint out of the box; disabling it is an explicit opt-out.
+      notes: Metrics for the managed Solr clusters (SolrPrometheusExporter) are declared on KubernetesSolr resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up; its own configuration is this manifest, re-appliable at any time. It IS the engine behind SolrBackup -- but what gets backed up, to which repository, and on what schedule is declared on KubernetesSolr resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer; retention for Solr backups is declared per cluster on KubernetesSolr resources (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; extra replicas are leader-elected warm standbys (leader_election_enabled, default true) -- one active reconciler, instant takeover when the leader's node dies. Kubernetes spreads them across nodes subject to the cluster's scheduling.
+      notes: An operator outage pauses reconciliation only -- managed Solr clusters keep serving. The 03-namespace-fenced preset runs two replicas.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is bounded BY THE MODULES -- the chart does not ship CRDs, so the modules own the CRD lifecycle themselves (module-applied CRDs whose delete is a no-op): uninstalling the operator never cascade-deletes SolrCloud, SolrBackup, or ZookeeperCluster resources and their data."
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default chart (0.9.1 -- chart and operator versions move together). The operator is pre-1.0 and minor versions can change the CRD API -- a version bump is a CRD re-check, and the module-staged CRD files are restaged together with the chart pin.

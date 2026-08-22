@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareemailroutingzone
+spec:
+  # The kind folds three zone singletons (settings, managed DNS, catch-all);
+  # all three import as the bare zone id -- the zone IS their identity. The
+  # dns and catch-all addresses exist in state only when the manifest enables
+  # them (lock_dns_records / catch_all), so a round-trip imports exactly the
+  # addresses its configuration declares.
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).

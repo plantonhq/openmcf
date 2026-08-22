@@ -1,0 +1,21 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesstrimzikafkaoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each operator replica carries the declared (or chart-default) resources. Extra replicas are leader-elected warm standbys for the OPERATOR itself -- they add no reconciliation throughput, just standby capacity.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per operator replica. Empty does NOT mean unbounded here -- the chart ships default requests and limits (200m/384Mi requests, 1000m/384Mi limits), applied whenever the manifest omits resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the Kafka clusters this operator reconciles -- brokers, entity operators, Cruise Control, exporters -- reserve their own capacity on their KubernetesKafka resources, never this footprint"
+    - the helm_values overlay merges last and can override the modeled values, including resources
+  notes: "This component installs the ENGINE, not the clusters: its footprint is the operator pod(s) alone. Kafka clusters are declared through KubernetesKafka (and their topics/users through KubernetesKafkaTopic / KubernetesKafkaUser), each carrying its own capacity footprint. The chart-default operator resources make the honest manifest-time statement a hand-computed footprint: replicas x (declared resources, or the chart defaults when omitted)."

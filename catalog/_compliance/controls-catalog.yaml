@@ -46,6 +46,10 @@ spec:
       name: Legacy authentication disabled
       statement: Legacy or weaker authentication paths are disabled.
       category: identity_access
+    - id: strong-user-auth
+      name: Strong user authentication
+      statement: End-user sign-in enforced by the component requires strong credentials -- password strength rules, brute-force protection, or multi-factor verification.
+      category: identity_access
     - id: audit-logging
       name: Audit logging
       statement: Administrative and access events are captured in provider audit or access logs.

@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccesspolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A policy stores no customer data -- it is a decision plus matching rules held in Cloudflare's control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy terminates no connections -- it is decision logic evaluated inside Access during authentication events on Cloudflare's own TLS-fronted flows.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network endpoint; it takes effect only when attached to an Access application.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: include
+      evidence:
+        type: spec_default
+        reference: The policy's rule set is what admits or rejects requests at applications that attach it -- include rules can pin client IPs and CIDRs (ip, ip_list), countries (geo), and mTLS certificates, and exclude rules veto any match, so declared-source restrictions are expressed directly in this object.
+      notes: The rules only bite at applications that attach the policy by ID; an unattached policy restricts nothing.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy inspects no request payloads -- it decides who may pass; payload filtering (WAF, rate limiting) is CloudflareRuleset territory on the zones the protected applications live in.
+    - control_id: rbac
+      status: configurable
+      field_path: decision
+      evidence:
+        type: spec_default
+        reference: The policy IS the RBAC decision -- allow, deny, non_identity (service tokens / mTLS without a user), or bypass, gated by include/exclude/require identity rules (26 criteria including IdP groups and reusable Access groups), tightened by session_duration (default 24h, "0s" forces re-auth per request), per-policy mfa_config, approval_required with approval_groups (human sign-off before entry), purpose_justification_required, and isolation_required (browser-isolated sessions).
+      notes: decision bypass REMOVES enforcement for matching requests -- the catalog page's own warning stands, use it only for deliberately unauthenticated paths like health checks. mfa_config.mfa_disabled true is an explicit weakening, not a default.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The non_identity decision admits machine callers, but the machine credentials themselves are the CloudflareZeroTrustAccessServiceToken kind's territory (or mTLS certificates managed outside this object).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: require
+      evidence:
+        type: spec_default
+        reference: A require rule of type auth_method (an AMR value such as "mfa" or "hwk") rejects requests authenticated with anything weaker, and mfa_config.allowed_authenticators narrows acceptable second factors to TOTP, biometrics, or security keys.
+      notes: Opt-in per policy; without an auth_method require rule or mfa_config, the policy accepts whatever authentication strength the IdP allowed.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves multi-factor policy to the application and organization layers; declaring mfa_config requires a second factor for users this policy matches -- allowed_authenticators pins which factors count (totp, biometrics, security_key; the spec's own validation rejects anything else), and mfa_disabled is the explicit opt-out that overrides the list.
+      notes: A policy signs nobody in itself -- first-factor credential strength rides the IdPs the Access application allows -- but this field layers a per-policy second-factor requirement on top of the matched identity; the organization kind carries the org-wide MFA stance.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every evaluation of this policy is recorded in Access's authentication logs unconditionally, and approval workflows leave their own decision trail -- neither is a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch; a policy has no runtime of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Policies are evaluated wherever Access runs -- Cloudflare's global edge; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete. Applications that attach this policy by ID lose the decision it carried -- since Access denies when no allow policy matches, deleting an allow policy locks users out rather than letting them in; re-point applications before deleting.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the Access policy-evaluation engine; no customer-visible patch surface exists.

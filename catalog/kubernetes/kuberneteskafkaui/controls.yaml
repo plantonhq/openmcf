@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkaui
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The console is stateless -- it observes Kafka clusters and stores nothing of its own at rest. What it displays lives on the observed clusters, whose storage posture is theirs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The component stores no data of its own (see enc-at-rest); there is no key seam.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: clusters
+      evidence:
+        type: spec_default
+        reference: Each clusters entry carries its own tls block -- unset connects to that Kafka cluster in plaintext; tls.ca_secret_name mounts the cluster CA as a PEM truststore so the connection is served over TLS. SASL credentials ride Secret-backed environment variables, never plaintext chart values.
+      notes: "The console's own HTTP endpoint is plain inside the cluster -- TLS for browser traffic terminates at the composed Ingress or Gateway (see no-public-access). The 02-full-stack-console preset trusts the observed cluster's CA."
+    - control_id: no-public-access
+      status: configurable
+      field_path: service_type
+      evidence:
+        type: spec_default
+        reference: service_type defaults to ClusterIP -- the console is reachable only inside the cluster network; NodePort and LoadBalancer expose it, and external exposure otherwise composes from first-class kinds (KubernetesIngress / Gateway API) against the exported service handle.
+      notes: All three presets keep ClusterIP. Anyone who can reach the Service acts with the console's permissions -- gate with auth before any shared exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec models no ingress seam -- exposure composes from first-class Ingress/Gateway kinds where source restrictions live, and Kubernetes NetworkPolicies (separate resources) restrict the in-cluster network path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A web application firewall rides the composed edge (Ingress, Gateway, or an external proxy), not this component -- the module renders no edge layer.
+    - control_id: rbac
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: Unset means every authenticated user has full console access, subject to each cluster's read_only flag (which hides all mutating actions for that cluster); kafbat's per-user RBAC is Spring configuration and rides the chart's own values through the helm_values overlay -- deliberately not typed.
+      notes: The 01-single-cluster-readonly preset marks its production cluster read_only. Management of the release's Kubernetes objects is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The console authenticates to Kafka clusters, schema registries, and Connect APIs with declared credentials read from Kubernetes Secrets -- there is no cloud API access in this component and no seam for platform-issued cloud identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: "Omitted means NO authentication -- anyone reaching the Service has full console access, acceptable only for cluster-internal evaluation; auth.type login_form gates the console behind a single account whose password the module materializes into a Secret-backed environment variable. OAuth2/OIDC and LDAP login ride the chart's Spring configuration through helm_values."
+      notes: The 01-single-cluster-readonly preset is deliberately open (ClusterIP, nothing composed); 02-full-stack-console and 03-multi-cluster gate with login_form.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Whether console login exists is spec-modeled (auth -- omitted means no authentication, login_form gates the console behind a single account with a Secret-backed password), but credential strength and SSO/MFA are the app's Spring configuration riding helm_values, not typed here.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Console activity logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled. Changes to the console's configuration are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: The spec types no metrics seam -- by default nothing scrapes the console. The chart surface beyond the typed fields, including monitoring wiring for the app's Spring Boot management endpoints, rides the helm_values overlay.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The console holds no state to back up -- its entire configuration is declarative in this manifest, and everything it displays lives on the observed Kafka clusters.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; the console is stateless, so additional replicas are a pure availability measure behind the Service. Zone spreading is the scheduler's default topology behavior -- the spec models no anti-affinity seam.
+      notes: The 03-multi-cluster preset runs 2 replicas for its shared console.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag; protection is operational (namespace RBAC, change review). Deleting the release removes the console but touches nothing on the observed clusters.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Empty runs the module's pinned default chart version, so upgrades arrive with module updates and Helm rolls the Deployment; pinning chart_version makes version changes deliberate.

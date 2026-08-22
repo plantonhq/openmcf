@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	controlcatalogv1 "github.com/plantonhq/planton/compliance/controlcatalog/v1"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // controlIDPattern is the stable, OSCAL-compatible id shape: lowercase
@@ -91,6 +92,24 @@ func TestControlCatalogConformance(t *testing.T) {
 			}
 			if len(crosswalk.GetSpec().GetMappings()) == 0 {
 				t.Error("crosswalk declares no mappings")
+			}
+			// Provider scope: the schema's enum already refuses invented
+			// providers at parse time; the gate holds what the schema
+			// cannot express -- no meaningless values, no duplicates.
+			// (An EMPTY list is the provider-neutral statement and is
+			// always legal.)
+			seenProviders := map[cloudresourcekind.CloudResourceProvider]bool{}
+			for _, provider := range crosswalk.GetSpec().GetProviders() {
+				switch provider {
+				case cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified:
+					t.Error("providers lists the unspecified value -- provider-neutral is stated by an EMPTY list, never by unspecified")
+				case cloudresourcekind.CloudResourceProvider__test:
+					t.Error("providers lists the synthetic _test provider, which must never reach a user-facing surface")
+				}
+				if seenProviders[provider] {
+					t.Errorf("providers lists %s more than once", provider)
+				}
+				seenProviders[provider] = true
 			}
 			seen := map[string]bool{}
 			for _, m := range crosswalk.GetSpec().GetMappings() {

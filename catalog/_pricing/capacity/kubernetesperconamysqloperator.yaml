@@ -1,0 +1,40 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesPerconaMysqlOperator manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetesperconamysqloperator.yaml; a server-side
+# estimator can evaluate the same rules against live manifests. The
+# footprint is the operator replicas alone. The MySQL clusters the
+# operator reconciles reserve their own capacity on their
+# KubernetesMysql resources -- never here.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesperconamysqloperator
+spec:
+  workloads:
+    - label: operator replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the MySQL clusters this operator reconciles reserve their own capacity -- each rides its KubernetesMysql resource"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override the modeled values, including resources
+    - applies_when:
+        - field_path: xtrabackup_sidecar
+          op: equals
+          value: "true"
+      text: the XtraBackup sidecar gate adds a sidecar to every managed database pod -- capacity that lands on the KubernetesMysql resources, not on this footprint
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the chart applies its default operator resources (100m CPU / 20Mi requests, 200m CPU / 500Mi limits) when the manifest omits resources -- the operator pod reserves those defaults even though this footprint, reading only explicit manifest values, shows nothing
+    - text: extra operator replicas are leader-elected warm standbys shortening operator failover -- they add standby capacity, not reconciliation throughput

@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceandatabasekafkatopic
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios, both on the shared Kafka manifest-path
+  # fixture (the registry prerequisite installs a PostgreSQL cluster, so
+  # each lane deploys TWO clusters -- the prerequisite plus the Kafka
+  # fixture): `minimal` proves the lifecycle and identity outputs on API
+  # defaults; `configured` proves partitions/replication and the config
+  # block's leaf classes (enum walls, signed -1 retention, unsigned
+  # tunables, the float ratio, min_insync_replicas).
+  # SERIALIZATION: the Kafka fixture is shared BY NAME with the
+  # DigitalOceanDatabaseKafkaSchema kind's lanes -- the two kinds' lanes
+  # must run serially, never in parallel. Kafka is the program's most
+  # expensive fixture class (3-node minimum, ~10 min, ~$0.20/hour).
+  # Watch items for the proof lane: partition growth and config edits are
+  # in-place updates the six-phase runner cannot exercise (no update
+  # phase); partition_count is never read back by the provider (import
+  # tolerance, verified at design time).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

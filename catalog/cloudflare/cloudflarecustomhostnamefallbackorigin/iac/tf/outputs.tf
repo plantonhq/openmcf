@@ -17,3 +17,8 @@ output "errors" {
   description = "Any errors reported while deploying the fallback origin"
   value       = try(cloudflare_custom_hostname_fallback_origin.main.errors, [])
 }
+
+output "zone_id" {
+  description = "The Cloudflare zone this singleton belongs to (the fallback origin has no resource id; its API identity IS the zone)"
+  value       = cloudflare_custom_hostname_fallback_origin.main.zone_id
+}

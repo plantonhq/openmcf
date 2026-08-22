@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssesemailidentity
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: email_identity
+      sku_meter: outbound email
+      pricing_unit: emails
+      impact: The identity is what UNLOCKS the sending meter -- once the domain or address verifies, every message sent from it bills $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data. Verification itself, whether by DNS or mailbox link, is free and stays free forever; the meter belongs to the traffic.
+    - field_path: configuration_set
+      sku_meter: outbound email
+      pricing_unit: emails
+      impact: The default set decides how expensive each of this identity's emails is -- a set with a VDM override adds a per-email analytics fee, and a set routed through a dedicated IP pool points at committed monthly IP spend. The reference costs nothing; the inherited posture is priced on the AwsSesConfigurationSet it names.
+    - field_path: policies
+      sku_meter: outbound email
+      pricing_unit: emails
+      impact: "Each authorization policy lets another AWS account start this identity's sending meter -- and AWS bills those messages to the DELEGATE sender's account, counted against the delegate's quotas (per the SES sending-authorization attribution rules). The grant costs the identity owner nothing; what it spends is the domain's reputation, not the owner's dollars."
+  free_tier: "SES prices sending, not identities: verification, Easy DKIM (including AWS's key generation and rotation), BYODKIM, the custom MAIL FROM domain, feedback forwarding, and authorization policies carry no meter at any volume -- permanent, not a trial. The only trial on the pricing page is the new-account AWS Free Tier credit ($200, usable 6-12 months); there is no permanent free sending allotment a la carte."
+  estimate_exclusions:
+    - outbound sending bills $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data -- entirely workload-driven, invisible to this manifest
+    - the cost posture inherited through configuration_set (VDM per-email fees, dedicated IP pool charges) bills per that set's own profile
+    - messages sent by delegate senders under this identity's policies are billed to the delegate's AWS account, not to this one
+    - the DKIM CNAMEs and the MAIL FROM domain's MX and SPF records bill as records and queries on the AwsRoute53DnsRecord components and their hosted zone
+  notes: "An email identity is the trust anchor of the SES graph and is free to hold: nothing about verifying a domain, signing with DKIM, aligning SPF through a custom MAIL FROM, or granting cross-account senders ever appears on an invoice. Its entire cost story is the sending it unlocks -- the per-1,000 outbound meter starts with the first message, attachment data adds a per-GB charge, and the referenced configuration set decides whether each email also carries VDM or dedicated-IP costs. Cross-account grants are the one counterintuitive line: AWS bills delegate sends to the delegate's account, so an identity policy spends the owner's sender reputation, never the owner's money."

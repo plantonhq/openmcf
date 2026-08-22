@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component ships a zero-committed
+# estimate for its committed presets (all pay-per-token SKUs), while the
+# spec ALSO admits the ProvisionedManaged SKU class whose conditional
+# charge is stated precisely below -- the honest boundary is data.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecognitivedeployment
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: sku.name
+      sku_meter: model token meters or provisioned throughput units
+      impact: "THE billing fork. Standard, GlobalStandard and DataZoneStandard bill per token served -- an idle deployment costs nothing. The Batch variants bill per token too, at roughly half the standard rate, for asynchronous jobs. The ProvisionedManaged variants (Global/DataZone/regional) are the committed class: they bill their PTU capacity per hour CONTINUOUSLY while the deployment exists, traffic or none. Fixed at creation."
+    - field_path: model.name
+      sku_meter: model token meters
+      pricing_unit: 1M tokens
+      impact: Which model's rate card the tokens bill -- input, output and cached-input tokens are priced separately per model, and the spread is wide (a mini-class chat model's input tokens cost a fraction of a flagship's). Fixed at creation; deploying a different model is a new deployment.
+    - field_path: sku.capacity
+      sku_meter: provisioned throughput units
+      pricing_unit: PTU-hours
+      impact: "Two meanings by SKU class. On the pay-per-token SKUs it is a RATE LIMIT in thousands of tokens-per-minute -- free, shaping throughput and never the bill. On the ProvisionedManaged SKUs it is the PTU count, the direct multiplier of continuous hourly spend. Updates in place -- the scale knob either way."
+  estimate_exclusions:
+    - every call bills the deployed model's own token meters through the parent account -- input, output and cached-input tokens at per-model rates, following traffic no manifest can predict
+    - a ProvisionedManaged-class SKU would bill capacity times the per-PTU hourly rate every hour the deployment exists (list in eastus, Retail Prices API retrieved 2026-08-18, Azure OpenAI models -- Provisioned Managed Global at 1.0 per PTU-hour, Provisioned Managed Regional at 2.0 per PTU-hour); none of this kind's presets deploys one, and deleting the deployment is what stops the meter
+    - monthly and yearly PTU reservations exist at steep discounts over the hourly PTU rate -- reservation purchases live outside this spec
+    - the parent account (itself zero-idle) and any private-endpoint path bill on their own components
+  notes: "The deployment is where a model becomes callable, and its SKU decides whether that is free to hold. Every preset here is pay-per-token: GlobalStandard gpt-4o-mini bills 0.00015 per 1K input tokens and 0.0006 per 1K output tokens; GlobalStandard gpt-5.4-mini input is 0.75 per 1M tokens; Standard (regional) text-embedding-3-large is 0.000143 per 1K tokens (all list, eastus, Retail Prices API at prices.azure.com under serviceName 'Foundry Models', retrieved 2026-08-18). On these SKUs capacity is pure rate limit -- the preset comments say so, and the price list agrees: no meter exists for holding a Standard-class deployment. The one cliff in the spec's vocabulary is the ProvisionedManaged class: reserved model capacity that bills per PTU per hour around the clock from the moment it deploys -- 100 PTUs of a Global provisioned deployment is 100 times 1.0 every hour, roughly 73000 per month at 730 hours, before any request is sent. Choose it deliberately for sustained high-throughput floors; everything else belongs on the token meters."

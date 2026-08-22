@@ -1,0 +1,31 @@
+# Offline-only worker (push) consumer plan. The push consumer needs a
+# deployed Worker and the dead-letter queue must be a second EXISTING queue
+# -- neither can ride this kind's live lanes (the Worker is its own queued
+# proof, and the framework rejects a self-kind fixture for the DLQ) -- so
+# this file is NOT under e2e/scenarios/. tofu plan against it proves the
+# module sends the worker consumer with its Worker-only settings and the
+# dead_letter_queue; live proof arrives when a proof session composes the
+# two kinds under its own design authority.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareQueue
+metadata:
+  name: planton-oss-e2e-cloudflarequeue-worker-consumer
+  org: planton-oss
+  env: e2e
+spec:
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  queueName: e2e-cfq-worker-consumer
+  settings:
+    messageRetentionPeriod: 86400
+  consumer:
+    type: worker
+    scriptName:
+      value: e2e-consumer-worker
+    deadLetterQueue:
+      value: e2e-cfq-dlq
+    settings:
+      batchSize: 25
+      maxConcurrency: 10
+      maxRetries: 3
+      maxWaitTimeMs: 1000
+      retryDelay: 30

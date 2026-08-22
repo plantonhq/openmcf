@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningbatchdeployment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The deployment is a job recipe and stores no data of its own; the model asset, scoring code and job inputs/outputs rest in the workspace's registries and datastores, separate kinds with their own at-rest posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); CMK for workspace-held metadata is the workspace's encryption posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The recipe has no traffic surface of its own -- job submissions ride the parent ENDPOINT's HTTPS scoring URI (that kind's enforced posture), management rides TLS-only ARM, and the jobs it materializes pull data and images over TLS to workspace storage and registry.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The deployment carries no reachability of its own -- the batch ARM surface has no publicNetworkAccess property, and whether batch scoring is reachable at all is the parent workspace's network posture, that kind's manifest.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No source filter exists on the deployment; network scoping rides the workspace's public-access toggle and private endpoints, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class surface exists for the batch submission path; front the endpoint with a gateway if edge filtering is required, separate kinds.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the deployment is Azure RBAC on the workspace scope unconditionally, and REACHING it goes through the parent endpoint, whose batch service accepts only Microsoft Entra tokens authorized by RBAC -- there is no anonymous or key-based path to run this recipe.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The deployment spec carries no identity block by design -- batch jobs run under the INVOKER's Entra token plus the compute pool's managed identity, so keyless identity for the batch data path is composed on the endpoint and cluster kinds, not here. No static credential exists anywhere on this surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface of its own to strengthen or disable -- the batch service's AADToken-only contract is enforced on the parent endpoint (its spec makes the weaker Key and AMLToken modes unexpressable).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log automatically as subscription-level posture; per-job audit trails ride the workspace and its Application Insights, separate kinds.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The deployment publishes no metrics of its own; job telemetry (runs, failures, node utilization) flows through the workspace's monitoring surface and the compute pool's metrics, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless, declarative configuration -- the manifest IS the recipe, and recreating the deployment restores it exactly; the model and code it references are versioned workspace assets with their own lifecycle.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A recipe with no runtime footprint of its own; job resilience is retry_settings plus error_threshold behavior at the mini-batch level, and infrastructure resilience is the compute pool's posture, a separate kind.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither ARM nor this spec offers a deletion-protection flag for a batch deployment; deleting one removes the recipe (and the endpoint's default-deployment pointer to it) and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The batch orchestration that materializes and schedules jobs from this recipe is Microsoft-operated Azure Machine Learning infrastructure with no customer-visible patch surface.
+      notes: The scoring ENVIRONMENT is the user-side half -- environment_id pins a registered container image, and patching its dependencies means registering a new environment version and updating the recipe (in place, via full PUT).

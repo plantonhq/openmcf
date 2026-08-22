@@ -1,0 +1,29 @@
+# CloudflareDnsZone install profile used as a prerequisite by composed
+# components (the DNS record's registry prerequisite, and every other
+# zone-scoped kind's). The zone is created for a domain nobody registers, so
+# it sits in Cloudflare's "pending" state -- records, rulesets, and most
+# zone-scoped API objects work in a pending zone, and destroying it is safe.
+# The zone NAME must be run-scoped: unlike Route 53, Cloudflare rejects a
+# duplicate zone name within an account, so a fixed name would collide across
+# concurrent engine lanes. metadata.name stays stable -- it is the key
+# consumers' valueFrom references resolve against. The shared account's REAL
+# active zone is never touched by fixtures; arms that need an active zone
+# inject it via ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID} with a
+# planton.dev/e2e-required-env gate instead of a prerequisite.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsZone
+metadata:
+  name: planton-oss-e2e-cloudflarednszone-prereq
+  id: planton-oss-e2e-cloudflarednszone-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneName: planton-e2e-${E2E_RUN_ID}.com
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

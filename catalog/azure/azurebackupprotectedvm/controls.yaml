@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurebackupprotectedvm
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup data in the Recovery Services vault is encrypted at rest unconditionally -- platform-managed keys by default, with vault-side customer-managed keys as the opt-in. Azure offers no way to store vault data unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for backup data are configured on the VAULT (its encryption settings), not per protected item -- the referenced AzureRecoveryServicesVault component owns that choice for every item it protects.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup traffic from the VM's snapshots into vault storage moves over Azure's internal fabric under HTTPS -- Microsoft's transport, with no customer-configurable alternative.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The protected item is a registration, not an endpoint -- nothing listens. Network exposure of the backup path is vault territory (private endpoints on the AzureRecoveryServicesVault component).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists to restrict (see no-public-access).
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the protection -- register, change policy, stop, restore, delete data -- is authorized by Azure RBAC on the vault's scope unconditionally (Backup Contributor / Backup Operator / Backup Reader are the purpose-built roles).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The registration holds no credentials and runs no workloads; Azure Backup's service identity performs the backups platform-side.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the vault's security settings (soft delete, MUA/immutability) are the hardening surface, vault-side.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a WAF to filter.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management action on the protected item -- registration, policy changes, stop-protection, restores, data deletion -- lands in the Azure Activity Log unconditionally, and Azure Backup records every job in the vault's backup jobs history.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup job outcomes and protected-item health surface in Backup center and the vault's monitoring blade for every protected item with no configuration; vault diagnostic settings can additionally export them to Log Analytics.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS the control -- registering the VM under a policy is what makes its backups automated and restorable. Recovery points accrue on the policy's schedule and restore through Azure Backup's standard flows (full VM, disks, or file-level).
+      notes: The component's purpose-control. Creation only registers -- the first recovery point lands on the policy's next scheduled run, so a just-registered VM is not yet restorable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention length is the referenced AzureBackupPolicyVm's whole job -- schedule and retention live there and re-pointing backup_policy_id updates protection in place. This manifest holds the binding, never the retention numbers.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Resilience of the backup DATA is the vault's redundancy choice (LRS/ZRS/GRS), configured on the AzureRecoveryServicesVault component; the registration itself has no zone posture of its own.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Recovery Services vaults ship soft delete enabled by default -- deleted backup data is retained 14 additional days and can be undeleted, giving the protected item a provider-level recycle bin even though the ARM object itself has no delete lock.
+      notes: Worth hearing plainly -- destroying this resource stops protection AND deletes the backup data (the modules keep the engines' default); soft delete is the safety net, and the vault's immutability/MUA settings can harden it further, vault-side.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Backup is a fully managed service -- Microsoft operates the backup fabric and the in-VM extension's servicing; no customer-visible patch surface exists on the protection itself.

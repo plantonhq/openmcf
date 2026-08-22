@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgatekeeper
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Gatekeeper stores its state -- ConstraintTemplates, Constraints, recorded violations -- in Kubernetes objects in etcd; encryption at rest is the cluster control plane's property, not this component's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the cluster's etcd encryption (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The webhook serves the API server over TLS -- Gatekeeper's embedded cert-controller generates and rotates the CA and serving certificate in the gatekeeper-webhook-server-cert Secret with zero prerequisites; external_cert swaps in a cert-manager-issued chain instead.
+      notes: The 03-cert-manager-tls preset takes the external-issuer path.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- the webhook Service is ClusterIP only, called solely by the Kubernetes API server inside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The only inbound traffic is the Kubernetes API server calling the admission webhooks over the cluster network; there is no user-facing ingress surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Gatekeeper serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates a dedicated ServiceAccount bound to the chart-rendered manager ClusterRole -- broad read access is the audit function's nature, and write access is confined to Gatekeeper's own resource groups and webhook configurations.
+      notes: Who may exempt namespaces from enforcement is itself guarded -- the namespace-label check webhook fails CLOSED by default (validating_webhook.check_ignore_failure_policy), so the exemption label cannot be smuggled on during an engine outage.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The spec carries no cloud credential seam -- Gatekeeper talks only to the Kubernetes API. External data providers (engine.enable_external_data) are separate resources with their own authentication.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Gatekeeper exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster. There is no weaker path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: configurable
+      field_path: engine.log_denies
+      evidence:
+        type: spec_default
+        reference: Unset means deny decisions are enforced but not individually logged; log_denies writes every admission DENY to the controller log -- the audit trail of what enforcement actually blocked. The audit controller separately records violations of EXISTING resources on each constraint's status every audit.interval_seconds.
+      notes: The 02-production-enforce preset enables log_denies. Administrative changes to Gatekeeper itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: The typed spec models no telemetry surface -- the engine's metrics wiring and ServiceMonitor discovery live in the chart's own values, reached through the helm_values overlay (merged last, Helm -f semantics).
+      notes: Violation counts are also observable declaratively -- the audit controller writes them to each constraint's status.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Gatekeeper holds no data to back up -- policies are declarative Kubernetes resources in etcd, protected by the cluster's own state backup, and recorded violations are recomputed by every audit sweep.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 3 -- the webhook ships HA by default because it sits on the cluster's write path -- and the chart's default scheduling spreads the replicas with pod anti-affinity across hosts under the system-cluster-critical priority class.
+      notes: The audit controller is always a single replica -- its restart merely delays the next audit sweep, blocking nothing.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The engine CRDs ship in the chart's crds/ directory -- Helm installs them but never deletes them (no release ownership), so uninstalling keeps every ConstraintTemplate and Constraint, plus the per-template CRDs Gatekeeper created at runtime.
+      notes: The webhook configurations ARE release-owned and delete with the release -- enforcement stops on uninstall while the policy data survives. The release itself carries no deletion lock.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 3.23.0; chart and app versions move in lockstep); changing it re-runs the Helm release deliberately, and the hooks.upgrade_crds pre-upgrade Job (default on) applies the engine CRDs at the new chart's version -- Helm never upgrades crds/-directory CRDs on its own.

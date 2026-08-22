@@ -1,0 +1,28 @@
+# Provider-parity manifest for CloudflareWebAnalyticsSite.
+# Records only divergences from exact-name matching against the folded
+# cloudflare_web_analytics_rule at the pinned provider version. The site
+# resource itself (cloudflare_web_analytics_site) needs no entry: every
+# configurable argument (account_id, host, zone_tag, auto_install, enabled,
+# lite) matches its spec field by exact name.
+resources:
+  # Include/exclude measurement rules, folded as the rules[] list: Cloudflare
+  # stores each as its own object under the site's ruleset, and the modules
+  # manage one object per declared row.
+  cloudflare_web_analytics_rule:
+    mappings:
+      - spec: spec.account_id
+        arg: account_id
+      - spec: spec.rules.host
+        arg: host
+      - spec: spec.rules.paths
+        arg: paths
+      - spec: spec.rules.inclusive
+        arg: inclusive
+      - spec: spec.rules.is_paused
+        arg: is_paused
+    exclusions:
+      # The rule's parent ruleset is created by the site itself; the modules
+      # wire the created site's ruleset id into every rule, so no spec field
+      # carries it.
+      - arg: ruleset_id
+        reason: "module-wired from the created site's ruleset id; a user-supplied value could only point rules at a foreign site's ruleset"

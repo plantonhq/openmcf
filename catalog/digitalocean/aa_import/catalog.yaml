@@ -1,0 +1,378 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: digitalocean
+spec:
+  # Import-ID formats per DigitalOcean resource type, as implemented by the
+  # pinned terraform-provider-digitalocean (each resource's Importer in
+  # digitalocean/<service>/resource_*.go is the source of truth; the docs'
+  # Import sections confirm). The FORMAT lives here (provider knowledge,
+  # shared by every component); which concrete value fills each {placeholder}
+  # lives in the owning component's import-map.yaml. Correctness is
+  # machine-proven by the E2E import round-trip (deploy a fixture, set state
+  # aside, re-import blind, plan must show zero diff) -- never by review
+  # alone.
+  #
+  # Composite formats in this provider are always COMMA-separated, never
+  # slash-separated. Most resources import by their API UUID; the notable
+  # exceptions are name-addressed resources (certificate, container registry,
+  # domain) and the two composites (record, spaces bucket).
+  resource_types:
+    # --- Networking ----------------------------------------------------------
+    - terraform_type: digitalocean_vpc
+      pulumi_type: digitalocean:index/vpc:Vpc
+      id_format: "{vpc_id}"
+    - terraform_type: digitalocean_firewall
+      pulumi_type: digitalocean:index/firewall:Firewall
+      id_format: "{firewall_id}"
+      # The API reports "all ports" as port 0, which the provider writes back
+      # as the literal string "all" (and drops port_range entirely on icmp
+      # rules) -- an authored "1-65535" imports as "all". Rule blocks are
+      # set-hashed, so the whole rule shows as replaced, not modified.
+      write_normalized_attributes: [inbound_rule.port_range, outbound_rule.port_range]
+    - terraform_type: digitalocean_loadbalancer
+      pulumi_type: digitalocean:index/loadBalancer:LoadBalancer
+      id_format: "{load_balancer_id}"
+      # network, network_stack, and tls_cipher_policy are never set by the
+      # provider's Read, so a fresh import leaves them empty regardless of
+      # the live balancer. ip is create-only BYOIP on write but Read always
+      # populates the assigned address, so it needs no tolerance.
+      config_only_attributes: [network, network_stack, tls_cipher_policy]
+      # size and size_unit are an either-or read-back: if SizeUnit > 0 the
+      # provider sets only size_unit and leaves size at its prior state.
+      # glb_settings.target_protocol is lowercased on read.
+      # glb_settings.failover_threshold is only flattened when
+      # region_priorities is also non-empty.
+      write_normalized_attributes:
+        - size
+        - size_unit
+        - glb_settings.target_protocol
+        - glb_settings.failover_threshold
+    - terraform_type: digitalocean_reserved_ip
+      pulumi_type: digitalocean:index/reservedIp:ReservedIp
+      id_format: "{reserved_ip_address}"
+      # droplet_id is only read back when it is already in state (an
+      # out-of-band assignment is invisible to drift detection), and in
+      # that branch region is taken from the DROPLET's region rather than
+      # the reservation's.
+      config_only_attributes: [droplet_id]
+    - terraform_type: digitalocean_reserved_ip_assignment
+      pulumi_type: digitalocean:index/reservedIpAssignment:ReservedIpAssignment
+      id_format: "{reserved_ip_address},{droplet_id}"
+      notes: >-
+        Never imported in practice: the resource id is a synthetic
+        timestamped value (PrefixedUniqueId), so imported state can never
+        match authored state -- the provider's own tests skip
+        ImportStateVerify for exactly this reason. The
+        DigitalOceanReservedIp kind assigns v4 addresses through the
+        reservation's own mutable droplet_id and never creates this
+        resource.
+    - terraform_type: digitalocean_reserved_ipv6
+      pulumi_type: digitalocean:index/reservedIpv6:ReservedIpv6
+      id_format: "{reserved_ip_address}"
+      # Same conditional read-back as the v4 reservation: droplet_id only
+      # when already in state (with region_slug then taken from the
+      # droplet). The v6 delete swallows non-404 errors at the pin, so
+      # only a live lookup proves a destroy.
+      config_only_attributes: [droplet_id]
+    - terraform_type: digitalocean_reserved_ipv6_assignment
+      pulumi_type: digitalocean:index/reservedIpv6Assignment:ReservedIpv6Assignment
+      id_format: "{reserved_ip_address},{droplet_id}"
+      notes: >-
+        Never imported in practice: same synthetic timestamped id as the
+        v4 assignment. Unlike v4, the v6 arm of the DigitalOceanReservedIp
+        kind DOES create this resource (v6 cannot assign inline), but a
+        blind round-trip of the assignment alone is impossible by design;
+        the reservation's round-trip is the meaningful proof.
+    - terraform_type: digitalocean_vpc_peering
+      pulumi_type: digitalocean:index/vpcPeering:VpcPeering
+      id_format: "{peering_id}"
+
+    # --- DNS -----------------------------------------------------------------
+    - terraform_type: digitalocean_domain
+      pulumi_type: digitalocean:index/domain:Domain
+      id_format: "{domain_name}"
+      # ip_address is a create-only convenience (it seeds an initial A
+      # record); the provider's Read never returns it, so import cannot
+      # carry it.
+      config_only_attributes: [ip_address]
+    - terraform_type: digitalocean_record
+      pulumi_type: digitalocean:index/dnsRecord:DnsRecord
+      id_format: "{domain},{record_id}"
+      notes: >-
+        The record id is numeric; find it via the API or `doctl compute
+        domain records list <domain>`.
+      # The provider's Read appends a trailing dot to CNAME/MX/NS/SRV/CAA
+      # values -- textually different from the authored value, semantically
+      # identical DNS data.
+      write_normalized_attributes: [value]
+
+    # --- Compute -------------------------------------------------------------
+    - terraform_type: digitalocean_droplet
+      pulumi_type: digitalocean:index/droplet:Droplet
+      id_format: "{droplet_id}"
+      notes: >-
+        The provider's custom importer takes the plain integer droplet id and
+        seeds image + resize_disk into state; the normal Read deliberately
+        never re-reads image (slugs drift to newer image ids upstream).
+      # ssh_keys and user_data are write-only at create (user_data is stored
+      # hashed). droplet_agent, graceful_shutdown, and backup_policy have no
+      # readable API counterpart -- Read never sets them.
+      config_only_attributes:
+        - ssh_keys
+        - user_data
+        - droplet_agent
+        - graceful_shutdown
+        - backup_policy
+      # Read always d.Set("resize_disk", true), so a configured false
+      # comes back as true after import/refresh. The importer also seeds
+      # true. Semantically "grow the disk on resize", textually different.
+      write_normalized_attributes:
+        - resize_disk
+    - terraform_type: digitalocean_volume
+      pulumi_type: digitalocean:index/volume:Volume
+      id_format: "{volume_id}"
+      # Create-only initialization arguments; the API surfaces the resulting
+      # filesystem through separate computed attributes.
+      config_only_attributes:
+        - snapshot_id
+        - initial_filesystem_type
+        - initial_filesystem_label
+    - terraform_type: digitalocean_droplet_autoscale
+      pulumi_type: digitalocean:index/dropletAutoscale:DropletAutoscale
+      id_format: "{pool_id}"
+      notes: >-
+        Passthrough importer on the pool UUID. The template's image reads
+        back as a NUMERIC image id even when a slug was configured -- the
+        provider's Read persists the configured value to hide the drift,
+        but a fresh import has no configured value to keep, so the first
+        post-import plan diffs the image when the config uses a slug.
+      # public_networking is schema-declared but never copied into any
+      # create/update request at the pin (dead on write); Read still
+      # populates it from the API, so it round-trips as whatever the
+      # platform defaulted, never as configured intent.
+      config_only_attributes:
+        - droplet_template.0.public_networking
+
+    # --- Kubernetes ----------------------------------------------------------
+    - terraform_type: digitalocean_kubernetes_cluster
+      pulumi_type: digitalocean:index/kubernetesCluster:KubernetesCluster
+      id_format: "{cluster_id}"
+      notes: >-
+        Importing MUTATES the remote cluster when the default node pool is
+        untagged: the provider adds the terraform:default-node-pool tag to a
+        single-pool cluster automatically and refuses multi-pool clusters
+        until one pool is tagged manually.
+      # destroy_all_associated_resources and kubeconfig_expire_seconds are
+      # provider behavior flags with no API counterpart; registry_integration
+      # is an account-level association the provider's Read never fetches
+      # (its own import test ignores it).
+      config_only_attributes:
+        - destroy_all_associated_resources
+        - kubeconfig_expire_seconds
+        - registry_integration
+    - terraform_type: digitalocean_kubernetes_node_pool
+      pulumi_type: digitalocean:index/kubernetesNodePool:KubernetesNodePool
+      id_format: "{node_pool_id}"
+      notes: >-
+        The plain pool UUID, NOT a cluster,pool composite: the provider
+        recovers cluster_id by scanning the account's clusters. It refuses to
+        import a default node pool (import the cluster instead).
+
+    # --- Databases -----------------------------------------------------------
+    - terraform_type: digitalocean_database_cluster
+      pulumi_type: digitalocean:index/databaseCluster:DatabaseCluster
+      id_format: "{cluster_id}"
+      # backup_restore drives creation only and the API never reports it
+      # back -- import can never carry it.
+      config_only_attributes: [backup_restore]
+      # The provider's Read fetches each of these only when the attribute
+      # is ALREADY in state (d.GetOk guards), so a fresh import never
+      # populates them even though they exist server-side; the first
+      # post-import plan re-asserts the configured values as a server-side
+      # no-op. storage_size_mib, private_network_uuid, project_id, and tags
+      # read back unconditionally and need no tolerance.
+      write_normalized_attributes:
+        - maintenance_window
+        - eviction_policy
+        - sql_mode
+        - storage_autoscale
+    - terraform_type: digitalocean_database_user
+      pulumi_type: digitalocean:index/databaseUser:DatabaseUser
+      id_format: "{cluster_id},{user_name}"
+      # The API returns ACL settings only in the CREATE response -- GetUser
+      # never includes them (the provider sets them create-only by design),
+      # so import can never carry them.
+      config_only_attributes: [settings]
+      notes: >-
+        MongoDB user passwords exist only in the create response, so an
+        imported MongoDB user has an empty password attribute.
+    - terraform_type: digitalocean_database_db
+      pulumi_type: digitalocean:index/databaseDb:DatabaseDb
+      id_format: "{cluster_id},{database_name}"
+    - terraform_type: digitalocean_database_connection_pool
+      pulumi_type: digitalocean:index/databaseConnectionPool:DatabaseConnectionPool
+      id_format: "{cluster_id},{pool_name}"
+    - terraform_type: digitalocean_database_firewall
+      pulumi_type: digitalocean:index/databaseFirewall:DatabaseFirewall
+      id_format: "{cluster_id}"
+      notes: >-
+        The rule set is a property of its cluster: import takes the BARE
+        cluster UUID, and the importer then mints a fresh random state id
+        ("{cluster_id}-<uniqueid>") -- the state id is deliberately
+        non-deterministic and never compared. Rules read back in full.
+        Destroy is a PUT of an empty rule list, never a deletion.
+    - terraform_type: digitalocean_database_replica
+      pulumi_type: digitalocean:index/databaseReplica:DatabaseReplica
+      id_format: "{cluster_id},{replica_name}"
+    - terraform_type: digitalocean_database_kafka_topic
+      pulumi_type: digitalocean:index/databaseKafkaTopic:DatabaseKafkaTopic
+      id_format: "{cluster_id},{topic_name}"
+      # partition_count is deliberately never read back (partition changes
+      # apply asynchronously and the API would report a stale count), so an
+      # import lands at the schema default; min_insync_replicas is locally
+      # defaulted by the provider rather than read from the server.
+      config_only_attributes: [partition_count]
+      write_normalized_attributes: [config.min_insync_replicas]
+    - terraform_type: digitalocean_database_kafka_schema_registry
+      pulumi_type: digitalocean:index/databaseKafkaSchemaRegistry:DatabaseKafkaSchemaRegistry
+      id_format: "{cluster_id},{subject_name}"
+      notes: >-
+        Import is DEFECTIVE at the provider pin: the importer restores only
+        cluster_id, sets the resource id to the bare cluster id (not the
+        canonical "{cluster_id}/schema-registry/{subject}" form Create
+        produces), and never restores subject_name -- the post-import Read
+        addresses an empty subject and cannot round-trip. The owning kind's
+        import map records the exclusion; re-evaluate on any provider pin
+        bump.
+
+    # --- Spaces (S3-compatible object storage) --------------------------------
+    - terraform_type: digitalocean_spaces_bucket
+      pulumi_type: digitalocean:index/spacesBucket:SpacesBucket
+      id_format: "{region},{bucket_name}"
+      # force_destroy is engine behavior (empty-before-delete) hardcoded to
+      # false by the importer; acl is write-only -- Read never calls
+      # GetBucketAcl, so the canned ACL stays at its config value.
+      config_only_attributes: [force_destroy, acl]
+    - terraform_type: digitalocean_spaces_bucket_cors_configuration
+      pulumi_type: digitalocean:index/spacesBucketCorsConfiguration:SpacesBucketCorsConfiguration
+      id_format: "{region},{bucket_name}"
+      notes: >-
+        Shares the bucket's importer, so the same region,name composite.
+        Unlike the bucket's deprecated inline cors_rule, this resource's
+        Read calls GetBucketCors -- rules round-trip with real drift
+        detection.
+    - terraform_type: digitalocean_spaces_bucket_policy
+      pulumi_type: digitalocean:index/spacesBucketPolicy:SpacesBucketPolicy
+      id_format: "{region},{bucket_name}"
+      # The provider normalizes the policy JSON (whitespace, key order) via
+      # a StateFunc on write and stores the API's normalized form on Read;
+      # a configured document that differs only in formatting is suppressed
+      # by the provider's own JSON-diff comparison.
+      write_normalized_attributes: [policy]
+    - terraform_type: digitalocean_spaces_bucket_logging
+      pulumi_type: digitalocean:index/spacesBucketLogging:SpacesBucketLogging
+      id_format: "{region},{bucket_name}"
+      notes: >-
+        Shares the bucket importer's region,name composite. Read fetches
+        target_bucket and target_prefix unconditionally from
+        GetBucketLogging.
+    - terraform_type: digitalocean_spaces_key
+      pulumi_type: digitalocean:index/spacesKey:SpacesKey
+      id_format: "{access_key}"
+      notes: >-
+        Import is IMPOSSIBLE at the provider pin: the resource declares NO
+        importer, and even a future one could never recover secret_key --
+        the API returns it only in the create response (write-once by
+        design). The owning kind's import map records the exclusion;
+        re-evaluate on any provider pin bump that adds an importer.
+    - terraform_type: digitalocean_cdn
+      pulumi_type: digitalocean:index/cdn:Cdn
+      id_format: "{cdn_id}"
+      notes: >-
+        Passthrough importer on the endpoint UUID. Lossless: the provider's
+        Read resolves the API's certificate UUID back to the stable
+        certificate NAME (schema v1 stores names, never UUIDs -- Let's
+        Encrypt renewals rotate the UUID).
+
+    # --- Certificates ----------------------------------------------------------
+    - terraform_type: digitalocean_certificate
+      pulumi_type: digitalocean:index/certificate:Certificate
+      id_format: "{certificate_name}"
+      notes: >-
+        Certificates import by NAME, not UUID: a lets_encrypt certificate's
+        UUID rotates on every auto-renewal, so the provider uses the stable
+        name as the resource id and exposes the UUID as a computed attribute.
+      # The API never returns certificate material; state stores only hashes
+      # of what was written, and import leaves all three empty.
+      config_only_attributes:
+        - private_key
+        - leaf_certificate
+        - certificate_chain
+
+    # --- Container registry ----------------------------------------------------
+    - terraform_type: digitalocean_container_registry
+      pulumi_type: digitalocean:index/containerRegistry:ContainerRegistry
+      id_format: "{registry_name}"
+    - terraform_type: digitalocean_container_registry_docker_credentials
+      pulumi_type: digitalocean:index/containerRegistryDockerCredentials:ContainerRegistryDockerCredentials
+      id_format: "{registry_name}"
+      notes: >-
+        Import is DEFECTIVE at the provider pin: the resource declares a
+        passthrough importer, but its Read requires registry_name from state
+        (which passthrough never sets) before it can even look the registry
+        up, and the provider docs carry no Import section for it. The kind
+        that wires this resource must prove or exclude it in its own import
+        map when its depth wave runs the live round-trip.
+      # Pure config inputs; docker_credentials itself is re-minted by the
+      # provider whenever the stored token is missing or expired.
+      config_only_attributes: [write, expiry_seconds]
+
+    # --- App Platform ----------------------------------------------------------
+    - terraform_type: digitalocean_app
+      pulumi_type: digitalocean:index/app:App
+      id_format: "{app_id}"
+      # A provider-local pagination knob, never sent to the API.
+      config_only_attributes: [deployment_per_page]
+
+    # --- Projects & account ------------------------------------------------------
+    - terraform_type: digitalocean_project
+      pulumi_type: digitalocean:index/project:Project
+      id_format: "{project_id}"
+      # The API returns the environment capitalized ("Production"); authored
+      # manifests declare it lowercase and the provider only diff-suppresses,
+      # so a blind import reads back the capitalized form.
+      write_normalized_attributes: [environment]
+    - terraform_type: digitalocean_project_resources
+      pulumi_type: digitalocean:index/projectResources:ProjectResources
+      # Membership rows composed into digitalocean_project's own resources
+      # argument by the DigitalOceanProject kind; the standalone resource is
+      # never created by Planton modules and has NO upstream importer (the
+      # provider ships none) -- present here so the resource type is
+      # accounted, excluded from live round-trips by construction.
+      id_format: "{project_id}"
+    - terraform_type: digitalocean_ssh_key
+      pulumi_type: digitalocean:index/sshKey:SshKey
+      # The numeric key id ONLY -- the provider's read requires the integer,
+      # so a fingerprint does not import even though droplets accept
+      # fingerprints as key references.
+      id_format: "{ssh_key_id}"
+
+    # --- Monitoring --------------------------------------------------------------
+    - terraform_type: digitalocean_monitor_alert
+      pulumi_type: digitalocean:index/monitorAlert:MonitorAlert
+      id_format: "{alert_id}"
+      # The uuid attribute is declared Computed upstream but never written
+      # to state at the pin; the resource id carries the policy UUID. For
+      # tag-targeted policies the API may populate entities on read-back --
+      # a first-live-run watch item, not a recorded tolerance.
+    - terraform_type: digitalocean_uptime_check
+      pulumi_type: digitalocean:index/uptimeCheck:UptimeCheck
+      id_format: "{check_id}"
+    - terraform_type: digitalocean_uptime_alert
+      pulumi_type: digitalocean:index/uptimeAlert:UptimeAlert
+      id_format: "{check_id},{alert_id}"
+      # down/down_global alerts carry no threshold in config, but create
+      # sends the zero and the read writes it back -- an authored null
+      # imports as 0.
+      write_normalized_attributes: [threshold]

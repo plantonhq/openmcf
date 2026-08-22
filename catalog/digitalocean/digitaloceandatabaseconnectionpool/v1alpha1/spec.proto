@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabaseconnectionpool.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// DigitalOceanDatabaseConnectionPoolSpec models the full
+// digitalocean_database_connection_pool resource surface: a PgBouncer
+// connection pool on a DigitalOcean managed PostgreSQL cluster.
+//
+// EVERY field here is create-only: the DigitalOcean Terraform provider
+// registers no update path for pools, so any change replaces the pool
+// (dropping its live connections). DigitalOcean's own API can update pools
+// in place; mirroring the provider is the recorded parity decision, to be
+// revisited if the provider ever grows an update path.
+message DigitalOceanDatabaseConnectionPoolSpec {
+  // The PostgreSQL cluster to create the pool on. Use a literal cluster
+  // UUID or a reference to a DigitalOceanDatabaseCluster resource.
+  // Connection pools exist only on PostgreSQL clusters (API-enforced).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // Name of the connection pool. Unique within the cluster; the name IS
+  // the pool's API identity, and clients connect to it as if it were a
+  // database name.
+  string pool_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 3,
+    (buf.validate.field).string.max_len = 63
+  ];
+
+  // PgBouncer pooling mode. "transaction" is what most applications want
+  // (a server connection per transaction); "session" holds a server
+  // connection for the client's whole session (required for session-state
+  // features like LISTEN/NOTIFY or prepared statements); "statement" is
+  // the most aggressive and forbids multi-statement transactions.
+  string mode = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "session",
+        "transaction",
+        "statement"
+      ]
+    }
+  ];
+
+  // Size of the pool: how many backend server connections it may hold
+  // open. Bounded by the cluster's connection limit (size-slug dependent,
+  // API-enforced) minus DigitalOcean's reserved connections.
+  int32 size = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Name of the logical database the pool connects to. A plain name --
+  // compose it with a DigitalOceanDatabaseDb resource by using the same
+  // name, or use the cluster's default database ("defaultdb").
+  string db_name = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // (Optional) Name of the cluster user the pool authenticates as. When
+  // omitted, DigitalOcean creates an "inbound user" pool: clients
+  // authenticate with their own database credentials and the pool proxies
+  // them, which is the safer default for shared pools. Reads echo the
+  // empty value back, so omission is stable.
+  string user = 6;
+}

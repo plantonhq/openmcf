@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustmcpportal.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustmcpportal/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustmcpportal/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustMcpPortal is a KRM-style resource for publishing a
+// curated, Access-protected collection of MCP servers to users.
+message CloudflareZeroTrustMcpPortal {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustMcpPortal'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustMcpPortalSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustMcpPortalStatus status = 5;
+}
+
+// CloudflareZeroTrustMcpPortalStatus represents the observed state of the
+// portal.
+message CloudflareZeroTrustMcpPortalStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustMcpPortalStackOutputs outputs = 1;
+}

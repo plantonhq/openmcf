@@ -1,0 +1,51 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssesemailidentity
+spec:
+  aws:
+    statements:
+      - sid: ManageIdentity
+        actions:
+          - ses:CreateEmailIdentity
+          - ses:GetEmailIdentity
+          - ses:DeleteEmailIdentity
+          - ses:PutEmailIdentityConfigurationSetAttributes
+          - ses:PutEmailIdentityDkimSigningAttributes
+        resources:
+          - arn:aws:ses:*:*:identity/*
+          - arn:aws:ses:*:*:configuration-set/*
+        provenance: derived
+        notes: Covers aws_sesv2_email_identity / sesv2.EmailIdentity. Create carries the identity, its default set, and DKIM shape; the provider reconciles a swapped configuration_set through PutEmailIdentityConfigurationSetAttributes and a DKIM change (Easy DKIM rotation or the BYODKIM pair) through PutEmailIdentityDkimSigningAttributes; GetEmailIdentity serves every plan/refresh. All actions scope to the identity ARN per the service reference; PutEmailIdentityConfigurationSetAttributes additionally authorizes against the configuration-set ARN when a default set is attached, which is why that format is granted alongside.
+      - sid: ManageIdentitySatellites
+        actions:
+          - ses:PutEmailIdentityMailFromAttributes
+          - ses:PutEmailIdentityFeedbackAttributes
+        resources:
+          - arn:aws:ses:*:*:identity/*
+        provenance: derived
+        notes: "Covers aws_sesv2_email_identity_mail_from_attributes / sesv2.EmailIdentityMailFromAttributes and aws_sesv2_email_identity_feedback_attributes / sesv2.EmailIdentityFeedbackAttributes -- both are PUT-style satellites whose create, update, AND destroy all flow through the same Put call (destroy writes the empty/false value; the feedback write then persists per identity name, a documented SES retention quirk). Reads ride GetEmailIdentity from the ManageIdentity statement. Both actions scope to the identity ARN."
+      - sid: ManageIdentityPolicies
+        actions:
+          - ses:CreateEmailIdentityPolicy
+          - ses:GetEmailIdentityPolicies
+          - ses:UpdateEmailIdentityPolicy
+          - ses:DeleteEmailIdentityPolicy
+        resources:
+          - arn:aws:ses:*:*:identity/*
+        provenance: derived
+        notes: Covers aws_sesv2_email_identity_policy / sesv2.EmailIdentityPolicy -- one AWS sub-resource per named entry in policies, each independently created, read on refresh, updated in place, and deleted. All four actions scope to the identity ARN per the service reference.
+      - sid: TagIdentity
+        actions:
+          - ses:TagResource
+          - ses:UntagResource
+          - ses:ListTagsForResource
+        resources:
+          - arn:aws:ses:*:*:identity/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three to many SES resource types; only the identity ARN format is needed here.

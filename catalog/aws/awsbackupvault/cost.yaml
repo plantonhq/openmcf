@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackupvault
+spec:
+  billing_model: free
+  free_tier: "The vault container is free -- the AWS Backup pricing page bills only \"the backup storage you use, backup data transferred between AWS Regions, backup data you restore, and backup evaluations. There is no minimum fee and there are no setup charges.\" Vaults appear on no meter, and neither do the standard arm's satellites (lock, access policy, SNS notification wiring). Both presets create an empty vault: zero recovery points, zero GB stored, zero dollars."
+  notes: "The vault is where backup-storage spend LANDS, not what starts it. Recovery points put into the vault bill per GB-month on the average storage held through the month (rates differ per resource type, warm vs cold tier) -- that spend is driven by AwsBackupPlan rules (selection breadth, schedule, retention) and shows under the Backup service of the account holding the vault; copies received from another region additionally bill cross-Region transfer per GB to the SENDING account. Vault choices that change the economics: (1) the air_gapped arm stores at a premium rate (the pricing page's own example prices the air-gapped copy at \"$0.0575 per GB-Month\" against \"$0.05\" warm), and the EBS/DocumentDB/Neptune backup-storage free tiers do NOT apply inside logically air-gapped vaults -- all its charges show under the Backup service; (2) standard.lock in compliance mode (changeable_for_days set) makes storage spend UNREMOVABLE -- recovery points cannot be deleted until retention expires, so the GB-month meter is locked in for the full window; (3) standard.force_destroy drains recovery points at destroy, ending their storage bills -- but recovery points deleted out of cold storage before its 90-day minimum bill the remaining days pro-rated; (4) standard.notifications publishes vault events to SNS -- delivery bills on the referenced AwsSnsTopic, not here. Custom-key encryption (standard.kms_key_arn / air_gapped.encryption_key_arn) bills the key's monthly fee and API calls on the referenced AwsKmsKey component."

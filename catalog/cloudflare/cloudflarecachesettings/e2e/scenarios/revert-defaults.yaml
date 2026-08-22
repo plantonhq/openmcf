@@ -1,0 +1,17 @@
+# The defaults posture AND the revert: turns the no-op-destroy toggles back
+# off. Because four of the six settings survive destroy, running this
+# scenario AFTER free-tiered-cache returns the zone to its default posture --
+# the ordering IS the revert discipline (the run-scoped fixture zone's
+# destroy is the backstop).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCacheSettings
+metadata:
+  name: e2e-cache-revert-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  smart_tiered_cache: false
+  regional_tiered_cache: false

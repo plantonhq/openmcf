@@ -1,12 +1,52 @@
+# Example DigitalOceanDnsRecord manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real record: an A record pointing a subdomain
+# at an IPv4 address, with every optional field left to its default.
+#
+# Document 2 -- an SRV record: the type with the largest argument surface
+# (priority, weight, port) plus a custom TTL.
+#
+# Document 3 -- a CAA record: certificate authority pinning with the
+# flags/tag pair (flags 0 = non-critical, the standard value).
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
-  name: test-dns-record
+  name: example-dodnsrec-a
 spec:
   domain:
-    value: "example.com"
-  name: "www"
+    value: example.com
+  name: app
   type: A
   value:
-    value: "192.0.2.1"
-  ttl_seconds: 3600
+    value: 203.0.113.5
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsRecord
+metadata:
+  name: example-dodnsrec-srv
+spec:
+  domain:
+    value: example.com
+  name: _sip._tcp
+  type: SRV
+  value:
+    value: sip.example.com.
+  ttlSeconds: 300
+  priority: 10
+  weight: 60
+  port: 5060
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsRecord
+metadata:
+  name: example-dodnsrec-caa
+spec:
+  domain:
+    value: example.com
+  name: "@"
+  type: CAA
+  value:
+    value: letsencrypt.org
+  flags: 0
+  tag: issue

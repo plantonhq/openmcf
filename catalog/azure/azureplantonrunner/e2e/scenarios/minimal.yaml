@@ -1,0 +1,28 @@
+# Minimal AzurePlantonRunner scenario: the appliance inside the
+# prerequisite Container App Environment with an obviously-fake runner
+# token (the container's join is refused and the replica restarts, but
+# Container Apps reports the app provisioned independently of replica
+# health -- see ../profile.yaml for why app-level verification makes that
+# the right lane shape).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePlantonRunner
+metadata:
+  name: planton-oss-e2e-az-runner
+  id: planton-oss-e2e-az-runner
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  containerAppEnvironmentId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cae
+  token: prt_FAKE_E2E_PLACEHOLDER

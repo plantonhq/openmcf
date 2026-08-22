@@ -1,0 +1,60 @@
+# The Cloudflare price book: every Cloudflare unit price the catalog's
+# cost estimates cite, pinned with source URL and retrieval date. Entries
+# are referenced by slug from the estimate models under ../models/ and
+# selected by value-keyed attribute identity from the cost derivations
+# under ../derivations/. Cloudflare publishes no machine-readable price
+# API, so every entry here is hand-pinned from Cloudflare's own published
+# pages and carries NO fetcher selector -- the fetcher leaves selectorless
+# entries untouched by design, and refreshing this book means re-reading
+# the cited pages and updating retrieved_on. Cloudflare prices globally
+# (no regional variants), so entries pin region "global".
+# Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: cloudflare
+spec:
+  entries:
+    - name: cloudflare-custom-hostname-monthly
+      service_name: Cloudflare for SaaS
+      pricing_unit: hostname-months
+      region: global
+      currency: USD
+      list_unit_price: "0.10"
+      price_source: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/plans/
+      retrieved_on: "2026-08-22"
+      # No selector: Cloudflare has no public price API; hand-refreshed by
+      # design. Rate is per additional hostname past the zone's 100
+      # included, identical on Free/Pro/Business ("Price per additional
+      # hostname: $0.10"). Cadence note: the page publishes the rate
+      # without an explicit "per month" on the current revision; monthly
+      # recurrence per Cloudflare's monthly subscription billing.
+    - name: cloudflare-load-balancing-basic-monthly
+      service_name: Cloudflare Load Balancing
+      pricing_unit: subscription-months
+      region: global
+      currency: USD
+      list_unit_price: "5.00"
+      price_source: https://www.cloudflare.com/plans/
+      retrieved_on: "2026-08-22"
+      # No selector: Cloudflare has no public price API; hand-refreshed by
+      # design. "Starting at $5/mo" on the plans page; invoiced monthly in
+      # advance as "Basic Load Balancing" at $5.00 per Cloudflare's own
+      # invoice example
+      # (https://developers.cloudflare.com/billing/understand/how-billing-works/,
+      # retrieved 2026-08-22). Entry tier only -- higher tiers and the
+      # origin/health-check sub-meter rates are not published on fetchable
+      # pages.
+    - name: cloudflare-advanced-certificate-manager-monthly
+      service_name: Advanced Certificate Manager
+      pricing_unit: subscription-months
+      region: global
+      currency: USD
+      list_unit_price: "10.00"
+      price_source: https://www.cloudflare.com/plans/
+      retrieved_on: "2026-08-22"
+      # No selector: Cloudflare has no public price API; hand-refreshed by
+      # design. Plans page add-on card: "Advanced Certificate Manager ...
+      # $10/mo". The page does not state the zone scoping; the per-zone
+      # subscription reading is a stated assumption (Cloudflare's ACM
+      # dashboard is zone-scoped).

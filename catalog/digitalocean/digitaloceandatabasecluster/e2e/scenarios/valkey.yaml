@@ -1,0 +1,26 @@
+# Valkey DigitalOceanDatabaseCluster: proves one of the newer engine slugs
+# end to end plus eviction_policy (valid only on the caching engines --
+# the spec's CEL rule and the provider's plan-time check agree). Single
+# node on the cheapest slug; no VPC.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasecluster-valkey
+  id: planton-oss-e2e-digitaloceandatabasecluster-valkey
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-dodb-valkey
+  engine: valkey
+  engineVersion: "8"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1
+  evictionPolicy: allkeys_lru

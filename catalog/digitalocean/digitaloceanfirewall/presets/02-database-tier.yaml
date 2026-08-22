@@ -3,7 +3,9 @@ kind: DigitalOceanFirewall
 metadata:
   name: my-database-tier-firewall
 spec:
-  name: database-tier
+  firewallName: database-tier
+  tags:
+    - database
   inboundRules:
     - protocol: tcp
       portRange: "5432"
@@ -12,17 +14,15 @@ spec:
     - protocol: tcp
       portRange: "22"
       sourceAddresses:
-        - "<your-management-cidr>"
+        - 203.0.113.0/24
   outboundRules:
-    - protocol: tcp
-      portRange: 1-65535
-      destinationAddresses:
-        - 0.0.0.0/0
-        - "::/0"
     - protocol: udp
       portRange: "53"
       destinationAddresses:
         - 0.0.0.0/0
         - "::/0"
-  tags:
-    - database
+    - protocol: tcp
+      portRange: "443"
+      destinationAddresses:
+        - 0.0.0.0/0
+        - "::/0"

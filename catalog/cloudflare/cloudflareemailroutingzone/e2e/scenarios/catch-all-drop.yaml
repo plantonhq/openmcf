@@ -1,0 +1,32 @@
+# Catch-all CloudflareEmailRoutingZone scenario: enable Email Routing plus
+# the folded per-zone catch-all rule -- a named, enabled drop action (the one
+# action type that needs no verified destination address or deployed Email
+# Worker, so it can run live). Forward and worker actions share the same
+# typed-action send path, proven by the offline plan and spec tests. NOTE:
+# the provider's catch-all Delete is a no-op by design; the destroy
+# verification rides on the zone-level disable, not on a catch-all deletion.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareEmailRoutingZone
+metadata:
+  name: planton-oss-e2e-cloudflareemailroutingzone-catchall
+  id: planton-oss-e2e-cloudflareemailroutingzone-catchall
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareemailroutingzone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  catchAll:
+    enabled: true
+    name: planton-e2e-catch-all-drop
+    actions:
+      - type: drop

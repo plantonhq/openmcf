@@ -1,6 +1,6 @@
 # DNS Record on DigitalOcean
 
-Creates a single DNS record within an existing DigitalOcean DNS zone. Supports A, AAAA, CNAME, MX, TXT, SRV, NS, and CAA record types, with type-specific fields for priority, weight, port, flags, and tag applied conditionally. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for DNS zone and target dependency wiring.
+Creates a single DNS record within an existing DigitalOcean DNS zone. Supports every record type the DigitalOcean API accepts -- A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, and SOA -- with type-specific fields for priority, weight, port, flags, and tag applied conditionally and enforced at validation time. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for DNS zone and target dependency wiring.
 
 ## What Gets Created
 
@@ -32,7 +32,7 @@ Open the deployment store, find **DNS Record on DigitalOcean**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDnsRecord
 metadata:
   name: www-a-record
@@ -77,7 +77,9 @@ These are the most important decisions when configuring a DNS record. Explore th
 
 **TTL** -- The `ttlSeconds` field controls how long DNS resolvers cache this record, defaulting to 1800 seconds (30 minutes). Use lower values (60-300) during migrations or when records change frequently, and higher values (3600-86400) for stable production records.
 
-**Type-specific fields** -- MX records require `priority` (lower values = higher priority). SRV records require `priority`, `weight`, and `port`. CAA records require `flags` and `tag` (`issue`, `issuewild`, or `iodef`). The protobuf schema enforces these cross-field constraints at validation time.
+**Type-specific fields** -- MX records require `priority` (lower values = higher priority). SRV records require `priority`, `weight`, and `port`. CAA records require `flags` and `tag` (`issue`, `issuewild`, or `iodef`). The protobuf schema enforces these cross-field constraints at validation time. One provider quirk: an explicit 0 in `priority`, `weight`, or `port` is dropped from the create request and the API default applies -- use positive values when exactness matters (CAA `flags: 0` is safe; the API default is 0).
+
+**Hostname values carry a trailing dot on read-back** -- CNAME, MX, NS, SRV, and CAA targets are stored fully qualified (`mail.example.com.`); author the trailing dot to avoid a permanent diff.
 
 **Value references** -- The `value` field supports ValueFromRef, allowing you to reference outputs from other Cloud Resources (e.g., a Droplet's IP address or a Load Balancer's hostname) instead of hardcoding values.
 

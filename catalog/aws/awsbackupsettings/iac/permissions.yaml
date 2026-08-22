@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbackupsettings
+spec:
+  aws:
+    statements:
+      - sid: ManageGlobalSettings
+        actions:
+          - backup:UpdateGlobalSettings
+          - backup:DescribeGlobalSettings
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_backup_global_settings / backup.GlobalSettings -- the account-wide arm (isCrossAccountBackupEnabled and any future keys). Update writes the full settings map on create AND update; Describe serves every plan/refresh. Destroy needs nothing -- the provider's delete is a no-op (the last-applied settings persist). Both actions publish NO resource types in the Backup service reference, so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope.
+      - sid: ManageRegionSettings
+        actions:
+          - backup:UpdateRegionSettings
+          - backup:DescribeRegionSettings
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_backup_region_settings / backup.RegionSettings -- the per-region opt-in and management-preference maps. Update writes the full maps on create AND update; Describe serves every plan/refresh. Destroy needs nothing -- the provider's delete is a no-op here too. Both actions publish NO resource types in the service reference, so the wildcard is the narrowest possible scope. The module's caller-identity and region data sources ride sts:GetCallerIdentity and provider metadata, which need no policy grants.

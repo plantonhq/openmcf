@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesclusterautoscaler
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: deployment.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Extra replicas are leader-elected warm standbys, not throughput (chart default 1); each one adds a pod carrying whatever resources are declared.
+    - field_path: deployment.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The autoscaler container's requests are reserved per replica; empty means no requests or limits (upstream's example starting point is 100m/300Mi).
+    - field_path: scaling.scale_down
+      sku_meter: cluster node capacity
+      impact: Scale-down tuning governs how aggressively underutilized NODES are removed -- the dominant cost lever of this component acts on the cluster's node bill, not on this pod's reservation.
+  estimate_exclusions:
+    - the autoscaler's entire purpose is changing the cluster's node count -- the node capacity it adds and removes is the target cluster's bill, orders of magnitude beyond this pod's own reservation, and unknowable at manifest time
+    - no committed preset declares resources for the autoscaler pod -- the presets schedule it with no requests or limits, so they reserve nothing and no capacity derivation is shipped
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is one small controller pod. The node groups it grows and shrinks bill on the cloud account through the cluster's own economics; this catalog states the controller's reservation and routes the node bill to the cluster."

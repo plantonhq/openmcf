@@ -1,0 +1,46 @@
+# Example DigitalOceanCertificate manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- a Let's Encrypt certificate: DigitalOcean issues and
+# auto-renews it. Every listed domain must already be managed by DigitalOcean
+# DNS in the same account.
+#
+# Document 2 -- a custom (user-provided) certificate: paste your own PEM
+# material. The pair below is a THROWAWAY self-signed example (CN
+# planton-e2e.invalid) -- replace all three values with your real material.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCertificate
+metadata:
+  name: example-docert-lets-encrypt
+spec:
+  certificateName: web-lets-encrypt
+  letsEncrypt:
+    domains:
+      - example.com
+      - "*.example.com"
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCertificate
+metadata:
+  name: example-docert-custom
+spec:
+  certificateName: web-custom
+  custom:
+    leafCertificate: |
+      -----BEGIN CERTIFICATE-----
+      MIIBkDCCATegAwIBAgIUZTNBcipSFS0umzBYZfnmE3UJ2YQwCgYIKoZIzj0EAwIw
+      HjEcMBoGA1UEAwwTcGxhbnRvbi1lMmUuaW52YWxpZDAeFw0yNjA4MTgwNTI4MjVa
+      Fw0zNjA4MTUwNTI4MjVaMB4xHDAaBgNVBAMME3BsYW50b24tZTJlLmludmFsaWQw
+      WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqFo1MwUTAd
+      BgNVHQ4EFgQU0gFX4oBzgNuZ+mSFs44uPvImF68wHwYDVR0jBBgwFoAU0gFX4oBz
+      gNuZ+mSFs44uPvImF68wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
+      AiBWQte/D5NHcDDduh/R5LYqA+A7ukhFhM6KpFzAFQnRHwIgTk1HMKYXSr+EBndV
+      ktTsgT2GaJQv5Ygbwv3VidvCTcY=
+      -----END CERTIFICATE-----
+    privateKey: |
+      -----BEGIN PRIVATE KEY-----
+      MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgI+JHoXfavvhJ48oX
+      NY8PFbglsE3gttH0JFhDQngkWcGhRANCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqF
+      -----END PRIVATE KEY-----

@@ -6,27 +6,44 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean.
-Functions are deployed via DigitalOcean App Platform for production-ready VPC integration, monitoring, and IaC support.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanFunctionSpec deploys serverless functions as an App Platform
+app with a single functions component. The provider has no standalone
+Functions resource; both engines create digitalocean_app.
+
+Runtime, memory, timeout, entrypoint, and schedules are NOT on this spec.
+They live in the repo's project.yml (inside source_directory), which App
+Platform reads at deploy time. Putting those knobs on the spec would
+silently do nothing.
 
 ## Example
 
 ```yaml
+# DigitalOcean Function -- examples
+#
+# DigitalOceanFunction deploys serverless functions as an App Platform
+# app with a single functions component. There is no standalone
+# Functions resource; both engines create digitalocean_app.
+#
+# Runtime, memory, timeout, entrypoint, and schedules live in the
+# repo's project.yml inside sourceDirectory. Putting those knobs on
+# this spec would silently do nothing.
+#
+# Usage:
+#   planton apply -f manifest.yaml
+
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFunction
 metadata:
-  name: test-function
+  name: hello
 spec:
-  functionName: test-function
-  region: blr1
-  runtime: nodejs_20
-  githubSource:
-    repo: example-org/functions
-    branch: main
-    deployOnPush: true
-  sourceDirectory: packages/test-function
-  memoryMb: 256
-  isWeb: true
+  functionName: hello
+  region: nyc3
+  git:
+    repoCloneUrl: https://github.com/digitalocean/sample-functions-nodejs-helloworld.git
+    branch: master
+  sourceDirectory: packages
 ```
 
 ## Spec Fields
@@ -35,19 +52,55 @@ spec:
 |---|---|---|---|---|
 | `spec.functionName` | `string` | yes |  |  |
 | `spec.region` | `enum` | yes |  |  |
-| `spec.runtime` | `enum` | yes |  |  |
-| `spec.githubSource` | `DigitalOceanFunctionGithubSource` |  |  |  |
-| `spec.githubSource.repo` | `string` | yes |  |  |
-| `spec.githubSource.branch` | `string` | yes |  |  |
-| `spec.githubSource.deployOnPush` | `bool` |  | `true` |  |
+| `spec.git` | `DigitalOceanAppGitSource` |  |  |  |
+| `spec.git.repoCloneUrl` | `string` | yes |  |  |
+| `spec.git.branch` | `string` | yes |  |  |
+| `spec.github` | `DigitalOceanAppGithubSource` |  |  |  |
+| `spec.github.repo` | `string` | yes |  |  |
+| `spec.github.branch` | `string` | yes |  |  |
+| `spec.github.deployOnPush` | `bool` |  |  |  |
+| `spec.gitlab` | `DigitalOceanAppGitlabSource` |  |  |  |
+| `spec.gitlab.repo` | `string` | yes |  |  |
+| `spec.gitlab.branch` | `string` | yes |  |  |
+| `spec.gitlab.deployOnPush` | `bool` |  |  |  |
+| `spec.bitbucket` | `DigitalOceanAppBitbucketSource` |  |  |  |
+| `spec.bitbucket.repo` | `string` | yes |  |  |
+| `spec.bitbucket.branch` | `string` | yes |  |  |
+| `spec.bitbucket.deployOnPush` | `bool` |  |  |  |
 | `spec.sourceDirectory` | `string` | yes |  |  |
-| `spec.memoryMb` | `uint32` |  | `256` |  |
-| `spec.timeoutMs` | `uint32` |  | `3000` |  |
-| `spec.environmentVariables` | `map<string, string>` |  |  |  |
-| `spec.secretEnvironmentVariables` | `map<string, string>` |  |  |  |
-| `spec.entrypoint` | `string` |  |  |  |
-| `spec.cronSchedule` | `string` |  |  |  |
-| `spec.isWeb` | `bool` |  | `true` |  |
+| `spec.envs` | `[]DigitalOceanAppEnvVar` |  |  |  |
+| `spec.envs[].key` | `string` | yes |  |  |
+| `spec.envs[].plaintext` | `string` |  |  |  |
+| `spec.envs[].secret` | `string` (sensitive) |  |  |  |
+| `spec.envs[].scope` | `enum` |  |  |  |
+| `spec.alerts` | `[]DigitalOceanAppComponentAlert` |  |  |  |
+| `spec.alerts[].rule` | `enum` | yes |  |  |
+| `spec.alerts[].operator` | `enum` | yes |  |  |
+| `spec.alerts[].window` | `enum` | yes |  |  |
+| `spec.alerts[].value` | `double` |  |  |  |
+| `spec.alerts[].disabled` | `bool` |  |  |  |
+| `spec.alerts[].destinations` | `DigitalOceanAppAlertDestinations` |  |  |  |
+| `spec.alerts[].destinations.emails` | `[]string` |  |  |  |
+| `spec.alerts[].destinations.slackWebhooks` | `[]DigitalOceanAppSlackWebhook` |  |  |  |
+| `spec.alerts[].destinations.slackWebhooks[].channel` | `string` | yes |  |  |
+| `spec.alerts[].destinations.slackWebhooks[].url` | `string` (sensitive) | yes |  |  |
+| `spec.logDestinations` | `[]DigitalOceanAppLogDestination` |  |  |  |
+| `spec.logDestinations[].name` | `string` | yes |  |  |
+| `spec.logDestinations[].papertrail` | `DigitalOceanAppPapertrailLog` |  |  |  |
+| `spec.logDestinations[].papertrail.endpoint` | `string` | yes |  |  |
+| `spec.logDestinations[].datadog` | `DigitalOceanAppDatadogLog` |  |  |  |
+| `spec.logDestinations[].datadog.apiKey` | `string` (sensitive) | yes |  |  |
+| `spec.logDestinations[].datadog.endpoint` | `string` |  |  |  |
+| `spec.logDestinations[].logtail` | `DigitalOceanAppLogtailLog` |  |  |  |
+| `spec.logDestinations[].logtail.token` | `string` (sensitive) | yes |  |  |
+| `spec.logDestinations[].openSearch` | `DigitalOceanAppOpenSearchLog` |  |  |  |
+| `spec.logDestinations[].openSearch.endpoint` | `string` |  |  |  |
+| `spec.logDestinations[].openSearch.indexName` | `string` |  |  |  |
+| `spec.logDestinations[].openSearch.clusterName` | `string` |  |  |  |
+| `spec.logDestinations[].openSearch.basicAuth` | `DigitalOceanAppOpenSearchBasicAuth` |  |  |  |
+| `spec.logDestinations[].openSearch.basicAuth.user` | `string` |  |  |  |
+| `spec.logDestinations[].openSearch.basicAuth.password` | `string` (sensitive) |  |  |  |
+| `spec.projectId` | `string` |  |  |  |
 
 ## Field Details
 
@@ -55,15 +108,13 @@ spec:
 
 `string` · required
 
-function_name is the name of the function. Must be unique within the project.
+Functions component name inside the app.
 
-- rule: {"string":{"minLen":"1","maxLen":"64"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
 ### spec.region
 
 `enum` · required
-
-region specifies the DigitalOcean region to deploy the function.
 
 - rule: {"required":true}
 
@@ -78,122 +129,319 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
-### spec.runtime
+### spec.git
 
-`enum` · required
+`DigitalOceanAppGitSource`
 
-runtime specifies the runtime environment for the function (e.g., nodejs, python, go).
-
-- rule: {"required":true}
-
-Allowed values (use exactly as shown):
-
-- `digital_ocean_function_runtime_unspecified`
-- `nodejs_18` -- Node.js 18 (LTS)
-- `nodejs_20` -- Node.js 20 (Current)
-- `python_39` -- Python 3.9
-- `python_310` -- Python 3.10
-- `python_311` -- Python 3.11 (Latest)
-- `go_120` -- Go 1.20
-- `go_121` -- Go 1.21
-- `php_82` -- PHP 8.2
-
-### spec.githubSource
-
-`DigitalOceanFunctionGithubSource`
-
-GitHub repository configuration for function source code
-
-### spec.githubSource.repo
+### spec.git.repoCloneUrl
 
 `string` · required
 
-repo is the GitHub repository in the format "owner/repo"
+HTTPS or git clone URL, for example https://github.com/example/app.git
 
-- rule: {"string":{"minLen":"1","pattern":"^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$"}}
+- rule: {"required":true,"string":{"minLen":"1"}}
 
-### spec.githubSource.branch
+### spec.git.branch
 
 `string` · required
 
-branch is the Git branch to deploy from (e.g., "main", "production")
+Branch to deploy. Example: main
 
-- rule: {"string":{"minLen":"1","maxLen":"255"}}
+- rule: {"required":true,"string":{"minLen":"1"}}
 
-### spec.githubSource.deployOnPush
+### spec.github
+
+`DigitalOceanAppGithubSource`
+
+### spec.github.repo
+
+`string` · required
+
+Repository in owner/repo form, for example plantonhq/demo
+
+- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"}}
+
+### spec.github.branch
+
+`string` · required
+
+Branch to deploy. Example: main
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.github.deployOnPush
 
 `bool`
 
-deploy_on_push enables automatic redeployment when changes are pushed to the branch
+Redeploy automatically when this branch is pushed.
 
-- default: `true`
+### spec.gitlab
+
+`DigitalOceanAppGitlabSource`
+
+### spec.gitlab.repo
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"}}
+
+### spec.gitlab.branch
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.gitlab.deployOnPush
+
+`bool`
+
+### spec.bitbucket
+
+`DigitalOceanAppBitbucketSource`
+
+### spec.bitbucket.repo
+
+`string` · required
+
+- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"}}
+
+### spec.bitbucket.branch
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.bitbucket.deployOnPush
+
+`bool`
 
 ### spec.sourceDirectory
 
 `string` · required
 
-source_directory is the path within the repository containing the function code and project.yml
-Example: "/functions/api-handler"
+Directory inside the repo that contains project.yml and the packages
+tree, for example packages/api.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1"}}
 
-### spec.memoryMb
+### spec.envs
 
-`uint32`
+`[]DigitalOceanAppEnvVar`
 
-memory_mb is the memory allocated to the function (in megabytes). Defaults to 256 if not specified.
-Valid values: 128, 256, 512, 1024, 2048
+- rule: set either plaintext or secret for this environment variable - App Platform needs a value
 
-- default: `256`
-- rule: {"uint32":{"in":[128,256,512,1024,2048]}}
+### spec.envs[].key
 
-### spec.timeoutMs
+`string` · required
 
-`uint32`
+Variable name, for example DATABASE_URL or NODE_ENV.
 
-timeout_ms is the maximum execution time for the function in milliseconds.
-Defaults to 3000ms (3 seconds) if not specified. Max: 300000ms (5 minutes)
+- rule: {"required":true,"string":{"minLen":"1"}}
 
-- default: `3000`
-- rule: {"uint32":{"lte":300000}}
-
-### spec.environmentVariables
-
-`map<string, string>`
-
-environment_variables are non-secret environment variables for the function
-
-### spec.secretEnvironmentVariables
-
-`map<string, string>`
-
-secret_environment_variables are encrypted environment variables (e.g., database URLs, API keys)
-These are stored securely in App Platform's secret store
-
-### spec.entrypoint
+### spec.envs[].plaintext
 
 `string`
 
-entrypoint is an optional function or script entrypoint name within the code
-Example: "main" for Go, "handler" for Node.js
+Non-secret value. Visible in the App Platform UI and in build logs.
 
-### spec.cronSchedule
+### spec.envs[].secret
 
-`string`
+`string` · sensitive
 
-cron_schedule is an optional cron expression for scheduled function execution
-Example: "0 * * * *" for hourly execution
-If set, the function will not be exposed as an HTTP endpoint
+Secret value (API keys, database URLs, tokens). Stored in App Platform's
+secret store; the IaC modules send type=SECRET.
 
-### spec.isWeb
+### spec.envs[].scope
+
+`enum`
+
+When the variable is injected. Omit to use run_and_build_time.
+
+Allowed values (use exactly as shown):
+
+- `digital_ocean_app_env_scope_unspecified`
+- `run_and_build_time` -- Injected during the build and at runtime (provider default).
+- `run_time` -- Injected only at runtime.
+- `build_time` -- Injected only during the build.
+- `unset` -- Provider UNSET - treated as run_and_build_time by the API.
+
+### spec.alerts
+
+`[]DigitalOceanAppComponentAlert`
+
+### spec.alerts[].rule
+
+`enum` · required
+
+- rule: {"required":true}
+
+Allowed values (use exactly as shown):
+
+- `digital_ocean_app_component_alert_rule_unspecified`
+- `cpu_utilization`
+- `mem_utilization`
+- `restart_count`
+
+### spec.alerts[].operator
+
+`enum` · required
+
+- rule: {"required":true}
+
+Allowed values (use exactly as shown):
+
+- `digital_ocean_app_alert_operator_unspecified`
+- `greater_than`
+- `less_than`
+
+### spec.alerts[].window
+
+`enum` · required
+
+- rule: {"required":true}
+
+Allowed values (use exactly as shown):
+
+- `digital_ocean_app_alert_window_unspecified`
+- `five_minutes`
+- `ten_minutes`
+- `thirty_minutes`
+- `one_hour`
+
+### spec.alerts[].value
+
+`double`
+
+Threshold. For cpu_utilization / mem_utilization this is a percent; for
+restart_count it is a count.
+
+- rule: {"double":{"gte":0}}
+
+### spec.alerts[].disabled
 
 `bool`
 
-is_web indicates if the function should be exposed as an HTTP endpoint
-Defaults to true. Set to false for background/scheduled functions.
+### spec.alerts[].destinations
 
-- default: `true`
+`DigitalOceanAppAlertDestinations`
+
+### spec.alerts[].destinations.emails
+
+`[]string`
+
+### spec.alerts[].destinations.slackWebhooks
+
+`[]DigitalOceanAppSlackWebhook`
+
+### spec.alerts[].destinations.slackWebhooks[].channel
+
+`string` · required
+
+- rule: {"required":true}
+
+### spec.alerts[].destinations.slackWebhooks[].url
+
+`string` · required · sensitive
+
+- rule: {"required":true}
+
+### spec.logDestinations
+
+`[]DigitalOceanAppLogDestination`
+
+- rule: set exactly one sink: papertrail, datadog, logtail, or open_search
+
+### spec.logDestinations[].name
+
+`string` · required
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.logDestinations[].papertrail
+
+`DigitalOceanAppPapertrailLog`
+
+### spec.logDestinations[].papertrail.endpoint
+
+`string` · required
+
+Syslog endpoint, for example logs.papertrailapp.com:12345
+
+- rule: {"required":true}
+
+### spec.logDestinations[].datadog
+
+`DigitalOceanAppDatadogLog`
+
+### spec.logDestinations[].datadog.apiKey
+
+`string` · required · sensitive
+
+- rule: {"required":true}
+
+### spec.logDestinations[].datadog.endpoint
+
+`string`
+
+Defaults to https://http-intake.logs.datadoghq.com when omitted.
+
+### spec.logDestinations[].logtail
+
+`DigitalOceanAppLogtailLog`
+
+### spec.logDestinations[].logtail.token
+
+`string` · required · sensitive
+
+- rule: {"required":true}
+
+### spec.logDestinations[].openSearch
+
+`DigitalOceanAppOpenSearchLog`
+
+### spec.logDestinations[].openSearch.endpoint
+
+`string`
+
+### spec.logDestinations[].openSearch.indexName
+
+`string`
+
+### spec.logDestinations[].openSearch.clusterName
+
+`string`
+
+### spec.logDestinations[].openSearch.basicAuth
+
+`DigitalOceanAppOpenSearchBasicAuth`
+
+The provider requires this block even when user and password are empty
+(App Platform's OpenSearch integration uses it as a placeholder).
+
+### spec.logDestinations[].openSearch.basicAuth.user
+
+`string`
+
+### spec.logDestinations[].openSearch.basicAuth.password
+
+`string` · sensitive
+
+### spec.projectId
+
+`string`
+
+DigitalOcean project UUID to put the app in. Literal; a typed reference
+lands when the Project kind is forged.
+
+## Validation Rules
+
+- `function_one_source`: set exactly one source: git, github, gitlab, or bitbucket. Use git with a public clone URL when the DigitalOcean account has no linked GitHub/GitLab/Bitbucket connection
 
 ## Outputs
 
@@ -201,8 +449,9 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanFunc
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.function_id` | `string` | function_id is the unique identifier of the deployed function. |
-| `status.outputs.https_endpoint` | `string` | https_endpoint is the public HTTPS URL endpoint for invoking the function. |
+| `status.outputs.function_id` | `string` | App Platform app UUID that hosts the functions component. Used to import the digitalocean_app resource. |
+| `status.outputs.https_endpoint` | `string` | Public HTTPS URL of the app (the functions HTTP endpoint). |
+| `status.outputs.default_hostname` | `string` | Default ondigitalocean.app hostname assigned by the platform. |
 
 ## See Also
 

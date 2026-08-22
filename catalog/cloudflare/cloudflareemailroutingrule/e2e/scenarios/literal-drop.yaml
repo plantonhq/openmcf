@@ -1,0 +1,35 @@
+# Literal-matcher CloudflareEmailRoutingRule scenario: match one recipient
+# address and drop the message -- the action type that needs no verified
+# destination address or deployed Email Worker, so it can run live. The
+# matcher value is a mailbox on the run-scoped fixture zone's domain (never
+# registered, mail goes nowhere). Email Routing is enabled on the zone by the
+# CloudflareEmailRoutingZone prerequisite in the kind's registry chain.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareEmailRoutingRule
+metadata:
+  name: planton-oss-e2e-cloudflareemailroutingrule-literal
+  id: planton-oss-e2e-cloudflareemailroutingrule-literal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareemailroutingrule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: planton-e2e-literal-drop
+  enabled: true
+  priority: 10
+  matchers:
+    - type: literal
+      field: to
+      value: e2e-drop@planton-e2e-${E2E_RUN_ID}.com
+  actions:
+    - type: drop

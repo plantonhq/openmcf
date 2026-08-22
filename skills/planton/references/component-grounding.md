@@ -27,7 +27,12 @@ reference page, read from a pack in your tree or fetched into your workspace
 page carries the same schema-derived facts the explain report renders). The
 platform's catalog tools (`search_catalog_components`,
 `get_catalog_component`) answer DISCOVERY — what exists, by which name —
-never field-level facts: they return catalog entries, not schemas. And the
+never field-level facts: they return catalog entries, not schemas. What
+exists is deliberately not the same question as what the user's
+organization has ENABLED: discovery serves the full release catalog on
+purpose, and `get_catalog_availability` answers what the organization's
+catalog policy disables — the check-design-disclose law in
+`catalog-availability.md` governs when each question matters. And the
 compile loop doubles as the recovery oracle exactly as on the CLI arm: the
 build report's issues carry the schema's own verdicts on every field path
 you got wrong.

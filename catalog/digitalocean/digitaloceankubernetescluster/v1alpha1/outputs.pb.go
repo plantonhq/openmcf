@@ -21,17 +21,35 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanKubernetesClusterStackOutputs captures the outputs after provisioning a DigitalOcean Kubernetes cluster.
+// DigitalOceanKubernetesClusterStackOutputs captures the key outputs after
+// provisioning a DigitalOcean Kubernetes cluster. Outputs are durable
+// identifiers and connection details; live state (status, timestamps) is
+// read from the API, never exported, because an apply-time snapshot goes
+// stale immediately.
 type DigitalOceanKubernetesClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier (UUID) of the created Kubernetes cluster.
 	ClusterId string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
-	// A base64-encoded Kubernetes config (kubeconfig) for accessing the cluster.
+	// The raw kubeconfig YAML for accessing the cluster (not base64-encoded);
+	// write it to a file and point KUBECONFIG at it. Contains admin
+	// credentials -- treat as a secret.
 	Kubeconfig string `protobuf:"bytes,2,opt,name=kubeconfig,proto3" json:"kubeconfig,omitempty"`
 	// The endpoint URL of the Kubernetes API server for the cluster.
 	ApiServerEndpoint string `protobuf:"bytes,3,opt,name=api_server_endpoint,json=apiServerEndpoint,proto3" json:"api_server_endpoint,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The uniform resource name of the cluster ("do:kubernetes:<cluster_id>"),
+	// used when attaching the cluster to a DigitalOcean project.
+	Urn string `protobuf:"bytes,4,opt,name=urn,proto3" json:"urn,omitempty"`
+	// The public IPv4 address of the cluster's control plane. Empty on
+	// highly-available clusters, which have no single control-plane IP.
+	Ipv4Address string `protobuf:"bytes,5,opt,name=ipv4_address,json=ipv4Address,proto3" json:"ipv4_address,omitempty"`
+	// The unique identifier (UUID) of the cluster's inline default node pool.
+	DefaultNodePoolId string `protobuf:"bytes,6,opt,name=default_node_pool_id,json=defaultNodePoolId,proto3" json:"default_node_pool_id,omitempty"`
+	// The CIDR block from which pod IPs are assigned.
+	ClusterSubnet string `protobuf:"bytes,7,opt,name=cluster_subnet,json=clusterSubnet,proto3" json:"cluster_subnet,omitempty"`
+	// The CIDR block from which service ClusterIPs are assigned.
+	ServiceSubnet string `protobuf:"bytes,8,opt,name=service_subnet,json=serviceSubnet,proto3" json:"service_subnet,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanKubernetesClusterStackOutputs) Reset() {
@@ -85,18 +103,58 @@ func (x *DigitalOceanKubernetesClusterStackOutputs) GetApiServerEndpoint() strin
 	return ""
 }
 
+func (x *DigitalOceanKubernetesClusterStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterStackOutputs) GetIpv4Address() string {
+	if x != nil {
+		return x.Ipv4Address
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterStackOutputs) GetDefaultNodePoolId() string {
+	if x != nil {
+		return x.DefaultNodePoolId
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterStackOutputs) GetClusterSubnet() string {
+	if x != nil {
+		return x.ClusterSubnet
+	}
+	return ""
+}
+
+func (x *DigitalOceanKubernetesClusterStackOutputs) GetServiceSubnet() string {
+	if x != nil {
+		return x.ServiceSubnet
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceankubernetescluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Icatalog/digitalocean/digitaloceankubernetescluster/v1alpha1/outputs.proto\x12?dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1\"\x9a\x01\n" +
+	"Icatalog/digitalocean/digitaloceankubernetescluster/v1alpha1/outputs.proto\x12?dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1\"\xce\x02\n" +
 	")DigitalOceanKubernetesClusterStackOutputs\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x01 \x01(\tR\tclusterId\x12\x1e\n" +
 	"\n" +
 	"kubeconfig\x18\x02 \x01(\tR\n" +
 	"kubeconfig\x12.\n" +
-	"\x13api_server_endpoint\x18\x03 \x01(\tR\x11apiServerEndpointB\xf4\x03\n" +
+	"\x13api_server_endpoint\x18\x03 \x01(\tR\x11apiServerEndpoint\x12\x10\n" +
+	"\x03urn\x18\x04 \x01(\tR\x03urn\x12!\n" +
+	"\fipv4_address\x18\x05 \x01(\tR\vipv4Address\x12/\n" +
+	"\x14default_node_pool_id\x18\x06 \x01(\tR\x11defaultNodePoolId\x12%\n" +
+	"\x0ecluster_subnet\x18\a \x01(\tR\rclusterSubnet\x12%\n" +
+	"\x0eservice_subnet\x18\b \x01(\tR\rserviceSubnetB\xf4\x03\n" +
 	"Ccom.dev.planton.digitalocean.digitaloceankubernetescluster.v1alpha1B\fOutputsProtoP\x01Z~github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetescluster/v1alpha1;digitaloceankubernetesclusterv1alpha1\xa2\x02\x04DPDD\xaa\x02?Dev.Planton.Digitalocean.Digitaloceankubernetescluster.V1alpha1\xca\x02?Dev\\Planton\\Digitalocean\\Digitaloceankubernetescluster\\V1alpha1\xe2\x02KDev\\Planton\\Digitalocean\\Digitaloceankubernetescluster\\V1alpha1\\GPBMetadata\xea\x02CDev::Planton::Digitalocean::Digitaloceankubernetescluster::V1alpha1b\x06proto3"
 
 var (

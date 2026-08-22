@@ -1,0 +1,52 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: digitaloceanvolume
+spec:
+  presets:
+    - preset: 01-general-purpose-ext4
+      region_assumption: nyc1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Volumes Block Storage
+          sku_meter: provisioned storage
+          pricing_unit: GiB-months
+          pricing_quantity: "50"
+          quantity_basis: the provisioned size_gib bills flat per GiB-month from creation whether or not anything is written -- capacity is the entire meter
+          list_unit_price: "0.10"
+          price_source: https://www.digitalocean.com/pricing/volumes
+          retrieved_on: "2026-08-22"
+          list_cost: "5.0000"
+      total_list_cost: "5.0000"
+      exclusions:
+        - volume snapshots bill 0.06 USD/GiB per month and are taken outside this spec; snapshot_id here only restores FROM one at create
+      notes: Priced at DigitalOcean's flat global rate of 0.10 USD/GiB/mo -- the pricing page's three published tiers (10.00/100 GiB, 50.00/500 GiB, 100.00/1,000 GiB) are one linear rate, stated as flat across all data centers. Size can only be expanded, so the bill ratchets up and never back down.
+    - preset: 02-database-xfs
+      region_assumption: nyc1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Volumes Block Storage
+          sku_meter: provisioned storage
+          pricing_unit: GiB-months
+          pricing_quantity: "100"
+          quantity_basis: the provisioned size_gib bills flat per GiB-month from creation whether or not anything is written -- capacity is the entire meter
+          list_unit_price: "0.10"
+          price_source: https://www.digitalocean.com/pricing/volumes
+          retrieved_on: "2026-08-22"
+          list_cost: "10.0000"
+      total_list_cost: "10.0000"
+      exclusions:
+        - volume snapshots bill 0.06 USD/GiB per month and are taken outside this spec; snapshot_id here only restores FROM one at create
+      notes: Priced at DigitalOcean's flat global rate of 0.10 USD/GiB/mo -- the pricing page's three published tiers (10.00/100 GiB, 50.00/500 GiB, 100.00/1,000 GiB) are one linear rate, stated as flat across all data centers. Size can only be expanded, so the bill ratchets up and never back down.

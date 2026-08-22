@@ -12,7 +12,10 @@ spec:
     - type: literal
       field: to
       value: support@example.com
-  action:
-    type: forward
-    forwardTo:
-      - value: ops@example.com
+  actions:
+    - type: forward
+      forwardTo:
+        - value: ops@example.com
+    - type: worker
+      worker:
+        value: email-processor

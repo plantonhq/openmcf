@@ -113,6 +113,41 @@ spec:
 | `adaptiveRouting` | no | Zero-downtime failover across pools |
 | `locationStrategy` | no | Location steering for non-proxied requests |
 | `randomSteering` | no | Pool weights for random/least-* policies |
+| `rules[]` | no | Traffic rules: condition -> steering overrides or a fixed response |
+| `networks` | no | Private networks the load balancer is enabled on |
+
+## Traffic rules
+
+Each rule matches requests with a [condition expression](https://developers.cloudflare.com/load-balancing/understand-basics/load-balancing-rules/expressions)
+and does one of two things:
+
+- **Override steering** for matched traffic: any subset of the load balancer's
+  steering surface (pools, policy, affinity, TTLs, geo maps) can be overridden
+  per rule. An unset override inherits the load balancer's setting; an explicit
+  value — including `off`/`none` — overrides it.
+- **Answer with a fixed response** at the edge (status code, content type,
+  body, `Location` header) instead of routing to a pool. A fixed-response rule
+  is always terminating.
+
+Rules run in `priority` order (lower first). When no rule sets a priority, the
+list order decides — set priorities explicitly only when you need cross-list
+ordering guarantees.
+
+```yaml
+spec:
+  rules:
+    - name: maintenance-page
+      condition: http.request.uri.path contains "/maintenance"
+      fixedResponse:
+        contentType: text/html
+        messageBody: "<h1>Down for maintenance</h1>"
+        statusCode: 503
+    - name: api-no-affinity
+      condition: http.request.uri.path contains "/api"
+      overrides:
+        sessionAffinity: none
+        steeringPolicy: "off"
+```
 
 ## Steering policies
 
@@ -130,6 +165,7 @@ spec:
 | `load_balancer_id` | The load balancer ID |
 | `load_balancer_dns_record_name` | The load balancer hostname |
 | `load_balancer_cname_target` | The hostname clients point their DNS at |
+| `zone_id` | The owning zone (the load balancer's API identity is `zones/{zone_id}/load_balancers/{id}`) |
 
 ## Composition
 

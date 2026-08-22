@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsvpcpeering
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A peering connection stores nothing -- it is a routing relationship between two VPCs, not a data store.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The peering forwards packets between the two VPCs on AWS's network -- it neither terminates nor requires TLS, and exposes no encryption dial. Transport encryption belongs to the workloads talking across it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A peering has no endpoint to expose and connects only private VPC address space -- AWS's edge-to-edge routing limitations mean the peer cannot even borrow this VPC's internet gateway, NAT device, or VPN to reach beyond it. Whether workloads are internet-reachable is their own components' posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The peering admits nothing by itself -- it is route-less at creation, and traffic flows only after each side's route tables point at the peer CIDR AND security groups allow it, all on their own components. Peering is also strictly non-transitive, so an accepted connection exposes exactly the one declared VPC pair, never a neighbor's neighbors.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A private VPC-to-VPC link has no web-facing surface -- there is no WAF attachment point; edge protection belongs to whatever public endpoints the workloads expose elsewhere.
+    - control_id: rbac
+      status: not_applicable
+      notes: "Managing the connection is the EC2 API, governed by the account's IAM posture -- the peering itself gates nothing. The lifecycle does carry a built-in two-party handshake worth knowing: a cross-account peering activates ONLY when the accepter account explicitly accepts, a pending request expires after 7 days untouched, and shared-VPC participants cannot work with peerings at all (owners only)."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The peering runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The peering exposes no authentication path at all -- there is nothing to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Create/accept/reject/delete land in AWS CloudTrail as account-level posture on both sides, and per-flow visibility for traffic crossing the peering is VPC Flow Logs, configured on each VPC, subnet, or interface -- none of it per-peering configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A peering connection publishes no CloudWatch metrics of its own -- cross-peering traffic appears in the workloads' metrics and in VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The peering is declarative configuration fully re-creatable from the manifest (subject to the peer re-accepting a cross-account request); there is no data to back up. One VPC pair supports at most one peering, and AWS returns the existing pcx- id for a duplicate request.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A peering has no zonal footprint the manifest could place -- it is a regional control-plane relationship AWS operates, spanning every AZ of both VPCs automatically. There is nothing to replicate or fail over.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither AWS nor the modules expose a deletion-protection flag, and once active EITHER VPC's owner can delete the connection -- this manifest cannot prevent the peer from tearing it down. The accept arm's destroy is deliberately a no-op at AWS (it abandons management without deleting); only the requester side deletes, so the requester instance is the connection's lifecycle owner."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A peering connection is a pure configuration object with no software to patch.

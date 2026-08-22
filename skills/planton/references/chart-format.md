@@ -152,4 +152,6 @@ spec:
 - `planton.dev/provisioner` labels (the deploying org's setting, not yours).
 - `metadata.org` / `metadata.env` (platform-injected).
 - Literal resource IDs copied between resources (use valueFrom).
-- Secrets or credentials of any sort.
+- Secrets or credentials of any sort — a sensitive field holds a
+  `$secret/...` reference to a managed secret instead
+  (`config-references.md` has the grammar and the lookup workflow).

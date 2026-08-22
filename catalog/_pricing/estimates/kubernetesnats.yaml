@@ -1,0 +1,27 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesnats
+spec:
+  presets:
+    - preset: 02-production
+      capacity_footprint:
+        cpu_requests: 750m
+        memory_requests: 3Gi
+        cpu_limits: "6"
+        memory_limits: 6Gi
+        persistent_storage: 60Gi
+        basis: 3 servers x (250m CPU / 1Gi memory requests, 2 CPU / 2Gi limits) + 3 x 20Gi JetStream file store volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the prometheus-nats-exporter sidecar consumes CPU and memory this manifest declares no reservation for
+      notes: the config-reloader sidecar in every server pod and the nats-box utility pod (deployed unless nats_box_enabled is false) carry chart-default reservations this manifest does not declare

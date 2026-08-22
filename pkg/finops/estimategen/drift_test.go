@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	"github.com/plantonhq/planton/pkg/finops/costestimate"
 )
 
@@ -59,6 +60,38 @@ func TestCostEstimateDrift(t *testing.T) {
 	for _, path := range committedEstimateFiles(t, root) {
 		if _, ok := summary.Files[path]; !ok {
 			t.Errorf("%s is committed but no longer generated (model removed or renamed?) -- delete it", path)
+		}
+	}
+}
+
+// TestLookupStaticCredit pins the dead-price sweep's family credit: a
+// value-keyed entry a derivation's lookup COULD select is a live
+// reference even when no committed preset exercises it -- the property
+// that lets a price family grow ahead of the preset corpus -- while
+// entries the lookup could never select (wrong constant identity, extra
+// attribute keys, missing keys) stay dead weight.
+func TestLookupStaticCredit(t *testing.T) {
+	lookup := &derivationv1.PriceLookup{
+		ServiceName: "Amazon Relational Database Service",
+		PricingUnit: "hours",
+		Attributes: []*derivationv1.AttributeBinding{
+			{Key: "engine", Value: &derivationv1.AttributeBinding_Constant{Constant: "aurora-postgresql"}},
+			{Key: "instance_class", Value: &derivationv1.AttributeBinding_FromField{FromField: "instance_class"}},
+		},
+	}
+	cases := []struct {
+		name       string
+		attributes map[string]string
+		want       bool
+	}{
+		{"family member no preset selects", map[string]string{"engine": "aurora-postgresql", "instance_class": "db.r6g.4xlarge"}, true},
+		{"wrong constant identity", map[string]string{"engine": "aurora-mysql", "instance_class": "db.r6g.large"}, false},
+		{"extra attribute key", map[string]string{"engine": "aurora-postgresql", "instance_class": "db.r6g.large", "deployment": "multi-az"}, false},
+		{"missing bound key", map[string]string{"engine": "aurora-postgresql"}, false},
+	}
+	for _, c := range cases {
+		if got := lookupCouldSelect(lookup, c.attributes); got != c.want {
+			t.Errorf("%s: lookupCouldSelect = %v, want %v", c.name, got, c.want)
 		}
 	}
 }

@@ -1,0 +1,85 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesneo4j
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.neo4j (Pulumi namespace equivalent) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.auth -- the <name>-auth Opaque Secret carrying the chart's NEO4J_AUTH contract, rendered only for the auth.password arm (the existing_secret arm references a user-owned Secret the chart reads at template time). The Helm release also stores its state in namespace-scoped release Secrets, covered by the same verbs.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.neo4j -- the official Neo4j chart renders the default (in-cluster) and exposure Services, the neo4j.conf/apoc.conf ConfigMaps, a ServiceAccount, and the data-volume PVC through its StatefulSet's volumeClaimTemplate. The release installs with wait=true, so the runner also reads pods to confirm readiness. The chart's full object surface is the chart's to evolve; these are the families the pinned chart (2026.6.0) manages.
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's server workload -- a StatefulSet of exactly one pod (the chart's grain).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's ServiceMonitor -- rendered only when spec.service_monitor_enabled is true (requires the Prometheus Operator CRDs on the cluster).

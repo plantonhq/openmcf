@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarequeue
+spec:
+  # A queue under live E2E: account-scoped, no prerequisites -- deploy ->
+  # GET accounts/{account_id}/queues/{queue_id} verify -> destroy ->
+  # verify-destroyed on both provisioners. Two scenarios: `minimal` (bare
+  # queue) and `pull-consumer` (delivery settings + an http_pull consumer --
+  # the consumer resource's lifecycle without needing a Worker). Queue names
+  # are unique within an account, so both carry the run id. Deliberately not
+  # live: the worker (push) consumer and the dead-letter queue -- the push
+  # consumer needs a deployed Worker (a kind the proof lane holds queued
+  # separately) and a DLQ must be a second EXISTING queue, which the
+  # framework cannot install as a self-kind fixture; both are proven by a
+  # real offline plan at e2e/worker-consumer-plan.yaml. Entitlement gate:
+  # Cloudflare Queues has historically required the Workers Paid plan
+  # (~$5/mo); whether the free plan now includes it is unverified offline --
+  # the proving session confirms the account's plan before running these
+  # lanes (this same gate covers R2's event-notification arm, which delivers
+  # to a queue). Objects create in seconds; no per-object cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

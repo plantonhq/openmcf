@@ -1,0 +1,111 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKubePrometheusStack manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The bundle runs SIX pod
+# classes; FIVE bind here -- Prometheus (replicas x resources, plus the
+# per-replica TSDB volume), Alertmanager (replicas x resources, plus the
+# per-replica state volume), the bundled Grafana, the operator, and
+# kube-state-metrics (each a single pod, Grafana with an optional
+# volume). The SIXTH -- node-exporter -- is deliberately NOT bound: it is
+# a DaemonSet running one pod on EVERY node, so its multiplier is the
+# target cluster's node count, which no manifest can know; a constant
+# binding would misread a per-node reservation as one pod. Its term
+# lives in the exclusions below instead.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  workloads:
+    - label: Prometheus replica
+      resources_path: prometheus.resources
+      instances:
+        field_value:
+          field_path: prometheus.replicas
+          default_when_unset: "1"
+      volumes:
+        - label: TSDB
+          size_path: prometheus.disk_size
+    - label: Alertmanager replica
+      resources_path: alertmanager.resources
+      instances:
+        field_value:
+          field_path: alertmanager.replicas
+          default_when_unset: "1"
+      volumes:
+        - label: state
+          size_path: alertmanager.disk_size
+    - label: Grafana pod
+      resources_path: grafana.resources
+      instances:
+        constant: "1"
+      volumes:
+        - label: dashboards
+          size_path: grafana.storage.size
+    - label: operator pod
+      resources_path: operator.resources
+      instances:
+        constant: "1"
+    - label: kube-state-metrics pod
+      resources_path: exporters.kube_state_metrics_resources
+      instances:
+        constant: "1"
+  exclusions:
+    - text: "node-exporter (on by default) runs one pod on EVERY node -- its reservation is per-node, multiplied by a node count only the target cluster knows; no term for it appears in this footprint"
+    - applies_when:
+        - field_path: exporters.node_exporter_resources
+          op: is_set
+      text: "the manifest declares node_exporter_resources -- add that reservation for EVERY node in the cluster; that multiplication is the cluster's, not the manifest's"
+    - text: the dollar value of this capacity is the target cluster's node and storage economics
+    - applies_when:
+        - field_path: prometheus.remote_write
+          op: is_set
+      text: "remote-write destinations bill ingestion and storage on their own accounts -- outside this footprint entirely"
+    - text: "the chart's hook Jobs (webhook certgen, optional CRD upgrade) are ephemeral -- capacity only while running"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources, replicas, and storage -- this footprint states the spec's declaration"
+  notes:
+    - applies_when:
+        - field_path: prometheus.resources
+          op: is_unset
+      text: "Prometheus declares no resources (the chart default: none) -- its pods schedule unbounded, and memory grows with active series count; the TSDB volume is still reserved"
+    - applies_when:
+        - field_path: prometheus.ephemeral
+          op: equals
+          value: "true"
+      text: "Prometheus runs ephemeral (emptyDir) -- no TSDB volume is provisioned, so the TSDB term in this footprint overstates by that amount and every metric vanishes on pod restart"
+    - applies_when:
+        - field_path: alertmanager.ephemeral
+          op: equals
+          value: "true"
+      text: "Alertmanager runs ephemeral (emptyDir) -- no state volume is provisioned, so the state term overstates by that amount"
+    - applies_when:
+        - field_path: alertmanager.enabled
+          op: is_set
+        - field_path: alertmanager.enabled
+          op: equals
+          value: "false"
+      text: "Alertmanager is disabled -- no Alertmanager pods or volumes exist, so those terms overstate by that amount"
+    - applies_when:
+        - field_path: grafana.enabled
+          op: is_set
+        - field_path: grafana.enabled
+          op: equals
+          value: "false"
+      text: "the bundled Grafana is disabled -- no Grafana pod or volume exists, so those terms overstate by that amount"
+    - applies_when:
+        - field_path: exporters.kube_state_metrics_enabled
+          op: is_set
+        - field_path: exporters.kube_state_metrics_enabled
+          op: equals
+          value: "false"
+      text: "kube-state-metrics is disabled -- its term overstates by that amount"
+    - applies_when:
+        - field_path: exporters.node_exporter_enabled
+          op: is_set
+        - field_path: exporters.node_exporter_enabled
+          op: equals
+          value: "false"
+      text: "node-exporter is disabled -- the per-node exclusion does not apply to this manifest"

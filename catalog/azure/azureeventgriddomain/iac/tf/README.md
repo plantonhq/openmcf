@@ -36,4 +36,4 @@ The generated `variables.tf` mirrors the proto contract:
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.EventGrid/domains/*` (EventGrid Contributor covers it). Reading the access keys requires `Microsoft.EventGrid/domains/listKeys/action`.
+The deployer permissions this module needs are cataloged in [`../permissions.yaml`](../permissions.yaml).

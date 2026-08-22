@@ -1,0 +1,21 @@
+# Redirect CloudflareList scenario: an empty bulk-redirect list. Same
+# underscored naming as ip-minimal; a distinct name so both can coexist.
+# Entries would be CloudflareListItem redirect arms -- not inlined here.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareList
+metadata:
+  name: planton-oss-e2e-cloudflarelist-redirect
+  id: planton-oss-e2e-cloudflarelist-redirect
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarelist
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  kind: redirect
+  name: plante2eredir_${E2E_RUN_ID_UNDERSCORE}

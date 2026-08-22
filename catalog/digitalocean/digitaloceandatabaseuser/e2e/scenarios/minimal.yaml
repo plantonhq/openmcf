@@ -1,0 +1,26 @@
+# Minimal DigitalOceanDatabaseUser: one additional user on the PostgreSQL
+# cluster registry prerequisite (the DigitalOceanDatabaseCluster minimal
+# profile). Proves the full create/verify/destroy lifecycle, the
+# (cluster_id, user_name) identity outputs the verifier addresses the user
+# with, and the server-generated password/role outputs.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseUser
+metadata:
+  name: planton-oss-e2e-digitaloceandatabaseuser-min
+  id: planton-oss-e2e-digitaloceandatabaseuser-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabaseuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  userName: pltn-e2e-dodbu-min

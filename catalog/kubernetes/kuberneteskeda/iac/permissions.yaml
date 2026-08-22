@@ -1,0 +1,151 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskeda
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.keda -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.keda -- the metrics-API, webhook, and telemetry ClusterIP Services and the per-component ServiceAccounts (the operator SA carries the pod_identity annotations the modules render). Secrets cover Helm's own release-state Secret; KEDA's internal TLS Secrets are generated and rotated at RUNTIME by the operator (certificates.type "operator", the default) or issued by cert-manager on the cert_manager arm.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's three Deployments -- the operator, the external-metrics API server, and the admission webhooks (rendered while webhooks.enabled, the default).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's ClusterRoles and bindings -- the operator reads scale targets and drives HPAs cluster-wide (or fenced by watch_namespace), the metrics server binds the aggregation-layer auth-delegation roles, and the operator patches the APIService caBundle on the default certificate path. The runner must be able to grant everything these roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders -- leader-election and certificate-secret access in the installation namespace, plus the metrics server's extension-apiserver-authentication read in kube-system (the runner touches THAT namespace's RoleBinding, not just the installation one).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart registers the ScaledObject validation webhook cluster-wide while webhooks.enabled, the default; the failure policy is spec.webhooks.failure_policy (chart default Ignore).
+      - api_groups:
+          - apiregistration.k8s.io
+        resources:
+          - apiservices
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The v1beta1.external.metrics.k8s.io APIService -- the cluster-wide singleton that makes KEDA the cluster's external metrics provider (the reason one installation per cluster). The operator patches its caBundle at runtime under its own RBAC.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The KEDA CRDs (ScaledObject, ScaledJob, TriggerAuthentication, ...) -- installed with the release while crds.install is true (the default). The modules stamp helm.sh/resource-policy=keep while crds.keep_on_uninstall is true (the default), so delete is exercised only when keeping is explicitly disabled.
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - certificates
+          - issuers
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when certificates.type is cert_manager -- the chart's Certificate resources for KEDA's internal TLS, plus the chart-generated self-signed CA + Issuer chain when no cert_manager_issuer is referenced. Requires cert-manager (KubernetesCertManager) on the cluster.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.prometheus.service_monitor is true -- requires the Prometheus operator CRDs on the cluster (the release fails to install without them).

@@ -1,0 +1,58 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. This kind is
+# the catalog's sole intentional passthrough, so least-privilege has a hard
+# honest limit here: the release renders WHATEVER THE DECLARED CHART
+# CONTAINS, and the runner must be able to apply all of it. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteshelmrelease
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.helm_release_namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers Helm's own release-record Secrets (sh.helm.release.v1.<name>.vN) in the release namespace -- both engines perform a REAL helm install, so release state is written as Secrets, one per revision, bounded by spec.max_history (default 10).
+      - api_groups:
+          - "*"
+        resources:
+          - "*"
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "THE PASS-THROUGH REALITY, stated plainly: helm_release.helm_release installs an ARBITRARY upstream chart (spec.repo + spec.chart + spec.version), so the runner's true requirement is the union of every object that chart renders -- workloads, RBAC, CRDs (installed from the chart's crds/ directory unless spec.skip_crds), webhooks, cluster-scoped objects, anything. No manifest-time enumeration exists; this wildcard is the honest statement, not a convenience. Operators who know WHICH chart a release deploys should scope the runner to that chart's actual object surface instead of granting this wildcard -- the typed catalog components' permission manifests show what such scoping looks like. Kubernetes escalation prevention still applies to any RBAC the chart contains: the runner must already hold what the chart's roles grant, or the escalate verb."

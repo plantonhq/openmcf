@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanmonitoralert
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageMonitorAlert
+        scopes:
+          - monitoring:read
+          - monitoring:create
+          - monitoring:update
+          - monitoring:delete
+        provenance: derived
+        notes: Covers digitalocean_monitor_alert's create/read/update/delete/import paths -- read the policy through GET /v2/monitoring/alerts/{uuid} (monitoring:read), create the policy via POST /v2/monitoring/alerts (monitoring:create), update the policy via PUT /v2/monitoring/alerts/{uuid} (monitoring:update), and delete the policy via DELETE /v2/monitoring/alerts/{uuid} (monitoring:delete). A full-access token also works; it is never least-privilege.

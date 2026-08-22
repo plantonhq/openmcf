@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessignoz
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The server's own state (users, dashboards, alert rules -- SQLite) rests on the PersistentVolume the cluster's storage class provisions; encryption at rest is a property of that storage. Telemetry data rests in the composed KubernetesClickHouse, whose at-rest posture rides that component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys live on the cluster's storage class (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: clickhouse.secure
+      evidence:
+        type: spec_default
+        reference: False by default -- the ClickHouse connection is plaintext (the in-cluster composition's grain); secure switches it to TLS and verify adds certificate verification (the spec's own validation refuses verify without secure).
+      notes: The 02-production preset sets both. UI and OTLP ingest traffic stays in-cluster ClusterIP; TLS for external clients composes at the exposure layer over the exported handles. SMTP mail rides STARTTLS by default, or implicit TLS via server.smtp.tls_enabled.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Everything stays ClusterIP -- the spec has no service-type field and this component never creates ingress objects; the UI and the collector are exposed through first-class kinds (KubernetesIngress, Gateway API) over the exported service handles.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may send telemetry or reach the UI; source restriction lives on the composed exposure layer or Kubernetes NetworkPolicies declared as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An observability backend serves no public HTTP edge traffic of its own -- when the UI or collector is exposed through composed kinds, request filtering lives on that exposure layer.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The SigNoz server ships its own authenticated user management -- accounts, invitations and dashboards live in the server's state store, and the UI and API require a logged-in user; SMTP (server.smtp) delivers the invitation emails that govern who joins.
+      notes: OTLP ingest itself is unauthenticated in-cluster traffic (see restricted-ingress). Management-plane access (the release itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: This component talks to no cloud API -- its only backing service is the composed ClickHouse, authenticated with a username and a password read from an existing Secret (wired as a secretKeyRef, never rendered into values). There is no keyless seam because there is nothing keyless to reach.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: otel_collector.jaeger_receiver_enabled
+      evidence:
+        type: spec_default
+        reference: True by default (the chart's grain) -- the collector accepts spans in Jaeger's legacy protocols alongside OTLP; disabling it, and http_logs_receivers_enabled for the plain-HTTP log endpoints, narrows ingest to OTLP only.
+      notes: These govern the legacy protocol surface -- telemetry ingest carries no authentication to be legacy or otherwise (see rbac). zipkin_receiver_enabled is off by default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: SigNoz's UI accounts (email/password sign-in) are application state inside the product -- password strength rules and MFA are governed there, not in this deployment spec; telemetry ingest carries no user sign-in at all (see rbac).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- SigNoz logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: SigNoz IS the monitoring system -- traces, metrics and logs land here for the whole estate. No seam is typed for monitoring the monitor itself (no ServiceMonitor field); its own logs stream to stdout for the cluster's log collector.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No backup surface is typed. Telemetry durability and backup posture ride the composed KubernetesClickHouse; the server's own state volume (users, dashboards, alert rules) rests on the cluster's storage class with no typed backup seam.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). Telemetry retention is operated inside SigNoz itself against the composed ClickHouse, not typed on this spec.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The community SigNoz server runs exactly one replica by design -- its state store is single-writer SQLite (upstream's Postgres-backed HA store is enterprise-only), so the spec deliberately has no server replica knob. The stateless ingestion collector DOES scale horizontally (otel_collector.replicas and the autoscaling arm), and telemetry data itself lives in the composed ClickHouse, which scales independently.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the release; protection is operational (namespace RBAC, change review). The composed ClickHouse -- and every trace, metric and log in it -- deliberately outlives SigNoz reinstalls, which is why the database is composed and never bundled.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version defaults to the module's pin (0.133.0; the chart version tracks the SigNoz application version in lockstep); upgrading is a deliberate act of changing the pin to another served chart version, which re-runs the release and its schema migrator.

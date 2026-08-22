@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustorganization.v1alpha1;
+
+// CloudflareZeroTrustOrganizationStackOutputs captures the observable
+// outputs after applying the organization configuration.
+message CloudflareZeroTrustOrganizationStackOutputs {
+  // The team domain users sign in through, without the
+  // .cloudflareaccess.com suffix -- what Access applications and WARP
+  // enrollment reference.
+  string auth_domain = 1;
+
+  // The Cloudflare account the organization was applied to (empty for a
+  // zone-scoped organization). The harness and import recipes key on it.
+  string account_id = 2;
+}

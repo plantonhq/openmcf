@@ -1,0 +1,23 @@
+# Full-access DigitalOceanSpacesKey: a single fullaccess grant with no
+# bucket -- the provider's empty-bucket grant grammar. Fixture-free (no
+# bucket needed) and token-only, so this is the kind's cheapest live lane.
+# Proves the create path and BOTH outputs -- including the write-once
+# secret_key that exists only in the create response.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: planton-oss-e2e-digitaloceanspaceskey-full-access
+  id: planton-oss-e2e-digitaloceanspaceskey-full-access
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanspaceskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  keyName: pltn-e2e-dospk-full-${E2E_RUN_ID}
+  grants:
+    - permission: fullaccess

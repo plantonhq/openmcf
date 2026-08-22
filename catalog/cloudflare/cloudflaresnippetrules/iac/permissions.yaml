@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflaresnippetrules
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageSnippetRules
+        name: Snippets Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Replace the zone's whole snippet-rules table via PUT /zones/{zone_id}/snippets/snippet_rules, refresh/import it via GET on the same path, and delete all rules via DELETE on the same path (the docs name no separate read-level group for these endpoints; derived from the module's API surface). Covers the Terraform module's single cloudflare_snippet_rules resource and the Pulumi module's matching SnippetRules resource; neither engine performs secondary lookups or data-source reads. The general API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22) lists NO Snippets group; the name is verbatim from the "Configure Snippets via API" page (https://developers.cloudflare.com/rules/snippets/create-api/, retrieved 2026-08-22), which names "Snippets Write" as the required token permission for the snippet_rules endpoints and states a "Zone > Snippets > Edit" token is valid for all the Snippets endpoints it lists, including the GETs.

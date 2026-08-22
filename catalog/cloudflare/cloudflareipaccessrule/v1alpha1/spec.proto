@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareipaccessrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareIpAccessRuleSpec defines one IP Access rule: an allow/block/challenge
+// decision applied to traffic matching an IP address, IP range, ASN, or country
+// before it reaches the zone's other security products. Rules live either on the
+// whole account (every zone) or on a single zone -- exactly one scope must be set.
+//
+// Cloudflare's API applies account rules across all zones and lets a zone rule
+// override an account rule for that zone. The provider accepts both scopes at
+// once and silently prefers the account; this spec requires exactly one so the
+// manifest states its intent unambiguously.
+//
+// Only `mode` and `notes` can change in place. Cloudflare's API does not honor
+// editing the matched target/value of an existing rule even though it accepts the
+// request shape -- to change WHAT a rule matches, delete and recreate it (change
+// the configuration in a manifest and the module plans an in-place update that
+// will not stick; plan a replace instead by changing the resource identity).
+message CloudflareIpAccessRuleSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.scope_exactly_one"
+    message: "set exactly one of account_id (account-wide rule) or zone_id (single-zone rule)"
+    expression: "(this.account_id != '') != has(this.zone_id)"
+  };
+
+  // The Cloudflare account to apply the rule account-wide (all zones). Set this
+  // OR zone_id, never both. 32-character hex account ID.
+  string account_id = 1 [(buf.validate.field).cel = {
+    id: "account_id.hex32"
+    message: "account_id must be a 32-character hex string"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{32}$')"
+  }];
+
+  // The zone to apply the rule to (single-zone rule). Set this OR account_id,
+  // never both.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The action taken on matching traffic.
+  //   - block: refuse the request outright.
+  //   - challenge: interactive challenge page.
+  //   - whitelist: allow, bypassing other security features (Cloudflare's legacy
+  //     name for the allow action).
+  //   - js_challenge: non-interactive JavaScript challenge.
+  //   - managed_challenge: Cloudflare picks the least intrusive challenge that
+  //     confirms the visitor is human (the recommended challenge mode).
+  string mode = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "block",
+        "challenge",
+        "whitelist",
+        "js_challenge",
+        "managed_challenge"
+      ]
+    }
+  ];
+
+  // What the rule matches. Changing target/value on an existing rule does not
+  // stick at the API -- see the message comment above.
+  CloudflareIpAccessRuleConfiguration configuration = 4 [(buf.validate.field).required = true];
+
+  // Free-form note about why the rule exists (shown in the dashboard's rule list).
+  string notes = 5;
+}
+
+// CloudflareIpAccessRuleConfiguration selects the traffic the rule applies to.
+message CloudflareIpAccessRuleConfiguration {
+  option (buf.validate.message).cel = {
+    id: "configuration.ip_shape"
+    message: "for target ip, value must be a plain IPv4 address (use target ip6 for IPv6, ip_range for CIDR blocks)"
+    expression: "this.target != 'ip' || this.value.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "configuration.ip6_long_form"
+    message: "for target ip6, value must be an IPv6 address in fully-expanded long form (eight colon-separated groups, e.g. 2001:0db8:0000:0000:0000:0000:0000:0001) -- Cloudflare rejects compressed :: notation here"
+    expression: "this.target != 'ip6' || this.value.matches('^[0-9a-fA-F]{1,4}(:[0-9a-fA-F]{1,4}){7}$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "configuration.ip_range_prefixes"
+    message: "for target ip_range, Cloudflare only accepts IPv4 ranges of /16 or /24, and IPv6 ranges of /32, /48, or /64"
+    expression: "this.target != 'ip_range' || this.value.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/(16|24)$') || (this.value.contains(':') && this.value.matches('^[0-9a-fA-F:]+/(32|48|64)$'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "configuration.country_shape"
+    message: "for target country, value must be a two-character country code (ISO 3166-1 alpha-2, e.g. US -- Cloudflare also accepts T1 for Tor)"
+    expression: "this.target != 'country' || this.value.matches('^[A-Z][A-Z0-9]$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "configuration.asn_shape"
+    message: "for target asn, value must be an AS number in the form AS13335"
+    expression: "this.target != 'asn' || this.value.matches('^AS[0-9]+$')"
+  };
+
+  // The kind of selector:
+  //   - ip: a single IPv4 address.
+  //   - ip6: a single IPv6 address (fully-expanded long form).
+  //   - ip_range: a CIDR block (IPv4 /16 or /24; IPv6 /32, /48, or /64 -- the
+  //     only prefix lengths Cloudflare accepts).
+  //   - asn: an autonomous system, e.g. AS13335.
+  //   - country: a two-letter country code, e.g. US (T1 matches Tor exit nodes).
+  string target = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ip",
+        "ip6",
+        "ip_range",
+        "asn",
+        "country"
+      ]
+    }
+  ];
+
+  // The value matched, interpreted per target (an IP, a CIDR, an AS number, or a
+  // country code).
+  string value = 2 [(buf.validate.field).required = true];
+}

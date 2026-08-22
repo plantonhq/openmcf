@@ -36,6 +36,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Nothing here enables or disables an authentication path. The relevant discipline -- never treating an API key as authentication -- is stated in the spec's contract and enforced by pairing keys with real authorizers on the APIs.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The plan produces metering data (per-key request counts, queryable through the service), not audit logs. Control-plane changes to plans and keys land in CloudTrail as account-level posture; request-level logging is the APIs' stage settings.

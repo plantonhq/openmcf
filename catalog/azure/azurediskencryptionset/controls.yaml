@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The set exposes no authentication path of its own to strengthen or disable; its key access is managed-identity tokens only.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Set creation, key rotation configuration changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; key USAGE (every wrap/unwrap) is auditable in the Key Vault's diagnostic logs, a separate kind's posture.

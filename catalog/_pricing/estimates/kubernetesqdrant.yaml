@@ -1,0 +1,45 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesqdrant
+spec:
+  presets:
+    - preset: 01-dev-single-node
+      capacity_footprint:
+        persistent_storage: 5Gi
+        basis: "1 node: 1 x 5Gi data volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: collection-level shards, replication factor, and quantization are data operations declared per collection through the Qdrant API -- they shape how the reserved capacity is used, never how much is reserved
+    - preset: 02-production-cluster
+      capacity_footprint:
+        cpu_requests: "3"
+        memory_requests: 24Gi
+        cpu_limits: "6"
+        memory_limits: 24Gi
+        persistent_storage: 300Gi
+        basis: 3 nodes x (1 CPU / 8Gi memory requests, 2 CPU / 8Gi limits) + 3 x (50Gi data + 50Gi snapshots) volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: collection-level shards, replication factor, and quantization are data operations declared per collection through the Qdrant API -- they shape how the reserved capacity is used, never how much is reserved
+    - preset: 03-rag-workload
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 8Gi
+        cpu_limits: "2"
+        memory_limits: 8Gi
+        persistent_storage: 40Gi
+        basis: 1 node x (1 CPU / 8Gi memory requests, 2 CPU / 8Gi limits) + 1 x (20Gi data + 20Gi snapshots) volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+      notes: collection-level shards, replication factor, and quantization are data operations declared per collection through the Qdrant API -- they shape how the reserved capacity is used, never how much is reserved

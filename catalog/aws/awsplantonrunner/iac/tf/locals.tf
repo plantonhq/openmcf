@@ -20,11 +20,12 @@ locals {
   # before its log destination exists.
   log_group_name = "/ecs/${local.runner_name}"
 
-  # The tunnel exists for the real-time CloudOps channel: dual/grpc modes
-  # join it (outbound-initiated, using the tunnel material in the
-  # credentials document); a temporal-only worker polls its queue and
-  # needs no tunnel at all.
-  tunnel_enabled = var.spec.execution_mode == "temporal" ? "false" : "true"
+  # The name the runner registers itself under when it joins the control
+  # plane: "<env>-<metadata.name>" (metadata.name outside an environment)
+  # -- the SAME derivation the platform uses for records that reference
+  # this runner (its minted token, its managed destroy); changing this
+  # formula breaks arrival attribution and managed teardown.
+  registration_name = try(var.metadata.env, "") != "" ? "${var.metadata.env}-${var.metadata.name}" : var.metadata.name
 
   # The runtime identity the runner holds while executing work: the
   # referenced task_role when supplied (the module never mutates a

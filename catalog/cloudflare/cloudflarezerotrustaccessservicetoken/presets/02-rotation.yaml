@@ -1,0 +1,9 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessServiceToken
+metadata:
+  name: ci-deployer
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
+  name: ci-deployer
+  client_secret_version: 2
+  previous_client_secret_expires_at: "2026-09-15T00:00:00Z" # replace with when the old secret should die

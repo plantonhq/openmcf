@@ -1,0 +1,94 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessolr
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Indices rest on the PersistentVolumes the target cluster's storage class provisions (or on emptyDir in the ephemeral default); encryption at rest is a property of that storage, owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: Empty serves plaintext; tls switches every endpoint to https from a PKCS#12 keystore Secret (e.g. produced by a KubernetesCertificate with a pkcs12 keystore output). client_auth Want/Need adds mutual TLS -- Need requires the operator's own mTLS client identity (KubernetesSolrOperator mtls) or probes and reconciliation fail.
+    - control_id: no-public-access
+      status: enforced_by_default
+      field_path: external
+      evidence:
+        type: spec_default
+        reference: Empty exposes nothing outside the cluster -- in-cluster access rides the common Service. External reach is a deliberate act, either the operator's own exposure (external.method Ingress/ExternalDNS with per-node addressability) or a composed KubernetesIngress over the common service handle.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec has no seam restricting which network sources may connect; source restriction lives on the composed exposure layer or Kubernetes NetworkPolicies declared as separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Solr's HTTP API is an internal search backend -- when exposed through external or a composed ingress, request filtering (WAF) lives on that exposure layer, not in this component.
+    - control_id: rbac
+      status: configurable
+      field_path: security.authentication_type
+      evidence:
+        type: spec_default
+        reference: Empty runs an OPEN cluster (development only). "basic" bootstraps Solr's security.json with the admin/solr/k8s-oper users -- the operator generates the credentials and writes them to the <name>-solrcloud-basic-auth Secret; no credential ever appears in this spec.
+      notes: Finer-grained authorization (per-collection rules in security.json) is managed through Solr's security API or a bring-your-own bootstrap_security_json -- data operations beyond this bootstrap. If the password is later rotated through Solr's API, the Secret must be updated too or the operator locks itself out.
+    - control_id: workload-identity
+      status: configurable
+      field_path: backup_repositories
+      evidence:
+        type: spec_default
+        reference: S3 and GCS backup repositories declared WITHOUT credential Secrets use the nodes' ambient identity -- an IRSA-bound ServiceAccount on EKS or GKE Workload Identity -- the keyless path. Declared credentials read from existing Secrets are the fallback for clusters without identity federation.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: security.authentication_type
+      evidence:
+        type: spec_default
+        reference: Empty leaves every endpoint unauthenticated (the operator default); "basic" closes the open posture. security.probes_require_auth additionally locks the probe endpoints, which stay open by default so kubelet probes work without credentials.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: security.authentication_type bootstraps basic-auth users with operator-generated passwords (see no-legacy-auth), and Solr's basic-auth plugin carries no password-strength policy, lockout, or MFA -- stronger sign-in is in-product security.json configuration beyond the typed seam.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit trail is modeled -- Solr logs stream to stdout at the declared log_level for the cluster's log collector. Changes to the SolrCloud resource itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics seam is typed on this spec -- the operator's Prometheus integration is a separate SolrPrometheusExporter custom resource, composable alongside this component rather than configured within it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup_repositories
+      evidence:
+        type: spec_default
+        reference: Empty registers no backup target; declaring repositories (S3, GCS, or a ReadWriteMany volume) registers the destinations SolrBackup operations write to -- the deployment-level half of the backup story.
+      notes: Registering a repository does not schedule backups -- backup runs are operational verbs (SolrBackup custom resources or Solr API calls) executed against the registered repositories. Modules required by a declared repository load automatically.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention (how many saved backups to keep) is declared on the SolrBackup operations themselves, not on this cluster spec.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: The operator default is 3 nodes -- the floor where a replica of every shard can live away from its leader. The bundled ZooKeeper ensemble defaults to 3 members (quorum). availability.pdb_enabled (operator default true) keeps voluntary disruptions above the availability floor, and update_strategy's Managed method rolls pods shard-aware so every shard stays queryable.
+      notes: Zone-level topology spread is not typed. Per-collection replica placement is a data operation; scaling.vacate_pods_on_scale_down (default true) moves replicas off departing pods so scale-down does not drop data.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: storage.persistent.reclaim_policy
+      evidence:
+        type: spec_default
+        reference: Retain (the operator default) keeps the node PVCs when the SolrCloud is deleted -- the data outlives the resource unless Delete is chosen deliberately.
+      notes: This protects the data volumes, not the SolrCloud resource itself -- neither Kubernetes nor the operator offers a deletion-protection flag on the resource.
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: The Solr version is a required, explicit pin (the official solr image tag); upgrading is a deliberate act of changing it, and the operator rolls the change with its Managed strategy -- shard-aware parallel restarts bounded by max_pods_unavailable / max_shard_replicas_unavailable.
+      notes: update_strategy.restart_schedule can additionally restart the cluster on a CRON schedule. Check the operator's compatibility matrix before pinning a new major line.

@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskeda
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: operator.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Extra operator replicas are leader-elected warm standbys, not throughput (chart default 1); each carries operator.resources.
+    - field_path: operator.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator container's requests are reserved per replica. Empty means the CHART's own defaults apply (100m CPU / 100Mi memory requests, 1 CPU / 1000Mi limits) -- a real reservation the manifest does not state.
+    - field_path: metrics_server.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The external-metrics API server runs its own Deployment (chart default 1 replica); the HPA controller reads external.metrics.k8s.io through it, and standby replicas reduce failover downtime for every KEDA-driven HPA.
+    - field_path: metrics_server.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The metrics API server container's requests are reserved per replica; empty means the chart's defaults apply here too.
+    - field_path: webhooks.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The admission webhooks run their own Deployment (chart default 1 replica, enabled by default) validating ScaledObjects at apply time; each replica carries webhooks.resources.
+    - field_path: webhooks.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The webhook container's requests are reserved per webhook replica.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - when the operator's or metrics server's resources are left empty the chart applies its own defaults (100m CPU / 100Mi memory requests, 1 CPU / 1000Mi limits per pod); the webhooks likewise fall back to chart defaults -- reservations the manifest-value footprint cannot state
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is the autoscaling engine: the operator, the external-metrics API server, and the admission webhooks. The workloads KEDA scales carry their own capacity on their own components; KEDA's entire purpose is CHANGING those workloads' replica counts (including to zero), so its dominant cost effect is on their bills, not its own. Scaling declarations (ScaledObject, ScaledJob, TriggerAuthentication) are separate resources."

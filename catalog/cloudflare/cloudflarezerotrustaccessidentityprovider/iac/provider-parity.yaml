@@ -1,0 +1,85 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider's `config` and `scim_config` are single-nested attributes (one
+# configurable argument each); the spec models their full field surfaces as
+# typed messages under the provider's own field names. Fan-in mappings record
+# every spec leaf each argument realizes. config.redirect_url is computed-only
+# at the provider (never configurable), so no spec leaf maps to it.
+
+resources:
+  cloudflare_zero_trust_access_identity_provider:
+    mappings:
+      - spec: spec.config.apps_domain
+        arg: config
+      - spec: spec.config.attributes
+        arg: config
+      - spec: spec.config.auth_url
+        arg: config
+      - spec: spec.config.authorization_server_id
+        arg: config
+      - spec: spec.config.centrify_account
+        arg: config
+      - spec: spec.config.centrify_app_id
+        arg: config
+      - spec: spec.config.certs_url
+        arg: config
+      - spec: spec.config.claims
+        arg: config
+      - spec: spec.config.client_id
+        arg: config
+      - spec: spec.config.client_secret
+        arg: config
+      - spec: spec.config.conditional_access_enabled
+        arg: config
+      - spec: spec.config.directory_id
+        arg: config
+      - spec: spec.config.email_attribute_name
+        arg: config
+      - spec: spec.config.email_claim_name
+        arg: config
+      - spec: spec.config.enable_encryption
+        arg: config
+      - spec: spec.config.header_attributes.attribute_name
+        arg: config
+      - spec: spec.config.header_attributes.header_name
+        arg: config
+      - spec: spec.config.idp_public_certs
+        arg: config
+      - spec: spec.config.issuer_url
+        arg: config
+      - spec: spec.config.okta_account
+        arg: config
+      - spec: spec.config.onelogin_account
+        arg: config
+      - spec: spec.config.ping_env_id
+        arg: config
+      - spec: spec.config.pkce_enabled
+        arg: config
+      - spec: spec.config.prompt
+        arg: config
+      - spec: spec.config.restrict_to_account_members
+        arg: config
+      - spec: spec.config.scopes
+        arg: config
+      - spec: spec.config.sign_request
+        arg: config
+      - spec: spec.config.sso_target_url
+        arg: config
+      - spec: spec.config.support_groups
+        arg: config
+      - spec: spec.config.token_url
+        arg: config
+      - spec: spec.scim_config.enabled
+        arg: scim_config
+      - spec: spec.scim_config.identity_update_behavior
+        arg: scim_config
+      - spec: spec.scim_config.seat_deprovision
+        arg: scim_config
+      - spec: spec.scim_config.user_deprovision
+        arg: scim_config

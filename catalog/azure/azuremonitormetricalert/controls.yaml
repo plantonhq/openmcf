@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitormetricalert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule is a configuration object -- a condition, a window, and action-group references. It stores no customer data; the metrics it evaluates live in Azure Monitor's platform store, encrypted there under Microsoft's own management.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The rule exposes no endpoint and accepts no connections -- evaluation happens inside Azure Monitor's pipeline. Notification delivery security (webhook TLS, email transport) is the action group's territory on its own component.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Nothing to reach -- the rule has no network surface, public or private. It is reachable only as an ARM object through the management plane.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict; the rule reads platform metrics service-side.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a WAF to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the rule -- create, edit thresholds, disable, delete -- is authorized by Azure RBAC unconditionally (Monitoring Contributor to manage, Monitoring Reader to view). There is no data plane beyond the management plane.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule runs no workloads and holds no credentials; Azure Monitor evaluates it with platform identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane change to the rule lands in the Azure Activity Log unconditionally, and every fired/resolved alert instance is recorded in Azure Monitor's alert history -- who changed the threshold and when it fired are both first-class records.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The rule IS monitoring integration -- its whole purpose is exporting a metric condition into alert notifications. Its own health (fired/resolved state) is visible in the Azure Monitor alerts blade with no configuration.
+      notes: The component's purpose-control -- the honest stance is that the rule integrates the SCOPED resources into monitoring; auto_mitigate (default true) keeps its alert state truthful by resolving when the condition clears.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration -- recovery is redeployment from this manifest; there is no data to back up. Alert history lives in Azure Monitor's own store, outside the rule.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Monitor's alerting pipeline is a regional platform service Microsoft operates redundantly; the rule is an ARM object with no zone placement to configure and no single instance to fail.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the metric-alerts API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The operational safeguard the spec DOES offer is enabled=false -- pausing beats deleting during maintenance.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed platform service -- Microsoft operates and patches the alert evaluation pipeline; no customer-visible patch surface exists.

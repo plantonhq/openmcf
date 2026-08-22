@@ -1,0 +1,353 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Bindings, migrations, observability, assets, placement, limits,
+# cache_options, exports, package_dependencies, annotations, and
+# tail_consumers are each ONE nested provider argument. The spec models
+# those trees as typed messages (and bindings as wrangler.toml-grain
+# lists). Fan-in mappings record every spec leaf each argument realizes.
+
+resources:
+  cloudflare_workers_script:
+    mappings:
+      - spec: spec.worker_name
+        arg: script_name
+      - spec: spec.content
+        arg: content
+      - spec: spec.r2_bundle.bucket
+        arg: content
+      - spec: spec.r2_bundle.path
+        arg: content
+      - spec: spec.vars
+        arg: bindings
+      - spec: spec.secrets.name
+        arg: bindings
+      - spec: spec.secrets.value
+        arg: bindings
+      - spec: spec.kv_namespaces.name
+        arg: bindings
+      - spec: spec.kv_namespaces.namespace_id
+        arg: bindings
+      - spec: spec.r2_buckets.name
+        arg: bindings
+      - spec: spec.r2_buckets.bucket_name
+        arg: bindings
+      - spec: spec.r2_buckets.jurisdiction
+        arg: bindings
+      - spec: spec.d1_databases.name
+        arg: bindings
+      - spec: spec.d1_databases.database_id
+        arg: bindings
+      - spec: spec.hyperdrive_configs.name
+        arg: bindings
+      - spec: spec.hyperdrive_configs.config_id
+        arg: bindings
+      - spec: spec.services.name
+        arg: bindings
+      - spec: spec.services.service
+        arg: bindings
+      - spec: spec.services.environment
+        arg: bindings
+      - spec: spec.services.entrypoint
+        arg: bindings
+      - spec: spec.queues.name
+        arg: bindings
+      - spec: spec.queues.queue_name
+        arg: bindings
+      - spec: spec.durable_objects.name
+        arg: bindings
+      - spec: spec.durable_objects.class_name
+        arg: bindings
+      - spec: spec.durable_objects.script_name
+        arg: bindings
+      - spec: spec.durable_objects.environment
+        arg: bindings
+      - spec: spec.durable_objects.namespace_id
+        arg: bindings
+      - spec: spec.durable_objects.dispatch_namespace
+        arg: bindings
+      - spec: spec.analytics_engine_datasets.name
+        arg: bindings
+      - spec: spec.analytics_engine_datasets.dataset
+        arg: bindings
+      - spec: spec.vectorize_indexes.name
+        arg: bindings
+      - spec: spec.vectorize_indexes.index_name
+        arg: bindings
+      - spec: spec.ai.name
+        arg: bindings
+      - spec: spec.version_metadata.name
+        arg: bindings
+      - spec: spec.mtls_certificates.name
+        arg: bindings
+      - spec: spec.mtls_certificates.certificate_id
+        arg: bindings
+      - spec: spec.dispatch_namespaces.name
+        arg: bindings
+      - spec: spec.dispatch_namespaces.namespace
+        arg: bindings
+      - spec: spec.dispatch_namespaces.outbound.params
+        arg: bindings
+      - spec: spec.dispatch_namespaces.outbound.worker.service
+        arg: bindings
+      - spec: spec.dispatch_namespaces.outbound.worker.environment
+        arg: bindings
+      - spec: spec.rate_limits.name
+        arg: bindings
+      - spec: spec.rate_limits.namespace
+        arg: bindings
+      - spec: spec.rate_limits.simple.limit
+        arg: bindings
+      - spec: spec.rate_limits.simple.period
+        arg: bindings
+      - spec: spec.rate_limits.simple.mitigation_timeout
+        arg: bindings
+      - spec: spec.send_email.name
+        arg: bindings
+      - spec: spec.send_email.destination_address
+        arg: bindings
+      - spec: spec.send_email.allowed_destination_addresses
+        arg: bindings
+      - spec: spec.send_email.allowed_sender_addresses
+        arg: bindings
+      - spec: spec.secrets_store_secrets.name
+        arg: bindings
+      - spec: spec.secrets_store_secrets.store_id
+        arg: bindings
+      - spec: spec.secrets_store_secrets.secret_name
+        arg: bindings
+      - spec: spec.secret_keys.name
+        arg: bindings
+      - spec: spec.secret_keys.algorithm
+        arg: bindings
+      - spec: spec.secret_keys.format
+        arg: bindings
+      - spec: spec.secret_keys.usages
+        arg: bindings
+      - spec: spec.secret_keys.key_base64
+        arg: bindings
+      - spec: spec.secret_keys.key_jwk
+        arg: bindings
+      - spec: spec.workflows.name
+        arg: bindings
+      - spec: spec.workflows.workflow_name
+        arg: bindings
+      - spec: spec.pipelines.name
+        arg: bindings
+      - spec: spec.pipelines.pipeline
+        arg: bindings
+      - spec: spec.json_bindings.name
+        arg: bindings
+      - spec: spec.json_bindings.json
+        arg: bindings
+      - spec: spec.inherit_bindings.name
+        arg: bindings
+      - spec: spec.inherit_bindings.old_name
+        arg: bindings
+      - spec: spec.inherit_bindings.version_id
+        arg: bindings
+      - spec: spec.data_blobs.name
+        arg: bindings
+      - spec: spec.data_blobs.part
+        arg: bindings
+      - spec: spec.text_blobs.name
+        arg: bindings
+      - spec: spec.text_blobs.part
+        arg: bindings
+      - spec: spec.browsers.name
+        arg: bindings
+      - spec: spec.ai_search.name
+        arg: bindings
+      - spec: spec.ai_search.instance_name
+        arg: bindings
+      - spec: spec.ai_search.namespace
+        arg: bindings
+      - spec: spec.ai_search.app_id
+        arg: bindings
+      - spec: spec.ai_search_namespaces.name
+        arg: bindings
+      - spec: spec.ai_search_namespaces.namespace
+        arg: bindings
+      - spec: spec.images.name
+        arg: bindings
+      - spec: spec.media.name
+        arg: bindings
+      - spec: spec.wasm_modules.name
+        arg: bindings
+      - spec: spec.wasm_modules.part
+        arg: bindings
+      - spec: spec.vpc_services.name
+        arg: bindings
+      - spec: spec.vpc_services.service_id
+        arg: bindings
+      - spec: spec.vpc_networks.name
+        arg: bindings
+      - spec: spec.vpc_networks.network_id
+        arg: bindings
+      - spec: spec.vpc_networks.tunnel_id
+        arg: bindings
+      - spec: spec.tail_consumer_bindings.name
+        arg: bindings
+      - spec: spec.tail_consumer_bindings.service
+        arg: bindings
+      - spec: spec.assets.binding_name
+        arg: bindings
+      - spec: spec.assets.directory
+        arg: assets
+      - spec: spec.assets.config.html_handling
+        arg: assets
+      - spec: spec.assets.config.not_found_handling
+        arg: assets
+      - spec: spec.assets.config.headers
+        arg: assets
+      - spec: spec.assets.config.redirects
+        arg: assets
+      - spec: spec.assets.config.run_worker_first
+        arg: assets
+      - spec: spec.assets.config.run_worker_first_rules
+        arg: assets
+      - spec: spec.migrations.deleted_classes
+        arg: migrations
+      - spec: spec.migrations.new_classes
+        arg: migrations
+      - spec: spec.migrations.new_sqlite_classes
+        arg: migrations
+      - spec: spec.migrations.new_tag
+        arg: migrations
+      - spec: spec.migrations.old_tag
+        arg: migrations
+      - spec: spec.migrations.renamed_classes.from
+        arg: migrations
+      - spec: spec.migrations.renamed_classes.to
+        arg: migrations
+      - spec: spec.migrations.transferred_classes.from
+        arg: migrations
+      - spec: spec.migrations.transferred_classes.from_script
+        arg: migrations
+      - spec: spec.migrations.transferred_classes.to
+        arg: migrations
+      - spec: spec.migrations.steps.deleted_classes
+        arg: migrations
+      - spec: spec.migrations.steps.new_classes
+        arg: migrations
+      - spec: spec.migrations.steps.new_sqlite_classes
+        arg: migrations
+      - spec: spec.migrations.steps.renamed_classes.from
+        arg: migrations
+      - spec: spec.migrations.steps.renamed_classes.to
+        arg: migrations
+      - spec: spec.migrations.steps.transferred_classes.from
+        arg: migrations
+      - spec: spec.migrations.steps.transferred_classes.from_script
+        arg: migrations
+      - spec: spec.migrations.steps.transferred_classes.to
+        arg: migrations
+      - spec: spec.observability.enabled
+        arg: observability
+      - spec: spec.observability.head_sampling_rate
+        arg: observability
+      - spec: spec.observability.logs.enabled
+        arg: observability
+      - spec: spec.observability.logs.invocation_logs
+        arg: observability
+      - spec: spec.observability.logs.destinations
+        arg: observability
+      - spec: spec.observability.logs.head_sampling_rate
+        arg: observability
+      - spec: spec.observability.logs.persist
+        arg: observability
+      - spec: spec.observability.traces.destinations
+        arg: observability
+      - spec: spec.observability.traces.enabled
+        arg: observability
+      - spec: spec.observability.traces.head_sampling_rate
+        arg: observability
+      - spec: spec.observability.traces.persist
+        arg: observability
+      - spec: spec.observability.traces.propagation_policy
+        arg: observability
+      - spec: spec.placement.mode
+        arg: placement
+      - spec: spec.limits.cpu_ms
+        arg: limits
+      - spec: spec.limits.subrequests
+        arg: limits
+      - spec: spec.cache_options.enabled
+        arg: cache_options
+      - spec: spec.cache_options.cross_version_cache
+        arg: cache_options
+      - spec: spec.exports.type
+        arg: exports
+      - spec: spec.exports.cache.enabled
+        arg: exports
+      - spec: spec.package_dependencies.name
+        arg: package_dependencies
+      - spec: spec.package_dependencies.installed_version
+        arg: package_dependencies
+      - spec: spec.package_dependencies.package_json_version
+        arg: package_dependencies
+      - spec: spec.annotations.workers_message
+        arg: annotations
+      - spec: spec.annotations.workers_tag
+        arg: annotations
+      - spec: spec.tail_consumers.service
+        arg: tail_consumers
+      - spec: spec.tail_consumers.environment
+        arg: tail_consumers
+      - spec: spec.tail_consumers.namespace
+        arg: tail_consumers
+    exclusions:
+      - arg: content_file
+        reason: composed via content (inline) or r2_bundle (fetched into content) — a second source path would fork the oneof
+      - arg: content_sha256
+        reason: companion of content_file; the module hashes inline/R2 content itself when the provider needs a change trigger
+  cloudflare_workers_script_subdomain:
+    specRoot: spec.workers_dev
+    mappings:
+      - spec: spec.workers_dev.enabled
+        arg: enabled
+      - spec: spec.workers_dev.previews_enabled
+        arg: previews_enabled
+    exclusions:
+      - arg: account_id
+        reason: shared account scope -- wired by the module from the same credential-resolved account the script uses
+      - arg: script_name
+        reason: wired by the module to the script this kind just created
+  cloudflare_workers_custom_domain:
+    specRoot: spec.custom_domains
+    mappings:
+      - spec: spec.custom_domains.hostname
+        arg: hostname
+      - spec: spec.custom_domains.zone_id
+        arg: zone_id
+    exclusions:
+      - arg: account_id
+        reason: shared account scope -- wired by the module from the same credential-resolved account the script uses
+      - arg: service
+        reason: wired by the module to the script this kind just created
+      - arg: zone_name
+        reason: alternative addressing of the zone the spec already identifies by zone_id (or that Cloudflare infers from the hostname)
+  cloudflare_workers_route:
+    specRoot: spec.routes
+    mappings:
+      - spec: spec.routes.zone_id
+        arg: zone_id
+      - spec: spec.routes.pattern
+        arg: pattern
+    exclusions:
+      - arg: script
+        reason: wired by the module to the script this kind just created
+  cloudflare_workers_cron_trigger:
+    mappings:
+      - spec: spec.schedules
+        arg: schedules
+    exclusions:
+      - arg: account_id
+        reason: shared account scope -- wired by the module from the same credential-resolved account the script uses
+      - arg: script_name
+        reason: wired by the module to the script this kind just created

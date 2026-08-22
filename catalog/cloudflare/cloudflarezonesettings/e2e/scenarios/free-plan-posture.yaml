@@ -1,0 +1,29 @@
+# The free-plan posture arm: manages a representative slice of every value
+# class (on/off toggle, enum, number, list, nested object) using only
+# free-plan-editable setting ids. Runs FIRST (filename order); the
+# revert-defaults scenario runs last and returns the surface to Cloudflare
+# defaults -- the ordering is the revert discipline for the no-op-destroy
+# class (the fixture zone's own destroy is the zero-orphan backstop).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneSettings
+metadata:
+  name: e2e-zoneset-posture-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  always_use_https: true
+  min_tls_version: "1.2"
+  browser_cache_ttl: 14400
+  security_level: medium
+  ciphers:
+    - "ECDHE-ECDSA-AES128-GCM-SHA256"
+    - "ECDHE-RSA-AES128-GCM-SHA256"
+  security_header:
+    enabled: true
+    include_subdomains: true
+    max_age: 31536000
+    nosniff: true
+    preload: false

@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsconfigaggregator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The aggregator owns no data store to configure -- replicated configuration and compliance data lives inside the AWS Config service. Where Config data lands in customer-visible storage (the delivery channel's S3 bucket), the encryption posture belongs to the recorder component and the bucket.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface means no key surface -- neither the aggregator nor an aggregation authorization exposes any encryption-key option.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every AWS Config regional endpoint the aggregation APIs ride is HTTPS-only (the developer guide's region-support table lists protocol HTTPS for every region); cross-account replication happens inside the Config service, never over a customer-configurable plaintext path.
+    - control_id: no-public-access
+      status: configurable
+      field_path: authorizations
+      evidence:
+        type: spec_default
+        reference: Unset grants nobody anything. Each authorizations entry is this account deliberately handing ONE named aggregator account+region a read-only replica of its entire Config estate -- resource inventory and compliance state. Grants name a single 12-digit account; there is no anonymous or public shape, but treat each entry as a cross-account data share and review the list like a bucket policy.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Neither arm listens on anything -- collection and replication are Config-service-internal; there are no ports, CIDRs, or security groups to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving surface exists to front with a WAF; the aggregated view is consumed through the AWS Config API's own front door.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every operation is IAM-authorized, and the write actions scope to resource ARNs (config-aggregator/<id>, aggregation-authorization/<account>/<region>) so grants can name exact objects. The aggregated view itself is structurally read-only -- AWS's own note: aggregators \"do not provide mutating access into a source account or region\"; no rule deployment or snapshot push can ride the rollup."
+    - control_id: workload-identity
+      status: configurable
+      field_path: aggregation.organization_source.role_arn
+      evidence:
+        type: spec_default
+        reference: An organization-sourced aggregator collects under a dedicated IAM role Config assumes to read the organization structure (trust policy for config.amazonaws.com, AWSConfigRoleForOrganizations or equivalent) -- a pinned, auditable identity for the collection workload. Account-list aggregators need no role; collection authority comes from each source account's reciprocal grant.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "AWS Config has a single authentication path: SigV4-signed IAM requests; no legacy or weaker protocol exists to disable."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, updating, and deleting aggregators and aggregation authorizations are CloudTrail management events, captured unconditionally -- who opened a cross-account view into which account is always on the record.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The aggregator exposes no notification or metric hooks of its own -- it IS the monitoring surface, a compliance rollup consumed by humans and tools. Alerting on config changes lives on the source recorders' SNS delivery and the rules' evaluations.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The aggregated view is a derived replica, not a system of record -- destroy deletes only the rollup; every source account's Config data is untouched, and recreating the aggregator repopulates the view from the sources. There is nothing here to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to set. Retention of the underlying Config data is the source accounts' recorder concern.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS Config is a regional managed service operated across availability zones; neither the aggregator nor the grants expose any zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists, and the blast radius of deletion is inherently small -- destroying either arm removes only the rollup view or the grant; no source account's recorded data is lost, and the view rebuilds on recreation. Deleting a GRANT does cut off the named aggregator's future collection, which is the intended revocation lever, not a hazard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Config aggregation plane; neither arm exposes a runtime, version, or maintenance surface.

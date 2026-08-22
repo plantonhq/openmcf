@@ -1,0 +1,32 @@
+# Minimal DigitalOceanKubernetesCluster: one node on the cheapest
+# DOKS-capable slug, everything else at DigitalOcean defaults. Proves the
+# full create/verify/destroy lifecycle and the cluster_id / kubeconfig /
+# api_server_endpoint outputs. The REQUIRED vpc reference resolves against
+# the VPC registry prerequisite. Named `minimal` so it doubles as this
+# kind's install profile when the node-pool kind composes it as a fixture.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesCluster
+metadata:
+  name: planton-oss-e2e-digitaloceankubernetescluster-min
+  id: planton-oss-e2e-digitaloceankubernetescluster-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceankubernetescluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-doks-min
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  defaultNodePool:
+    size: s-1vcpu-2gb
+    nodeCount: 1

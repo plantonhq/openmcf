@@ -28,9 +28,10 @@ spec:
       fieldPath: status.outputs.zone_id
   catchAll:
     enabled: true
-    type: forward
-    forwardTo:
-      - value: ops@example.com
+    actions:
+      - type: forward
+        forwardTo:
+          - value: ops@example.com
 ```
 
 ## Configuration reference
@@ -40,8 +41,9 @@ spec:
 | `zoneId` | yes | Zone ID, or a reference to a `CloudflareDnsZone` |
 | `catchAll` | no | Folded catch-all rule (see below). Omit to leave Cloudflare's default |
 | `lockDnsRecords` | no | Lock the Email Routing DNS records (default false) |
+| `dnsName` | no | The domain the managed DNS records route mail for — empty for the zone apex, a subdomain for subdomain routing. Requires `lockDnsRecords` |
 
-**catchAll**: `{ enabled, type (drop|forward|worker), forwardTo[] (→ CloudflareEmailRoutingAddress), worker (→ CloudflareWorker) }`. `forward` requires `forwardTo`; `worker` requires `worker`.
+**catchAll**: `{ enabled, name, actions[] }` — a LIST of actions (matching the Cloudflare API), so one catch-all can forward AND invoke a Worker. Each action is `{ type (drop|forward|worker), forwardTo[] (→ CloudflareEmailRoutingAddress), worker (→ CloudflareWorker) }`; `forward` requires `forwardTo`, `worker` requires `worker`.
 
 ## Outputs
 

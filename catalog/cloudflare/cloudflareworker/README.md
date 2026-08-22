@@ -73,11 +73,24 @@ literal id or a `valueFrom` reference to the producing resource:
 | `hyperdriveConfigs` | Hyperdrive configs | CloudflareHyperdriveConfig |
 | `services` | other Workers (service bindings) | CloudflareWorker |
 | `queues` | Queue producers (by name) | — |
-| `durableObjects` | Durable Object namespaces | — |
+| `durableObjects` | Durable Object namespaces (optional `scriptName` FK to another Worker) | CloudflareWorker |
 | `analyticsEngineDatasets` | Analytics Engine datasets | — |
 | `vectorizeIndexes` | Vectorize indexes | — |
 | `ai` | Workers AI gateway | — |
 | `versionMetadata` | deployed version metadata | — |
+| `mtlsCertificates` | mTLS certificates (literal id) | — |
+| `dispatchNamespaces` | Workers for Platforms dispatch namespaces | — |
+| `rateLimits` | Workers rate-limit bindings | — |
+| `sendEmail` | Email Routing send_email | — |
+| `secretsStoreSecrets` | Secrets Store (literal store + name) | — |
+| `secretKeys` | SubtleCrypto keys (material is sensitive) | — |
+| `workflows` / `pipelines` | Workflows / Pipelines (literal names) | — |
+| `jsonBindings` / `inheritBindings` | JSON config / inherit-from-previous-version | — |
+| `dataBlobs` / `textBlobs` / `wasmModules` | service-worker-syntax file parts | — |
+| `browsers` / `images` / `media` | named-only bindings | — |
+| `aiSearch` / `aiSearchNamespaces` | AI Search (literal instance / namespace) | — |
+| `vpcServices` / `vpcNetworks` | VPC service id, or network id XOR a Zero Trust tunnel | CloudflareZeroTrustTunnel |
+| `tailConsumerBindings` | tail_consumer *binding* (distinct from `tailConsumers`) | CloudflareWorker |
 
 ```yaml
   kvNamespaces:
@@ -102,10 +115,16 @@ literal id or a `valueFrom` reference to the producing resource:
 ## Scheduling and runtime settings
 
 - `schedules` — cron expressions invoking the Worker's scheduled handler.
-- `observability` — Workers Logs (`enabled`, `headSamplingRate`).
-- `placement` — Smart Placement (`mode: smart`).
-- `limits` — `cpuMs` per invocation.
-- `logpush`, `tailConsumers`.
+- `observability` — Workers Logs and traces (`enabled`, `headSamplingRate`, plus nested `logs` / `traces`).
+- `placement` — Smart Placement (`mode: smart` or `targeted`).
+- `limits` — `cpuMs` and `subrequests` per invocation.
+- `logpush`, `tailConsumers` (other Workers that consume this Worker's logs).
+- `migrations` — Durable Object class create/rename/transfer/delete. Cloudflare treats the tag as a one-shot: a second apply of the same `newTag` is rejected, so this does not belong in an idempotent live scenario.
+- `keepAssets` / `keepBindings` — keep previous-upload assets or binding types instead of resending them.
+- `usageModel`, `contentType`, `bodyPart` (service-worker syntax; mutually exclusive with `mainModule`).
+- `cacheOptions`, `exports`, `packageDependencies` — honored by tofu. Pulumi's Cloudflare SDK v6.17.0 has no matching inputs and logs a PARITY-EXCEPTION.
+
+`r2Bundle.bucket` is a CloudflareR2Bucket reference (or a literal name).
 
 ## Outputs
 
@@ -115,6 +134,9 @@ literal id or a `valueFrom` reference to the producing resource:
 | `script_name` | The Worker script name (the target of a service binding) |
 | `custom_domain_hostnames` | Custom-domain hostnames attached to the Worker |
 | `route_patterns` | Route patterns mapped to the Worker |
+| `custom_domain_ids` | Hostname → Cloudflare domain id (import) |
+| `route_ids` | List-index → Cloudflare route id (import) |
+| `route_zone_ids` | List-index → zone id (import) |
 
 ## Secrets
 

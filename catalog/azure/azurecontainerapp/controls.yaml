@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerapp
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "Serverless compute holds no durable data of its own -- EMPTY_DIR volumes are ephemeral scratch lost with the replica, and anything the workload persists lands in the data stores it writes (Azure Files shares behind AZURE_FILE volumes, databases, blobs), whose encryption posture belongs to those components. The app's secrets block is management-plane configuration; keeping secret material out of it entirely via key_vault_secret_id is the stronger arrangement."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "No data at rest of its own to key (see enc-at-rest). Key Vault-referenced secrets put the secret material under the vault's key posture, where CMK is a real choice."
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: ingress.allow_insecure_connections
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is false: ingress accepts only HTTPS and redirects plain-HTTP requests to it. Setting it true admits unencrypted HTTP to the app."
+      notes: "All committed presets leave the default (HTTPS-only). client_certificate_mode layers mTLS on top when REQUIRE is chosen. Apps without ingress have no inbound connection to encrypt; the platform's calls on the app's behalf (image pulls, Key Vault reads, KEDA polls) ride HTTPS by service requirement, and the workload's outbound TLS is its own code's behavior."
+    - control_id: no-public-access
+      status: configurable
+      field_path: ingress.external_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is false, and ingress itself is optional: an app without ingress is reachable only inside the environment via service discovery, and an ingress with external_enabled false accepts traffic only from within the environment (or its VNet). Internet exposure requires the explicit true."
+      notes: "Presets 01-web-service and 03-enterprise-api set external_enabled true deliberately (they are public services); 02-background-worker has no ingress at all. On an internal (VNet-injected) environment even external_enabled true resolves to VNet reach, not internet -- that boundary lives on the AzureContainerAppEnvironment component."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ingress.ip_security_restrictions
+      evidence:
+        type: spec_default
+        reference: "Empty, the ingress answers any source the exposure level admits. Populated, Azure evaluates the rules as one allowlist (or one denylist) -- traffic outside an allowlist is implicitly denied. All rules must share one action (spec-enforced)."
+      notes: "Preset 03-enterprise-api ships an ALLOW rule scoped to a corporate office CIDR; the other presets leave the list empty. IP rules filter at the ingress proxy -- network-level isolation is the environment's VNet injection."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "Container Apps ingress has no built-in WAF attachment point -- request filtering is composed IN FRONT of the app (Azure Front Door or Application Gateway with WAF policy, with the app's ingress restricted so traffic cannot bypass the edge). The spec's ip_security_restrictions is an IP filter, not a request inspector."
+    - control_id: rbac
+      status: not_applicable
+      notes: "Management access is subscription/resource-group RBAC posture, not a component choice. The app's own data plane is whatever protocol the workload serves -- authenticating its callers is application code (or a fronting gateway), not an ARM control on this resource."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset, the app holds no Azure identity and any cloud access rides injected credentials; the identity block attaches a system-assigned and/or user-assigned managed identity, and the spec threads it end to end -- registries authenticate by identity instead of password secrets, secrets resolve from Key Vault by identity, and custom scale rules carry identity_id so KEDA reads the scaled resource without a connection string."
+      notes: "Preset 03-enterprise-api attaches a user-assigned identity and uses it for both registry auth and Key Vault secret resolution. Presets 01 and 02 carry no identity block -- 02 parks a Service Bus connection string in a plain secret, exactly the pattern the identity path replaces."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: registries
+      evidence:
+        type: spec_default
+        reference: "Each registry entry authenticates with exactly one mode (spec-enforced) -- a managed identity, or the weaker username plus password_secret_name pair that parks a static registry password in the app's secrets. Choosing identity leaves no static credential in play."
+      notes: "Preset 03-enterprise-api uses identity-based registry auth. The static-password path stays representable for registries outside Entra's reach (Docker Hub, GHCR). The same trade appears in scale-rule auth: secret-fed KEDA parameters versus identity_id."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Control-plane operations land in the Azure Activity Log as subscription-level posture; the app offers no audit knob of its own. Request-level visibility rides the environment's logging destination (see monitoring-integration)."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "The monitoring wiring is the parent environment's choice, not this component's -- console and system logs flow to whatever destination the environment's logging configuration declares (Log Analytics, Azure Monitor, or none), and the app inherits it without a field of its own. Azure Monitor's platform metrics for replicas, requests, and CPU/memory exist regardless of that choice."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Stateless serverless compute -- the app definition recreates losslessly from infrastructure-as-code, and EMPTY_DIR scratch is gone by design. Durable state lives where the workload writes it; back up those components. Recreation does change the app's FQDN only if the name or environment changes -- revisions themselves are not restorable artifacts."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery)."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone placement is decided by the parent Container App Environment (its zone-redundancy choice at creation), and the app inherits it with no zone knob of its own. What this spec does control is replica spread eligibility: on a zone-redundant environment, min_replicas of 2 or more lets the platform place replicas across zones -- preset 03 runs 2; a single-replica floor sits in one zone at a time."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Microsoft.App/containerApps nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the app releases its FQDN and revision history with it."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Serverless platform -- Microsoft owns and patches the hosts, kernel, and container runtime beneath every replica; no customer-visible patch surface exists."
+      notes: "The container image's CONTENTS remain the user's build responsibility -- the platform patches what runs the container, never what runs inside it."

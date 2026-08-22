@@ -1,0 +1,30 @@
+# Minimal DigitalOceanDatabaseFirewall: an IP-only trusted-sources rule set
+# on the PostgreSQL cluster registry prerequisite, mixing a plain IPv4, a
+# CIDR block, and an IPv6 address to prove the ip_addr fan-out across
+# address shapes. Proves the full lifecycle including the kind's unusual
+# destroy semantics: the verifier asserts the live rule list is EMPTY after
+# destroy (a PUT of an empty set -- there is no object to 404 on).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseFirewall
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasefirewall-min
+  id: planton-oss-e2e-digitaloceandatabasefirewall-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasefirewall
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  ipRules:
+    - 203.0.113.10
+    - 10.10.0.0/16
+    - 2001:db8::7

@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -29,7 +32,7 @@ spec:
           sku_meter: rule monthly fee
           pricing_unit: months
           pricing_quantity: "2"
-          quantity_basis: 2 top-level rules (the Common and KnownBadInputs AWS managed rule groups, each billed as one rule regardless of internal size)
+          quantity_basis: one rule fee per top-level rule (a managed rule group bills as one rule regardless of internal size)
           list_unit_price: "1"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
           retrieved_on: "2026-08-16"
@@ -38,7 +41,8 @@ spec:
       exclusions:
         - requests processed bill per million and follow traffic
         - CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
-      notes: Both managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, and anti-DDoS, none referenced here. No logging is configured, so no delivery charges arise.
+        - marketplace-vendor managed rule groups bill their own subscriptions through AWS Marketplace, outside this price book
+      notes: The referenced managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, ACFP, and anti-DDoS, which these rules refuse to price. No logging is configured, so no delivery charges arise.
     - preset: 02-rate-limiting-with-managed-rules
       region_assumption: us-east-1
       currency: USD
@@ -57,7 +61,7 @@ spec:
           sku_meter: rule monthly fee
           pricing_unit: months
           pricing_quantity: "4"
-          quantity_basis: 4 top-level rules (one rate-based rule plus the Common, SQLi, and KnownBadInputs AWS managed rule groups, each group billed as one rule)
+          quantity_basis: one rule fee per top-level rule (a managed rule group bills as one rule regardless of internal size)
           list_unit_price: "1"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
           retrieved_on: "2026-08-16"
@@ -65,8 +69,10 @@ spec:
       total_list_cost: "9.0000"
       exclusions:
         - requests processed bill per million and follow traffic
+        - CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
         - the rate-based rule's block action adds no charge of its own -- blocked requests still count as processed requests
-      notes: All three managed rule groups are AWS core protection packs with no subscription fee. No logging is configured, so no delivery charges arise.
+        - marketplace-vendor managed rule groups bill their own subscriptions through AWS Marketplace, outside this price book
+      notes: The referenced managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, ACFP, and anti-DDoS, which these rules refuse to price. No logging is configured, so no delivery charges arise.
     - preset: 03-production-web-app
       region_assumption: us-east-1
       currency: USD
@@ -76,7 +82,7 @@ spec:
           sku_meter: rule monthly fee
           pricing_unit: months
           pricing_quantity: "7"
-          quantity_basis: 7 top-level rules (rate limit, geo block, and the IP reputation, Anonymous IP, Common, SQLi, and KnownBadInputs AWS managed rule groups, each group billed as one rule)
+          quantity_basis: one rule fee per top-level rule (a managed rule group bills as one rule regardless of internal size)
           list_unit_price: "1"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
           retrieved_on: "2026-08-16"
@@ -93,8 +99,11 @@ spec:
       total_list_cost: "12.0000"
       exclusions:
         - requests processed bill per million and follow traffic
-        - request-log delivery to the CloudWatch log group bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests
-      notes: All five managed rule groups are AWS core protection packs with no subscription fee. The custom response body and header redactions add no charge of their own.
+        - CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
+        - the rate-based rule's block action adds no charge of its own -- blocked requests still count as processed requests
+        - request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests
+        - marketplace-vendor managed rule groups bill their own subscriptions through AWS Marketplace, outside this price book
+      notes: The referenced managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, ACFP, and anti-DDoS, which these rules refuse to price.
     - preset: 04-cost-controlled-logging
       region_assumption: us-east-1
       currency: USD
@@ -113,7 +122,7 @@ spec:
           sku_meter: rule monthly fee
           pricing_unit: months
           pricing_quantity: "2"
-          quantity_basis: 2 top-level rules (the Common AWS managed rule group, billed as one rule, plus one rate-based rule)
+          quantity_basis: one rule fee per top-level rule (a managed rule group bills as one rule regardless of internal size)
           list_unit_price: "1"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
           retrieved_on: "2026-08-16"
@@ -121,5 +130,8 @@ spec:
       total_list_cost: "7.0000"
       exclusions:
         - requests processed bill per million and follow traffic
-        - request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests -- the preset's filter drops every record where WAF took no action (keeping BLOCK, COUNT, and EXCLUDED_AS_COUNT), which is exactly the logging-cost lever
-      notes: The one managed rule group is an AWS core protection pack with no subscription fee. This preset exists to demonstrate the logging filter -- its committed bill is identical to 01-managed-rules-basic.
+        - CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
+        - the rate-based rule's block action adds no charge of its own -- blocked requests still count as processed requests
+        - request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests -- the configured logging filter drops records before delivery, which is exactly the logging-cost lever
+        - marketplace-vendor managed rule groups bill their own subscriptions through AWS Marketplace, outside this price book
+      notes: The referenced managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, ACFP, and anti-DDoS, which these rules refuse to price.

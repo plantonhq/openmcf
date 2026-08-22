@@ -1,0 +1,203 @@
+# Provider-parity manifest: recorded modeling judgment for CloudflareZoneSettings
+# against the cloudflare@5.23.0 distilled schema. Only divergences are recorded;
+# everything else must exact-name-match.
+#
+# The kind wraps five provider resources. cloudflare_zone_setting is a FAN-OUT:
+# one provider instance per setting id, driven by a typed spec field per id --
+# so every setting field maps onto the resource's dynamic `value` argument
+# (fan-in at the manifest grain), and the `setting_id` argument is realized by
+# the spec field's own identity, never by user input.
+resources:
+  cloudflare_zone_setting:
+    mappings:
+      # Every typed setting field supplies the dynamic value for its own
+      # setting id (the module derives setting_id from which field is set).
+      - spec: spec.zero_rtt
+        arg: value
+      - spec: spec.advanced_ddos
+        arg: value
+      - spec: spec.aegis.enabled
+        arg: value
+      - spec: spec.aegis.pool_id
+        arg: value
+      - spec: spec.always_online
+        arg: value
+      - spec: spec.always_use_https
+        arg: value
+      - spec: spec.automatic_https_rewrites
+        arg: value
+      - spec: spec.automatic_platform_optimization.enabled
+        arg: value
+      - spec: spec.automatic_platform_optimization.cache_by_device_type
+        arg: value
+      - spec: spec.automatic_platform_optimization.cf
+        arg: value
+      - spec: spec.automatic_platform_optimization.hostnames
+        arg: value
+      - spec: spec.automatic_platform_optimization.wordpress
+        arg: value
+      - spec: spec.automatic_platform_optimization.wp_plugin
+        arg: value
+      - spec: spec.brotli
+        arg: value
+      - spec: spec.browser_cache_ttl
+        arg: value
+      - spec: spec.browser_check
+        arg: value
+      - spec: spec.cache_level
+        arg: value
+      - spec: spec.challenge_ttl
+        arg: value
+      - spec: spec.ciphers
+        arg: value
+      - spec: spec.cname_flattening
+        arg: value
+      - spec: spec.content_converter
+        arg: value
+      - spec: spec.development_mode
+        arg: value
+      - spec: spec.early_hints
+        arg: value
+      - spec: spec.edge_cache_ttl
+        arg: value
+      - spec: spec.email_obfuscation
+        arg: value
+      - spec: spec.h2_prioritization
+        arg: value
+      - spec: spec.hotlink_protection
+        arg: value
+      - spec: spec.http2
+        arg: value
+      - spec: spec.http3
+        arg: value
+      - spec: spec.image_resizing
+        arg: value
+      - spec: spec.ip_geolocation
+        arg: value
+      - spec: spec.ipv6
+        arg: value
+      - spec: spec.long_lived_grpc
+        arg: value
+      - spec: spec.max_upload
+        arg: value
+      - spec: spec.min_tls_version
+        arg: value
+      - spec: spec.mirage
+        arg: value
+      - spec: spec.nel.enabled
+        arg: value
+      - spec: spec.opportunistic_encryption
+        arg: value
+      - spec: spec.opportunistic_onion
+        arg: value
+      - spec: spec.orange_to_orange
+        arg: value
+      - spec: spec.origin_error_page_pass_thru
+        arg: value
+      - spec: spec.origin_h2_max_streams
+        arg: value
+      - spec: spec.origin_max_http_version
+        arg: value
+      - spec: spec.polish
+        arg: value
+      - spec: spec.prefetch_preload
+        arg: value
+      - spec: spec.privacy_pass
+        arg: value
+      - spec: spec.proxy_read_timeout
+        arg: value
+      - spec: spec.pseudo_ipv4
+        arg: value
+      - spec: spec.redirects_for_ai_training
+        arg: value
+      - spec: spec.replace_insecure_js
+        arg: value
+      - spec: spec.response_buffering
+        arg: value
+      - spec: spec.rocket_loader
+        arg: value
+      - spec: spec.search_for_agents
+        arg: value
+      - spec: spec.security_header.enabled
+        arg: value
+      - spec: spec.security_header.include_subdomains
+        arg: value
+      - spec: spec.security_header.max_age
+        arg: value
+      - spec: spec.security_header.nosniff
+        arg: value
+      - spec: spec.security_header.preload
+        arg: value
+      - spec: spec.security_level
+        arg: value
+      - spec: spec.server_side_exclude
+        arg: value
+      - spec: spec.sha1_support
+        arg: value
+      - spec: spec.sort_query_string_for_cache
+        arg: value
+      - spec: spec.ssl
+        arg: value
+      - spec: spec.ssl_recommender
+        arg: value
+      - spec: spec.tls_1_2_only
+        arg: value
+      - spec: spec.tls_1_3
+        arg: value
+      - spec: spec.tls_client_auth
+        arg: value
+      - spec: spec.transformations
+        arg: value
+      - spec: spec.transformations_allowed_origins
+        arg: value
+      - spec: spec.true_client_ip_header
+        arg: value
+      - spec: spec.waf
+        arg: value
+      - spec: spec.webp
+        arg: value
+      - spec: spec.websockets
+        arg: value
+    exclusions:
+      # The setting id is carried by the spec field's own identity: each typed
+      # field emits one zone_setting with its id. User input never supplies it.
+      - arg: setting_id
+        reason: "realized by the typed fan-out itself -- the module derives the setting id from which spec field is set; a user-supplied setting id would be the untyped escape hatch the design rejects"
+      # The provider's schema requires `value` even for ssl_recommender (its
+      # documented enabled-attribute form fails validation at v5.23.0), so the
+      # module writes the on/off value form and never sets `enabled`.
+      - arg: enabled
+        reason: "write-path alternative to value that the v5.23.0 schema rejects in practice (value stays Required even for ssl_recommender, whose docs suggest enabled); the module sends value on/off for every setting including ssl_recommender"
+  cloudflare_managed_transforms:
+    mappings:
+      - spec: spec.managed_request_headers.id
+        arg: managed_request_headers
+      - spec: spec.managed_request_headers.enabled
+        arg: managed_request_headers
+      - spec: spec.managed_response_headers.id
+        arg: managed_response_headers
+      - spec: spec.managed_response_headers.enabled
+        arg: managed_response_headers
+  cloudflare_url_normalization_settings:
+    mappings:
+      # The provider's bare scope/type args live under the spec's
+      # url_normalization message (the two are one API object).
+      - spec: spec.url_normalization.scope
+        arg: scope
+      - spec: spec.url_normalization.type
+        arg: type
+  cloudflare_origin_cloud_region:
+    mappings:
+      # One provider instance per origin IP, driven by the spec's list rows.
+      - spec: spec.origin_cloud_regions.origin_ip
+        arg: origin_ip
+      - spec: spec.origin_cloud_regions.region
+        arg: region
+      - spec: spec.origin_cloud_regions.vendor
+        arg: vendor
+  cloudflare_waiting_room_settings:
+    mappings:
+      # Rename: the spec says what the field IS (the zone-wide waiting-room
+      # crawler bypass) where the provider carries the API's longer name.
+      - spec: spec.waiting_room_crawler_bypass
+        arg: search_engine_crawler_bypass

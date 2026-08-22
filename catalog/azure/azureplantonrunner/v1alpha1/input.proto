@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureplantonrunner.v1alpha1;
+
+import "catalog/azure/azureplantonrunner/v1alpha1/api.proto";
+import "catalog/azure/provider.proto";
+
+//azure-planton-runner stack-input
+message AzurePlantonRunnerStackInput {
+  //target cloud-resource
+  AzurePlantonRunner target = 1;
+  //provider-config
+  dev.planton.azure.AzureProviderConfig provider_config = 2;
+}

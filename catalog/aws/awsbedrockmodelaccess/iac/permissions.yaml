@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockmodelaccess
+spec:
+  aws:
+    statements:
+      - sid: ManageModelAgreement
+        actions:
+          - bedrock:ListFoundationModelAgreementOffers
+          - bedrock:CreateFoundationModelAgreement
+          - bedrock:DeleteFoundationModelAgreement
+          - bedrock:GetFoundationModelAvailability
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_bedrock_foundation_model_agreement + the aws_bedrock_foundation_model_agreement_offers data source / their Pulumi equivalents. ListFoundationModelAgreementOffers resolves the public offer token at deploy time, Create accepts it, Delete cancels it on destroy, and GetFoundationModelAvailability is the provider's read-back for agreement status on plan/refresh. ALL FOUR are NON-SCOPABLE -- the bedrock service reference lists no resource types for any agreement action -- so the wildcard is the narrowest possible scope; an ARN-scoped grant would be a runtime DENY.
+      - sid: ManageUseCaseForm
+        actions:
+          - bedrock:PutUseCaseForModelAccess
+          - bedrock:GetUseCaseForModelAccess
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_bedrock_use_case_for_model_access / bedrock.UseCaseForModelAccess -- created only when the spec carries use_case_form (Anthropic models). The form is ACCOUNT-GLOBAL and write-once semantics ride Put; Get is the read-back. Both actions are NON-SCOPABLE per the service reference (the form has no ARN), so the wildcard is the narrowest possible scope.
+      - sid: SubscribeMarketplaceOffer
+        actions:
+          - aws-marketplace:Subscribe
+          - aws-marketplace:Unsubscribe
+          - aws-marketplace:ViewSubscriptions
+        resources:
+          - "*"
+        provenance: derived
+        notes: "Accepting a foundation-model agreement rides an AWS Marketplace subscription under the hood -- AWS's model-access documentation names exactly these three actions as the prerequisite Marketplace permissions, and without Subscribe the agreement creation fails. All three are account-level Marketplace actions with no ARN-scopable resource; the published tightening path is the aws-marketplace:ProductId condition key on Subscribe (only), restricting WHICH models this runner may enable."

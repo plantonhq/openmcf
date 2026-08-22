@@ -1,0 +1,22 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceDefaultProfile
+metadata:
+  name: split-tunnel-onprem
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  exclude_office_ips: true
+  exclude:
+    - address: 192.168.0.0/16
+      description: home and office LANs stay local
+    - host: printers.example.com
+      description: local printer discovery
+  dns_search_suffixes:
+    - suffix: corp.example.com
+      description: short hostnames resolve in the corp domain
+  fallback_domains:
+    - suffix: corp.internal
+      description: resolved by the on-prem resolver
+      dns_server:
+        - 10.0.0.53
+    - suffix: localhost
+    - suffix: home.arpa

@@ -15,6 +15,10 @@ func emailRoutingAddress(
 ) (*cloudflare.EmailRoutingAddress, error) {
 	spec := locals.CloudflareEmailRoutingAddress.Spec
 
+	// PARITY-EXCEPTION: spec.status (explicit verification-state override) is
+	// not sent -- pulumi-cloudflare SDK v6.17.0's EmailRoutingAddressArgs
+	// carries only AccountId and Email (the terraform provider at v5.23.0 has
+	// `status`). Wire it when the SDK catches up.
 	created, err := cloudflare.NewEmailRoutingAddress(
 		ctx,
 		"email-routing-address",

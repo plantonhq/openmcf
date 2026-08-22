@@ -1,0 +1,12 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: test-identity-provider
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: github-login
+  type: github
+  config:
+    client_id: example-client-id
+    client_secret:
+      value: example-client-secret

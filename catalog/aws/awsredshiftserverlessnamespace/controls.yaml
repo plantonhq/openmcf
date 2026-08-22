@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsredshiftserverlessnamespace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Redshift Serverless is encrypted by default, in AWS's own words: namespaces are always created encrypted -- under the AWS-owned Redshift key when kms_key_id is empty -- and the KMS-rotation documentation states the service 'uses AWS KMS key encryption automatically' for both stored data and snapshots. An unencrypted namespace is not representable."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Empty keeps the AWS-owned service key; referencing a KMS key encrypts the warehouse data under a key you own and can revoke. Switching keys later is an in-place but long-running re-encryption -- and AWS documents one ratchet, that a namespace on a customer-managed key cannot return to the AWS-owned key without a new namespace.
+      notes: admin_password_secret_kms_key_id separately puts the managed-password SECRET under a customer-managed key; empty rides the AWS-managed aws/secretsmanager key.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The namespace has no connection endpoint -- clients connect to the WORKGROUPS that attach to it, where transport hardening lives (config_parameters require_ssl / use_fips_ssl on AwsRedshiftServerlessWorkgroup). The namespace's own management API is HTTPS-only.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Nothing about a namespace is reachable -- it is the stored data plane with no endpoint, public or private. Reachability (public IP on/off, VPC placement) is the attaching workgroup's control.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: With no endpoint there is nothing to restrict -- security groups and subnets attach to the workgroup's compute, not the namespace.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving surface exists on a namespace, so there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation is IAM-authorized against the namespace ARN, and inside the warehouse PostgreSQL-style grants govern schemas and tables. The engine's own reach into other services is role-gated too -- it can only assume the IAM roles this spec explicitly lists in iam_roles.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The engine touches other AWS services (COPY, UNLOAD, Spectrum, external functions) ONLY by assuming the referenced iam_roles -- there is no access-key surface anywhere on the spec. On the client side, IAM identities can mint temporary database credentials without any admin password existing at all (the spec does not hard-require one).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: manage_admin_password
+      evidence:
+        type: spec_default
+        reference: The recommended-true default hands the admin password to AWS -- generated, stored, and rotated in Secrets Manager, never touching the manifest or IaC state. The weaker path (admin_user_password, a static password stored in state) exists but is mutually exclusive with it, CEL-enforced. Both shipped presets take the managed posture.
+      notes: The strongest posture is no admin password at all -- a serverless namespace does not require one, and IAM temporary credentials cover database entry.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_exports
+      evidence:
+        type: spec_default
+        reference: Empty exports nothing (the AWS default). Naming connectionlog, useractivitylog, and userlog ships connection attempts, every executed query, and user DDL events to CloudWatch Logs -- the 02 preset enables all three. useractivitylog additionally needs enable_user_activity_logging on the attaching workgroup.
+      notes: Control-plane operations on the namespace (create, key changes, credential changes, delete) are captured by CloudTrail unconditionally regardless of this field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Redshift Serverless publishes namespace-level metrics -- storage used, snapshot storage -- to CloudWatch automatically; no spec surface is needed to turn them on.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Automatic recovery points are built in: Redshift Serverless creates them about every 30 minutes, and AWS's pricing page states you can restore the warehouse to any point in the last 24 hours at 30-minute granularity free of charge. Manual snapshots extend protection beyond the rolling window."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The spec carries no retention dial -- the automatic window is AWS-fixed at 24 hours, and keeping anything longer (converting recovery points to snapshots, setting snapshot retention periods) happens through the Redshift Serverless API or console outside this manifest.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The namespace's data lives in Redshift Managed Storage, which AWS describes as high-performance SSDs backed by Amazon S3 for durable storage -- multi-AZ durability by construction, with no spec surface that could reduce it. Compute-side AZ placement is the workgroup's control.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Redshift Serverless namespaces have no deletion-protection flag -- a delete call with IAM permission proceeds, taking the stored data with it. Mitigations are indirect -- IAM denies on redshift-serverless:DeleteNamespace, and manual snapshots, which outlive the namespace.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The data plane is fully managed -- no engine version, maintenance window, or instance exists on the spec; AWS patches and upgrades the serverless fleet invisibly (release-track choice lives on the workgroup).

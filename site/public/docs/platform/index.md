@@ -65,7 +65,7 @@ Invite team members, organize them into teams, and manage permissions. Role-base
 
 ### Billing
 
-Seat-based pricing — automation is never metered for billing, and AI runs on prepaid credits.
+Seat-based pricing — automation is never metered for billing, and on planton.ai the AI Assistant runs on prepaid credits.
 
 [View billing details](/docs/teams-and-access/billing)
 

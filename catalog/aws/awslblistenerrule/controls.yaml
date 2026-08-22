@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The TLS protocol and cipher floor is the listener's ssl_policy; a rule has no handshake surface and exposes no authentication floor of its own to tighten.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Request-level access logging is a load-balancer attribute -- matched requests appear in the parent ALB's access logs (which record the matched rule's ARN) when the parent enables them. Administrative actions on the rule land in CloudTrail as account-level posture.

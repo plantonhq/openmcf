@@ -1,0 +1,27 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The spec restructures the provider's ConflictsWith convention (Let's
+# Encrypt args vs custom-certificate args, discriminated by type) into a
+# typed oneof: each provider argument maps to its branch's field.
+resources:
+  digitalocean_certificate:
+    exclusions:
+      - arg: type
+        reason: derived by the modules from the certificate_source oneof branch -- a separate spec field could only disagree with the branch that determines it
+    mappings:
+      - spec: spec.certificate_name
+        arg: name
+      - spec: spec.lets_encrypt.domains
+        arg: domains
+      - spec: spec.custom.leaf_certificate
+        arg: leaf_certificate
+      - spec: spec.custom.private_key
+        arg: private_key
+      - spec: spec.custom.certificate_chain
+        arg: certificate_chain

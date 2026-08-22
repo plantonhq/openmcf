@@ -1,0 +1,37 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: they render Standard
+# online storage (bills only actual GB) and the OnDemand throughput default
+# (bills only actual requests), so an empty group commits nothing -- the
+# two shapes that WOULD commit spend on existence (Provisioned capacity
+# units, InMemory storage's 5 GiB hourly minimum) are absent from both
+# manifests. Meters that start with traffic are stated in exclusions,
+# never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awssagemakerfeaturegroup
+spec:
+  presets:
+    - preset: 01-realtime-serving-features
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - online-store writes bill write request units per KB of record and reads bill read request units per 4 KB returned -- pure traffic meters, zero when idle; the AWS Free Tier's 10 million units of each per month covers only the account's first 2 months, a trial, not a floor
+        - standard online-store storage bills per GB-month for records actually written; the 30-day TTL hard-deletes each record after its event time, capping the meter at roughly one month of write volume
+        - SSE-KMS request charges would apply only if a customer key were configured -- this preset uses the AWS-owned default at no charge
+      notes: Zero committed cost -- Standard storage and on-demand throughput mean the group bills nothing at rest; every meter starts with the serving workload's own reads and writes, which the manifest cannot see.
+    - preset: 02-training-and-serving-features
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - online-store writes and reads bill request units exactly as in the 01 preset -- traffic-driven, zero when idle, trial free tier for the first 2 months only
+        - standard online-store storage bills per GB-month with the 30-day TTL as its cap
+        - the offline store appends every write under s3://my-feature-store/customers/ as full history with no expiry -- it bills as that bucket's S3 storage and requests (the bucket is named by URI, not managed here), and it grows monotonically with write volume
+        - Glue Data Catalog objects for the generated table and Athena/EMR query compute bill their own services when training jobs read the offline store
+      notes: "Zero committed cost -- the offline store adds no Feature Store meter of its own, so the zero is commitment-absence, never free: the real long-run spend of this preset is the append-only S3 history and the query engines that train against it."

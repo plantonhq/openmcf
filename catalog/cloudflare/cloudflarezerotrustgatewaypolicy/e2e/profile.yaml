@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustgatewaypolicy
+spec:
+  # Gateway policies under live E2E: account-scoped, no prerequisites --
+  # deploy -> API verify -> destroy -> verify-absent on both provisioners.
+  # Delete is a real API DELETE; the schema carries a computed deleted_at the
+  # provider never reads, so the verifier uses the soft-delete-aware probe (a
+  # tombstoned 200 counts as absent either way). Creates in seconds; free
+  # (Zero Trust Free). PREREQUISITE (account setup, not a fixture): the
+  # account's Zero Trust organization (team name) must exist -- a one-time
+  # Phase-2 provisioning step. Live scenarios set enabled + precedence
+  # EXPLICITLY (the provider defaults enabled to FALSE) and avoid the
+  # UPSTREAM-DEFECT fields: the v5 provider shows computed-field drift EVEN ON
+  # FIRST APPLY for rule_settings carrying add_headers or override_ips (its
+  # own migration tests expect a non-empty plan) -- those shapes are
+  # offline-plan-proven via e2e/add-headers-plan.yaml, never live until the
+  # defect clears. Entitlement-gated arms are offline too: isolate needs the
+  # Browser Isolation add-on (e2e/isolate-plan.yaml), egress needs dedicated
+  # egress IPs (e2e/egress-plan.yaml) -- recorded deferrals, not skips.
+  # Wirefilter expressions are API-reformatted; the idempotency re-plan is the
+  # drift canary.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
+  cost_class: cheap_ephemeral

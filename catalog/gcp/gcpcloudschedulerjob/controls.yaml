@@ -52,6 +52,9 @@ spec:
         type: spec_default
         reference: The weak path is an anonymous, unauthenticated HTTP dispatch (the default); configuring OIDC or OAuth token generation retires it by making the target able to demand authenticated callers.
       notes: Anonymous dispatch remains legitimate for endpoints that authenticate by other means (the 01-basic-http-job preset pings a public health endpoint).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

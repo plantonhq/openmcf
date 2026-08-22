@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceankubernetesnodepool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pool adds worker droplets to an existing cluster -- DigitalOcean exposes no encryption control for worker local disks, and persistent data lives on block storage volumes (their own resource class, encrypted at rest by the platform).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service anywhere on the platform -- there is no CMK to configure for pool nodes.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Kubelet-to-control-plane transport is the owning cluster's posture (TLS-only on DOKS), and pod traffic encryption belongs to the workloads and CNI -- the pool resource itself terminates no connections.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Worker network posture (VPC placement, isolated workers) is set on the owning DigitalOceanKubernetesCluster at create time and inherited by every pool -- this spec has no networking surface of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the owning cluster's control-plane firewall and on the firewalls and load balancers in front of node workloads -- the pool spec carries no rule surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF or request filter attaches to a worker pool; edge filtering belongs to the load balancer or CDN tier routing traffic to the workloads.
+    - control_id: rbac
+      status: not_applicable
+      notes: Kubernetes RBAC is the owning cluster's posture -- a pool adds compute capacity and holds no access-control surface. Node isolation for sensitive workloads is expressed through taints and labels here, which are scheduling controls, not authorization.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean has no workload-identity federation for DOKS -- pods on these nodes calling DigitalOcean APIs must carry static tokens; nothing on the pool can change that.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The pool exposes no authentication surface -- cluster access paths (kubeconfig expiry, SSO) are configured on the owning DigitalOceanKubernetesCluster.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DOKS exposes no audit log configuration at any level, and the pool adds none -- management-plane actions land in the team's account activity outside this component.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pool's nodes report into the DigitalOcean control panel's built-in Kubernetes monitoring automatically, exactly like every other DOKS node -- not a spec choice.
+      notes: Deeper observability agents are deployed as workloads inside the cluster, outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Pool nodes are disposable compute -- there is no node state worth backing up, and DigitalOcean offers no managed backup for DOKS anyway. Workload data protection belongs to volume snapshots and in-cluster tools.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup channel on the pool (see backup-recovery), no retention knob exists either.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: node_count
+      evidence:
+        type: spec_default
+        reference: node_count 2 or more spreads the pool's capacity across multiple worker droplets, so losing one node does not take the pool's workloads down; 1 is a single point of failure during node recycles.
+      notes: "Node-level redundancy within the region -- DigitalOcean regions are single facilities, not multi-AZ. Both presets pin at least 2 nodes; the autoscaling preset's min_nodes 2 keeps the floor redundant too."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a deletion-protection flag for node pools -- nothing exists to refuse a delete.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Node OS and Kubernetes version upgrades are driven by the owning cluster's upgrade process (auto_upgrade, surge_upgrade, maintenance window on the cluster kind) -- DigitalOcean recycles pool nodes onto patched images during cluster maintenance, and the pool spec has no patch channel of its own.

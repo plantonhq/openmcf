@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandatabaseconnectionpool
+spec:
+  billing_model: free
+  notes: Connection pools run on the PostgreSQL cluster's own PgBouncer and carry no charge of their own -- the cluster's node-hours (a DigitalOceanDatabaseCluster cost) are the entire bill. Pool size is bounded by the cluster's connection limit, which grows with the cluster's node size, so needing a bigger pool may indirectly mean paying for a bigger cluster.

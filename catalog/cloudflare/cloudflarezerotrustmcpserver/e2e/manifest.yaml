@@ -1,0 +1,20 @@
+# Complete example manifest for CloudflareZeroTrustMcpServer. Registers an
+# upstream MCP tool server with Access AI Controls; portals then publish it
+# to users. server_id, hostname, and auth_type are immutable (changing any
+# replaces the registration).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustMcpServer
+metadata:
+  name: docs-search
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  server_id: docs-search
+  name: Docs Search
+  hostname: https://mcp.example.com
+  auth_type: bearer
+  auth_credentials:
+    value: REPLACE_WITH_UPSTREAM_BEARER_TOKEN
+  description: Company documentation search tools
+  updated_tools:
+    - name: delete_page
+      enabled: false

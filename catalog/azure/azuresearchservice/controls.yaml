@@ -62,6 +62,9 @@ spec:
       evidence:
         type: spec_default
         reference: Defaults to true (static admin and query keys work); setting it false retires the shared-key path entirely -- the service then rejects key-authenticated requests and the module's key outputs come back empty.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

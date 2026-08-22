@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmanagedprometheus
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "AWS's encryption-at-rest page for the service states it plainly: \"By default, Amazon Managed Service for Prometheus automatically provides you with encryption at rest and does this using AWS owned encryption keys\" -- at no charge, with no action required; unencrypted metric storage is not representable."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset keeps AWS-owned keys; referencing a symmetric KMS key encrypts the workspace's metric data under a key you own, audit, and can revoke. AWS requires three KMS grants for the service to use the key -- the key policy side is the referenced AwsKmsKey's contract.
+      notes: "The choice is permanent per workspace -- AWS documents that CMK workspaces cannot convert to AWS-owned keys (or back), which is why changing kms_key_arn replaces the workspace. Two CMK trade-offs AWS names: KMS charges apply, and CMK workspaces cannot use AWS managed collectors for ingestion."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path in and out of a workspace -- the AWS management API, the Prometheus-compatible remote-write and query endpoints -- serves exclusively over HTTPS with SigV4-signed requests; no plaintext listener exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The workspace's endpoints are AWS API endpoints -- every remote-write and query request must be SigV4-signed and IAM-authorized, so anonymous public access is not representable. There is no "public workspace" toggle to misconfigure.
+      notes: Keeping traffic off the public internet entirely (PrivateLink VPC endpoints) is an account-side networking choice outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No security-group or CIDR surface exists on a workspace -- reachability is governed by IAM identity, not network source. Network-path narrowing is the PrivateLink choice noted under no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The workspace's endpoints are AWS-operated service APIs, not an application edge -- there is no WAF attachment point on an AMP workspace.
+    - control_id: rbac
+      status: configurable
+      field_path: resource_policy
+      evidence:
+        type: spec_default
+        reference: Every workspace operation is IAM-authorized with resource-level scoping (workspace, rulegroupsnamespace, and anomalydetector ARNs per the service reference). Unset resource_policy means identity policies alone govern access; a document adds workspace-side grants -- which principals and accounts may write, query, or administer THIS workspace.
+      notes: The resource policy is revision-guarded server-side so concurrent edits fail loudly; the provider's revision_id concurrency token is deliberately not modeled.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The workspace runs no workload and holds no credentials -- writers and readers authenticate with their own SigV4 identities (EKS pods via IRSA, collectors via their execution roles), a posture carried by those components, not this manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: All workspace endpoints accept only SigV4-signed IAM requests -- unlike self-managed Prometheus (which often ships unauthenticated), no weaker authentication path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Management calls on the workspace and its satellites are recorded by AWS CloudTrail as account-level posture; the spec's logging block captures workspace EVENTS (rule evaluation failures, lifecycle), which is operational telemetry, not an audit trail.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset means workspace events go nowhere; presence streams workspace lifecycle events and rule-evaluation failures to the referenced CloudWatch log group (both engines append the ":*" ARN suffix AWS requires). This is the signal that tells you rules silently stopped evaluating.
+      notes: The workspace is itself a monitoring system, and the spec carries its full self-observability suite -- query_logging surfaces expensive queries above a QSP threshold, anomaly_detectors watch selected series with Random Cut Forest models, and alert_manager_definition routes alerting-rule fires to SNS.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: AMP exposes no backup, snapshot, or export facility for stored metric data -- durability is AWS's managed-storage responsibility, and deleting the workspace deletes the data. The manifest re-creates configuration, never history.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). configuration.retention_period_in_days is DATA lifecycle -- how long ingested samples stay queryable (AWS default 150 days) -- not a backup retention control.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The workspace is a regional managed service AWS operates across availability zones -- ingestion, storage, and query have no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists -- deleting the workspace irrecoverably deletes its stored metrics. Two adjacent lifecycle contracts deserve care: the workspace CONFIGURATION persists after destroy (AWS has no delete API for it -- removing the block leaves the last-applied retention and limits in place), and a set alias can never be unset (clearing it replaces the workspace)."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed, Prometheus-compatible service -- AWS operates and upgrades the ingestion, storage, query, and alerting engines; the workspace exposes no runtime, version, or maintenance surface.

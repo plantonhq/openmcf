@@ -1,0 +1,86 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureApplicationInsightsStandardWebTest manifest's spec values into
+# metered quantities and price choices. A standard web test bills per
+# scheduled execution, and the schedule is fully determined by the
+# manifest: each geo location runs the test every `frequency` seconds
+# around the clock, so monthly executions are locations x (2,628,000
+# seconds per 730-hour month / frequency). The division is carried as
+# per-frequency arms with precomputed constants -- 8,760 runs per
+# location per month at 300 seconds (the default), 4,380 at 600, 2,920
+# at 900; the spec's validation vocabulary admits no other values. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureapplicationinsightsstandardwebtest.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: standard web test executions
+      applies_when:
+        - field_path: frequency
+          op: equals
+          value: "300"
+      quantity:
+        - count_of: geo_locations
+        - constant: "8760"
+      price_slug: monitor-standard-web-test-execution-eastus
+      basis: every 300 seconds from each location is 2,628,000 / 300 = 8,760 executions per location per month, times the location count
+    - sku_meter: standard web test executions
+      applies_when:
+        - field_path: frequency
+          op: is_unset
+      quantity:
+        - count_of: geo_locations
+        - constant: "8760"
+      price_slug: monitor-standard-web-test-execution-eastus
+      basis: an unset frequency deploys Azure's default 300 seconds -- 8,760 executions per location per month, times the location count
+    - sku_meter: standard web test executions
+      applies_when:
+        - field_path: frequency
+          op: is_set
+        - field_path: frequency
+          op: equals
+          value: "0"
+      quantity:
+        - count_of: geo_locations
+        - constant: "8760"
+      price_slug: monitor-standard-web-test-execution-eastus
+      basis: an explicit zero is the spec's own unspecified marker and deploys Azure's default 300 seconds -- 8,760 executions per location per month, times the location count
+    - sku_meter: standard web test executions
+      applies_when:
+        - field_path: frequency
+          op: equals
+          value: "600"
+      quantity:
+        - count_of: geo_locations
+        - constant: "4380"
+      price_slug: monitor-standard-web-test-execution-eastus
+      basis: every 600 seconds from each location is 2,628,000 / 600 = 4,380 executions per location per month, times the location count
+    - sku_meter: standard web test executions
+      applies_when:
+        - field_path: frequency
+          op: equals
+          value: "900"
+      quantity:
+        - count_of: geo_locations
+        - constant: "2920"
+      price_slug: monitor-standard-web-test-execution-eastus
+      basis: every 900 seconds from each location is 2,628,000 / 900 = 2,920 executions per location per month, times the location count
+  exclusions:
+    - text: test results and their traces are ingested into the bound Application Insights component and bill that component's per-GB Log Analytics ingestion meters
+    - applies_when:
+        - field_path: retry_enabled
+          op: equals
+          value: "true"
+      text: retries of failed runs add executions that follow the endpoint's actual failure behavior -- the estimate prices the healthy-endpoint schedule
+    - text: the alert rule that pages on this test's failures is its own AzureMonitorMetricAlert component with its own monthly fee
+  notes:
+    - text: The schedule never stops on its own -- executions accrue whether anyone reads the results or not; enabled=false keeps the definition and stops the schedule (and the spend).

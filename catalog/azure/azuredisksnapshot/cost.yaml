@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: a snapshot commits real spend from the moment it completes
+# (Microsoft bills managed-disk snapshots per GB-month of the bytes they
+# hold), but the billed QUANTITY is the snapshot's occupied size -- the
+# used bytes of the source disk, or the delta since the previous snapshot
+# for incrementals -- which this manifest cannot see, so a dollar figure
+# here would be a guess wearing a dollar sign.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredisksnapshot
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Storage
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      description: "Every snapshot bills per GB-month of the storage it holds, from creation until deletion, independent of any use. Full snapshots hold the source disk's USED bytes (a 128 GB disk with 10 GB used bills for 10 GB -- Microsoft's own example); incremental snapshots hold only the delta since the previous snapshot of the same disk, on standard storage. The modules create snapshots on standard storage (the provider exposes no SKU choice), where the eastus list rate was 0.05 USD per GB-month for both LRS and ZRS at verification."
+  cost_drivers:
+    - field_path: incremental_enabled
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: "The chain economics lever: true stores only the delta since the previous snapshot of the same disk (the first incremental holds the full used size; savings start at the second) -- the right default for backup chains. False stores the full used size every time, so a nightly full-snapshot regime bills the disk's used bytes once per retained snapshot."
+    - field_path: create_option
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: "Copy holds the source disk's (or source snapshot's) used bytes; Import holds the imported VHD's footprint. Either way the billed quantity is bytes the snapshot HOLDS -- facts of the source, invisible to this manifest."
+    - field_path: disk_size_gb
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: "Sizes the LOGICAL disk the snapshot describes, not the bill -- billing follows occupied bytes, so growing the logical size adds nothing until real data fills it."
+  estimate_exclusions:
+    - "the billed quantity is the snapshot's occupied bytes -- the source disk's used size at creation, or the delta chain for incrementals -- which no field of this manifest carries; that is why no estimate document exists for this component"
+    - "deleting a middle snapshot in an incremental chain does not necessarily free its full billed size -- Azure consolidates the deltas the next snapshot still needs"
+    - "network_access_policy, disk_access_id, and public_network_access_enabled are free posture; a disk-access private endpoint bills on its own resource"
+    - "restoring or copying the snapshot moves spend elsewhere -- a disk created from it bills as a managed disk, a cross-region copy bills egress and a second snapshot's storage in the target region"
+  notes: "The honest classification is committed-on-existence, not usage-based: a snapshot never waits for traffic to bill -- it holds bytes, and Microsoft meters the held bytes per GB-month from the moment it completes. The rate side is knowable (standard-storage snapshots, 0.05 USD per GB-month in eastus at verification, per Microsoft's managed-disks pricing and the Retail Prices API); the quantity side is a runtime fact of the source disk. Deleting the snapshot is the cost kill switch, with the incremental-chain consolidation caveat above. Snapshots also quietly accumulate: a scheduled pipeline that creates without pruning grows the bill monotonically -- retention discipline is the real lever."

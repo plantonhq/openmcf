@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: auth0action
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Action code and configuration live inside Auth0's managed cloud, and the values in secrets are encrypted at rest by the platform and never returned by the API -- the spec contract states this on the secrets field itself, sourced from auth0.com/docs/customize/actions/write-your-first-action#add-a-secret. No customer toggle exists; there is nothing to switch on or off."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The spec exposes no key seam -- no field selects an encryption key for action code or secrets. Key management for data held inside the Auth0 platform is tenant-level posture between the customer and Auth0, outside this component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every path to this component travels TLS: the modules create, deploy, and bind the action through the Auth0 Management API, which is served exclusively over HTTPS (the endpoint contract at auth0.com/docs/api/management/v2/actions/post-action, retrieved 2026-08-22, addresses only https://{tenant-domain}/api/v2/...), and the action itself executes inside Auth0's runtime, terminating no connections of its own."
+      notes: Outbound calls the action's OWN code makes (webhooks, third-party APIs via dependencies) use whatever protocol that code chooses -- transport discipline inside the code body is the author's responsibility, not a spec seam.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An action exposes no network endpoint. It executes inside the Auth0 tenant's authentication pipeline, and the tenant's endpoints are public by design -- Auth0 is a SaaS identity provider whose reachability is a property of the tenant, configured nowhere in this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the action is invoked by Auth0's own pipeline, never addressed directly by callers.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The action receives no HTTP requests directly. Auth0 operates the edge in front of its tenant endpoints as part of the SaaS platform; nothing in this spec attaches or configures a request filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: "The spec carries no access-control surface. WHO may create, deploy, or bind actions is governed by the Auth0 tenant's own controls: Management API scopes on the credential (the deploy credential's least-privilege scope set is documented in iac/permissions.yaml) and dashboard roles for humans -- all tenant-level, outside this component."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "No seam exists for platform-issued identities. Action code reaching external APIs authenticates with the static values carried in secrets (encrypted at rest, injected at runtime as event.secrets.<name>) -- Auth0 offers no federated workload identity for action code. The credential the IaC runner presents is an M2M client secret via the client-credentials flow, documented in iac/permissions.yaml."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The action carries no credential path of its own to weaken or disable. The authentication flows it hooks into (and any legacy grant types available on them) are tenant and client configuration, owned by other Auth0 kinds.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Hook code signs nobody in -- an action runs custom logic at a pipeline stage (token enrichment, registration gating, custom providers) but enforces no credential policy itself. Password strength, brute-force protection, and MFA posture live on the tenant's connections (the Auth0Connection kind models them) and tenant-level attack protection, none of it reachable from this spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface -- there is no per-action logging toggle in the Management API contract the modules drive. Whether and how long management and runtime events are retained is the Auth0 tenant's log posture, configured at the tenant level outside this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No per-action metric surface exists in the spec or the Management API contract the modules drive; exporting tenant events to a monitoring system is tenant-level log-stream configuration, outside this component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The action is declaratively re-creatable from the manifest -- the code, dependencies, and trigger wiring all live in this spec, and each deploy creates an immutable version inside Auth0. Only the secrets values are unrecoverable from Auth0 (never returned by the API); their source of truth is wherever the manifest's inputs are managed. No backup surface exists to configure.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery); the manifest is the recovery path.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An action has no placement to configure -- it executes wherever Auth0's managed runtime runs it. Availability of that runtime is the SaaS platform's posture, with no seam in this spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Auth0 Management API contract the modules drive nor the auth0 Terraform provider's action resource exposes a deletion-protection flag, and the module sets none: a destroy proceeds when issued, removing the action and unbinding its trigger. The manifest re-creates everything except secret values (see backup-recovery)."
+    - control_id: managed-patching
+      status: configurable
+      field_path: runtime
+      evidence:
+        type: spec_default
+        reference: "runtime empty lets Auth0 assign the default Node.js runtime for the trigger version, keeping the action on the platform's managed channel; pinning it makes the version deliberate -- node22 is current and recommended, node18 is maintenance-only per the spec contract (sourced from auth0.com/docs/customize/actions/action-coding-guidelines#supported-node-versions). Everything beneath the runtime -- the execution platform itself -- is patched by Auth0 as SaaS."
+      notes: Pinned npm dependencies are the author's patch channel -- Auth0 installs the declared version, so bumping a vulnerable package means editing dependencies and redeploying.

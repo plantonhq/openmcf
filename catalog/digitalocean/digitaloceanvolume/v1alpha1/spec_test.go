@@ -30,12 +30,13 @@ var _ = ginkgo.Describe("DigitalOceanVolumeSpec validations", func() {
 	// Helper function to create a production-ready volume spec
 	makeValidProductionSpec := func() *DigitalOceanVolumeSpec {
 		return &DigitalOceanVolumeSpec{
-			VolumeName:     "prod-db-data",
-			Description:    "PostgreSQL data volume for production",
-			Region:         digitalocean.DigitalOceanRegion_sfo3,
-			SizeGib:        500,
-			FilesystemType: DigitalOceanVolumeFilesystemType_xfs,
-			Tags:           []string{"env:prod", "service:postgres", "tier:database"},
+			VolumeName:             "prod-db-data",
+			Description:            "PostgreSQL data volume for production",
+			Region:                 digitalocean.DigitalOceanRegion_sfo3,
+			SizeGib:                500,
+			FilesystemType:         DigitalOceanVolumeFilesystemType_xfs,
+			InitialFilesystemLabel: "pgdata",
+			Tags:                   []string{"env:prod", "service:postgres", "tier:database"},
 		}
 	}
 
@@ -193,18 +194,11 @@ var _ = ginkgo.Describe("DigitalOceanVolumeSpec validations", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept description up to 100 characters", func() {
+		ginkgo.It("should accept a long description (the provider imposes no length cap)", func() {
 			spec := makeValidMinimalSpec()
-			spec.Description = "This is a valid description that is exactly one hundred characters long for testing purposes here"
+			spec.Description = "This volume holds the primary PostgreSQL data directory for the production deployment of the billing service, including WAL archives staged before shipping to object storage."
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject description longer than 100 characters", func() {
-			spec := makeValidMinimalSpec()
-			spec.Description = "This is an invalid description that exceeds one hundred characters and should be rejected by validation"
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
 
@@ -224,18 +218,11 @@ var _ = ginkgo.Describe("DigitalOceanVolumeSpec validations", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept maximum size of 16000 GiB", func() {
+		ginkgo.It("should accept 16 TiB (DigitalOcean's documented maximum, enforced by the API)", func() {
 			spec := makeValidMinimalSpec()
-			spec.SizeGib = 16000
+			spec.SizeGib = 16384
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("should reject size exceeding 16000 GiB", func() {
-			spec := makeValidMinimalSpec()
-			spec.SizeGib = 16001
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("should accept common production sizes", func() {
@@ -286,40 +273,66 @@ var _ = ginkgo.Describe("DigitalOceanVolumeSpec validations", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject tags longer than 64 characters", func() {
+		ginkgo.It("should accept a tag of 255 characters (the provider limit)", func() {
 			spec := makeValidMinimalSpec()
-			spec.Tags = []string{"this-is-a-very-long-tag-that-exceeds-the-maximum-allowed-length-of-sixty-four-characters"}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("should accept tag exactly 64 characters", func() {
-			spec := makeValidMinimalSpec()
-			spec.Tags = []string{"a234567890123456789012345678901234567890123456789012345678901234"}
+			tag := make([]byte, 255)
+			for i := range tag {
+				tag[i] = 'a'
+			}
+			spec.Tags = []string{string(tag)}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a tag longer than 255 characters", func() {
+			spec := makeValidMinimalSpec()
+			tag := make([]byte, 256)
+			for i := range tag {
+				tag[i] = 'a'
+			}
+			spec.Tags = []string{string(tag)}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Context("Filesystem type validation", func() {
 
-		ginkgo.It("should accept NONE filesystem type", func() {
+		ginkgo.It("should accept the unformatted filesystem type", func() {
 			spec := makeValidMinimalSpec()
 			spec.FilesystemType = DigitalOceanVolumeFilesystemType_unformatted
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept EXT4 filesystem type", func() {
+		ginkgo.It("should accept the ext4 filesystem type", func() {
 			spec := makeValidMinimalSpec()
 			spec.FilesystemType = DigitalOceanVolumeFilesystemType_ext4
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept XFS filesystem type", func() {
+		ginkgo.It("should accept the xfs filesystem type", func() {
 			spec := makeValidMinimalSpec()
 			spec.FilesystemType = DigitalOceanVolumeFilesystemType_xfs
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Initial filesystem label", func() {
+
+		ginkgo.It("should accept a label alongside a filesystem type", func() {
+			spec := makeValidMinimalSpec()
+			spec.FilesystemType = DigitalOceanVolumeFilesystemType_ext4
+			spec.InitialFilesystemLabel = "data"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an empty label", func() {
+			spec := makeValidMinimalSpec()
+			spec.InitialFilesystemLabel = ""
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})

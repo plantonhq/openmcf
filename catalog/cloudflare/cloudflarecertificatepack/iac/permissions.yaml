@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarecertificatepack
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManagePack
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_certificate_pack resource and the Pulumi module's matching CertificatePack resource -- order/restart/delete the certificate pack via POST/PATCH/DELETE /zones/{zone_id}/ssl/certificate_packs[/{id}] (the Order Certificate Pack endpoint reference's Accepted Permissions section names exactly this group -- https://developers.cloudflare.com/api/resources/ssl/subresources/certificate_packs/methods/create/, retrieved 2026-08-22; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadPack
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resource -- refresh/import the pack via GET /zones/{zone_id}/ssl/certificate_packs/{id} (derived from the module's API surface).

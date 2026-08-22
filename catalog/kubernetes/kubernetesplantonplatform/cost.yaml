@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesplantonplatform
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: storage.size
+      sku_meter: cluster persistent-volume capacity
+      impact: The platform-wide default size for EVERY persistent volume it creates (PostgreSQL, cache, workflow engine, secrets manager, runner state, and the opt-in components) — one value multiplies across all of them, and per-component sizes override it.
+    - field_path: database.postgresql.replicas
+      sku_meter: cluster CPU, memory, and volume capacity
+      impact: Each PostgreSQL instance is a full copy — compute AND a volume of storage_size. 2+ buys automatic failover at roughly double the database footprint.
+    - field_path: components
+      sku_meter: cluster CPU, memory, and volume capacity
+      impact: The opt-in drawer (authorization/OpenFGA, search/Solr with ZooKeeper, graph/Neo4j) — each enabled component adds its own workloads and volumes; search is the heaviest.
+    - field_path: control_plane.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Control-plane copies. The single-replica default fits most installs; replicas add availability, not required capacity.
+    - field_path: runner.enabled
+      sku_meter: cluster CPU, memory, and volume capacity
+      impact: The in-cluster runner (on by default) — a standing worker pod plus its state volume; disabling it removes the platform's ability to deploy infrastructure.
+  estimate_exclusions:
+    - the platform is a whole product stack (a dozen workloads at defaults) — its footprint depends on the version deployed and the operator's per-component sizing, which this catalog reads as defaults, not guarantees
+    - the infrastructure the platform DEPLOYS (through its runner, to your cloud accounts) is billed by your cloud providers and is unbounded by anything in this spec
+    - the price of reserved CPU, memory, and volumes is the target cluster's node and storage economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own — its cost is the share of the cluster the platform's workloads and volumes reserve, realized on the cluster's bill. A defaults-shaped platform wants roughly 4 CPU / 8Gi of schedulable capacity plus ~20Gi of volumes; treat that as the floor, not the estimate."

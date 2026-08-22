@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflaresnippet
+spec:
+  # Snippets under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite (a run-scoped pending zone), resolves zone_id, deploys the
+  # snippet, verifies via the zone's snippets API, destroys (real delete by
+  # name -- an honest 404 after). Watch items for the proving session:
+  # (a) THE CONTENT-DRIFT CLASS -- the provider rebuilds file content from
+  # the API's multipart response on refresh and takes the entry module from
+  # a response header, so any server-side normalization of the source reads
+  # back as drift against our idempotency gate; the scenario's content is a
+  # deliberately byte-stable single line, and the provider's own v4
+  # migration tests quietly tolerate non-empty plans here (their plan check
+  # is a debug printer) -- if the re-plan drifts, it is this class, not the
+  # module. (b) Create is an UPSERT: a name collision silently adopts an
+  # existing snippet -- the run-scoped name prevents it. Snippets are
+  # free-plan objects (count limits per plan), created in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

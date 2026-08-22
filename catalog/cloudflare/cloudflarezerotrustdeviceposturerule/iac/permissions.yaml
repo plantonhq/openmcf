@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustdeviceposturerule
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageRule
+        name: "Access: Device Posture Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the posture rule via POST/PUT/DELETE /accounts/{account_id}/devices/posture[/{rule_id}] (derived from the module's API surface). Covers the Terraform module's single cloudflare_zero_trust_device_posture_rule resource and the Pulumi module's matching ZeroTrustDevicePostureRule resource; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadRule
+        name: "Access: Device Posture Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the rule via GET /accounts/{account_id}/devices/posture/{rule_id} (derived from the module's API surface).

@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanproject
+spec:
+  billing_model: free
+  notes: Projects are DigitalOcean's free organizational containers -- creating, populating, or deleting one never changes what anything costs. The bill belongs entirely to the member resources, each priced by its own kind.

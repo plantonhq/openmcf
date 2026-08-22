@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesqdrant
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Every node in the Raft cluster carries the declared resources and its own volumes -- three nodes reserve three times the capacity. Collections replicate per their own replication_factor (a data operation), so adding pods makes room for replicas without copying data.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per pod -- memory is the capacity bound, since Qdrant keeps hot segments and HNSW indexes in RAM. Limits set the burst ceiling, not the reservation.
+    - field_path: storage.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every pod provisions its own data volume of this size (vectors, payloads, write-ahead log) through the cluster's storage class -- 10Gi when unset (the chart default).
+    - field_path: snapshots.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: When declared, every pod adds a separate snapshots volume -- upstream recommends sizing it like the data volume so a large snapshot cannot fill the data volume and crash the node.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x (requests + volumes). Collection-level properties (shards, replication factor, quantization) are data operations declared per collection through the Qdrant API, outside deployment configuration."

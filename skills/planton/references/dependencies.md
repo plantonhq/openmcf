@@ -4,6 +4,12 @@ Charts rarely stand alone — a VPC feeds subnets, subnets feed a cluster, a
 cluster feeds add-ons. Planton resolves these links at deploy time using a
 dependency graph built from your references.
 
+This file covers values that RESOURCES produce (`valueFrom`). Values that
+OPERATORS manage — credentials and org/env config — are the other reference
+family, `$var`/`$secret` (`config-references.md`). One test tells them
+apart: if deploying something creates the value, wire `valueFrom`; if a
+person or team owns the value, reference it from the config manager.
+
 References are not fenced by the chart: at deploy time a reference resolves
 against everything deployed in the organization and environment, so a chart
 can wire to resources another chart created. The "References cross chart

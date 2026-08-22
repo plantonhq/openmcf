@@ -22,6 +22,14 @@ func literalMatcher(addr string) *CloudflareEmailRoutingRuleMatcher {
 	}
 }
 
+func forwardAction(addrs ...string) *CloudflareEmailRoutingRuleAction {
+	action := &CloudflareEmailRoutingRuleAction{Type: CloudflareEmailRoutingRuleActionType_forward}
+	for _, a := range addrs {
+		action.ForwardTo = append(action.ForwardTo, value(a))
+	}
+	return action
+}
+
 func validRule() *CloudflareEmailRoutingRule {
 	return &CloudflareEmailRoutingRule{
 		ApiVersion: "cloudflare.planton.dev/v1alpha1",
@@ -30,10 +38,7 @@ func validRule() *CloudflareEmailRoutingRule {
 		Spec: &CloudflareEmailRoutingRuleSpec{
 			ZoneId:   value("023e105f4ecef8ad9ca31a8372d0c353"),
 			Matchers: []*CloudflareEmailRoutingRuleMatcher{literalMatcher("support@example.com")},
-			Action: &CloudflareEmailRoutingRuleAction{
-				Type:      CloudflareEmailRoutingRuleActionType_forward,
-				ForwardTo: []*foreignkeyv1.StringValueOrRef{value("ops@example.com")},
-			},
+			Actions:  []*CloudflareEmailRoutingRuleAction{forwardAction("ops@example.com")},
 		},
 	}
 }
@@ -52,16 +57,28 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingRuleSpec Custom Validation Tests"
 		ginkgo.It("accepts an all matcher with a worker action", func() {
 			in := validRule()
 			in.Spec.Matchers = []*CloudflareEmailRoutingRuleMatcher{{Type: CloudflareEmailRoutingRuleMatcherType_all}}
-			in.Spec.Action = &CloudflareEmailRoutingRuleAction{
+			in.Spec.Actions = []*CloudflareEmailRoutingRuleAction{{
 				Type:   CloudflareEmailRoutingRuleActionType_worker,
 				Worker: value("email-router"),
-			}
+			}}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("accepts a drop action", func() {
 			in := validRule()
-			in.Spec.Action = &CloudflareEmailRoutingRuleAction{Type: CloudflareEmailRoutingRuleActionType_drop}
+			in.Spec.Actions = []*CloudflareEmailRoutingRuleAction{{Type: CloudflareEmailRoutingRuleActionType_drop}}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts multiple actions on one rule (forward AND worker)", func() {
+			in := validRule()
+			in.Spec.Actions = []*CloudflareEmailRoutingRuleAction{
+				forwardAction("ops@example.com", "audit@example.com"),
+				{
+					Type:   CloudflareEmailRoutingRuleActionType_worker,
+					Worker: value("email-router"),
+				},
+			}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 	})
@@ -79,15 +96,15 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingRuleSpec Custom Validation Tests"
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects a missing action", func() {
+		ginkgo.It("rejects an empty actions list", func() {
 			in := validRule()
-			in.Spec.Action = nil
+			in.Spec.Actions = nil
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a forward action without forward_to", func() {
 			in := validRule()
-			in.Spec.Action = &CloudflareEmailRoutingRuleAction{Type: CloudflareEmailRoutingRuleActionType_forward}
+			in.Spec.Actions = []*CloudflareEmailRoutingRuleAction{{Type: CloudflareEmailRoutingRuleActionType_forward}}
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 

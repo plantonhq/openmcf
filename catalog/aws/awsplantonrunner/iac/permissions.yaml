@@ -10,7 +10,7 @@ metadata:
 spec:
   aws:
     statements:
-      - sid: ManageCredentialsSecret
+      - sid: ManageTokenSecret
         actions:
           - secretsmanager:CreateSecret
           - secretsmanager:DeleteSecret
@@ -24,7 +24,7 @@ spec:
         resources:
           - arn:aws:secretsmanager:*:*:secret:*
         provenance: derived
-        notes: Covers aws_secretsmanager_secret plus its aws_secretsmanager_secret_version -- creation with a zero-day recovery window, the version write (PutSecretValue) and read-back (GetSecretValue) during refresh, description/metadata updates, and tagging. The secret name is "<metadata.name>-credentials" with an AWS-appended random suffix, so the ARN cannot be narrowed further in a static grant.
+        notes: Covers aws_secretsmanager_secret plus its aws_secretsmanager_secret_version -- creation with a zero-day recovery window, the version write (PutSecretValue) and read-back (GetSecretValue) during refresh, description/metadata updates, and tagging. The secret name is "<metadata.name>-token" with an AWS-appended random suffix, so the ARN cannot be narrowed further in a static grant.
       - sid: ManageIamRoles
         actions:
           - iam:CreateRole
@@ -43,7 +43,7 @@ spec:
         resources:
           - arn:aws:iam::*:role/*
         provenance: derived
-        notes: Covers the execution role (always created, with the AmazonECSTaskExecutionRolePolicy attachment and an inline secret-read policy scoped to the one credentials secret) and the permissionless runtime role created only when spec.task_role is unset. ListInstanceProfilesForRole rides the provider's role-deletion path.
+        notes: Covers the execution role (always created, with the AmazonECSTaskExecutionRolePolicy attachment and an inline secret-read policy scoped to the one token secret) and the permissionless runtime role created only when spec.task_role is unset. ListInstanceProfilesForRole rides the provider's role-deletion path.
       - sid: PassRolesToEcsTasks
         actions:
           - iam:PassRole

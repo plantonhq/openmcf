@@ -35,7 +35,12 @@ type CloudflareEmailRoutingAddressSpec struct {
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	// The destination email address (e.g. "ops@example.com"). A verification email
 	// is sent here on creation. Immutable — changing it replaces the address.
-	Email         string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	Email string `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	// Explicit verification-state override. Leave empty to let the normal
+	// verification flow (the emailed link) manage the state. Cloudflare permits
+	// non-admin callers only to set a verified address back to "unverified";
+	// setting "verified" requires admin privileges on the account.
+	Status        string `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -84,16 +89,25 @@ func (x *CloudflareEmailRoutingAddressSpec) GetEmail() string {
 	return ""
 }
 
+func (x *CloudflareEmailRoutingAddressSpec) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflareemailroutingaddress_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflareemailroutingaddress_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/cloudflare/cloudflareemailroutingaddress/v1alpha1/spec.proto\x12=dev.planton.cloudflare.cloudflareemailroutingaddress.v1alpha1\x1a\x1bbuf/validate/validate.proto\"\x84\x01\n" +
+	"Dcatalog/cloudflare/cloudflareemailroutingaddress/v1alpha1/spec.proto\x12=dev.planton.cloudflare.cloudflareemailroutingaddress.v1alpha1\x1a\x1bbuf/validate/validate.proto\"\xa1\x02\n" +
 	"!CloudflareEmailRoutingAddressSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12 \n" +
 	"\x05email\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02`\x01R\x05emailB\xe5\x03\n" +
+	"\xbaH\a\xc8\x01\x01r\x02`\x01R\x05email\x12\x9a\x01\n" +
+	"\x06status\x18\x03 \x01(\tB\x81\x01\xbaH~\xba\x01{\n" +
+	"\x14address.status_valid\x121status must be empty, 'unverified', or 'verified'\x1a0this == '' || this in ['unverified', 'verified']R\x06statusB\xe5\x03\n" +
 	"Acom.dev.planton.cloudflare.cloudflareemailroutingaddress.v1alpha1B\tSpecProtoP\x01Z|github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingaddress/v1alpha1;cloudflareemailroutingaddressv1alpha1\xa2\x02\x04DPCC\xaa\x02=Dev.Planton.Cloudflare.Cloudflareemailroutingaddress.V1alpha1\xca\x02=Dev\\Planton\\Cloudflare\\Cloudflareemailroutingaddress\\V1alpha1\xe2\x02IDev\\Planton\\Cloudflare\\Cloudflareemailroutingaddress\\V1alpha1\\GPBMetadata\xea\x02ADev::Planton::Cloudflare::Cloudflareemailroutingaddress::V1alpha1b\x06proto3"
 
 var (

@@ -1,0 +1,210 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Every nested tree here (CORS, SaaS SAML/OIDC, SCIM, OAuth dynamic client
+# registration, private-app destinations, infrastructure target criteria)
+# is one nested provider attribute realized by a typed spec message under
+# the provider's own names; fan-in mappings record every spec leaf each
+# argument realizes.
+#
+# policies: the provider's list accepts either full inline policy
+# definitions or references to existing policies with a precedence. The
+# spec models the reference form -- a {policy ref, precedence} pair
+# pointing at the CloudflareZeroTrustAccessPolicy kind -- which is
+# Cloudflare's own recommendation for reusable policies; inline
+# definitions are deliberately not modeled (composition covers them).
+# Known asymmetry recorded: SSH connection rules exist ONLY on inline app
+# policies in the provider (the standalone policy resource carries RDP
+# rules only), so that sub-surface is unreachable by this design until
+# Cloudflare serves it on the standalone resource.
+#
+# target_criteria: the provider's target_attributes map-of-lists is
+# restructured as a repeated {name, values} message (proto3 maps cannot
+# hold repeated values) -- same shape, fully representable.
+
+resources:
+  cloudflare_zero_trust_access_application:
+    mappings:
+      - spec: spec.cors_headers.allow_all_headers
+        arg: cors_headers
+      - spec: spec.cors_headers.allow_all_methods
+        arg: cors_headers
+      - spec: spec.cors_headers.allow_all_origins
+        arg: cors_headers
+      - spec: spec.cors_headers.allow_credentials
+        arg: cors_headers
+      - spec: spec.cors_headers.allowed_headers
+        arg: cors_headers
+      - spec: spec.cors_headers.allowed_methods
+        arg: cors_headers
+      - spec: spec.cors_headers.allowed_origins
+        arg: cors_headers
+      - spec: spec.cors_headers.max_age
+        arg: cors_headers
+      - spec: spec.destinations.cidr
+        arg: destinations
+      - spec: spec.destinations.hostname
+        arg: destinations
+      - spec: spec.destinations.l4_protocol
+        arg: destinations
+      - spec: spec.destinations.mcp_server_id
+        arg: destinations
+      - spec: spec.destinations.port_range
+        arg: destinations
+      - spec: spec.destinations.type
+        arg: destinations
+      - spec: spec.destinations.uri
+        arg: destinations
+      - spec: spec.destinations.vnet_id
+        arg: destinations
+      - spec: spec.footer_links.name
+        arg: footer_links
+      - spec: spec.footer_links.url
+        arg: footer_links
+      - spec: spec.landing_page_design.button_color
+        arg: landing_page_design
+      - spec: spec.landing_page_design.button_text_color
+        arg: landing_page_design
+      - spec: spec.landing_page_design.image_url
+        arg: landing_page_design
+      - spec: spec.landing_page_design.message
+        arg: landing_page_design
+      - spec: spec.landing_page_design.title
+        arg: landing_page_design
+      - spec: spec.mfa_config.allowed_authenticators
+        arg: mfa_config
+      - spec: spec.mfa_config.mfa_disabled
+        arg: mfa_config
+      - spec: spec.mfa_config.session_duration
+        arg: mfa_config
+      - spec: spec.oauth_configuration.dynamic_client_registration.allow_any_on_localhost
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.dynamic_client_registration.allow_any_on_loopback
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.dynamic_client_registration.allowed_uris
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.dynamic_client_registration.enabled
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.enabled
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.grant.access_token_lifetime
+        arg: oauth_configuration
+      - spec: spec.oauth_configuration.grant.session_duration
+        arg: oauth_configuration
+      - spec: spec.policies.policy
+        arg: policies
+      - spec: spec.policies.precedence
+        arg: policies
+      - spec: spec.saas_app.access_token_lifetime
+        arg: saas_app
+      - spec: spec.saas_app.allow_pkce_without_client_secret
+        arg: saas_app
+      - spec: spec.saas_app.app_launcher_url
+        arg: saas_app
+      - spec: spec.saas_app.auth_type
+        arg: saas_app
+      - spec: spec.saas_app.consumer_service_url
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.friendly_name
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.name
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.name_format
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.required
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.source.name
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.source.name_by_idp.idp_id
+        arg: saas_app
+      - spec: spec.saas_app.custom_attributes.source.name_by_idp.source_name
+        arg: saas_app
+      - spec: spec.saas_app.custom_claims.name
+        arg: saas_app
+      - spec: spec.saas_app.custom_claims.required
+        arg: saas_app
+      - spec: spec.saas_app.custom_claims.scope
+        arg: saas_app
+      - spec: spec.saas_app.custom_claims.source.name
+        arg: saas_app
+      - spec: spec.saas_app.custom_claims.source.name_by_idp
+        arg: saas_app
+      - spec: spec.saas_app.default_relay_state
+        arg: saas_app
+      - spec: spec.saas_app.grant_types
+        arg: saas_app
+      - spec: spec.saas_app.group_filter_regex
+        arg: saas_app
+      - spec: spec.saas_app.hybrid_and_implicit_options.return_access_token_from_authorization_endpoint
+        arg: saas_app
+      - spec: spec.saas_app.hybrid_and_implicit_options.return_id_token_from_authorization_endpoint
+        arg: saas_app
+      - spec: spec.saas_app.name_id_format
+        arg: saas_app
+      - spec: spec.saas_app.name_id_transform_jsonata
+        arg: saas_app
+      - spec: spec.saas_app.redirect_uris
+        arg: saas_app
+      - spec: spec.saas_app.refresh_token_options.lifetime
+        arg: saas_app
+      - spec: spec.saas_app.saml_attribute_transform_jsonata
+        arg: saas_app
+      - spec: spec.saas_app.scopes
+        arg: saas_app
+      - spec: spec.saas_app.sp_entity_id
+        arg: saas_app
+      - spec: spec.scim_config.authentication.authorization_url
+        arg: scim_config
+      - spec: spec.scim_config.authentication.client_id
+        arg: scim_config
+      - spec: spec.scim_config.authentication.client_secret
+        arg: scim_config
+      - spec: spec.scim_config.authentication.password
+        arg: scim_config
+      - spec: spec.scim_config.authentication.scheme
+        arg: scim_config
+      - spec: spec.scim_config.authentication.scopes
+        arg: scim_config
+      - spec: spec.scim_config.authentication.token
+        arg: scim_config
+      - spec: spec.scim_config.authentication.token_url
+        arg: scim_config
+      - spec: spec.scim_config.authentication.user
+        arg: scim_config
+      - spec: spec.scim_config.deactivate_on_delete
+        arg: scim_config
+      - spec: spec.scim_config.enabled
+        arg: scim_config
+      - spec: spec.scim_config.idp_uid
+        arg: scim_config
+      - spec: spec.scim_config.mappings.enabled
+        arg: scim_config
+      - spec: spec.scim_config.mappings.filter
+        arg: scim_config
+      - spec: spec.scim_config.mappings.operations.create
+        arg: scim_config
+      - spec: spec.scim_config.mappings.operations.delete
+        arg: scim_config
+      - spec: spec.scim_config.mappings.operations.update
+        arg: scim_config
+      - spec: spec.scim_config.mappings.schema
+        arg: scim_config
+      - spec: spec.scim_config.mappings.strictness
+        arg: scim_config
+      - spec: spec.scim_config.mappings.transform_jsonata
+        arg: scim_config
+      - spec: spec.scim_config.remote_uri
+        arg: scim_config
+      - spec: spec.target_criteria.port
+        arg: target_criteria
+      - spec: spec.target_criteria.protocol
+        arg: target_criteria
+      - spec: spec.target_criteria.target_attributes.name
+        arg: target_criteria
+      - spec: spec.target_criteria.target_attributes.values
+        arg: target_criteria

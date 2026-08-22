@@ -302,6 +302,8 @@ spec:
       list_unit_price: "0.26315"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDocDB/20260710172257/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonDocDB
         region_code: us-west-2
@@ -328,6 +330,8 @@ spec:
       list_unit_price: "0.3287"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonNeptune
         region_code: us-west-2
@@ -354,6 +358,9 @@ spec:
       list_unit_price: "0.26"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        engine: aurora-mysql
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonRDS
         region_code: us-west-2
@@ -367,6 +374,9 @@ spec:
       list_unit_price: "0.26"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        engine: aurora-postgresql
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonRDS
         region_code: us-west-2
@@ -1627,3 +1637,178 @@ spec:
         region_code: us-east-1
         usage_type: USE1-VpcEndpoint-Resource-Hours
         operation: VpcResourceConsumer
+    - name: ssm-advanced-parameter-hours-us-east-1
+      service_name: AWS Systems Manager
+      pricing_unit: parameter-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00007"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSystemsManager/20260716124634/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSSystemsManager
+        region_code: us-east-1
+        usage_type: USE1-PS-Advanced-Param-Tier1
+    - name: cloudwatch-dashboard-months-global
+      service_name: AmazonCloudWatch
+      pricing_unit: dashboard-months
+      region: global
+      currency: USD
+      list_unit_price: "3"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: global
+        usage_type: DashboardsUsageHour-Basic
+        operation: DashboardHour
+    - name: ebs-gp3-iops-us-east-1
+      service_name: Amazon Elastic Block Store
+      pricing_unit: IOPS-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://aws.amazon.com/ebs/pricing/
+      retrieved_on: "2026-08-19"
+    - name: ebs-gp3-throughput-us-east-1
+      service_name: Amazon Elastic Block Store
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://aws.amazon.com/ebs/pricing/
+      retrieved_on: "2026-08-19"
+    - name: cloudwatch-canary-runs-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: runs
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0012"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: USE1-CW:Canary-runs
+    - name: amp-collector-hours-us-east-1
+      service_name: AmazonPrometheus
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonPrometheus/20260804172725/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonPrometheus
+        region_code: us-east-1
+        usage_type: USE1-AMP:CollectorHours
+    - name: budgets-action-enabled-budget-days-global
+      service_name: AWSBudgets
+      pricing_unit: Budget-days
+      region: global
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSBudgets/20221110130741/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSBudgets
+        region_code: global
+        usage_type: ActionEnabledBudgetsUsage
+        description_contains: $0.10 per Action-enabled Budget-day
+    - name: route53-resolver-eni-hours-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-ResolverNetworkInterface
+    - name: route53-firewall-domain-months-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: domain-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-DNS-FirewallDomainName
+    - name: route53-firewall-advanced-association-hours-us-east-1
+      service_name: AmazonRoute53
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.16"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: us-east-1
+        usage_type: USE1-AdvancedDNS-ThreatProtectionsVPCAssociationHours
+    - name: cloudmap-resource-months-us-east-1
+      service_name: AWSCloudMap
+      pricing_unit: resource-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCloudMap/20250828173015/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCloudMap
+        region_code: us-east-1
+        usage_type: USE1-Cloud-Map-Resources
+    - name: privateca-general-purpose-ca-months-us-east-1
+      service_name: AWSCertificateManager
+      pricing_unit: ca-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "400"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCertificateManager
+        region_code: us-east-1
+        usage_type: USE1-PaidPrivateCA
+    - name: privateca-short-lived-ca-months-us-east-1
+      service_name: AWSCertificateManager
+      pricing_unit: ca-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "50"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AWSCertificateManager
+        region_code: us-east-1
+        usage_type: USE1-ShortLivedCertificatePrivateCA
+    - name: bedrock-custom-model-storage-months-us-east-1
+      service_name: AmazonBedrock
+      pricing_unit: model-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1.95"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrock/20260813210707/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonBedrock
+        region_code: us-east-1
+        usage_type: USE1-TitanTextG1-Lite-Customization-Storage
+    - name: sagemaker-studio-volume-gb-months-us-east-1
+      service_name: AmazonSageMaker
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.112"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-east-1/index.json
+      retrieved_on: "2026-08-19"
+      aws_selector:
+        offer_code: AmazonSageMaker
+        region_code: us-east-1
+        usage_type: USE1-Studio:VolumeUsage.gp3
+        operation: CreateVolume-Gp3

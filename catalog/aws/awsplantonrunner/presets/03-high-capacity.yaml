@@ -13,7 +13,12 @@ spec:
         kind: AwsSubnet
         name: <private-subnet-b-resource-name>
         fieldPath: status.outputs.subnet_id
-  credentials: $secret/<runner-credentials-secret-slug>
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token
   # 1 vCPU with 4 GiB: IaC operations are memory-hungry (provider
   # plugins, plans held in memory) -- size memory before cpu.
   cpu: 1024

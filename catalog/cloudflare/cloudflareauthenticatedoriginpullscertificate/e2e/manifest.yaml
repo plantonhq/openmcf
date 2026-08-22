@@ -1,0 +1,23 @@
+# A complete, protovalidate-valid CloudflareAuthenticatedOriginPullsCertificate
+# example: a zone-scoped upload replacing Cloudflare's shared client
+# certificate for the whole zone. The PEM values are placeholders --
+# self-signed pairs are the normal case (the origin validates them, not the
+# public). Rotate certificate and key TOGETHER: the zone-scoped API silently
+# ignores a key-only change.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAuthenticatedOriginPullsCertificate
+metadata:
+  name: zone-client-certificate
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  scope: zone
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE_WITH_CLIENT_CERTIFICATE_PEM
+    -----END CERTIFICATE-----
+  private_key:
+    value: |
+      -----BEGIN PRIVATE KEY-----
+      REPLACE_WITH_PRIVATE_KEY_PEM
+      -----END PRIVATE KEY-----

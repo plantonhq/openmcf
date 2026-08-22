@@ -1,0 +1,51 @@
+# Full-surface DigitalOceanFirewall: proves LIVE droplet targeting through
+# the droplet_ids reference (the Droplet fixture rides the e2e-prerequisites
+# annotation -- droplet targeting is OPTIONAL on the kind, so it is never a
+# registry edge) plus tag targeting (DigitalOcean creates tags implicitly
+# when first referenced) and rule-level tag sources. Rule-level droplet /
+# kubernetes / load balancer sources are deferred arms -- see profile.yaml.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFirewall
+metadata:
+  name: planton-oss-e2e-digitaloceanfirewall-full
+  id: planton-oss-e2e-digitaloceanfirewall-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanfirewall
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanDroplet"
+  tags:
+    - planton-e2e
+spec:
+  firewallName: pltn-e2e-dofw-full-${E2E_RUN_ID}
+  dropletIds:
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: planton-oss-e2e-digitaloceandroplet-min
+        fieldPath: status.outputs.droplet_id
+  tags:
+    - pltn-e2e-dofw-${E2E_RUN_ID}
+  inboundRules:
+    - protocol: tcp
+      portRange: "443"
+      sourceAddresses:
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: tcp
+      portRange: "22"
+      sourceAddresses:
+        - 192.0.2.0/24
+      sourceTags:
+        - pltn-e2e-dofw-${E2E_RUN_ID}
+  outboundRules:
+    - protocol: tcp
+      portRange: all
+      destinationAddresses:
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: icmp
+      destinationAddresses:
+        - 0.0.0.0/0

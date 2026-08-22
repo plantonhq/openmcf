@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabaseuser.v1alpha1;
+
+// DigitalOceanDatabaseUserStackOutputs captures the key outputs after
+// provisioning a DigitalOcean database user. The cluster id and user name
+// are echoed here so consumers (and verification tooling) can address the
+// user directly -- the DigitalOcean API has no standalone user id; the
+// (cluster, name) pair IS the identity.
+message DigitalOceanDatabaseUserStackOutputs {
+  // UUID of the database cluster the user belongs to.
+  string cluster_id = 1;
+
+  // Name of the database user (its API identity within the cluster).
+  string user_name = 2;
+
+  // Role DigitalOcean assigned to the user (normally "normal"; the
+  // cluster's built-in default user is "primary").
+  string role = 3;
+
+  // Server-generated password for the user. Secret. MongoDB clusters
+  // return it only at creation time.
+  string password = 4;
+
+  // Kafka clusters only: PEM access certificate for mutual-TLS
+  // authentication. Secret. Empty on other engines.
+  string access_cert = 5;
+
+  // Kafka clusters only: PEM access key paired with access_cert. Secret.
+  // Empty on other engines.
+  string access_key = 6;
+}

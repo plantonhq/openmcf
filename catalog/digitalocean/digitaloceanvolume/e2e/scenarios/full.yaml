@@ -1,0 +1,28 @@
+# Full volume: ext4 formatting with a filesystem label, a description, and
+# user tags (which both engines merge with the standard Planton labels --
+# the cross-engine tag-union arm). snapshot_id is the recorded deferred arm
+# (needs a pre-existing snapshot fixture).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: planton-oss-e2e-digitaloceanvolume-full
+  id: planton-oss-e2e-digitaloceanvolume-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanvolume
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  volumeName: pltn-e2e-vol-full
+  description: Planton E2E full-surface volume
+  region: nyc3
+  sizeGib: 10
+  filesystemType: ext4
+  initialFilesystemLabel: e2edata
+  tags:
+    - planton-e2e
+    - env:e2e

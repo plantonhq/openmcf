@@ -507,6 +507,9 @@ Fields on other kinds that can point at this resource:
 | KubernetesPerconaMongoOperator | `spec.namespace` | `spec.name` |
 | KubernetesPerconaMysqlOperator | `spec.namespace` | `spec.name` |
 | KubernetesPersistentVolumeClaim | `spec.namespace` | `spec.name` |
+| KubernetesPlantonOperator | `spec.namespace` | `spec.name` |
+| KubernetesPlantonPlatform | `spec.namespace` | `spec.name` |
+| KubernetesPlantonRunner | `spec.namespace` | `spec.name` |
 | KubernetesPodDisruptionBudget | `spec.namespace` | `spec.name` |
 | KubernetesPostgres | `spec.namespace` | `spec.name` |
 | KubernetesQdrant | `spec.namespace` | `spec.name` |

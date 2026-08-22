@@ -1,0 +1,15 @@
+# Reference manifest for DigitalOceanCdn -- protovalidate-valid, embedded
+# as the reference page's Example block, and the document the offline tofu
+# plan renders. One document: origin plus an explicit cache TTL (the
+# certificate/custom-domain pair needs a delegated domain, shown in the
+# presets instead).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCdn
+metadata:
+  name: app-assets-cdn
+spec:
+  # Literal Space FQDN; use valueFrom to reference a DigitalOceanBucket
+  # resource instead.
+  origin:
+    value: app-assets.nyc3.digitaloceanspaces.com
+  ttl: 3600

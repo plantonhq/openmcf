@@ -1,0 +1,27 @@
+# CloudflareZeroTrustTunnel install profile used as a prerequisite by
+# CloudflareZeroTrustTunnelRoute (its registry prerequisite): a route steers a
+# CIDR through an existing tunnel, so the tunnel must exist before the route's
+# lane deploys. The fixture is a bare remotely-managed tunnel (no ingress, so
+# no config resource is created) -- the cheapest object that satisfies the
+# route's tunnel_id reference. The name is run-scoped so concurrent lanes
+# cannot collide in the Zero Trust dashboard; no tunnel_secret is set
+# (Cloudflare generates one). metadata.name stays stable -- it is the key
+# consumers' valueFrom references resolve against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnel
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnel-prereq
+  id: planton-oss-e2e-cloudflarezerotrusttunnel-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnel
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-tun-prereq
+  configSrc: cloudflare

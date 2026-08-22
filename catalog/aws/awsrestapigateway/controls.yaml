@@ -59,6 +59,9 @@ spec:
         type: spec_default
         reference: Omitted means the AWS default TLS policy for the endpoint type; the legacy TLS_1_0 policy remains selectable for old clients, and the SecurityPolicy_TLS13_* family refuses pre-1.2 TLS entirely. Choosing a modern policy is how the weak-protocol path is closed.
       notes: api_key_required marks routes that demand an API key -- keys identify usage-plan customers and are not an authentication mechanism; authorization is the field that carries real caller identity.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: stage.access_log

@@ -1614,6 +1614,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesPlantonOperator: the installation handles — the
+			// namespace and the fixed release name (one operator per
+			// cluster, self-enforced at startup).
+			name: "KubernetesPlantonOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "planton-operator",
+				"release_name": "planton-operator",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesPlantonPlatform: the first-visit handles — the
+			// platform's namespace and name (the prefix of every
+			// operator-created object), the gateway Service, the
+			// setup-code Secret, and the two exact commands a person (or
+			// the desktop's connect-existing flow) runs.
+			name: "KubernetesPlantonPlatform",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonPlatform,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "planton",
+				"platform_name":        "planton",
+				"gateway_service":      "planton-gateway",
+				"setup_code_secret":    "planton-identity-setup-code",
+				"port_forward_command": "kubectl port-forward -n planton svc/planton-gateway 8080:80",
+				"setup_code_command":   "kubectl -n planton get secret planton-identity-setup-code -o jsonpath='{.data.setup-code}' | base64 -d",
+			},
+			mustPopulate: []string{
+				"namespace", "platform_name", "gateway_service",
+				"setup_code_secret", "port_forward_command", "setup_code_command",
+			},
+		},
+		{
 			// KubernetesGhaRunnerScaleSetController: the pinned-fullname
 			// naming contract — the controller ServiceAccount equals the
 			// release name — the handle fenced scale sets reference.
@@ -3479,26 +3512,84 @@ func TestStackOutputsConformance(t *testing.T) {
 			// AwsPlantonRunner: flat scalar outputs -- the compute handles
 			// (service/cluster/task-definition ARNs, the E2E verifier keys on
 			// service_arn), the security-group id private targets trust, the
-			// two IAM identities, the credentials secret, and the log group
-			// carrying the runner's operation audit trail.
+			// two IAM identities, the token secret, the log group carrying
+			// the runner's operation audit trail, and the name the runner
+			// registers itself under.
 			name: "AwsPlantonRunner",
 			kind: cloudresourcekind.CloudResourceKind_AwsPlantonRunner,
 			rawOutputs: map[string]interface{}{
-				"service_arn":            "arn:aws:ecs:us-west-2:123456789012:service/vpc-runner/vpc-runner",
-				"service_name":           "vpc-runner",
-				"cluster_arn":            "arn:aws:ecs:us-west-2:123456789012:cluster/vpc-runner",
-				"task_definition_arn":    "arn:aws:ecs:us-west-2:123456789012:task-definition/vpc-runner:1",
-				"log_group_name":         "/ecs/vpc-runner",
-				"security_group_id":      "sg-0abc123",
-				"execution_role_arn":     "arn:aws:iam::123456789012:role/vpc-runner-exec",
-				"task_role_arn":          "arn:aws:iam::123456789012:role/vpc-runner-runtime",
-				"credentials_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:vpc-runner-credentials-AbCdEf",
-				"region":                 "us-west-2",
+				"service_arn":         "arn:aws:ecs:us-west-2:123456789012:service/vpc-runner/vpc-runner",
+				"service_name":        "vpc-runner",
+				"cluster_arn":         "arn:aws:ecs:us-west-2:123456789012:cluster/vpc-runner",
+				"task_definition_arn": "arn:aws:ecs:us-west-2:123456789012:task-definition/vpc-runner:1",
+				"log_group_name":      "/ecs/vpc-runner",
+				"security_group_id":   "sg-0abc123",
+				"execution_role_arn":  "arn:aws:iam::123456789012:role/vpc-runner-exec",
+				"task_role_arn":       "arn:aws:iam::123456789012:role/vpc-runner-runtime",
+				"token_secret_arn":    "arn:aws:secretsmanager:us-west-2:123456789012:secret:vpc-runner-token-AbCdEf",
+				"region":              "us-west-2",
+				"runner_name":         "prod-vpc-runner",
 			},
 			mustPopulate: []string{
 				"service_arn", "service_name", "cluster_arn", "task_definition_arn",
 				"log_group_name", "security_group_id", "execution_role_arn",
-				"task_role_arn", "credentials_secret_arn", "region",
+				"task_role_arn", "token_secret_arn", "region", "runner_name",
+			},
+		},
+		{
+			// GcpPlantonRunner: flat scalar outputs -- the Cloud Run service
+			// handles (the E2E verifier keys on service_short_name plus
+			// region/project_id), the runtime service account, the token
+			// secret, and the name the runner registers itself under.
+			name: "GcpPlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_GcpPlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"service_name":          "projects/my-project/locations/us-central1/services/vpc-runner",
+				"service_short_name":    "vpc-runner",
+				"service_account_email": "vpc-runner@my-project.iam.gserviceaccount.com",
+				"token_secret_id":       "projects/my-project/secrets/vpc-runner-token",
+				"runner_name":           "prod-vpc-runner",
+				"project_id":            "my-project",
+				"region":                "us-central1",
+			},
+			mustPopulate: []string{
+				"service_name", "service_short_name", "service_account_email",
+				"token_secret_id", "runner_name", "project_id", "region",
+			},
+		},
+		{
+			// AzurePlantonRunner: flat scalar outputs -- the Container App
+			// handles (the E2E verifier keys on container_app_id), the app's
+			// token secret name, the registration name, and the resource
+			// group.
+			name: "AzurePlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_AzurePlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"container_app_id":    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.App/containerApps/vnet-runner",
+				"container_app_name":  "vnet-runner",
+				"token_secret_name":   "runner-token",
+				"runner_name":         "prod-vnet-runner",
+				"resource_group_name": "my-rg",
+			},
+			mustPopulate: []string{
+				"container_app_id", "container_app_name", "token_secret_name",
+				"runner_name", "resource_group_name",
+			},
+		},
+		{
+			// KubernetesPlantonRunner: flat scalar outputs -- the release
+			// handles (namespace + release name), the module-created token
+			// Secret, and the name the runner registers itself under.
+			name: "KubernetesPlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "planton-runner",
+				"release_name":      "cluster-runner",
+				"token_secret_name": "cluster-runner-token",
+				"runner_name":       "prod-cluster-runner",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "token_secret_name", "runner_name",
 			},
 		},
 		{
@@ -5278,8 +5369,9 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"monitor_id", "monitor_type"},
 		},
 		{
-			// CloudflareWorker: both engines emit the script id and name (scalars)
-			// and the custom-domain hostnames / route patterns (repeated strings).
+			// CloudflareWorker: both engines emit the script id and name (scalars),
+			// the custom-domain hostnames / route patterns (repeated strings), and
+			// the keyed maps import needs for custom domains and routes.
 			name: "CloudflareWorker",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareWorker,
 			rawOutputs: map[string]interface{}{
@@ -5287,8 +5379,11 @@ func TestStackOutputsConformance(t *testing.T) {
 				"script_name":             "my-worker",
 				"custom_domain_hostnames": []interface{}{"api.example.com"},
 				"route_patterns":          []interface{}{"api.example.com/*"},
+				"custom_domain_ids":       map[string]interface{}{"api.example.com": "dom-1"},
+				"route_ids":               map[string]interface{}{"0": "route-1"},
+				"route_zone_ids":          map[string]interface{}{"0": "023e105f4ecef8ad9ca31a8372d0c353"},
 			},
-			mustPopulate: []string{"script_id", "script_name", "custom_domain_hostnames", "route_patterns"},
+			mustPopulate: []string{"script_id", "script_name", "custom_domain_hostnames", "route_patterns", "custom_domain_ids", "route_ids", "route_zone_ids"},
 		},
 		{
 			// CloudflareZeroTrustAccessApplication: both engines emit the
@@ -5452,20 +5547,24 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"certificate_id", "certificate"},
 		},
 		{
-			// CloudflareCertificatePack: both engines emit the pack id, status, and
-			// primary certificate id.
+			// CloudflareCertificatePack: both engines emit the pack id, status,
+			// primary certificate id, and the zone the pack was ordered in
+			// (a pack's API identity is zone_id + certificate_pack_id).
 			name: "CloudflareCertificatePack",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCertificatePack,
 			rawOutputs: map[string]interface{}{
 				"certificate_pack_id": "3822ff90e3534420ac41fc7e4a1f4b07",
 				"status":              "active",
 				"primary_certificate": "caa875a3-b2f0-4f7e-9a1e-0d2b4c6e8f10",
+				"zone_id":             "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"certificate_pack_id", "status"},
+			mustPopulate: []string{"certificate_pack_id", "status", "zone_id"},
 		},
 		{
 			// CloudflareCustomHostname: both engines emit the hostname id, status,
-			// the ownership-verification records, and the creation timestamp.
+			// the ownership-verification records, the creation timestamp, and
+			// the zone the hostname was onboarded onto (API identity is
+			// zone_id + custom_hostname_id).
 			name: "CloudflareCustomHostname",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostname,
 			rawOutputs: map[string]interface{}{
@@ -5478,12 +5577,14 @@ func TestStackOutputsConformance(t *testing.T) {
 				"ownership_verification_http_body": "1f2e3d4c5b6a7988",
 				"verification_errors":              []interface{}{},
 				"created_at":                       "2026-06-25T00:00:00Z",
+				"zone_id":                          "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"custom_hostname_id", "status"},
+			mustPopulate: []string{"custom_hostname_id", "status", "zone_id"},
 		},
 		{
-			// CloudflareCustomHostnameFallbackOrigin: both engines emit status and
-			// timestamps for the zone's fallback origin.
+			// CloudflareCustomHostnameFallbackOrigin: both engines emit status,
+			// timestamps, and the zone this singleton belongs to (the fallback
+			// origin has no resource id; its API identity IS the zone).
 			name: "CloudflareCustomHostnameFallbackOrigin",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin,
 			rawOutputs: map[string]interface{}{
@@ -5491,8 +5592,379 @@ func TestStackOutputsConformance(t *testing.T) {
 				"created_at": "2026-06-25T00:00:00Z",
 				"updated_at": "2026-06-25T00:00:00Z",
 				"errors":     []interface{}{},
+				"zone_id":    "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"status"},
+			mustPopulate: []string{"status", "zone_id"},
+		},
+		{
+			// CloudflareZoneSettings: a zone singleton with no resource id of its
+			// own -- both engines emit the zone id (the settings' API identity).
+			name: "CloudflareZoneSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZoneSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			// CloudflareCacheSettings: a zone singleton with no resource id of
+			// its own -- both engines emit the zone id.
+			name: "CloudflareCacheSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareCacheSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			// CloudflareZoneTlsSettings: a zone singleton with no resource id of
+			// its own -- both engines emit the zone id.
+			name: "CloudflareZoneTlsSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			// CloudflareZeroTrustAccessIdentityProvider: both engines emit the
+			// provider id plus the SCIM material (base URL and the create-only
+			// bearer secret, present when SCIM is enabled).
+			name: "CloudflareZeroTrustAccessIdentityProvider",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider,
+			rawOutputs: map[string]interface{}{
+				"identity_provider_id": "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"scim_base_url":        "https://scim.cloudflareaccess.com/v2/orgs/example",
+				"scim_secret":          "scim-bearer-secret",
+			},
+			mustPopulate: []string{"identity_provider_id", "scim_base_url", "scim_secret"},
+		},
+		{
+			// CloudflareZeroTrustAccessServiceToken: both engines emit the token
+			// id, the client id, the create-only client secret, and the expiry.
+			name: "CloudflareZeroTrustAccessServiceToken",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken,
+			rawOutputs: map[string]interface{}{
+				"service_token_id": "699d98642c564d2e855e9661899b7252",
+				"client_id":        "88bf3b6d86161464f6509f7219099e57.access",
+				"client_secret":    "bdd31cbc4dec990953e39163fbbb194c93313ca9f0a6e420346af9d326b1d2a5",
+				"expires_at":       "2027-08-16T00:00:00Z",
+			},
+			mustPopulate: []string{"service_token_id", "client_id", "client_secret", "expires_at"},
+		},
+		{
+			// CloudflareZeroTrustGatewayPolicy: both engines emit the policy id
+			// and the (possibly Cloudflare-assigned) precedence.
+			name: "CloudflareZeroTrustGatewayPolicy",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id":  "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"precedence": "1000",
+			},
+			mustPopulate: []string{"policy_id", "precedence"},
+		},
+		{
+			// CloudflareZeroTrustList: both engines emit the list id.
+			name: "CloudflareZeroTrustList",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustList,
+			rawOutputs: map[string]interface{}{
+				"list_id": "aa9d98642c564d2e855e9661899b7252",
+			},
+			mustPopulate: []string{"list_id"},
+		},
+		{
+			name: "CloudflareIpAccessRule",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareIpAccessRule,
+			rawOutputs: map[string]interface{}{
+				"rule_id":    "2661fcac0be5a0bb64583f83b6709d4d",
+				"zone_id":    "0da42c8d2132a9ddaf714f9e7c920711",
+				"account_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"rule_id"},
+		},
+		{
+			name: "CloudflareBotManagement",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareBotManagement,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareSnippet",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSnippet,
+			rawOutputs: map[string]interface{}{
+				"snippet_name": "redirect_legacy_urls",
+				"zone_id":      "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"snippet_name", "zone_id"},
+		},
+		{
+			name: "CloudflareSnippetRules",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSnippetRules,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareHealthcheck",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareHealthcheck,
+			rawOutputs: map[string]interface{}{
+				"healthcheck_id": "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"healthcheck_id", "zone_id"},
+		},
+		{
+			name: "CloudflareWaitingRoom",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWaitingRoom,
+			rawOutputs: map[string]interface{}{
+				"waiting_room_id": "4ae2018d-4a8e-4a1d-88e3-2a3a56d67057",
+				"zone_id":         "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"waiting_room_id", "zone_id"},
+		},
+		{
+			name: "CloudflareWaitingRoomEvent",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent,
+			rawOutputs: map[string]interface{}{
+				"event_id":        "25756c26-6616-4ea9-bbb5-f06974fdaa39",
+				"waiting_room_id": "4ae2018d-4a8e-4a1d-88e3-2a3a56d67057",
+				"zone_id":         "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"event_id", "waiting_room_id", "zone_id"},
+		},
+		{
+			name: "CloudflareCustomSslCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomSslCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "7e7b8deba8538af625850b7b2530034c",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"expires_on":     "2027-02-01T05:20:00Z",
+				"status":         "active",
+			},
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+		},
+		{
+			name: "CloudflareMtlsCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareMtlsCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+				"expires_on":     "2027-01-01T00:00:00Z",
+				"serial_number":  "6743787633689793699141714808227354901927759474",
+			},
+			mustPopulate: []string{"certificate_id", "expires_on", "serial_number"},
+		},
+		{
+			name: "CloudflareAuthenticatedOriginPulls",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPulls,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareAuthenticatedOriginPullsCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "9e13e848-3aa1-4a4e-b222-e5e79e15fc1a",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"expires_on":     "2027-01-01T00:00:00Z",
+				"status":         "active",
+			},
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+		},
+		{
+			name: "CloudflareWorkflow",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWorkflow,
+			rawOutputs: map[string]interface{}{
+				"workflow_name": "order-fulfillment",
+				"version_id":    "b71b0b3f-13a8-4a90-9c56-8f2b6e6f3c5e",
+			},
+			mustPopulate: []string{"workflow_name", "version_id"},
+		},
+		{
+			name: "CloudflareSecretsStore",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSecretsStore,
+			rawOutputs: map[string]interface{}{
+				"store_id": "7b0a3d5c1e9f42c68d1a2b3c4d5e6f70",
+			},
+			mustPopulate: []string{"store_id"},
+		},
+		{
+			name: "CloudflareSecretsStoreSecret",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSecretsStoreSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_id": "3a5c1e9f42c68d1a2b3c4d5e6f707b0a",
+				"store_id":  "7b0a3d5c1e9f42c68d1a2b3c4d5e6f70",
+			},
+			mustPopulate: []string{"secret_id", "store_id"},
+		},
+		{
+			// CloudflareAiGateway: the gateway slug plus the keyed map of
+			// managed dynamic-route ids (route name -> id) must both land on
+			// the StackOutputs proto -- the per-route import identity derives
+			// from the map.
+			name: "CloudflareAiGateway",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAiGateway,
+			rawOutputs: map[string]interface{}{
+				"gateway_id":        "prod-llm-gateway",
+				"dynamic_route_ids": map[string]interface{}{"cheap-first": "route-1"},
+			},
+			mustPopulate: []string{"gateway_id", "dynamic_route_ids"},
+		},
+		{
+			// CloudflareZeroTrustOrganization: a settings singleton -- the
+			// account id is the identity the harness and import recipes key
+			// on; auth_domain is the semantic output consumers reference.
+			name: "CloudflareZeroTrustOrganization",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustOrganization,
+			rawOutputs: map[string]interface{}{
+				"auth_domain": "acme",
+				"account_id":  "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"auth_domain", "account_id"},
+		},
+		{
+			name: "CloudflareZeroTrustAccessInfrastructureTarget",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget,
+			rawOutputs: map[string]interface{}{
+				"target_id": "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+			},
+			mustPopulate: []string{"target_id"},
+		},
+		{
+			name: "CloudflareZeroTrustMcpPortal",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpPortal,
+			rawOutputs: map[string]interface{}{
+				"portal_id": "eng-tools",
+				"hostname":  "mcp.example.com",
+			},
+			mustPopulate: []string{"portal_id", "hostname"},
+		},
+		{
+			name: "CloudflareZeroTrustMcpServer",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpServer,
+			rawOutputs: map[string]interface{}{
+				"server_id": "docs-search",
+			},
+			mustPopulate: []string{"server_id"},
+		},
+		{
+			// CloudflareZeroTrustGatewaySettings: a settings singleton --
+			// the account id is the only identity (the fold has no resource
+			// id of its own).
+			name: "CloudflareZeroTrustGatewaySettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewaySettings,
+			rawOutputs: map[string]interface{}{
+				"account_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"account_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDnsLocation",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDnsLocation,
+			rawOutputs: map[string]interface{}{
+				"location_id":   "5f9c1e2a3b4d5e6f708192a3b4c5d6e7",
+				"doh_subdomain": "q7x2p9r4m1",
+				"ip":            "172.64.36.5",
+			},
+			mustPopulate: []string{"location_id", "doh_subdomain", "ip"},
+		},
+		{
+			// CloudflareZeroTrustDeviceDefaultProfile: a settings singleton
+			// -- the account id is the identity the harness and import
+			// recipes key on; the Gateway-side id and policy id are the
+			// semantic outputs consumers reference.
+			name: "CloudflareZeroTrustDeviceDefaultProfile",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceDefaultProfile,
+			rawOutputs: map[string]interface{}{
+				"account_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"gateway_unique_id": "e9f42c68d1a2b3c4d5e6f707b0a3d5c1",
+				"policy_id":         "default",
+			},
+			mustPopulate: []string{"account_id", "gateway_unique_id", "policy_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDeviceCustomProfile",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceCustomProfile,
+			rawOutputs: map[string]interface{}{
+				"policy_id":         "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+				"gateway_unique_id": "e9f42c68d1a2b3c4d5e6f707b0a3d5c1",
+			},
+			mustPopulate: []string{"policy_id", "gateway_unique_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDevicePostureRule",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDevicePostureRule,
+			rawOutputs: map[string]interface{}{
+				"rule_id": "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+			},
+			mustPopulate: []string{"rule_id"},
+		},
+		{
+			// CloudflareLogpushJob: the numeric job id travels in string form,
+			// the scope ids key the verifier's path, and the challenge trio is
+			// populated only when the issuing arm ran (empty here -- the
+			// common shape).
+			name: "CloudflareLogpushJob",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareLogpushJob,
+			rawOutputs: map[string]interface{}{
+				"job_id":                       "146678",
+				"account_id":                   "",
+				"zone_id":                      "023e105f4ecef8ad9ca31a8372d0c353",
+				"ownership_challenge_filename": "",
+				"ownership_challenge_message":  "",
+				"ownership_challenge_valid":    false,
+			},
+			mustPopulate: []string{"job_id", "zone_id"},
+		},
+		{
+			name: "CloudflareNotificationPolicy",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareNotificationPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id": "0da2b59e-f118-42de-95bd-14fdd8ff4d7a",
+			},
+			mustPopulate: []string{"policy_id"},
+		},
+		{
+			// CloudflareNotificationWebhook: the destination UUID policies
+			// reference, plus the type Cloudflare inferred from the URL.
+			name: "CloudflareNotificationWebhook",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareNotificationWebhook,
+			rawOutputs: map[string]interface{}{
+				"webhook_id": "9430334d-cf60-4147-8b76-8d6cbea1b099",
+				"type":       "generic",
+			},
+			mustPopulate: []string{"webhook_id", "type"},
+		},
+		{
+			// CloudflareWebAnalyticsSite: the site tag keys every RUM API
+			// path, the token and snippet are the beacon credential (secret-
+			// marked in both engines), and the ruleset id is the parent the
+			// folded rules live under.
+			name: "CloudflareWebAnalyticsSite",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWebAnalyticsSite,
+			rawOutputs: map[string]interface{}{
+				"site_tag":   "0b7b0f1a08a54c6db26a6f1b193a2c85",
+				"site_token": "e64a2265d1a04f1cbb073b7d3a4a6b8d",
+				"snippet":    "<script defer src='https://static.cloudflareinsights.com/beacon.min.js'></script>",
+				"ruleset_id": "b4c1e7f2a3d94e6f8a9b0c1d2e3f4a5b",
+			},
+			mustPopulate: []string{"site_tag", "site_token", "ruleset_id"},
+		},
+		{
+			// CloudflareAccountApiToken: the management id and the
+			// create-only secret value (returned by Cloudflare exactly once;
+			// secret-marked in both engines).
+			name: "CloudflareAccountApiToken",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAccountApiToken,
+			rawOutputs: map[string]interface{}{
+				"token_id": "ed17574386854bf78a67040be0a770b0",
+				"value":    "8M7wS6hCpXVc-DoRnPPY_UCWPgy8aea4Wy6kCe5T",
+			},
+			mustPopulate: []string{"token_id", "value"},
 		},
 		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,

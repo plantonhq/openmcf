@@ -33,4 +33,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.RecoveryServices/vaults/backupFabrics/*` on the vault's resource group plus read on the source VM (Contributor on both covers it).
+The deploying principal's least-privilege permission manifest lives at [`../permissions.yaml`](../permissions.yaml).

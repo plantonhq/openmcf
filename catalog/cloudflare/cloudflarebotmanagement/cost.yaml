@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarebotmanagement
+spec:
+  billing_model: free
+  notes: Bot Fight Mode (fight_mode) is included on every plan and creating this resource creates no charge of its own. Super Bot Fight Mode and Enterprise Bot Management knobs are plan features -- they bill on the zone subscription, never through this component. Applying an SBFM or Enterprise field to a zone whose plan lacks it fails the apply rather than incurring cost. AI and crawler controls follow Cloudflare's rollout, not a SKU on this resource.

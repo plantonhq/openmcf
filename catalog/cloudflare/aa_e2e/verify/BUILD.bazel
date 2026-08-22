@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "verify",
+    srcs = [
+        "verifier.go",
+        "zone_settings.go",
+    ],
+    importpath = "github.com/plantonhq/planton/catalog/cloudflare/aa_e2e/verify",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_pkg_errors//:errors"],
+)

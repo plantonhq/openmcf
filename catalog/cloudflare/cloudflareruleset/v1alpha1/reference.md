@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareRulesetSpec defines the configuration for a Cloudflare Ruleset.
 
 Rulesets are ordered collections of rules that execute during specific phases of HTTP
@@ -89,6 +91,8 @@ spec:
 | `spec.rules[].actionParameters.products` | `[]string` |  |  |  |
 | `spec.rules[].actionParameters.ruleset` | `string` |  |  |  |
 | `spec.rules[].actionParameters.rulesets` | `[]string` |  |  |  |
+| `spec.rules[].actionParameters.rules` | `map<string, CloudflareRulesetStringList>` |  |  |  |
+| `spec.rules[].actionParameters.rules.*.values` | `[]string` |  |  |  |
 | `spec.rules[].actionParameters.id` | `string` |  |  |  |
 | `spec.rules[].actionParameters.overrides` | `CloudflareRulesetOverrides` |  |  |  |
 | `spec.rules[].actionParameters.overrides.action` | `string` |  |  |  |
@@ -445,6 +449,8 @@ Default: true
 
 Action-specific parameters. The applicable fields depend on the chosen action.
 
+- rule: skip rules map is incompatible with the ruleset option
+
 ### spec.rules[].actionParameters.hostHeader
 
 `string`
@@ -632,6 +638,22 @@ Single ruleset ID to skip (use "current" to skip the remainder of this ruleset).
 `[]string`
 
 Multiple ruleset IDs to skip.
+
+### spec.rules[].actionParameters.rules
+
+`map<string, CloudflareRulesetStringList>`
+
+Skip specific rules INSIDE other rulesets: a map of ruleset ID (32-char
+hex) to the rule IDs (32-char hex) in that ruleset to skip. Incompatible
+with the single `ruleset` option — use one or the other.
+
+- rule: skip rules: keys and rule IDs must be 32-character hex ruleset/rule IDs, each with at least one rule ID
+
+### spec.rules[].actionParameters.rules.*.values
+
+`[]string`
+
+The list of string values.
 
 ### spec.rules[].actionParameters.id
 

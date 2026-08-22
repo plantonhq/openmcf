@@ -1,0 +1,136 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesLoki manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesloki.yaml; a server-side estimator can evaluate
+# the same rules against live manifests. Exactly one mode renders:
+# monolithic replicas each carry the mode's resources and their own data
+# volume, or the write/read/backend tiers each multiply the shared
+# simple_scalable resources by their own replica count, with the write
+# and backend replicas each provisioning a volume from the shared
+# disk_size (the read tier is a stateless Deployment). The tier and
+# monolithic replica fields carry NO assumed default: their parent
+# messages are mode arms, and a default would phantom-count a mode the
+# manifest never selected (the valkey precedent). The nginx gateway
+# binds its own resources and replica count (on by default, one
+# replica). Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesloki
+spec:
+  workloads:
+    - label: instance
+      resources_path: monolithic.resources
+      instances:
+        field_value:
+          field_path: monolithic.replicas
+      volumes:
+        - label: data
+          size_path: monolithic.disk_size
+    - label: writer
+      resources_path: simple_scalable.resources
+      instances:
+        field_value:
+          field_path: simple_scalable.write_replicas
+      volumes:
+        - label: WAL
+          size_path: simple_scalable.disk_size
+    - label: reader
+      resources_path: simple_scalable.resources
+      instances:
+        field_value:
+          field_path: simple_scalable.read_replicas
+    - label: backend
+      resources_path: simple_scalable.resources
+      instances:
+        field_value:
+          field_path: simple_scalable.backend_replicas
+      volumes:
+        - label: working
+          size_path: simple_scalable.disk_size
+    - label: gateway
+      resources_path: gateway.resources
+      instances:
+        field_value:
+          field_path: gateway.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+    - text: the memcached caches (both on by default) are sized by the caching memory knobs, not by a typed resources block -- unset, the chunks cache alone renders a 9830Mi memory request (1.2x the chart's 8192MB default) and the results cache another 1.2x 1024MB
+    - text: the canary (on by default) is a DaemonSet -- ONE POD PER NODE, so its total consumption multiplies with the cluster's node count, which no manifest can know; canary_enabled false removes it
+    - applies_when:
+        - field_path: storage.s3
+          op: is_set
+      text: log chunks and indexes live in the S3-compatible backend -- stored bytes and requests are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), growing with log volume across the retention window, outside this cluster's capacity
+    - applies_when:
+        - field_path: storage.gcs
+          op: is_set
+      text: log chunks and indexes live in Google Cloud Storage -- stored bytes and requests are billed by GCS, growing with log volume across the retention window, outside this cluster's capacity
+    - applies_when:
+        - field_path: storage.azure
+          op: is_set
+      text: log chunks and indexes live in Azure Blob Storage -- stored bytes and requests are billed by Azure, growing with log volume across the retention window, outside this cluster's capacity
+  notes:
+    - applies_when:
+        - field_path: monolithic
+          op: is_unset
+        - field_path: simple_scalable
+          op: is_unset
+      text: an empty mode runs a single-replica monolithic Loki with a 10Gi volume (the spec's defaults, rendered by the modules) -- a real reservation this footprint cannot count, because the estimator reads only declared values
+    - applies_when:
+        - field_path: monolithic
+          op: is_set
+        - field_path: monolithic.resources
+          op: is_unset
+      text: the chart applies no default requests or limits to the Loki container -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set monolithic.resources for any real deployment
+    - applies_when:
+        - field_path: monolithic
+          op: is_set
+        - field_path: monolithic.disk_size
+          op: is_unset
+      text: each monolithic replica provisions a 10Gi volume by default even without a declared disk_size -- stated in this footprint at the spec-declared default size
+    - applies_when:
+        - field_path: monolithic
+          op: is_set
+        - field_path: monolithic.replicas
+          op: is_unset
+      text: an undeclared monolithic replica count defaults to 1 (the spec default, rendered by the modules); this footprint counts only the declared count
+    - applies_when:
+        - field_path: simple_scalable
+          op: is_set
+        - field_path: simple_scalable.resources
+          op: is_unset
+      text: the chart applies no default requests or limits to the tier containers -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set simple_scalable.resources for any real deployment (size the write tier's needs first)
+    - applies_when:
+        - field_path: simple_scalable
+          op: is_set
+        - field_path: simple_scalable.disk_size
+          op: is_unset
+      text: each write and backend replica provisions a 10Gi volume by default even without a declared disk_size -- stated in this footprint at the spec-declared default size
+    - applies_when:
+        - field_path: simple_scalable
+          op: is_set
+        - field_path: simple_scalable.write_replicas
+          op: is_unset
+      text: an undeclared write tier defaults to 3 replicas (the replication-factor-safe floor); this footprint counts only the declared count
+    - applies_when:
+        - field_path: simple_scalable
+          op: is_set
+        - field_path: simple_scalable.read_replicas
+          op: is_unset
+      text: an undeclared read tier defaults to 3 replicas; this footprint counts only the declared count
+    - applies_when:
+        - field_path: simple_scalable
+          op: is_set
+        - field_path: simple_scalable.backend_replicas
+          op: is_unset
+      text: an undeclared backend tier defaults to 3 replicas; this footprint counts only the declared count
+    - applies_when:
+        - field_path: gateway.resources
+          op: is_unset
+      text: the nginx gateway (on by default) runs with no declared requests or limits -- the chart default; declare gateway.resources to reserve for it

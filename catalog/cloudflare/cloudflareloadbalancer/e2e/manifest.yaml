@@ -14,3 +14,67 @@ spec:
   steeringPolicy: random
   sessionAffinity: cookie
   sessionAffinityTtl: 1800
+  sessionAffinityAttributes:
+    samesite: Lax
+    secure: Always
+    zeroDowntimeFailover: temporary
+  adaptiveRouting:
+    failoverAcrossPools: true
+  locationStrategy:
+    mode: resolver_ip
+    preferEcs: proximity
+  randomSteering:
+    defaultWeight: 0.5
+    poolWeights:
+      f1e2d3c4b5a6978869584a3b2c1d0e0f: 0.8
+  regionPools:
+    - code: WNAM
+      poolIds:
+        - value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+  networks:
+    - "network-hack"
+  rules:
+    - name: maintenance-page
+      condition: http.request.uri.path contains "/maintenance"
+      priority: 1
+      terminates: true
+      fixedResponse:
+        contentType: text/html
+        location: https://status.planton-example.com
+        messageBody: "<h1>Down for maintenance</h1>"
+        statusCode: 503
+    - name: api-steering
+      condition: http.request.uri.path contains "/api"
+      disabled: false
+      overrides:
+        steeringPolicy: "off"
+        sessionAffinity: none
+        sessionAffinityTtl: 1800
+        ttl: 30
+        defaultPools:
+          - value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+        fallbackPool:
+          value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+        adaptiveRouting:
+          failoverAcrossPools: true
+        locationStrategy:
+          mode: pop
+          preferEcs: never
+        randomSteering:
+          defaultWeight: 0.3
+        regionPools:
+          - code: ENAM
+            poolIds:
+              - value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+        countryPools:
+          - code: US
+            poolIds:
+              - value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+        popPools:
+          - code: LAX
+            poolIds:
+              - value: "f1e2d3c4b5a6978869584a3b2c1d0e0f"
+        sessionAffinityAttributes:
+          samesite: Auto
+          secure: Auto
+          zeroDowntimeFailover: sticky

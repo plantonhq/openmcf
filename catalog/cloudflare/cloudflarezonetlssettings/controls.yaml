@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezonetlssettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: TLS settings store no customer data -- certificate private keys live with the certificate components (CloudflareCertificatePack, custom SSL uploads), not here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: total_tls
+      evidence:
+        type: spec_default
+        reference: Unset means the zone keeps its current issuance posture; total_tls issues individual certificates for every proxied hostname (covering deep subdomains Universal SSL's wildcard misses), hostname_settings raise per-hostname TLS floors and cipher allowlists, and origin_tls_compliance_modes constrains Cloudflare-to-origin TLS.
+      notes: This kind IS the zone's transit-encryption posture. The counterpart warning also lives here -- universal_ssl_enabled=false stops certificate issuance and can make proxied hostnames unreachable over HTTPS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: TLS settings configure a publicly-served zone's encryption; there is no component endpoint to hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own. ca_hostname_associations restricts which CA may ISSUE for which hostname -- an issuance control covered under enc-in-transit, not a network-ingress control.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering is CloudflareZoneSettings and CloudflareRuleset territory.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; legacy TLS floors are covered under enc-in-transit via hostname_settings min_tls_version and ciphers.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records TLS configuration changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Certificate issuance and TLS analytics are Cloudflare-side surfaces; this kind adds or removes no monitoring signal.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest; no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: TLS posture applies zone-wide across Cloudflare's global anycast edge; replication is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Four of the six settings have NO delete at Cloudflare -- destroy abandons the live values rather than removing anything. The one truly destructive lever (disabling Universal SSL) is guarded by explicit spec and GUIDE warnings, not a deletion gate.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and patches the TLS termination edge; no customer-visible patch surface exists.

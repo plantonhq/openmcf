@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgridsystemtopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Events held in flight for retry are encrypted at rest with Microsoft-managed keys unconditionally -- no configuration stores them in plaintext."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Event Grid Basic resources offer no customer-managed-key surface -- at-rest encryption is Microsoft-keyed with nothing to configure. A system topic is a routing surface, not a store; durable copies of events live on the delivery destinations, which carry their own CMK postures."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The publishing leg is Azure-internal (only the bound Azure service can publish -- there is no customer endpoint or access key), and Event Grid refuses non-HTTPS webhook destinations on delivery -- both legs are protected by service contract."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "A system topic exposes no endpoint at all: unlike a custom topic it has no public DNS hostname, no publish URL, and no access keys -- only Azure services publish to it, internally. Nothing about it is internet-reachable by construction."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "There is no ingress to restrict -- the only publisher is the bound Azure source, enforced by the platform (see no-public-access); no IP-rule or network-ACL surface exists on this resource."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No customer-facing request surface exists to filter; delivery-side endpoints (webhooks, queues) carry their own protections on their own components."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every operation on the topic -- creating it, attaching event subscriptions, deleting it -- is a management-plane call authorized by Azure RBAC unconditionally; the resource has no key-based or anonymous path because it has no data-plane endpoint."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset means no platform identity and identity-secured delivery targets are unreachable; SYSTEM_ASSIGNED, USER_ASSIGNED, or SYSTEM_AND_USER_ASSIGNED (system topics uniquely carry both flavors at once) lets subscriptions deliver and dead-letter as the topic with short-lived Entra tokens instead of destination connection strings."
+      notes: "Neither preset carries an identity -- add one before wiring subscriptions to identity-secured destinations, since the delivery identity a subscription names must already exist on the topic."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "A system topic has no authentication paths of its own to strengthen or disable -- no access keys, no SAS, no local-auth switch; publishing is platform-internal and management is Entra-authenticated ARM."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management-plane action on the system topic -- create, subscription attach, delete -- lands in the Azure Activity Log unconditionally."
+      notes: "Data-plane logs (delivery failures) exist as diagnostic log categories that need a diagnostic setting outside this spec."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The system topic publishes platform metrics to Azure Monitor automatically (delivery successes and failures, unmatched and dead-lettered events) -- the metric_resource_id output is its Azure Monitor identity, and nothing needs enabling."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "A routing surface, not a store -- events are transient (delivered or expired within the retry window), so there is nothing to back up; durable copies live on the delivery destinations, and undeliverable events dead-letter through subscription-side configuration. The topic's own configuration is redeployable from this manifest -- recreating it is cheap, but every attached subscription goes with it and must be redeployed too."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery); retry and expiry windows are event-subscription settings, not topic state."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Event Grid is zone-redundant automatically in regions with availability zones -- Microsoft spreads the service and in-flight event data across zones with no configuration surface and no opt-out (Azure reliability documentation for Event Grid)."
+      notes: "The topic's region is pinned to its SOURCE's region (or Global for subscription/resource-group sources) -- its availability posture rides the platform, not a placement choice."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Event Grid API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the topic takes every attached event subscription with it -- and since Azure allows one system topic per source per type, a replacement can always rebind the same source."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed PaaS -- Microsoft operates, patches, and scales the routing fleet; no customer-visible patch surface exists."

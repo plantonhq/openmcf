@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The access entry IS the modern replacement for the legacy aws-auth ConfigMap mapping, but this spec cannot disable that legacy path -- whether CONFIG_MAP authentication remains available is the cluster's authentication_mode choice on AwsEksCluster. Within the entry there is no protocol or credential negotiation to harden.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface of its own. Management calls against the entry are recorded by AWS CloudTrail, and the principal's in-cluster actions land in the Kubernetes audit log when the cluster's control-plane logging enables it -- both outside this spec. Worth knowing -- leaving user_name empty keeps AWS's session-templated default for roles, which preserves the session name per action in those audit logs; overriding it trades that fidelity for a fixed name.

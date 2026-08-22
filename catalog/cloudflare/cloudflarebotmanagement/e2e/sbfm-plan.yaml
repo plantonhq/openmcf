@@ -1,0 +1,26 @@
+# Offline-plan arm: the Super Bot Fight Mode and Enterprise fields. NEVER a
+# live scenario on the free fixture zone -- these fields are plan-gated, and on
+# non-entitled zones the API omits them from responses (the provider's own
+# recorded refresh-drift class). Plan-proven offline so the surface stays
+# representable; live proof waits for an entitled zone (a recorded deferral).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareBotManagement
+metadata:
+  name: e2e-botmgmt-sbfm-plan
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  sbfm_definitely_automated: managed_challenge
+  sbfm_likely_automated: managed_challenge
+  sbfm_verified_bots: allow
+  sbfm_static_resource_protection: false
+  optimize_wordpress: true
+  auto_update_model: true
+  suppress_session_score: false
+  enable_js: true
+  bm_cookie_enabled: true
+  ai_bots_protection: only_on_ad_pages
+  crawler_protection: enabled
+  content_bots_protection: block
+  cf_robots_variant: policy_only
+  is_robots_txt_managed: true

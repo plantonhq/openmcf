@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflareorigincacertificate
+spec:
+  # An Origin CA certificate under live E2E: user-scoped (no account_id, no
+  # zone_id on the spec) -- deploy -> GET certificates/{certificate_id}
+  # verify -> destroy (revoke) -> verify-destroyed. The live scenario lets
+  # the module mint the key and CSR (the one-click path); hostnames belong
+  # to the run-scoped pending zone, which is a SCENARIO-declared
+  # CloudflareDnsZone edge (hostnames are plain strings, not a zone FK, so
+  # the edge is per-scenario, never a registry prerequisite). Watch: delete
+  # is a revoke, and the provider's own destroy check tolerates the cert
+  # remaining readable -- the plain 404 probe is the honest starting point.
+  # The SDK accepts an API token for this endpoint (Origin CA Key is the
+  # legacy alternative). Free; objects create in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

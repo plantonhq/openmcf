@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareturnstilewidget
+spec:
+  # A Turnstile widget's import identity is {account_id}/{sitekey}. The
+  # sitekey IS the API identity (not a separate id). account_id is
+  # spec-relative; sitekey is the deploy's own output. The secret is a
+  # sensitive output and is returned on read.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: sitekey
+      derivations:
+        - from_stack_output: sitekey
+      where_to_find: >-
+        Cloudflare dashboard -> Turnstile -> the widget (the Site Key on
+        the widget card), or `GET /accounts/<account_id>/challenges/widgets`
+        on the Cloudflare v4 API (the sitekey field of the entry whose
+        name matches).

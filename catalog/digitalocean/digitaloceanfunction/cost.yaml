@@ -1,0 +1,20 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanfunction
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: source_directory
+      sku_meter: function compute GiB-seconds
+      pricing_unit: GiB-seconds
+      impact: "The project.yml inside this directory -- not the spec -- declares each function's memory limit and timeout, and memory times execution seconds is exactly the billed quantity: doubling a function's memory limit doubles every invocation's GiB-seconds. The spec deliberately carries no memory or instance knob, so this file is where the meter's slope is set."
+  free_tier: "Each DigitalOcean team gets 90,000 GiB-seconds (25 GiB-hours) free per month, counted across ALL functions on the team -- explicitly 'including function components in App Platform', which is what this component deploys (https://docs.digitalocean.com/products/functions/details/pricing/, fetched 2026-08-22). A modest workload can run entirely inside the allowance."
+  estimate_exclusions:
+    - "function compute GiB-seconds are pure runtime behavior -- invocation volume x memory limit x execution duration, with a 100 ms minimum per invocation -- that no manifest can predict; usage beyond the team's 90,000 free GiB-seconds bills at $0.0000185 per GiB-second ($0.07 per GiB-hour)"
+    - "outbound bandwidth follows App Platform pricing on the app, not a rate this profile owns -- response traffic from the function's public endpoint is metered there"
+    - "log forwarding declared in log_destinations bills on the receiving system (a Papertrail/Datadog/Logtail subscription, or an OpenSearch cluster's own component) -- DigitalOcean adds no charge for the forwarding itself"
+  notes: "The billing shape is settled by what the modules create: both engines provision a digitalocean_app whose spec contains ONLY a function component -- no service, no worker, no instance_size_slug -- so no App Platform instance charge ever starts, and a deployed-but-idle function costs exactly zero. DigitalOcean's Functions pricing page (https://docs.digitalocean.com/products/functions/details/pricing/, fetched 2026-08-22) states the whole meter: 'Functions are billed per GiB-second', the team-wide free allowance is 90,000 GiB-seconds per month 'across all functions, including function components in App Platform', overage costs $0.0000185 per GiB-second ($0.07 per GiB-hour), and 'Functions run for a minimum of 100 ms per invocation, but pricing does not otherwise change with the number of invocations.' The alerts field is free (DigitalOcean Monitoring carries no charge), and envs are free configuration."

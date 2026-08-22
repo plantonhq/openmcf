@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesairflow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Airflow's durable state lives in the metadata database (a separate component); the volumes this chart provisions (triggerer state, worker task logs, shared DAG/log volumes) rest on PersistentVolumes the target cluster's storage class provisions -- encryption at rest is a property of that storage, owned by the cluster, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: database.postgres.ssl_mode
+      evidence:
+        type: spec_default
+        reference: Unset means sslmode=disable (the chart default -- in-cluster traffic); "require" or stricter encrypts the metadata-database connection for managed databases over untrusted networks.
+      notes: The API server serves plain HTTP on 8080 inside the cluster; TLS for user-facing traffic terminates at the exposure layer (KubernetesService or Gateway API kinds over the exported service handle) -- the chart's own ingress/TLS blocks are never modeled.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the chart's Services (API server and friends) stay ClusterIP and the chart's ingress blocks are deliberately not modeled, so Airflow is reachable solely inside the cluster network.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: module_default
+        reference: The modules render no NetworkPolicies -- in-cluster reachability is open by default; the chart's networkPolicies block rides the helm_values overlay to restrict which sources may reach the components.
+      notes: A first-class KubernetesNetworkPolicy resource on the namespace is the composable alternative. Access to the UI and API itself always requires FAB login (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component itself terminates no edge traffic -- exposure happens through separate kinds (KubernetesService, Gateway API routes) and a web application firewall belongs to that layer, not to this chart.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: UI and API access is governed by Airflow's FAB auth manager -- the bootstrap Job creates exactly one Admin-role user whose password the module generates into a Secret, and every request authenticates against FAB's role system; Airflow 3 components authenticate to the API server with JWT-signed tokens from the module-owned jwt-secret.
+      notes: Management-plane access (the Helm release and its Secrets) is governed by the target cluster's Kubernetes RBAC. admin_user.create=false hands user management to an external identity story declared via helm_values.
+    - control_id: workload-identity
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: Unset means the Airflow pods carry no cloud identity -- they reach only the in-cluster metadata database and broker with Secret-held passwords; the chart's serviceAccount annotation values (via the helm_values overlay) bind EKS IRSA, GKE Workload Identity, or AKS Workload Identity to the pods for keyless access to cloud APIs (remote log storage, cloud-native operators).
+      notes: Task-level cloud credentials otherwise ride Airflow Connections, which the Fernet key encrypts in the metadata database.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart's publicly documented defaults (admin/admin for the UI, postgres/postgres for the database) never ship -- both modules generate the admin password, Fernet key, API secret key, webserver session key, and JWT secret into module-owned Secrets, and every database/broker credential travels through composed connection Secrets, never rendered Helm values.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Airflow signs its users in itself, but credential strength -- password rules, lockout, MFA -- is Flask-AppBuilder configuration inside the product, not modeled in this deployment spec. The modules' contribution is bootstrap hygiene, not strength policy (the chart's admin/admin default never ships -- see no-legacy-auth).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: A provider-style audit trail is not modeled in this spec -- component activity streams to stdout for the cluster's log collector, and changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: statsd_enabled defaults to true -- the chart's statsd-exporter Deployment translates Airflow's StatsD metrics for Prometheus (scrape port 9102, pod annotations set); the chart ships no ServiceMonitor, so scraping composes via annotations or a KubernetesKubePrometheusStack additionalScrapeConfig.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Airflow holds no durable data of its own -- DAG runs, task state, connections, and users all live in the metadata database, whose backup posture rides that component (KubernetesPostgres backup or the external database's own story). DAG code lives in Git or the container image.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery) -- retention policy belongs to the metadata database's component.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: components.scheduler.replicas
+      evidence:
+        type: spec_default
+        reference: Every component defaults to 1 replica; multiple schedulers are an Airflow HA feature (they coordinate through database row locks -- PostgreSQL recommended) and the API server scales freely because state lives in the database and sessions ride the shared API secret key.
+      notes: The 02-production-celery preset runs 2 API servers and 2 schedulers. Spreading replicas across zones is the cluster scheduler's topology behavior -- this spec models node_selector and tolerations, not anti-affinity.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Helm offers a deletion-protection flag on a release; protection is operational (namespace RBAC, change review). Deleting the resource removes the release and, when module-created, the namespace.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the Helm chart (default "1.22.0", shipping Airflow 3.2.2) -- upgrades are deliberate manifest edits, rolled by the modules as atomic Helm upgrades (wait, atomic, cleanup_on_fail) with the hook-less migration Job applied inside the same release.
+      notes: images.airflow_tag with a matching airflow_version moves the application version independently of the chart pin.
