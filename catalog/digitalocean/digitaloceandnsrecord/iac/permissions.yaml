@@ -1,28 +1,21 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22; the
-# domain scope family covers "domains and domain records"):
-#
-#   Custom-scopes token (recommended):
-#     domain:read    -- read the record via GET /v2/domains/{domain}/records/{id} on refresh/import (provenance: derived)
-#     domain:create  -- create the record via POST /v2/domains/{domain}/records (derived)
-#     domain:update  -- in-place changes (name, value, ttl, priority, weight, port, flags, tag) via PUT /v2/domains/{domain}/records/{id}; domain and type changes recreate instead (derived)
-#     domain:delete  -- delete the record via DELETE /v2/domains/{domain}/records/{id} (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_record's create/read/update/delete/import paths); the live
-# capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceandnsrecord
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDnsRecord
+        scopes:
+          - domain:read
+          - domain:create
+          - domain:update
+          - domain:delete
+        provenance: derived
+        notes: Covers digitalocean_record's create/read/update/delete/import paths -- read the record via GET /v2/domains/{domain}/records/{id} on refresh/import (domain:read), create the record via POST /v2/domains/{domain}/records (domain:create), make in-place changes (name, value, ttl, priority, weight, port, flags, tag) via PUT /v2/domains/{domain}/records/{id}, while domain and type changes recreate instead (domain:update), and delete the record via DELETE /v2/domains/{domain}/records/{id} (domain:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22; the domain scope family covers "domains and domain records". A full-access token also works; it is never least-privilege.

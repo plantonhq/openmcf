@@ -1,29 +1,26 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     firewall:read    -- read the firewall via GET /v2/firewalls/{id} on refresh/import and while the create waiter polls for succeeded status (provenance: derived)
-#     firewall:create  -- create the firewall via POST /v2/firewalls (rules, tags, and droplet attachments all ride the create body) (derived)
-#     firewall:update  -- rule and attachment changes via PUT /v2/firewalls/{id} (derived)
-#     firewall:delete  -- delete the firewall via DELETE /v2/firewalls/{id} (derived)
-#     tag:create       -- when spec tags (or rule source/destination tags) name a tag the account has never used: DigitalOcean materializes tags implicitly on first reference (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_firewall's create/read/update/delete/import paths in both the
-# Terraform and Pulumi modules); the live capture lane upgrades them to
-# proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceanfirewall
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageFirewall
+        scopes:
+          - firewall:read
+          - firewall:create
+          - firewall:update
+          - firewall:delete
+        provenance: derived
+        notes: Covers digitalocean_firewall's create/read/update/delete/import paths in both the Terraform and Pulumi modules -- read the firewall via GET /v2/firewalls/{id} on refresh/import and while the create waiter polls for succeeded status (firewall:read), create the firewall via POST /v2/firewalls with rules, tags, and droplet attachments all riding the create body (firewall:create), rule and attachment changes via PUT /v2/firewalls/{id} (firewall:update), and delete the firewall via DELETE /v2/firewalls/{id} (firewall:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: MaterializeTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: "Needed only when spec tags (or rule source/destination tags) name a tag the account has never used: DigitalOcean materializes tags implicitly on first reference."

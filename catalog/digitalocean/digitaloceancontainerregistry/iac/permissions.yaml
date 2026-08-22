@@ -1,34 +1,29 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 #
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     registry:create -- create the registry via POST /v2/registry (name, tier, and region ride the create body) (provenance: derived)
-#     registry:read   -- read the registry via GET /v2/registry on refresh; also required (together with registry:update) to mint/re-mint the Docker credential via GET /v2/registry/docker-credentials when the spec's docker_credentials block is set -- DigitalOcean's own OpenAPI spec (registry_get_dockerCredentials.yml) declares both scopes on that endpoint (derived)
-#     registry:update -- change the subscription tier via POST /v2/registry/subscription (the only mutable field); also required (together with registry:read) for the Docker-credential mint per the same OpenAPI declaration (derived)
-#     registry:delete -- destroy via DELETE /v2/registry, which deletes every stored image (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# The registry takes no DigitalOcean tags (no tag scope). The minted Docker
-# credential is itself a SECRET exported through the docker_credentials
-# stack output -- the scope above is what lets the runner mint it, not what
-# consumers use to pull.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_container_registry and
-# digitalocean_container_registry_docker_credentials create/read/update/
-# delete paths) in both the Terraform and Pulumi modules; the live capture
-# lane upgrades them to proven.
+# The registry takes no DigitalOcean tags (no tag scope).
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceancontainerregistry
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageRegistry
+        scopes:
+          - registry:create
+          - registry:read
+          - registry:update
+          - registry:delete
+        provenance: derived
+        notes: Covers digitalocean_container_registry and digitalocean_container_registry_docker_credentials create/read/update/delete paths in both the Terraform and Pulumi modules -- create the registry via POST /v2/registry, where name, tier, and region ride the create body (registry:create), read the registry via GET /v2/registry on refresh (registry:read), change the subscription tier via POST /v2/registry/subscription, the only mutable field (registry:update), and destroy via DELETE /v2/registry, which deletes every stored image (registry:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: MintDockerCredentials
+        scopes:
+          - registry:read
+          - registry:update
+        provenance: derived
+        notes: "When the spec's docker_credentials block is set: the runner mints/re-mints the Docker credential via GET /v2/registry/docker-credentials, and DigitalOcean's own OpenAPI spec (registry_get_dockerCredentials.yml) declares BOTH registry:read and registry:update on that endpoint. The minted Docker credential is itself a SECRET exported through the docker_credentials stack output -- these scopes are what let the runner mint it, not what consumers use to pull."

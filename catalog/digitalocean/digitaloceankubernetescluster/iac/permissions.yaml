@@ -1,31 +1,36 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     kubernetes:create         -- create the cluster via POST /v2/kubernetes/clusters (version, VPC, HA, subnets, addon toggles, and the inline default node pool all ride the create body) (provenance: derived)
-#     kubernetes:read           -- read the cluster via GET /v2/kubernetes/clusters/{id} on refresh/import and while the create waiter polls for running status (derived)
-#     kubernetes:update         -- in-place changes (auto/surge upgrade, maintenance policy, control-plane firewall, SSO, autoscaler tuning, addon toggles, default pool count/labels/taints/tags) via PUT /v2/kubernetes/clusters/{id} and the node-pool endpoints beneath it (derived)
-#     kubernetes:delete         -- destroy via DELETE /v2/kubernetes/clusters/{id}; destroy_all_associated_resources uses the destroy_with_associated_resources/dangerous variant that also sweeps cluster-created load balancers, volumes, and snapshots (derived)
-#     kubernetes:access_cluster -- both modules export the raw kubeconfig output, which the provider fetches from GET /v2/kubernetes/clusters/{id}/kubeconfig on every read (derived)
-#     registry:read             -- when registry_integration is true: the provider associates the account's container registry with the cluster via the /v2/kubernetes/registry endpoint (derived)
-#     tag:create                -- both modules always apply the Planton label tags (plus spec and pool tags); assigning a tag name the account has never used materializes it (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_kubernetes_cluster's create/read/update/delete/import paths,
-# waiters and kubeconfig fetch included) in both the Terraform and Pulumi
-# modules; the live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceankubernetescluster
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageCluster
+        scopes:
+          - kubernetes:create
+          - kubernetes:read
+          - kubernetes:update
+          - kubernetes:delete
+        provenance: derived
+        notes: Covers digitalocean_kubernetes_cluster's create/read/update/delete/import paths (waiters and kubeconfig fetch included) in both the Terraform and Pulumi modules -- create the cluster via POST /v2/kubernetes/clusters with version, VPC, HA, subnets, addon toggles, and the inline default node pool all riding the create body (kubernetes:create), read the cluster via GET /v2/kubernetes/clusters/{id} on refresh/import and while the create waiter polls for running status (kubernetes:read), in-place changes (auto/surge upgrade, maintenance policy, control-plane firewall, SSO, autoscaler tuning, addon toggles, default pool count/labels/taints/tags) via PUT /v2/kubernetes/clusters/{id} and the node-pool endpoints beneath it (kubernetes:update), and destroy via DELETE /v2/kubernetes/clusters/{id} where destroy_all_associated_resources uses the destroy_with_associated_resources/dangerous variant that also sweeps cluster-created load balancers, volumes, and snapshots (kubernetes:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: FetchKubeconfig
+        scopes:
+          - kubernetes:access_cluster
+        provenance: derived
+        notes: Both modules export the raw kubeconfig output, which the provider fetches from GET /v2/kubernetes/clusters/{id}/kubeconfig on every read.
+      - purpose: IntegrateRegistry
+        scopes:
+          - registry:read
+        provenance: derived
+        notes: "Needed only when registry_integration is true: the provider associates the account's container registry with the cluster via the /v2/kubernetes/registry endpoint."
+      - purpose: MaterializeTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: Both modules always apply the Planton label tags (plus spec and pool tags); assigning a tag name the account has never used materializes it.

@@ -1,37 +1,33 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are checked verbatim against the Cloudflare API
-# token permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22):
-#
-#   HONEST UNKNOWN -- the permissions reference lists NO permission group
-#   that covers managing ACCOUNT-OWNED API tokens (the modules' single
-#   resource, cloudflare_account_token, calls
-#   POST/PATCH/DELETE/GET /accounts/{account_id}/tokens[/{token_id}]).
-#   The user-scoped "API Tokens Read" / "API Tokens Write" groups cover
-#   only the calling USER's own tokens per their reference descriptions,
-#   not account-owned tokens. Cloudflare's account API tokens page
-#   (https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/,
-#   retrieved 2026-08-22) states that creating an account-owned token
-#   requires Super Administrator permission on the account; no narrower
-#   named permission group is documented for this surface, so none is
-#   claimed here. (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_account_token resource and the
-# Pulumi module's matching AccountToken resource; neither engine performs
-# secondary lookups). The live capture lane upgrades entries to proven.
+# Provenance note: the account-scoped "Account API Tokens Write/Read"
+# groups are absent from the docs-site permissions reference page but are
+# defined in Cloudflare's own permission-group inventory (the API behind
+# this catalog's inventory snapshot) and named verbatim by the account
+# token endpoints' Accepted Permissions -- the docs page is the incomplete
+# surface, not the provider. Cloudflare's account-owned-tokens fundamentals
+# page additionally notes that creating one from the DASHBOARD requires
+# Super Administrator; the API-token grant vocabulary is what this manifest
+# declares.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflareaccountapitoken
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageAccountTokens
+        name: Account API Tokens Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Covers the Terraform module's single cloudflare_account_token resource and the Pulumi module's matching AccountToken resource (neither engine performs secondary lookups) -- create/update/delete the account-owned token via POST/PATCH/DELETE /accounts/{account_id}/tokens[/{token_id}]. Named verbatim by the create endpoint's Accepted Permissions (https://developers.cloudflare.com/api/resources/accounts/subresources/tokens/methods/create/, retrieved 2026-08-22)."
+      - purpose: ReadAccountTokens
+        name: Account API Tokens Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Read-side of the same resource -- refresh/import the token via GET /accounts/{account_id}/tokens/{token_id}. Verified present at account scope in Cloudflare's own permission-group inventory (retrieved 2026-08-22)."

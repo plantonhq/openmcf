@@ -230,6 +230,131 @@ func TestGcpPermissionsExist(t *testing.T) {
 	}
 }
 
+// TestDigitalOceanScopesExist is the DigitalOcean arm of the gate: every
+// token scope every committed permissions manifest names must exist in
+// the provider's own published scope reference. Matching is EXACT string
+// membership -- deliberately not MatchAction's IAM glob semantics,
+// because DigitalOcean does not evaluate wildcards and borrowing IAM's
+// matcher would claim semantics the provider does not have. The
+// structural regex in pkg/iac/permissions would happily accept
+// "droplet:frobnicate"; this gate is what makes that class of wrong
+// impossible.
+func TestDigitalOceanScopesExist(t *testing.T) {
+	root := repoRoot(t)
+	inv, err := LoadDigitalOcean(packageDir(t))
+	if err != nil {
+		t.Fatalf("loading inventory: %v", err)
+	}
+
+	discovered, err := permissions.Discover(root)
+	if err != nil {
+		t.Fatalf("discovering permissions manifests: %v", err)
+	}
+
+	referenced := map[string]bool{}
+	for provider, components := range discovered {
+		for _, component := range components {
+			manifest, err := permissions.Load(root, provider, component)
+			if err != nil {
+				t.Fatalf("loading %s/%s: %v", provider, component, err)
+			}
+			for _, group := range manifest.GetSpec().GetDigitalOcean().GetGroups() {
+				for _, scope := range group.GetScopes() {
+					prefix, action, found := strings.Cut(scope, ":")
+					if !found {
+						t.Errorf("%s/%s: scope %q has no resource prefix", provider, component, scope)
+						continue
+					}
+					referenced[prefix] = true
+					published := inv.ServiceActions(prefix)
+					if published == nil {
+						t.Errorf("%s/%s: scope %q names resource %q which the inventory snapshot does not cover -- run `make generate-action-inventory`", provider, component, scope, prefix)
+						continue
+					}
+					if !containsExact(published, action) {
+						t.Errorf("%s/%s: scope %q does not exist in DigitalOcean's scope reference for %q -- the name is invented or misspelled", provider, component, scope, prefix)
+					}
+				}
+			}
+		}
+	}
+
+	// The dead-weight rule, as on every arm.
+	for _, svc := range inv.Services {
+		if !referenced[svc.Prefix] {
+			t.Errorf("inventory covers resource %q which no permissions manifest references -- run `make generate-action-inventory`", svc.Prefix)
+		}
+	}
+}
+
+// TestCloudflareGroupsExist is the Cloudflare arm of the gate: every
+// (permission-group name, scope) pair every committed permissions
+// manifest names must exist in Cloudflare's own permission-group
+// inventory. Names are matched exactly (they are not IAM-evaluated
+// patterns), and the two failure classes are named distinctly: a name the
+// provider never defined is invented, while a real name at the wrong
+// scope is a modeling error -- a token policy carrying it would grant
+// nothing at the intended level.
+func TestCloudflareGroupsExist(t *testing.T) {
+	root := repoRoot(t)
+	inv, err := LoadCloudflare(packageDir(t))
+	if err != nil {
+		t.Fatalf("loading inventory: %v", err)
+	}
+
+	discovered, err := permissions.Discover(root)
+	if err != nil {
+		t.Fatalf("discovering permissions manifests: %v", err)
+	}
+
+	referenced := map[string]bool{}
+	for provider, components := range discovered {
+		for _, component := range components {
+			manifest, err := permissions.Load(root, provider, component)
+			if err != nil {
+				t.Fatalf("loading %s/%s: %v", provider, component, err)
+			}
+			for _, group := range manifest.GetSpec().GetCloudflare().GetGroups() {
+				name, scope := group.GetName(), group.GetScope()
+				referenced[name] = true
+				if inv.HasGroup(name, scope) {
+					continue
+				}
+				if published := inv.GroupScopes(name); len(published) > 0 {
+					t.Errorf("%s/%s: permission group %q exists but not at scope %q (Cloudflare defines it at %v) -- a token policy carrying it here would grant nothing at the intended level", provider, component, name, scope, published)
+					continue
+				}
+				t.Errorf("%s/%s: permission group %q does not exist in Cloudflare's inventory -- the name is invented, misspelled, or renamed by the provider (run `make generate-action-inventory`)", provider, component, name)
+			}
+		}
+	}
+
+	// The dead-weight rule, keyed by group name: the fetcher scopes the
+	// snapshot to referenced names, so an unreferenced name means the
+	// manifests moved and the snapshot did not.
+	seen := map[string]bool{}
+	for _, group := range inv.Groups {
+		if seen[group.Name] {
+			continue
+		}
+		seen[group.Name] = true
+		if !referenced[group.Name] {
+			t.Errorf("inventory covers permission group %q which no permissions manifest references -- run `make generate-action-inventory`", group.Name)
+		}
+	}
+}
+
+// containsExact reports exact string membership -- the matching semantics
+// of providers that do not evaluate wildcards.
+func containsExact(published []string, name string) bool {
+	for _, entry := range published {
+		if entry == name {
+			return true
+		}
+	}
+	return false
+}
+
 // checkAzurePlane holds one manifest field's operations to its plane of
 // the namespace inventory, naming a wrong-plane operation distinctly from
 // a nonexistent one.
@@ -450,6 +575,144 @@ func TestLoadAzureRefusals(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRenderLoadRoundTripGroups proves the group-shape renderer and its
+// strict loader agree: what RenderGroups writes, LoadCloudflare accepts,
+// byte-stably -- including names whose ": " would change meaning emitted
+// unquoted (the yamlemit contract).
+func TestRenderLoadRoundTripGroups(t *testing.T) {
+	inv := &GroupInventory{
+		Provider:    "cloudflare",
+		SourceURL:   "https://api.cloudflare.com/client/v4/accounts/{account_id}/tokens/permission_groups",
+		RetrievedOn: "2026-08-22",
+		Groups: []PermissionGroup{
+			{ID: "1ba6ab4cacdb454b913bbb93e1b8cb8c", Name: "Access: Apps and Policies Read", Scopes: []string{"com.cloudflare.api.account"}},
+			{ID: "82e64a83756745bbbb1c9c2701bf816b", Name: "DNS Read", Scopes: []string{"com.cloudflare.api.account.zone"}},
+			{ID: "4755a26eedb94da69e1066d98aa820be", Name: "DNS Write", Scopes: []string{"com.cloudflare.api.account.zone"}},
+		},
+	}
+	dir := t.TempDir()
+	rendered := RenderGroups(inv)
+	if err := writeFile(t, filepath.Join(dir, CloudflareFileName), rendered); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadCloudflare(dir)
+	if err != nil {
+		t.Fatalf("round-trip load: %v", err)
+	}
+	if RenderGroups(loaded) != rendered {
+		t.Error("render -> load -> render is not byte-stable")
+	}
+	if !loaded.HasGroup("Access: Apps and Policies Read", "com.cloudflare.api.account") {
+		t.Error("the quoted colon-carrying name did not survive the round trip")
+	}
+}
+
+// TestLoadCloudflareRefusals pins the group loader's structural
+// invariants: unsorted or duplicated content refuses loudly rather than
+// letting gate results depend on snapshot ordering accidents.
+func TestLoadCloudflareRefusals(t *testing.T) {
+	base := func() *GroupInventory {
+		return &GroupInventory{
+			Provider:    "cloudflare",
+			SourceURL:   "https://example.invalid/permission_groups",
+			RetrievedOn: "2026-08-22",
+			Groups: []PermissionGroup{
+				{ID: "aaa", Name: "DNS Read", Scopes: []string{"com.cloudflare.api.account.zone"}},
+				{ID: "bbb", Name: "DNS Write", Scopes: []string{"com.cloudflare.api.account.zone"}},
+			},
+		}
+	}
+	cases := []struct {
+		name    string
+		mutate  func(*GroupInventory)
+		wantErr string
+	}{
+		{"wrong provider", func(i *GroupInventory) { i.Provider = "aws" }, "provider"},
+		{"missing provenance", func(i *GroupInventory) { i.RetrievedOn = "" }, "required"},
+		{"no groups", func(i *GroupInventory) { i.Groups = nil }, "no groups"},
+		{"duplicate id", func(i *GroupInventory) { i.Groups[1].ID = "aaa" }, "duplicate group id"},
+		{"unsorted groups", func(i *GroupInventory) { i.Groups[0], i.Groups[1] = i.Groups[1], i.Groups[0] }, "not sorted"},
+		{"empty scopes", func(i *GroupInventory) { i.Groups[0].Scopes = nil }, "no scopes"},
+		{"unsorted scopes", func(i *GroupInventory) {
+			i.Groups[0].Scopes = []string{"com.cloudflare.api.account.zone", "com.cloudflare.api.account"}
+		}, "not sorted"},
+		{"duplicate scope", func(i *GroupInventory) {
+			i.Groups[0].Scopes = []string{"com.cloudflare.api.account", "com.cloudflare.api.account"}
+		}, "duplicates scope"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			inv := base()
+			c.mutate(inv)
+			dir := t.TempDir()
+			// Render sorts, so unsorted/duplicate cases write raw YAML to
+			// exercise the loader against genuinely malformed bytes.
+			raw := renderGroupsRaw(inv)
+			if err := writeFile(t, filepath.Join(dir, CloudflareFileName), raw); err != nil {
+				t.Fatal(err)
+			}
+			_, err := LoadCloudflare(dir)
+			if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+				t.Errorf("LoadCloudflare error = %v, want it to contain %q", err, c.wantErr)
+			}
+		})
+	}
+}
+
+// TestLoadDigitalOceanRefusals pins the DigitalOcean loader's identity
+// invariant on the shared Service shape (the structural invariants
+// themselves are pinned by the AWS and Azure refusal suites -- one loader
+// serves all three).
+func TestLoadDigitalOceanRefusals(t *testing.T) {
+	inv := &Inventory{
+		Provider: "aws",
+		Services: []Service{{
+			Prefix:      "database",
+			SourceURL:   "https://example.invalid/scopes",
+			RetrievedOn: "2026-08-22",
+			Actions:     []string{"create", "read"},
+		}},
+	}
+	dir := t.TempDir()
+	if err := writeFile(t, filepath.Join(dir, DigitalOceanFileName), renderRaw(inv)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadDigitalOcean(dir); err == nil || !strings.Contains(err.Error(), "provider") {
+		t.Errorf("LoadDigitalOcean error = %v, want a provider identity refusal", err)
+	}
+}
+
+// renderGroupsRaw writes a group inventory verbatim, WITHOUT
+// RenderGroups's sorting, so refusal tests can present genuinely
+// malformed snapshots. Quoting rides the same yamlemit rules as the real
+// renderer.
+func renderGroupsRaw(inv *GroupInventory) string {
+	var b strings.Builder
+	b.WriteString("provider: " + inv.Provider + "\n")
+	b.WriteString("source_url: " + inv.SourceURL + "\n")
+	if inv.RetrievedOn != "" {
+		b.WriteString("retrieved_on: \"" + inv.RetrievedOn + "\"\n")
+	}
+	if len(inv.Groups) == 0 {
+		b.WriteString("groups: []\n")
+		return b.String()
+	}
+	b.WriteString("groups:\n")
+	for _, group := range inv.Groups {
+		b.WriteString("  - id: " + group.ID + "\n")
+		b.WriteString("    name: \"" + group.Name + "\"\n")
+		if len(group.Scopes) == 0 {
+			b.WriteString("    scopes: []\n")
+			continue
+		}
+		b.WriteString("    scopes:\n")
+		for _, scope := range group.Scopes {
+			b.WriteString("      - " + scope + "\n")
+		}
+	}
+	return b.String()
 }
 
 // renderRaw writes an inventory verbatim, WITHOUT Render's sorting, so

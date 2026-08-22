@@ -1,36 +1,23 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22):
-#
-#   Zero Trust Write   -- account-scoped; create/update/delete the Gateway
-#                         policy via
-#                         POST/PUT/DELETE /accounts/{account_id}/gateway/rules[/{rule_id}].
-#                         The reference publishes no narrower group for
-#                         Gateway policies (derived from the module's API
-#                         surface) (provenance: derived)
-#   Zero Trust Read    -- account-scoped; refresh/import the policy via
-#                         GET /accounts/{account_id}/gateway/rules/{rule_id}
-#                         (derived from the module's API surface)
-#                         (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_zero_trust_gateway_policy resource
-# and the Pulumi module's matching ZeroTrustGatewayPolicy resource; neither
-# engine performs secondary lookups). The live capture lane upgrades entries
-# to proven.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflarezerotrustgatewaypolicy
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManagePolicy
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the Gateway policy via POST/PUT/DELETE /accounts/{account_id}/gateway/rules[/{rule_id}]; the reference publishes no narrower group for Gateway policies (derived from the module's API surface). Covers the Terraform module's single cloudflare_zero_trust_gateway_policy resource and the Pulumi module's matching ZeroTrustGatewayPolicy resource; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadPolicy
+        name: Zero Trust Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the policy via GET /accounts/{account_id}/gateway/rules/{rule_id} (derived from the module's API surface).

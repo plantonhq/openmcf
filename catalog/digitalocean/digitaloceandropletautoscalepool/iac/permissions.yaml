@@ -1,29 +1,36 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
-#
-#   Custom-scopes token (recommended):
-#     droplet:read    -- read the pool and list its members via GET /v2/droplets/autoscale_pools/{id} and .../members (the create/delete waiters poll both) (provenance: derived)
-#     droplet:create  -- create the pool via POST /v2/droplets/autoscale_pools (derived)
-#     droplet:update  -- update name/config/template via PUT /v2/droplets/autoscale_pools/{id} (derived)
-#     droplet:delete  -- delete the pool AND its member droplets via DELETE /v2/droplets/autoscale_pools/{id}/dangerous (derived)
-#     ssh_key:read    -- the template names SSH keys members boot with (derived)
-#     vpc:read        -- when the template pins a VPC (derived)
-#     project:read    -- when the template pins a project (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_droplet_autoscale's create/read/update/delete/import paths,
-# both waiters included); the live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceandropletautoscalepool
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageAutoscalePool
+        scopes:
+          - droplet:read
+          - droplet:create
+          - droplet:update
+          - droplet:delete
+        provenance: derived
+        notes: Covers digitalocean_droplet_autoscale's create/read/update/delete/import paths, both waiters included -- read the pool and list its members via GET /v2/droplets/autoscale_pools/{id} and .../members (the create/delete waiters poll both) (droplet:read), create the pool via POST /v2/droplets/autoscale_pools (droplet:create), update name/config/template via PUT /v2/droplets/autoscale_pools/{id} (droplet:update), and delete the pool AND its member droplets via DELETE /v2/droplets/autoscale_pools/{id}/dangerous (droplet:delete). A full-access token also works; it is never least-privilege.
+      - purpose: ResolveSshKeys
+        scopes:
+          - ssh_key:read
+        provenance: derived
+        notes: The template names SSH keys members boot with.
+      - purpose: ResolveVpc
+        scopes:
+          - vpc:read
+        provenance: derived
+        notes: Needed only when the template pins a VPC.
+      - purpose: ResolveProject
+        scopes:
+          - project:read
+        provenance: derived
+        notes: Needed only when the template pins a project.

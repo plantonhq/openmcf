@@ -1,27 +1,21 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     database:read    -- read the topic via GET /v2/databases/{cluster}/topics/{name} (provenance: derived)
-#     database:create  -- create the topic via POST /v2/databases/{cluster}/topics; DigitalOcean's own OpenAPI spec (databases_create_kafka_topic.yml) declares database:create on this endpoint (derived)
-#     database:update  -- update partitions/replication/config via PUT /v2/databases/{cluster}/topics/{name}; the OpenAPI spec (databases_update_kafka_topic.yml) declares database:update (derived)
-#     database:delete  -- delete the topic via DELETE /v2/databases/{cluster}/topics/{name}; the OpenAPI spec (databases_delete_kafka_topic.yml) declares database:delete (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_database_kafka_topic's create/read/update/delete/import
-# paths); the live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceandatabasekafkatopic
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageKafkaTopic
+        scopes:
+          - database:read
+          - database:create
+          - database:update
+          - database:delete
+        provenance: derived
+        notes: Covers digitalocean_database_kafka_topic's create/read/update/delete/import paths -- read the topic via GET /v2/databases/{cluster}/topics/{name} (database:read), create the topic via POST /v2/databases/{cluster}/topics, where DigitalOcean's own OpenAPI spec (databases_create_kafka_topic.yml) declares database:create on this endpoint (database:create), update partitions/replication/config via PUT /v2/databases/{cluster}/topics/{name}, where the OpenAPI spec (databases_update_kafka_topic.yml) declares database:update (database:update), and delete the topic via DELETE /v2/databases/{cluster}/topics/{name}, where the OpenAPI spec (databases_delete_kafka_topic.yml) declares database:delete (database:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

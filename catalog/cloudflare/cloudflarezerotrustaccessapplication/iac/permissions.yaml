@@ -1,47 +1,40 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
-# section of the Access applications create endpoint doc
-# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/applications/methods/create/,
-# retrieved 2026-08-22), which names exactly one group:
-#
-#   "Access: Apps and Policies Write"  -- create/update/delete the
-#                                         application via POST/PUT/DELETE
-#                                         /{accounts|zones}/{account_or_zone_id}/access/apps
-#                                         [/{app_id}]. The spec's
-#                                         account_id/zone_id oneof decides
-#                                         the scope; the permissions
-#                                         reference publishes this same
-#                                         group name in both its account and
-#                                         zone tables, so grant it at the
-#                                         scope the spec uses.
-#                                         (provenance: documented)
-#   "Access: Apps and Policies Read"   -- refresh/import the application via
-#                                         GET .../access/apps/{app_id}
-#                                         (Write covers the whole lifecycle;
-#                                         Read is only needed for read-only
-#                                         credentials) (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_zero_trust_access_application
-# resource and the Pulumi module's matching ZeroTrustAccessApplication
-# resource; policies, IdPs, and SCIM sources are attached by ID reference,
-# never created or read by these modules), with the write group upgraded to
-# documented provenance by the endpoint page cited above. The live capture
-# lane upgrades entries to proven.
+# The spec's account_id/zone_id oneof decides where the application lives,
+# and Cloudflare defines the "Access: Apps and Policies" groups at BOTH
+# scopes (verified against the provider's own permission-group inventory,
+# retrieved 2026-08-22) -- so each group appears twice below, one entry per
+# scope, each conditional on the oneof arm the spec uses. A token built for
+# one deployment needs only the pair matching its spec's arm.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflarezerotrustaccessapplication
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageApplicationAccountScoped
+        name: "Access: Apps and Policies Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "CONDITIONAL -- needed only when the spec's account_id/zone_id oneof selects the account arm. Covers the Terraform module's single cloudflare_zero_trust_access_application resource and the Pulumi module's matching ZeroTrustAccessApplication resource (policies, IdPs, and SCIM sources are attached by ID reference, never created or read by these modules) -- create/update/delete the application via POST/PUT/DELETE /accounts/{account_id}/access/apps[/{app_id}]. Named by the create endpoint's Accepted Permissions (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/applications/methods/create/, retrieved 2026-08-22)."
+      - purpose: ManageApplicationZoneScoped
+        name: "Access: Apps and Policies Write"
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: "CONDITIONAL -- needed only when the spec's account_id/zone_id oneof selects the zone arm. Same resources and lifecycle via POST/PUT/DELETE /zones/{zone_id}/access/apps[/{app_id}]."
+      - purpose: ReadApplicationAccountScoped
+        name: "Access: Apps and Policies Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "CONDITIONAL -- needed only when the spec's oneof selects the account arm. Refresh/import the application via GET /accounts/{account_id}/access/apps/{app_id} (Write covers the whole lifecycle; Read alone suffices only for read-only credentials)."
+      - purpose: ReadApplicationZoneScoped
+        name: "Access: Apps and Policies Read"
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: "CONDITIONAL -- needed only when the spec's oneof selects the zone arm. Refresh/import via GET /zones/{zone_id}/access/apps/{app_id}."

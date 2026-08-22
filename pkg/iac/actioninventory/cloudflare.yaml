@@ -1,0 +1,356 @@
+# GENERATED -- DO NOT EDIT. Refresh with `make generate-action-inventory`.
+# Committed snapshot of the provider's own permission-group inventory,
+# scoped to exactly the group names the committed runner permissions
+# manifests (catalog/*/*/iac/permissions.yaml) reference. The conformance
+# gate in this package proves every manifest (name, scope) pair exists
+# here -- a permission group the provider never defined cannot ship. The
+# endpoint serves latest-only content; provenance is the URL plus the
+# retrieval date.
+provider: cloudflare
+source_url: https://api.cloudflare.com/client/v4/accounts/{account_id}/tokens/permission_groups
+retrieved_on: "2026-08-22"
+groups:
+  - id: 4dc8917b4b40457d88d3035d5dadb054
+    name: AI Gateway Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 6c8a3737f07f46369c1ea1f22138daaf
+    name: AI Gateway Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 7ea222f6d5064cfa89ea366d7c1fee89
+    name: "Access: Apps and Policies Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: eb258a38ea634c86a0c89da6b27cb6b6
+    name: "Access: Apps and Policies Read"
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 1e13c5124ca64b72b1969a67e8829049
+    name: "Access: Apps and Policies Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 959972745952452f8be2452be8cbb9f2
+    name: "Access: Apps and Policies Write"
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 0f4841f80adb4bada5a09493300e7f8d
+    name: "Access: Device Posture Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 2fc1072ee6b743828db668fcb3f9dee7
+    name: "Access: Device Posture Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 26bc23f853634eb4bff59983b9064fde
+    name: "Access: Organizations, Identity Providers, and Groups Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: bfe0d8686a584fa680f4c53b5eb0de6d
+    name: "Access: Organizations, Identity Providers, and Groups Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 91f7ce32fa614d73b7e1fc8f0e78582b
+    name: "Access: Service Tokens Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: a1c0fec57cf94af79479a6d827fa518c
+    name: "Access: Service Tokens Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: eb56a6953c034b9d97dd838155666f06
+    name: Account API Tokens Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 5bc3f8b21c554832afc660159ab75fa4
+    name: Account API Tokens Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: de7a688cc47d43bd9ea700b467a09c96
+    name: Account Firewall Access Rules Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: a416acf9ef5a4af19fb11ed3b96b1fe6
+    name: Account Firewall Access Rules Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 4f1071168de8466e9808de86febfc516
+    name: Account Rule Lists Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 2edbf20661fd4661b0fe10e9e12f485c
+    name: Account Rule Lists Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: fb39996ee9044d2a8725921e02744b39
+    name: Account Rulesets Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 56907406c3d548ed902070ec4df0e328
+    name: Account Rulesets Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: c1fde68c7bcc44588cbb6ddbc16d6480
+    name: Account Settings Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 1af1fa2adc104452b74a9a3364202f20
+    name: Account Settings Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: a7a233f9604845c787d4c8c39ac09c21
+    name: "Account: SSL and Certificates Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: db37e5f1cb1a4e1aabaef8deaea43575
+    name: "Account: SSL and Certificates Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 6c80e02421494afc9ae14414ed442632
+    name: Billing Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 07bea2220b2343fa9fae15656c0d8e88
+    name: Bot Management Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 3b94c49258ec4573b06d51d99b6416c0
+    name: Bot Management Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 3245da1cf36c45c3847bb9b483c62f97
+    name: Cache Settings Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 9ff81cbbe65c400b97d92c3c1033cab6
+    name: Cache Settings Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: efea2ab8357b47888938f101ae5e053f
+    name: Cloudflare Tunnel Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: c07321b023e944ff818fec44d8203567
+    name: Cloudflare Tunnel Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 192192df92ee43ac90f2aeeffce67e35
+    name: D1 Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 09b2857d1c31407795e75e3fed8617a1
+    name: D1 Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 82e64a83756745bbbb1c9c2701bf816b
+    name: DNS Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 4755a26eedb94da69e1066d98aa820be
+    name: DNS Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 5272e56105d04b5897466995b9bd4643
+    name: Email Routing Addresses Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: e4589eb09e63436686cd64252a3aebeb
+    name: Email Routing Addresses Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 1b600d9d8062443e986a973f097e728a
+    name: Email Routing Rules Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 79b3ec0d10ce4148a8f8bdc0cc5f97f2
+    name: Email Routing Rules Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 4ec32dfcb35641c5bb32d5ef1ab963b4
+    name: Firewall Services Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 43137f8d07884d3198dc0ee77ca6e79b
+    name: Firewall Services Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: fac65912d42144aa86b7dd33281bf79e
+    name: Health Checks Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: e0dc25a0fbdf4286b1ea100e3256b0e3
+    name: Health Checks Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 4d62ccf834df44808bc9283d65c4e4e9
+    name: Hyperdrive Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 721b2f51fba74871bd361de65aeb7e03
+    name: Hyperdrive Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: e9a975f628014f1d85b723993116f7d5
+    name: Load Balancers Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 6d7f2f5f5b1d4a0e9081fdc98d432fd1
+    name: Load Balancers Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 9d24387c6e8544e2bc4024a03991339f
+    name: "Load Balancing: Monitors and Pools Read"
+    scopes:
+      - com.cloudflare.api.account
+  - id: d2a1802cc9a34e30852f8b33869b2f3c
+    name: "Load Balancing: Monitors and Pools Write"
+    scopes:
+      - com.cloudflare.api.account
+  - id: 6a315a56f18441e59ed03352369ae956
+    name: Logs Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: c4a30cd58c5d42619c86a3c36c441e2d
+    name: Logs Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 3e0b5820118e47f3922f7c989e673882
+    name: Logs Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 96163bd1b0784f62b3e44ed8c2ab1eb6
+    name: Logs Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: b84a912ebb4a418888fec65f65c8ff3b
+    name: MCP Portals Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: db3d398df73946acb755c05b69edfc30
+    name: MCP Portals Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 319f5059d33a410da0fac4d35a716157
+    name: Managed headers Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 0fd9d56bc2da43ad8ea22d610dd8cab1
+    name: Managed headers Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: ce18edbdcebf465e9d6d1d2fc80ffd42
+    name: Notifications Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: c3c847c5802d4ce3ba00e3e97b3c8555
+    name: Notifications Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: e247aedd66bd41cc9193af0213416666
+    name: Pages Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 8d28297797f24fb8a0c332fe0866ec89
+    name: Pages Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 84a7755d54c646ca87cd50682a34bf7c
+    name: Queues Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 366f57075ffc42689627bcf8242a1b6d
+    name: Queues Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 7b7216b327b04b8fbc8f524e1f9b7531
+    name: SSL and Certificates Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: c03055bc037c4ea9afb9a9f104b7b721
+    name: SSL and Certificates Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 5e33b7d77788455c9fdf18cbd38ee5a0
+    name: Secrets Store Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: adc8fa2bc6124928a8b3314dc63a1235
+    name: Secrets Store Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: dadeaf3abdf14126a77a35e0c92fc36e
+    name: Snippets Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 5d78fd7895974fd0bdbbbb079482721b
+    name: Turnstile Sites Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: 755c05aa014b4f9ab263aa80b8167bd8
+    name: Turnstile Sites Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: cab5202d07ef47beae788e6bc95cb6fe
+    name: Waiting Rooms Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 24fc124dc8254e0db468e60bf410c800
+    name: Waiting Rooms Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 8b47d2786a534c08a1f94ee8f9f599ef
+    name: Workers KV Storage Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: f7f0eda5697f475c90846e879bab8666
+    name: Workers KV Storage Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: b4992e1108244f5d8bfbd5744320c2e1
+    name: Workers R2 Storage Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: bf7481a1826f439697cb59a20b22293e
+    name: Workers R2 Storage Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 2072033d694d415a936eaeb94e6405b8
+    name: Workers Routes Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 28f4b596e7d643029c524985477ae49a
+    name: Workers Routes Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 1a71c399035b4950a1bd1466bbe4f420
+    name: Workers Scripts Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: e086da7e2179491d91ee5f35b3ca210a
+    name: Workers Scripts Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: 3f376c8e6f764a938b848bd01c8995c4
+    name: Zero Trust Read
+    scopes:
+      - com.cloudflare.api.account
+  - id: b33f02c6f7284e05a6f20741c0bb0567
+    name: Zero Trust Write
+    scopes:
+      - com.cloudflare.api.account
+  - id: c8fed203ed3043cba015a93ad1616f1f
+    name: Zone Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 517b21aee92c4d89936c976ba6e4be55
+    name: Zone Settings Read
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: 3030687196b94b638145a3953da2b699
+    name: Zone Settings Write
+    scopes:
+      - com.cloudflare.api.account.zone
+  - id: e6d2666161e84845a636613608cee8d5
+    name: Zone Write
+    scopes:
+      - com.cloudflare.api.account.zone

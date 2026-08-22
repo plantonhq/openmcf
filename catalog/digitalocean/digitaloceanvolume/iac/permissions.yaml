@@ -1,29 +1,30 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     block_storage:create        -- create the volume via POST /v2/volumes (size, region, filesystem, snapshot source, and tags ride the create body) (provenance: derived)
-#     block_storage:read          -- read the volume via GET /v2/volumes/{id} on refresh/import (derived)
-#     block_storage:delete        -- destroy via DELETE /v2/volumes/{id} (derived)
-#     block_storage_action:create -- expand size_gib after create: the provider resizes via POST /v2/volumes/{id}/actions (derived)
-#     tag:create                  -- both modules always apply the Planton label tags (plus spec tags); assigning a tag name the account has never used materializes it (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_volume's create/read/resize/delete/import paths) in both the
-# Terraform and Pulumi modules; the live capture lane upgrades them to
-# proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceanvolume
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageVolume
+        scopes:
+          - block_storage:create
+          - block_storage:read
+          - block_storage:delete
+        provenance: derived
+        notes: Covers digitalocean_volume's create/read/resize/delete/import paths in both the Terraform and Pulumi modules -- create the volume via POST /v2/volumes with size, region, filesystem, snapshot source, and tags riding the create body (block_storage:create), read the volume via GET /v2/volumes/{id} on refresh/import (block_storage:read), and destroy via DELETE /v2/volumes/{id} (block_storage:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: ResizeVolume
+        scopes:
+          - block_storage_action:create
+        provenance: derived
+        notes: "Needed only when size_gib expands after create: the provider resizes via POST /v2/volumes/{id}/actions."
+      - purpose: MaterializeTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: Both modules always apply the Planton label tags (plus spec tags); assigning a tag name the account has never used materializes it.

@@ -1,41 +1,33 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
-# section of the Access groups create endpoint doc
-# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/groups/methods/create/,
-# retrieved 2026-08-22), which names exactly one group:
-#
-#   "Access: Organizations, Identity Providers, and Groups Write"
-#       -- create/update/delete the group via POST/PUT/DELETE
-#          /{accounts|zones}/{account_or_zone_id}/access/groups[/{group_id}].
-#          The spec's account_id/zone_id oneof decides the scope. Cloudflare
-#          publishes no narrower groups-only permission group.
-#          (provenance: documented)
-#   "Access: Organizations, Identity Providers, and Groups Read"
-#       -- refresh/import the group via GET .../access/groups/{group_id}
-#          (Write covers the whole lifecycle; Read is only needed for
-#          read-only credentials) (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_zero_trust_access_group resource and
-# the Pulumi module's matching ZeroTrustAccessGroup resource; identity
-# providers, lists, and nested groups are referenced by ID, never created or
-# read by these modules), with the write group upgraded to documented
-# provenance by the endpoint page cited above. The live capture lane
-# upgrades entries to proven.
+# Scope correction, verified against the provider's own permission-group
+# inventory (retrieved 2026-08-22): although the spec's account_id/zone_id
+# oneof decides where the GROUP lives (the API accepts both
+# /accounts/... and /zones/... paths), Cloudflare defines the
+# "Access: Organizations, Identity Providers, and Groups" permission
+# groups at ACCOUNT scope only -- no zone-scoped variant exists in the
+# inventory, so the token grant is account-scoped regardless of which arm
+# the spec uses. (The docs reference page's zone table listing is not
+# reproduced by the provider's inventory API.)
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflarezerotrustaccessgroup
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageGroup
+        name: "Access: Organizations, Identity Providers, and Groups Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Covers the Terraform module's single cloudflare_zero_trust_access_group resource and the Pulumi module's matching ZeroTrustAccessGroup resource (identity providers, lists, and nested groups are referenced by ID, never created or read by these modules) -- create/update/delete the group via POST/PUT/DELETE /{accounts|zones}/{account_or_zone_id}/access/groups[/{group_id}]; Cloudflare publishes no narrower groups-only permission group, and the grant exists at account scope only (see header). Named by the create endpoint's Accepted Permissions (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/groups/methods/create/, retrieved 2026-08-22)."
+      - purpose: ReadGroup
+        name: "Access: Organizations, Identity Providers, and Groups Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Read-side of the same resource -- refresh/import the group via GET .../access/groups/{group_id} (Write covers the whole lifecycle; Read alone suffices only for read-only credentials)."

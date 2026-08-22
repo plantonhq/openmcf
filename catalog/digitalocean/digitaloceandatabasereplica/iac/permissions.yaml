@@ -1,26 +1,21 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
-#
-#   Custom-scopes token (recommended):
-#     database:read    -- read the replica through GET /v2/databases/{c}/replicas/{n} (provenance: derived)
-#     database:create  -- create the replica via POST /v2/databases/{c}/replicas (derived)
-#     database:update  -- in-place size/storage resize via PUT /v2/databases/{replica_id}/resize (derived)
-#     database:delete  -- delete it via DELETE /v2/databases/{c}/replicas/{n} (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_database_replica's create/read/update/delete/import paths);
-# the live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceandatabasereplica
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDatabaseReplica
+        scopes:
+          - database:read
+          - database:create
+          - database:update
+          - database:delete
+        provenance: derived
+        notes: Covers digitalocean_database_replica's create/read/update/delete/import paths -- read the replica through GET /v2/databases/{c}/replicas/{n} (database:read), create the replica via POST /v2/databases/{c}/replicas (database:create), perform in-place size/storage resize via PUT /v2/databases/{replica_id}/resize (database:update), and delete it via DELETE /v2/databases/{c}/replicas/{n} (database:delete). A full-access token also works; it is never least-privilege.

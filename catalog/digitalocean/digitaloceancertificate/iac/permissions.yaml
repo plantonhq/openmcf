@@ -1,29 +1,20 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
-#
-#   Custom-scopes token (recommended):
-#     certificate:read    -- read the certificate on refresh/import; the provider resolves the stable NAME to the current UUID by listing, then gets (a Let's Encrypt certificate's UUID rotates on every auto-renewal) (provenance: derived)
-#     certificate:create  -- create the certificate via POST /v2/certificates; every argument is create-only, so any change also creates the replacement first (derived)
-#     certificate:delete  -- delete the certificate via DELETE /v2/certificates/{uuid}; replacements destroy the old certificate after the new one exists (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# No update scope exists to need: digitalocean_certificate has no in-place
-# update path -- the modules replace on every change (create_before_destroy).
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_certificate's create/read/delete/import paths, including the
-# name<->UUID resolution the provider performs on every read); the live
-# capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceancertificate
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageCertificate
+        scopes:
+          - certificate:read
+          - certificate:create
+          - certificate:delete
+        provenance: derived
+        notes: Covers digitalocean_certificate's create/read/delete/import paths, including the name<->UUID resolution the provider performs on every read -- read the certificate on refresh/import, where the provider resolves the stable NAME to the current UUID by listing, then gets (a Let's Encrypt certificate's UUID rotates on every auto-renewal) (certificate:read), create the certificate via POST /v2/certificates, where every argument is create-only so any change also creates the replacement first (certificate:create), and delete the certificate via DELETE /v2/certificates/{uuid}, where replacements destroy the old certificate after the new one exists (certificate:delete). No update scope exists to need -- digitalocean_certificate has no in-place update path; the modules replace on every change (create_before_destroy). A full-access token also works; it is never least-privilege.

@@ -1,34 +1,27 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     app:create -- create the app via POST /v2/apps (the entire app spec -- services, workers, jobs, static sites, functions, databases, domains, ingress, alerts, VPC egress -- rides the create body) (provenance: derived)
-#     app:read   -- read the app via GET /v2/apps/{id} on refresh/import and while the create waiter polls the deployment to an active phase (derived)
-#     app:update -- every spec change deploys through PUT /v2/apps/{id} (derived)
-#     app:delete -- destroy via DELETE /v2/apps/{id}, which also destroys in-app development databases (derived)
-#   A full-access token also works; it is never least-privilege.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 #
 # The app resource takes no DigitalOcean tags (no tag scope), and container
 # image sources (Docker Hub, GHCR, or DOCR references in the spec) are
 # pulled by App Platform's own build system, not by the provisioner's
 # token. Git sources authenticate through App Platform's GitHub/GitLab
 # integrations, also outside this token.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_app's create/read/update/delete/import paths, deployment
-# waiters included) in both the Terraform and Pulumi modules; the live
-# capture lane upgrades them to proven.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceanapp
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageApp
+        scopes:
+          - app:create
+          - app:read
+          - app:update
+          - app:delete
+        provenance: derived
+        notes: Covers digitalocean_app's create/read/update/delete/import paths, deployment waiters included, in both the Terraform and Pulumi modules -- create the app via POST /v2/apps, where the entire app spec (services, workers, jobs, static sites, functions, databases, domains, ingress, alerts, VPC egress) rides the create body (app:create), read it via GET /v2/apps/{id} on refresh/import and while the create waiter polls the deployment to an active phase (app:read), deploy every spec change through PUT /v2/apps/{id} (app:update), and destroy via DELETE /v2/apps/{id}, which also destroys in-app development databases (app:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

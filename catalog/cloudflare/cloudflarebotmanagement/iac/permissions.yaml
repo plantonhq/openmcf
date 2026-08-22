@@ -1,36 +1,23 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22):
-#
-#   Bot Management Write  -- zone-scoped; apply the zone's singleton bot
-#                            configuration via PUT
-#                            /zones/{zone_id}/bot_management (create and
-#                            update are both this PUT; destroy is a no-op at
-#                            Cloudflare, no delete call exists)
-#                            (derived from the module's API surface)
-#                            (provenance: derived)
-#   Bot Management Read   -- zone-scoped; refresh/import the configuration
-#                            via GET /zones/{zone_id}/bot_management
-#                            (derived from the module's API surface)
-#                            (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_bot_management resource and the
-# Pulumi module's matching BotManagement resource; neither engine performs
-# secondary lookups). The live capture lane upgrades entries to proven.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflarebotmanagement
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageBotConfig
+        name: Bot Management Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_bot_management resource and the Pulumi module's matching BotManagement resource -- apply the zone's singleton bot configuration via PUT /zones/{zone_id}/bot_management (create and update are both this PUT; destroy is a no-op at Cloudflare, no delete call exists) (derived from the module's API surface; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadBotConfig
+        name: Bot Management Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resource -- refresh/import the configuration via GET /zones/{zone_id}/bot_management (derived from the module's API surface).

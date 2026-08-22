@@ -5,7 +5,10 @@ go_library(
     srcs = ["actioninventory.go"],
     importpath = "github.com/plantonhq/planton/pkg/iac/actioninventory",
     visibility = ["//visibility:public"],
-    deps = ["@in_gopkg_yaml_v3//:yaml_v3"],
+    deps = [
+        "//pkg/yamlemit",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
 )
 
 go_test(

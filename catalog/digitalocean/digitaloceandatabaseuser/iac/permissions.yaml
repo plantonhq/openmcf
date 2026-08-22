@@ -1,28 +1,21 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically (scope names per
-# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
-#
-#   Custom-scopes token (recommended):
-#     database:read    -- read the user through GET /v2/databases/{c}/users/{n} (provenance: derived)
-#     database:view_credentials -- see the user's password (and a Kafka user's access certificate/key) in that read; DigitalOcean's own OpenAPI spec (databases_get_user.yml) states the password "will not show up unless the database:view_credentials scope is present", and the modules export these credentials as stack outputs (derived)
-#     database:create  -- create the user via POST /v2/databases/{c}/users (derived)
-#     database:update  -- reset the MySQL auth plugin / update ACLs (derived)
-#     database:delete  -- delete the user via DELETE /v2/databases/{c}/users/{n} (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_database_user's create/read/update/delete/import paths);
-# the live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceandatabaseuser
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDatabaseUser
+        scopes:
+          - database:read
+          - database:create
+          - database:update
+          - database:delete
+        provenance: derived
+        notes: Covers digitalocean_database_user's create/read/update/delete/import paths -- create the user via POST /v2/databases/{c}/users (database:create), read it back through GET /v2/databases/{c}/users/{n} on refresh/import (database:read), reset the MySQL auth plugin / update ACLs (database:update), and delete via DELETE /v2/databases/{c}/users/{n} (database:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

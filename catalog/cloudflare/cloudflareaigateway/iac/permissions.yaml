@@ -1,43 +1,26 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22; AI Gateway carries no renamed "Write" form -- "AI
-# Gateway Edit" is the current name on both of the page's name tables):
-#
-#   AI Gateway Edit   -- account-scoped; create/update/delete the gateway via
-#                        POST/PUT/DELETE
-#                        /accounts/{account_id}/ai-gateway/gateways[/{id}]
-#                        and its dynamic-routing objects via
-#                        POST/PUT/DELETE /accounts/{account_id}/ai-gateway/
-#                        gateways/{gateway_id}/dynamic-routes[/{id}]
-#                        (derived from the module's API surface)
-#                        (provenance: derived)
-#   AI Gateway Read   -- account-scoped; refresh/import the gateway and its
-#                        dynamic routes via GET on the same paths
-#                        (derived from the module's API surface)
-#                        (provenance: derived)
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
 # "AI Gateway Run" (WebSockets runtime access) is NOT needed: the modules
 # only provision the control plane, they never invoke the gateway.
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's cloudflare_ai_gateway and
-# cloudflare_ai_gateway_dynamic_routing resources and the Pulumi module's
-# matching AiGateway and AiGatewayDynamicRouting resources; neither engine
-# performs secondary lookups). The live capture lane upgrades entries to
-# proven.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflareaigateway
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageGateway
+        name: AI Gateway Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Covers the Terraform module's cloudflare_ai_gateway and cloudflare_ai_gateway_dynamic_routing resources and the Pulumi module's matching AiGateway and AiGatewayDynamicRouting resources -- create/update/delete the gateway via POST/PUT/DELETE /accounts/{account_id}/ai-gateway/gateways[/{id}] and its dynamic-routing objects via POST/PUT/DELETE /accounts/{account_id}/ai-gateway/gateways/{gateway_id}/dynamic-routes[/{id}] (derived from the module's API surface; neither engine performs secondary lookups). Name note: the docs-site permissions reference page spells this group \"AI Gateway Edit\" (retrieved 2026-08-22), but the provider's own permission-group inventory -- the source token creation validates against and this catalog's gate proves against -- defines \"AI Gateway Write\" at account scope (retrieved 2026-08-22); the docs page carries the dashboard-flavored spelling."
+      - purpose: ReadGateway
+        name: AI Gateway Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the gateway and its dynamic routes via GET on the same paths (derived from the module's API surface).

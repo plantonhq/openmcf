@@ -1,47 +1,36 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. The spec pins the rule to exactly ONE scope (account XOR
-# zone), so a given stack needs only that scope's pair. Group names are
-# verbatim from the Cloudflare API token permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22):
-#
-# When the rule is zone-scoped (spec.zone_id set):
-#   Firewall Services Write  -- zone-scoped; create/update/delete the rule
-#                               via POST/PATCH/DELETE
-#                               /zones/{zone_id}/firewall/access_rules/rules[/{id}]
-#                               (derived from the module's API surface)
-#                               (provenance: derived)
-#   Firewall Services Read   -- zone-scoped; refresh/import the rule via GET
-#                               on the same path (derived from the module's
-#                               API surface) (provenance: derived)
-#
-# When the rule is account-wide (spec.account_id set):
-#   Account Firewall Access Rules Write  -- account-scoped; create/update/
-#                                           delete the rule via
-#                                           POST/PATCH/DELETE /accounts/
-#                                           {account_id}/firewall/access_rules/rules[/{id}]
-#                                           (derived from the module's API
-#                                           surface) (provenance: derived)
-#   Account Firewall Access Rules Read   -- account-scoped; refresh/import
-#                                           the rule via GET on the same path
-#                                           (derived from the module's API
-#                                           surface) (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_access_rule resource and the Pulumi
-# module's matching AccessRule resource; neither engine performs secondary
-# lookups). The live capture lane upgrades entries to proven.
+# The spec pins the rule to exactly ONE scope (account XOR zone), so a
+# given stack needs only that scope's pair of groups.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflareipaccessrule
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageZoneRule
+        name: Firewall Services Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Needed only when the rule is zone-scoped (spec.zone_id set) -- create/update/delete the rule via POST/PATCH/DELETE /zones/{zone_id}/firewall/access_rules/rules[/{id}] (derived from the module's API surface). Covers the Terraform module's single cloudflare_access_rule resource and the Pulumi module's matching AccessRule resource; neither engine performs secondary lookups. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadZoneRule
+        name: Firewall Services Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Needed only when the rule is zone-scoped (spec.zone_id set) -- refresh/import the rule via GET on the same path (derived from the module's API surface).
+      - purpose: ManageAccountRule
+        name: Account Firewall Access Rules Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Needed only when the rule is account-wide (spec.account_id set) -- create/update/delete the rule via POST/PATCH/DELETE /accounts/{account_id}/firewall/access_rules/rules[/{id}] (derived from the module's API surface). Covers the Terraform module's single cloudflare_access_rule resource and the Pulumi module's matching AccessRule resource; neither engine performs secondary lookups.
+      - purpose: ReadAccountRule
+        name: Account Firewall Access Rules Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Needed only when the rule is account-wide (spec.account_id set) -- refresh/import the rule via GET on the same path (derived from the module's API surface).

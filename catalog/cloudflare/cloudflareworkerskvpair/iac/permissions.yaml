@@ -1,42 +1,26 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 #
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22; the page lists each account-scoped group in two
-# naming variants -- "Workers KV Storage Edit" and "Workers KV Storage
-# Write" -- both verbatim on the page; the Write form is used here):
-#
-#   Workers KV Storage Write  -- account-scoped; write the entry via PUT
-#                                /accounts/{account_id}/storage/kv/namespaces/{namespace_id}/values/{key_name}
-#                                (value plus optional metadata) and delete it
-#                                via DELETE on the same path
-#                                (derived from the modules' API surface)
-#                                (provenance: derived)
-#   Workers KV Storage Read   -- account-scoped; refresh/import the entry via GET
-#                                on the same values path (and its metadata
-#                                endpoint)
-#                                (derived from the modules' API surface)
-#                                (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_workers_kv resource and the Pulumi
-# module's matching WorkersKv resource; neither engine performs secondary
-# lookups or data-source reads -- when namespace_id is a reference to a
-# CloudflareKvNamespace, the platform resolves it from that resource's
-# outputs before the engine runs). Neither README.md nor catalog.md carried
-# any named permission prose to migrate. The live capture lane upgrades
-# entries to proven.
+# Neither README.md nor catalog.md carried any named permission prose to
+# migrate.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflareworkerskvpair
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageEntry
+        name: Workers KV Storage Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Write the entry via PUT /accounts/{account_id}/storage/kv/namespaces/{namespace_id}/values/{key_name} (value plus optional metadata) and delete it via DELETE on the same path (derived from the modules' API surface). Covers the Terraform module's single cloudflare_workers_kv resource and the Pulumi module's matching WorkersKv resource; neither engine performs secondary lookups or data-source reads -- when namespace_id is a reference to a CloudflareKvNamespace, the platform resolves it from that resource's outputs before the engine runs. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the page lists each account-scoped group in two naming variants -- "Workers KV Storage Edit" and "Workers KV Storage Write" -- both verbatim on the page; the Write form is used here).
+      - purpose: ReadEntry
+        name: Workers KV Storage Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the entry via GET on the same values path (and its metadata endpoint) (derived from the modules' API surface).

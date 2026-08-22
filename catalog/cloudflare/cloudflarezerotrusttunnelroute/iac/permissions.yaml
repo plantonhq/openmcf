@@ -1,47 +1,23 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. Group names are verbatim from the Cloudflare API token
-# permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
-# section of the tunnel routes create endpoint doc
-# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/networks/subresources/routes/methods/create/,
-# retrieved 2026-08-22), which accepts two groups (either suffices):
-# "Cloudflare One Networks Write" and "Cloudflare Tunnel Write".
-#
-#   "Cloudflare Tunnel Write"  -- account-scoped; create/update/delete the
-#                                 route via POST/PATCH/DELETE
-#                                 /accounts/{account_id}/teamnet/routes
-#                                 [/{route_id}]. Chosen as the primary claim
-#                                 because it is the group the permissions
-#                                 reference documents and the one a stack
-#                                 that also manages the tunnel itself
-#                                 already holds; "Cloudflare One Networks
-#                                 Write" is the documented narrower
-#                                 alternate for routes/vnets-only
-#                                 credentials. (provenance: documented)
-#   "Cloudflare Tunnel Read"   -- account-scoped; refresh/import the route
-#                                 via GET (Write covers the whole lifecycle;
-#                                 Read is only needed for read-only
-#                                 credentials) (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_zero_trust_tunnel_cloudflared_route
-# resource and the Pulumi module's matching ZeroTrustTunnelCloudflaredRoute
-# resource; the tunnel and virtual network are referenced by ID, never
-# created or read by these modules), with the write groups upgraded to
-# documented provenance by the endpoint page cited above. The live capture
-# lane upgrades entries to proven.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflarezerotrusttunnelroute
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageRoute
+        name: Cloudflare Tunnel Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Create/update/delete the route via POST/PATCH/DELETE /accounts/{account_id}/teamnet/routes[/{route_id}]. Chosen as the primary claim because it is the group the permissions reference documents (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22) and the one a stack that also manages the tunnel itself already holds; \"Cloudflare One Networks Write\" is the documented narrower alternate for routes/vnets-only credentials -- the \"Accepted Permissions\" section of the tunnel routes create endpoint doc (https://developers.cloudflare.com/api/resources/zero_trust/subresources/networks/subresources/routes/methods/create/, retrieved 2026-08-22) accepts either of the two groups (either suffices). Covers the Terraform module's single cloudflare_zero_trust_tunnel_cloudflared_route resource and the Pulumi module's matching ZeroTrustTunnelCloudflaredRoute resource; the tunnel and virtual network are referenced by ID, never created or read by these modules. The header inventory recorded this entry as documented provenance (the write group upgraded from static analysis by the endpoint page cited above); the schema's provenance vocabulary is derived/proven, so it is carried as derived until the live capture lane upgrades it."
+      - purpose: ReadRoute
+        name: Cloudflare Tunnel Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the route via GET (Write covers the whole lifecycle; Read is only needed for read-only credentials).

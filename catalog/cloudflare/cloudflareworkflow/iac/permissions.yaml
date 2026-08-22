@@ -1,40 +1,18 @@
 # Least-privilege permissions the IaC runner's Cloudflare credential needs
 # to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# Cloudflare authenticates with a bearer API token built from named
-# permission groups, not IAM-statement policies, so none of the schema's
-# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
-# the schema's own claim that the modules touch no such API. The Cloudflare
-# least-privilege story lives in the token's PERMISSION GROUPS until the
-# schema grows a Cloudflare section, at which point this inventory converts
-# mechanically. The general API token permissions reference
-# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
-# retrieved 2026-08-22) lists NO Workflows group; Workflows registration is
-# governed by the Workers Scripts group, verbatim from the "Accepted
-# Permissions" sections of the Workflows API endpoint docs
-# (https://developers.cloudflare.com/api/resources/workflows/, update/get/
-# delete method pages, retrieved 2026-08-22):
-#
-#   Workers Scripts Write  -- account-scoped; register/modify the workflow via
-#                             PUT /accounts/{account_id}/workflows/{workflow_name}
-#                             (create is a name-as-upsert PUT), refresh/import
-#                             it via GET on the same path (the get method also
-#                             accepts Workers Tail Read, but Workers Scripts
-#                             Write already covers it), and delete it via
-#                             DELETE on the same path
-#                             (each method page names this group as its
-#                             accepted permission)
-#                             (provenance: derived)
-#
-# All entries are derived from static analysis of the official modules (the
-# Terraform module's single cloudflare_workflow resource and the Pulumi
-# module's matching Workflow resource; neither engine performs secondary
-# lookups or data-source reads -- the referenced Worker script must already
-# be deployed and is never read by this module). The live capture lane
-# upgrades entries to proven.
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: cloudflareworkflow
-spec: {}
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageWorkflow
+        name: Workers Scripts Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Register/modify the workflow via PUT /accounts/{account_id}/workflows/{workflow_name} (create is a name-as-upsert PUT), refresh/import it via GET on the same path (the get method also accepts Workers Tail Read, but Workers Scripts Write already covers it), and delete it via DELETE on the same path (each method page names this group as its accepted permission). Covers the Terraform module's single cloudflare_workflow resource and the Pulumi module's matching Workflow resource; neither engine performs secondary lookups or data-source reads -- the referenced Worker script must already be deployed and is never read by this module. The general API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22) lists NO Workflows group; Workflows registration is governed by the Workers Scripts group, verbatim from the "Accepted Permissions" sections of the Workflows API endpoint docs (https://developers.cloudflare.com/api/resources/workflows/, update/get/delete method pages, retrieved 2026-08-22).
