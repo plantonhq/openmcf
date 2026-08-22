@@ -55,6 +55,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The resource has no authentication protocol of its own to harden. With IAP enabled there is exactly one way in -- authenticated Google identities -- and no weaker fallback path exists on the resource.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

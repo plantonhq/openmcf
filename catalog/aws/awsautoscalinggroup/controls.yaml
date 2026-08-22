@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The group exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. Instance-level access posture (IMDSv2, SSH keys) is launch-template territory.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec carries no audit dial. Every management call against the group lands in CloudTrail as account-level posture, and because the service acts through a service-linked role, the actions Auto Scaling takes on the account's behalf (launches, terminations) are CloudTrail-visible too.

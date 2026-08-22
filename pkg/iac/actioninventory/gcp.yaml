@@ -3025,6 +3025,21 @@ services:
       - snapshots.listEffectiveTags
       - snapshots.listTagBindings
       - snapshots.update
+  - prefix: firebaseauth
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-22"
+    actions:
+      - configs.create
+      - configs.get
+      - configs.getHashConfig
+      - configs.getSecret
+      - configs.update
+      - users.create
+      - users.createSession
+      - users.delete
+      - users.get
+      - users.sendEmail
+      - users.update
   - prefix: iam
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
     retrieved_on: "2026-08-18"
@@ -3278,6 +3293,17 @@ services:
       - workspacePools.deletePolicyBinding
       - workspacePools.searchPolicyBindings
       - workspacePools.updatePolicyBinding
+  - prefix: identitytoolkit
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-22"
+    actions:
+      - tenants.create
+      - tenants.delete
+      - tenants.get
+      - tenants.getIamPolicy
+      - tenants.list
+      - tenants.setIamPolicy
+      - tenants.update
   - prefix: logging
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
     retrieved_on: "2026-08-18"

@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpidentityplatformtenant
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A tenant's user accounts and configuration live in Google's fully managed Identity Platform infrastructure, where all customer data is encrypted at rest by default; the resource exposes no switch to store anything unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Identity Platform publishes no customer-managed encryption key integration -- tenant user data is encrypted under Google-managed keys only, and neither the spec nor the underlying API carries a KMS key field to point at.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every interaction with the tenant -- end-user sign-in, admin configuration, token issuance -- rides Google's TLS-terminated identitytoolkit.googleapis.com HTTPS API; no plaintext listener exists to disable.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Being publicly reachable is the product -- the tenant's end users sign in from anywhere against Google's shared API endpoint (scoped by tenant ID), and no private or VPC-scoped deployment mode exists to select. Admission is governed at the identity layer -- client_permissions can close self-service sign-up and deletion, and disable_auth shuts the whole tenant's authentication off outright.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network-source restriction surface exists on a tenant -- the API accepts sign-in traffic globally. Which users may enter is an identity question (the sign-up switches and the tenant's configured IdPs), never a network perimeter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The tenant spec carries no request-filtering surface of its own -- blocking functions, sign-up quotas, and the SMS-region policy are project-level dials on GcpIdentityPlatformConfig, and Google fronts the shared endpoint with its own platform defenses. The tenant's admission dials are the sign-up switches and disable_auth, which gate methods rather than filter requests.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The management plane is IAM-governed unconditionally -- tenant create, read, update, and delete authorize against the identitytoolkit.tenants permission class, and tenants additionally carry their own IAM policy (identitytoolkit.tenants.getIamPolicy/setIamPolicy) for grants scoped to a single tenant.
+      notes: Per-tenant IAM is the multi-tenancy dividend -- a customer-specific operator can be granted on exactly one tenant. The end-user plane is credential-based by design; client_permissions narrows what end users may do to their own accounts through the API directly.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The tenant runs no workload and holds no cloud API credential. The OAuth client secrets its IdP configs carry are the external identity providers' own protocol credentials, handled as managed-secret references end to end.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: allow_password_signup
+      evidence:
+        type: spec_default
+        reference: False (the default) keeps email/password self-sign-up closed for the tenant, so every user arrives through the explicitly configured identity providers; true opens the local password path. enable_email_link_signin separately gates passwordless email-link sign-in, and disable_auth is the tenant-wide kill switch that stops ALL authentication.
+      notes: The default posture is the tight one -- a fresh tenant admits nobody until a sign-up switch or an IdP config opens a door. client_permissions.disabled_user_signup closes API self-registration even where password sign-up is allowed, for backend-only account creation.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: allow_password_signup
+      evidence:
+        type: spec_default
+        reference: False (the default) confines the tenant to federated sign-in through its configured OIDC/SAML providers, inheriting the enterprise IdP's password policy and multi-factor enforcement -- the strongest stance this spec can express; true opens local password accounts in the tenant.
+      notes: The tenant spec models no MFA or password-policy fields -- the underlying provider resource exposes none at tenant level -- so credential strength is exercised by choosing WHO verifies credentials. Preset 02 (sso-tenant) is the strong posture (SAML-only, password sign-up closed, the customer's Okta enforces MFA); preset 01 opens password sign-up, where strength depends on project-level surfaces on GcpIdentityPlatformConfig. If local-account MFA policy is a requirement, keep those users at project level where mfa.state can be made MANDATORY.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Tenant create, update, delete, and IAM policy changes are administrative operations that land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Per-request sign-in visibility is the project config's request_logging_enabled switch on GcpIdentityPlatformConfig, not a tenant field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The tenant's traffic against identitytoolkit.googleapis.com surfaces in Cloud Monitoring's consumed-API metrics -- request counts, error rates, latencies -- automatically for the project, with no configuration on the resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The tenant's configuration is declarative and reproducible from the manifest, but its user accounts live in the managed service, which exposes no backup or restore surface on this resource -- deleting the tenant deletes its users unrecoverably, which is why deletion-protection is the control that matters here. Bulk user export/import exists through the Admin SDK as an operational process outside this spec.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup exists on this resource (see backup-recovery), so there is no retention length to set.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Identity Platform is a fully managed, globally served service -- Google replicates the authentication infrastructure across failure domains invisibly, and a tenant exposes no zonal or regional deployment choice that could narrow it.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE -- the tenant is deleted with ALL its users and providers, and the accounts are unrecoverable; PREVENT makes destroy fail outright, the guard for a live customer user pool; ABANDON unmanages the tenant and its IdP configs while everything keeps working in GCP. One switch governs the tenant AND its composed IdP configs.
+      notes: Both presets pin PREVENT -- for a B2B tenant, an accidental destroy is a customer's entire user base gone, the worst-case blast radius in this component family. Unlike the project config (which can never be deleted), tenants ARE fully deletable, so this dial carries real weight here.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Identity Platform is a fully managed service -- Google operates and patches the authentication infrastructure, token issuance, and API frontends invisibly, and a tenant exposes no version, runtime, or maintenance channel to manage.

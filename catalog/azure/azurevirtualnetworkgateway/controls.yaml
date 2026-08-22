@@ -49,6 +49,9 @@ spec:
         type: spec_default
         reference: Unspecified deploys ROUTE_BASED -- modern IKEv2 negotiation. POLICY_BASED reopens legacy IKEv1 with static traffic selectors (BASIC SKU only, no BGP, no point-to-site) and exists solely for on-premises devices that cannot do route-based.
       notes: All three presets ride the route-based default. Two adjacent legacy arms live elsewhere -- per-tunnel IKEv1 is chosen on the connection resource's connection_protocol, and the point-to-site protocol list may include SSTP, the legacy TLS transport Microsoft keeps for old Windows clients (the 03 preset pins OpenVPN).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

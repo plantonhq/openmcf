@@ -40,6 +40,9 @@ spec:
         type: spec_default
         reference: Empty jwt_rules installs no JWT requirements (the policy is a no-op until rules are added); each rule declares the accepted issuer and key set (jwks_uri or inline jwks -- validation requires at least an issuer or a jwks_uri), so tokens from undeclared issuers or failing signature validation are rejected at the selected workloads' proxies.
       notes: "The honest boundary, straight from the upstream contract: a request with NO token is allowed by RequestAuthentication alone -- pair it with an AuthorizationPolicy requiring a principal to close the unauthenticated path. Presets: 01-namespace-jwt-validation validates one issuer namespace-wide; 02-workload-jwt-with-claim-headers scopes to one workload and copies verified claims to headers. Enforcement reaches only workloads with Istio sidecars."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the policy are Kubernetes API operations, captured by the target cluster's audit policy. Per-request authentication outcomes, where logged, come from the sidecars' access logs.

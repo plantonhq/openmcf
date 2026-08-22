@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The switch that disables access-key (legacy shared-secret) authentication lives on the AzureRedisCache kind's spec -- though these assignments are what makes flipping it practical, since Entra principals need grants once keys are off.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Creation and deletion of assignments land in the Azure Activity Log as subscription-level posture; data-plane connection auditing is the cache's diagnostic-settings surface.

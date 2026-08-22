@@ -48,6 +48,9 @@ spec:
       evidence:
         type: module_default
         reference: There is no unauthenticated or weaker path to disable -- the chart requires the neo4j admin credential on every install, generating one when none is declared (see rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The packaged Neo4j Browser signs in with database credentials -- the chart-required neo4j admin password (module-generated when none is declared); password policy and lockout are server configuration inside the product, not modeled in this deployment spec.
     - control_id: audit-logging
       status: not_applicable
       notes: No database audit trail is modeled -- Neo4j's query and security logging is enterprise surface reachable through the config map or helm_values, not a typed seam. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.

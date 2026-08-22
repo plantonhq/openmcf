@@ -49,6 +49,9 @@ spec:
         type: spec_default
         reference: True by default (the chart's grain) -- the collector accepts spans in Jaeger's legacy protocols alongside OTLP; disabling it, and http_logs_receivers_enabled for the plain-HTTP log endpoints, narrows ingest to OTLP only.
       notes: These govern the legacy protocol surface -- telemetry ingest carries no authentication to be legacy or otherwise (see rbac). zipkin_receiver_enabled is off by default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: SigNoz's UI accounts (email/password sign-in) are application state inside the product -- password strength rules and MFA are governed there, not in this deployment spec; telemetry ingest carries no user sign-in at all (see rbac).
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- SigNoz logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.

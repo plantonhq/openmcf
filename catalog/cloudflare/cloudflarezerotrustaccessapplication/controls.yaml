@@ -53,6 +53,13 @@ spec:
       evidence:
         type: provider_default
         reference: The only ways through an Access application are an IdP-backed Access authentication or an Access service token -- there is no password-only, basic-auth, or other legacy protocol path to enable or disable.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves multi-factor policy to the organization's defaults; declaring mfa_config requires a second factor for THIS application -- allowed_authenticators pins which factors count (totp, biometrics, security_key; the spec's own validation rejects anything else), session_duration bounds how long an MFA assertion stays valid, and mfa_disabled is the explicit opt-out that overrides the list.
+      notes: First-factor credential strength rides the IdPs allowed_idps selects -- Access verifies identity, it stores no passwords -- while this field is the per-application second-factor requirement layered on top; the organization kind carries the org-wide MFA stance.
     - control_id: audit-logging
       status: not_applicable
       notes: Cloudflare records every Access authentication decision (allow and deny) in the Zero Trust Access audit logs unconditionally -- not a property this component configures. Shipping those logs elsewhere is CloudflareLogpushJob territory.

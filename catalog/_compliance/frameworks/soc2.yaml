@@ -25,8 +25,8 @@ spec:
   mappings:
     - requirement_id: "CC6.1"
       requirement_name: The entity implements logical access security software, infrastructure, and architectures over protected information assets to protect them from security events to meet the entity's objectives.
-      control_ids: [rbac, workload-identity, no-legacy-auth, enc-at-rest]
-      notes: The criterion's points of focus include restricting logical access to data at rest, identifying and authenticating persons, infrastructure, and software, and using encryption to protect data.
+      control_ids: [rbac, workload-identity, no-legacy-auth, strong-user-auth, enc-at-rest]
+      notes: The criterion's points of focus include restricting logical access to data at rest, identifying and authenticating persons, infrastructure, and software, and using encryption to protect data. For components that enforce end-user sign-in, credential strength is the identifying-and-authenticating-persons posture.
     - requirement_id: "CC6.3"
       requirement_name: The entity authorizes, modifies, or removes access to data, software, functions, and other protected information assets based on roles, responsibilities, or the system design and changes, giving consideration to the concepts of least privilege and segregation of duties, to meet the entity's objectives.
       control_ids: [rbac]

@@ -63,6 +63,9 @@ spec:
         type: spec_default
         reference: False (the default) keeps every request under the IAM invoker check -- the only authentication path the platform offers. True disables the check entirely, the org-policy escape hatch for environments that forbid allUsers grants; the weaker path exists only as this explicit opt-in.
       notes: No preset disables the invoker check. The service exposes no other legacy authentication surface -- runtime credentials are exclusively the metadata server's short-lived tokens.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

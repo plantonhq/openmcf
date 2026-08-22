@@ -47,6 +47,9 @@ spec:
       evidence:
         type: spec_default
         reference: Unset serves the API UNAUTHENTICATED -- fine on a lab cluster, never in production. Declaring an authn method (preshared keys, exercised by the 01 preset via an existing keys Secret, or OIDC) eliminates anonymous access.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the release's objects are Kubernetes API operations captured by the cluster's audit policy; the server's own request logging (spec.log) streams to stdout as operational logs, not an audit trail. Authorization DATA changes are API operations against OpenFGA, logged the same way.

@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Keycloak IS the identity provider -- its authentication flows (password policies, MFA, recovery codes, legacy-flow removal) are realm configuration inside the product, not modeled in this deployment spec. The transport-level weak path (plain HTTP) is governed by the TLS-or-HTTP rule (see enc-in-transit).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Keycloak IS the identity provider -- password policies, brute-force lockout, and MFA/WebAuthn enrollment are realm configuration inside the product (see no-legacy-auth), not modeled in this deployment spec.
     - control_id: audit-logging
       status: not_applicable
       notes: Keycloak's admin and login event auditing is realm configuration inside the product; server logs stream to stdout for the cluster's log collector. Changes to the CR are Kubernetes API operations, captured by the target cluster's audit policy.

@@ -58,6 +58,9 @@ spec:
       evidence:
         type: spec_default
         reference: The legacy-weak path is cleartext database protocol, and it exists only when ALLOW_UNENCRYPTED_AND_ENCRYPTED is chosen explicitly -- the unset default is ENCRYPTED_ONLY.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

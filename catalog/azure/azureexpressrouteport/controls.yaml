@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The port authenticates no clients -- there is no weaker protocol path to disable at layer 1/2. Cross-subscription authorization keys are the designed sharing mechanism, not a legacy one (their custody is covered under rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management-plane changes -- port creation, link enablement, MACsec changes, authorization issue and revocation -- land in the Azure Activity Log automatically as subscription-level posture. The port emits no per-flow access logs; traffic-level visibility lives on the circuits and gateways behind it.

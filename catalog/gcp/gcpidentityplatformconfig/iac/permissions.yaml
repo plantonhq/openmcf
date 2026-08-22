@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  gcp:
+    groups:
+      - purpose: EnableIdentityToolkitApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service (Terraform) / projects.Service (Pulumi) enabling identitytoolkit.googleapis.com on the target project. The Terraform module pins disable_on_destroy=false and the Pulumi module leaves the field unset -- the provider's own reference states false OR UNSET leaves the service enabled on destroy (pinned 7.x line), so neither engine ever calls the disable path and serviceusage.services.disable is deliberately not granted.
+      - purpose: ManageIdentityPlatformConfig
+        permissions:
+          - firebaseauth.configs.create
+          - firebaseauth.configs.get
+          - firebaseauth.configs.update
+        provenance: derived
+        notes: The Identity Platform admin surface authorizes under the firebaseauth.configs class, not identitytoolkit-prefixed permissions -- Google's REST reference states initializeAuth (the provider's one-way create) requires firebaseauth.configs.create, and the IAM role reference shows roles/identityplatform.admin is exactly firebaseauth.* plus identitytoolkit.tenants.* (https://cloud.google.com/identity-platform/docs/reference/rest/v2/projects.identityPlatform/initializeAuth and https://cloud.google.com/iam/docs/roles-permissions/identityplatform, both read 2026-08-22). get covers read/refresh of projects/{project}/config and the adopt_existing import; update covers applying every setting after initialization. No delete permission exists to need -- destroy abandons the configuration in place and calls no delete API. Both READMEs recommend roles/identityplatform.admin or broader for the deploying identity, which contains all three.
+      - purpose: ManageIdpConfigs
+        permissions:
+          - firebaseauth.configs.update
+          - firebaseauth.configs.get
+        provenance: derived
+        notes: Required only when default_supported_idps, oauth_idp_configs, or inbound_saml_configs compose IdP config resources. Google authorizes the entire IdP-config CRUD surface as firebaseauth.configs.update on the project parent -- verified on the create and delete method references (https://cloud.google.com/identity-platform/docs/reference/rest/v2/projects.defaultSupportedIdpConfigs/create and .../delete, read 2026-08-22) -- with firebaseauth.configs.get for the reads the provider issues on refresh and import. Already covered by ManageIdentityPlatformConfig's grants; listed separately so the composed-IdP surface is explicit. The OAuth client IDs and secrets these configs carry come from each provider's own developer console -- no GCP permission obtains them.

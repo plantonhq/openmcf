@@ -47,6 +47,9 @@ spec:
         type: spec_default
         reference: The linked service IS the factory's authentication choice for one connection, and the weaker paths are explicit spec fields -- inline connection strings, account keys, service_principal_key, and password fields authenticate with long-lived shared secrets, while the same variants expose managed-identity switches and AzureDataFactoryLinkedServiceKeyVaultSecretRef blocks (key_vault_password and friends) that keep secrets out of the definition entirely.
       notes: The named field is the blob variant's shared-secret form, standing for the whole family -- deploying a secret-based variant is a deliberate, reviewable choice, not a hidden default, and the variant block on the manifest shows exactly which login pattern the connection uses.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Authoring operations on linked services land in the Azure Activity Log automatically, and connection USE is visible in the factory's pipeline/activity telemetry via its diagnostic settings -- both factory-level posture with no toggle here.

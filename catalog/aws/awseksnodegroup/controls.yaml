@@ -55,6 +55,9 @@ spec:
         type: spec_default
         reference: Unset means no SSH key path onto the nodes at all -- the legacy access route stays closed; setting ec2_ssh_key deliberately reopens it.
       notes: IMDSv2 enforcement (retiring the legacy instance metadata service) rides the launch template.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Node and workload logs are shipped by cluster-level agents (add-ons); API-level audit lives on the cluster's control-plane logging. The node group exposes no logging field.

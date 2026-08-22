@@ -52,6 +52,9 @@ spec:
         type: spec_default
         reference: CodeStarSourceConnection sources authenticate through a CodeConnections connection with no stored token -- the modern path every preset uses. The legacy alternative the API still accepts is the ThirdParty GitHub (version 1) action, which authenticates with a stored OAuth token; choosing providers is choosing the authentication generation.
       notes: V2 triggers only work with CodeStarSourceConnection sources, so the modern feature set structurally discourages the legacy action.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

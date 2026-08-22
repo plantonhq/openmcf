@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: Unspecified deploys IKEv2 (ARM's default); IKE_V1 exists only for legacy branch devices, and choosing it reopens the weaker legacy negotiation on that tunnel.
       notes: Both presets ride the IKEv2 default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

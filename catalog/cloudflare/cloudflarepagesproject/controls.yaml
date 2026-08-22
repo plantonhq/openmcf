@@ -42,6 +42,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The serving plane is an anonymous public website with no authentication path at all, and the management plane accepts only token-authenticated HTTPS -- there is no weaker legacy path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management operations against the project land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-project audit toggle.

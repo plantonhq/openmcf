@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: auth0client
+spec:
+  billing_model: free
+  free_tier: "A client (an Auth0 Application registration) is a configuration object inside an Auth0 tenant, and Auth0 meters no per-application charge: the platform bills by tenant plan and monthly active users (Free up to 25,000 MAUs; Essentials from $35/month B2C or $150/month B2B; Professional from $240/month B2C or $800/month B2B; Enterprise custom; yearly billing is 11x the monthly price -- verified at auth0.com/pricing, retrieved 2026-08-22). No application count or quota appears anywhere on the pricing page's plan tables."
+  notes: "The real spend lives in the Auth0 tenant subscription the client is registered into -- plan tier times MAU volume, billed at the tenant level, outside this component. The users who sign in THROUGH this client are what move the tenant's MAU meter, so a client fronting a large user base drives tenant cost indirectly without itself being billed. Nothing in this spec (application_type, grant_types, callbacks, jwt_configuration, refresh_token, api_grants) selects a priced feature on its own; plan-gated capabilities the client's users may rely on (e.g. Pro MFA on paid tiers per auth0.com/pricing, retrieved 2026-08-22) are tenant-plan decisions made elsewhere."

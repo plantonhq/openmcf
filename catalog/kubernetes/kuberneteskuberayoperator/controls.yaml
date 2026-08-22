@@ -42,6 +42,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The operator exposes no authentication surface of its own -- no credentials, no user-facing endpoint. Ray dashboard and client authentication are concerns of the Ray clusters, declared on KubernetesRayCluster resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The operator's actions are Kubernetes API operations -- creating head and worker pods, Services, and autoscaling updates for managed Ray clusters -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.

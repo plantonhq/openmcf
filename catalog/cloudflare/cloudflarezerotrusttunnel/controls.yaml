@@ -49,6 +49,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No user-facing authentication path of its own -- user auth on tunneled hostnames belongs to the Access application in front of them.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Tunnel lifecycle changes land in the Cloudflare account audit log unconditionally -- not a property this component configures.

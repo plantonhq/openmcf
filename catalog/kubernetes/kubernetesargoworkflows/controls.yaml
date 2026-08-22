@@ -52,6 +52,9 @@ spec:
       evidence:
         type: spec_default
         reference: Empty means ["client"] (the application default) -- callers present a Kubernetes bearer token and act with ITS permissions. "server" mode performs every request with the server's own ServiceAccount -- no login, anyone who reaches the endpoint has the server's full power; acceptable only behind trusted network boundaries. "sso" opens OIDC login (configured via the chart's server.sso block through helm_values).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: server.auth_modes selects HOW callers authenticate (Kubernetes bearer tokens, SSO, or the open server mode) but carries no strength dial -- token strength is the cluster's concern, and OIDC credential policy is the identity provider's, configured through the chart's sso block via helm_values.
     - control_id: audit-logging
       status: not_applicable
       notes: Every mutation is a Kubernetes API operation on Workflow CRs, captured by the target cluster's audit policy; the archive database keeps the durable record of what ran. A dedicated audit trail is not modeled in this spec.

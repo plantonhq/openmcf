@@ -51,6 +51,9 @@ spec:
         type: spec_default
         reference: Unset means no static cloud credential exists; access_keys is the deliberate opt-in for clusters without IRSA, and validation makes it mutually exclusive with the keyless posture. azure.identity.service_principal is the analogous static arm on Azure.
       notes: The Civo arm authenticates only by API key -- static by provider necessity. All committed presets use keyless postures.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Scaling decisions stream to stdout for the cluster's log collector and surface as Kubernetes Events; administrative changes to the autoscaler are Kubernetes API operations, captured by the target cluster's audit policy.

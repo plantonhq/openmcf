@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: "A model carries no credential path of its own to weaken or disable. The OpenFGA server's authentication method (none, pre-shared key, or OIDC) is server deployment configuration outside this spec."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "The spec exposes no audit surface. The OpenFGA server emits structured logs as server-level posture; there is no per-model audit toggle in the OpenFGA API or the modules. The API's retention of every immutable model version does leave a durable history of policy changes, but that is storage behavior, not configurable audit logging."

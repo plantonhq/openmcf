@@ -50,6 +50,9 @@ spec:
       evidence:
         type: provider_default
         reference: SASL/IAM is the only client-authentication scheme serverless MSK supports, and it is mandatory -- SASL/SCRAM, mTLS, plaintext, and unauthenticated access do not exist on this cluster type. Both modules hardcode the IAM scheme because AWS offers nothing weaker to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

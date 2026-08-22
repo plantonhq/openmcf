@@ -47,6 +47,9 @@ spec:
         type: spec_default
         reference: Unset defers to the API maximum -- roughly 50 years, an effectively non-expiring static credential; setting an expiry bounds the credential's life, and changing the value re-mints it in place (the rotation path).
       notes: The preset pins 30 days and rotates by re-apply. A leaked non-expiring pull/push credential is the kind's biggest practical risk, which is why the spec's default of minting nothing matters.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: DOCR exposes no push/pull access log or audit configuration -- management-plane actions land in the team's account activity outside this component.

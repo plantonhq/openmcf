@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  presets:
+    - preset: 01-email-password
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - email/password users bill on the Tier 1 monthly-active-user meter as they actually sign in -- 0 to 50,000 MAU free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month by tier (https://cloud.google.com/identity-platform/pricing, read 2026-08-22)
+        - the Tier 2 MAU meter (OIDC/SAML, $0.015 per MAU after 50 free per project) never engages -- this manifest configures no federated provider
+        - the per-country SMS meter never engages -- no phone sign-in or SMS MFA is configured
+      notes: Initializing requires the project to have billing enabled, but the configuration bills nothing at rest -- zero committed because spend starts only when real users sign in, and 50,000 of them each month are free.
+    - preset: 02-google-signin
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - email/password AND Google social sign-in both ride the Tier 1 MAU meter -- their users pool into one project count against the same tiers (50,000 free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month), so adding the Google door changes how fast the tiers climb, not the rate card
+        - the Tier 2 MAU meter never engages -- google.com is a default-supported (Tier 1) provider, not custom OIDC/SAML
+        - the per-country SMS meter never engages -- no phone sign-in or SMS MFA is configured
+      notes: The Google OAuth client costs nothing to attach -- zero committed; the bill follows sign-in traffic on Tier 1 rates (https://cloud.google.com/identity-platform/pricing, read 2026-08-22).
+    - preset: 03-enterprise-saml
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - email/password users bill on the Tier 1 MAU meter (50,000 free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month by tier)
+        - SAML SSO users bill on the Tier 2 MAU meter -- 50 free per project, then $0.015 per MAU per month; the enterprise headcount actually signing in is the expensive population here
+        - MFA is ENABLED with PHONE_SMS, so each SMS challenge bills from Google's country-keyed table (United States $0.01 per SMS sent; first ten per day not billed) -- volume follows how many users enroll and how often they sign in
+      notes: Zero committed at creation -- the SAML config, MFA policy, and authorized domain are free objects; all three meters (Tier 1 MAU, Tier 2 MAU, SMS) start only with real sign-in traffic (https://cloud.google.com/identity-platform/pricing, read 2026-08-22).

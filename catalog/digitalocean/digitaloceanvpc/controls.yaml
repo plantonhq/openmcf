@@ -39,6 +39,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication path exists on a VPC to disable; membership is placement, not login.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. VPC management calls are captured in the DigitalOcean team's account-level activity history; DigitalOcean offers no VPC flow logs, so there is no traffic log to enable.

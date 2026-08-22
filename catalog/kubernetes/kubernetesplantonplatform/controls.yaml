@@ -55,6 +55,9 @@ spec:
       evidence:
         type: module_default
         reference: Sign-in is OIDC against the platform's own identity server — there is no native-password API path. The first-run door is a one-time setup code (read from a Secret by a cluster-credential holder) that self-disables after the first admin exists.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Sign-in rides the platform's operator-deployed identity server (identity) — password policies, brute-force lockout, and MFA are realm configuration inside that product and its configured identity providers, a product surface versioned with spec.version rather than installation configuration.
     - control_id: audit-logging
       status: not_applicable
       notes: Platform-level audit surfaces belong to the deployed product (its own activity/audit records), versioned with spec.version — not modeled as installation configuration. Operator mutations are Kubernetes API operations captured by the cluster's audit policy.

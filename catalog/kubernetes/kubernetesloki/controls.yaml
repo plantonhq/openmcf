@@ -42,6 +42,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication exists by default to have a legacy path -- single-tenant Loki accepts unauthenticated in-cluster traffic by design (see rbac). The one typed auth surface, multi_tenancy tenants, refuses plaintext by contract -- password_hash must be a bcrypt htpasswd hash (the spec's own validation), so no weaker credential form can ship in a manifest.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- Loki logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy. usage_reporting is false by default (deliberately diverging from Loki's report-by-default), so no telemetry leaves the cluster without an explicit opt-in.

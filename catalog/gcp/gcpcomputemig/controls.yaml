@@ -58,6 +58,9 @@ spec:
         type: spec_default
         reference: The legacy path is static SSH keys managed through instance metadata; setting the enable-oslogin metadata key to TRUE in the template retires metadata-managed keys in favor of IAM-governed OS Login on every instance.
       notes: No preset enables OS Login -- the presets are fleet-behind-LB shapes where interactive SSH is not the norm.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

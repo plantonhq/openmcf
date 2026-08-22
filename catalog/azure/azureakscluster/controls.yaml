@@ -63,6 +63,9 @@ spec:
         type: spec_default
         reference: Defaults to false; true disables the cluster's local admin accounts so every credential path goes through Entra ID, and the spec validation refuses it unless Entra ID RBAC is configured.
       notes: The 03-hardened-enterprise preset enables it. The modules never model the legacy service-principal credential block at all -- cluster identity is managed identity only. run_command_enabled=false additionally closes the az aks command invoke side door.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

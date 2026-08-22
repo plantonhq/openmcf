@@ -32,8 +32,8 @@ spec:
       notes: Role-based grants scoped to what each role needs are the component-grain expression of least privilege.
     - requirement_id: IA-5
       requirement_name: Authenticator Management
-      control_ids: [workload-identity, no-legacy-auth]
-      notes: The control's statement covers authenticators for a service or device, strength of mechanism, and refresh. Short-lived platform-issued identities replace static credentials, and disabling weaker authentication paths keeps mechanism strength sufficient. IA-9 (Service Identification and Authentication) is the closer title but sits outside the Moderate baseline, so it is deliberately not cited.
+      control_ids: [workload-identity, no-legacy-auth, strong-user-auth]
+      notes: The control's statement covers authenticators for a service or device, strength of mechanism, and refresh. Short-lived platform-issued identities replace static credentials, disabling weaker authentication paths keeps mechanism strength sufficient, and end-user credential strength (password rules, brute-force protection, multi-factor) is authenticator management at the sign-in surface -- the password-based-authentication enhancement IA-5(1) sits in the published Moderate baseline. IA-9 (Service Identification and Authentication) is the closer title for services but sits outside the Moderate baseline, so it is deliberately not cited.
     - requirement_id: AU-2
       requirement_name: Event Logging
       control_ids: [audit-logging]

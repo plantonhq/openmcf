@@ -52,6 +52,9 @@ spec:
       evidence:
         type: provider_default
         reference: Portal access is Access-authenticated only -- there is no password-only or anonymous path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The portal IS an end-user sign-in destination -- users (and their AI clients) reach it through Cloudflare Access on its hostname -- but this spec models no credential-strength dial of its own. Strength lives in the Access layer it delegates to -- the identity providers verify first factors, Access application/policy mfa_config fields require second factors, and the organization kind carries the org-wide MFA stance.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

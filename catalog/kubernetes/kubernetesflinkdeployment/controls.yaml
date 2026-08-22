@@ -49,6 +49,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Flink's REST API carries no authentication of its own -- there is no legacy path to disable; access control is network reachability (in-cluster only by default). S3 credentials, when used, ride Kubernetes Secret references rather than config-file plaintext.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Flink's web dashboard and REST API ship with no built-in sign-in, so there are no end-user credentials whose strength could be governed -- access control is network reachability (in-cluster only by default; see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the deployment are Kubernetes API operations on the CR, captured by the target cluster's audit policy. Job and framework activity streams as logs to stdout for the cluster's log collector; a provider-style audit trail is not modeled.

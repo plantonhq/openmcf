@@ -41,6 +41,9 @@ spec:
         type: spec_default
         reference: auth empty means token mode ON (this catalog's secure default, available since Ray 2.52 / KubeRay 1.6) -- the operator provisions a bearer-token Secret named after the resource and the dashboard, job submission, and client surfaces all require it. mode disabled is the legacy open-cluster posture, an explicit opt-in the spec warns executes arbitrary code for anyone reaching port 8265.
       notes: Both presets stay on the token default by omission.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Dashboard, job-submission, and client access is gated by the operator-provisioned bearer token (see no-legacy-auth) -- a single platform-managed credential, not per-user sign-in, so there is no password-strength, lockout, or MFA surface for the spec to model.
     - control_id: audit-logging
       status: not_applicable
       notes: Ray job and task activity logs stream through the head and workers to stdout for the cluster's log collector; no provider-style audit trail is modeled. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

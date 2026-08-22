@@ -49,6 +49,9 @@ spec:
         type: spec_default
         reference: Unset connects unauthenticated (only possible against unauthenticated listeners); the authentication arms on the target and on each mirror's source are modern mechanisms -- mutual TLS, SCRAM-SHA-512/256, plain over TLS, or a custom SASL mechanism -- matched to each listener.
       notes: "The 01-migrate-from-msk preset authenticates to MSK with scram-sha-512; 02-migrate-from-confluent-cloud uses SASL PLAIN with an API key, Confluent Cloud's client contract; 03-active-passive-dr uses scram-sha-512 on both ends. Credentials always ride Kubernetes Secrets, never the manifest."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Worker activity logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled. Changes to the engine and its mirrors are Kubernetes API operations, captured by the target cluster's audit policy.

@@ -44,6 +44,9 @@ spec:
         type: provider_default
         reference: Unset defers to DigitalOcean's caching_sha2_password default (the modern MySQL plugin); mysql_native_password is the legacy opt-in for old clients.
       notes: Leaving mysql_auth_plugin unset keeps the strong default. Setting mysql_native_password is a deliberate compatibility downgrade -- the spec comment says so where the choice is made.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: DigitalOcean exposes no per-user audit surface through this resource; account-level activity appears in the DigitalOcean team audit history.

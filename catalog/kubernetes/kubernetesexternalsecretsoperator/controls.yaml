@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The operator exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster, and store credentials are the stores' concern (declared on KubernetesSecretStore / KubernetesClusterSecretStore resources, not here).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Reconcile activity streams to stdout for the cluster's log collector and sync milestones land as Kubernetes Events; administrative changes are Kubernetes API operations captured by the target cluster's audit policy, and the external stores' own audit trails record every secret read.

@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The certificate exposes no authentication path of its own; vault access rides the managed identity (see workload-identity).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; reads of a vault-sourced certificate are auditable in the KEY VAULT's diagnostic logs, posture of that separate kind.

@@ -60,6 +60,9 @@ spec:
         type: spec_default
         reference: "Access-key (SAS) publishing is the static-credential path -- a leaked key publishes until rotated. Azure's default keeps it enabled; setting false disables key authentication entirely, leaving only Entra ID."
       notes: "The 02-locked-down-topic preset disables keys. The key pair still exists (and the outputs still export it) -- disabled means rejected at the door, not deleted."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

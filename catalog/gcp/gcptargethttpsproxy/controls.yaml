@@ -45,6 +45,9 @@ spec:
         type: spec_default
         reference: Unset applies GCP's permissive default TLS policy -- minimum TLS 1.0 with the COMPATIBLE cipher set -- so legacy protocol versions and weak ciphers stay negotiable; referencing a GcpSslPolicy with a TLS 1.2+ floor and MODERN/RESTRICTED ciphers retires them, swapped in place via setSslPolicy.
       notes: Preset 01 wires a modern SSL policy alongside the managed certificate; presets 02 and 03 accept the GCP default and should be paired with a policy in production.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

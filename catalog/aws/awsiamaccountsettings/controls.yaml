@@ -40,6 +40,13 @@ spec:
         type: spec_default
         reference: IAM user console passwords are the account's long-lived, human-held credential path, and this arm is exactly the lever that hardens it -- minimum length up to 128, character-class requirements, rotation (max_password_age), reuse prevention up to 24 generations, and hard_expiry forcing administrator resets. Unset means AWS's permissive default (6-character minimum, nothing else required); the policy is replaced whole on every apply, so the manifest states the entire posture.
       notes: "The 01 preset pins the hardened shape: 14-character minimum, all four character classes, 90-day rotation, 24-generation reuse prevention. The sts arm's v2Token is a compatibility upgrade, not an auth-strength control; and the FAQ's own recommendation -- prefer roles and federation over IAM users entirely -- is decided on the identity components, not here."
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: password_policy
+      evidence:
+        type: spec_default
+        reference: This arm IS the account's credential-strength policy for IAM user console sign-in. Unset leaves AWS's permissive default (6-character minimum, nothing else required); the fields raise minimum_password_length up to 128, require each of the four character classes, rotate with max_password_age, prevent reuse across up to 24 generations, and hard_expiry forces administrator resets after expiry.
+      notes: "The 01-hardened-password-policy preset pins the strong shape: 14-character minimum, all four character classes, 90-day rotation, 24-generation reuse prevention. MFA is not part of this policy -- AWS enforces it per user or through IAM policy conditions, outside this spec; and remember the destroy semantics: destroying this arm RESETS the policy to AWS's weak default."
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Changes to these settings (alias writes, password-policy updates, STS preference calls) are recorded by AWS CloudTrail as account-level posture, not per-setting configuration.

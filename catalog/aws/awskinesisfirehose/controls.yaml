@@ -50,6 +50,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The AWS-side surface is SigV4-only with no weaker alternative; third-party endpoint credential strength is governed by those platforms.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

@@ -49,6 +49,9 @@ spec:
       evidence:
         type: module_default
         reference: Upstream's server is OPEN unless auth is configured and upstream's own auth example ships admin/password1234 -- neither ever ships; both modules enable basic auth by default and generate the admin password into a Secret (<name>-admin-auth), with the auth ini Secret-mounted and the Flask CSRF signing key env-wired, nothing credential-bearing in any rendered manifest.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Login existence is modeled (auth -- basic authentication on by default with a module-generated admin password) but MLflow's basic-auth layer carries no password-strength rules, brute-force lockout, or MFA; credential strength is not a surface the product or this spec exposes.
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style audit trail is not modeled in this spec -- server activity streams to stdout for the cluster's log collector, and changes to the deployment itself are Kubernetes API operations captured by the target cluster's audit policy.

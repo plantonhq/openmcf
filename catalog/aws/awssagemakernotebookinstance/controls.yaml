@@ -60,6 +60,9 @@ spec:
         type: spec_default
         reference: Omitted means the AWS default "1" -- IMDSv1 and v2 are both allowed on the instance metadata service; "2" enforces the session-oriented IMDSv2 only, closing the legacy request path credentials are served through.
       notes: The 02-locked-down-gpu-notebook preset sets "2". The Jupyter front door itself has no legacy path -- presigned IAM URLs are the only way in.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

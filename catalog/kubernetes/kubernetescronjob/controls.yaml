@@ -45,6 +45,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The spec models no authentication protocol -- how the job's code authenticates to its targets is the job's own configuration.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the CronJob and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. Run logs stream to stdout; successful_jobs_history_limit and failed_jobs_history_limit retain finished Jobs (and their pod logs) for inspection -- the 01-nightly-backup preset keeps 7 successes and 3 failures.

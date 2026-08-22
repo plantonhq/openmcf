@@ -52,6 +52,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The domain authenticates callers only via optional mutual TLS; there is no legacy authentication path here to disable. The legacy-protocol concern on this surface is the TLS_1_0 security policy, covered as the enc-in-transit lever.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The domain emits no logs of its own; execution and access logging are stage-level settings on the mapped API components. Control-plane changes to the domain, mappings, and associations land in CloudTrail as account-level posture.

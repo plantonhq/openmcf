@@ -38,6 +38,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Authentication paths of the applied workloads are the manifest's content; the component itself exposes none.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: End-user sign-in, where it exists, belongs to the workloads the manifest declares -- their credential-strength posture rides their own declarations, invisible to this spec.
     - control_id: audit-logging
       status: not_applicable
       notes: Applying, changing, and deleting the manifest are Kubernetes API operations captured by the target cluster's audit policy. Audit logging inside the applied workloads rides their own declarations.

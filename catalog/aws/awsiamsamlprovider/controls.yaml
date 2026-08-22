@@ -39,6 +39,9 @@ spec:
         type: provider_default
         reference: The provider carries no long-lived credential path at all -- the ONLY way to use it is an sts:AssumeRoleWithSAML call presenting an IdP-signed assertion, which mints temporary session credentials that expire. Federating the workforce through it is precisely how accounts retire IAM-user passwords and static keys.
       notes: The trust is only as fresh as the metadata -- the valid_until output is the date by which the IdP's rotated certificates must be re-applied (an in-place update of saml_metadata_document).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Management calls on the provider and every sts:AssumeRoleWithSAML federation through it are recorded by AWS CloudTrail as account-level posture, not per-anchor configuration.

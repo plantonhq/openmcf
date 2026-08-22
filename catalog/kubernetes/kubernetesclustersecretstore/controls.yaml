@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The backends offer no legacy authentication protocol to disable; the meaningful credential choice -- static keys versus platform-issued identity -- is covered under workload-identity.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the store and its credential Secret are Kubernetes API operations captured by the target cluster's audit policy; reads against the backend appear in the backend's own audit trail (e.g. CloudTrail for Secrets Manager), owned by that account.

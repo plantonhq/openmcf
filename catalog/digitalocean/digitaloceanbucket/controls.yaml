@@ -51,6 +51,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Spaces speaks one authentication scheme -- S3 signature with Spaces keys -- with no weaker legacy path to disable. Anonymous read is the ACL's concern (see no-public-access).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: logging

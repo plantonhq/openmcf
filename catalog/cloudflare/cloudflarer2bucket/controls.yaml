@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: R2's access paths (token-authenticated HTTPS API, SigV4-signed S3-compatible API, Worker bindings) are account-level mechanisms; the spec exposes no field to enable or disable any authentication path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management operations land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-bucket audit toggle.

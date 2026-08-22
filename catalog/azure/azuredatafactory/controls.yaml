@@ -53,6 +53,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: "No switch on the factory disables weaker authentication paths -- the identity-versus-secret choice is made per credential (this spec's two credential lists) and per linked service (the AzureDataFactoryLinkedService kind). The honest lever here is composition: prefer user_managed_identity_credentials and leave service_principal_credentials empty."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Authoring operations on the factory and everything inside it land in the Azure Activity Log automatically -- subscription-level posture. Per-run history (pipeline, activity, and trigger runs) is kept by the service for 45 days; keeping it longer means diagnostic settings exporting to a Log Analytics workspace, a separate composition this spec does not carry."

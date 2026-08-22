@@ -52,6 +52,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Azure's namespace API carries a disableLocalAuth switch that retires access-key publishing, but the provider does not expose it at v5, so this spec has no field to configure -- key-based HTTP publishing remains available alongside Entra tokens. The MQTT broker never accepts keys regardless (client certificates, Entra JWTs, or custom JWTs only).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

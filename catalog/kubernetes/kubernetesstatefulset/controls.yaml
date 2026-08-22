@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The spec models no authentication protocol -- how clients authenticate to the application is the application's own concern.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the StatefulSet and its satellite objects are Kubernetes API operations, captured by the target cluster's audit policy. The application's own logs stream to stdout for the cluster's log collector; no separate audit trail is modeled in this spec.

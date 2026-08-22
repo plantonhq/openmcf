@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's Auth0 credential needs to
+# provision, update, and destroy this component with the official modules.
+# Schema: iac/componentpermissions/v1.
+#
+# Auth0 authenticates with a tenant-scoped Management API token, not
+# IAM-statement policies, so none of the schema's provider sections
+# (aws/gcp/azure/kubernetes) applies -- their absence is the schema's own
+# claim that the modules touch no such API. The credential is a
+# machine-to-machine (M2M) application authorized for the tenant's
+# Management API (client-credentials grant): the auth0/auth0 Terraform
+# provider (~> 1.0 per iac/tf/provider.tf) and the pulumi-auth0 SDK take a
+# domain plus client_id/client_secret (or a pre-issued api_token) and
+# exchange them for a Management API access token carrying the scopes
+# granted to that M2M application.
+#
+# Least privilege therefore means granting the M2M application ONLY the
+# scopes below -- scope names verbatim from Auth0's published Management
+# API endpoint docs (auth0.com/docs/api/management/v2/event-streams/
+# post-event-streams, whose scope inventory lists create:event_streams,
+# read:event_streams, update:event_streams, delete:event_streams; the POST
+# endpoint itself rejects tokens without create:event_streams -- retrieved
+# 2026-08-22). Should the schema grow an auth0 section, this inventory
+# converts mechanically:
+#
+#   Event stream lifecycle (provenance: derived):
+#     create:event_streams   -- create the stream (POST /api/v2/event-streams)
+#     read:event_streams     -- read it back on refresh (GET /api/v2/event-streams/{id})
+#     update:event_streams   -- update it in place (PATCH /api/v2/event-streams/{id});
+#                               exercised only for webhook destinations (endpoint and
+#                               authorization changes) -- an eventbridge configuration
+#                               change instead forces delete-and-recreate, per the spec
+#                               and the provider's resource docs
+#     delete:event_streams   -- destroy it (DELETE /api/v2/event-streams/{id})
+#
+# Both official modules (iac/tf/main.tf and iac/pulumi/module/eventstream.go)
+# manage exactly one resource, the auth0_event_stream / auth0.EventStream --
+# no other Auth0 objects are touched, so no other scopes are needed. All
+# entries are derived from static analysis of the modules against the
+# endpoint docs; the live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: auth0eventstream
+spec: {}

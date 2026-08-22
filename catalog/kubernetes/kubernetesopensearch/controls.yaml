@@ -54,6 +54,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The security plugin authenticates over TLS against its internal users; no separate legacy or weaker protocol path is modeled in this spec to disable. The known weakness at this release is the demo admin bootstrap (see rbac), which is default credentials rather than a legacy mechanism.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The packaged Dashboards sign in against the security plugin's internal users, and password policy or any stronger factor on those accounts is security-plugin configuration inside the product -- this spec models the bootstrap credential seam (see rbac), not strength rules.
     - control_id: audit-logging
       status: not_applicable
       notes: The security plugin's audit-log configuration is not modeled in this spec; node logs stream to stdout for the cluster's log collector. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

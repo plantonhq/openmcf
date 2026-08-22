@@ -52,6 +52,9 @@ spec:
       evidence:
         type: spec_default
         reference: True (the default) keeps the local admin user and its generated argocd-initial-admin-secret -- necessary for first login. Disable it AFTER SSO works (the 02-team-sso-rbac preset does) so the shared-password path retires; disabling before SSO locks everyone out.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Argo CD signs users in through its local accounts or SSO, and credential strength -- local-account password policy, IdP-side MFA -- is product and identity-provider configuration, not modeled here. This spec's lever is admin_enabled, which retires the shared local-admin path once SSO works (see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: Argo CD records sync and app events on the Application resources and its API audit rides the target cluster's Kubernetes audit policy; a dedicated audit trail is not modeled in this spec.

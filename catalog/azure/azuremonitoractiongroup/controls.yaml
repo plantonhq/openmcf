@@ -44,6 +44,9 @@ spec:
         type: spec_default
         reference: The URL-embedded-secret pattern is explicit in the spec -- an Azure Function receiver's http_trigger_url carries the function's code parameter, a Logic App receiver's callback_url carries its signature, and a plain webhook's service_uri may carry a token -- while the webhook channel offers the stronger aad_auth alternative. Choosing URL-secret channels is a visible manifest choice.
       notes: Rotating those embedded codes means updating the action group -- a real operational coupling worth knowing when choosing channels.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Create/update/delete operations land in the Azure Activity Log automatically, and notification delivery history is queryable per action group through Azure Monitor's notification-status APIs -- platform surfaces with no toggle here.

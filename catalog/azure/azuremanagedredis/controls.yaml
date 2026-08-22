@@ -56,6 +56,9 @@ spec:
       evidence:
         type: spec_default
         reference: Access keys -- the shared-secret legacy path -- are off unless access_keys_authentication_enabled explicitly opts in; the default instance accepts only Entra identities.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

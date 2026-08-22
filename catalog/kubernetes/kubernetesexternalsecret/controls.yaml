@@ -36,6 +36,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The ExternalSecret has no authentication path of its own; credential posture lives on the store.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the ExternalSecret and reads of the materialized Secret are Kubernetes API operations captured by the target cluster's audit policy; backend reads appear in the backend's own audit trail (e.g. CloudTrail), owned by that account.

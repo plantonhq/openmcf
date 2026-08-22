@@ -49,6 +49,9 @@ spec:
         type: module_default
         reference: S3 auth is ON by default (s3.enable_auth defaults true) with generated credentials in <name>-s3-secret -- an open endpoint requires an explicit false (dev only, per the spec warning). The admin console is never installed open -- without an existing Secret the modules generate <name>-admin-auth (user "admin", random password).
       notes: s3.enable_auth false is the explicit legacy escape -- flagged in the spec as dev-only.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The packaged admin console admits the generated single admin credential and the S3 gateway admits generated access keys -- administrative and workload access, not end-user sign-in; no user accounts or credential-strength policy exist to govern.
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style S3 access log is not modeled in this spec -- server activity streams to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.

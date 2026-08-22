@@ -52,6 +52,9 @@ spec:
         type: spec_default
         reference: The stored-password path is the weaker one, and the CLOUD_IAM_* types retire it per identity -- an IAM user has no password at all (CEL-enforced), so no guessable credential exists for that login.
       notes: For BUILT_IN users, password_policy (allowed_failed_attempts, expiration, failed-attempts lockout) hardens the credentialed path -- the 01-application-user preset locks after five failed attempts.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: This identity is a database login, not end-user sign-in -- password_policy (allowed_failed_attempts, password_expiration_duration) hardens the BUILT_IN credential and the CLOUD_IAM_* types remove the stored password entirely (see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the identity (creation, password rotation, role changes) land in Cloud Audit Logs as project-level posture; login and statement auditing (pgAudit, SQL Server audit) are configured through the parent instance's flags.

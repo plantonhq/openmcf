@@ -50,6 +50,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: "No authentication paths of its own to strengthen or disable; export URLs are time-boxed SAS grants issued through ARM-authorized calls."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Creation, export-access grants, restores, and deletion land in the Azure Activity Log automatically as ARM operations; no per-snapshot log toggle exists."

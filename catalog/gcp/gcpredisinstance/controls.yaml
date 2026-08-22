@@ -56,6 +56,9 @@ spec:
         type: spec_default
         reference: Off by default -- any client that can reach the private endpoint may speak to the cache; enabling AUTH requires the instance's generated credential on every connection.
       notes: Presets 02 and 03 enable it. Network scoping remains the primary boundary either way.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

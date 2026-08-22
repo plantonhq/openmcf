@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Identity Platform is a fully managed Google service -- user accounts, credentials, and the configuration itself live in Google's infrastructure, where all customer data is encrypted at rest by default; the resource exposes no switch to store anything unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Identity Platform publishes no customer-managed encryption key integration -- user data is encrypted under Google-managed keys only, and neither the spec nor the underlying API carries a KMS key field to point at.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every interaction -- end-user sign-in, admin configuration, token issuance -- rides Google's TLS-terminated identitytoolkit.googleapis.com HTTPS API; no plaintext listener exists to disable.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Being publicly reachable is the product -- end users sign in from anywhere against Google's shared API endpoint, and no private or VPC-scoped deployment mode exists to select. Admission is governed at the identity layer instead -- authorized_domains bounds OAuth redirects, client_permissions can close self-service sign-up and deletion, and blocking_functions veto individual sign-ins.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network-source restriction surface exists -- the API accepts sign-in traffic globally. The spec's nearest dials are identity-shaped, not network-shaped -- authorized_domains restricts where OAuth flows may redirect, and sms_region_config restricts which countries may receive SMS -- neither is a network perimeter.
+    - control_id: edge-protection
+      status: configurable
+      field_path: blocking_functions
+      evidence:
+        type: spec_default
+        reference: Omitted means no request filtering beyond Google's platform defenses; configured triggers invoke Cloud Functions synchronously on beforeCreate and beforeSignIn that can allow, block, or modify every sign-up and sign-in -- domain allowlists, fraud checks, custom claims -- before the operation completes.
+      notes: This is the auth boundary's equivalent of a request filter -- it inspects and vetoes admission traffic, not HTTP packets. sign_up_quota caps registration bursts and sms_region_config's allowlist_only arm shuts down SMS toll-fraud pumping, the abuse channel that actually costs money.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The management plane is IAM-governed unconditionally -- initializing authorizes against firebaseauth.configs.create, and every configuration read and mutation against firebaseauth.configs.get/update, grantable through roles such as roles/identityplatform.admin.
+      notes: The end-user plane is credential-based by design (that is what the component provides); client_permissions narrows what end users may do to their own accounts through the API directly.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no workload and holds no cloud API credential. The OAuth client secrets it carries are the external identity providers' own protocol credentials (issued by Google's, Meta's, or the OIDC provider's console), handled as managed-secret references end to end; blocking functions execute as their own Cloud Function identities, assessed on that component.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: sign_in
+      evidence:
+        type: spec_default
+        reference: Each sign-in arm you set is sent explicitly including enabled=false, so weaker paths are actively disabled rather than left ambient -- anonymous (guest) accounts stay off unless deliberately enabled, and email.password_required=false is the explicit opt-in for passwordless email-link sign-in.
+      notes: Anonymous sign-in is the weakest path -- accounts with no credential at all. Enable it only deliberately, pair it with autodelete_anonymous_users, and plan the upgrade path to a real provider. client_permissions.disabled_user_signup closes API self-registration entirely for backend-only account creation.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa.state
+      evidence:
+        type: spec_default
+        reference: Unset leaves the project's MFA state unmanaged (GCP's initial state is DISABLED -- no second factor can be used); ENABLED lets users enroll a second factor; MANDATORY requires every user to present one at sign-in. Second factors are PHONE_SMS via enabled_providers and TOTP authenticator apps via provider_configs, each with its own DISABLED/ENABLED/MANDATORY state.
+      notes: MANDATORY is the enforcement stance -- ENABLED protects only users who opt in. TOTP beats SMS twice -- it resists SIM-swap interception and verifies without the per-message SMS charge -- so a MANDATORY TOTP provider_config is the strong-and-cheap posture. Preset 03 (enterprise-saml) sets ENABLED with PHONE_SMS alongside SAML SSO; blocking_functions can layer custom admission rules (domain allowlists, risk checks) on top of any MFA state.
+    - control_id: audit-logging
+      status: configurable
+      field_path: request_logging_enabled
+      evidence:
+        type: spec_default
+        reference: Unset leaves GCP's current value unmanaged; true writes every sign-in and sign-up request to Cloud Logging -- the access-event trail for the authentication surface. Sent explicitly when set, so false actively turns it off.
+      notes: Administrative changes to the configuration land in Cloud Audit Logs (Admin Activity) unconditionally regardless of this switch -- the dial here is per-request end-user visibility, the half an auth audit actually needs.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Traffic against identitytoolkit.googleapis.com surfaces in Cloud Monitoring's consumed-API metrics -- request counts, error rates, latencies -- automatically for the project, with no configuration on the resource.
+      notes: request_logging_enabled adds the per-request log stream to Cloud Logging for alerting on sign-in anomalies; blocking functions can emit their own structured logs as they veto traffic.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The configuration itself is declarative and reproducible from the manifest -- there is nothing to back up beyond source control. The user accounts behind it live in the managed service, which exposes no backup or restore surface on this resource; bulk user export/import exists through the Admin SDK and gcloud as an operational process outside this spec.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup exists on this resource (see backup-recovery), so there is no retention length to set.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Identity Platform is a fully managed, globally served service -- Google replicates the authentication infrastructure across failure domains invisibly, and the resource exposes no zonal or regional deployment choice that could narrow it.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE for the composed IdP configs (users can no longer sign in through them; accounts survive); PREVENT makes destroy fail outright -- the guard for a live sign-in surface; ABANDON unmanages the IdP configs while they keep working in GCP.
+      notes: The project config itself needs no protection because it CANNOT be deleted -- initialization is one-way and destroy always abandons the configuration in place. What deletion_policy protects is the sign-in doors -- delete a SAML config and every user of that IdP is locked out at their next sign-in.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Identity Platform is a fully managed service -- Google operates and patches the authentication infrastructure, token issuance, and API frontends invisibly, and the resource exposes no version, runtime, or maintenance channel to manage.

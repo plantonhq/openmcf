@@ -36,6 +36,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Azure DNS public zones do not currently expose DNSSEC signing through this resource's API surface, so no authentication-strengthening lever exists on the spec to examine.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Per-query logging is not offered for Azure DNS public zones; administrative changes to the zone and its record sets land in the Azure Activity Log as subscription-level posture.

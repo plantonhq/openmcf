@@ -54,6 +54,9 @@ spec:
         type: spec_default
         reference: With sso enabled, required true makes OpenID Connect single sign-on mandatory for all cluster access, closing the standalone certificate-credential path; default false leaves both paths open.
       notes: kubeconfig_expire_seconds additionally bounds how long any issued credential stays valid (DigitalOcean's default is 7 days). Neither preset configures SSO.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: DOKS exposes no control-plane audit log configuration -- neither the API nor the provider carries an audit surface, and management-plane actions land in the team's account activity outside this component.

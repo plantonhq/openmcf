@@ -45,6 +45,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The control plane exposes no legacy authentication path. The mesh-wide weaker path -- PERMISSIVE mTLS accepting plaintext from non-mesh clients -- is disabled per namespace or mesh-wide through KubernetesPeerAuthentication (STRICT), a separate composed kind.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: mesh_config.access_log_file

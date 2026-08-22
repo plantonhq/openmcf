@@ -39,8 +39,8 @@ spec:
       notes: Required standard. Protection of ePHI from improper alteration or destruction.
     - requirement_id: 164.312(d)
       requirement_name: Person or entity authentication
-      control_ids: [no-legacy-auth, workload-identity]
-      notes: Required standard. Verification that a person or entity seeking access is the one claimed.
+      control_ids: [no-legacy-auth, workload-identity, strong-user-auth]
+      notes: Required standard. Verification that a person or entity seeking access is the one claimed -- for components that sign end users in, credential strength (password rules, brute-force protection, multi-factor) is the person-authentication posture itself.
     - requirement_id: 164.312(e)(1)
       requirement_name: Transmission security
       control_ids: [enc-in-transit, restricted-ingress]

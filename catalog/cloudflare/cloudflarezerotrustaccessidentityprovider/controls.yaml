@@ -45,6 +45,9 @@ spec:
       evidence:
         type: spec_default
         reference: Prefer OIDC/SAML/Okta/Azure AD over onetimepin for production doors; onetimepin is a fallback with no IdP-side MFA.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: This resource selects which IdP authenticates Access users (type plus per-type config) -- the strength of the credentials those users present is enforced at that IdP; the weak onetimepin fallback is flagged under no-legacy-auth.
     - control_id: audit-logging
       status: not_applicable
       notes: Cloudflare records Access configuration changes in the account audit log unconditionally -- not a property this component configures.

@@ -56,6 +56,9 @@ spec:
       evidence:
         type: spec_default
         reference: Each private-registry credential is either a static username/password pair or a user_assigned_identity_id reference -- the identity form eliminates the stored secret and rotates itself. Public images need no entry at all.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

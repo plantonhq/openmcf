@@ -56,6 +56,9 @@ spec:
         type: spec_default
         reference: "The field's declared default is true (Azure's own default: workspace shared keys work alongside Entra ID). Set false for the keyless posture -- agents and ingestion APIs must authenticate with Entra identities, and the workspace's shared-key outputs stop being usable credentials."
       notes: "Preset 03-private-hardened sets false. Flip deliberately: legacy agents and some ingestion paths still require shared keys, which is why Azure ships them enabled."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Control-plane changes land in the Azure Activity Log as subscription-level posture. The workspace's own query-audit trail (who ran what KQL) exists as an Azure Monitor diagnostic-settings category on the workspace -- a separate resource wired outside this spec."

@@ -49,6 +49,9 @@ spec:
       evidence:
         type: spec_default
         reference: Unset leaves the upstream unauthenticated posture; declaring api_key closes it. The spec's own validation rejects a read_only_api_key without api_key -- an unauthenticated cluster with a read-only key would protect nothing, since writes would stay open.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The packaged web dashboard and API admit holders of the spec-modeled api_key -- a service credential presented by clients, not end-user sign-in; Qdrant has no user accounts or credential-strength policy to enforce.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- server logs stream to stdout for the cluster's log collector. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.

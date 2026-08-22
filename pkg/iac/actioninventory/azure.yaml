@@ -3252,7 +3252,6 @@ services:
       - aiManagers/healthz/poststarthook/start-kube-aggregator-informers/read
       - aiManagers/healthz/poststarthook/start-kube-apiserver-admission-initializer/read
       - aiManagers/healthz/read
-      - aiManagers/inference/action
       - aiManagers/limitranges/delete
       - aiManagers/limitranges/read
       - aiManagers/limitranges/write
@@ -3280,6 +3279,7 @@ services:
       - aiManagers/metrics.k8s.io/pods/read
       - aiManagers/metrics/read
       - aiManagers/namespaces/delete
+      - aiManagers/namespaces/inference/action
       - aiManagers/namespaces/read
       - aiManagers/namespaces/write
       - aiManagers/networking.k8s.io/ingressclasses/delete

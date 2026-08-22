@@ -51,6 +51,9 @@ spec:
         type: spec_validation
         reference: The auth_type_valid_values rule restricts authentication to certificate-authentication (mutual TLS), directory-service-authentication (AWS Directory Service), or federated-authentication (SAML 2.0) -- no shared-secret or anonymous mode is representable, and every option is create-time immutable.
       notes: Directory user/password is the weakest arm; the presets choose mutual TLS (01, 02) and SAML federation (03). Up to two options may combine, and a client passes on ANY one -- combining a weak option weakens the endpoint.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: connection_log

@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication paths of its own; legacy TLS protocol floors are covered under enc-in-transit via min_tls_version and tls_1_2_only.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Cloudflare records zone-setting changes in the account audit log unconditionally at the account level -- not a property this component configures.

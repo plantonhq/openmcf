@@ -41,6 +41,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The API path is SigV4-signed; the DNS path is the DNS protocol by design (private to the VPC unless the type is PUBLIC_DNS). No legacy protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management and registration operations are captured by account-level AWS CloudTrail -- a service behavior, not a manifest choice. DNS query logging would live on the hosted zone, outside this spec.

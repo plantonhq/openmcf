@@ -46,6 +46,9 @@ spec:
         type: spec_default
         reference: Unset leaves the chart's publicly documented default credentials (clickhouse_operator / clickhouse_operator_password) on every managed cluster -- the spec calls this UNSAFE FOR PRODUCTION; setting operator_credentials provisions a real password into the chart-managed Secret, and the operator injects the matching user restricted to its pod address.
       notes: All three presets set a password explicitly.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, ConfigMaps, and Services for managed clusters -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.

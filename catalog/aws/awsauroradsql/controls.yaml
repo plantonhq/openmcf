@@ -50,6 +50,9 @@ spec:
       evidence:
         type: provider_default
         reference: Password authentication does not exist on a DSQL cluster -- no password-bearing CREATE USER, no fallback path. IAM token authentication over mandatory TLS is the single authentication mechanism, so there is no weaker mode to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

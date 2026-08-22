@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The spec exposes no protocol or authentication floor -- SMB dialect and NFS security flavors are negotiated per client, and tightening them (e.g. rejecting unencrypted SMB) is ONTAP CLI administration outside this spec.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. ONTAP native NAS auditing (per-SVM file-access event logging) is configured through the ONTAP CLI, outside the module; API-level administrative actions land in CloudTrail as account-level posture.

@@ -48,6 +48,9 @@ spec:
       evidence:
         type: spec_default
         reference: Unset leaves the chart's auth-off posture, where unauthenticated clients have full access; declaring auth.users closes that path, and the spec's validation forces the "default" user to be among them -- without an explicit default user, unauthenticated clients would retain full access and enabling auth would be meaningless.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- server logs stream to stdout at the declared log_level for the cluster's log collector. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.

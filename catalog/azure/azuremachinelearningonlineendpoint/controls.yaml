@@ -49,6 +49,9 @@ spec:
         type: spec_default
         reference: auth_mode is spec-required and takes exactly the service's vocabulary -- "Key" (static keys that never expire, the weakest), "AMLToken" (expiring, refreshing ML tokens), or "AADToken" (Microsoft Entra tokens, the keyless posture). Choosing AADToken retires static scoring credentials entirely.
       notes: In Key mode, prefer service-minted keys (leave initial_auth_keys unset and read them with az ml online-endpoint get-credentials) over bring-your-own; either way ARM never returns key values on reads.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Control-plane changes land in the Azure Activity Log automatically as subscription-level posture; request-level logs ride the deployments and the workspace's Application Insights, separate kinds.

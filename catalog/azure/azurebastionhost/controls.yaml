@@ -48,6 +48,9 @@ spec:
       evidence:
         type: spec_default
         reference: Off by default -- every session then requires Entra sign-in plus RBAC. Enabling shareable links (STANDARD+) mints time-boxed URLs that open a session to one pinned VM WITHOUT the holder needing Azure RBAC on the host -- a deliberate, weaker access path to leave disabled unless the workflow demands it.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management-plane changes land in the Azure Activity Log automatically. Session audit logs (who connected, to which VM, when) are emitted through a diagnostic setting on the host -- a separate kind; PREMIUM's session_recording_enabled goes further and records session content for compliance review.

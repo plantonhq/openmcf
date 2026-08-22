@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The operator ships no credentials and exposes no authentication surface of its own -- the webhook certificate is self-managed and rotated by the webhook. There is no legacy path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Every mutation the operator performs is a Kubernetes API operation, captured by the target cluster's audit policy. The operator emits reconcile logs to stdout for the cluster's log collector; a dedicated audit trail is not modeled in this spec.

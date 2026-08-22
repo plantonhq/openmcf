@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The project exposes no alternative authentication path to disable -- portal and API access are Entra ID throughout; auth modes of model endpoints created inside it are those kinds' posture.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Control-plane operations land in the Azure Activity Log automatically as subscription-level posture. high_business_impact_enabled REDUCES the diagnostic data Microsoft itself collects from the project -- the privacy dial for sensitive teams, fixed at creation.

@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Management is the SigV4-signed Route 53 Resolver API. The DNS protocol itself is unauthenticated by design; peer restriction is the security groups' job (restricted-ingress).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management operations are captured by account-level AWS CloudTrail. Per-query logging exists at AWS as Resolver Query Logging -- a separate VPC-associated resource outside this spec, so this manifest carries no logging dial.

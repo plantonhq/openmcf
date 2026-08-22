@@ -50,6 +50,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The server exposes no legacy password or static-key authentication mode to disable -- client access control is JWT authorization (see rbac), and database passwords ride existing Secrets as secretKeyRefs, never rendered values. The chart's own inline-password Secret is never created because existingSecret is always set.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The Web UI ships with no sign-in of its own (the upstream default) -- OIDC/SSO for the UI and JWT authorization for the frontend are server and chart configuration riding helm_values, so no end-user credential-strength surface exists in this spec.
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style audit trail is not modeled in this spec -- server activity streams to stdout for the cluster's log collector (log_level tunes verbosity), workflow histories are themselves a durable execution record, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.

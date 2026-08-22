@@ -48,6 +48,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Authentication is MongoDB SCRAM against operator-managed users over TLS; no legacy or weaker authentication path is modeled in this spec to disable. The plaintext posture (tls.mode disabled) is fenced behind the explicit unsafe.tls opt-in (see enc-in-transit).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: mongod activity logs ship through the optional fluent-bit log-collector sidecar (log_collector) to the cluster's log collector; a provider-style audit trail is not a typed surface in this spec -- Percona Server's audit log is reachable only through the per-set mongod_config passthrough. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

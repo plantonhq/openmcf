@@ -46,6 +46,9 @@ spec:
         type: spec_default
         reference: The IAM_ALLOWED_PRINCIPALS default grant IS the legacy path -- Lake Formation's IAM-compatibility mode, where fine-grained catalog permissions are bypassed in favor of plain IAM. An entry granting an empty permission set suppresses that grant on new tables, which is the documented step for moving a database to real Lake Formation enforcement.
       notes: Suppressing the grant only governs tables created under this database; catalog-wide default-permission settings are account posture.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Every catalog operation on this database and its tables (CreateTable, GetDatabase, and the rest) lands in CloudTrail as account-level posture; no per-database audit surface exists.

@@ -48,6 +48,13 @@ spec:
         type: spec_default
         reference: A require rule of type auth_method (an AMR value such as "mfa" or "hwk") rejects requests authenticated with anything weaker, and mfa_config.allowed_authenticators narrows acceptable second factors to TOTP, biometrics, or security keys.
       notes: Opt-in per policy; without an auth_method require rule or mfa_config, the policy accepts whatever authentication strength the IdP allowed.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves multi-factor policy to the application and organization layers; declaring mfa_config requires a second factor for users this policy matches -- allowed_authenticators pins which factors count (totp, biometrics, security_key; the spec's own validation rejects anything else), and mfa_disabled is the explicit opt-out that overrides the list.
+      notes: A policy signs nobody in itself -- first-factor credential strength rides the IdPs the Access application allows -- but this field layers a per-policy second-factor requirement on top of the matched identity; the organization kind carries the org-wide MFA stance.
     - control_id: audit-logging
       status: not_applicable
       notes: Every evaluation of this policy is recorded in Access's authentication logs unconditionally, and approval workflows leave their own decision trail -- neither is a property this component configures.

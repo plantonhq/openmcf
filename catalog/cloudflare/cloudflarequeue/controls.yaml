@@ -46,6 +46,9 @@ spec:
       evidence:
         type: provider_default
         reference: Queues exposes no wire protocol and no username/password authentication -- the only access paths are platform bindings and the token-authenticated HTTPS API, so no weaker legacy path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management operations against the queue land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-queue audit toggle.

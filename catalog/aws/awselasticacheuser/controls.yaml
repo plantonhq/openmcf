@@ -47,6 +47,9 @@ spec:
         type: spec_default
         reference: RBAC users exist to replace the legacy model -- one shared AUTH token for every client of the cache, unrotatable without touching all of them, unscopable per application. Within RBAC the mode's type picks the credential path -- 'password' or 'iam' for real users, while 'no-password-required' is the deliberate no-credential mode the spec reserves for the mandatory "default" user when its access string switches it "off" (so anonymous connections are rejected outright) or for migration windows, never for a production user that is "on".
       notes: CEL validation keeps the modes honest -- 'no-password-required' and 'iam' cannot carry password material, and 'password' must carry at least one.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the identity (who altered an access string or credential mode) land in CloudTrail as account-level posture; connection and command logging belong to the attached cache's log-delivery configuration.

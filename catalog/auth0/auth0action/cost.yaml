@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: auth0action
+spec:
+  billing_model: free
+  free_tier: "An action is a configuration object inside an Auth0 tenant, and Auth0 meters no per-action charge: the platform bills by tenant plan and monthly active users (Free up to 25,000 MAUs; Essentials from $35/month B2C or $150/month B2B; Professional from $240/month B2C or $800/month B2B; Enterprise custom; yearly billing is 11x the monthly price -- verified at auth0.com/pricing, retrieved 2026-08-22). Creating, deploying, or binding an action moves no meter."
+  notes: "The real spend lives in the Auth0 tenant subscription the action is deployed into -- plan tier times MAU volume, billed at the tenant level, outside this component. Plan choice does gate QUANTITY: the tenant's combined 'Actions + Forms' allowance is 5 on Free, 10 on Essentials, 15 on Professional, and 30 plus a paid add-on on Enterprise (auth0.com/pricing Extensibility table, retrieved 2026-08-22), so a manifest that would exceed the tenant's allowance fails at deploy time rather than costing more. Nothing in this spec (trigger, code, runtime, dependencies, secrets, trigger_binding) selects a priced feature on its own."

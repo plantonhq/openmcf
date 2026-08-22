@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication path of its own to harden. Operational caveat -- the secret key is a static long-lived credential by design; the spec has no rotation field, so rotate it out of band (Cloudflare dashboard or API) if it leaks.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Cloudflare records widget configuration changes in the account audit log unconditionally -- not a property this component configures.

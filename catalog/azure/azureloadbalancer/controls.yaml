@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication paths of its own -- the data plane is raw TCP/UDP forwarding.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Traffic through the load balancer is auditable with NSG flow logs or virtual network flow logs -- separate resources, not fields of this spec. Control-plane changes (rule edits, pool changes) land in the Azure Activity Log as subscription-level posture.

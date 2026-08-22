@@ -42,6 +42,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Authentication paths of the deployed workloads are the chart's content; this spec's only auth is the chart-repository pair (see workload-identity).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: End-user sign-in, where it exists, belongs to the workloads the chart deploys -- their credential-strength posture is the chart's content, invisible to this spec (see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the release are Kubernetes API operations captured by the target cluster's audit policy, and Helm keeps per-revision release history (max_history, default 10) with an optional free-form description visible in helm status. Audit logging INSIDE the deployed workloads rides the chart.

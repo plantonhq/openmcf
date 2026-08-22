@@ -54,6 +54,9 @@ spec:
         type: module_default
         reference: The chart's own default authenticator accepts ANY username with NO password -- that never ships; when authentication is empty, both modules generate a shared sign-in password into a Secret (<name>-auth) wired to the hub through an environment variable, never through rendered Helm values (which this chart embeds readable inside its own hub Secret).
       notes: The 02-production-oidc preset replaces password sign-in entirely with OIDC against a Keycloak realm.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Credential strength lives in JupyterHub's authenticator, outside this spec -- the default posture is a single module-generated shared password (see no-legacy-auth), and the 02-production-oidc preset delegates sign-in to a Keycloak realm where password policy and MFA are governed.
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style audit trail is not modeled in this spec -- hub and proxy activity streams to stdout for the cluster's log collector, and changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.

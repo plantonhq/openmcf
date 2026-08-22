@@ -45,6 +45,9 @@ spec:
         type: spec_default
         reference: False by default -- the four legacy Jaeger receiver ports stay closed, deliberately narrowing the chart's all-receivers default. OTLP (gRPC 4317, HTTP 4318) is the only ingest surface until Jaeger is explicitly enabled for fleets still emitting it.
       notes: This governs the legacy protocol surface -- Tempo has no authentication to be legacy or otherwise (see rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- Tempo logs stream to stdout for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy. usage_reporting is false by default, so no telemetry leaves the cluster without an explicit opt-in.

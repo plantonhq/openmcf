@@ -60,6 +60,9 @@ spec:
         type: spec_default
         reference: The API accepts only the auth modes the manifest declares -- nothing weaker is on by default. API_KEY (a long-lived shared secret, the weakest mode) authenticates callers only if a provider declares it; a manifest declaring Cognito, OIDC, IAM, or a Lambda authorizer has no key-based path at all.
       notes: The Events arm declares its providers in events.auth_providers with the same property, and its per-phase modes can confine API_KEY to low-risk phases -- the 02 preset lets browsers connect and subscribe by key while requiring IAM to publish.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: graphql.log_config
