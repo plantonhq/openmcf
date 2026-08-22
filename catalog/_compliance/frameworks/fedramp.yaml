@@ -1,0 +1,86 @@
+# Crosswalk: FedRAMP (via the NIST SP 800-53 Rev 5 controls its baselines
+# draw on) onto the Planton Control Catalog. FedRAMP is an authorization
+# program, not a checklist -- no component, chart, or deployment is ever
+# "FedRAMP authorized" by this data. This crosswalk maps the technical
+# 800-53 controls FedRAMP baselines draw on, so the catalog's verified
+# posture serves as evidence a FedRAMP assessment consumes, never as an
+# authorization claim. Every mapped control's identifier and title is
+# verbatim from the published NIST catalog, and every one is verified
+# present in the published FedRAMP Rev 5 Moderate baseline; organizational,
+# physical, and process controls are deliberately absent, not blurred.
+# Schema: compliance/frameworkcrosswalk/v1.
+#
+# FedRAMP is provider-neutral: its baselines govern any cloud service
+# offering regardless of the underlying cloud, so this crosswalk declares
+# NO provider scope (spec.providers stays absent) and applies to every
+# provider's components.
+apiVersion: compliance.planton.dev/v1
+kind: FrameworkCrosswalk
+metadata:
+  name: fedramp
+spec:
+  framework_name: FedRAMP
+  framework_version: Rev 5 (NIST SP 800-53 Rev 5, Moderate baseline)
+  mappings:
+    - requirement_id: AC-3
+      requirement_name: Access Enforcement
+      control_ids: [rbac]
+      notes: Role-based access control is the enforcement mechanism for approved authorizations on the component's management and data planes.
+    - requirement_id: AC-6
+      requirement_name: Least Privilege
+      control_ids: [rbac]
+      notes: Role-based grants scoped to what each role needs are the component-grain expression of least privilege.
+    - requirement_id: IA-5
+      requirement_name: Authenticator Management
+      control_ids: [workload-identity, no-legacy-auth]
+      notes: The control's statement covers authenticators for a service or device, strength of mechanism, and refresh. Short-lived platform-issued identities replace static credentials, and disabling weaker authentication paths keeps mechanism strength sufficient. IA-9 (Service Identification and Authentication) is the closer title but sits outside the Moderate baseline, so it is deliberately not cited.
+    - requirement_id: AU-2
+      requirement_name: Event Logging
+      control_ids: [audit-logging]
+      notes: Administrative and access events captured in provider audit logs are the component's event-logging contribution; selecting which event types the organization logs remains organizational.
+    - requirement_id: AU-12
+      requirement_name: Audit Record Generation
+      control_ids: [audit-logging]
+      notes: The component's audit-log integration is the record-generation capability this control requires.
+    - requirement_id: SC-7
+      requirement_name: Boundary Protection
+      control_ids: [no-public-access, restricted-ingress, edge-protection]
+      notes: No public exposure, declared ingress sources, and edge request filtering are boundary protection at the component grain.
+    - requirement_id: SC-8
+      requirement_name: Transmission Confidentiality and Integrity
+      control_ids: [enc-in-transit]
+    - requirement_id: SC-8(1)
+      requirement_name: Cryptographic Protection
+      control_ids: [enc-in-transit]
+      notes: The cryptographic-protection enhancement of SC-8, served by encrypted connections to and from the component.
+    - requirement_id: SC-12
+      requirement_name: Cryptographic Key Establishment and Management
+      control_ids: [enc-at-rest-cmk]
+      notes: Customer-managed encryption keys put key establishment and management under the customer's own control instead of the provider's defaults.
+    - requirement_id: SC-28
+      requirement_name: Protection of Information at Rest
+      control_ids: [enc-at-rest]
+    - requirement_id: SC-28(1)
+      requirement_name: Cryptographic Protection
+      control_ids: [enc-at-rest]
+      notes: The cryptographic-protection enhancement of SC-28, served by encryption of stored data.
+    - requirement_id: CP-9
+      requirement_name: System Backup
+      control_ids: [backup-recovery, backup-retention-policy]
+      notes: Automated backups with retention configurable to organizational policy serve the control's backup frequency and recovery-objective consistency requirements.
+    - requirement_id: CP-10
+      requirement_name: System Recovery and Reconstitution
+      control_ids: [backup-recovery, multi-zone-ha]
+      notes: Restore-from-backup recovers the component to a known state; zone-replicated operation sustains service through the failure of a zone. CP-7 (Alternate Processing Site) is deliberately not cited -- its statement concerns organization-level site agreements and equipment, not a component capability.
+    - requirement_id: SI-2
+      requirement_name: Flaw Remediation
+      control_ids: [managed-patching]
+      notes: Security patches and version upgrades applied through a managed channel are the component's flaw-remediation path.
+    - requirement_id: SI-4
+      requirement_name: System Monitoring
+      control_ids: [monitoring-integration]
+      notes: Exported operational metrics and security-relevant runtime signals are what the organization's monitoring consumes.
+    - requirement_id: CM-5
+      requirement_name: Access Restrictions for Change
+      control_ids: [deletion-protection]
+      notes: Refusing deletion until protection is explicitly lifted is an enforced logical restriction on the most destructive change a component accepts.

@@ -51,7 +51,7 @@ fallbacks when no pack is reachable at all. Everything below writes
 | How do components wire together? | K's `## References` (outbound) and `## Referenced By` (inbound) tables; `_docs/reference-graph.yaml` for catalog-wide edges |
 | What is the judgment call before choosing K? | `GUIDE.md` beside K's page -- the page head links it when one exists -- and `_patterns/` for multi-component recipes |
 | What does K cost per month? | K's `cost.yaml` (billing model, always-on baseline charges, the spec fields that move the bill, exclusions) + the per-preset dollar estimates at `_pricing/estimates/<kinddir>.yaml`, where `<kinddir>` is the kind lowercased (e.g. `awsalb.yaml`) |
-| Which security controls does K enforce? | K's `controls.yaml` -- every control's stance with evidence; control ids resolve to names and statements in `_compliance/controls-catalog.yaml`; framework views (HIPAA, CIS) via `_compliance/frameworks/*.yaml` -- honor each crosswalk's `spec.providers` scope: a scoped framework (e.g. CIS AWS -> aws) never answers for another provider's component, while an empty scope means provider-neutral |
+| Which security controls does K enforce? | K's `controls.yaml` -- every control's stance with evidence; control ids resolve to names and statements in `_compliance/controls-catalog.yaml`; framework views (HIPAA, SOC 2, FedRAMP, CIS) via `_compliance/frameworks/*.yaml` -- honor each crosswalk's `spec.providers` scope: a scoped framework (e.g. CIS AWS -> aws) never answers for another provider's component, while an empty scope means provider-neutral |
 | What permissions does K's runner need? | K's `iac/permissions.yaml` -- the least-privilege provisioning manifest per provider, each entry marked `derived` or `proven` |
 | The asked-for software has no component of its own | The catalog guide (`_docs/GUIDE.md`) owns this workflow: search the pack by the name the user said, propose the compatible alternative openly, generic mechanisms only as the last resort |
 | Manifest grammar: envelope, value/valueFrom, fieldPath spelling | `_docs/reference-commons.md` -- read it once per session; it also documents the search grammar these pages share |
@@ -103,9 +103,12 @@ one law gets four extra clauses when you read it:
   never fill the gap from memory.
 - **Posture language never becomes "compliant."** controls.yaml states
   technical control posture with evidence; the crosswalks map it onto
-  framework requirements. No component is ever "HIPAA-compliant" by itself
-  -- say "enforces/exposes these controls, which map to these
-  requirements."
+  framework requirements. No component is ever "HIPAA-compliant" or "SOC 2
+  compliant" by itself -- say "enforces/exposes these controls, which map
+  to these requirements." FedRAMP binds hardest: it is an authorization
+  program, so the crosswalk is evidence an assessment consumes, never an
+  authorization claim -- "FedRAMP authorized" must never be said of any
+  component, chart, or deployment.
 - **A framework's provider scope is part of its truth.** Each crosswalk's
   `spec.providers` names the providers the framework itself claims (empty =
   provider-neutral, applies everywhere). Never map a provider-scoped
