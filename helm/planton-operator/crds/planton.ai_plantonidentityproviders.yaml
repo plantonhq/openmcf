@@ -251,6 +251,15 @@ spec:
                     items:
                       type: string
                     type: array
+                  subjectClaim:
+                    default: sub
+                    description: |-
+                      subjectClaim is the upstream claim carrying the directory's stable id
+                      for each user -- the id Planton correlates accounts, sync, and
+                      offboarding on. The default "sub" is present on every OIDC provider;
+                      Entra ID deployments should set "oid", which stays stable across app
+                      registrations where Entra's sub does not.
+                    type: string
                 required:
                 - clientId
                 - clientSecretRef
