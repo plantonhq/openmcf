@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -20,7 +23,7 @@ spec:
           sku_meter: provisioned disk capacity
           pricing_unit: GiB-months
           pricing_quantity: "100"
-          quantity_basis: the manifest provisions 100 GiB of pd-balanced (size_gb 100), billing every GiB monthly from creation -- full or empty, attached or not
+          quantity_basis: every provisioned GiB (size_gb) bills monthly at the disk type's own capacity rate from creation -- full or empty, attached or not
           list_unit_price: "0.1"
           price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
           retrieved_on: "2026-08-14"
@@ -38,15 +41,15 @@ spec:
           sku_meter: provisioned disk capacity
           pricing_unit: GiB-months
           pricing_quantity: "500"
-          quantity_basis: the manifest provisions 500 GiB of pd-ssd (size_gb 500), billing every GiB monthly at the SSD premium rate
+          quantity_basis: every provisioned GiB (size_gb) bills monthly at the disk type's own capacity rate from creation -- full or empty, attached or not
           list_unit_price: "0.17"
           price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
           retrieved_on: "2026-08-16"
           list_cost: "85.0000"
       total_list_cost: "85.0000"
       exclusions:
-        - CMEK adds no per-disk charge -- the Cloud KMS key bills its own key-version and operation charges on the GcpKmsKey component
         - the create_snapshot_before_destroy final snapshot bills snapshot storage per GiB actually stored, from destroy day until someone deletes it -- unknowable from the manifest
+        - CMEK adds no per-disk charge -- the Cloud KMS key bills its own key-version and operation charges on the GcpKmsKey component
       notes: Encryption posture (CMEK vs Google-managed) does not change the disk's capacity rate -- the premium here is pd-ssd itself, chosen for database IOPS-per-GB.
     - preset: 03-hyperdisk-high-iops
       region_assumption: us-central1
@@ -57,7 +60,7 @@ spec:
           sku_meter: provisioned disk capacity
           pricing_unit: GiB-months
           pricing_quantity: "1000"
-          quantity_basis: the manifest provisions 1,000 GiB of hyperdisk-balanced (size_gb 1000), billing every GiB monthly
+          quantity_basis: every provisioned GiB (size_gb) bills monthly at the disk type's own capacity rate from creation -- full or empty, attached or not
           list_unit_price: "0.08"
           price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
           retrieved_on: "2026-08-16"
@@ -66,7 +69,7 @@ spec:
           sku_meter: provisioned IOPS
           pricing_unit: IOPS-months
           pricing_quantity: "3000"
-          quantity_basis: the manifest provisions 6,000 IOPS and hyperdisk-balanced includes a 3,000-IOPS baseline free -- only the 3,000-IOPS excess bills monthly
+          quantity_basis: hyperdisk-balanced includes a 3,000-IOPS baseline free -- only the excess over it (provisioned_iops minus 3,000) bills monthly
           list_unit_price: "0.005"
           price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
           retrieved_on: "2026-08-16"
@@ -75,7 +78,7 @@ spec:
           sku_meter: provisioned throughput
           pricing_unit: MBps-months
           pricing_quantity: "150"
-          quantity_basis: the manifest provisions 290 MBps and hyperdisk-balanced includes a 140-MBps baseline free -- only the 150-MBps excess bills monthly
+          quantity_basis: hyperdisk-balanced includes a 140-MBps baseline free -- only the excess over it (provisioned_throughput minus 140) bills monthly
           list_unit_price: "0.04"
           price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
           retrieved_on: "2026-08-16"

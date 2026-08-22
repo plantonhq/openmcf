@@ -21,7 +21,7 @@ spec:
         basis: 2 servers x (250m CPU / 512Mi memory requests, 2Gi limits)
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
-        - backend and artifact volumes left undeclared still provision at their 5Gi and 10Gi module defaults, which this footprint cannot count -- declare the sizes to make the footprint complete
+        - a backend or artifact pvc block declared without a size is stated at its 5Gi or 10Gi spec-declared default; with no pvc block at all the modules still provision the volume, a reservation this footprint cannot count
         - object storage in the configured artifact bucket grows with every logged model and dataset
         - the external backend store is a separate component whose capacity rides its own footprint
         - the gc CronJob pod reserves capacity only while a scheduled run executes

@@ -1,0 +1,22 @@
+# Capacity derivation: machine-executable rules turning any
+# KubernetesKeycloakOperator manifest's spec values into the cluster
+# capacity the deployment reserves. Field paths are spec-relative proto
+# field names, held to the served contract by the conformance gate. The
+# spec's resources field carries the (default_container_resources)
+# annotation with upstream's own operator sizing -- applied by the
+# modules when a manifest omits resources and stated by the estimator
+# with its origin named in the basis. The operator binds no persistent
+# volumes. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskeycloakoperator
+spec:
+  workloads:
+    - label: operator pod
+      resources_path: resources
+      instances:
+        constant: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: the Keycloak servers this operator reconciles reserve their own capacity -- each rides its KubernetesKeycloak resource

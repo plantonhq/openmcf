@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 
+	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	estimatemodelv1 "github.com/plantonhq/planton/finops/componentcostestimatemodel/v1"
 	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
@@ -199,11 +200,17 @@ func Generate(repoRoot string) (*Summary, error) {
 			if model == nil {
 				continue
 			}
-			// A derivation's slug-referenced prices are live references even
-			// when no committed preset triggers their conditional lines --
-			// the rule prices real manifests the presets do not exercise.
-			// (Attribute lookups stay replay-counted: their entries are
-			// value-keyed and cannot be enumerated statically.)
+			// A derivation's prices are live references even when no
+			// committed preset triggers their lines -- the rules price real
+			// manifests the presets do not exercise. Static slugs are
+			// credited by name; a value-keyed lookup credits every entry it
+			// COULD select (service, unit, and currency agree, the constant
+			// bindings match, and every remaining entry attribute is
+			// manifest-supplied), so a price FAMILY can grow ahead of the
+			// preset corpus without tripping the dead-price sweep. Region
+			// is deliberately not filtered: a live manifest supplies its
+			// own region, so every region's member of the family is
+			// reachable.
 			derivation, err := costderivation.Load(repoRoot, component)
 			if err != nil {
 				return nil, err
@@ -211,6 +218,22 @@ func Generate(repoRoot string) (*Summary, error) {
 			for _, line := range derivation.GetSpec().GetLines() {
 				if slug := line.GetPriceSlug(); slug != "" {
 					referenced[provider][slug] = true
+					continue
+				}
+				lookup := line.GetPriceLookup()
+				if lookup == nil {
+					continue
+				}
+				for slug, entry := range entries {
+					if len(entry.GetAttributes()) == 0 ||
+						entry.GetServiceName() != lookup.GetServiceName() ||
+						entry.GetPricingUnit() != lookup.GetPricingUnit() ||
+						entry.GetCurrency() != derivation.GetSpec().GetCurrency() {
+						continue
+					}
+					if lookupCouldSelect(lookup, entry.GetAttributes()) {
+						referenced[provider][slug] = true
+					}
 				}
 			}
 		} else {
@@ -468,6 +491,28 @@ type renderedLine struct {
 	retrievedOn     string
 	listCost        string
 	cost            *big.Rat
+}
+
+// lookupCouldSelect reports whether some manifest could steer a
+// value-keyed lookup to an entry: the entry's attribute KEYS are exactly
+// the lookup's binding keys (mirroring the engine's exact-map-equality
+// law, so an entry with extra identity can never be credited by a
+// narrower lookup), every constant binding matches the entry's value,
+// and from_field bindings match any value (the manifest supplies it).
+func lookupCouldSelect(lookup *derivationv1.PriceLookup, attributes map[string]string) bool {
+	if len(attributes) != len(lookup.GetAttributes()) {
+		return false
+	}
+	for _, binding := range lookup.GetAttributes() {
+		value, present := attributes[binding.GetKey()]
+		if !present {
+			return false
+		}
+		if constant := binding.GetConstant(); constant != "" && constant != value {
+			return false
+		}
+	}
+	return true
 }
 
 // priceLines joins a preset's quantity lines with the price book, checks

@@ -1,10 +1,12 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -17,7 +19,7 @@ spec:
         memory_requests: 450Mi
         cpu_limits: 700m
         memory_limits: 450Mi
-        basis: 1 operator pod x (300m CPU / 450Mi memory requests, 700m CPU / 450Mi limits) from the spec-declared defaults (upstream's own values, applied when the manifest omits resources) -- no persistent volumes
+        basis: 1 operator pod x (300m CPU / 450Mi memory requests, 700m CPU / 450Mi limits) from the spec-declared defaults (the modules apply them when the manifest omits resources)
       exclusions:
         - the dollar value of this capacity is the target cluster's node economics
         - the Keycloak servers this operator reconciles reserve their own capacity -- each rides its KubernetesKeycloak resource

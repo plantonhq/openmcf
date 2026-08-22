@@ -1,0 +1,82 @@
+# Cost derivation: the machine-executable rules turning any AwsEbsVolume
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsebsvolume.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). gp3 bills IOPS and throughput only IN
+# EXCESS of its included baselines (3,000 IOPS and 125 MiB/s per the EBS
+# pricing page) -- the subtract_baseline factors state exactly that
+# arithmetic, so provisioning at or under a baseline honestly contributes
+# nothing. A snapshot-restored volume with no explicit size refuses: its
+# committed GB-month quantity is the referenced snapshot's size -- real
+# committed spend of unknowable magnitude, and a refusal beats a silent
+# zero or an invented number. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsebsvolume
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: snapshot_id
+          op: is_set
+        - field_path: size_gb
+          op: equals
+          value: "0"
+      reason: a snapshot-restored volume with no explicit size_gb inherits the referenced snapshot's size, so its committed GB-month quantity (and the one-time volume-initialization fee that follows the snapshot's full size) is unknowable from this manifest
+    - when:
+        - field_path: type
+          op: not_equals
+          value: gp3
+      reason: only gp3's meters are carried by the price book -- other volume types bill their own storage and performance rates
+  lines:
+    - sku_meter: volume storage
+      quantity:
+        - field_value:
+            field_path: size_gb
+      price_slug: ebs-gp3-storage-us-east-1
+      basis: every provisioned GiB (size_gb) bills monthly from creation -- full or empty, attached or not
+    - sku_meter: provisioned IOPS
+      quantity:
+        - subtract_baseline:
+            field_path: iops
+            baseline: "3000"
+      price_slug: ebs-gp3-iops-us-east-1
+      basis: gp3 includes a 3,000-IOPS baseline free -- only the excess over it (iops minus 3,000) bills monthly
+    - sku_meter: provisioned throughput
+      quantity:
+        - subtract_baseline:
+            field_path: throughput_mibps
+            baseline: "125"
+      price_slug: ebs-gp3-throughput-us-east-1
+      basis: gp3 includes a 125-MiB/s baseline free -- only the excess over it (throughput_mibps minus 125) bills monthly
+  exclusions:
+    - applies_when:
+        - field_path: final_snapshot
+          op: equals
+          value: "false"
+      text: snapshot storage follows whatever snapshots the owner takes -- none are configured here (final_snapshot is unset)
+    - applies_when:
+        - field_path: final_snapshot
+          op: equals
+          value: "true"
+      text: the final snapshot bills snapshot storage per GiB actually stored, from destroy day until someone deletes it
+    - text: I/O carries no request meter on gp3 -- performance is what is provisioned, and only the excess over the included baselines bills
+  notes:
+    - applies_when:
+        - field_path: encrypted
+          op: equals
+          value: "true"
+        - field_path: kms_key_id
+          op: is_unset
+      text: encrypted true with kms_key_id unset uses the AWS-managed aws/ebs key -- no monthly fee and no extra meter.
+    - applies_when:
+        - field_path: attachments
+          op: is_set
+      text: Attachments add no charge of their own, and the volume keeps billing all its meters while the attached instance is stopped; deleting the volume is the only off switch.
+    - text: All meters bill per-second with a 60-second minimum.

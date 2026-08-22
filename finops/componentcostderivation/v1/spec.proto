@@ -116,7 +116,10 @@ message LineRule {
   // Multi-AZ vs Single-AZ instance hours) are authored as sibling rules
   // with disjoint conditions, each selecting its own price -- the
   // conditions carry the variant logic so quantities and prices stay
-  // simple.
+  // simple. These read from the SPEC ROOT even on an expanded rule
+  // (they gate the whole rule -- an engine choice at the cluster level
+  // gates every instance); per-element filtering belongs to
+  // element_applies_when.
   repeated Condition applies_when = 2;
 
   // The monthly quantity as a PRODUCT of factors (e.g. node count x
@@ -147,6 +150,32 @@ message LineRule {
   // hours"). Rides the estimate line as its audit trail; merged lines
   // join their sentences in authored order.
   string basis = 6;
+
+  // When set, the rule evaluates ONCE PER ELEMENT of this repeated
+  // MESSAGE field (spec-relative snake_case dotted path) instead of
+  // once against the spec -- the shape of clustered services where
+  // each element of an instances list carries its own class and bills
+  // its own rate. Scopes are explicit, never mixed within one list:
+  // applies_when keeps reading the SPEC ROOT (it gates the whole
+  // rule), element_applies_when filters elements, and the rule's
+  // VALUE-carrying paths -- quantity field reads, subtract_baseline
+  // fields, price-lookup from_field bindings -- are ELEMENT-relative.
+  // Root-scoped facts a line needs (a cluster-level scaling floor)
+  // belong in a sibling non-expanded rule, conditioned with
+  // any_element_of when it must key off element identity; root-fixed
+  // price identity (the cluster's engine) rides constant attribute
+  // bindings on sibling rules gated by root conditions. Elements
+  // resolving to the same meter and price merge by the ordinary rule,
+  // so N identical instances collapse to one line whose quantity is
+  // the sum. An empty list emits nothing.
+  string expand_over = 7;
+
+  // Element filters for an expanded rule; ALL must hold for an element
+  // to contribute, read ELEMENT-relative; empty means every element
+  // contributes; an element the conditions reject simply contributes
+  // nothing (a serverless instance filtered out of a provisioned-rate
+  // rule), never a refusal. Only legal on a rule with expand_over.
+  repeated Condition element_applies_when = 8;
 }
 
 // Condition compares one spec field against a literal. Comparisons read
@@ -157,15 +186,30 @@ message LineRule {
 // catalog placeholder and reads as unset.
 message Condition {
   // Spec-relative snake_case dotted path to the field examined, in the
-  // same vocabulary as the cost profile's driver field paths.
+  // same vocabulary as the cost profile's driver field paths. Inside a
+  // rule that expands over a repeated field (LineRule.expand_over) or
+  // when any_element_of is set, the path is ELEMENT-relative instead --
+  // it starts at the element message, never back at the spec root.
   string field_path = 1;
 
   // How the field is examined.
   Op op = 2;
 
-  // The literal compared against, for equals / not_equals (e.g. "true",
-  // "SPOT", "0"). Empty for is_set / is_unset.
+  // The literal compared against, for equals / not_equals /
+  // starts_with (e.g. "true", "SPOT", "0", "composer-3"). Empty for
+  // is_set / is_unset.
   string value = 3;
+
+  // When set, the condition ranges over the elements of this repeated
+  // MESSAGE field (spec-relative snake_case dotted path) and holds when
+  // ANY element satisfies field_path/op/value read element-relative --
+  // the existential form, for billing identities that live inside
+  // repeated configuration trees (e.g. "does any WAF rule reference a
+  // subscription-bearing managed rule group?"). An empty list satisfies
+  // nothing. Leave empty for the ordinary whole-spec form. Not
+  // combinable with expand_over's element scope: inside an expanded
+  // rule the conditions already read the current element.
+  string any_element_of = 4;
 
   enum Op {
     op_unspecified = 0;
@@ -184,6 +228,13 @@ message Condition {
     // The field carries no explicit value (the mirror of is_set,
     // including the wrapper and placeholder rules above).
     is_unset = 4;
+    // The field's effective value begins with value (an exact prefix
+    // match on the rendered string; value must be non-empty). For
+    // version-family detection where enumerating every member is
+    // impossible ("composer-3" catches composer-3.1.2 and every future
+    // patch). An unset field renders empty and never matches a
+    // non-empty prefix.
+    starts_with = 5;
   }
 }
 
@@ -205,7 +256,32 @@ message QuantityFactor {
     // The spec's declared hours_per_month, so the one convention has
     // one home. True enables the arm.
     bool hours_in_month = 4;
+
+    // A numeric spec field's value MINUS a stated included allotment,
+    // floored at zero -- the excess-over-baseline shape providers bill
+    // performance dials with (gp3 IOPS above the included 3,000,
+    // throughput above the included 125 MiB/s, scale units above a
+    // SKU's included count). Only the excess bills; provisioning at or
+    // under the baseline honestly contributes zero, which drops the
+    // line entirely.
+    SubtractBaseline subtract_baseline = 5;
   }
+}
+
+// SubtractBaseline reads a numeric spec field and subtracts the
+// provider's included allotment, floored at zero. The baseline is a
+// verified fact from the provider's own pricing page -- the basis prose
+// states both the provisioned value's origin and the included
+// allotment, so the arithmetic audits itself.
+message SubtractBaseline {
+  // Spec-relative snake_case dotted path to the numeric field carrying
+  // the provisioned value (element-relative inside an expanded rule).
+  string field_path = 1;
+
+  // The included allotment as a literal decimal string (e.g. "3000"
+  // for gp3's included IOPS). Must be positive -- a zero baseline is a
+  // plain field_value, not a subtraction.
+  string baseline = 2;
 }
 
 // FieldValue reads a numeric spec field, with an optional declared

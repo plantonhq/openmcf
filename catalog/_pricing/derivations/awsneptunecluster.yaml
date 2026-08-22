@@ -1,0 +1,79 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsNeptuneCluster manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsneptunecluster.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Prices live in the provider's price book (../pricebook/). The cluster's
+# provisioned bill lives in its repeated instances list: the
+# instance-hours rule expands over it so each instance's own class picks
+# its own rate. Neptune Serverless never pauses to zero -- the scaling
+# floor bills NCU-hours around the clock, so a serverless cluster's
+# committed spend is min_capacity x 730 (1 NCU is the service minimum
+# when the floor is unset). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsneptunecluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  lines:
+    - sku_meter: instance hours
+      expand_over: instances
+      element_applies_when:
+        - field_path: instance_class
+          op: not_equals
+          value: db.serverless
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Neptune
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+      basis: each provisioned instance bills its instance class's hourly rate x 730 hours
+    - sku_meter: serverless capacity
+      applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: serverless_v2_scaling.min_capacity
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: neptune-serverless-ncu-us-west-2
+      basis: the scaling floor's NCUs (min_capacity; 1 is the service minimum when unset) x 730 hours -- the capacity that always bills; Neptune Serverless does not pause to zero
+  exclusions:
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+      text: NCU-hours above the scaling floor are demand-driven, up to the configured max_capacity ceiling per hour
+    - text: cluster storage bills per consumed GB-month and grows with data
+    - text: storage I/O requests on standard (non-I/O-Optimized) storage are workload-dependent
+    - applies_when:
+        - field_path: backup_retention_period
+          op: not_equals
+          value: "0"
+      text: backup storage beyond the free allowance grows with churn across the configured retention window
+    - applies_when:
+        - field_path: enabled_cloudwatch_logs_exports
+          op: is_set
+      text: CloudWatch ingestion for the exported logs depends on database activity
+    - text: data transfer between AZs and out of the region
+  notes:
+    - applies_when:
+        - field_path: iam_database_authentication_enabled
+          op: equals
+          value: "true"
+        - field_path: deletion_protection
+          op: equals
+          value: "true"
+      text: IAM database authentication and deletion protection add no charge of their own.
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+      text: Estimated at the scaling floor -- the committed always-on spend; demand may bill up to the configured max_capacity ceiling.

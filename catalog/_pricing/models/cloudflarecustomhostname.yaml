@@ -3,9 +3,10 @@
 # defended in prose. Prices live in the provider's price book (../pricebook/,
 # referenced by entry slug); the estimate generator joins the two and emits
 # ../estimates/. Hand model rather than a derivation: Cloudflare bills only
-# the hostnames PAST the zone's 100 included, and the derivation grammar has
-# no subtraction to express an excess-over-allotment, so the allotment
-# arithmetic lives in basis prose here. Schema:
+# the hostnames PAST the zone's 100 included, and that allotment is a
+# ZONE-level fact shared across every hostname resource on the zone --
+# whether this one falls inside it is invisible in this manifest, so the
+# allotment arithmetic lives in basis prose here. Schema:
 # finops/componentcostestimatemodel/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimateModel

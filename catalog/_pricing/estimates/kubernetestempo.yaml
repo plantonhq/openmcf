@@ -13,6 +13,21 @@ metadata:
   name: kubernetestempo
 spec:
   presets:
+    - preset: 01-dev-single
+      capacity_footprint:
+        persistent_storage: 10Gi
+        basis: "1 tempo: 1 x 10Gi data (the spec-declared default size) volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: the chart applies no default requests or limits -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set resources for any real deployment this component provisions a volume per replica by default (diverging from the chart's emptyDir) -- stated in this footprint at the 10Gi spec-declared default size when disk_size is omitted
+    - preset: 02-production-s3
+      capacity_footprint:
+        persistent_storage: 20Gi
+        basis: "2 tempos: 2 x 10Gi data (the spec-declared default size) volumes"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - trace blocks live in the S3-compatible backend -- stored bytes and requests are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), outside this cluster's capacity
+      notes: the chart applies no default requests or limits -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set resources for any real deployment this component provisions a volume per replica by default (diverging from the chart's emptyDir) -- stated in this footprint at the 10Gi spec-declared default size when disk_size is omitted
     - preset: 03-jaeger-compat
       capacity_footprint:
         persistent_storage: 20Gi

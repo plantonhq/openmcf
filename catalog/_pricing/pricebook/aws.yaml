@@ -302,6 +302,8 @@ spec:
       list_unit_price: "0.26315"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDocDB/20260710172257/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonDocDB
         region_code: us-west-2
@@ -328,6 +330,8 @@ spec:
       list_unit_price: "0.3287"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonNeptune
         region_code: us-west-2
@@ -354,6 +358,9 @@ spec:
       list_unit_price: "0.26"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        engine: aurora-mysql
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonRDS
         region_code: us-west-2
@@ -367,6 +374,9 @@ spec:
       list_unit_price: "0.26"
       price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
       retrieved_on: "2026-08-16"
+      attributes:
+        engine: aurora-postgresql
+        instance_class: db.r6g.large
       aws_selector:
         offer_code: AmazonRDS
         region_code: us-west-2

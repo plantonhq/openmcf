@@ -23,12 +23,15 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/plantonhq/planton/catalog/kubernetes"
 	capacityv1 "github.com/plantonhq/planton/finops/componentcapacityderivation/v1"
 	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
 	estimatemodelv1 "github.com/plantonhq/planton/finops/componentcostestimatemodel/v1"
 	"github.com/plantonhq/planton/pkg/finops/costestimator"
 	"github.com/plantonhq/planton/pkg/specpath"
+	sharedoptions "github.com/plantonhq/planton/shared/options"
 )
 
 // Evaluate runs a capacity derivation against one manifest and returns
@@ -198,10 +201,15 @@ func instanceCount(specMsg protoreflect.Message, workload *capacityv1.WorkloadBi
 	}
 }
 
-// workloadResources reads the workload's ContainerResources block (when
-// bound and present), adds count x each quantity into the totals, and
-// renders the per-instance basis fragment, e.g.
-// "(1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits)".
+// workloadResources reads the workload's ContainerResources block, adds
+// count x each quantity into the totals, and renders the per-instance
+// basis fragment, e.g. "(1 CPU / 2Gi memory requests, 2 CPU / 4Gi
+// limits)". When the manifest omits the block, the resolution falls back
+// to the spec field's own (dev.planton.kubernetes.default_container_resources)
+// annotation -- the defaults the modules apply at deploy time, so a
+// manifest relying on them reserves exactly what the footprint states --
+// with the basis naming the defaults' origin. A field carrying neither a
+// manifest value nor the annotation contributes nothing.
 func workloadResources(specMsg protoreflect.Message, workload *capacityv1.WorkloadBinding, count *big.Int, totals *footprintTotals) (bool, string, error) {
 	path := workload.GetResourcesPath()
 	if path == "" {
@@ -211,10 +219,18 @@ func workloadResources(specMsg protoreflect.Message, workload *capacityv1.Worklo
 	if err != nil {
 		return false, "", fmt.Errorf("workload %q resources: %w", workload.GetLabel(), err)
 	}
-	if !resolved.Present || !resolved.Value.IsValid() {
-		return false, "", nil
+	defaulted := false
+	var resources protoreflect.Message
+	if resolved.Present && resolved.Value.IsValid() {
+		resources = resolved.Value.Message()
+	} else {
+		declared := declaredDefaultResources(resolved.Field)
+		if declared == nil {
+			return false, "", nil
+		}
+		resources = declared
+		defaulted = true
 	}
-	resources := resolved.Value.Message()
 
 	requestsCpu, requestsMemory := cpuMemory(resources, "requests")
 	limitsCpu, limitsMemory := cpuMemory(resources, "limits")
@@ -255,7 +271,30 @@ func workloadResources(specMsg protoreflect.Message, workload *capacityv1.Worklo
 	if fragment := cpuMemoryFragment(limitsCpu, limitsMemory, ""); fragment != "" {
 		parts = append(parts, fragment+"limits")
 	}
-	return true, "(" + strings.Join(parts, ", ") + ")", nil
+	basis := "(" + strings.Join(parts, ", ") + ")"
+	if defaulted {
+		basis += " from the spec-declared defaults (the modules apply them when the manifest omits resources)"
+	}
+	return true, basis, nil
+}
+
+// declaredDefaultResources reads the spec field's
+// (dev.planton.kubernetes.default_container_resources) annotation -- the
+// ContainerResources the modules apply when a manifest omits the field.
+// Returns nil when the field carries no annotation.
+func declaredDefaultResources(field protoreflect.FieldDescriptor) protoreflect.Message {
+	options, ok := field.Options().(*descriptorpb.FieldOptions)
+	if !ok || options == nil {
+		return nil
+	}
+	if !proto.HasExtension(options, kubernetes.E_DefaultContainerResources) {
+		return nil
+	}
+	declared, ok := proto.GetExtension(options, kubernetes.E_DefaultContainerResources).(*kubernetes.ContainerResources)
+	if !ok || declared == nil {
+		return nil
+	}
+	return declared.ProtoReflect()
 }
 
 // cpuMemory reads one CpuMemory block ("requests" or "limits") off a
@@ -298,28 +337,58 @@ func cpuMemoryFragment(cpu, memory, memoryLabel string) string {
 
 // workloadVolumes adds count x each resolved volume size into the storage
 // total and renders the volumes basis fragment, e.g.
-// "3 x (100Gi data + 20Gi WAL) volumes".
+// "3 x (100Gi data + 20Gi WAL) volumes". A size the manifest omits falls
+// back to the field's own (dev.planton.shared.options.default) annotation
+// -- the size the modules apply at deploy time -- but ONLY when the
+// volume's enclosing configuration block is present: the block is the
+// volume's existence switch, and a default applied to an unconfigured
+// volume would fabricate a reservation for storage that never binds.
 func workloadVolumes(specMsg protoreflect.Message, workload *capacityv1.WorkloadBinding, count *big.Int, totals *footprintTotals) (string, bool, error) {
 	type resolvedVolume struct{ size, label string }
 	var volumes []resolvedVolume
 	for _, volume := range workload.GetVolumes() {
+		// applies_when gates the volume's EXISTENCE: a mode that
+		// provisions no volume (ephemeral on emptyDir) keeps its size
+		// value and its spec default while binding nothing -- a size
+		// without a volume must contribute nothing.
+		exists, err := costestimator.ConditionsHold(specMsg, volume.GetAppliesWhen())
+		if err != nil {
+			return "", false, fmt.Errorf("workload %q volume %q: %w", workload.GetLabel(), volume.GetLabel(), err)
+		}
+		if !exists {
+			continue
+		}
 		resolved, err := specpath.Resolve(specMsg, volume.GetSizePath())
 		if err != nil {
 			return "", false, fmt.Errorf("workload %q volume %q: %w", workload.GetLabel(), volume.GetLabel(), err)
 		}
-		if !resolved.Present || !resolved.Value.IsValid() {
-			continue
+		size := ""
+		defaulted := false
+		if resolved.Present && resolved.Value.IsValid() {
+			size = resolved.Value.String()
 		}
-		size := resolved.Value.String()
 		if size == "" || isPlaceholder(size) {
-			continue
+			enclosing, err := enclosingBlockPresent(specMsg, volume.GetSizePath())
+			if err != nil {
+				return "", false, fmt.Errorf("workload %q volume %q: %w", workload.GetLabel(), volume.GetLabel(), err)
+			}
+			declared := declaredDefaultString(resolved.Field)
+			if !enclosing || declared == "" {
+				continue
+			}
+			size = declared
+			defaulted = true
 		}
 		bytes, err := parseQuantity(size, false)
 		if err != nil {
 			return "", false, fmt.Errorf("workload %q volume %q: %w", workload.GetLabel(), volume.GetLabel(), err)
 		}
 		totals.storage.Add(&totals.storage, bytes.Mul(bytes, count))
-		volumes = append(volumes, resolvedVolume{size: size, label: volume.GetLabel()})
+		label := volume.GetLabel()
+		if defaulted {
+			label += " (the spec-declared default size)"
+		}
+		volumes = append(volumes, resolvedVolume{size: size, label: label})
 	}
 	if len(volumes) == 0 {
 		return "", false, nil
@@ -337,6 +406,71 @@ func workloadVolumes(specMsg protoreflect.Message, workload *capacityv1.Workload
 		terms = append(terms, volume.size+" "+volume.label)
 	}
 	return fmt.Sprintf("%s x (%s) volumes", count.String(), strings.Join(terms, " + ")), true, nil
+}
+
+// declaredDefaultString reads the spec field's
+// (dev.planton.shared.options.default) annotation -- the value the
+// modules apply when a manifest omits the field. Empty when the field
+// carries no annotation.
+func declaredDefaultString(field protoreflect.FieldDescriptor) string {
+	options, ok := field.Options().(*descriptorpb.FieldOptions)
+	if !ok || options == nil {
+		return ""
+	}
+	if !proto.HasExtension(options, sharedoptions.E_Default) {
+		return ""
+	}
+	declared, _ := proto.GetExtension(options, sharedoptions.E_Default).(string)
+	return declared
+}
+
+// CheckDeclaredDefaults validates a bound field's default annotations at
+// gate time, so a malformed spec annotation fails CI naming the file
+// instead of erroring at replay: a ContainerResources field's
+// (default_container_resources) quantities must parse, and a size
+// field's (options.default) must parse as a Kubernetes quantity.
+// Exported for the capacity-derivation conformance gate -- the
+// annotation semantics have exactly one home, this package.
+func CheckDeclaredDefaults(field protoreflect.FieldDescriptor) error {
+	if declared := declaredDefaultResources(field); declared != nil {
+		for _, block := range []string{"requests", "limits"} {
+			cpu, memory := cpuMemory(declared, block)
+			if cpu != "" {
+				if _, err := parseQuantity(cpu, true); err != nil {
+					return fmt.Errorf("default_container_resources %s cpu: %w", block, err)
+				}
+			}
+			if memory != "" {
+				if _, err := parseQuantity(memory, false); err != nil {
+					return fmt.Errorf("default_container_resources %s memory: %w", block, err)
+				}
+			}
+		}
+	}
+	if field.Kind() == protoreflect.StringKind && !field.IsList() && !field.IsMap() {
+		if declared := declaredDefaultString(field); declared != "" {
+			if _, err := parseQuantity(declared, false); err != nil {
+				return fmt.Errorf("(dev.planton.shared.options.default) %q: %w", declared, err)
+			}
+		}
+	}
+	return nil
+}
+
+// enclosingBlockPresent reports whether every intermediate message on a
+// path is present on the manifest -- for a root-level field there is no
+// enclosing block and the answer is true. The size-default fallback
+// gates on this: the enclosing block is the volume's existence switch.
+func enclosingBlockPresent(specMsg protoreflect.Message, dotPath string) (bool, error) {
+	lastDot := strings.LastIndex(dotPath, ".")
+	if lastDot < 0 {
+		return true, nil
+	}
+	parent, err := specpath.Resolve(specMsg, dotPath[:lastDot])
+	if err != nil {
+		return false, err
+	}
+	return parent.Present && parent.Value.IsValid(), nil
 }
 
 // isPlaceholder recognizes the catalog's template placeholders ("<size>")

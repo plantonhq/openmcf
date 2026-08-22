@@ -115,3 +115,33 @@ spec:
         - data transfer between AZs and out of the region follows the workload's traffic
         - EBS snapshots taken of the volumes bill per GB-month outside this component
       notes: Priced at the shared-tenancy Linux/UNIX On-Demand rate -- a Windows or commercial-Linux AMI bills license-included rates above this estimate. The estimate assumes the instance runs all 730 hours; stopping it stops the instance-hours meter but keeps every EBS volume billing.
+    - preset: 05-capacity-block-ml
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Block Store
+          sku_meter: EBS storage
+          pricing_unit: GB-months
+          pricing_quantity: "500"
+          quantity_basis: the reshaped root volume's size (root_block_device.volume_size_gb) at the gp3 rate, billing from creation full or empty
+          list_unit_price: "0.08"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "40.0000"
+        - service_name: Amazon Elastic Block Store
+          sku_meter: provisioned throughput
+          pricing_unit: MiBps-months
+          pricing_quantity: "875"
+          quantity_basis: gp3 includes a 125-MiB/s baseline free -- only the excess over it (root_block_device.throughput_mibps minus 125) bills monthly
+          list_unit_price: "0.04"
+          price_source: https://aws.amazon.com/ebs/pricing/
+          retrieved_on: "2026-08-19"
+          list_cost: "35.0000"
+      total_list_cost: "75.0000"
+      exclusions:
+        - the ML Capacity Block was purchased up front at its own committed price and bills whether or not this instance runs -- the instance adds no hourly compute charge here
+        - a subnet that maps public IPs on launch adds the hourly public-IPv4 charge without this manifest saying so
+        - data transfer between AZs and out of the region follows the workload's traffic
+        - EBS snapshots taken of the volumes bill per GB-month outside this component
+      notes: Only the EBS volumes bill through this manifest -- the reserved GPU capacity was bought as the Capacity Block itself. The estimate assumes the instance runs all 730 hours; stopping it stops the instance-hours meter but keeps every EBS volume billing.

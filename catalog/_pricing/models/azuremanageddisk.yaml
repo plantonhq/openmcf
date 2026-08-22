@@ -2,11 +2,11 @@
 # estimates -- quantity assumptions derived from the preset manifests and
 # defended in prose. Prices live in the provider's price book (../pricebook/,
 # referenced by entry slug); the estimate generator joins the two and emits
-# ../estimates/. A hand model rather than a derivation for two reasons the
+# ../estimates/. A hand model rather than a derivation for one reason the
 # derivation grammar cannot express: fixed-tier SKUs map disk_size_gb to a
-# tier meter through Azure's size BANDS (256 GiB -> P15), and Premium SSD v2
-# performance meters bill excess-over-baseline (IOPS above the free 3,000,
-# MBps above the free 125) -- both banded lookups and subtractions, so each
+# tier meter through Azure's size BANDS (256 GiB -> P15), a banded lookup
+# no rule can state -- and a component's quantities have exactly one home,
+# so the Premium SSD v2 subtractions stay hand-computed beside it. Each
 # preset's quantities are computed here and defended in their bases. The
 # 03-snapshot-clone preset deliberately has NO entry: its committed spend is
 # real (a Premium SSD tier fee) but its size -- and therefore its tier -- is

@@ -1,0 +1,147 @@
+# Cost derivation: the machine-executable rules turning any AwsRdsCluster
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsrdscluster.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). The cluster's bill lives in its repeated
+# instances list: the instance-hours rules expand over it so each
+# instance's own class picks its own rate, with the cluster-level engine
+# selecting the rate family through sibling rules. A Serverless v2
+# cluster with min_capacity 0 pauses to zero -- its serverless instances
+# are filtered out of the provisioned rules and no committed compute
+# remains, the honest zero. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsrdscluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  refusals:
+    - when:
+        - field_path: engine_mode
+          op: equals
+          value: serverless
+      reason: engine_mode "serverless" is Aurora Serverless v1, which bills ACU meters this price book does not carry
+    - when:
+        - field_path: db_cluster_instance_class
+          op: is_set
+      reason: a Multi-AZ RDS cluster prices its db_cluster_instance_class on non-Aurora instance rates this price book does not carry
+    - when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+        - field_path: serverless_v2_scaling.min_capacity
+          op: not_equals
+          value: "0"
+      reason: a nonzero Serverless v2 floor commits ACU-hours around the clock, and the Aurora ACU rate is not carried by this price book
+  lines:
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: engine
+          op: equals
+          value: aurora-postgresql
+      expand_over: instances
+      element_applies_when:
+        - field_path: instance_class
+          op: not_equals
+          value: db.serverless
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            constant: aurora-postgresql
+      basis: each provisioned instance bills its instance class's Aurora PostgreSQL hourly rate x 730 hours
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: engine
+          op: equals
+          value: aurora-mysql
+      expand_over: instances
+      element_applies_when:
+        - field_path: instance_class
+          op: not_equals
+          value: db.serverless
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            constant: aurora-mysql
+      basis: each provisioned instance bills its instance class's Aurora MySQL hourly rate x 730 hours
+  exclusions:
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+      text: ACU-hours are demand-driven -- min_capacity 0 enables automatic pause, so an idle cluster's compute cost is zero and a busy one bills up to the configured max_capacity ceiling per hour
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_unset
+        - field_path: s3_import
+          op: is_unset
+      text: Aurora cluster storage bills per consumed GB-month and grows with data
+    - applies_when:
+        - field_path: s3_import
+          op: is_set
+      text: Aurora cluster storage bills per consumed GB-month -- immediately material here, since the S3 restore lands the migrated dataset on day one
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+      text: Aurora cluster storage bills per consumed GB-month and grows with data (it bills even while compute is paused)
+    - text: storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
+    - applies_when:
+        - field_path: enable_http_endpoint
+          op: equals
+          value: "true"
+      text: Data API requests (enable_http_endpoint) bill per million requests past the free allowance, which covers only the first year of usage
+    - applies_when:
+        - field_path: backtrack_window_seconds
+          op: not_equals
+          value: "0"
+      text: backtrack change records across the configured backtrack window bill per million records and follow write churn
+    - applies_when:
+        - field_path: backup_retention_period
+          op: not_equals
+          value: "0"
+      text: backup storage beyond the free allowance grows with churn across the configured retention window
+    - applies_when:
+        - field_path: enabled_cloudwatch_logs_exports
+          op: is_set
+      text: CloudWatch ingestion for the exported logs depends on database chatter
+    - text: data transfer between AZs and out of the region
+  notes:
+    - applies_when:
+        - field_path: serverless_v2_scaling
+          op: is_set
+        - field_path: serverless_v2_scaling.min_capacity
+          op: equals
+          value: "0"
+      text: min_capacity 0 means no committed compute spend -- the db.serverless instances pause after 5 idle minutes and resume on the next connection. Every dollar of this preset follows usage.
+    - applies_when:
+        - field_path: performance_insights_enabled
+          op: equals
+          value: "true"
+      text: Performance Insights is enabled but free at the default 7-day retention.
+    - applies_when:
+        - field_path: manage_master_user_password
+          op: equals
+          value: "true"
+        - field_path: deletion_protection
+          op: equals
+          value: "true"
+      text: The managed master password and deletion protection add no charge of their own.
+    - applies_when:
+        - field_path: s3_import
+          op: is_set
+      text: The one-time S3 restore itself adds no RDS charge; S3 storage and request costs for the XtraBackup files belong to the source bucket.

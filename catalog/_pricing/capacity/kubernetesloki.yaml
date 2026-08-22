@@ -93,7 +93,7 @@ spec:
           op: is_set
         - field_path: monolithic.disk_size
           op: is_unset
-      text: each monolithic replica provisions a 10Gi volume by default even without a declared disk_size -- a reservation this footprint cannot count
+      text: each monolithic replica provisions a 10Gi volume by default even without a declared disk_size -- stated in this footprint at the spec-declared default size
     - applies_when:
         - field_path: monolithic
           op: is_set
@@ -111,7 +111,7 @@ spec:
           op: is_set
         - field_path: simple_scalable.disk_size
           op: is_unset
-      text: each write and backend replica provisions a 10Gi volume by default even without a declared disk_size -- a reservation this footprint cannot count
+      text: each write and backend replica provisions a 10Gi volume by default even without a declared disk_size -- stated in this footprint at the spec-declared default size
     - applies_when:
         - field_path: simple_scalable
           op: is_set

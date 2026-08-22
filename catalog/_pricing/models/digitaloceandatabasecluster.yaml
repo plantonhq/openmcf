@@ -4,10 +4,10 @@
 # referenced by entry slug); the estimate generator joins the two and emits
 # ../estimates/. A hand model rather than a derivation: the opensearch
 # preset's committed additional-storage quantity is storage_gib MINUS the
-# size slug's included base (100 - 70 = 30 GiB), and the derivation
-# grammar's quantities are products of factors -- it cannot subtract; the
-# per-size included base also lives on DigitalOcean's pricing page, not in
-# any spec field the grammar could read. Each preset's quantities are
+# size slug's included base (100 - 70 = 30 GiB), and that included base is
+# a PER-SLUG fact from DigitalOcean's pricing page, not a constant any
+# subtract_baseline rule could state nor a spec field the grammar could
+# read. Each preset's quantities are
 # computed here and defended in their bases. DigitalOcean prices managed
 # databases identically in every region (the pricing page carries one table
 # per engine with no region dimension), so every referenced entry is pinned
