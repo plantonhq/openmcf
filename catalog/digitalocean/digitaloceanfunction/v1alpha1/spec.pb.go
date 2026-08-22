@@ -9,7 +9,6 @@ package digitaloceanfunctionv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	digitalocean "github.com/plantonhq/planton/catalog/digitalocean"
-	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,119 +23,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanFunctionRuntime enumerates the supported runtime environments for functions.
-// These map to App Platform's supported runtimes.
-type DigitalOceanFunctionRuntime int32
-
-const (
-	DigitalOceanFunctionRuntime_digital_ocean_function_runtime_unspecified DigitalOceanFunctionRuntime = 0
-	// Node.js 18 (LTS)
-	DigitalOceanFunctionRuntime_nodejs_18 DigitalOceanFunctionRuntime = 1
-	// Node.js 20 (Current)
-	DigitalOceanFunctionRuntime_nodejs_20 DigitalOceanFunctionRuntime = 2
-	// Python 3.9
-	DigitalOceanFunctionRuntime_python_39 DigitalOceanFunctionRuntime = 3
-	// Python 3.10
-	DigitalOceanFunctionRuntime_python_310 DigitalOceanFunctionRuntime = 4
-	// Python 3.11 (Latest)
-	DigitalOceanFunctionRuntime_python_311 DigitalOceanFunctionRuntime = 5
-	// Go 1.20
-	DigitalOceanFunctionRuntime_go_120 DigitalOceanFunctionRuntime = 6
-	// Go 1.21
-	DigitalOceanFunctionRuntime_go_121 DigitalOceanFunctionRuntime = 7
-	// PHP 8.2
-	DigitalOceanFunctionRuntime_php_82 DigitalOceanFunctionRuntime = 8
-)
-
-// Enum value maps for DigitalOceanFunctionRuntime.
-var (
-	DigitalOceanFunctionRuntime_name = map[int32]string{
-		0: "digital_ocean_function_runtime_unspecified",
-		1: "nodejs_18",
-		2: "nodejs_20",
-		3: "python_39",
-		4: "python_310",
-		5: "python_311",
-		6: "go_120",
-		7: "go_121",
-		8: "php_82",
-	}
-	DigitalOceanFunctionRuntime_value = map[string]int32{
-		"digital_ocean_function_runtime_unspecified": 0,
-		"nodejs_18":  1,
-		"nodejs_20":  2,
-		"python_39":  3,
-		"python_310": 4,
-		"python_311": 5,
-		"go_120":     6,
-		"go_121":     7,
-		"php_82":     8,
-	}
-)
-
-func (x DigitalOceanFunctionRuntime) Enum() *DigitalOceanFunctionRuntime {
-	p := new(DigitalOceanFunctionRuntime)
-	*p = x
-	return p
-}
-
-func (x DigitalOceanFunctionRuntime) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (DigitalOceanFunctionRuntime) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (DigitalOceanFunctionRuntime) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_enumTypes[0]
-}
-
-func (x DigitalOceanFunctionRuntime) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DigitalOceanFunctionRuntime.Descriptor instead.
-func (DigitalOceanFunctionRuntime) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean.
-// Functions are deployed via DigitalOcean App Platform for production-ready VPC integration, monitoring, and IaC support.
+// DigitalOceanFunctionSpec deploys serverless functions as an App Platform
+// app with a single functions component. The provider has no standalone
+// Functions resource; both engines create digitalocean_app.
+//
+// Runtime, memory, timeout, entrypoint, and schedules are NOT on this spec.
+// They live in the repo's project.yml (inside source_directory), which App
+// Platform reads at deploy time. Putting those knobs on the spec would
+// silently do nothing.
 type DigitalOceanFunctionSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// function_name is the name of the function. Must be unique within the project.
-	FunctionName string `protobuf:"bytes,1,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
-	// region specifies the DigitalOcean region to deploy the function.
-	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// runtime specifies the runtime environment for the function (e.g., nodejs, python, go).
-	Runtime DigitalOceanFunctionRuntime `protobuf:"varint,3,opt,name=runtime,proto3,enum=dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionRuntime" json:"runtime,omitempty"`
-	// GitHub repository configuration for function source code
-	GithubSource *DigitalOceanFunctionGithubSource `protobuf:"bytes,4,opt,name=github_source,json=githubSource,proto3" json:"github_source,omitempty"`
-	// source_directory is the path within the repository containing the function code and project.yml
-	// Example: "/functions/api-handler"
-	SourceDirectory string `protobuf:"bytes,5,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
-	// memory_mb is the memory allocated to the function (in megabytes). Defaults to 256 if not specified.
-	// Valid values: 128, 256, 512, 1024, 2048
-	MemoryMb uint32 `protobuf:"varint,6,opt,name=memory_mb,json=memoryMb,proto3" json:"memory_mb,omitempty"`
-	// timeout_ms is the maximum execution time for the function in milliseconds.
-	// Defaults to 3000ms (3 seconds) if not specified. Max: 300000ms (5 minutes)
-	TimeoutMs uint32 `protobuf:"varint,7,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
-	// environment_variables are non-secret environment variables for the function
-	EnvironmentVariables map[string]string `protobuf:"bytes,8,rep,name=environment_variables,json=environmentVariables,proto3" json:"environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// secret_environment_variables are encrypted environment variables (e.g., database URLs, API keys)
-	// These are stored securely in App Platform's secret store
-	SecretEnvironmentVariables map[string]string `protobuf:"bytes,9,rep,name=secret_environment_variables,json=secretEnvironmentVariables,proto3" json:"secret_environment_variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// entrypoint is an optional function or script entrypoint name within the code
-	// Example: "main" for Go, "handler" for Node.js
-	Entrypoint string `protobuf:"bytes,10,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-	// cron_schedule is an optional cron expression for scheduled function execution
-	// Example: "0 * * * *" for hourly execution
-	// If set, the function will not be exposed as an HTTP endpoint
-	CronSchedule string `protobuf:"bytes,11,opt,name=cron_schedule,json=cronSchedule,proto3" json:"cron_schedule,omitempty"`
-	// is_web indicates if the function should be exposed as an HTTP endpoint
-	// Defaults to true. Set to false for background/scheduled functions.
-	IsWeb         bool `protobuf:"varint,12,opt,name=is_web,json=isWeb,proto3" json:"is_web,omitempty"`
+	// Functions component name inside the app.
+	FunctionName string                                       `protobuf:"bytes,1,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
+	Region       digitalocean.DigitalOceanRegion              `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
+	Git          *digitalocean.DigitalOceanAppGitSource       `protobuf:"bytes,3,opt,name=git,proto3" json:"git,omitempty"`
+	Github       *digitalocean.DigitalOceanAppGithubSource    `protobuf:"bytes,4,opt,name=github,proto3" json:"github,omitempty"`
+	Gitlab       *digitalocean.DigitalOceanAppGitlabSource    `protobuf:"bytes,5,opt,name=gitlab,proto3" json:"gitlab,omitempty"`
+	Bitbucket    *digitalocean.DigitalOceanAppBitbucketSource `protobuf:"bytes,6,opt,name=bitbucket,proto3" json:"bitbucket,omitempty"`
+	// Directory inside the repo that contains project.yml and the packages
+	// tree, for example packages/api.
+	SourceDirectory string                                        `protobuf:"bytes,7,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
+	Envs            []*digitalocean.DigitalOceanAppEnvVar         `protobuf:"bytes,8,rep,name=envs,proto3" json:"envs,omitempty"`
+	Alerts          []*digitalocean.DigitalOceanAppComponentAlert `protobuf:"bytes,9,rep,name=alerts,proto3" json:"alerts,omitempty"`
+	LogDestinations []*digitalocean.DigitalOceanAppLogDestination `protobuf:"bytes,10,rep,name=log_destinations,json=logDestinations,proto3" json:"log_destinations,omitempty"`
+	// DigitalOcean project UUID to put the app in. Literal; a typed reference
+	// lands when the Project kind is forged.
+	ProjectId     string `protobuf:"bytes,11,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -185,16 +97,30 @@ func (x *DigitalOceanFunctionSpec) GetRegion() digitalocean.DigitalOceanRegion {
 	return digitalocean.DigitalOceanRegion(0)
 }
 
-func (x *DigitalOceanFunctionSpec) GetRuntime() DigitalOceanFunctionRuntime {
+func (x *DigitalOceanFunctionSpec) GetGit() *digitalocean.DigitalOceanAppGitSource {
 	if x != nil {
-		return x.Runtime
+		return x.Git
 	}
-	return DigitalOceanFunctionRuntime_digital_ocean_function_runtime_unspecified
+	return nil
 }
 
-func (x *DigitalOceanFunctionSpec) GetGithubSource() *DigitalOceanFunctionGithubSource {
+func (x *DigitalOceanFunctionSpec) GetGithub() *digitalocean.DigitalOceanAppGithubSource {
 	if x != nil {
-		return x.GithubSource
+		return x.Github
+	}
+	return nil
+}
+
+func (x *DigitalOceanFunctionSpec) GetGitlab() *digitalocean.DigitalOceanAppGitlabSource {
+	if x != nil {
+		return x.Gitlab
+	}
+	return nil
+}
+
+func (x *DigitalOceanFunctionSpec) GetBitbucket() *digitalocean.DigitalOceanAppBitbucketSource {
+	if x != nil {
+		return x.Bitbucket
 	}
 	return nil
 }
@@ -206,167 +132,55 @@ func (x *DigitalOceanFunctionSpec) GetSourceDirectory() string {
 	return ""
 }
 
-func (x *DigitalOceanFunctionSpec) GetMemoryMb() uint32 {
+func (x *DigitalOceanFunctionSpec) GetEnvs() []*digitalocean.DigitalOceanAppEnvVar {
 	if x != nil {
-		return x.MemoryMb
-	}
-	return 0
-}
-
-func (x *DigitalOceanFunctionSpec) GetTimeoutMs() uint32 {
-	if x != nil {
-		return x.TimeoutMs
-	}
-	return 0
-}
-
-func (x *DigitalOceanFunctionSpec) GetEnvironmentVariables() map[string]string {
-	if x != nil {
-		return x.EnvironmentVariables
+		return x.Envs
 	}
 	return nil
 }
 
-func (x *DigitalOceanFunctionSpec) GetSecretEnvironmentVariables() map[string]string {
+func (x *DigitalOceanFunctionSpec) GetAlerts() []*digitalocean.DigitalOceanAppComponentAlert {
 	if x != nil {
-		return x.SecretEnvironmentVariables
+		return x.Alerts
 	}
 	return nil
 }
 
-func (x *DigitalOceanFunctionSpec) GetEntrypoint() string {
+func (x *DigitalOceanFunctionSpec) GetLogDestinations() []*digitalocean.DigitalOceanAppLogDestination {
 	if x != nil {
-		return x.Entrypoint
+		return x.LogDestinations
+	}
+	return nil
+}
+
+func (x *DigitalOceanFunctionSpec) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
 	}
 	return ""
-}
-
-func (x *DigitalOceanFunctionSpec) GetCronSchedule() string {
-	if x != nil {
-		return x.CronSchedule
-	}
-	return ""
-}
-
-func (x *DigitalOceanFunctionSpec) GetIsWeb() bool {
-	if x != nil {
-		return x.IsWeb
-	}
-	return false
-}
-
-// DigitalOceanFunctionGithubSource defines the GitHub repository configuration for function source code
-type DigitalOceanFunctionGithubSource struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// repo is the GitHub repository in the format "owner/repo"
-	Repo string `protobuf:"bytes,1,opt,name=repo,proto3" json:"repo,omitempty"`
-	// branch is the Git branch to deploy from (e.g., "main", "production")
-	Branch string `protobuf:"bytes,2,opt,name=branch,proto3" json:"branch,omitempty"`
-	// deploy_on_push enables automatic redeployment when changes are pushed to the branch
-	DeployOnPush  bool `protobuf:"varint,3,opt,name=deploy_on_push,json=deployOnPush,proto3" json:"deploy_on_push,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DigitalOceanFunctionGithubSource) Reset() {
-	*x = DigitalOceanFunctionGithubSource{}
-	mi := &file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DigitalOceanFunctionGithubSource) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DigitalOceanFunctionGithubSource) ProtoMessage() {}
-
-func (x *DigitalOceanFunctionGithubSource) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DigitalOceanFunctionGithubSource.ProtoReflect.Descriptor instead.
-func (*DigitalOceanFunctionGithubSource) Descriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *DigitalOceanFunctionGithubSource) GetRepo() string {
-	if x != nil {
-		return x.Repo
-	}
-	return ""
-}
-
-func (x *DigitalOceanFunctionGithubSource) GetBranch() string {
-	if x != nil {
-		return x.Branch
-	}
-	return ""
-}
-
-func (x *DigitalOceanFunctionGithubSource) GetDeployOnPush() bool {
-	if x != nil {
-		return x.DeployOnPush
-	}
-	return false
 }
 
 var File_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/digitalocean/digitaloceanfunction/v1alpha1/spec.proto\x126dev.planton.digitalocean.digitaloceanfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a\x1cshared/options/options.proto\"\x83\t\n" +
-	"\x18DigitalOceanFunctionSpec\x12.\n" +
-	"\rfunction_name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\ffunctionName\x12L\n" +
-	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12u\n" +
-	"\aruntime\x18\x03 \x01(\x0e2S.dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionRuntimeB\x06\xbaH\x03\xc8\x01\x01R\aruntime\x12}\n" +
-	"\rgithub_source\x18\x04 \x01(\v2X.dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionGithubSourceR\fgithubSource\x122\n" +
-	"\x10source_directory\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fsourceDirectory\x128\n" +
-	"\tmemory_mb\x18\x06 \x01(\rB\x1b\xbaH\x11*\x0f0\x80\x010\x80\x020\x80\x040\x80\b0\x80\x10\x92\xa6\x1d\x03256R\bmemoryMb\x120\n" +
+	"=catalog/digitalocean/digitaloceanfunction/v1alpha1/spec.proto\x126dev.planton.digitalocean.digitaloceanfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/digitalocean/app_spec.proto\x1a!catalog/digitalocean/region.proto\"\xea\b\n" +
+	"\x18DigitalOceanFunctionSpec\x121\n" +
+	"\rfunction_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18 R\ffunctionName\x12L\n" +
+	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12D\n" +
+	"\x03git\x18\x03 \x01(\v22.dev.planton.digitalocean.DigitalOceanAppGitSourceR\x03git\x12M\n" +
+	"\x06github\x18\x04 \x01(\v25.dev.planton.digitalocean.DigitalOceanAppGithubSourceR\x06github\x12M\n" +
+	"\x06gitlab\x18\x05 \x01(\v25.dev.planton.digitalocean.DigitalOceanAppGitlabSourceR\x06gitlab\x12V\n" +
+	"\tbitbucket\x18\x06 \x01(\v28.dev.planton.digitalocean.DigitalOceanAppBitbucketSourceR\tbitbucket\x125\n" +
+	"\x10source_directory\x18\a \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x0fsourceDirectory\x12C\n" +
+	"\x04envs\x18\b \x03(\v2/.dev.planton.digitalocean.DigitalOceanAppEnvVarR\x04envs\x12O\n" +
+	"\x06alerts\x18\t \x03(\v27.dev.planton.digitalocean.DigitalOceanAppComponentAlertR\x06alerts\x12b\n" +
+	"\x10log_destinations\x18\n" +
+	" \x03(\v27.dev.planton.digitalocean.DigitalOceanAppLogDestinationR\x0flogDestinations\x12\x1d\n" +
 	"\n" +
-	"timeout_ms\x18\a \x01(\rB\x11\xbaH\x06*\x04\x18\xe0\xa7\x12\x92\xa6\x1d\x043000R\ttimeoutMs\x12\x9f\x01\n" +
-	"\x15environment_variables\x18\b \x03(\v2j.dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.EnvironmentVariablesEntryR\x14environmentVariables\x12\xb2\x01\n" +
-	"\x1csecret_environment_variables\x18\t \x03(\v2p.dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.SecretEnvironmentVariablesEntryR\x1asecretEnvironmentVariables\x12\x1e\n" +
-	"\n" +
-	"entrypoint\x18\n" +
-	" \x01(\tR\n" +
-	"entrypoint\x12#\n" +
-	"\rcron_schedule\x18\v \x01(\tR\fcronSchedule\x12\x1f\n" +
-	"\x06is_web\x18\f \x01(\bB\b\x92\xa6\x1d\x04trueR\x05isWeb\x1aG\n" +
-	"\x19EnvironmentVariablesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aM\n" +
-	"\x1fSecretEnvironmentVariablesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb4\x01\n" +
-	" DigitalOceanFunctionGithubSource\x12<\n" +
-	"\x04repo\x18\x01 \x01(\tB(\xbaH%r#\x10\x012\x1f^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$R\x04repo\x12\"\n" +
-	"\x06branch\x18\x02 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\x06branch\x12.\n" +
-	"\x0edeploy_on_push\x18\x03 \x01(\bB\b\x92\xa6\x1d\x04trueR\fdeployOnPush*\xbe\x01\n" +
-	"\x1bDigitalOceanFunctionRuntime\x12.\n" +
-	"*digital_ocean_function_runtime_unspecified\x10\x00\x12\r\n" +
-	"\tnodejs_18\x10\x01\x12\r\n" +
-	"\tnodejs_20\x10\x02\x12\r\n" +
-	"\tpython_39\x10\x03\x12\x0e\n" +
-	"\n" +
-	"python_310\x10\x04\x12\x0e\n" +
-	"\n" +
-	"python_311\x10\x05\x12\n" +
-	"\n" +
-	"\x06go_120\x10\x06\x12\n" +
-	"\n" +
-	"\x06go_121\x10\a\x12\n" +
-	"\n" +
-	"\x06php_82\x10\bB\xb2\x03\n" +
+	"project_id\x18\v \x01(\tR\tprojectId:\xc0\x02\xbaH\xbc\x02\x1a\xb9\x02\n" +
+	"\x13function_one_source\x12\xa9\x01set exactly one source: git, github, gitlab, or bitbucket. Use git with a public clone URL when the DigitalOcean account has no linked GitHub/GitLab/Bitbucket connection\x1av(has(this.git) ? 1 : 0) + (has(this.github) ? 1 : 0) + (has(this.gitlab) ? 1 : 0) + (has(this.bitbucket) ? 1 : 0) == 1B\xb2\x03\n" +
 	":com.dev.planton.digitalocean.digitaloceanfunction.v1alpha1B\tSpecProtoP\x01Zlgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanfunction/v1alpha1;digitaloceanfunctionv1alpha1\xa2\x02\x04DPDD\xaa\x026Dev.Planton.Digitalocean.Digitaloceanfunction.V1alpha1\xca\x026Dev\\Planton\\Digitalocean\\Digitaloceanfunction\\V1alpha1\xe2\x02BDev\\Planton\\Digitalocean\\Digitaloceanfunction\\V1alpha1\\GPBMetadata\xea\x02:Dev::Planton::Digitalocean::Digitaloceanfunction::V1alpha1b\x06proto3"
 
 var (
@@ -381,27 +195,32 @@ func file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDescG
 	return file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_goTypes = []any{
-	(DigitalOceanFunctionRuntime)(0),         // 0: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionRuntime
-	(*DigitalOceanFunctionSpec)(nil),         // 1: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec
-	(*DigitalOceanFunctionGithubSource)(nil), // 2: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionGithubSource
-	nil,                                      // 3: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.EnvironmentVariablesEntry
-	nil,                                      // 4: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.SecretEnvironmentVariablesEntry
-	(digitalocean.DigitalOceanRegion)(0),     // 5: dev.planton.digitalocean.DigitalOceanRegion
+	(*DigitalOceanFunctionSpec)(nil),                    // 0: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec
+	(digitalocean.DigitalOceanRegion)(0),                // 1: dev.planton.digitalocean.DigitalOceanRegion
+	(*digitalocean.DigitalOceanAppGitSource)(nil),       // 2: dev.planton.digitalocean.DigitalOceanAppGitSource
+	(*digitalocean.DigitalOceanAppGithubSource)(nil),    // 3: dev.planton.digitalocean.DigitalOceanAppGithubSource
+	(*digitalocean.DigitalOceanAppGitlabSource)(nil),    // 4: dev.planton.digitalocean.DigitalOceanAppGitlabSource
+	(*digitalocean.DigitalOceanAppBitbucketSource)(nil), // 5: dev.planton.digitalocean.DigitalOceanAppBitbucketSource
+	(*digitalocean.DigitalOceanAppEnvVar)(nil),          // 6: dev.planton.digitalocean.DigitalOceanAppEnvVar
+	(*digitalocean.DigitalOceanAppComponentAlert)(nil),  // 7: dev.planton.digitalocean.DigitalOceanAppComponentAlert
+	(*digitalocean.DigitalOceanAppLogDestination)(nil),  // 8: dev.planton.digitalocean.DigitalOceanAppLogDestination
 }
 var file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
-	0, // 1: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.runtime:type_name -> dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionRuntime
-	2, // 2: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.github_source:type_name -> dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionGithubSource
-	3, // 3: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.environment_variables:type_name -> dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.EnvironmentVariablesEntry
-	4, // 4: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.secret_environment_variables:type_name -> dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.SecretEnvironmentVariablesEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 0: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	2, // 1: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.git:type_name -> dev.planton.digitalocean.DigitalOceanAppGitSource
+	3, // 2: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.github:type_name -> dev.planton.digitalocean.DigitalOceanAppGithubSource
+	4, // 3: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.gitlab:type_name -> dev.planton.digitalocean.DigitalOceanAppGitlabSource
+	5, // 4: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.bitbucket:type_name -> dev.planton.digitalocean.DigitalOceanAppBitbucketSource
+	6, // 5: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.envs:type_name -> dev.planton.digitalocean.DigitalOceanAppEnvVar
+	7, // 6: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.alerts:type_name -> dev.planton.digitalocean.DigitalOceanAppComponentAlert
+	8, // 7: dev.planton.digitalocean.digitaloceanfunction.v1alpha1.DigitalOceanFunctionSpec.log_destinations:type_name -> dev.planton.digitalocean.DigitalOceanAppLogDestination
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_init() }
@@ -414,14 +233,13 @@ func file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      0,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_goTypes,
 		DependencyIndexes: file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_depIdxs,
-		EnumInfos:         file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_enumTypes,
 		MessageInfos:      file_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto_msgTypes,
 	}.Build()
 	File_catalog_digitalocean_digitaloceanfunction_v1alpha1_spec_proto = out.File

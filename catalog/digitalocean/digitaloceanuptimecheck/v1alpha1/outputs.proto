@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanuptimecheck.v1alpha1;
+
+// DigitalOceanUptimeCheckStackOutputs captures the key outputs after
+// provisioning a DigitalOcean uptime check.
+message DigitalOceanUptimeCheckStackOutputs {
+  // UUID of the uptime check (the API identity, and the import id). The
+  // composed alert rows import as "{check_id},{alert_id}"; alert ids are
+  // found via the API or the console, they are not stack outputs.
+  string check_id = 1;
+}

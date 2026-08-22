@@ -1,15 +1,45 @@
+# Example DigitalOceanDatabaseCluster manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real cluster (single-node PostgreSQL
+# with defaults). The second exercises the full surface on MySQL: VPC
+# placement, custom storage, a maintenance window, storage autoscale,
+# sql_mode, project placement, and tags.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
-  name: first-db
+  name: example-postgres
 spec:
-  clusterName: first-db                 # human‑readable identifier
-  engine: pg                                # pg | mysql | redis | mongodb
-  engineVersion: "14"                       # major or major.minor
-  region: blr1                              # DigitalOceanRegion enum value
-  sizeSlug: db-s-2vcpu-4gb                  # any valid managed‑DB size slug
-  nodeCount: 1                         # 1‑3
+  clusterName: example-postgres
+  engine: pg
+  engineVersion: "16"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: example-mysql
+spec:
+  clusterName: example-mysql
+  engine: mysql
+  engineVersion: "8"
+  region: nyc3
+  sizeSlug: db-s-2vcpu-4gb
+  nodeCount: 2
   vpc:
-    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                        # UUID or StringValueOrRef to DigitalOceanVpc
-  storageGib: 10                           # optional custom storage
-  enablePublicConnectivity: true           # true to allow public access
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
+  storageGib: 100
+  maintenanceWindow:
+    day: sunday
+    hour: "02:00"
+  storageAutoscale:
+    enabled: true
+    thresholdPercent: 80
+    incrementGib: 50
+  sqlMode: "ANSI,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+  projectId: 3f2a9c6e-8d41-4b7a-9f0e-1c5d7b2a4e68
+  tags:
+    - env:example

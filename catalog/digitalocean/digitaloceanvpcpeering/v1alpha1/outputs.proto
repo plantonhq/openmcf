@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanvpcpeering.v1alpha1;
+
+// DigitalOceanVpcPeeringStackOutputs captures the key outputs after
+// provisioning a VPC peering connection.
+message DigitalOceanVpcPeeringStackOutputs {
+  // UUID of the VPC peering connection (the resource's API identity and
+  // its import id).
+  string peering_id = 1;
+
+  // Lifecycle status of the peering as reported by DigitalOcean at apply
+  // time. DigitalOcean reports statuses in UPPERCASE (PROVISIONING,
+  // ACTIVE, DELETING); the module waits for ACTIVE before exporting.
+  string status = 2;
+}

@@ -27,7 +27,7 @@ func initializeLocals(_ *pulumi.Context, stackInput *digitaloceanloadbalancerv1a
 	// Standard Planton labels for DigitalOcean resources.
 	locals.DigitalOceanLabels = map[string]string{
 		digitaloceanlabelkeys.Resource:     strconv.FormatBool(true),
-		digitaloceanlabelkeys.ResourceName: locals.DigitalOceanLoadBalancer.Spec.LoadBalancerName,
+		digitaloceanlabelkeys.ResourceName: locals.DigitalOceanLoadBalancer.Metadata.Name,
 		digitaloceanlabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer.String(),
 	}
 

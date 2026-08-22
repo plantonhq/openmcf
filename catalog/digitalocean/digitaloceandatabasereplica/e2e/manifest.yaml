@@ -1,0 +1,35 @@
+# Reference manifests for DigitalOceanDatabaseReplica -- protovalidate-
+# valid, embedded as the reference page's Example block, and the documents
+# the offline tofu plans render. Two documents: a same-region hot standby
+# and a cross-region replica with VPC placement.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: orders-read-replica
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  replicaName: orders-read-replica
+  region: nyc3
+  size: db-s-1vcpu-1gb
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: orders-eu-replica
+spec:
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  replicaName: orders-eu-replica
+  region: ams3
+  size: db-s-1vcpu-2gb
+  # Literal VPC UUID; use valueFrom to reference a DigitalOceanVpc
+  # resource instead.
+  vpc:
+    value: dddddddd-eeee-ffff-0000-111111111111
+  storageSizeMib: 30720
+  tags:
+    - env:prod
+    - read-scaling

@@ -1,0 +1,33 @@
+# Minimal DigitalOceanDropletAutoscalePool: a static pool holding ONE
+# member droplet, its SSH key wired BY REFERENCE to the SshKey install
+# fixture (the registry prerequisite). The member droplet BILLS while the
+# lane runs (~$0.009/hr for the smallest size); create waits for the pool
+# AND the member to reach active (up to 15 minutes upstream). DESTROY
+# DESTROYS THE MEMBER -- the zero-orphan sweep is doubly binding here.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: planton-oss-e2e-digitaloceandropletautoscalepool-min
+  id: planton-oss-e2e-digitaloceandropletautoscalepool-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandropletautoscalepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  poolName: pltn-e2e-dodasp-min-${E2E_RUN_ID}
+  static:
+    targetInstances: 1
+  dropletTemplate:
+    size: s-1vcpu-1gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    sshKeys:
+      - valueFrom:
+          kind: DigitalOceanSshKey
+          name: planton-oss-e2e-digitaloceansshkey-min
+          fieldPath: status.outputs.ssh_key_id

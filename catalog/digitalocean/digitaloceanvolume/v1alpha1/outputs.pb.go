@@ -21,11 +21,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanVolumeStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanVolumeStackOutputs captures the resulting volume info after provisioning.
 type DigitalOceanVolumeStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unique identifier (UUID) of the created DigitalOcean volume.
-	VolumeId      string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	// The unique identifier (UUID) of the created DigitalOcean volume. The Droplet kind's
+	// volume_ids list consumes this output to attach the volume.
+	VolumeId string `protobuf:"bytes,1,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
+	// The uniform resource name (URN) of the volume, e.g. "do:volume:<uuid>".
+	Urn           string `protobuf:"bytes,2,opt,name=urn,proto3" json:"urn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,13 +70,21 @@ func (x *DigitalOceanVolumeStackOutputs) GetVolumeId() string {
 	return ""
 }
 
+func (x *DigitalOceanVolumeStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceanvolume_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanvolume_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	">catalog/digitalocean/digitaloceanvolume/v1alpha1/outputs.proto\x124dev.planton.digitalocean.digitaloceanvolume.v1alpha1\"=\n" +
+	">catalog/digitalocean/digitaloceanvolume/v1alpha1/outputs.proto\x124dev.planton.digitalocean.digitaloceanvolume.v1alpha1\"O\n" +
 	"\x1eDigitalOceanVolumeStackOutputs\x12\x1b\n" +
-	"\tvolume_id\x18\x01 \x01(\tR\bvolumeIdB\xa7\x03\n" +
+	"\tvolume_id\x18\x01 \x01(\tR\bvolumeId\x12\x10\n" +
+	"\x03urn\x18\x02 \x01(\tR\x03urnB\xa7\x03\n" +
 	"8com.dev.planton.digitalocean.digitaloceanvolume.v1alpha1B\fOutputsProtoP\x01Zhgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanvolume/v1alpha1;digitaloceanvolumev1alpha1\xa2\x02\x04DPDD\xaa\x024Dev.Planton.Digitalocean.Digitaloceanvolume.V1alpha1\xca\x024Dev\\Planton\\Digitalocean\\Digitaloceanvolume\\V1alpha1\xe2\x02@Dev\\Planton\\Digitalocean\\Digitaloceanvolume\\V1alpha1\\GPBMetadata\xea\x028Dev::Planton::Digitalocean::Digitaloceanvolume::V1alpha1b\x06proto3"
 
 var (

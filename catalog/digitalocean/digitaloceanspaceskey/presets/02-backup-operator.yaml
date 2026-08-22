@@ -1,0 +1,10 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: backup-operator-key
+spec:
+  keyName: backup-operator
+  # A fullaccess grant covers every bucket in the account -- including
+  # buckets created after the key -- and names none.
+  grants:
+    - permission: fullaccess

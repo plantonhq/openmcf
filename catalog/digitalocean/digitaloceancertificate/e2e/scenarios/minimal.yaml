@@ -1,0 +1,44 @@
+# Custom-certificate scenario: uploads user-provided PEM material. This is
+# the live-provable branch (no domain required), so it carries the reserved
+# `minimal` name and doubles as the fixture install profile for kinds that
+# compose a certificate.
+#
+# The key pair below is a THROWAWAY self-signed fixture generated solely for
+# this scenario (EC P-256, CN=planton-e2e.invalid, never used by any real
+# system). It is not a secret worth protecting -- its only job is to be
+# syntactically valid PEM the DigitalOcean API accepts.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCertificate
+metadata:
+  name: planton-oss-e2e-digitaloceancertificate-min
+  id: planton-oss-e2e-digitaloceancertificate-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceancertificate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  certificateName: planton-e2e-custom-cert
+  custom:
+    leafCertificate: |
+      -----BEGIN CERTIFICATE-----
+      MIIBkDCCATegAwIBAgIUZTNBcipSFS0umzBYZfnmE3UJ2YQwCgYIKoZIzj0EAwIw
+      HjEcMBoGA1UEAwwTcGxhbnRvbi1lMmUuaW52YWxpZDAeFw0yNjA4MTgwNTI4MjVa
+      Fw0zNjA4MTUwNTI4MjVaMB4xHDAaBgNVBAMME3BsYW50b24tZTJlLmludmFsaWQw
+      WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqFo1MwUTAd
+      BgNVHQ4EFgQU0gFX4oBzgNuZ+mSFs44uPvImF68wHwYDVR0jBBgwFoAU0gFX4oBz
+      gNuZ+mSFs44uPvImF68wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
+      AiBWQte/D5NHcDDduh/R5LYqA+A7ukhFhM6KpFzAFQnRHwIgTk1HMKYXSr+EBndV
+      ktTsgT2GaJQv5Ygbwv3VidvCTcY=
+      -----END CERTIFICATE-----
+    privateKey: |
+      -----BEGIN PRIVATE KEY-----
+      MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgI+JHoXfavvhJ48oX
+      NY8PFbglsE3gttH0JFhDQngkWcGhRANCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqF
+      -----END PRIVATE KEY-----

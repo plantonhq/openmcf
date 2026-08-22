@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/plantonhq/planton/internal/cli/cliprint"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/providerparity"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"github.com/spf13/cobra"
@@ -74,8 +75,11 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 	dispositionsPath, _ := cmd.Flags().GetString("dispositions")
 	baselinePath, _ := cmd.Flags().GetString("baseline")
 
-	providerValue, ok := cloudresourcekind.CloudResourceProvider_value[providerName]
-	if !ok || providerValue == 0 {
+	// Accepts the catalog directory name ("gcp", "digitalocean") as well as
+	// the registry enum name ("digital_ocean") -- the same resolution the
+	// committed pages' embedded parameters go through.
+	provider := crkreflect.ProviderFromString(providerName)
+	if provider == cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified {
 		cliprint.PrintError(fmt.Sprintf("unknown cloud provider %q", providerName))
 		os.Exit(1)
 	}
@@ -121,10 +125,10 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 	if write, _ := cmd.Flags().GetBool("write-report"); write {
 		reportPath, _ := cmd.Flags().GetString("report-path")
 		if reportPath == "" {
-			reportPath = providerparity.PublicReportPath(cloudresourcekind.CloudResourceProvider(providerValue))
+			reportPath = providerparity.PublicReportPath(provider)
 		}
 		page, err := providerparity.GeneratePublicReport(".",
-			cloudresourcekind.CloudResourceProvider(providerValue), schemas, gaSchema, dispositionsPath)
+			provider, schemas, gaSchema, dispositionsPath)
 		if err != nil {
 			cliprint.PrintError(fmt.Sprintf("failed to render the parity page: %v", err))
 			os.Exit(1)
@@ -138,7 +142,7 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 	}
 
 	acc, err := providerparity.BuildAccounting(".",
-		cloudresourcekind.CloudResourceProvider(providerValue), schemas, gaSchema, dispositionsPath)
+		provider, schemas, gaSchema, dispositionsPath)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("accounting failed: %v", err))
 		os.Exit(1)

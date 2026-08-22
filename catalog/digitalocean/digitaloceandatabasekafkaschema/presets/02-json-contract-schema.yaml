@@ -1,0 +1,13 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaSchema
+metadata:
+  name: shipment-events-schema
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: my-kafka-cluster
+      fieldPath: status.outputs.cluster_id
+  subjectName: shipment-events-value
+  schemaType: json
+  schema: '{"$schema":"http://json-schema.org/draft-07/schema#","title":"ShipmentEvent","type":"object","properties":{"shipmentId":{"type":"string"},"status":{"type":"string","enum":["created","in_transit","delivered"]},"occurredAt":{"type":"string","format":"date-time"}},"required":["shipmentId","status","occurredAt"],"additionalProperties":false}'

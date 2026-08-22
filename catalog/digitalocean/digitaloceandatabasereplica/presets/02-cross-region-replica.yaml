@@ -1,0 +1,22 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: orders-eu-replica
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  replicaName: orders-eu-replica
+  region: ams3
+  size: db-s-1vcpu-2gb
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: ams-private-network
+      fieldPath: status.outputs.vpc_id
+  storageSizeMib: 30720
+  tags:
+    - env:prod
+    - read-scaling

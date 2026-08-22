@@ -6,7 +6,8 @@ spec:
   volumeName: my-database-volume
   region: nyc1
   sizeGib: 100
-  filesystemType: xfs  # Optimized for database write patterns
+  filesystemType: xfs # Optimized for database write patterns
+  initialFilesystemLabel: dbdata # Mount by label (LABEL=dbdata) instead of device path
   description: Database block storage with XFS
   tags:
     - production

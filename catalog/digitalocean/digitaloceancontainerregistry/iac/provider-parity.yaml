@@ -1,0 +1,23 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+resources:
+  digitalocean_container_registry:
+    mappings:
+      # The spec's typed tier enum's value names ARE the provider slugs
+      # (starter/basic/professional); only the field name diverges.
+      - spec: spec.subscription_tier
+        arg: subscription_tier_slug
+  digitalocean_container_registry_docker_credentials:
+    mappings:
+      - spec: spec.docker_credentials.write
+        arg: write
+      - spec: spec.docker_credentials.expiry_seconds
+        arg: expiry_seconds
+    exclusions:
+      - arg: registry_name
+        reason: wired by the module to the registry it creates -- the credentials always belong to this kind's own registry

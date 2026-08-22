@@ -1,0 +1,30 @@
+# Minimal DigitalOceanDatabaseKafkaSchema: an Avro record subject -- the
+# kind's total meaningful surface (all four arguments are required and
+# create-only). Rides the SHARED Kafka fixture that lives in the
+# DigitalOceanDatabaseKafkaTopic kind's folder (one fixture manifest
+# serves both Kafka kinds; the registry prerequisite installs a
+# PostgreSQL cluster, which has no schema registry).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaSchema
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasekafkaschema-min
+  id: planton-oss-e2e-digitaloceandatabasekafkaschema-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasekafkaschema
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/digitalocean/digitaloceandatabasekafkatopic/e2e/fixtures/kafka-cluster.yaml"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitalocean-kafka-fixture
+      fieldPath: status.outputs.cluster_id
+  subjectName: pltn-e2e-dokfs-min-value
+  schemaType: avro
+  schema: '{"type":"record","name":"E2eProbe","fields":[{"name":"id","type":"string"},{"name":"at","type":"long"}]}'

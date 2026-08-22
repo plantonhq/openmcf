@@ -1,0 +1,31 @@
+# Minimal DigitalOceanDatabaseConnectionPool: a transaction-mode pool on
+# the PostgreSQL cluster registry prerequisite, authenticating as the
+# cluster's built-in default user (doadmin -- every DigitalOcean cluster
+# has it, so the lane needs no user fixture). Proves the full
+# create/verify/destroy lifecycle, the (cluster_id, pool_name) identity
+# outputs, and the pool endpoint outputs (host/port asserted against live).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: planton-oss-e2e-digitaloceandatabaseconnectionpool-min
+  id: planton-oss-e2e-digitaloceandatabaseconnectionpool-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabaseconnectionpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  poolName: pltn-e2e-dodbcp-min
+  mode: transaction
+  size: 10
+  dbName: defaultdb
+  user: doadmin

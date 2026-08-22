@@ -1,27 +1,43 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for the DigitalOcean Database Cluster"
+  description = "DigitalOceanDatabaseCluster specification"
   type = object({
-    cluster_name                = string
-    engine                      = string  # "postgres", "mysql", "redis", "mongodb"
-    engine_version              = string  # Major or major.minor version
-    region                      = string  # DigitalOcean region
-    size_slug                   = string  # Node size (e.g., "db-s-2vcpu-4gb")
-    node_count                  = number  # 1-3 nodes
-    vpc                         = optional(object({ value = string }))
-    storage_gib                 = optional(number)
-    enable_public_connectivity  = optional(bool, false)
+    cluster_name = string
+    engine = string
+    engine_version = string
+    region = string
+    size_slug = string
+    node_count = number
+    vpc = optional(string, "")
+    storage_gib = optional(number, 0)
+    maintenance_window = optional(object({
+      day = string
+      hour = string
+    }))
+    backup_restore = optional(object({
+      database_name = string
+      backup_created_at = optional(string, "")
+    }))
+    storage_autoscale = optional(object({
+      enabled = bool
+      threshold_percent = optional(number, 0)
+      increment_gib = optional(number, 0)
+    }))
+    eviction_policy = optional(string, "")
+    sql_mode = optional(string, "")
+    project_id = optional(string, "")
+    tags = optional(list(string), [])
   })
 }

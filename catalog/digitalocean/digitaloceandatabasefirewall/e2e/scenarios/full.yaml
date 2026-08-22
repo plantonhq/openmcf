@@ -1,0 +1,35 @@
+# Full DigitalOceanDatabaseFirewall: trusts a real Droplet BY REFERENCE
+# alongside an IP rule. The Droplet fixture rides the e2e-prerequisites
+# annotation and installs from that kind's minimal scenario (a QUEUED kind
+# used as a fixture is not an edit of it -- the established composition
+# pattern). Proves the droplet_ids reference resolution end to end: the
+# valueFrom resolves to the fixture's numeric droplet_id output, and the
+# module fans it out as a {droplet, <id>} rule row.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseFirewall
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasefirewall-full
+  id: planton-oss-e2e-digitaloceandatabasefirewall-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasefirewall
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanDroplet"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  ipRules:
+    - 203.0.113.10
+  dropletIds:
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: planton-oss-e2e-digitaloceandroplet-min
+        fieldPath: status.outputs.droplet_id

@@ -1,0 +1,13 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: orders-read-replica
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  replicaName: orders-read-replica
+  region: nyc3
+  size: db-s-1vcpu-1gb

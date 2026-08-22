@@ -21,15 +21,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanFunctionStackOutputs captures the outputs after deploying a DigitalOcean function.
+// Outputs of a DigitalOceanFunction. The provider has no standalone
+// Functions resource, so function_id is the App Platform app UUID.
 type DigitalOceanFunctionStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// function_id is the unique identifier of the deployed function.
+	// App Platform app UUID that hosts the functions component. Used to
+	// import the digitalocean_app resource.
 	FunctionId string `protobuf:"bytes,1,opt,name=function_id,json=functionId,proto3" json:"function_id,omitempty"`
-	// https_endpoint is the public HTTPS URL endpoint for invoking the function.
+	// Public HTTPS URL of the app (the functions HTTP endpoint).
 	HttpsEndpoint string `protobuf:"bytes,2,opt,name=https_endpoint,json=httpsEndpoint,proto3" json:"https_endpoint,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Default ondigitalocean.app hostname assigned by the platform.
+	DefaultHostname string `protobuf:"bytes,3,opt,name=default_hostname,json=defaultHostname,proto3" json:"default_hostname,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *DigitalOceanFunctionStackOutputs) Reset() {
@@ -76,15 +80,23 @@ func (x *DigitalOceanFunctionStackOutputs) GetHttpsEndpoint() string {
 	return ""
 }
 
+func (x *DigitalOceanFunctionStackOutputs) GetDefaultHostname() string {
+	if x != nil {
+		return x.DefaultHostname
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceanfunction_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanfunction_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/digitalocean/digitaloceanfunction/v1alpha1/outputs.proto\x126dev.planton.digitalocean.digitaloceanfunction.v1alpha1\"j\n" +
+	"@catalog/digitalocean/digitaloceanfunction/v1alpha1/outputs.proto\x126dev.planton.digitalocean.digitaloceanfunction.v1alpha1\"\x95\x01\n" +
 	" DigitalOceanFunctionStackOutputs\x12\x1f\n" +
 	"\vfunction_id\x18\x01 \x01(\tR\n" +
 	"functionId\x12%\n" +
-	"\x0ehttps_endpoint\x18\x02 \x01(\tR\rhttpsEndpointB\xb5\x03\n" +
+	"\x0ehttps_endpoint\x18\x02 \x01(\tR\rhttpsEndpoint\x12)\n" +
+	"\x10default_hostname\x18\x03 \x01(\tR\x0fdefaultHostnameB\xb5\x03\n" +
 	":com.dev.planton.digitalocean.digitaloceanfunction.v1alpha1B\fOutputsProtoP\x01Zlgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanfunction/v1alpha1;digitaloceanfunctionv1alpha1\xa2\x02\x04DPDD\xaa\x026Dev.Planton.Digitalocean.Digitaloceanfunction.V1alpha1\xca\x026Dev\\Planton\\Digitalocean\\Digitaloceanfunction\\V1alpha1\xe2\x02BDev\\Planton\\Digitalocean\\Digitaloceanfunction\\V1alpha1\\GPBMetadata\xea\x02:Dev::Planton::Digitalocean::Digitaloceanfunction::V1alpha1b\x06proto3"
 
 var (

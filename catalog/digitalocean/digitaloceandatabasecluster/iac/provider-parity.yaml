@@ -1,0 +1,25 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. The nested maintenance_window,
+# backup_restore, storage_autoscale, eviction_policy, sql_mode, project_id,
+# and tags surfaces all match by name, so five renames are the whole story.
+resources:
+  digitalocean_database_cluster:
+    mappings:
+      - spec: spec.cluster_name
+        arg: name
+      - spec: spec.engine_version
+        arg: version
+      - spec: spec.size_slug
+        arg: size
+      # The VPC reference is a StringValueOrRef FK to the DigitalOceanVpc
+      # kind.
+      - spec: spec.vpc
+        arg: private_network_uuid
+      # The spec carries GiB for ergonomics; both modules convert to the
+      # provider's bare-MiB string.
+      - spec: spec.storage_gib
+        arg: storage_size_mib

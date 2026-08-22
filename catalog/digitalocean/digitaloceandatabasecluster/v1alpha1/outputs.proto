@@ -2,23 +2,55 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1;
 
-// DigitalOceanDatabaseClusterStackOutputs captures the key outputs after provisioning a DigitalOcean database cluster.
+// DigitalOceanDatabaseClusterStackOutputs captures the key outputs after
+// provisioning a DigitalOcean database cluster.
 message DigitalOceanDatabaseClusterStackOutputs {
   // The unique identifier (UUID) of the created database cluster.
   string cluster_id = 1;
 
-  // The full connection URI for the database cluster (including credentials and database name).
+  // The full public connection URI for the database cluster (including
+  // credentials and database name).
   string connection_uri = 2;
 
-  // The hostname or IP address at which the database cluster is accessible.
+  // The public hostname at which the database cluster is accessible.
   string host = 3;
 
   // The network port that the database cluster is listening on.
   uint32 port = 4;
 
-  // The username for the cluster’s default database user.
+  // The username for the cluster's default database user.
   string database_user = 5;
 
-  // The password for the cluster’s default database user.
+  // The password for the cluster's default database user.
   string database_password = 6;
+
+  // The private-network hostname, reachable from resources in the same VPC.
+  string private_host = 7;
+
+  // The full private-network connection URI (including credentials and
+  // database name), reachable from resources in the same VPC.
+  string private_uri = 8;
+
+  // The name of the cluster's default database.
+  string database_name = 9;
+
+  // OpenSearch only: hostname of the OpenSearch Dashboards endpoint.
+  string ui_host = 10;
+
+  // OpenSearch only: port of the OpenSearch Dashboards endpoint.
+  uint32 ui_port = 11;
+
+  // OpenSearch only: full connection URI for OpenSearch Dashboards
+  // (including credentials).
+  string ui_uri = 12;
+
+  // OpenSearch only: default database of the OpenSearch Dashboards
+  // connection.
+  string ui_database = 13;
+
+  // OpenSearch only: username for OpenSearch Dashboards.
+  string ui_user = 14;
+
+  // OpenSearch only: password for OpenSearch Dashboards.
+  string ui_password = 15;
 }

@@ -9,5 +9,9 @@ spec:
   region: nyc3
   sizeSlug: db-s-1vcpu-1gb
   nodeCount: 1
+  evictionPolicy: allkeys_lru
   vpc:
-    value: "<vpc-id>"
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: my-vpc
+      fieldPath: status.outputs.vpc_id

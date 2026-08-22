@@ -1,0 +1,26 @@
+# MySQL cluster fixture for the mysql-auth scenario: the auth-plugin
+# argument is MySQL-only (API-enforced), so that scenario needs a MySQL
+# cluster alongside the kind's PostgreSQL registry prerequisite. Deployed
+# as a manifest-path prerequisite (an EXTRA DigitalOceanDatabaseCluster
+# instance) by the scenario's e2e-prerequisites annotation.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: planton-oss-e2e-digitaloceandatabaseuser-mysql-fixture
+  id: planton-oss-e2e-digitaloceandatabaseuser-mysql-fixture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabaseuser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-dodbu-mysql-fx
+  engine: mysql
+  engineVersion: "8"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1

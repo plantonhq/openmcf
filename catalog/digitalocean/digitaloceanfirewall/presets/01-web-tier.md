@@ -1,26 +1,26 @@
-# Web Tier Firewall
+# Web-Tier Firewall
 
-This preset creates a DigitalOcean Cloud Firewall for web-facing Droplets. It allows inbound HTTP/HTTPS from anywhere, restricts SSH to a management CIDR, and permits all outbound traffic. The firewall is applied via tag-based targeting to any Droplet tagged `web`.
+This preset creates a firewall for public web servers: HTTPS and HTTP open to the world, SSH restricted to a management network, all outbound traffic allowed, and Droplet membership driven by the `web` tag so every Droplet carrying that tag is protected automatically.
 
 ## When to Use
 
-- Web servers, reverse proxies, or API gateways exposed to the internet
-- Any Droplet that serves HTTP/HTTPS traffic to end users
-- Production web tier requiring SSH restricted to a management network
+- Public-facing web servers, API backends, or reverse proxies
+- Any tier where Droplets come and go and membership should follow a tag
+- The internet-facing half of a classic web/database two-tier layout (pair with `02-database-tier`)
 
 ## Key Configuration Choices
 
-- **HTTPS + HTTP inbound** (`ports 443, 80`) -- open to all IPv4 and IPv6 addresses. This is the standard web-facing configuration.
-- **Restricted SSH** (`port 22`) -- limited to a specific management CIDR. Never expose SSH to `0.0.0.0/0` in production.
-- **Permissive outbound** -- all TCP, UDP, and ICMP outbound allowed. Droplets can reach external APIs, package repositories, and services.
-- **Tag-based targeting** (`tags: [web]`) -- automatically applied to any Droplet tagged `web`. Preferred over explicit Droplet IDs for scalability.
+- **Tag-based targeting** (`tags: [web]`) -- membership follows the tag automatically as Droplets are created and destroyed; DigitalOcean creates the tag implicitly on first use. Prefer tags over `dropletIds` for anything long-lived.
+- **HTTPS and HTTP from everywhere** -- both address families (`0.0.0.0/0` and `::/0`).
+- **SSH from a management CIDR only** -- never expose port 22 to the world in production.
+- **Open egress** -- web tiers typically need unrestricted outbound (package mirrors, APIs, DNS). `portRange: all` is the provider's canonical spelling; writing `1-65535` reads back as `all` and creates a permanent diff.
+- **ICMP outbound** -- icmp rules take no port range (the provider drops one if set).
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<your-management-cidr>` | CIDR block for SSH access (e.g., `203.0.113.0/24` or your VPN IP) | Your network admin or VPN provider |
+- `metadata.name` / `firewallName` -- your firewall's name.
+- The SSH rule's `sourceAddresses` (`203.0.113.0/24` is a documentation example) -- your office/VPN CIDR.
 
 ## Related Presets
 
-- **02-database-tier** -- Use for backend Droplets that should only accept traffic from the web tier, not from the public internet
+- **02-database-tier** -- the private half: inbound only from this tier's tag, restricted egress.

@@ -1,15 +1,42 @@
+# Example DigitalOceanKubernetesNodePool manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real pool: a fixed one-node pool on an
+# existing cluster (referenced by UUID). The second exercises the full
+# surface: autoscaling bounds, Kubernetes node labels, a taint isolating
+# the pool's nodes, pool-level Droplet tags, and AMD GPU partitioning.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
-  name: first-node-pool                   # K8s resource name (unique per namespace)
+  name: example-doknp-minimal
 spec:
-  nodePoolName: first-node-pool           # Must be unique within the target DOKS cluster
+  nodePoolName: example-doknp-minimal
   cluster:
     value: fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd
-  size: s-4vcpu-8gb           # Any valid Droplet size slug
-  nodeCount: 1                    # Desired nodes (initial count when autoScale true)
-  autoScale: false                 # Enable autoscaling
-  minNodes: 1                     # Lower bound when autoscaling
-  maxNodes: 2                     # Upper bound when autoscaling
+  size: s-1vcpu-2gb
+  nodeCount: 1
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: example-doknp-full
+spec:
+  nodePoolName: gpu-workers
+  cluster:
+    value: fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd
+  size: gpu-mi300x1-192gb
+  nodeCount: 1
+  autoScale: true
+  minNodes: 1
+  maxNodes: 3
+  labels:
+    workload: ml-training
+  taints:
+    - key: nvidia.com/gpu
+      value: "true"
+      effect: NoSchedule
   tags:
-    - planton
+    - team:ml
+    - env:prod
+  gpuPartitionMode: AMD_PARTITION_MODE_SPX_NPS1

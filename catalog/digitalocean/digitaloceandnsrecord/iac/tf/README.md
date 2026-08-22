@@ -1,125 +1,43 @@
-# DigitalOcean DNS Record - Terraform Module
+# DigitalOcean DNS Record -- Terraform Module
 
-This Terraform module provisions a DigitalOcean DNS record.
+Deploys a `digitalocean_record` from a `DigitalOceanDnsRecord` spec: every record type the API accepts (A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, SOA) with the per-type fields carried on presence semantics. Provider pin is `~> 2.99`.
+
+`variables.tf` is generated (`planton tofu generate-variables DigitalOceanDnsRecord`). Do not hand-edit it. The API token lives in `credentials.tf`.
+
+## Prerequisites
+
+- OpenTofu or Terraform 1.5+
+- DigitalOcean API token (`digitalocean_token`)
+- An existing DigitalOcean-hosted zone (the `domain`)
 
 ## Usage
-
-### Via Planton CLI
-
-```bash
-planton tofu apply -f manifest.yaml
-```
-
-### Direct Terraform Usage
 
 ```hcl
 module "dns_record" {
   source = "./path/to/module"
 
   metadata = {
-    name = "www-record"
+    name = "app-a-record"
   }
 
   spec = {
-    domain      = "example.com"
-    name        = "www"
-    type        = "A"
-    value       = "192.0.2.1"
-    ttl_seconds = 3600
+    domain = "example.com"
+    name   = "app"
+    type   = "A"
+    value  = "203.0.113.10"
   }
 
   digitalocean_token = var.digitalocean_token
 }
 ```
 
-## Inputs
+## Behavior notes
 
-| Name | Description | Type | Required |
-|------|-------------|------|----------|
-| `metadata` | Resource metadata | object | yes |
-| `spec` | DNS record specification | object | yes |
-| `digitalocean_token` | DigitalOcean API token | string | yes |
-
-### Spec Object
-
-| Field | Description | Type | Default |
-|-------|-------------|------|---------|
-| `domain` | Domain name (DNS zone) | string | - |
-| `name` | Record name (@ for root) | string | - |
-| `type` | Record type (A, AAAA, CNAME, etc.) | string | - |
-| `value` | Record value | string | - |
-| `ttl_seconds` | Time to live in seconds | number | 1800 |
-| `priority` | Priority for MX/SRV | number | 0 |
-| `weight` | Weight for SRV | number | 0 |
-| `port` | Port for SRV | number | 0 |
-| `flags` | Flags for CAA | number | 0 |
-| `tag` | Tag for CAA | string | "" |
+- Reference fields (`domain`, `value`) arrive flattened as plain strings — the Planton orchestrator resolves `valueFrom` references before Terraform runs.
+- The spec's enum value names ARE the provider's record types, so `type` wires through directly.
+- `priority`/`weight`/`port`/`flags` pass through as null when unset (spec presence semantics); `ttl` left null is Computed — DigitalOcean applies its 1800-second default and the applied value reads back.
+- Outputs come from the created resource (`fqdn`, `ttl`), never recomputed locally, so both engines export identical values.
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| `record_id` | The unique ID of the created DNS record |
-| `hostname` | The fully qualified hostname |
-| `record_type` | The type of DNS record created |
-| `domain` | The domain where the record was created |
-| `ttl_seconds` | The TTL applied to the record |
-
-## Examples
-
-### A Record
-
-```hcl
-spec = {
-  domain = "example.com"
-  name   = "www"
-  type   = "A"
-  value  = "192.0.2.1"
-}
-```
-
-### MX Record
-
-```hcl
-spec = {
-  domain   = "example.com"
-  name     = "@"
-  type     = "MX"
-  value    = "mail.example.com"
-  priority = 10
-}
-```
-
-### SRV Record
-
-```hcl
-spec = {
-  domain   = "example.com"
-  name     = "_sip._tcp"
-  type     = "SRV"
-  value    = "sipserver.example.com"
-  priority = 10
-  weight   = 5
-  port     = 5060
-}
-```
-
-### CAA Record
-
-```hcl
-spec = {
-  domain = "example.com"
-  name   = "@"
-  type   = "CAA"
-  value  = "letsencrypt.org"
-  flags  = 0
-  tag    = "issue"
-}
-```
-
-## Requirements
-
-| Name | Version |
-|------|---------|
-| terraform | >= 1.0 |
-| digitalocean | ~> 2.0 |
+Exactly the kind's stack-output contract, identical to the Pulumi module: `record_id`, `hostname`, `record_type`, `domain`, `ttl_seconds`.

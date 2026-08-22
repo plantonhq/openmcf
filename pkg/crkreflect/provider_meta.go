@@ -6,13 +6,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// ProviderMeta returns the provider_meta extension (group, display name) of
+// the provider that owns one kind.
 func ProviderMeta(kind cloudresourcekind.CloudResourceKind) (*cloudresourcekind.CloudResourceProviderMeta, error) {
 	kindMeta, err := KindMeta(kind)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting cloud resource kind meta")
 	}
-	provider := kindMeta.Provider
+	return ProviderMetaOf(kindMeta.Provider)
+}
 
+// ProviderMetaOf returns the provider_meta extension (group, display name)
+// of one provider enum value.
+func ProviderMetaOf(provider cloudresourcekind.CloudResourceProvider) (*cloudresourcekind.CloudResourceProviderMeta, error) {
 	// Get the descriptor for the enum value (CloudResourceProvider)
 	enumValueDescriptor := provider.Descriptor().Values().ByNumber(provider.Number())
 	if enumValueDescriptor == nil {

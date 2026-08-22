@@ -1,0 +1,16 @@
+# Reference manifest for DigitalOceanVpcPeering -- protovalidate-valid,
+# embedded as the reference page's Example block, and the document the
+# offline tofu plan renders. One document: the kind's total surface is
+# three fields.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpcPeering
+metadata:
+  name: app-to-data-peering
+spec:
+  peeringName: app-to-data
+  # Literal VPC UUIDs; use valueFrom to reference DigitalOceanVpc
+  # resources instead.
+  vpc_1:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  vpc_2:
+    value: ffffffff-1111-2222-3333-444444444444

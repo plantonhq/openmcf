@@ -1,22 +1,25 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for the DigitalOcean Container Registry"
+  description = "DigitalOceanContainerRegistry specification"
   type = object({
-    name                        = string
-    subscription_tier           = string # "STARTER", "BASIC", or "PROFESSIONAL"
-    region                      = string # DigitalOcean region (e.g., "nyc3", "sfo3")
-    garbage_collection_enabled  = optional(bool, false)
+    name              = string
+    subscription_tier = string
+    region            = optional(string, "")
+    docker_credentials = optional(object({
+      write          = optional(bool, false)
+      expiry_seconds = optional(number)
+    }))
   })
 }

@@ -4,22 +4,29 @@ metadata:
   name: my-production-cluster
 spec:
   clusterName: my-production-cluster
-  region: nyc1
-  kubernetesVersion: "1.31"
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
   vpc:
-    value: "<vpc-name>"
-  highlyAvailable: true  # HA control plane for production uptime
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: my-vpc
+      fieldPath: status.outputs.vpc_id
+  highlyAvailable: true
   autoUpgrade: true
-  maintenanceWindow: "sunday=03:00"
-  registryIntegration: true  # Enable DOCR image pull
-  controlPlaneFirewallAllowedIps:
-    - "<your-management-cidr>"
+  maintenancePolicy:
+    day: sunday
+    startTime: "03:00"
+  registryIntegration: true
+  controlPlaneFirewall:
+    enabled: true
+    allowedAddresses:
+      - "203.0.113.0/24"
   tags:
     - production
     - kubernetes
   defaultNodePool:
     size: s-4vcpu-8gb
-    autoScale: true
     nodeCount: 3
+    autoScale: true
     minNodes: 2
     maxNodes: 5

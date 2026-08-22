@@ -24,7 +24,7 @@ const (
 )
 
 // Supported filesystem types for formatting a DigitalOcean volume.
-// Values match DigitalOcean API expected strings.
+// The enum value names ARE the strings the provider expects.
 type DigitalOceanVolumeFilesystemType int32
 
 const (
@@ -74,31 +74,41 @@ func (DigitalOceanVolumeFilesystemType) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceanvolume_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block storage volume.
-// A block storage volume provides expandable storage that can be attached to Droplets.
-// This specification focuses on essential parameters for volume creation, adhering to the 80/20 principle.
+// DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block
+// storage volume, modeling the provider's full argument surface. A block storage volume provides
+// expandable storage that is attached to Droplets through the Droplet kind's `volume_ids` list;
+// attachment is a property of the Droplet, never of the volume.
 type DigitalOceanVolumeSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the volume. Must be lowercase letters, numbers, and hyphens only,
 	// starting with a letter and ending with a letter or number. Maximum 64 characters.
+	// The name cannot be changed after creation.
 	VolumeName string `protobuf:"bytes,1,opt,name=volume_name,json=volumeName,proto3" json:"volume_name,omitempty"`
-	// An optional description for the volume.
-	// Constraints: Maximum 100 characters.
+	// (Optional) A free-form description for the volume.
+	// Create-only at the current provider pin: changing the description REPLACES the volume.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// The DigitalOcean region where the volume will be created.
 	// Must match the region of any Droplet that will attach to this volume.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,3,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// The size of the volume in GiB.
-	// Constraints: between 1 and 16000 (inclusive).
+	// The size of the volume in GiB. Volumes can only be EXPANDED after creation: the provider
+	// rejects a shrink at plan time, so lowering this value fails before anything is applied.
+	// DigitalOcean caps volume size at 16 TiB (larger requests fail at the API).
 	SizeGib uint32 `protobuf:"varint,4,opt,name=size_gib,json=sizeGib,proto3" json:"size_gib,omitempty"`
-	// The initial filesystem to format the volume with.
-	// Allowed values: ext4, xfs, or none (no pre-formatting). Default is none.
+	// (Optional) The initial filesystem to format the volume with at creation time.
+	// Create-only: DigitalOcean formats the volume once and never reports this argument back
+	// (the resulting filesystem is observable through the separate computed attributes).
+	// Leave unset (unformatted) to format the volume yourself from the Droplet.
 	FilesystemType DigitalOceanVolumeFilesystemType `protobuf:"varint,5,opt,name=filesystem_type,json=filesystemType,proto3,enum=dev.planton.digitalocean.digitaloceanvolume.v1alpha1.DigitalOceanVolumeFilesystemType" json:"filesystem_type,omitempty"`
-	// An optional snapshot ID or reference to a volume snapshot to create this volume from.
-	// If provided, the new volume will be created from the given snapshot (inheriting its region and minimum size).
+	// (Optional) The filesystem label applied when the volume is formatted at creation time
+	// (e.g. "data"). Only meaningful together with `filesystem_type`. Create-only, and never
+	// reported back by the API.
+	InitialFilesystemLabel string `protobuf:"bytes,8,opt,name=initial_filesystem_label,json=initialFilesystemLabel,proto3" json:"initial_filesystem_label,omitempty"`
+	// (Optional) A volume snapshot ID to create this volume from. The new volume inherits the
+	// snapshot's region and minimum size. Create-only, and never reported back by the API.
 	SnapshotId string `protobuf:"bytes,6,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
-	// A list of tags to apply to the volume.
-	// Tags must be unique and consist of letters, numbers, colons, dashes, or underscores.
+	// (Optional) Tags applied to the volume. Both provisioners apply the union of these tags and
+	// the standard Planton labels. Tags may contain letters, numbers, colons, dashes, and
+	// underscores, up to 255 characters each.
 	Tags          []string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -169,6 +179,13 @@ func (x *DigitalOceanVolumeSpec) GetFilesystemType() DigitalOceanVolumeFilesyste
 	return DigitalOceanVolumeFilesystemType_unformatted
 }
 
+func (x *DigitalOceanVolumeSpec) GetInitialFilesystemLabel() string {
+	if x != nil {
+		return x.InitialFilesystemLabel
+	}
+	return ""
+}
+
 func (x *DigitalOceanVolumeSpec) GetSnapshotId() string {
 	if x != nil {
 		return x.SnapshotId
@@ -187,18 +204,19 @@ var File_catalog_digitalocean_digitaloceanvolume_v1alpha1_spec_proto protoreflec
 
 const file_catalog_digitalocean_digitaloceanvolume_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/digitalocean/digitaloceanvolume/v1alpha1/spec.proto\x124dev.planton.digitalocean.digitaloceanvolume.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\xe1\x03\n" +
+	";catalog/digitalocean/digitaloceanvolume/v1alpha1/spec.proto\x124dev.planton.digitalocean.digitaloceanvolume.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\"\x94\x04\n" +
 	"\x16DigitalOceanVolumeSpec\x12K\n" +
 	"\vvolume_name\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x01\x18@2\x1c^[a-z]([a-z0-9-]*[a-z0-9])?$R\n" +
-	"volumeName\x12)\n" +
-	"\vdescription\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x18dR\vdescription\x12L\n" +
-	"\x06region\x18\x03 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12(\n" +
-	"\bsize_gib\x18\x04 \x01(\rB\r\xbaH\n" +
-	"\xc8\x01\x01*\x05\x18\x80}(\x01R\asizeGib\x12\x7f\n" +
-	"\x0ffilesystem_type\x18\x05 \x01(\x0e2V.dev.planton.digitalocean.digitaloceanvolume.v1alpha1.DigitalOceanVolumeFilesystemTypeR\x0efilesystemType\x12\x1f\n" +
+	"volumeName\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12L\n" +
+	"\x06region\x18\x03 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12%\n" +
+	"\bsize_gib\x18\x04 \x01(\rB\n" +
+	"\xbaH\a\xc8\x01\x01*\x02(\x01R\asizeGib\x12\x7f\n" +
+	"\x0ffilesystem_type\x18\x05 \x01(\x0e2V.dev.planton.digitalocean.digitaloceanvolume.v1alpha1.DigitalOceanVolumeFilesystemTypeR\x0efilesystemType\x128\n" +
+	"\x18initial_filesystem_label\x18\b \x01(\tR\x16initialFilesystemLabel\x12\x1f\n" +
 	"\vsnapshot_id\x18\x06 \x01(\tR\n" +
-	"snapshotId\x125\n" +
-	"\x04tags\x18\a \x03(\tB!\xbaH\x1e\x92\x01\x1b\x18\x01\"\x17r\x15\x18@2\x11^[A-Za-z0-9:_-]+$R\x04tags*F\n" +
+	"snapshotId\x12:\n" +
+	"\x04tags\x18\a \x03(\tB&\xbaH#\x92\x01 \x18\x01\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags*F\n" +
 	" DigitalOceanVolumeFilesystemType\x12\x0f\n" +
 	"\vunformatted\x10\x00\x12\b\n" +
 	"\x04ext4\x10\x01\x12\a\n" +

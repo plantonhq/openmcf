@@ -1,0 +1,11 @@
+# Reference manifests for DigitalOceanSshKey -- protovalidate-valid,
+# embedded as the reference page's Example block, and the document the
+# offline tofu plan renders. The key below is a throwaway ed25519 public
+# key generated for documentation; public keys are not secrets.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSshKey
+metadata:
+  name: ci-deploy-key
+spec:
+  keyName: ci-deploy-key
+  publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB5K1XlWQxr9nMytXvvFyzYZaFVNSTAmTUYbSGXPqIQd ci@example.com

@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandatabasefirewall
+spec:
+  billing_model: free
+  notes: Trusted-source rules are a free property of the managed database cluster -- DigitalOcean charges nothing for the rule set, however many rules it carries. The cluster itself (a DigitalOceanDatabaseCluster cost) is the entire bill.

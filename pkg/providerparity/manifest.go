@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"gopkg.in/yaml.v3"
 )
@@ -123,7 +124,7 @@ type SpecExclusion struct {
 // module census's path grammar (iac/ sits at the component root; the
 // version segment never appears).
 func ManifestPath(repoRoot string, provider cloudresourcekind.CloudResourceProvider, kind cloudresourcekind.CloudResourceKind) string {
-	return filepath.Join(repoRoot, catalogRoot, provider.String(),
+	return filepath.Join(repoRoot, catalogRoot, crkreflect.ProviderDirName(provider),
 		strings.ToLower(kind.String()), "iac", ManifestFileName)
 }
 

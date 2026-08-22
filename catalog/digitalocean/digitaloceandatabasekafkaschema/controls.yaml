@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandatabasekafkaschema
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A schema subject is metadata stored inside the owning Kafka cluster's registry; storage encryption is the CLUSTER's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists on DigitalOcean managed databases (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Registry access rides the cluster's TLS-required endpoints; the subject has no endpoints of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Reachability is the cluster's posture (its trusted-sources firewall); a schema subject has no network surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface (see no-public-access); ingress control lives on the DigitalOceanDatabaseFirewall kind.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: Registry access control is the cluster's user model; the subject resource carries no permission surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Registry authentication is credential-based per database user; no keyless / federated alternative exists upstream.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication protocol choices are the cluster's posture, not the subject's.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DigitalOcean exposes no per-subject audit surface; account-level activity appears in the DigitalOcean team audit history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Schema subjects emit no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The subject is recreated by IaC from the spec's schema definition -- the manifest is the source of truth. Beware that upstream, ANY change replaces the subject and drops its prior versions (the GUIDE's loudest warning); prior versions are not recoverable through this resource.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is the owning cluster's posture (its node count); the subject is registry metadata with no placement of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for schema subjects; deletion drops all registered versions of the subject.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Registry software patching is the managed cluster's posture; a subject runs no software.

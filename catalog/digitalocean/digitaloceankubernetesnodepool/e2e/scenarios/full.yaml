@@ -1,0 +1,41 @@
+# Full-surface DigitalOceanKubernetesNodePool: autoscaling with coherent
+# bounds, Kubernetes node labels, a PreferNoSchedule taint (isolating
+# without blocking the fixture cluster's own workloads), and pool-level
+# Droplet tags. gpu_partition_mode is deliberately absent (deferred arm --
+# see profile.yaml: GPU cost class plus a Pulumi SDK v4.49.0 gap).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: planton-oss-e2e-digitaloceankubernetesnodepool-full
+  id: planton-oss-e2e-digitaloceankubernetesnodepool-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceankubernetesnodepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  nodePoolName: pltn-e2e-doknp-full
+  cluster:
+    valueFrom:
+      kind: DigitalOceanKubernetesCluster
+      name: planton-oss-e2e-digitaloceankubernetescluster-min
+      fieldPath: status.outputs.cluster_id
+  size: s-1vcpu-2gb
+  nodeCount: 1
+  autoScale: true
+  minNodes: 1
+  maxNodes: 2
+  labels:
+    workload: batch
+    pool-class: e2e
+  taints:
+    - key: dedicated
+      value: e2e
+      effect: PreferNoSchedule
+  tags:
+    - planton-e2e-pool
+    - env:e2e

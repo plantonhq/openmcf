@@ -1,0 +1,31 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The kind manages the check plus its alert rules: each entry of the spec's
+# alerts list instantiates one digitalocean_uptime_alert resource. The
+# rules are composed here because they cannot exist without the check, and
+# because the standalone resource's mutable parent id is a corruption class
+# (re-pointing an alert orphans it on its old check) that composition makes
+# unrepresentable.
+resources:
+  digitalocean_uptime_check:
+    mappings:
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.check_name
+        arg: name
+  digitalocean_uptime_alert:
+    specRoot: spec.alerts
+    mappings:
+      - spec: spec.alerts.alert_name
+        arg: name
+      # The spec pluralizes the provider's repeated email list; slack and
+      # its leaves match by name.
+      - spec: spec.alerts.notifications.emails
+        arg: notifications.email
+    exclusions:
+      - arg: check_id
+        reason: >-
+          Wired by the module to the check it creates -- composed alert
+          rows always belong to this kind's own check, which is exactly
+          what kills the upstream mutable-check_id corruption class.

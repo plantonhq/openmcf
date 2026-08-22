@@ -1,0 +1,34 @@
+# Full-surface DigitalOceanDnsRecord: an SRV record exercising every
+# presence field the type requires (priority, weight, port) plus a custom
+# TTL, on the zone registry prerequisite. SRV is the record type with the
+# largest argument surface, and its value reads back trailing-dot
+# normalized -- the recorded write-normalization the blind import
+# round-trip must tolerate.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsRecord
+metadata:
+  name: planton-oss-e2e-digitaloceandnsrecord-full
+  id: planton-oss-e2e-digitaloceandnsrecord-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandnsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domain:
+    valueFrom:
+      kind: DigitalOceanDnsZone
+      name: planton-oss-e2e-digitaloceandnszone-min
+      fieldPath: status.outputs.zone_name
+  name: _sip._tcp
+  type: SRV
+  value:
+    value: sip.example.com.
+  ttlSeconds: 300
+  priority: 10
+  weight: 60
+  port: 5060

@@ -1,0 +1,132 @@
+# Provider-parity manifest: DigitalOceanApp against digitalocean_app at
+# provider v2.99.1. The provider uses singular block names (service, worker,
+# job, static_site, function, database, domain, env, alert) for lists the
+# spec names in the plural. Subtree mappings below resume exact matching
+# under each rename. Remaining leaf divergences (env oneof, autoscaling CPU,
+# image deploy_on_push, ingress path/authority nesting, vpc id, egress type)
+# are recorded individually.
+resources:
+  digitalocean_app:
+    mappings:
+      # The provider nests the whole configurable tree under a spec block.
+      # Mapping the spec subtree onto that block lets exact matching resume
+      # for same-named leaves (region, features, maintenance, edge toggles).
+      - spec: spec
+        arg: spec
+      - spec: spec.app_name
+        arg: spec.name
+      - spec: spec.project_id
+        arg: project_id
+      - spec: spec.services
+        arg: spec.service
+      - spec: spec.workers
+        arg: spec.worker
+      - spec: spec.jobs
+        arg: spec.job
+      - spec: spec.static_sites
+        arg: spec.static_site
+      - spec: spec.functions
+        arg: spec.function
+      - spec: spec.databases
+        arg: spec.database
+      - spec: spec.domains
+        arg: spec.domain
+      - spec: spec.envs
+        arg: spec.env
+      - spec: spec.alerts
+        arg: spec.alert
+      - spec: spec.services.alerts
+        arg: spec.service.alert
+      - spec: spec.workers.alerts
+        arg: spec.worker.alert
+      - spec: spec.jobs.alerts
+        arg: spec.job.alert
+      - spec: spec.functions.alerts
+        arg: spec.function.alert
+      - spec: spec.services.envs
+        arg: spec.service.env
+      - spec: spec.workers.envs
+        arg: spec.worker.env
+      - spec: spec.jobs.envs
+        arg: spec.job.env
+      - spec: spec.static_sites.envs
+        arg: spec.static_site.env
+      - spec: spec.functions.envs
+        arg: spec.function.env
+      - spec: spec.services.log_destinations
+        arg: spec.service.log_destination
+      - spec: spec.workers.log_destinations
+        arg: spec.worker.log_destination
+      - spec: spec.jobs.log_destinations
+        arg: spec.job.log_destination
+      - spec: spec.functions.log_destinations
+        arg: spec.function.log_destination
+      # Env value is the oneof (plaintext GENERAL / secret SECRET).
+      - spec: spec.envs.plaintext
+        arg: spec.env.value
+      - spec: spec.envs.secret
+        arg: spec.env.value
+      - spec: spec.services.envs.plaintext
+        arg: spec.service.env.value
+      - spec: spec.services.envs.secret
+        arg: spec.service.env.value
+      - spec: spec.workers.envs.plaintext
+        arg: spec.worker.env.value
+      - spec: spec.workers.envs.secret
+        arg: spec.worker.env.value
+      - spec: spec.jobs.envs.plaintext
+        arg: spec.job.env.value
+      - spec: spec.jobs.envs.secret
+        arg: spec.job.env.value
+      - spec: spec.static_sites.envs.plaintext
+        arg: spec.static_site.env.value
+      - spec: spec.static_sites.envs.secret
+        arg: spec.static_site.env.value
+      - spec: spec.functions.envs.plaintext
+        arg: spec.function.env.value
+      - spec: spec.functions.envs.secret
+        arg: spec.function.env.value
+      # Autoscaling CPU percent lives under metrics.cpu.percent on the provider.
+      - spec: spec.services.autoscaling.cpu_percent
+        arg: spec.service.autoscaling.metrics.cpu.percent
+      - spec: spec.workers.autoscaling.cpu_percent
+        arg: spec.worker.autoscaling.metrics.cpu.percent
+      # Image deploy_on_push is a bool on the spec and an enabled leaf on the provider.
+      - spec: spec.services.image.deploy_on_push
+        arg: spec.service.image.deploy_on_push.enabled
+      - spec: spec.workers.image.deploy_on_push
+        arg: spec.worker.image.deploy_on_push.enabled
+      - spec: spec.jobs.image.deploy_on_push
+        arg: spec.job.image.deploy_on_push.enabled
+      - spec: spec.ingress.rules
+        arg: spec.ingress.rule
+      - spec: spec.ingress.rules.match.path_prefix
+        arg: spec.ingress.rule.match.path.prefix
+      - spec: spec.ingress.rules.match.authority_exact
+        arg: spec.ingress.rule.match.authority.exact
+      - spec: spec.vpc
+        arg: spec.vpc.id
+      - spec: spec.egress
+        arg: spec.egress.type
+    exclusions:
+      - arg: dedicated_ips
+        reason: assignment read-back of dedicated egress IPs -- the module never writes this block; spec.egress dedicated_ip requests the assignment and the IPs appear as computed attributes
+      - arg: deployment_per_page
+        reason: Terraform polling page size for deployment wait loops, not App Platform configuration
+      - arg: spec.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.service.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.worker.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.job.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.static_site.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+      - arg: spec.function.env.type
+        reason: synthesized from the env oneof -- plaintext maps to GENERAL, secret maps to SECRET
+specExclusions:
+  - field: spec.workers.termination.drain_seconds
+    reason: drain_seconds is a service-only HTTP connection drain; workers reject it by CEL and the provider schema has no worker.termination.drain_seconds
+  - field: spec.jobs.termination.drain_seconds
+    reason: drain_seconds is a service-only HTTP connection drain; jobs reject it by CEL and the provider schema has no job.termination.drain_seconds

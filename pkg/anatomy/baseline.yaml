@@ -255,17 +255,15 @@ violations:
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-cost-profile
-  - catalog/digitalocean/digitaloceanappplatformservice/iac:missing-permissions
-  - catalog/digitalocean/digitaloceanappplatformservice:missing-control-profile
-  - catalog/digitalocean/digitaloceanappplatformservice:missing-cost-profile
+  - catalog/digitalocean/digitaloceanapp/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanapp:missing-control-profile
+  - catalog/digitalocean/digitaloceanapp:missing-cost-profile
   - catalog/digitalocean/digitaloceanbucket/iac:missing-permissions
   - catalog/digitalocean/digitaloceanbucket:missing-control-profile
   - catalog/digitalocean/digitaloceanbucket:missing-cost-profile
   - catalog/digitalocean/digitaloceancertificate/iac:missing-permissions
   - catalog/digitalocean/digitaloceancertificate:missing-control-profile
   - catalog/digitalocean/digitaloceancertificate:missing-cost-profile
-  - catalog/digitalocean/digitaloceancontainerregistry/iac/pulumi:missing-iac-readme
-  - catalog/digitalocean/digitaloceancontainerregistry/iac/tf:missing-iac-readme
   - catalog/digitalocean/digitaloceancontainerregistry/iac:missing-permissions
   - catalog/digitalocean/digitaloceancontainerregistry:missing-control-profile
   - catalog/digitalocean/digitaloceancontainerregistry:missing-cost-profile
@@ -278,7 +276,6 @@ violations:
   - catalog/digitalocean/digitaloceandnszone/iac:missing-permissions
   - catalog/digitalocean/digitaloceandnszone:missing-control-profile
   - catalog/digitalocean/digitaloceandnszone:missing-cost-profile
-  - catalog/digitalocean/digitaloceandroplet/iac/pulumi:missing-iac-readme
   - catalog/digitalocean/digitaloceandroplet/iac:missing-permissions
   - catalog/digitalocean/digitaloceandroplet:missing-control-profile
   - catalog/digitalocean/digitaloceandroplet:missing-cost-profile

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// DigitalOceanProjectSpec models the full digitalocean_project resource
+// surface: the account-level organizational container that groups droplets,
+// load balancers, domains, buckets, and most other DigitalOcean resources.
+//
+// Membership is carried here on the project itself (the resources list);
+// DigitalOcean's standalone partial-ownership membership resource is
+// deliberately not modeled -- one project object owns its full membership
+// list, which is also how the API reports it back.
+//
+// Destroying a project never destroys what is inside it: DigitalOcean
+// requires the project to be empty, so both provisioners relocate every
+// member resource to the account's default project first and retry the
+// delete while those moves settle server-side. The account's default
+// project itself cannot be deleted.
+message DigitalOceanProjectSpec {
+  // Human-friendly name of the project, shown in the DigitalOcean console.
+  string project_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 175
+  ];
+
+  // (Optional) Free-form description of the project.
+  string description = 2 [(buf.validate.field).string.max_len = 255];
+
+  // (Optional) The purpose of the project. DigitalOcean recognizes a set of
+  // standard purposes (for example "Web Application", "Website or blog",
+  // "Service or API") and stores anything else prefixed as "Other: <text>",
+  // which it strips again on read -- so any free text round-trips cleanly.
+  // A value that itself starts with "Other:" is rejected here: the API
+  // would double-prefix it and the read-back would never match, leaving a
+  // permanent diff no provisioner can converge.
+  string purpose = 3 [
+    (dev.planton.shared.options.recommended_default) = "Web Application",
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).cel = {
+      id: "purpose.no_other_prefix"
+      message: "must not start with \"Other:\" -- DigitalOcean adds that prefix itself for non-standard purposes"
+      expression: "!this.startsWith('Other:')"
+    }
+  ];
+
+  // (Optional) The environment of the project's resources. DigitalOcean
+  // accepts these three values case-insensitively and reports the value back
+  // capitalized (for example "Production"); declare it lowercase here.
+  string environment = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "development",
+        "staging",
+        "production"
+      ]
+    }
+  ];
+
+  // (Optional) Make this project the account's default project. Semi-
+  // supported by DigitalOcean's API: it takes effect, but the account can
+  // have only one default, so out-of-band changes to the default project
+  // show up as drift here, and a project marked default cannot be deleted.
+  // Leave unset unless the account's default is genuinely meant to be
+  // managed as code.
+  bool is_default = 5;
+
+  // (Optional) Uniform resource names (URNs) of the resources this project
+  // contains. Every DigitalOcean resource exposes a URN of the form
+  // "do:<type>:<id>" -- for example "do:droplet:123456",
+  // "do:dbaas:6ec9c684-...", "do:space:my-bucket", "do:domain:example.com".
+  // Use a literal URN, or reference the producing resource's urn stack
+  // output with an explicit valueFrom.kind -- the list is polymorphic
+  // across kinds (droplets, load balancers, buckets, domains, ...), so no
+  // single default kind applies and each reference names its own.
+  // A resource can belong to exactly one project: listing it here moves it
+  // from wherever it was, and removing it from the list moves it back to
+  // the account's default project (nothing is ever destroyed by membership
+  // changes). When the list is left empty entirely, membership is not
+  // managed and out-of-band assignments are left untouched.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef resources = 6;
+}

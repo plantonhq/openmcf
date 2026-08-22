@@ -1,0 +1,26 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The provider targets a policy through one untyped entities id list; the
+# spec replaces it with one TYPED reference list per resource family so an
+# id can never be paired with the wrong metric family (and resources are
+# wired by reference). Each typed list therefore maps onto entities --
+# exactly the modules' merge.
+resources:
+  digitalocean_monitor_alert:
+    mappings:
+      # The provider's bare "type" is the metric's API path; the spec names
+      # what the field holds.
+      - spec: spec.metric_type
+        arg: type
+      - spec: spec.droplet_ids
+        arg: entities
+      - spec: spec.load_balancer_ids
+        arg: entities
+      - spec: spec.database_cluster_ids
+        arg: entities
+      # The spec pluralizes the provider's repeated email list; slack and
+      # its leaves match by name.
+      - spec: spec.alerts.emails
+        arg: alerts.email

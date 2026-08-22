@@ -1,29 +1,24 @@
-# A Record
+# Apex A Record
 
-This preset creates a standard A record that points a hostname to an IPv4 address. Use for the root domain or any subdomain that should resolve to a Droplet, load balancer, or other IP. TTL is set to 1 hour for a balance between cache efficiency and propagation speed.
+This preset points a zone's apex (the bare domain, `@`) at an IPv4 address — the standard "make example.com resolve to my server" record. The zone is referenced as a `DigitalOceanDnsZone` resource so the record composes in infra charts; replace the reference with a literal (`value: example.com`) for a zone managed outside Planton.
 
 ## When to Use
 
-- Root domain (`@`) or subdomain pointing to a web server
-- Directing traffic to a Droplet IP or load balancer IP
-- Any hostname that maps to a single IPv4 address
+- Pointing a domain at a web server, load balancer, or reserved IP
+- The first record almost every new zone needs
 
 ## Key Configuration Choices
 
-- **Type A** (`type: A`) -- IPv4 address record; use AAAA for IPv6.
-- **Root domain** (`name: "@"`) -- apex record; use `www`, `api`, etc. for subdomains.
-- **TTL 3600** (`ttlSeconds: 3600`) -- 1-hour cache; lower for frequent changes, higher for stability.
-- **Domain reference** (`domain`) -- the DNS zone (domain) where this record lives; use `DigitalOceanDnsZone` reference or literal domain.
-- **Value** (`value`) -- IPv4 address or reference to `DigitalOceanDroplet`/`DigitalOceanLoadBalancer` IP output.
+- **`name: "@"`** — the zone apex. Use a subdomain name (`www`, `api`) to address a host under the zone instead.
+- **Zone by reference** (`domain.valueFrom`) — resolves to the zone's `zone_name` output at deploy time, so the record deploys after its zone in one chart.
+- **One-hour TTL** (`ttlSeconds: 3600`) — a sensible production default. Lower it to 300 before planned IP changes; DigitalOcean's API default is 1800 when omitted.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<zone-domain>` | DNS zone domain (e.g., `example.com`) | `DigitalOceanDnsZone` status or domain name |
-| `<target-ip>` | IPv4 address for the record | Droplet/LB IP from DigitalOcean or resource outputs |
-| `@` | Record name; use `@` for root, or subdomain like `www` | Your desired hostname |
+- `metadata.name` — your record's name.
+- `domain.valueFrom.name` — the name of your `DigitalOceanDnsZone` resource (or replace the block with `value: example.com`).
+- `value.value` (`203.0.113.10` is a documentation example) — your server's public IPv4 address; it can also reference another resource's output (e.g. a Droplet's `ipv4_address`).
 
 ## Related Presets
 
-- **02-cname-record** -- Use when pointing to another hostname (alias) instead of IP
+- **02-cname-record** — alias a subdomain to another hostname instead of an IP.

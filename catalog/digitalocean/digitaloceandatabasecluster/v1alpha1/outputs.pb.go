@@ -21,23 +21,46 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanDatabaseClusterStackOutputs captures the key outputs after provisioning a DigitalOcean database cluster.
+// DigitalOceanDatabaseClusterStackOutputs captures the key outputs after
+// provisioning a DigitalOcean database cluster.
 type DigitalOceanDatabaseClusterStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier (UUID) of the created database cluster.
 	ClusterId string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
-	// The full connection URI for the database cluster (including credentials and database name).
+	// The full public connection URI for the database cluster (including
+	// credentials and database name).
 	ConnectionUri string `protobuf:"bytes,2,opt,name=connection_uri,json=connectionUri,proto3" json:"connection_uri,omitempty"`
-	// The hostname or IP address at which the database cluster is accessible.
+	// The public hostname at which the database cluster is accessible.
 	Host string `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
 	// The network port that the database cluster is listening on.
 	Port uint32 `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
-	// The username for the cluster’s default database user.
+	// The username for the cluster's default database user.
 	DatabaseUser string `protobuf:"bytes,5,opt,name=database_user,json=databaseUser,proto3" json:"database_user,omitempty"`
-	// The password for the cluster’s default database user.
+	// The password for the cluster's default database user.
 	DatabasePassword string `protobuf:"bytes,6,opt,name=database_password,json=databasePassword,proto3" json:"database_password,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The private-network hostname, reachable from resources in the same VPC.
+	PrivateHost string `protobuf:"bytes,7,opt,name=private_host,json=privateHost,proto3" json:"private_host,omitempty"`
+	// The full private-network connection URI (including credentials and
+	// database name), reachable from resources in the same VPC.
+	PrivateUri string `protobuf:"bytes,8,opt,name=private_uri,json=privateUri,proto3" json:"private_uri,omitempty"`
+	// The name of the cluster's default database.
+	DatabaseName string `protobuf:"bytes,9,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// OpenSearch only: hostname of the OpenSearch Dashboards endpoint.
+	UiHost string `protobuf:"bytes,10,opt,name=ui_host,json=uiHost,proto3" json:"ui_host,omitempty"`
+	// OpenSearch only: port of the OpenSearch Dashboards endpoint.
+	UiPort uint32 `protobuf:"varint,11,opt,name=ui_port,json=uiPort,proto3" json:"ui_port,omitempty"`
+	// OpenSearch only: full connection URI for OpenSearch Dashboards
+	// (including credentials).
+	UiUri string `protobuf:"bytes,12,opt,name=ui_uri,json=uiUri,proto3" json:"ui_uri,omitempty"`
+	// OpenSearch only: default database of the OpenSearch Dashboards
+	// connection.
+	UiDatabase string `protobuf:"bytes,13,opt,name=ui_database,json=uiDatabase,proto3" json:"ui_database,omitempty"`
+	// OpenSearch only: username for OpenSearch Dashboards.
+	UiUser string `protobuf:"bytes,14,opt,name=ui_user,json=uiUser,proto3" json:"ui_user,omitempty"`
+	// OpenSearch only: password for OpenSearch Dashboards.
+	UiPassword    string `protobuf:"bytes,15,opt,name=ui_password,json=uiPassword,proto3" json:"ui_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanDatabaseClusterStackOutputs) Reset() {
@@ -112,11 +135,74 @@ func (x *DigitalOceanDatabaseClusterStackOutputs) GetDatabasePassword() string {
 	return ""
 }
 
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetPrivateHost() string {
+	if x != nil {
+		return x.PrivateHost
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetPrivateUri() string {
+	if x != nil {
+		return x.PrivateUri
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetDatabaseName() string {
+	if x != nil {
+		return x.DatabaseName
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiHost() string {
+	if x != nil {
+		return x.UiHost
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiPort() uint32 {
+	if x != nil {
+		return x.UiPort
+	}
+	return 0
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiUri() string {
+	if x != nil {
+		return x.UiUri
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiDatabase() string {
+	if x != nil {
+		return x.UiDatabase
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiUser() string {
+	if x != nil {
+		return x.UiUser
+	}
+	return ""
+}
+
+func (x *DigitalOceanDatabaseClusterStackOutputs) GetUiPassword() string {
+	if x != nil {
+		return x.UiPassword
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gcatalog/digitalocean/digitaloceandatabasecluster/v1alpha1/outputs.proto\x12=dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1\"\xe9\x01\n" +
+	"Gcatalog/digitalocean/digitaloceandatabasecluster/v1alpha1/outputs.proto\x12=dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1\"\xf6\x03\n" +
 	"'DigitalOceanDatabaseClusterStackOutputs\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x01 \x01(\tR\tclusterId\x12%\n" +
@@ -124,7 +210,20 @@ const file_catalog_digitalocean_digitaloceandatabasecluster_v1alpha1_outputs_pro
 	"\x04host\x18\x03 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x04 \x01(\rR\x04port\x12#\n" +
 	"\rdatabase_user\x18\x05 \x01(\tR\fdatabaseUser\x12+\n" +
-	"\x11database_password\x18\x06 \x01(\tR\x10databasePasswordB\xe6\x03\n" +
+	"\x11database_password\x18\x06 \x01(\tR\x10databasePassword\x12!\n" +
+	"\fprivate_host\x18\a \x01(\tR\vprivateHost\x12\x1f\n" +
+	"\vprivate_uri\x18\b \x01(\tR\n" +
+	"privateUri\x12#\n" +
+	"\rdatabase_name\x18\t \x01(\tR\fdatabaseName\x12\x17\n" +
+	"\aui_host\x18\n" +
+	" \x01(\tR\x06uiHost\x12\x17\n" +
+	"\aui_port\x18\v \x01(\rR\x06uiPort\x12\x15\n" +
+	"\x06ui_uri\x18\f \x01(\tR\x05uiUri\x12\x1f\n" +
+	"\vui_database\x18\r \x01(\tR\n" +
+	"uiDatabase\x12\x17\n" +
+	"\aui_user\x18\x0e \x01(\tR\x06uiUser\x12\x1f\n" +
+	"\vui_password\x18\x0f \x01(\tR\n" +
+	"uiPasswordB\xe6\x03\n" +
 	"Acom.dev.planton.digitalocean.digitaloceandatabasecluster.v1alpha1B\fOutputsProtoP\x01Zzgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasecluster/v1alpha1;digitaloceandatabaseclusterv1alpha1\xa2\x02\x04DPDD\xaa\x02=Dev.Planton.Digitalocean.Digitaloceandatabasecluster.V1alpha1\xca\x02=Dev\\Planton\\Digitalocean\\Digitaloceandatabasecluster\\V1alpha1\xe2\x02IDev\\Planton\\Digitalocean\\Digitaloceandatabasecluster\\V1alpha1\\GPBMetadata\xea\x02ADev::Planton::Digitalocean::Digitaloceandatabasecluster::V1alpha1b\x06proto3"
 
 var (

@@ -1,16 +1,15 @@
-# Kubernetes NodePool on DigitalOcean
+# Kubernetes Node Pool on DigitalOcean
 
-Adds an additional node pool to an existing DigitalOcean Kubernetes (DOKS) cluster with configurable Droplet sizing, fixed or auto-scaling node counts, Kubernetes labels and taints for workload scheduling, and DigitalOcean tags for billing attribution. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for cluster dependency wiring.
+Adds a worker pool to an existing DigitalOcean Kubernetes (DOKS) cluster with configurable node sizing, fixed or autoscaled node counts, Kubernetes labels and taints, DigitalOcean tags, and AMD GPU partitioning. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for cluster dependency wiring.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kubernetes Node Pool** -- a `digitalocean_kubernetes_node_pool` resource attached to the specified DOKS cluster with the configured Droplet size and node count
-- **Auto-Scaling Policy** -- created only when `autoScale` is `true`; allows the cluster autoscaler to manage node count between `minNodes` and `maxNodes`
-- **Kubernetes Labels** -- applied to every node in the pool, enabling pod scheduling via `nodeSelector` and node affinity rules
-- **Kubernetes Taints** -- applied to every node in the pool, preventing pods without matching tolerations from being scheduled
-- **DigitalOcean Tags** -- applied to the underlying Droplets for cost attribution and organizational grouping
+- **DigitalOcean Kubernetes Node Pool** -- a worker pool attached to the referenced DOKS cluster, with the configured Droplet size and node count
+- **Autoscaling** -- enabled by `autoScale`, with DigitalOcean's cluster-autoscaler managing the node count between `minNodes` and `maxNodes`
+- **Kubernetes Node Labels and Taints** -- user labels plus the standard Planton identity labels on every node; taints applied for workload isolation
+- **DigitalOcean Tags** -- user-supplied tags plus the standard Planton labels on the pool's Droplets
 
 ## Before You Deploy
 
@@ -21,21 +20,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### DigitalOcean Account
 
-- **An existing DOKS cluster** to attach the node pool to. Provide the cluster name directly or reference a DigitalOceanKubernetesCluster Cloud Resource via ValueFromRef.
-- **A valid Droplet size slug** available in the cluster's region (e.g., `s-4vcpu-8gb`, `s-2vcpu-4gb`, `g-8vcpu-32gb`). Check available sizes via the DigitalOcean CLI or API.
+- **A DOKS cluster** -- the pool attaches to an existing cluster; reference a `DigitalOceanKubernetesCluster` Cloud Resource via ValueFromRef or provide the cluster UUID directly (`doctl kubernetes cluster list`).
+- **A valid Droplet size slug** (e.g., `"s-2vcpu-4gb"`) -- check DOKS-capable sizes via `doctl kubernetes options sizes`.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Kubernetes NodePool on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Autoscaling Production Node Pool** preset in the [Presets](#presets) tab for a production-ready configuration with auto-scaling.
+Open the deployment store, find **Kubernetes Node Pool on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Autoscaling Production** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
   name: app-pool
@@ -44,48 +43,46 @@ metadata:
 spec:
   nodePoolName: app-pool
   cluster:
-    value: "app-cluster"
+    value: "fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd"
   size: s-4vcpu-8gb
   nodeCount: 3
   autoScale: true
   minNodes: 2
   maxNodes: 6
-  labels:
-    workload: app
 ```
 
 ```shell
 planton apply -f node-pool.yaml
 ```
 
-This creates an auto-scaling node pool with 3 initial nodes (scaling between 2 and 6) using general-purpose 4-vCPU/8-GB Droplets. Nodes are labeled for workload-based scheduling.
+This attaches an autoscaling pool to the cluster. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the node pool to a cluster deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pool to a cluster deployed in the same InfraPipeline:
 
 ```yaml
 spec:
   cluster:
     valueFrom:
       kind: DigitalOceanKubernetesCluster
-      name: app-cluster
-      fieldPath: metadata.name
+      name: platform-cluster
+      fieldPath: status.outputs.cluster_id
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the Kubernetes cluster first, then provisions the node pool on it.
+The InfraPipeline resolves the dependency graph, deploys the cluster first, then attaches the pool.
 
 ## Key Configuration
 
-These are the most important decisions when configuring a Kubernetes node pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+These are the most important decisions when configuring a node pool. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Droplet sizing** -- The `size` field sets the instance type for each node (e.g., `s-2vcpu-4gb` for system workloads, `s-4vcpu-8gb` for general applications, `g-8vcpu-32gb` for memory-intensive workloads). All nodes in a pool share the same size.
+**Sizing** -- The `size` field sets every node's CPU and memory. Changing it later replaces the whole pool (nodes are recreated), so plan capacity classes as separate pools rather than resizing one in place.
 
-**Auto-scaling vs. fixed size** -- Set `autoScale` to `true` with `minNodes` and `maxNodes` for workloads with variable traffic. The cluster autoscaler adds or removes nodes based on pending pod scheduling. Use a fixed `nodeCount` without auto-scaling for system pools with predictable resource needs.
+**Fixed vs. autoscaled** -- A fixed pool holds exactly `nodeCount` nodes. With `autoScale: true`, `nodeCount` is only the initial count and DigitalOcean's cluster-autoscaler moves it between `minNodes` and `maxNodes`; the live count drifting is normal and produces no configuration diff.
 
-**Labels and taints** -- Use `labels` to enable `nodeSelector` or `nodeAffinity` rules that target specific pools (e.g., `workload: app`). Use `taints` to prevent pods from scheduling on dedicated nodes unless they explicitly tolerate the taint (e.g., `dedicated=system:NoSchedule` for infrastructure pools).
+**Labels and taints** -- Labels make the pool targetable from Kubernetes (nodeSelector, affinity); taints keep untolerating pods off. Pair them for dedicated pools: a taint alone isolates, a label alone only attracts.
 
-**DigitalOcean tags** -- The `tags` field applies billing tags to the underlying Droplets. These are separate from Kubernetes labels and are visible in DigitalOcean's billing and management console for cost attribution.
+**GPU partitioning** -- `gpuPartitionMode` splits supported AMD GPU sizes into partitions. It is create-time-only in effect: changing it replaces the pool. Currently Terraform-only (Pulumi SDK gap; the Pulumi provisioner fails loudly if set).
 
 ## Outputs and Dependencies
 
@@ -93,7 +90,7 @@ These are the most important decisions when configuring a Kubernetes node pool. 
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **DigitalOceanKubernetesCluster** | `cluster` | `metadata.name` |
+| **DigitalOceanKubernetesCluster** (required) | `cluster` | `status.outputs.cluster_id` |
 
 ### What This Component Provides
 
@@ -101,17 +98,20 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `node_pool_id` | UUID of the created node pool | DigitalOcean API operations, monitoring dashboards |
-| `node_ids` | IDs of the individual Droplet nodes in the pool | Node-level monitoring, maintenance operations |
+| `node_pool_id` | The pool's UUID | Import addressing, pool-scoped automation |
+| `cluster_id` | The owning cluster's UUID | Anything addressing the pool through the cluster API |
+| `node_ids` | DOKS node object UUIDs of the current members | Node-level automation against the DOKS API |
+| `droplet_ids` | Integer ids of the Droplets backing the nodes | Firewall rules and other Droplet-scoped wiring |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Autoscaling production pool** -- General-purpose nodes (4 vCPU, 8 GB) with auto-scaling between 2 and 6 nodes. Labeled for application workload scheduling. Suited for web and API workloads with variable traffic. Start from the **Autoscaling Production Node Pool** preset.
+**Autoscaling application pool** -- general-purpose nodes scaling 2–6 with a `workload: app` label. Start from the **Autoscaling Production** preset.
 
-**Fixed-size system pool** -- Smaller nodes (2 vCPU, 4 GB) with a fixed count of 2 and a `dedicated=system:NoSchedule` taint. Dedicated to cluster infrastructure like ingress controllers, cert-manager, and monitoring agents. Start from the **Fixed-Size System Node Pool** preset.
+**Dedicated system pool** -- a fixed two-node pool with a `NoSchedule` taint reserving it for system components. Start from the **Fixed Size** preset.
 
 ## Works With
 
-- [**Kubernetes Cluster on DigitalOcean**](/cloud-catalog/digital-ocean-kubernetes-cluster) -- provides the parent DOKS cluster that this node pool is attached to
+- [**DigitalOcean Kubernetes Cluster**](/cloud-catalog/digital-ocean-kubernetes-cluster) -- the cluster this pool attaches to
+- [**DigitalOcean Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures the pool's Droplets by id or tag

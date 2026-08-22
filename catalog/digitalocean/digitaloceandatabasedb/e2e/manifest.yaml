@@ -1,0 +1,13 @@
+# Reference manifest for DigitalOceanDatabaseDb -- protovalidate-valid,
+# embedded as the reference page's Example block, and the document the
+# offline tofu plan renders.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseDb
+metadata:
+  name: orders-database
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  databaseName: orders

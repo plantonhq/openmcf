@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandropletautoscalepool.v1alpha1;
+
+// DigitalOceanDropletAutoscalePoolStackOutputs captures the key outputs
+// after provisioning a droplet autoscale pool.
+message DigitalOceanDropletAutoscalePoolStackOutputs {
+  // UUID of the autoscale pool (the resource's API identity and its import
+  // id).
+  string pool_id = 1;
+
+  // Health status of the pool as reported by DigitalOcean at apply time
+  // ("active" once the pool and every member droplet are provisioned; an
+  // error state means the pool needs user intervention).
+  string status = 2;
+}

@@ -1,0 +1,19 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanspaceskey
+spec:
+  # Import is EXCLUDED from live round-trips: the resource has NO upstream
+  # importer at the current pin, and even a future importer could never
+  # recover the secret_key (it exists only in the create response --
+  # write-once by API design). Recorded as excluded in
+  # aa_import/catalog.yaml (the docker_credentials precedent); this map
+  # exists for conformance and re-evaluates if a future provider pin adds
+  # an importer. The value below is what such an importer would key on.
+  values:
+    - name: access_key
+      derivations:
+        - from_stack_output: access_key
+      where_to_find: >-
+        The key's access key ID: DigitalOcean control panel -> Spaces
+        Object Storage -> Access Keys, or the API (GET /v2/spaces/keys).

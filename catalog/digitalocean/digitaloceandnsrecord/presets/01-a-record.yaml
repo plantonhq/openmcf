@@ -4,9 +4,12 @@ metadata:
   name: my-a-record
 spec:
   domain:
-    value: "<zone-domain>"
+    valueFrom:
+      kind: DigitalOceanDnsZone
+      name: my-zone
+      fieldPath: status.outputs.zone_name
   name: "@"
   type: A
   value:
-    value: "<target-ip>"
+    value: 203.0.113.10
   ttlSeconds: 3600

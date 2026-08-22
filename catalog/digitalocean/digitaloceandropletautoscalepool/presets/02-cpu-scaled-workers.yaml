@@ -1,0 +1,29 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDropletAutoscalePool
+metadata:
+  name: cpu-scaled-workers
+spec:
+  poolName: workers
+  dynamic:
+    minInstances: 2
+    maxInstances: 8
+    # Scale to hold the fleet near 70% average CPU.
+    targetCpuUtilization: 0.7
+    cooldownMinutes: 10
+  dropletTemplate:
+    size: s-2vcpu-2gb
+    region: nyc3
+    image: ubuntu-24-04-x64
+    sshKeys:
+      - valueFrom:
+          kind: DigitalOceanSshKey
+          name: ops-key
+          fieldPath: status.outputs.ssh_key_id
+    tags:
+      - workers
+    # Dynamic scaling decides on agent-supplied metrics -- keep it on.
+    withDropletAgent: true
+    userData: |
+      #cloud-config
+      runcmd:
+        - systemctl enable --now worker-agent

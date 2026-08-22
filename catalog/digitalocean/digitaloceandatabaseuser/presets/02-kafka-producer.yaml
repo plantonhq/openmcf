@@ -1,0 +1,17 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseUser
+metadata:
+  name: events-producer
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: events-kafka
+      fieldPath: status.outputs.cluster_id
+  userName: events-producer
+  settings:
+    kafkaAcls:
+      - topic: events-*
+        permission: produce
+      - topic: dead-letter
+        permission: produceconsume

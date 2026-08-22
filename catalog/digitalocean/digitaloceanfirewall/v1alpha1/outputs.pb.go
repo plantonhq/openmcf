@@ -21,10 +21,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanFirewallStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanFirewallStackOutputs captures the identifiers exported after a
+// firewall is provisioned. The firewall's live status and pending per-Droplet
+// changes are deliberately NOT outputs: they are apply-time snapshots that go
+// stale immediately; verification reads them from the live API instead.
 type DigitalOceanFirewallStackOutputs struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	FirewallId    string                 `protobuf:"bytes,1,opt,name=firewall_id,json=firewallId,proto3" json:"firewall_id,omitempty"` // The unique ID of the firewall (UUID string from DigitalOcean).
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The unique ID of the firewall (a UUID assigned by DigitalOcean).
+	FirewallId    string `protobuf:"bytes,1,opt,name=firewall_id,json=firewallId,proto3" json:"firewall_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

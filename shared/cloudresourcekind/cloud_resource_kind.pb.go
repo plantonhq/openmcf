@@ -2053,21 +2053,91 @@ const (
 	// admits and only the operator reconciles into a running platform.
 	CloudResourceKind_KubernetesPlantonPlatform CloudResourceKind = 4175
 	// 5000–5999: DigitalOcean resources
-	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 5000
-	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 5001
-	CloudResourceKind_DigitalOceanContainerRegistry  CloudResourceKind = 5002
-	CloudResourceKind_DigitalOceanDatabaseCluster    CloudResourceKind = 5003
-	CloudResourceKind_DigitalOceanDnsZone            CloudResourceKind = 5004
-	CloudResourceKind_DigitalOceanDroplet            CloudResourceKind = 5005
-	CloudResourceKind_DigitalOceanFirewall           CloudResourceKind = 5006
-	CloudResourceKind_DigitalOceanFunction           CloudResourceKind = 5007
-	CloudResourceKind_DigitalOceanKubernetesCluster  CloudResourceKind = 5008
+	CloudResourceKind_DigitalOceanApp               CloudResourceKind = 5000
+	CloudResourceKind_DigitalOceanBucket            CloudResourceKind = 5001
+	CloudResourceKind_DigitalOceanContainerRegistry CloudResourceKind = 5002
+	CloudResourceKind_DigitalOceanDatabaseCluster   CloudResourceKind = 5003
+	CloudResourceKind_DigitalOceanDnsZone           CloudResourceKind = 5004
+	// No VPC prerequisite: the droplet spec's vpc reference is optional —
+	// an omitted vpc places the droplet in the region's default VPC.
+	CloudResourceKind_DigitalOceanDroplet  CloudResourceKind = 5005
+	CloudResourceKind_DigitalOceanFirewall CloudResourceKind = 5006
+	CloudResourceKind_DigitalOceanFunction CloudResourceKind = 5007
+	// DigitalOceanVpc is a prerequisite because the cluster spec's vpc
+	// reference is required: the control plane and every node pool live inside
+	// one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+	CloudResourceKind_DigitalOceanKubernetesCluster CloudResourceKind = 5008
+	// DigitalOceanKubernetesCluster is a prerequisite because a node pool is
+	// API-addressed under its owning cluster: the spec's cluster reference is
+	// required and the pool cannot exist first.
 	CloudResourceKind_DigitalOceanKubernetesNodePool CloudResourceKind = 5009
-	CloudResourceKind_DigitalOceanLoadBalancer       CloudResourceKind = 5010
-	CloudResourceKind_DigitalOceanVolume             CloudResourceKind = 5011
-	CloudResourceKind_DigitalOceanVpc                CloudResourceKind = 5012
-	CloudResourceKind_DigitalOceanCertificate        CloudResourceKind = 5013
-	CloudResourceKind_DigitalOceanDnsRecord          CloudResourceKind = 5014
+	// No registry prerequisite: the load balancer's vpc reference is optional
+	// (DigitalOcean places it in the region's default VPC when unset, and
+	// GLOBAL balancers take no VPC at all). Scenarios that exercise VPC
+	// placement declare it per-scenario via the e2e-prerequisites annotation.
+	CloudResourceKind_DigitalOceanLoadBalancer CloudResourceKind = 5010
+	CloudResourceKind_DigitalOceanVolume       CloudResourceKind = 5011
+	CloudResourceKind_DigitalOceanVpc          CloudResourceKind = 5012
+	CloudResourceKind_DigitalOceanCertificate  CloudResourceKind = 5013
+	// DigitalOceanDnsZone is a prerequisite because a record is API-addressed
+	// under its domain: the spec's domain reference is required, resolved to
+	// the DigitalOceanDnsZone's exported zone_name output.
+	CloudResourceKind_DigitalOceanDnsRecord CloudResourceKind = 5014
+	// An additional user on a managed database cluster: the cluster
+	// reference is required, resolved to the DigitalOceanDatabaseCluster's
+	// exported cluster_id output.
+	CloudResourceKind_DigitalOceanDatabaseUser CloudResourceKind = 5015
+	// An additional logical database on a managed database cluster: the
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseDb CloudResourceKind = 5016
+	// A PgBouncer connection pool on a managed PostgreSQL cluster: the
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseConnectionPool CloudResourceKind = 5017
+	// The inbound trusted-sources rule set of a managed database cluster:
+	// the cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseFirewall CloudResourceKind = 5018
+	// A read-only replica of a managed database cluster: the primary
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseReplica CloudResourceKind = 5019
+	// A topic on a managed Kafka cluster with the full per-topic
+	// configuration block; the owning cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseKafkaTopic CloudResourceKind = 5020
+	// One schema subject registered in a managed Kafka cluster's schema
+	// registry; the owning cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseKafkaSchema CloudResourceKind = 5021
+	// The account-level organizational container; membership is carried on
+	// the project itself as resource URNs.
+	CloudResourceKind_DigitalOceanProject CloudResourceKind = 5030
+	// An SSH public key registered on the account, referenced by droplets
+	// and droplet autoscale pools at create time.
+	CloudResourceKind_DigitalOceanSshKey CloudResourceKind = 5031
+	// An alert policy on DigitalOcean's built-in metrics for droplets, load
+	// balancers, and managed database clusters. All entity targeting is
+	// optional, so there is no registry prerequisite.
+	CloudResourceKind_DigitalOceanMonitorAlert CloudResourceKind = 5040
+	// An availability/latency probe on an external endpoint with composed
+	// alert rules; the target is outside the account, so there is no
+	// registry prerequisite.
+	CloudResourceKind_DigitalOceanUptimeCheck CloudResourceKind = 5041
+	// A static public IP address (IPv4 or IPv6) reserved in a region and
+	// optionally assigned to a droplet. The droplet attachment is an
+	// optional composition seam, so there is no registry prerequisite.
+	CloudResourceKind_DigitalOceanReservedIp CloudResourceKind = 5050
+	// A private-network peering connection between exactly two VPCs; both
+	// VPC references are required.
+	CloudResourceKind_DigitalOceanVpcPeering CloudResourceKind = 5051
+	// An access-key pair for Spaces object storage. Bucket grants are an
+	// optional composition seam, so there is no registry prerequisite.
+	CloudResourceKind_DigitalOceanSpacesKey CloudResourceKind = 5060
+	// A CDN endpoint serving a Spaces bucket's content from the global edge:
+	// the origin reference is required, resolved to the DigitalOceanBucket's
+	// exported bucket_domain_name output.
+	CloudResourceKind_DigitalOceanCdn CloudResourceKind = 5061
+	// A pool of identical droplets DigitalOcean keeps at a fixed size or
+	// scales on utilization. The template's ssh_keys reference is required
+	// (the API mandates SSH keys), resolved to the DigitalOceanSshKey's
+	// exported ssh_key_id output.
+	CloudResourceKind_DigitalOceanDropletAutoscalePool CloudResourceKind = 5070
 	// 7000–7999: Cloudflare resources
 	CloudResourceKind_CloudflareDnsZone                       CloudResourceKind = 7000
 	CloudResourceKind_CloudflareKvNamespace                   CloudResourceKind = 7001
@@ -2732,7 +2802,7 @@ var (
 		4173: "KubernetesPlantonRunner",
 		4174: "KubernetesPlantonOperator",
 		4175: "KubernetesPlantonPlatform",
-		5000: "DigitalOceanAppPlatformService",
+		5000: "DigitalOceanApp",
 		5001: "DigitalOceanBucket",
 		5002: "DigitalOceanContainerRegistry",
 		5003: "DigitalOceanDatabaseCluster",
@@ -2747,6 +2817,22 @@ var (
 		5012: "DigitalOceanVpc",
 		5013: "DigitalOceanCertificate",
 		5014: "DigitalOceanDnsRecord",
+		5015: "DigitalOceanDatabaseUser",
+		5016: "DigitalOceanDatabaseDb",
+		5017: "DigitalOceanDatabaseConnectionPool",
+		5018: "DigitalOceanDatabaseFirewall",
+		5019: "DigitalOceanDatabaseReplica",
+		5020: "DigitalOceanDatabaseKafkaTopic",
+		5021: "DigitalOceanDatabaseKafkaSchema",
+		5030: "DigitalOceanProject",
+		5031: "DigitalOceanSshKey",
+		5040: "DigitalOceanMonitorAlert",
+		5041: "DigitalOceanUptimeCheck",
+		5050: "DigitalOceanReservedIp",
+		5051: "DigitalOceanVpcPeering",
+		5060: "DigitalOceanSpacesKey",
+		5061: "DigitalOceanCdn",
+		5070: "DigitalOceanDropletAutoscalePool",
 		7000: "CloudflareDnsZone",
 		7001: "CloudflareKvNamespace",
 		7002: "CloudflareR2Bucket",
@@ -3403,7 +3489,7 @@ var (
 		"KubernetesPlantonRunner":                        4173,
 		"KubernetesPlantonOperator":                      4174,
 		"KubernetesPlantonPlatform":                      4175,
-		"DigitalOceanAppPlatformService":                 5000,
+		"DigitalOceanApp":                                5000,
 		"DigitalOceanBucket":                             5001,
 		"DigitalOceanContainerRegistry":                  5002,
 		"DigitalOceanDatabaseCluster":                    5003,
@@ -3418,6 +3504,22 @@ var (
 		"DigitalOceanVpc":                                5012,
 		"DigitalOceanCertificate":                        5013,
 		"DigitalOceanDnsRecord":                          5014,
+		"DigitalOceanDatabaseUser":                       5015,
+		"DigitalOceanDatabaseDb":                         5016,
+		"DigitalOceanDatabaseConnectionPool":             5017,
+		"DigitalOceanDatabaseFirewall":                   5018,
+		"DigitalOceanDatabaseReplica":                    5019,
+		"DigitalOceanDatabaseKafkaTopic":                 5020,
+		"DigitalOceanDatabaseKafkaSchema":                5021,
+		"DigitalOceanProject":                            5030,
+		"DigitalOceanSshKey":                             5031,
+		"DigitalOceanMonitorAlert":                       5040,
+		"DigitalOceanUptimeCheck":                        5041,
+		"DigitalOceanReservedIp":                         5050,
+		"DigitalOceanVpcPeering":                         5051,
+		"DigitalOceanSpacesKey":                          5060,
+		"DigitalOceanCdn":                                5061,
+		"DigitalOceanDropletAutoscalePool":               5070,
 		"CloudflareDnsZone":                              7000,
 		"CloudflareKvNamespace":                          7001,
 		"CloudflareR2Bucket":                             7002,
@@ -3837,7 +3939,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe3\xb2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x99\xba\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4531,22 +4633,38 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x126\n" +
 	"\x17KubernetesPlantonRunner\x10\xcd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8srun\x12;\n" +
 	"\x19KubernetesPlantonOperator\x10\xce \x1a\x1b\xa2\xf7\x04\x17\b\x13\x12\bv1alpha1\"\tk8spltnop\x12=\n" +
-	"\x19KubernetesPlantonPlatform\x10\xcf \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8spltn:\x02\xce \x12<\n" +
-	"\x1eDigitalOceanAppPlatformService\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
+	"\x19KubernetesPlantonPlatform\x10\xcf \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8spltn:\x02\xce \x12-\n" +
+	"\x0fDigitalOceanApp\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +
 	"\x1bDigitalOceanDatabaseCluster\x10\x8b'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dodb\x123\n" +
 	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dodns0\x01\x122\n" +
 	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06dodrop\x121\n" +
 	"\x14DigitalOceanFirewall\x10\x8e'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofw\x121\n" +
-	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12<\n" +
-	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x04dokc0\x01\x12<\n" +
-	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doknp\x125\n" +
+	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12@\n" +
+	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x04dokc0\x01:\x02\x94'\x12@\n" +
+	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05doknp:\x02\x90'\x125\n" +
 	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dolb\x120\n" +
 	"\x12DigitalOceanVolume\x10\x93'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dovol\x12/\n" +
 	"\x0fDigitalOceanVpc\x10\x94'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dovpc0\x01\x126\n" +
-	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x126\n" +
-	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1a\xa2\xf7\x04\x16\b\x11\x12\bv1alpha1\"\bdodnsrec\x121\n" +
+	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x12:\n" +
+	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1e\xa2\xf7\x04\x1a\b\x11\x12\bv1alpha1\"\bdodnsrec:\x02\x8c'\x12:\n" +
+	"\x18DigitalOceanDatabaseUser\x10\x97'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dodbu:\x02\x8b'\x129\n" +
+	"\x16DigitalOceanDatabaseDb\x10\x98'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbdb:\x02\x8b'\x12E\n" +
+	"\"DigitalOceanDatabaseConnectionPool\x10\x99'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbcp:\x02\x8b'\x12?\n" +
+	"\x1cDigitalOceanDatabaseFirewall\x10\x9a'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbfw:\x02\x8b'\x12?\n" +
+	"\x1bDigitalOceanDatabaseReplica\x10\x9b'\x1a\x1d\xa2\xf7\x04\x19\b\x11\x12\bv1alpha1\"\adodbrep:\x02\x8b'\x12@\n" +
+	"\x1eDigitalOceanDatabaseKafkaTopic\x10\x9c'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dokft:\x02\x8b'\x12A\n" +
+	"\x1fDigitalOceanDatabaseKafkaSchema\x10\x9d'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dokfs:\x02\x8b'\x121\n" +
+	"\x13DigitalOceanProject\x10\xa6'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doprj\x121\n" +
+	"\x12DigitalOceanSshKey\x10\xa7'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06dosshk\x126\n" +
+	"\x18DigitalOceanMonitorAlert\x10\xb0'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05domal\x126\n" +
+	"\x17DigitalOceanUptimeCheck\x10\xb1'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06douptc\x124\n" +
+	"\x16DigitalOceanReservedIp\x10\xba'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dorip\x129\n" +
+	"\x16DigitalOceanVpcPeering\x10\xbb'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dovpcp:\x02\x94'\x123\n" +
+	"\x15DigitalOceanSpacesKey\x10\xc4'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dospk\x121\n" +
+	"\x0fDigitalOceanCdn\x10\xc5'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05docdn:\x02\x89'\x12C\n" +
+	" DigitalOceanDropletAutoscalePool\x10\xce'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodasp:\x02\xa7'\x121\n" +
 	"\x11CloudflareDnsZone\x10\xd86\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\x05cfdns0\x01\x123\n" +
 	"\x15CloudflareKvNamespace\x10\xd96\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfkvn\x120\n" +
 	"\x12CloudflareR2Bucket\x10\xda6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfr2b\x12.\n" +

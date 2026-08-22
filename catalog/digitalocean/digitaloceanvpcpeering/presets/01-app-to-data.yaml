@@ -1,0 +1,16 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpcPeering
+metadata:
+  name: app-to-data-peering
+spec:
+  peeringName: app-to-data
+  vpc_1:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: vpc-app
+      fieldPath: status.outputs.vpc_id
+  vpc_2:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: vpc-data
+      fieldPath: status.outputs.vpc_id

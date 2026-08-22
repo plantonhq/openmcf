@@ -1,0 +1,22 @@
+# Minimal DigitalOceanReservedIp: an unassigned IPv4 reservation (region
+# only -- ip_version defaults to ipv4). Proves the create/verify/destroy
+# lifecycle and the address/urn outputs. NOTE: an unassigned reserved IPv4
+# BILLS (~$5/month prorated) for exactly as long as it exists -- the
+# destroy phase of this lane is also the billing proof, and the
+# zero-orphan sweep matters doubly here.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: planton-oss-e2e-digitaloceanreservedip-min
+  id: planton-oss-e2e-digitaloceanreservedip-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanreservedip
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: nyc3

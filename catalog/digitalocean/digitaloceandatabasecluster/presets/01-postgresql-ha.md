@@ -1,6 +1,6 @@
 # Production PostgreSQL HA
 
-This preset creates a production-grade PostgreSQL database cluster with three nodes for high availability, VPC isolation for secure private access, and PostgreSQL 16 on a 2 vCPU / 4 GB node size. Suitable for mission-critical applications requiring automatic failover.
+This preset creates a production-grade PostgreSQL database cluster with three nodes for high availability, VPC isolation for secure private access, automatic storage growth, and a Sunday-night maintenance window, on PostgreSQL 16 with 2 vCPU / 4 GB nodes. Suitable for mission-critical applications requiring automatic failover.
 
 ## When to Use
 
@@ -12,15 +12,10 @@ This preset creates a production-grade PostgreSQL database cluster with three no
 
 - **Three nodes** (`nodeCount: 3`) -- primary plus two standby nodes for HA. DigitalOcean provides automatic failover within the cluster.
 - **PostgreSQL 16** (`engine: pg`, `engineVersion: "16"`) -- latest stable major version with extended support.
-- **VPC placement** (`vpc`) -- required for production; keeps database traffic off the public internet.
+- **VPC placement** (`vpc.valueFrom`) -- references a `DigitalOceanVpc` resource named `my-vpc`; rename it to your VPC resource, or replace the block with `value: <uuid>` for an unmanaged VPC. Keeps database traffic off the public internet.
+- **Storage autoscale** (`storageAutoscale`) -- grows the disk automatically at 80% usage, applied by the Terraform provisioner (the Pulumi bridge does not support it yet and rejects it loudly).
+- **Maintenance window** (`maintenanceWindow`) -- pins automatic updates to Sunday 02:00 UTC instead of a DigitalOcean-chosen slot.
 - **Node size** (`sizeSlug: db-s-2vcpu-4gb`) -- general-purpose sizing; scale up for heavier workloads.
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<vpc-id>` | UUID of the target VPC | DigitalOcean VPC console or `DigitalOceanVpc` status outputs |
-| `nyc3` | Target DigitalOcean region slug | Must match the VPC's region |
 
 ## Related Presets
 

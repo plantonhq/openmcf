@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  billing_model: free
+  notes: DigitalOcean Uptime checks and their alert rules are free -- the probed target is an external endpoint that DigitalOcean does not bill for reaching, and email/Slack delivery carries no charge.

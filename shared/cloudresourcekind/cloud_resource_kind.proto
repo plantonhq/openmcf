@@ -5620,7 +5620,7 @@ enum CloudResourceKind {
   }];
 
   // 5000–5999: DigitalOcean resources
-  DigitalOceanAppPlatformService = 5000 [(kind_meta) = {
+  DigitalOceanApp = 5000 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "doapp"
@@ -5646,6 +5646,8 @@ enum CloudResourceKind {
     id_prefix: "dodns"
     container_kind: true
   }];
+  // No VPC prerequisite: the droplet spec's vpc reference is optional —
+  // an omitted vpc places the droplet in the region's default VPC.
   DigitalOceanDroplet = 5005 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
@@ -5661,17 +5663,29 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "dofn"
   }];
+  // DigitalOceanVpc is a prerequisite because the cluster spec's vpc
+  // reference is required: the control plane and every node pool live inside
+  // one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
   DigitalOceanKubernetesCluster = 5008 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dokc"
     container_kind: true
+    prerequisites: [DigitalOceanVpc]
   }];
+  // DigitalOceanKubernetesCluster is a prerequisite because a node pool is
+  // API-addressed under its owning cluster: the spec's cluster reference is
+  // required and the pool cannot exist first.
   DigitalOceanKubernetesNodePool = 5009 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "doknp"
+    prerequisites: [DigitalOceanKubernetesCluster]
   }];
+  // No registry prerequisite: the load balancer's vpc reference is optional
+  // (DigitalOcean places it in the region's default VPC when unset, and
+  // GLOBAL balancers take no VPC at all). Scenarios that exercise VPC
+  // placement declare it per-scenario via the e2e-prerequisites annotation.
   DigitalOceanLoadBalancer = 5010 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
@@ -5693,10 +5707,159 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "docert"
   }];
+  // DigitalOceanDnsZone is a prerequisite because a record is API-addressed
+  // under its domain: the spec's domain reference is required, resolved to
+  // the DigitalOceanDnsZone's exported zone_name output.
   DigitalOceanDnsRecord = 5014 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dodnsrec"
+    prerequisites: [DigitalOceanDnsZone]
+  }];
+
+  // An additional user on a managed database cluster: the cluster
+  // reference is required, resolved to the DigitalOceanDatabaseCluster's
+  // exported cluster_id output.
+  DigitalOceanDatabaseUser = 5015 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbu"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // An additional logical database on a managed database cluster: the
+  // cluster reference is required.
+  DigitalOceanDatabaseDb = 5016 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbdb"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // A PgBouncer connection pool on a managed PostgreSQL cluster: the
+  // cluster reference is required.
+  DigitalOceanDatabaseConnectionPool = 5017 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbcp"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // The inbound trusted-sources rule set of a managed database cluster:
+  // the cluster reference is required.
+  DigitalOceanDatabaseFirewall = 5018 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbfw"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // A read-only replica of a managed database cluster: the primary
+  // cluster reference is required.
+  DigitalOceanDatabaseReplica = 5019 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbrep"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // A topic on a managed Kafka cluster with the full per-topic
+  // configuration block; the owning cluster reference is required.
+  DigitalOceanDatabaseKafkaTopic = 5020 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dokft"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // One schema subject registered in a managed Kafka cluster's schema
+  // registry; the owning cluster reference is required.
+  DigitalOceanDatabaseKafkaSchema = 5021 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dokfs"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // The account-level organizational container; membership is carried on
+  // the project itself as resource URNs.
+  DigitalOceanProject = 5030 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "doprj"
+  }];
+
+  // An SSH public key registered on the account, referenced by droplets
+  // and droplet autoscale pools at create time.
+  DigitalOceanSshKey = 5031 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dosshk"
+  }];
+
+  // An alert policy on DigitalOcean's built-in metrics for droplets, load
+  // balancers, and managed database clusters. All entity targeting is
+  // optional, so there is no registry prerequisite.
+  DigitalOceanMonitorAlert = 5040 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "domal"
+  }];
+
+  // An availability/latency probe on an external endpoint with composed
+  // alert rules; the target is outside the account, so there is no
+  // registry prerequisite.
+  DigitalOceanUptimeCheck = 5041 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "douptc"
+  }];
+
+  // A static public IP address (IPv4 or IPv6) reserved in a region and
+  // optionally assigned to a droplet. The droplet attachment is an
+  // optional composition seam, so there is no registry prerequisite.
+  DigitalOceanReservedIp = 5050 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dorip"
+  }];
+
+  // A private-network peering connection between exactly two VPCs; both
+  // VPC references are required.
+  DigitalOceanVpcPeering = 5051 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dovpcp"
+    prerequisites: [DigitalOceanVpc]
+  }];
+
+  // An access-key pair for Spaces object storage. Bucket grants are an
+  // optional composition seam, so there is no registry prerequisite.
+  DigitalOceanSpacesKey = 5060 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dospk"
+  }];
+
+  // A CDN endpoint serving a Spaces bucket's content from the global edge:
+  // the origin reference is required, resolved to the DigitalOceanBucket's
+  // exported bucket_domain_name output.
+  DigitalOceanCdn = 5061 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "docdn"
+    prerequisites: [DigitalOceanBucket]
+  }];
+
+  // A pool of identical droplets DigitalOcean keeps at a fixed size or
+  // scales on utilization. The template's ssh_keys reference is required
+  // (the API mandates SSH keys), resolved to the DigitalOceanSshKey's
+  // exported ssh_key_id output.
+  DigitalOceanDropletAutoscalePool = 5070 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodasp"
+    prerequisites: [DigitalOceanSshKey]
   }];
 
   // 7000–7999: Cloudflare resources

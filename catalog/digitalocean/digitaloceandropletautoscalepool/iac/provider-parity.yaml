@@ -1,0 +1,42 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# The provider's single config block carries both scaling modes with NO
+# shape validation (all six leaves optional, zeros sent and dropped at the
+# wire) -- the spec's scaling oneof (static XOR dynamic) makes the mixed
+# shape unrepresentable, a recorded stricter-at-validation stance.
+resources:
+  digitalocean_droplet_autoscale:
+    mappings:
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.pool_name
+        arg: name
+      # The static branch's target maps onto the config block's
+      # target_number_instances; the dynamic branch's five leaves match the
+      # remaining config leaves by name.
+      - spec: spec.static.target_instances
+        arg: config.target_number_instances
+      - spec: spec.dynamic.min_instances
+        arg: config.min_instances
+      - spec: spec.dynamic.max_instances
+        arg: config.max_instances
+      - spec: spec.dynamic.target_cpu_utilization
+        arg: config.target_cpu_utilization
+      - spec: spec.dynamic.target_memory_utilization
+        arg: config.target_memory_utilization
+      - spec: spec.dynamic.cooldown_minutes
+        arg: config.cooldown_minutes
+      # The template's VPC is a typed reference; the provider names the
+      # argument vpc_uuid.
+      - spec: spec.droplet_template.vpc
+        arg: droplet_template.vpc_uuid
+    exclusions:
+      - arg: droplet_template.public_networking
+        reason: >-
+          Dead on write at the pin: schema-declared but never copied into
+          any create/update request (verified in
+          resource_droplet_autoscale.go -- expandTemplate omits it), so a
+          configured value can never reach the API. Read still populates it
+          from the platform default. Representing it would be a field that
+          cannot do anything (the droplet kind's ipv6_address precedent).

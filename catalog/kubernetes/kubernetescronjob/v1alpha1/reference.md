@@ -1924,21 +1924,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -2758,21 +2774,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -4782,21 +4814,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -5616,21 +5664,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -7676,21 +7740,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -8510,21 +8590,37 @@ Allowed values (use exactly as shown):
 - `KubernetesPlantonRunner`
 - `KubernetesPlantonOperator`
 - `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanDatabaseKafkaTopic` -- A topic on a managed Kafka cluster with the full per-topic configuration block; the owning cluster reference is required.
+- `DigitalOceanDatabaseKafkaSchema` -- One schema subject registered in a managed Kafka cluster's schema registry; the owning cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
+- `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`

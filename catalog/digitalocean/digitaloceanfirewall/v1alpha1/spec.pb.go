@@ -8,6 +8,7 @@ package digitaloceanfirewallv1alpha1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,21 +23,36 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall.
+// DigitalOceanFirewallSpec models the full `digitalocean_firewall` surface: a
+// named rule set (inbound and/or outbound) applied to Droplets directly by ID
+// or indirectly by Droplet tag. Every argument the provider accepts is
+// representable here; rule sources and destinations can name other Planton
+// resources (Droplets, load balancers, Kubernetes clusters) as references
+// instead of hand-copied IDs, so firewalls compose in infra charts.
 type DigitalOceanFirewallSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the firewall for identification (must be unique per account/project).
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Inbound rules: traffic allowed *to* Droplets on specific ports from specified sources.
+	// Name of the firewall. Must be unique per account. The API accepts up to
+	// 255 characters of letters, numbers, colons, dashes, and underscores.
+	FirewallName string `protobuf:"bytes,1,opt,name=firewall_name,json=firewallName,proto3" json:"firewall_name,omitempty"`
+	// Inbound rules: traffic allowed *to* the protected Droplets. Traffic not
+	// matched by any inbound rule is dropped (DigitalOcean firewalls are
+	// default-deny for configured directions).
 	InboundRules []*DigitalOceanFirewallInboundRule `protobuf:"bytes,2,rep,name=inbound_rules,json=inboundRules,proto3" json:"inbound_rules,omitempty"`
-	// Outbound rules: traffic allowed *from* Droplets on specific ports to specified destinations.
+	// Outbound rules: traffic allowed *from* the protected Droplets to the
+	// configured destinations.
 	OutboundRules []*DigitalOceanFirewallOutboundRule `protobuf:"bytes,3,rep,name=outbound_rules,json=outboundRules,proto3" json:"outbound_rules,omitempty"`
-	// The Droplet IDs to which this firewall is applied (max 10).
-	// These Droplets will have the firewall's rules enforced.
-	DropletIds []int64 `protobuf:"varint,4,rep,packed,name=droplet_ids,json=dropletIds,proto3" json:"droplet_ids,omitempty"`
-	// The names of Droplet tags to which this firewall is applied (max 5).
-	// Any Droplet with these tags will be protected by this firewall.
-	Tags          []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	// (Optional) Droplet tag names this firewall applies to: any Droplet
+	// carrying one of these tags is protected, and membership follows the tag
+	// automatically as Droplets come and go. DigitalOcean creates tags
+	// implicitly when first referenced. The API documents a maximum of 5 tags
+	// per firewall (enforced server-side, not by the provider). Tag values are
+	// case-insensitive for set membership.
+	Tags []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	// (Optional) Droplets this firewall applies to, as literal numeric Droplet
+	// IDs or references to DigitalOceanDroplet resources. The API documents a
+	// maximum of 10 Droplets per firewall (enforced server-side). For dynamic
+	// membership prefer tags, which track Droplets automatically.
+	DropletIds    []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=droplet_ids,json=dropletIds,proto3" json:"droplet_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,9 +87,9 @@ func (*DigitalOceanFirewallSpec) Descriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *DigitalOceanFirewallSpec) GetName() string {
+func (x *DigitalOceanFirewallSpec) GetFirewallName() string {
 	if x != nil {
-		return x.Name
+		return x.FirewallName
 	}
 	return ""
 }
@@ -92,13 +108,6 @@ func (x *DigitalOceanFirewallSpec) GetOutboundRules() []*DigitalOceanFirewallOut
 	return nil
 }
 
-func (x *DigitalOceanFirewallSpec) GetDropletIds() []int64 {
-	if x != nil {
-		return x.DropletIds
-	}
-	return nil
-}
-
 func (x *DigitalOceanFirewallSpec) GetTags() []string {
 	if x != nil {
 		return x.Tags
@@ -106,23 +115,41 @@ func (x *DigitalOceanFirewallSpec) GetTags() []string {
 	return nil
 }
 
-// Definition of an inbound (ingress) firewall rule.
+func (x *DigitalOceanFirewallSpec) GetDropletIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.DropletIds
+	}
+	return nil
+}
+
+// An inbound (ingress) firewall rule. At least one source of any kind should
+// be set; a rule with no sources matches nothing.
 type DigitalOceanFirewallInboundRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "tcp", "udp", or "icmp". Required.
+	// The traffic protocol this rule matches.
 	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// Ports to allow (e.g., "80", "8000-9000", or "1-65535"; empty or "1-65535" means all ports for tcp/udp).
+	// Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+	// Required for tcp/udp; omit for icmp (the provider drops any port_range
+	// set on an icmp rule when it reads state back). Note the read-back
+	// normalization: the API reports "all ports" as port 0, which the provider
+	// writes back as the literal string "all" — so "1-65535" reads back as
+	// "all" after apply. Prefer writing "all" to avoid a permanent diff.
 	PortRange string `protobuf:"bytes,2,opt,name=port_range,json=portRange,proto3" json:"port_range,omitempty"`
-	// IPv4 or IPv6 addresses or CIDR ranges (e.g., "192.0.2.0/24", "0.0.0.0/0").
+	// IPv4/IPv6 addresses or CIDR ranges traffic is allowed from
+	// (e.g. "192.0.2.0/24", "0.0.0.0/0", "::/0").
 	SourceAddresses []string `protobuf:"bytes,3,rep,name=source_addresses,json=sourceAddresses,proto3" json:"source_addresses,omitempty"`
-	// IDs of Droplets from which traffic is allowed.
-	SourceDropletIds []int64 `protobuf:"varint,4,rep,packed,name=source_droplet_ids,json=sourceDropletIds,proto3" json:"source_droplet_ids,omitempty"`
-	// Names of Droplet tags; any Droplet with these tags is allowed.
+	// Droplet tag names; traffic from any Droplet carrying one of these tags
+	// is allowed. Tag values are case-insensitive for set membership.
 	SourceTags []string `protobuf:"bytes,5,rep,name=source_tags,json=sourceTags,proto3" json:"source_tags,omitempty"`
-	// IDs of Kubernetes clusters from which traffic is allowed.
-	SourceKubernetesIds []string `protobuf:"bytes,6,rep,name=source_kubernetes_ids,json=sourceKubernetesIds,proto3" json:"source_kubernetes_ids,omitempty"`
-	// IDs of Load Balancers from which traffic is allowed.
-	SourceLoadBalancerUids []string `protobuf:"bytes,7,rep,name=source_load_balancer_uids,json=sourceLoadBalancerUids,proto3" json:"source_load_balancer_uids,omitempty"`
+	// Droplets traffic is allowed from, as literal numeric Droplet IDs or
+	// references to DigitalOceanDroplet resources.
+	SourceDropletIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=source_droplet_ids,json=sourceDropletIds,proto3" json:"source_droplet_ids,omitempty"`
+	// Kubernetes cluster IDs traffic is allowed from, as literal UUIDs or
+	// references to DigitalOceanKubernetesCluster resources.
+	SourceKubernetesIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=source_kubernetes_ids,json=sourceKubernetesIds,proto3" json:"source_kubernetes_ids,omitempty"`
+	// Load balancer UIDs traffic is allowed from, as literal UUIDs or
+	// references to DigitalOceanLoadBalancer resources.
+	SourceLoadBalancerUids []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=source_load_balancer_uids,json=sourceLoadBalancerUids,proto3" json:"source_load_balancer_uids,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -178,13 +205,6 @@ func (x *DigitalOceanFirewallInboundRule) GetSourceAddresses() []string {
 	return nil
 }
 
-func (x *DigitalOceanFirewallInboundRule) GetSourceDropletIds() []int64 {
-	if x != nil {
-		return x.SourceDropletIds
-	}
-	return nil
-}
-
 func (x *DigitalOceanFirewallInboundRule) GetSourceTags() []string {
 	if x != nil {
 		return x.SourceTags
@@ -192,37 +212,52 @@ func (x *DigitalOceanFirewallInboundRule) GetSourceTags() []string {
 	return nil
 }
 
-func (x *DigitalOceanFirewallInboundRule) GetSourceKubernetesIds() []string {
+func (x *DigitalOceanFirewallInboundRule) GetSourceDropletIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceDropletIds
+	}
+	return nil
+}
+
+func (x *DigitalOceanFirewallInboundRule) GetSourceKubernetesIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SourceKubernetesIds
 	}
 	return nil
 }
 
-func (x *DigitalOceanFirewallInboundRule) GetSourceLoadBalancerUids() []string {
+func (x *DigitalOceanFirewallInboundRule) GetSourceLoadBalancerUids() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.SourceLoadBalancerUids
 	}
 	return nil
 }
 
-// Definition of an outbound (egress) firewall rule.
+// An outbound (egress) firewall rule. Mirrors the inbound rule shape with
+// destination_* names.
 type DigitalOceanFirewallOutboundRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "tcp", "udp", or "icmp". Required.
+	// The traffic protocol this rule matches.
 	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// Ports to allow (format as in inbound rules; required for tcp/udp).
+	// Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+	// Required for tcp/udp; omit for icmp. The same read-back normalization as
+	// inbound rules applies: the API reports "all ports" as "all".
 	PortRange string `protobuf:"bytes,2,opt,name=port_range,json=portRange,proto3" json:"port_range,omitempty"`
-	// IPv4/IPv6 addresses or CIDRs to which traffic is allowed.
+	// IPv4/IPv6 addresses or CIDR ranges traffic is allowed to
+	// (e.g. "0.0.0.0/0", "::/0").
 	DestinationAddresses []string `protobuf:"bytes,3,rep,name=destination_addresses,json=destinationAddresses,proto3" json:"destination_addresses,omitempty"`
-	// IDs of Droplets to which traffic is allowed.
-	DestinationDropletIds []int64 `protobuf:"varint,4,rep,packed,name=destination_droplet_ids,json=destinationDropletIds,proto3" json:"destination_droplet_ids,omitempty"`
-	// Names of Droplet tags whose members are allowed destinations.
+	// Droplet tag names; traffic to any Droplet carrying one of these tags is
+	// allowed. Tag values are case-insensitive for set membership.
 	DestinationTags []string `protobuf:"bytes,5,rep,name=destination_tags,json=destinationTags,proto3" json:"destination_tags,omitempty"`
-	// IDs of Kubernetes clusters to which traffic is allowed.
-	DestinationKubernetesIds []string `protobuf:"bytes,6,rep,name=destination_kubernetes_ids,json=destinationKubernetesIds,proto3" json:"destination_kubernetes_ids,omitempty"`
-	// IDs of Load Balancers which are allowed as destinations.
-	DestinationLoadBalancerUids []string `protobuf:"bytes,7,rep,name=destination_load_balancer_uids,json=destinationLoadBalancerUids,proto3" json:"destination_load_balancer_uids,omitempty"`
+	// Droplets traffic is allowed to, as literal numeric Droplet IDs or
+	// references to DigitalOceanDroplet resources.
+	DestinationDropletIds []*v1.StringValueOrRef `protobuf:"bytes,8,rep,name=destination_droplet_ids,json=destinationDropletIds,proto3" json:"destination_droplet_ids,omitempty"`
+	// Kubernetes cluster IDs traffic is allowed to, as literal UUIDs or
+	// references to DigitalOceanKubernetesCluster resources.
+	DestinationKubernetesIds []*v1.StringValueOrRef `protobuf:"bytes,9,rep,name=destination_kubernetes_ids,json=destinationKubernetesIds,proto3" json:"destination_kubernetes_ids,omitempty"`
+	// Load balancer UIDs traffic is allowed to, as literal UUIDs or references
+	// to DigitalOceanLoadBalancer resources.
+	DestinationLoadBalancerUids []*v1.StringValueOrRef `protobuf:"bytes,10,rep,name=destination_load_balancer_uids,json=destinationLoadBalancerUids,proto3" json:"destination_load_balancer_uids,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -278,13 +313,6 @@ func (x *DigitalOceanFirewallOutboundRule) GetDestinationAddresses() []string {
 	return nil
 }
 
-func (x *DigitalOceanFirewallOutboundRule) GetDestinationDropletIds() []int64 {
-	if x != nil {
-		return x.DestinationDropletIds
-	}
-	return nil
-}
-
 func (x *DigitalOceanFirewallOutboundRule) GetDestinationTags() []string {
 	if x != nil {
 		return x.DestinationTags
@@ -292,14 +320,21 @@ func (x *DigitalOceanFirewallOutboundRule) GetDestinationTags() []string {
 	return nil
 }
 
-func (x *DigitalOceanFirewallOutboundRule) GetDestinationKubernetesIds() []string {
+func (x *DigitalOceanFirewallOutboundRule) GetDestinationDropletIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.DestinationDropletIds
+	}
+	return nil
+}
+
+func (x *DigitalOceanFirewallOutboundRule) GetDestinationKubernetesIds() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.DestinationKubernetesIds
 	}
 	return nil
 }
 
-func (x *DigitalOceanFirewallOutboundRule) GetDestinationLoadBalancerUids() []string {
+func (x *DigitalOceanFirewallOutboundRule) GetDestinationLoadBalancerUids() []*v1.StringValueOrRef {
 	if x != nil {
 		return x.DestinationLoadBalancerUids
 	}
@@ -310,34 +345,39 @@ var File_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto protorefl
 
 const file_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/digitalocean/digitaloceanfirewall/v1alpha1/spec.proto\x126dev.planton.digitalocean.digitaloceanfirewall.v1alpha1\x1a\x1bbuf/validate/validate.proto\"\xee\x02\n" +
-	"\x18DigitalOceanFirewallSpec\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\x04name\x12|\n" +
+	"=catalog/digitalocean/digitaloceanfirewall/v1alpha1/spec.proto\x126dev.planton.digitalocean.digitaloceanfirewall.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa5\x05\n" +
+	"\x18DigitalOceanFirewallSpec\x122\n" +
+	"\rfirewall_name\x18\x01 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\ffirewallName\x12|\n" +
 	"\rinbound_rules\x18\x02 \x03(\v2W.dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRuleR\finboundRules\x12\x7f\n" +
-	"\x0eoutbound_rules\x18\x03 \x03(\v2X.dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRuleR\routboundRules\x12\x1f\n" +
-	"\vdroplet_ids\x18\x04 \x03(\x03R\n" +
-	"dropletIds\x12\x12\n" +
-	"\x04tags\x18\x05 \x03(\tR\x04tags\"\xce\x02\n" +
-	"\x1fDigitalOceanFirewallInboundRule\x12#\n" +
-	"\bprotocol\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bprotocol\x12\x1d\n" +
+	"\x0eoutbound_rules\x18\x03 \x03(\v2X.dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRuleR\routboundRules\x128\n" +
+	"\x04tags\x18\x05 \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags\x12w\n" +
+	"\vdroplet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8d'\x92\xd4a\x19status.outputs.droplet_idR\n" +
+	"dropletIds:\x9c\x01\xbaH\x98\x01\x1a\x95\x01\n" +
+	"\x16spec.at_least_one_rule\x12<at least one inbound_rule or outbound_rule must be specified\x1a=size(this.inbound_rules) > 0 || size(this.outbound_rules) > 0J\x04\b\x04\x10\x05\"\xc8\x06\n" +
+	"\x1fDigitalOceanFirewallInboundRule\x124\n" +
+	"\bprotocol\x18\x01 \x01(\tB\x18\xbaH\x15\xc8\x01\x01r\x10R\x03tcpR\x03udpR\x04icmpR\bprotocol\x12\x1d\n" +
 	"\n" +
-	"port_range\x18\x02 \x01(\tR\tportRange\x12)\n" +
-	"\x10source_addresses\x18\x03 \x03(\tR\x0fsourceAddresses\x12,\n" +
-	"\x12source_droplet_ids\x18\x04 \x03(\x03R\x10sourceDropletIds\x12\x1f\n" +
-	"\vsource_tags\x18\x05 \x03(\tR\n" +
-	"sourceTags\x122\n" +
-	"\x15source_kubernetes_ids\x18\x06 \x03(\tR\x13sourceKubernetesIds\x129\n" +
-	"\x19source_load_balancer_uids\x18\a \x03(\tR\x16sourceLoadBalancerUids\"\x81\x03\n" +
-	" DigitalOceanFirewallOutboundRule\x12#\n" +
-	"\bprotocol\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bprotocol\x12\x1d\n" +
+	"port_range\x18\x02 \x01(\tR\tportRange\x127\n" +
+	"\x10source_addresses\x18\x03 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fsourceAddresses\x12E\n" +
+	"\vsource_tags\x18\x05 \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\n" +
+	"sourceTags\x12\x84\x01\n" +
+	"\x12source_droplet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8d'\x92\xd4a\x19status.outputs.droplet_idR\x10sourceDropletIds\x12\x8a\x01\n" +
+	"\x15source_kubernetes_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x90'\x92\xd4a\x19status.outputs.cluster_idR\x13sourceKubernetesIds\x12\x97\x01\n" +
+	"\x19source_load_balancer_uids\x18\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\x92'\x92\xd4a\x1fstatus.outputs.load_balancer_idR\x16sourceLoadBalancerUids:\x8f\x01\xbaH\x8b\x01\x1a\x88\x01\n" +
+	" inbound_rule.port_range_required\x122port_range is required when protocol is tcp or udp\x1a0this.protocol == 'icmp' || this.port_range != ''J\x04\b\x04\x10\x05J\x04\b\x06\x10\aJ\x04\b\a\x10\b\"\xfc\x06\n" +
+	" DigitalOceanFirewallOutboundRule\x124\n" +
+	"\bprotocol\x18\x01 \x01(\tB\x18\xbaH\x15\xc8\x01\x01r\x10R\x03tcpR\x03udpR\x04icmpR\bprotocol\x12\x1d\n" +
 	"\n" +
-	"port_range\x18\x02 \x01(\tR\tportRange\x123\n" +
-	"\x15destination_addresses\x18\x03 \x03(\tR\x14destinationAddresses\x126\n" +
-	"\x17destination_droplet_ids\x18\x04 \x03(\x03R\x15destinationDropletIds\x12)\n" +
-	"\x10destination_tags\x18\x05 \x03(\tR\x0fdestinationTags\x12<\n" +
-	"\x1adestination_kubernetes_ids\x18\x06 \x03(\tR\x18destinationKubernetesIds\x12C\n" +
-	"\x1edestination_load_balancer_uids\x18\a \x03(\tR\x1bdestinationLoadBalancerUidsB\xb2\x03\n" +
+	"port_range\x18\x02 \x01(\tR\tportRange\x12A\n" +
+	"\x15destination_addresses\x18\x03 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x14destinationAddresses\x12O\n" +
+	"\x10destination_tags\x18\x05 \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x0fdestinationTags\x12\x8e\x01\n" +
+	"\x17destination_droplet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8d'\x92\xd4a\x19status.outputs.droplet_idR\x15destinationDropletIds\x12\x94\x01\n" +
+	"\x1adestination_kubernetes_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x90'\x92\xd4a\x19status.outputs.cluster_idR\x18destinationKubernetesIds\x12\xa1\x01\n" +
+	"\x1edestination_load_balancer_uids\x18\n" +
+	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\x92'\x92\xd4a\x1fstatus.outputs.load_balancer_idR\x1bdestinationLoadBalancerUids:\x90\x01\xbaH\x8c\x01\x1a\x89\x01\n" +
+	"!outbound_rule.port_range_required\x122port_range is required when protocol is tcp or udp\x1a0this.protocol == 'icmp' || this.port_range != ''J\x04\b\x04\x10\x05J\x04\b\x06\x10\aJ\x04\b\a\x10\bB\xb2\x03\n" +
 	":com.dev.planton.digitalocean.digitaloceanfirewall.v1alpha1B\tSpecProtoP\x01Zlgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanfirewall/v1alpha1;digitaloceanfirewallv1alpha1\xa2\x02\x04DPDD\xaa\x026Dev.Planton.Digitalocean.Digitaloceanfirewall.V1alpha1\xca\x026Dev\\Planton\\Digitalocean\\Digitaloceanfirewall\\V1alpha1\xe2\x02BDev\\Planton\\Digitalocean\\Digitaloceanfirewall\\V1alpha1\\GPBMetadata\xea\x02:Dev::Planton::Digitalocean::Digitaloceanfirewall::V1alpha1b\x06proto3"
 
 var (
@@ -357,15 +397,23 @@ var file_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto_goTypes =
 	(*DigitalOceanFirewallSpec)(nil),         // 0: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallSpec
 	(*DigitalOceanFirewallInboundRule)(nil),  // 1: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRule
 	(*DigitalOceanFirewallOutboundRule)(nil), // 2: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRule
+	(*v1.StringValueOrRef)(nil),              // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallSpec.inbound_rules:type_name -> dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRule
 	2, // 1: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallSpec.outbound_rules:type_name -> dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRule
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallSpec.droplet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 3: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRule.source_droplet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 4: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRule.source_kubernetes_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 5: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallInboundRule.source_load_balancer_uids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 6: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRule.destination_droplet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 7: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRule.destination_kubernetes_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 8: dev.planton.digitalocean.digitaloceanfirewall.v1alpha1.DigitalOceanFirewallOutboundRule.destination_load_balancer_uids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceanfirewall_v1alpha1_spec_proto_init() }

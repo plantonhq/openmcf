@@ -34,6 +34,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
@@ -44,18 +45,32 @@ const PublicReportFileName = "terraform-parity.md"
 // PublicReportPath is the repo-root-relative committed location of one
 // provider's parity report page.
 func PublicReportPath(provider cloudresourcekind.CloudResourceProvider) string {
-	return filepath.Join(catalogRoot, provider.String(), PublicReportFileName)
+	return filepath.Join(catalogRoot, crkreflect.ProviderDirName(provider), PublicReportFileName)
 }
 
-// providerFromName resolves a provider's registry name (the lowercase enum
-// name, e.g. "gcp") to its enum value -- the drift gate uses it to turn a
-// page's embedded parameters back into a generation input.
+// providerFromName resolves a provider name (the catalog directory name the
+// pages embed, e.g. "gcp" or "digitalocean"; enum names are accepted too)
+// to its enum value -- the drift gate uses it to turn a page's embedded
+// parameters back into a generation input.
 func providerFromName(name string) (cloudresourcekind.CloudResourceProvider, error) {
-	v, ok := cloudresourcekind.CloudResourceProvider_value[name]
-	if !ok || v == 0 {
+	provider := crkreflect.ProviderFromString(name)
+	if provider == cloudresourcekind.CloudResourceProvider_cloud_resource_provider_unspecified {
 		return 0, errors.Errorf("unknown cloud provider %q", name)
 	}
-	return cloudresourcekind.CloudResourceProvider(v), nil
+	return provider, nil
+}
+
+// providerDisplayName renders a provider's user-facing name for the page
+// heading from the registry's provider_meta (e.g. digitalocean ->
+// "DigitalOcean"). A name outside the registry (hermetic test fixtures)
+// falls back to upper-casing, the registry display names' own style for
+// initialisms (GCP, AWS).
+func providerDisplayName(name string) string {
+	provider := crkreflect.ProviderFromString(name)
+	if meta, err := crkreflect.ProviderMetaOf(provider); err == nil && meta.DisplayName != "" {
+		return meta.DisplayName
+	}
+	return strings.ToUpper(name)
 }
 
 // reportParamsRe extracts the embedded generation parameters from a
@@ -100,7 +115,7 @@ func GeneratePublicReport(repoRoot string, provider cloudresourcekind.CloudResou
 // sorted by its input's ordering.
 func RenderPublicReport(rep Report, acc Accounting, proofs map[string]E2EProof) string {
 	var b strings.Builder
-	providerTitle := strings.ToUpper(acc.CloudProvider)
+	providerTitle := providerDisplayName(acc.CloudProvider)
 
 	fmt.Fprintf(&b, `---
 title: "Terraform Parity"

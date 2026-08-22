@@ -1,0 +1,14 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseConnectionPool
+metadata:
+  name: shared-session-pool
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: orders-postgres
+      fieldPath: status.outputs.cluster_id
+  poolName: shared-session-pool
+  mode: session
+  size: 10
+  dbName: defaultdb

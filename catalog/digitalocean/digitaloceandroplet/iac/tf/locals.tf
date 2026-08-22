@@ -1,58 +1,45 @@
-# Local variables for DigitalOcean Droplet module
 locals {
-  # Extract VPC UUID from spec
-  vpc_uuid = (
-    var.spec.vpc != null && var.spec.vpc.value != null
-    ? var.spec.vpc.value
-    : null
-  )
+  # Region is optional: unset lets DigitalOcean choose a region with
+  # available capacity. The unspecified enum name must never be sent as a
+  # slug (the enum's value names ARE the region slugs).
+  region = (
+    try(var.spec.region, "") != "" &&
+    var.spec.region != "digital_ocean_region_unspecified"
+  ) ? var.spec.region : null
 
-  # Extract volume IDs from spec (filter out nulls)
+  # Optional VPC UUID. References are resolved to the literal UUID before
+  # the module runs, so the field arrives as a plain string. Unset means
+  # the droplet lands in the region's default VPC.
+  vpc_uuid = try(var.spec.vpc, "") != "" ? var.spec.vpc : null
+
+  # SSH keys are create-only; an empty list is sent as null so a keyless
+  # droplet never diffs against an empty set.
+  ssh_keys = length(coalesce(var.spec.ssh_keys, [])) > 0 ? var.spec.ssh_keys : null
+
+  # Flattened StringValueOrRef list: each entry is already the volume UUID.
   volume_ids = compact([
-    for vol in coalesce(var.spec.volume_ids, []) : (
-      vol.value != null ? vol.value : null
-    )
+    for vol in coalesce(var.spec.volume_ids, []) : vol
   ])
 
-  # Map protobuf region enum to DigitalOcean region slug
-  region_map = {
-    "digital_ocean_region_unspecified" = "nyc3"  # Default fallback
-    "digital_ocean_region_nyc1"        = "nyc1"
-    "digital_ocean_region_nyc2"        = "nyc2"
-    "digital_ocean_region_nyc3"        = "nyc3"
-    "digital_ocean_region_sfo1"        = "sfo1"
-    "digital_ocean_region_sfo2"        = "sfo2"
-    "digital_ocean_region_sfo3"        = "sfo3"
-    "digital_ocean_region_ams2"        = "ams2"
-    "digital_ocean_region_ams3"        = "ams3"
-    "digital_ocean_region_sgp1"        = "sgp1"
-    "digital_ocean_region_lon1"        = "lon1"
-    "digital_ocean_region_fra1"        = "fra1"
-    "digital_ocean_region_tor1"        = "tor1"
-    "digital_ocean_region_blr1"        = "blr1"
-    "digital_ocean_region_syd1"        = "syd1"
-  }
+  # Cloud-init user data is create-only and hash-stored by DigitalOcean;
+  # empty is sent as null, never as an empty string.
+  user_data = try(var.spec.user_data, "") != "" ? var.spec.user_data : null
 
-  # Resolve region slug
-  region_slug = local.region_map[var.spec.region]
+  gpu_partition_mode = try(var.spec.gpu_partition_mode, "") != "" ? var.spec.gpu_partition_mode : null
 
-  # Combine user-provided tags with metadata tags
-  tags = distinct(concat(
-    coalesce(var.spec.tags, []),
+  # Standard Planton labels rendered as DigitalOcean "key:value" tags —
+  # the exact set and key spelling the Pulumi module applies, so both
+  # provisioners tag identically.
+  planton_tags = concat(
     [
-      "managed-by:planton",
-      "resource-kind:digitalocean-droplet",
-      "resource-name:${var.metadata.name}"
-    ]
-  ))
+      "planton-ai_resource:true",
+      "planton-ai_name:${var.metadata.name}",
+      "planton-ai_kind:DigitalOceanDroplet",
+    ],
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? ["planton-ai_organization:${var.metadata.org}"] : [],
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? ["planton-ai_environment:${var.metadata.env}"] : [],
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? ["planton-ai_id:${var.metadata.id}"] : [],
+  )
 
-  # Monitoring flag (inverted from disable_monitoring)
-  monitoring = !coalesce(var.spec.disable_monitoring, false)
-
-  # Backups flag
-  backups = coalesce(var.spec.enable_backups, false)
-
-  # IPv6 flag
-  ipv6 = coalesce(var.spec.enable_ipv6, false)
+  tags = distinct(concat(coalesce(var.spec.tags, []), local.planton_tags))
 }
-

@@ -1,0 +1,21 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: web-lb-5xx
+spec:
+  description: Load balancer 5xx error rate above 5 percent
+  metricType: v1/insights/lbaas/increase_in_http_error_rate_percentage_5xx
+  compare: GreaterThan
+  value: 5
+  window: 5m
+  loadBalancerIds:
+    - valueFrom:
+        kind: DigitalOceanLoadBalancer
+        name: web-lb
+        fieldPath: status.outputs.load_balancer_id
+  alerts:
+    emails:
+      - ops@example.com
+    slack:
+      - channel: "#incidents"
+        url: https://hooks.slack.com/services/EXAMPLE/EXAMPLE/EXAMPLE

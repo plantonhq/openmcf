@@ -1,0 +1,29 @@
+# Assigned DigitalOceanReservedIp: an IPv4 reservation assigned at create
+# to a droplet in the same region -- the region-pinned droplet fixture
+# rides the e2e-prerequisites annotation (the kind's standard Droplet
+# install fixture omits the region, which would make the required
+# same-region pairing non-deterministic). Proves the v4 inline-assignment
+# arm (the provider's genuinely mutable droplet_id).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanReservedIp
+metadata:
+  name: planton-oss-e2e-digitaloceanreservedip-assigned
+  id: planton-oss-e2e-digitaloceanreservedip-assigned
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanreservedip
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/digitalocean/digitaloceanreservedip/e2e/fixtures/droplet-nyc3.yaml"
+  tags:
+    - planton-e2e
+spec:
+  ipVersion: ipv4
+  region: nyc3
+  droplet:
+    valueFrom:
+      kind: DigitalOceanDroplet
+      name: planton-oss-e2e-digitaloceanreservedip-droplet-fixture
+      fieldPath: status.outputs.droplet_id

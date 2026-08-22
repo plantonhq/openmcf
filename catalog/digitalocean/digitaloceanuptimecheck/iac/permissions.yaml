@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically:
+#
+#   Custom-scopes token (recommended):
+#     uptime:read    -- read the check and its alerts through GET /v2/uptime/checks/{id} and .../alerts/{id} (provenance: derived)
+#     uptime:create  -- create the check and its alert rows via POST /v2/uptime/checks and .../alerts (derived)
+#     uptime:update  -- update the check and its alert rows via PUT (derived)
+#     uptime:delete  -- delete the check (its alerts die with it) and individual alert rows via DELETE (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_uptime_check's and digitalocean_uptime_alert's
+# create/read/update/delete/import paths); the live capture lane upgrades
+# them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanuptimecheck
+spec: {}

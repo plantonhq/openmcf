@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanmonitoralert.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// DigitalOceanMonitorAlertSpec models the full digitalocean_monitor_alert
+// resource surface: an alert policy on DigitalOcean's built-in metrics for
+// Droplets, load balancers, and managed database clusters, with email and
+// Slack notification channels.
+//
+// DigitalOcean's API targets a policy through one untyped id list plus a
+// tag list; this spec replaces the untyped list with one TYPED reference
+// list per resource family, so an id can never be paired with the wrong
+// metric family and resources are wired by reference instead of
+// hand-copied ids. The modules merge the lists back into the provider's
+// single entities argument. Every field updates in place.
+message DigitalOceanMonitorAlertSpec {
+  // Metrics are namespaced per resource family; targets from another
+  // family are meaningless to DigitalOcean and rejected here. Droplet
+  // metrics accept droplet references and/or tags; the other families
+  // target only their own id list.
+  option (buf.validate.message).cel = {
+    id: "spec.droplet_metric_targets"
+    message: "a droplet metric (v1/insights/droplet/*) targets droplet_ids and/or tags -- not load_balancer_ids or database_cluster_ids"
+    expression: "!this.metric_type.startsWith('v1/insights/droplet/') || (size(this.load_balancer_ids) == 0 && size(this.database_cluster_ids) == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.lbaas_metric_targets"
+    message: "a load-balancer metric (v1/insights/lbaas/*) targets load_balancer_ids only -- not droplet_ids, database_cluster_ids, or tags"
+    expression: "!this.metric_type.startsWith('v1/insights/lbaas/') || (size(this.droplet_ids) == 0 && size(this.database_cluster_ids) == 0 && size(this.tags) == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.dbaas_metric_targets"
+    message: "a database metric (v1/dbaas/alerts/*) targets database_cluster_ids only -- not droplet_ids, load_balancer_ids, or tags"
+    expression: "!this.metric_type.startsWith('v1/dbaas/alerts/') || (size(this.droplet_ids) == 0 && size(this.load_balancer_ids) == 0 && size(this.tags) == 0)"
+  };
+
+  // Human-readable description of the alert policy. DigitalOcean has no
+  // separate name field -- this is the policy's display handle in the
+  // console and in notification messages.
+  string description = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The metric the policy watches. DigitalOcean namespaces metrics per
+  // resource family: Droplet metrics under v1/insights/droplet/, load
+  // balancer metrics under v1/insights/lbaas/, and managed database
+  // metrics under v1/dbaas/alerts/. The values are DigitalOcean's own API
+  // paths and their inconsistencies are deliberate facts of that API --
+  // droplet CPU is bare "cpu" (no _utilization_percent suffix) and the
+  // database family uses an _alerts suffix -- never "corrected" here.
+  string metric_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "v1/insights/droplet/cpu",
+        "v1/insights/droplet/memory_utilization_percent",
+        "v1/insights/droplet/disk_utilization_percent",
+        "v1/insights/droplet/public_outbound_bandwidth",
+        "v1/insights/droplet/public_inbound_bandwidth",
+        "v1/insights/droplet/private_outbound_bandwidth",
+        "v1/insights/droplet/private_inbound_bandwidth",
+        "v1/insights/droplet/disk_read",
+        "v1/insights/droplet/disk_write",
+        "v1/insights/droplet/load_1",
+        "v1/insights/droplet/load_5",
+        "v1/insights/droplet/load_15",
+        "v1/insights/lbaas/avg_cpu_utilization_percent",
+        "v1/insights/lbaas/connection_utilization_percent",
+        "v1/insights/lbaas/droplet_health",
+        "v1/insights/lbaas/tls_connections_per_second_utilization_percent",
+        "v1/insights/lbaas/increase_in_http_error_rate_percentage_4xx",
+        "v1/insights/lbaas/increase_in_http_error_rate_percentage_5xx",
+        "v1/insights/lbaas/increase_in_http_error_rate_count_4xx",
+        "v1/insights/lbaas/increase_in_http_error_rate_count_5xx",
+        "v1/insights/lbaas/high_http_request_response_time",
+        "v1/insights/lbaas/high_http_request_response_time_50p",
+        "v1/insights/lbaas/high_http_request_response_time_95p",
+        "v1/insights/lbaas/high_http_request_response_time_99p",
+        "v1/dbaas/alerts/load_15_alerts",
+        "v1/dbaas/alerts/memory_utilization_alerts",
+        "v1/dbaas/alerts/disk_utilization_alerts",
+        "v1/dbaas/alerts/cpu_alerts"
+      ]
+    }
+  ];
+
+  // How the measured value is compared against the threshold. CamelCase is
+  // this API's spelling; uptime alerts spell the same concept snake_case
+  // (greater_than) -- the two are different DigitalOcean APIs and are
+  // deliberately not unified.
+  string compare = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "GreaterThan",
+        "LessThan"
+      ]
+    }
+  ];
+
+  // The threshold the metric is compared against. Units follow the metric:
+  // percent for utilization metrics, load units for load_*, bytes per
+  // second for bandwidth and disk I/O. DigitalOcean stores it as a 32-bit
+  // float, so more than 7 significant digits are silently truncated
+  // upstream.
+  double value = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).double.gte = 0
+  ];
+
+  // The sampling window the metric is aggregated over before comparison.
+  string window = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "5m",
+        "10m",
+        "30m",
+        "1h"
+      ]
+    }
+  ];
+
+  // (Optional) Whether the alert policy is active. Unset defers to
+  // DigitalOcean's default, which is enabled; set false to keep the policy
+  // defined but silent.
+  optional bool enabled = 6 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // (Optional) Droplets the policy watches, as literal numeric Droplet ids
+  // or references to DigitalOceanDroplet resources. Valid only with
+  // droplet metrics.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef droplet_ids = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
+  ];
+
+  // (Optional) Load balancers the policy watches, as literal UUIDs or
+  // references to DigitalOceanLoadBalancer resources. Valid only with
+  // load-balancer metrics.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef load_balancer_ids = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_id"
+  ];
+
+  // (Optional) Managed database clusters the policy watches, as literal
+  // UUIDs or references to DigitalOceanDatabaseCluster resources. Valid
+  // only with database metrics.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef database_cluster_ids = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
+  ];
+
+  // (Optional) Droplet tags the policy watches: every Droplet carrying a
+  // listed tag is covered, and membership tracks the tag automatically --
+  // prefer tags over droplet_ids for dynamic fleets. Valid only with
+  // droplet metrics.
+  repeated string tags = 10 [(buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"];
+
+  // Where alert notifications are delivered. At least one channel is
+  // required -- DigitalOcean rejects a policy that notifies nobody.
+  DigitalOceanMonitorAlertNotifications alerts = 11 [(buf.validate.field).required = true];
+}
+
+// Notification channels for a monitor alert policy.
+message DigitalOceanMonitorAlertNotifications {
+  option (buf.validate.message).cel = {
+    id: "alerts.at_least_one_channel"
+    message: "at least one notification channel (emails or slack) must be specified"
+    expression: "size(this.emails) > 0 || size(this.slack) > 0"
+  };
+
+  // (Optional) Email addresses notifications are sent to. DigitalOcean may
+  // require addresses to belong to verified account members -- it rejects
+  // unknown addresses at request time.
+  repeated string emails = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // (Optional) Slack channels notifications are posted to.
+  repeated DigitalOceanMonitorAlertSlack slack = 2;
+}
+
+// One Slack notification target.
+message DigitalOceanMonitorAlertSlack {
+  // The Slack channel to post to (for example "#alerts").
+  string channel = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Slack incoming-webhook URL. A credential: DigitalOcean's API does
+  // not mark it sensitive, so it is marked sensitive here and both
+  // provisioners keep it out of plain-text state rendering.
+  string url = 2 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

@@ -1,0 +1,26 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceandatabasereplica
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Managed Databases
+      sku_meter: read-only replica node hours
+      pricing_unit: hours
+      description: A replica is a full single-node database of its own size slug, billed hourly from creation regardless of read traffic -- effectively a second cluster-sized bill beside the primary.
+  cost_drivers:
+    - field_path: size
+      sku_meter: replica node size
+      pricing_unit: hours
+      impact: The dominant driver -- each size slug has its own hourly rate, and DigitalOcean requires the replica to be at least the primary's size, so the primary's slug sets the floor. Size can only grow (in-place resize), never shrink.
+    - field_path: storage_size_mib
+      sku_meter: additional storage
+      pricing_unit: GiB-months
+      impact: Storage beyond the size slug's included disk bills per GiB. Must stay at or above the primary's storage, and can only grow.
+  estimate_exclusions:
+    - outbound data transfer beyond the account's pooled allowance
+  notes: The replica bills exactly like a single-node cluster of the same slug. Deleting the replica stops its billing immediately; the primary is unaffected.

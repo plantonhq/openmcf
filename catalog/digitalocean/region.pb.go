@@ -44,20 +44,35 @@ const (
 	DigitalOceanRegion_blr1 DigitalOceanRegion = 7
 	// amsterdam 3
 	DigitalOceanRegion_ams3 DigitalOceanRegion = 8
+	// new york 1
+	DigitalOceanRegion_nyc1 DigitalOceanRegion = 9
+	// new york 2
+	DigitalOceanRegion_nyc2 DigitalOceanRegion = 10
+	// san francisco 2
+	DigitalOceanRegion_sfo2 DigitalOceanRegion = 11
+	// sydney 1
+	DigitalOceanRegion_syd1 DigitalOceanRegion = 12
+	// atlanta 1
+	DigitalOceanRegion_atl1 DigitalOceanRegion = 13
 )
 
 // Enum value maps for DigitalOceanRegion.
 var (
 	DigitalOceanRegion_name = map[int32]string{
-		0: "digital_ocean_region_unspecified",
-		1: "nyc3",
-		2: "sfo3",
-		3: "fra1",
-		4: "sgp1",
-		5: "lon1",
-		6: "tor1",
-		7: "blr1",
-		8: "ams3",
+		0:  "digital_ocean_region_unspecified",
+		1:  "nyc3",
+		2:  "sfo3",
+		3:  "fra1",
+		4:  "sgp1",
+		5:  "lon1",
+		6:  "tor1",
+		7:  "blr1",
+		8:  "ams3",
+		9:  "nyc1",
+		10: "nyc2",
+		11: "sfo2",
+		12: "syd1",
+		13: "atl1",
 	}
 	DigitalOceanRegion_value = map[string]int32{
 		"digital_ocean_region_unspecified": 0,
@@ -69,6 +84,11 @@ var (
 		"tor1":                             6,
 		"blr1":                             7,
 		"ams3":                             8,
+		"nyc1":                             9,
+		"nyc2":                             10,
+		"sfo2":                             11,
+		"syd1":                             12,
+		"atl1":                             13,
 	}
 )
 
@@ -103,7 +123,7 @@ var File_catalog_digitalocean_region_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_region_proto_rawDesc = "" +
 	"\n" +
-	"!catalog/digitalocean/region.proto\x12\x18dev.planton.digitalocean\x1a\x1cshared/options/options.proto*\x80\x02\n" +
+	"!catalog/digitalocean/region.proto\x12\x18dev.planton.digitalocean\x1a\x1cshared/options/options.proto*\x80\x03\n" +
 	"\x12DigitalOceanRegion\x12$\n" +
 	" digital_ocean_region_unspecified\x10\x00\x12\x16\n" +
 	"\x04nyc3\x10\x01\x1a\f\x92\xa9\x1d\bNew York\x12\x1b\n" +
@@ -114,7 +134,16 @@ const file_catalog_digitalocean_region_proto_rawDesc = "" +
 	"\x92\xa9\x1d\x06London\x12\x15\n" +
 	"\x04tor1\x10\x06\x1a\v\x92\xa9\x1d\aToronto\x12\x17\n" +
 	"\x04blr1\x10\a\x1a\r\x92\xa9\x1d\tBangalore\x12\x17\n" +
-	"\x04ams3\x10\b\x1a\r\x92\xa9\x1d\tAmsterdamB\xe0\x01\n" +
+	"\x04ams3\x10\b\x1a\r\x92\xa9\x1d\tAmsterdam\x12\x18\n" +
+	"\x04nyc1\x10\t\x1a\x0e\x92\xa9\x1d\n" +
+	"New York 1\x12\x18\n" +
+	"\x04nyc2\x10\n" +
+	"\x1a\x0e\x92\xa9\x1d\n" +
+	"New York 2\x12\x1d\n" +
+	"\x04sfo2\x10\v\x1a\x13\x92\xa9\x1d\x0fSan Francisco 2\x12\x14\n" +
+	"\x04syd1\x10\f\x1a\n" +
+	"\x92\xa9\x1d\x06Sydney\x12\x15\n" +
+	"\x04atl1\x10\r\x1a\v\x92\xa9\x1d\aAtlantaB\xe0\x01\n" +
 	"\x1ccom.dev.planton.digitaloceanB\vRegionProtoP\x01Z1github.com/plantonhq/planton/catalog/digitalocean\xa2\x02\x03DPD\xaa\x02\x18Dev.Planton.Digitalocean\xca\x02\x18Dev\\Planton\\Digitalocean\xe2\x02$Dev\\Planton\\Digitalocean\\GPBMetadata\xea\x02\x1aDev::Planton::Digitaloceanb\x06proto3"
 
 var (

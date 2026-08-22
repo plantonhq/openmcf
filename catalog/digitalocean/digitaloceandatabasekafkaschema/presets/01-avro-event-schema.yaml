@@ -1,0 +1,13 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaSchema
+metadata:
+  name: orders-value-schema
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: my-kafka-cluster
+      fieldPath: status.outputs.cluster_id
+  subjectName: orders-value
+  schemaType: avro
+  schema: '{"type":"record","name":"Order","namespace":"com.example.orders","fields":[{"name":"id","type":"string"},{"name":"amountCents","type":"long"},{"name":"placedAt","type":{"type":"long","logicalType":"timestamp-millis"}}]}'

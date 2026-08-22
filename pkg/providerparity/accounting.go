@@ -206,7 +206,7 @@ func BuildAccounting(repoRoot string, provider cloudresourcekind.CloudResourcePr
 	if err != nil {
 		return Accounting{}, err
 	}
-	return buildAccounting(provider.String(), spec, modules, schemas, gaSchema, manifests, ledger), nil
+	return buildAccounting(crkreflect.ProviderDirName(provider), spec, modules, schemas, gaSchema, manifests, ledger), nil
 }
 
 // buildAccounting is the pure join -- everything I/O-free so the hermetic

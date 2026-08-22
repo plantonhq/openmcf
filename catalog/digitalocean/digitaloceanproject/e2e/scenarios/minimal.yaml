@@ -1,0 +1,21 @@
+# Minimal DigitalOceanProject: a bare project. Proves the full
+# create/verify/destroy lifecycle, the provider's purpose default ("Web
+# Application"), and the project_id/owner outputs the verifier addresses
+# the project with. Project names are account-scoped; the run id keeps
+# concurrent runs apart.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanProject
+metadata:
+  name: planton-oss-e2e-digitaloceanproject-min
+  id: planton-oss-e2e-digitaloceanproject-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanproject
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  projectName: pltn-e2e-doprj-min-${E2E_RUN_ID}

@@ -1,0 +1,15 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: web-fleet-cpu
+spec:
+  description: CPU of the web fleet above 90 percent for 10 minutes
+  metricType: v1/insights/droplet/cpu
+  compare: GreaterThan
+  value: 90
+  window: 10m
+  tags:
+    - web
+  alerts:
+    emails:
+      - ops@example.com

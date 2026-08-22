@@ -11,17 +11,15 @@ This preset creates a free, auto-renewing SSL certificate from Let's Encrypt via
 
 ## Key Configuration Choices
 
-- **Let's Encrypt** (`type: lets_encrypt`, `letsEncrypt`) -- free, auto-renewed; DigitalOcean performs ACME validation.
-- **Domains** (`domains`) -- list of FQDNs to include (e.g., `example.com`, `www.example.com`). Wildcards supported (e.g., `*.example.com`) but require DNS validation.
-- **Auto-renew enabled** (`disableAutoRenew: false`) -- DigitalOcean renews before expiry; keep enabled for production.
-- **Certificate name** (`certificateName`) -- used when referencing this cert in load balancers; use a stable name for IaC.
-- **Use certificate name in LB** -- reference by name (not ID) so IaC state survives renewals.
+- **Let's Encrypt branch** (`letsEncrypt`) -- setting this branch makes the certificate a Let's Encrypt one; DigitalOcean performs the ACME validation and always auto-renews.
+- **Domains** (`domains`) -- list of FQDNs to include (e.g., `example.com`, `www.example.com`). Wildcards are supported (e.g., `*.example.com`). Every domain must already be managed by DigitalOcean DNS in the same account -- issuance fails otherwise.
+- **Certificate name** (`certificateName`) -- the certificate's stable identity. Reference certificates BY NAME everywhere (load balancers do this natively): the certificate's UUID rotates on every auto-renewal, the name never does.
 
 ## Placeholders to Replace
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `example.com`, `www.example.com` | Domains to include in the certificate | Your registered domain and desired subdomains |
+| `example.com`, `www.example.com` | Domains to include in the certificate | Your DigitalOcean-DNS-managed domain and desired subdomains |
 | `my-lets-encrypt-cert` | Human-readable certificate identifier | Choose a descriptive name; used in load balancer config |
 
 ## Related Presets

@@ -1,9 +1,13 @@
-# Create the DigitalOcean DNS zone (domain)
+# The DNS zone (a DigitalOcean "domain"). Adding a domain does not require
+# owning it; it resolves once the registrar delegates to DigitalOcean's name
+# servers. ip_address is a create-only convenience that seeds an initial apex
+# A record DigitalOcean never tracks afterwards — prefer declaring records.
 resource "digitalocean_domain" "dns_zone" {
-  name = local.domain_name
+  name       = var.spec.domain_name
+  ip_address = var.spec.ip_address != "" ? var.spec.ip_address : null
 }
 
-# Create DNS records
+# The zone's managed records, one resource per record value.
 resource "digitalocean_record" "dns_records" {
   for_each = { for record in local.dns_records : record.key => record }
 
@@ -11,41 +15,11 @@ resource "digitalocean_record" "dns_records" {
   type   = each.value.type
   name   = each.value.name
   value  = each.value.value
-  ttl    = each.value.ttl_seconds
+  ttl    = each.value.ttl
 
-  # Priority for MX and SRV records
-  priority = (
-    each.value.type == "MX" || each.value.type == "SRV"
-    ? coalesce(each.value.priority, 0)
-    : null
-  )
-
-  # Weight for SRV records
-  weight = (
-    each.value.type == "SRV"
-    ? coalesce(each.value.weight, 0)
-    : null
-  )
-
-  # Port for SRV records
-  port = (
-    each.value.type == "SRV"
-    ? coalesce(each.value.port, 0)
-    : null
-  )
-
-  # Flags for CAA records
-  flags = (
-    each.value.type == "CAA"
-    ? coalesce(each.value.flags, 0)
-    : null
-  )
-
-  # Tag for CAA records
-  tag = (
-    each.value.type == "CAA"
-    ? each.value.tag
-    : null
-  )
+  priority = each.value.priority
+  weight   = each.value.weight
+  port     = each.value.port
+  flags    = each.value.flags
+  tag      = each.value.tag
 }
-

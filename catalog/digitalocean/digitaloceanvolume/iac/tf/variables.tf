@@ -1,25 +1,26 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for the DigitalOcean Volume"
+  description = "DigitalOceanVolume specification"
   type = object({
-    volume_name     = string
-    description     = optional(string, "")
-    region          = string
-    size_gib        = number
-    filesystem_type = optional(string, "NONE")  # NONE, EXT4, or XFS
-    snapshot_id     = optional(string, "")
-    tags            = optional(list(string), [])
+    volume_name              = string
+    description              = optional(string, "")
+    region                   = string
+    size_gib                 = number
+    filesystem_type          = optional(string, "")
+    initial_filesystem_label = optional(string, "")
+    snapshot_id              = optional(string, "")
+    tags                     = optional(list(string), [])
   })
 }

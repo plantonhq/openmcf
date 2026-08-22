@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandropletautoscalepool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Member droplets run on DigitalOcean's encrypted-at-rest SSD storage exactly like standalone droplets; there is no toggle.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed keys for droplet storage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transport security is the workload's concern; the pool provisions compute, not endpoints.
+    - control_id: no-public-access
+      status: configurable
+      field_path: droplet_template.vpc
+      evidence:
+        type: spec_default
+        reference: Members join the referenced VPC (or the region's default VPC when unset) and get private networking there; DigitalOcean gives every member a public IPv4 as well -- restrict reachability with a DigitalOceanFirewall targeting the pool's tags.
+      notes: The provider's public_networking toggle is dead on write at the pin (never sent -- excluded from the spec), so members always have public addresses; the enforceable control is firewalling, not address suppression.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: droplet_template.tags
+      evidence:
+        type: spec_default
+        reference: Tags land on every member, and a DigitalOceanFirewall rule targeting those tags follows the pool's membership automatically as it scales -- the only ingress control that tracks autoscaled droplets.
+      notes: Per-droplet firewall attachment cannot track a pool that adds and removes members; tag-targeted rules are the pattern (the firewall kind's GUIDE teaches it).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; front the pool with a DigitalOceanLoadBalancer for that layer.
+    - control_id: rbac
+      status: not_applicable
+      notes: No permission model of its own; API-token scopes govern who can manage the pool.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean has no instance-identity / metadata-credential mechanism for droplets.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: ssh_keys is required (min one key) and the API mandates it for pool members -- key-based SSH is the only first-boot access path; password login is never provisioned.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No per-pool audit surface; account-level activity appears in the team audit history.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: droplet_template.with_droplet_agent
+      evidence:
+        type: spec_default
+        reference: with_droplet_agent installs the DigitalOcean monitoring agent on every member -- the same metrics dynamic scaling decides on. Keep it enabled for any dynamic pool.
+      notes: A dynamic pool without the agent scales blind on memory (CPU has a hypervisor-side fallback; memory does not) -- the GUIDE's configuration warning.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Pool members are interchangeable cattle recreated from the template; DigitalOcean droplet backups do not apply to autoscale members, and state belongs in external stores by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: static.target_instances
+      evidence:
+        type: spec_default
+        reference: Running two or more members (static target_instances >= 2, or dynamic min_instances >= 2) keeps capacity through any single member's failure; DigitalOcean replaces unhealthy members to hold the target.
+      notes: All members share one region (the template's region); cross-region redundancy needs a second pool.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for pools -- and delete is DANGEROUS by API design; destroying the pool destroys every member droplet (the GUIDE's loudest warning).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Members are unmanaged droplets; image and package currency is the operator's rebuild cadence (update the template image and let the pool roll members).

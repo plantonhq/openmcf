@@ -6,27 +6,48 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block storage volume.
-A block storage volume provides expandable storage that can be attached to Droplets.
-This specification focuses on essential parameters for volume creation, adhering to the 80/20 principle.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanVolumeSpec defines the specification required to create a DigitalOcean block
+storage volume, modeling the provider's full argument surface. A block storage volume provides
+expandable storage that is attached to Droplets through the Droplet kind's `volume_ids` list;
+attachment is a property of the Droplet, never of the volume.
 
 ## Example
 
 ```yaml
+# Example DigitalOceanVolume manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real volume: region + size, left unformatted
+# (format it yourself from the Droplet).
+#
+# Document 2 -- a production-shaped volume: xfs-formatted with a filesystem
+# label, described, and tagged. Attach volumes through the Droplet kind's
+# volumeIds list; attachment is a property of the Droplet, never the volume.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
-  name: first-volume
+  name: example-dovol-minimal
 spec:
-  volumeName: data-volume-01          # lowercase letters, numbers, hyphens
-  description: "Block storage for PostgreSQL"
-  region: nyc3                        # any valid DigitalOceanRegion enum value
-  sizeGib: 100                        # 1 – 16000 GiB
-  filesystemType: ext4                # EXT4 | XFS | NONE
-  snapshotId: ""                      # leave blank if not using a snapshot
+  volumeName: scratch-data
+  region: nyc3
+  sizeGib: 50
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: example-dovol-full
+spec:
+  volumeName: postgres-data
+  description: PostgreSQL data volume for production
+  region: nyc3
+  sizeGib: 500
+  filesystemType: xfs
+  initialFilesystemLabel: pgdata
   tags:
-    - planton
-    - env-staging
+    - env:prod
+    - service:postgres
 ```
 
 ## Spec Fields
@@ -38,6 +59,7 @@ spec:
 | `spec.region` | `enum` | yes |  |  |
 | `spec.sizeGib` | `uint32` | yes |  |  |
 | `spec.filesystemType` | `enum` |  |  |  |
+| `spec.initialFilesystemLabel` | `string` |  |  |  |
 | `spec.snapshotId` | `string` |  |  |  |
 | `spec.tags` | `[]string` |  |  |  |
 
@@ -49,6 +71,7 @@ spec:
 
 The name of the volume. Must be lowercase letters, numbers, and hyphens only,
 starting with a letter and ending with a letter or number. Maximum 64 characters.
+The name cannot be changed after creation.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"64","pattern":"^[a-z]([a-z0-9-]*[a-z0-9])?$"}}
 
@@ -56,10 +79,8 @@ starting with a letter and ending with a letter or number. Maximum 64 characters
 
 `string`
 
-An optional description for the volume.
-Constraints: Maximum 100 characters.
-
-- rule: {"string":{"maxLen":"100"}}
+(Optional) A free-form description for the volume.
+Create-only at the current provider pin: changing the description REPLACES the volume.
 
 ### spec.region
 
@@ -81,22 +102,30 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
 ### spec.sizeGib
 
 `uint32` · required
 
-The size of the volume in GiB.
-Constraints: between 1 and 16000 (inclusive).
+The size of the volume in GiB. Volumes can only be EXPANDED after creation: the provider
+rejects a shrink at plan time, so lowering this value fails before anything is applied.
+DigitalOcean caps volume size at 16 TiB (larger requests fail at the API).
 
-- rule: {"required":true,"uint32":{"lte":16000,"gte":1}}
+- rule: {"required":true,"uint32":{"gte":1}}
 
 ### spec.filesystemType
 
 `enum`
 
-The initial filesystem to format the volume with.
-Allowed values: ext4, xfs, or none (no pre-formatting). Default is none.
+(Optional) The initial filesystem to format the volume with at creation time.
+Create-only: DigitalOcean formats the volume once and never reports this argument back
+(the resulting filesystem is observable through the separate computed attributes).
+Leave unset (unformatted) to format the volume yourself from the Droplet.
 
 Allowed values (use exactly as shown):
 
@@ -104,21 +133,30 @@ Allowed values (use exactly as shown):
 - `ext4`
 - `xfs`
 
+### spec.initialFilesystemLabel
+
+`string`
+
+(Optional) The filesystem label applied when the volume is formatted at creation time
+(e.g. "data"). Only meaningful together with `filesystem_type`. Create-only, and never
+reported back by the API.
+
 ### spec.snapshotId
 
 `string`
 
-An optional snapshot ID or reference to a volume snapshot to create this volume from.
-If provided, the new volume will be created from the given snapshot (inheriting its region and minimum size).
+(Optional) A volume snapshot ID to create this volume from. The new volume inherits the
+snapshot's region and minimum size. Create-only, and never reported back by the API.
 
 ### spec.tags
 
 `[]string`
 
-A list of tags to apply to the volume.
-Tags must be unique and consist of letters, numbers, colons, dashes, or underscores.
+(Optional) Tags applied to the volume. Both provisioners apply the union of these tags and
+the standard Planton labels. Tags may contain letters, numbers, colons, dashes, and
+underscores, up to 255 characters each.
 
-- rule: {"repeated":{"unique":true,"items":{"string":{"maxLen":"64","pattern":"^[A-Za-z0-9:_-]+$"}}}}
+- rule: {"repeated":{"unique":true,"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
 
 ## Outputs
 
@@ -126,7 +164,8 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanVolu
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.volume_id` | `string` | The unique identifier (UUID) of the created DigitalOcean volume. |
+| `status.outputs.volume_id` | `string` | The unique identifier (UUID) of the created DigitalOcean volume. The Droplet kind's volume_ids list consumes this output to attach the volume. |
+| `status.outputs.urn` | `string` | The uniform resource name (URN) of the volume, e.g. "do:volume:<uuid>". |
 
 ## Referenced By
 

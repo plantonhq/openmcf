@@ -1,9 +1,29 @@
+# Example DigitalOceanContainerRegistry manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real registry: starter (free) tier, DigitalOcean
+# chooses the region. Remember: one registry per account, and names are
+# globally unique across ALL DigitalOcean accounts.
+#
+# Document 2 -- a production-shaped registry: basic tier, pinned region, and
+# minted docker credentials (push access, 30-day expiry) exported through the
+# docker_credentials stack output.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
-  name: first-container-registry          # K8s resource name (must be unique in the namespace)
+  name: example-docr-minimal
 spec:
-  name: first-container-registry-planton          # Registry name, 1‑63 chars, lowercase, numbers, hyphens
-  subscriptionTier: basic      # starter | basic | professional
-  region: blr1                 # Any valid DigitalOceanRegion enum slug (e.g., nyc3, sfo3)
-  garbageCollectionEnabled: false   # Enable automated GC of untagged images
+  name: acme-registry
+  subscriptionTier: starter
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanContainerRegistry
+metadata:
+  name: example-docr-full
+spec:
+  name: acme-registry-prod
+  subscriptionTier: basic
+  region: nyc3
+  dockerCredentials:
+    write: true
+    expirySeconds: 2592000

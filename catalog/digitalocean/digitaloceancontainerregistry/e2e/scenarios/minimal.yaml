@@ -1,0 +1,21 @@
+# Minimal registry: starter (free) tier, no region -- proves the
+# DigitalOcean-chooses-region path and the region output read-back.
+# Registry names are globally unique across ALL DigitalOcean accounts,
+# hence the ${E2E_RUN_ID} token.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanContainerRegistry
+metadata:
+  name: planton-oss-e2e-digitaloceancontainerregistry-min
+  id: planton-oss-e2e-digitaloceancontainerregistry-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceancontainerregistry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: pltn-e2e-reg-min-${E2E_RUN_ID}
+  subscriptionTier: starter

@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceancdn
+spec:
+  billing_model: free
+  notes: The CDN endpoint itself is free -- DigitalOcean includes CDN delivery with the Spaces subscription, and CDN bandwidth draws from the same outbound-transfer allowance the origin bucket already carries (overage bills on the Spaces side, not on this resource). Nothing on this endpoint meters separately.

@@ -1,0 +1,50 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+resources:
+  digitalocean_spaces_bucket:
+    mappings:
+      - spec: spec.bucket_name
+        arg: name
+      # The spec's 2-value access enum (private/public-read) renders the
+      # provider's free-string canned ACL.
+      - spec: spec.access_control
+        arg: acl
+      # The provider wraps a single bool in a MaxItems:1 versioning block;
+      # the spec flattens it.
+      - spec: spec.versioning_enabled
+        arg: versioning.enabled
+      # The spec pluralizes the repeated lifecycle_rule block.
+      - spec: spec.lifecycle_rules
+        arg: lifecycle_rule
+  # Per-bucket settings satellites: separate provider resources whose
+  # lifecycle is identical to the bucket's, recorded composed into this kind
+  # in the dispositions ledger.
+  digitalocean_spaces_bucket_cors_configuration:
+    mappings:
+      # The spec pluralizes the repeated cors_rule block. CORS rides the
+      # standalone resource because the bucket's inline cors_rule is
+      # deprecated at the pin.
+      - spec: spec.cors_rules
+        arg: cors_rule
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+  digitalocean_spaces_bucket_policy:
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+  digitalocean_spaces_bucket_logging:
+    mappings:
+      # The satellite's args live under the spec's logging message.
+      - spec: spec.logging.target_bucket
+        arg: target_bucket
+      - spec: spec.logging.target_prefix
+        arg: target_prefix
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates

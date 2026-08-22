@@ -6,10 +6,10 @@ Deploys a DigitalOcean block storage volume with configurable size, region, and 
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Block Storage Volume** -- a `digitalocean_volume` resource in the specified region with the given size, optional filesystem formatting, optional description, and tags
-- **DigitalOcean Tags** -- tags from the spec applied directly to the volume resource for organizational tracking and cost allocation
+- **Block Storage Volume** -- a `digitalocean_volume` resource in the specified region with the given size, optional filesystem formatting (with an optional filesystem label), optional description, and tags
+- **DigitalOcean Tags** -- tags from the spec, merged with the standard Planton labels, applied directly to the volume resource for organizational tracking and cost allocation
 
-The volume is created in a detached state. Attach it to a Droplet separately via a volume attachment or the DigitalOcean control panel.
+The volume is created in a detached state. Attach it from the Droplet side: the DigitalOcean Droplet kind's `volumeIds` list consumes this volume's `volume_id` output.
 
 ## Before You Deploy
 
@@ -35,7 +35,7 @@ Open the deployment store, find **Storage Volume on DigitalOcean**, and click **
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digitalocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
   name: app-data
@@ -61,13 +61,15 @@ These are the most important decisions when configuring a DigitalOcean storage v
 
 **Volume name** -- The `volumeName` field sets the volume's name on DigitalOcean. Must be lowercase letters, numbers, and hyphens only, starting with a letter and ending with a letter or number (maximum 64 characters).
 
-**Volume size** -- The `sizeGib` field sets the volume capacity in GiB, from 1 to 16,000. DigitalOcean volumes can be resized up to 16 TiB without detaching the volume from its Droplet, so start with a size that matches current needs and scale as data grows.
+**Volume size** -- The `sizeGib` field sets the volume capacity in GiB (DigitalOcean caps volumes at 16 TiB). Volumes can only be EXPANDED after creation -- a shrink fails at plan time -- and resizing works without detaching from the Droplet, so start with a size that matches current needs and scale as data grows.
 
 **Region** -- The `region` field accepts a DigitalOcean region slug (e.g., `nyc1`, `sfo3`, `fra1`, `lon1`). The volume must be in the same region as any Droplet you plan to attach it to. Volumes cannot be moved across regions after creation.
 
-**Filesystem type** -- The `filesystemType` field optionally pre-formats the volume with `ext4` or `xfs`. Pre-formatting eliminates the need for manual `mkfs` after attaching to a Droplet -- the volume is immediately mountable. Use `ext4` for general-purpose storage and `xfs` for database workloads with heavy sequential writes. Leave unset for unformatted volumes.
+**Filesystem type** -- The `filesystemType` field optionally pre-formats the volume with `ext4` or `xfs`. Pre-formatting eliminates the need for manual `mkfs` after attaching to a Droplet -- the volume is immediately mountable. Use `ext4` for general-purpose storage and `xfs` for database workloads with heavy sequential writes. Leave unset for unformatted volumes. Formatting happens exactly once, at creation.
 
-**Description** -- The `description` field adds a human-readable description (up to 100 characters) stored on the DigitalOcean resource. Useful for documenting the volume's purpose, especially when managing multiple volumes in the same project.
+**Filesystem label** -- The `initialFilesystemLabel` field labels the filesystem when formatting (e.g. `pgdata`), so the Droplet can mount by label (`LABEL=pgdata`) instead of by device path. Only meaningful together with `filesystemType`.
+
+**Description** -- The `description` field adds a human-readable description stored on the DigitalOcean resource. It is create-only at the current provider pin: editing it later REPLACES the volume, so write it right the first time.
 
 **Snapshot source** -- The `snapshotId` field creates the volume from an existing volume snapshot. The volume inherits the snapshot's data, and `sizeGib` must be at least the snapshot's size. Useful for disaster recovery or cloning environments from production data.
 
@@ -85,7 +87,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `volume_id` | UUID of the created DigitalOcean volume | Volume attachment, monitoring dashboards |
+| `volume_id` | UUID of the created DigitalOcean volume | The Droplet kind's `volumeIds` attachment list, monitoring dashboards |
+| `urn` | The volume's uniform resource name (`do:volume:<uuid>`) | DigitalOcean project assignment, audit |
 
 ## Common Patterns
 
@@ -97,4 +100,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-This component operates independently and does not reference other components via foreign keys.
+- [**Droplet on DigitalOcean**](/cloud-catalog/digital-ocean-droplet) -- attaches this volume via its `volumeIds` list consuming the `volume_id` output

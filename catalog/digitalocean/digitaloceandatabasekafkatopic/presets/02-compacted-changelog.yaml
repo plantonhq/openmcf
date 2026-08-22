@@ -1,0 +1,19 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaTopic
+metadata:
+  name: customer-snapshots
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: my-kafka-cluster
+      fieldPath: status.outputs.cluster_id
+  topicName: customer-snapshots
+  partitionCount: 3
+  replicationFactor: 3
+  config:
+    cleanupPolicy: compact
+    minInsyncReplicas: 2
+    minCleanableDirtyRatio: 0.4
+    maxCompactionLagMs: 604800000
+    messageTimestampType: log_append_time

@@ -1,31 +1,28 @@
-# DigitalOcean Certificate Resource
+# DigitalOcean certificate.
 #
-# This module implements the discriminated union pattern for DigitalOcean certificates:
-# - type = "lets_encrypt": Fully automated, auto-renewing certificates (requires DigitalOcean DNS)
-# - type = "custom": User-provided certificates (bring your own cert)
+# The spec's certificate_source oneof picks the branch, and the branch derives
+# DigitalOcean's `type` argument: lets_encrypt (issued and auto-renewed by
+# DigitalOcean; every domain must be managed by DigitalOcean DNS in this
+# account) or custom (user-provided PEM material).
 #
-# The resource conditionally sets fields based on the certificate type to match
-# the DigitalOcean API requirements.
-
+# Every argument is create-only, so any change replaces the certificate.
+# create_before_destroy makes that replacement zero-downtime for consumers
+# that reference the certificate by its stable name.
 resource "digitalocean_certificate" "certificate" {
   name = var.spec.certificate_name
   type = local.cert_type
 
-  # Let's Encrypt configuration (only used when type = "lets_encrypt")
-  # The domains field is required for Let's Encrypt certificates
-  domains = local.is_lets_encrypt ? local.le_domains : null
+  # Let's Encrypt branch. domains conflicts with the PEM arguments, so it must
+  # stay null on the custom branch.
+  domains = local.is_lets_encrypt ? var.spec.lets_encrypt.domains : null
 
-  # Custom certificate configuration (only used when type = "custom")
-  # All three fields are required for custom certificates to work correctly
-  leaf_certificate  = local.is_custom ? local.custom_leaf_cert : null
-  private_key       = local.is_custom ? local.custom_private_key : null
-  certificate_chain = local.is_custom && local.custom_cert_chain != "" ? local.custom_cert_chain : null
+  # Custom branch. The provider stores only hashes of the PEM material
+  # (the DigitalOcean API never returns it).
+  leaf_certificate  = local.is_custom ? var.spec.custom.leaf_certificate : null
+  private_key       = local.is_custom ? var.spec.custom.private_key : null
+  certificate_chain = local.is_custom && var.spec.custom.certificate_chain != "" ? var.spec.custom.certificate_chain : null
 
-  # Lifecycle management for zero-downtime certificate rotation
-  # When a custom certificate is replaced (e.g., expiring cert), create the new one
-  # before destroying the old one to prevent service disruption
   lifecycle {
     create_before_destroy = true
   }
 }
-

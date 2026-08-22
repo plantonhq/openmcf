@@ -1,0 +1,26 @@
+# Second-VPC fixture for the peering scenario: a peering needs exactly TWO
+# VPCs, and the kind's registry prerequisite installs exactly one (the
+# shared DigitalOceanVpc install fixture) -- so the scenario deploys this
+# EXTRA VPC instance through its e2e-prerequisites annotation, the
+# framework's documented extra-instance mechanism. Same nyc3 region as the
+# install fixture (peerings work cross-region, but same-region keeps the
+# lane deterministic); a disjoint explicit ip_range -- peered VPCs must
+# not overlap, and the install fixture pins 10.60.0.0/24.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpc
+metadata:
+  name: planton-oss-e2e-digitaloceanvpcpeering-second-vpc
+  id: planton-oss-e2e-digitaloceanvpcpeering-second-vpc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanvpcpeering
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: "Planton E2E second VPC for the peering scenario"
+  region: nyc3
+  ipRangeCidr: "10.61.0.0/24"

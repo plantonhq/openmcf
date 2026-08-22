@@ -1,26 +1,21 @@
-# Autoscaling Production Node Pool
+# Autoscaling Production Pool
 
-This preset creates an autoscaling node pool for a DigitalOcean Kubernetes cluster. It provisions general-purpose nodes with Kubernetes labels for workload scheduling and automatic scaling between 2 and 6 nodes based on pod demand.
+This preset adds an autoscaling application pool to an existing DOKS cluster: 3 nodes initially, scaling between 2 and 6 as demand moves, with a `workload: app` node label for scheduling and a production tag for DigitalOcean-side grouping.
 
 ## When to Use
 
-- Production application workloads with variable traffic patterns
-- Adding dedicated capacity separate from the cluster's default node pool
-- Teams practicing the "sacrificial default pool" pattern (keep default pool minimal, run workloads on additional pools)
+- Application workloads whose demand varies (web tiers, API backends, queue consumers)
+- Growing a cluster beyond its default pool without resizing it (default-pool size changes replace the whole cluster)
+- Separating application workloads from system workloads with labels
 
 ## Key Configuration Choices
 
-- **Autoscaling** (`autoScale: true`, 2-6 nodes) -- the cluster autoscaler adds/removes nodes based on pending pod scheduling.
-- **General-purpose nodes** (`size: s-4vcpu-8gb`) -- balanced for typical web/API workloads. Use dedicated CPU instances (`c-*`) for compute-intensive workloads.
-- **Workload label** (`labels: {workload: app}`) -- enables `nodeSelector` or `nodeAffinity` rules to schedule pods exclusively on this pool.
-- **Cluster reference** -- uses `metadata.name` to identify the parent cluster.
+- **Autoscaling with coherent bounds** (`autoScale` + `minNodes`/`maxNodes`) -- DigitalOcean's cluster-autoscaler manages the node count between 2 and 6; `nodeCount: 3` is only the initial count and drifts freely afterward without producing configuration diffs.
+- **General-purpose sizing** (`size: s-4vcpu-8gb`) -- balanced CPU/RAM for typical application pods. Changing the size later replaces the pool (the nodes are recreated), so schedule size changes deliberately.
+- **Node label** (`workload: app`) -- target this pool from Kubernetes with a `nodeSelector` or node affinity. The standard Planton identity labels are always applied alongside.
+- **Cluster reference** (`cluster.valueFrom`) -- resolves the owning cluster's UUID from a `DigitalOceanKubernetesCluster` resource's outputs at deploy time.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<cluster-name>` | Name of the parent DOKS cluster | `DigitalOceanKubernetesCluster` resource `metadata.name` |
-
-## Related Presets
-
-- **02-fixed-size** -- Use instead for stable workloads where autoscaling is unnecessary
+- `metadata.name` / `nodePoolName` -- your pool's name (unique within the cluster).
+- `cluster.valueFrom.name` -- the name of your `DigitalOceanKubernetesCluster` resource (or replace the block with `value: <the cluster UUID>` for a cluster created outside Planton).

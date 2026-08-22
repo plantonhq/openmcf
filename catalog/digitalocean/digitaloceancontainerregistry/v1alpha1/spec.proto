@@ -5,11 +5,21 @@ package dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1;
 import "buf/validate/validate.proto";
 import "catalog/digitalocean/region.proto";
 
-// **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean
-// Container Registry (DOCR). It exposes only the essential fields needed for the common 80 % use case.
+// DigitalOceanContainerRegistrySpec defines the configuration for a DigitalOcean Container
+// Registry (DOCR), modeling the provider's full surface: the registry itself plus the optional
+// Docker credentials DigitalOcean can mint for it. A DigitalOcean account can hold exactly ONE
+// container registry, and registry names share a global namespace across all DigitalOcean
+// accounts.
 message DigitalOceanContainerRegistrySpec {
-  // Registry name (must be unique within your DigitalOcean account).
-  // 1-63 characters, lowercase letters, numbers, and hyphens; must start and end with an alphanumeric.
+  // Retired: `garbage_collection_enabled` had no counterpart anywhere in the
+  // provider or the API resource surface -- garbage collection is an on-demand
+  // API action, not a registry attribute, and the field silently did nothing.
+  reserved 4;
+  reserved "garbage_collection_enabled";
+
+  // Registry name (globally unique across ALL DigitalOcean accounts, not just yours).
+  // 1-63 characters, lowercase letters, numbers, and hyphens; must start and end with an
+  // alphanumeric. The name is the resource identity and cannot be changed after creation.
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -17,17 +27,37 @@ message DigitalOceanContainerRegistrySpec {
     (buf.validate.field).string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
   ];
 
-  // Subscription tier slug (defines storage limits and pricing).
+  // Subscription tier slug (defines storage limits and pricing). The tier can be changed
+  // after creation; everything else on the registry is create-only.
   DigitalOceanContainerRegistryTier subscription_tier = 2 [(buf.validate.field).required = true];
 
-  // Required region slug where registry data is stored (e.g., "nyc3", "sfo3").
-  // DigitalOcean container registries are single-region and the region cannot
-  // be changed after creation, so a region must be specified explicitly.
-  DigitalOceanRegion region = 3 [(buf.validate.field).required = true];
+  // (Optional) Region slug where registry data is stored (e.g. "nyc3", "sfo3").
+  // When omitted, DigitalOcean chooses a region and the chosen slug is reported back.
+  // The region cannot be changed after creation.
+  DigitalOceanRegion region = 3;
 
-  // Enable garbage collection of untagged images.
-  // Default is false (no automatic GC).
-  bool garbage_collection_enabled = 4;
+  // (Optional) Docker credentials to mint for this registry. When set, both provisioners
+  // create a credential (a base64-encoded Docker `config.json`) exported through the
+  // `docker_credentials` stack output. When omitted, no credential is created -- the secure
+  // default, since an unconfigured credential would otherwise live for ~50 years.
+  DigitalOceanContainerRegistryDockerCredentials docker_credentials = 5;
+}
+
+// Docker credentials minted for the registry.
+// Neither knob is recoverable from the DigitalOcean API afterwards: the API only ever returns a
+// freshly minted credential, which is why blind import of this surface is impossible at the
+// current provider pin.
+message DigitalOceanContainerRegistryDockerCredentials {
+  // Allow push (write) access. Defaults to false: a read-only pull credential.
+  bool write = 1;
+
+  // (Optional) Credential lifetime in seconds. When unset, DigitalOcean uses the API maximum
+  // (1576800000 seconds, roughly 50 years -- effectively non-expiring). Changing the lifetime
+  // re-mints the credential in place.
+  optional int32 expiry_seconds = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 1576800000
+  ];
 }
 
 // Supported subscription tiers for a DigitalOcean Container Registry.

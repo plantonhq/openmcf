@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceansshkey
+spec:
+  # The key imports ONLY by its numeric id -- a fingerprint does not work
+  # (the provider's read requires the integer), even though droplets accept
+  # fingerprints as key references. Lossless: name, public_key, and
+  # fingerprint are all read back.
+  values:
+    - name: ssh_key_id
+      derivations:
+        - from_stack_output: ssh_key_id
+      where_to_find: >-
+        `doctl compute ssh-key list` (the ID column) -- the control panel's
+        Settings -> Security page shows names and fingerprints but not the
+        numeric id.

@@ -1,0 +1,41 @@
+# Reference manifests for DigitalOceanMonitorAlert -- protovalidate-valid,
+# embedded as the reference page's Example block, and the documents the
+# offline tofu plans render. Two documents: a droplet CPU alert targeting
+# one droplet by reference, and a tag-targeted memory alert with Slack
+# delivery.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: web-cpu-alert
+spec:
+  description: CPU of web droplets above 90 percent
+  metricType: v1/insights/droplet/cpu
+  compare: GreaterThan
+  value: 90
+  window: 5m
+  dropletIds:
+    # Literal numeric droplet id; use valueFrom to reference a
+    # DigitalOceanDroplet resource instead.
+    - value: "123456789"
+  alerts:
+    emails:
+      - ops@example.com
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanMonitorAlert
+metadata:
+  name: fleet-memory-alert
+spec:
+  description: Memory of the web fleet above 85 percent
+  metricType: v1/insights/droplet/memory_utilization_percent
+  compare: GreaterThan
+  value: 85
+  window: 10m
+  tags:
+    - web
+  alerts:
+    emails:
+      - ops@example.com
+    slack:
+      - channel: "#alerts"
+        url: https://hooks.slack.com/services/EXAMPLE/EXAMPLE/EXAMPLE

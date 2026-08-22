@@ -21,17 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **DigitalOceanContainerRegistryStackOutputs** captures outputs after provisioning.
+// DigitalOceanContainerRegistryStackOutputs captures outputs after provisioning.
 type DigitalOceanContainerRegistryStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The registry name.
+	// The registry name (also the registry's resource identifier in DigitalOcean).
 	RegistryName string `protobuf:"bytes,1,opt,name=registry_name,json=registryName,proto3" json:"registry_name,omitempty"`
-	// Full server URL, e.g. "registry.digitalocean.com/<registry_name>".
+	// The registry host, always "registry.digitalocean.com".
 	ServerUrl string `protobuf:"bytes,2,opt,name=server_url,json=serverUrl,proto3" json:"server_url,omitempty"`
-	// Region slug where the registry is hosted.
-	Region        string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The full endpoint for docker push/pull, i.e. "registry.digitalocean.com/<registry_name>".
+	Endpoint string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// Region slug where the registry is hosted (reported by DigitalOcean, which also covers the
+	// case where the region was left unset and DigitalOcean chose one).
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	// Base64-encoded Docker `config.json` for this registry -- a SECRET. Populated only when the
+	// spec's docker_credentials block is set; empty otherwise.
+	DockerCredentials string `protobuf:"bytes,5,opt,name=docker_credentials,json=dockerCredentials,proto3" json:"docker_credentials,omitempty"`
+	// RFC 3339 timestamp at which the minted docker credentials expire. Populated only when the
+	// spec's docker_credentials block is set; empty otherwise.
+	CredentialExpirationTime string `protobuf:"bytes,6,opt,name=credential_expiration_time,json=credentialExpirationTime,proto3" json:"credential_expiration_time,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *DigitalOceanContainerRegistryStackOutputs) Reset() {
@@ -78,9 +87,30 @@ func (x *DigitalOceanContainerRegistryStackOutputs) GetServerUrl() string {
 	return ""
 }
 
+func (x *DigitalOceanContainerRegistryStackOutputs) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
 func (x *DigitalOceanContainerRegistryStackOutputs) GetRegion() string {
 	if x != nil {
 		return x.Region
+	}
+	return ""
+}
+
+func (x *DigitalOceanContainerRegistryStackOutputs) GetDockerCredentials() string {
+	if x != nil {
+		return x.DockerCredentials
+	}
+	return ""
+}
+
+func (x *DigitalOceanContainerRegistryStackOutputs) GetCredentialExpirationTime() string {
+	if x != nil {
+		return x.CredentialExpirationTime
 	}
 	return ""
 }
@@ -89,12 +119,15 @@ var File_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_outputs_pro
 
 const file_catalog_digitalocean_digitaloceancontainerregistry_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Icatalog/digitalocean/digitaloceancontainerregistry/v1alpha1/outputs.proto\x12?dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1\"\x87\x01\n" +
+	"Icatalog/digitalocean/digitaloceancontainerregistry/v1alpha1/outputs.proto\x12?dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1\"\x90\x02\n" +
 	")DigitalOceanContainerRegistryStackOutputs\x12#\n" +
 	"\rregistry_name\x18\x01 \x01(\tR\fregistryName\x12\x1d\n" +
 	"\n" +
-	"server_url\x18\x02 \x01(\tR\tserverUrl\x12\x16\n" +
-	"\x06region\x18\x03 \x01(\tR\x06regionB\xf4\x03\n" +
+	"server_url\x18\x02 \x01(\tR\tserverUrl\x12\x1a\n" +
+	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06region\x18\x04 \x01(\tR\x06region\x12-\n" +
+	"\x12docker_credentials\x18\x05 \x01(\tR\x11dockerCredentials\x12<\n" +
+	"\x1acredential_expiration_time\x18\x06 \x01(\tR\x18credentialExpirationTimeB\xf4\x03\n" +
 	"Ccom.dev.planton.digitalocean.digitaloceancontainerregistry.v1alpha1B\fOutputsProtoP\x01Z~github.com/plantonhq/planton/catalog/digitalocean/digitaloceancontainerregistry/v1alpha1;digitaloceancontainerregistryv1alpha1\xa2\x02\x04DPDD\xaa\x02?Dev.Planton.Digitalocean.Digitaloceancontainerregistry.V1alpha1\xca\x02?Dev\\Planton\\Digitalocean\\Digitaloceancontainerregistry\\V1alpha1\xe2\x02KDev\\Planton\\Digitalocean\\Digitaloceancontainerregistry\\V1alpha1\\GPBMetadata\xea\x02CDev::Planton::Digitalocean::Digitaloceancontainerregistry::V1alpha1b\x06proto3"
 
 var (

@@ -1,0 +1,62 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind folds the provider's reserved-IP family: the v4 and v6
+# reservations plus the v6 assignment resource (the v4 assignment resource
+# is never created -- v4 assigns through the reservation's own genuinely
+# mutable droplet_id, and the standalone v4 assignment row stays composed
+# in the dispositions ledger). The v4/v6 argument-name asymmetries are
+# absorbed here.
+resources:
+  digitalocean_reserved_ip:
+    mappings:
+      # The spec wires the assigned droplet by reference.
+      - spec: spec.droplet
+        arg: droplet_id
+    exclusions:
+      - arg: ip_address
+        reason: >-
+          Inert upstream: the provider's create sends only region (verified
+          in resource_reserved_ip.go -- the create request has no ip
+          field), and update silently ignores the argument before Read
+          overwrites it with the allocated address. The address is an
+          OUTPUT of reservation, never an input; representing it would be
+          a field that cannot do anything.
+  digitalocean_reserved_ipv6:
+    mappings:
+      # Same region concept as v4; the v6 resource names it region_slug.
+      - spec: spec.region
+        arg: region_slug
+    exclusions:
+      - arg: ip
+        reason: >-
+          Inert upstream, same class as the v4 ip_address: never sent on
+          create, no update path exists, and Read overwrites it with the
+          allocated address.
+      - arg: droplet_id
+        reason: >-
+          Defective inline upstream: the v6 create silently ignores
+          droplet_id and the resource has NO update function, so an inline
+          value produces a plan that can never converge (verified in
+          resource_reserved_ipv6.go). The module assigns v6 addresses
+          through digitalocean_reserved_ipv6_assignment instead -- the
+          spec's droplet field drives that resource.
+  digitalocean_reserved_ipv6_assignment:
+    mappings:
+      # The spec wires the assigned droplet by reference.
+      - spec: spec.droplet
+        arg: droplet_id
+    exclusions:
+      - arg: ip
+        reason: >-
+          Wired by the module to the v6 reservation it creates -- the
+          assignment always belongs to this kind's own address.
+specExclusions:
+  - field: spec.ip_version
+    reason: >-
+      Module-derived selector with no provider counterpart: it chooses
+      WHICH of the provider's parallel resource families to instantiate
+      (digitalocean_reserved_ip vs digitalocean_reserved_ipv6 + its
+      assignment) -- the v4/v6 split is two whole resources upstream, not
+      an argument on either.
