@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareauthenticatedoriginpullscertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareAuthenticatedOriginPullsCertificateSpec uploads the client
+// certificate Cloudflare presents to YOUR origin when Authenticated Origin
+// Pulls is enabled. Self-signed certificates are the normal case -- the
+// origin, not the public, validates this certificate. The scope decides the
+// blast radius: a zone upload replaces Cloudflare's shared certificate for
+// the whole zone; a hostname upload is referenced per hostname through
+// CloudflareAuthenticatedOriginPulls associations.
+//
+// Rotation is replacement: upload a new certificate (a new resource or a
+// changed certificate value), re-point consumers, then destroy the old
+// upload. Never rotate only the private key against the same certificate --
+// the zone-scoped API silently ignores a key-only change (a measured
+// provider defect at v5.23.0), so key and certificate always change together.
+message CloudflareAuthenticatedOriginPullsCertificateSpec {
+  // The zone the certificate is uploaded to.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The upload's scope (Cloudflare's two distinct API surfaces): zone
+  // replaces the zone-wide client certificate; hostname uploads a
+  // certificate for per-hostname associations to reference.
+  optional string scope = 2 [
+    (dev.planton.shared.options.default) = "zone",
+    (buf.validate.field).string = {
+      in: [
+        "zone",
+        "hostname"
+      ]
+    }
+  ];
+
+  // The client certificate in PEM form. Keep the PEM byte-stable (trailing
+  // newline included) -- a formatting-only change still replaces the upload.
+  string certificate = 3 [(buf.validate.field).required = true];
+
+  // The certificate's private key in PEM form. Provide a managed-secret
+  // reference; the platform resolves it just-in-time at deploy and never
+  // stores it in plaintext. The API never returns the key, so an imported or
+  // refreshed resource re-asserts it from configuration.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_key = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

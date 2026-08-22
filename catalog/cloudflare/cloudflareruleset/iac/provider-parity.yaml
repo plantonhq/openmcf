@@ -1,0 +1,357 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The v5 Stainless provider nests the ENTIRE rule tree (actions, all
+# action_parameters families, ratelimit, logging, overrides) inside the one
+# nested `rules` attribute -- a single configurable argument at the checker's
+# flat grain. The spec mirrors that tree block-for-block as typed messages
+# (restructuring three provider MapAttributes into typed map-value messages:
+# headers, cache_key header contains, vary headers). Fan-in mappings record
+# every spec leaf the one argument realizes.
+
+resources:
+  cloudflare_ruleset:
+    mappings:
+      # kind is a proto-reserved word hazard and reads ambiguously beside the
+      # resource kind; the spec names it ruleset_kind.
+      - spec: spec.ruleset_kind
+        arg: kind
+      - spec: spec.rules.action
+        arg: rules
+      - spec: spec.rules.action_parameters.additional_cacheable_ports
+        arg: rules
+      - spec: spec.rules.action_parameters.algorithms.name
+        arg: rules
+      - spec: spec.rules.action_parameters.asset_name
+        arg: rules
+      - spec: spec.rules.action_parameters.automatic_https_rewrites
+        arg: rules
+      - spec: spec.rules.action_parameters.autominify.css
+        arg: rules
+      - spec: spec.rules.action_parameters.autominify.html
+        arg: rules
+      - spec: spec.rules.action_parameters.autominify.js
+        arg: rules
+      - spec: spec.rules.action_parameters.bic
+        arg: rules
+      - spec: spec.rules.action_parameters.browser_ttl.default_ttl
+        arg: rules
+      - spec: spec.rules.action_parameters.browser_ttl.mode
+        arg: rules
+      - spec: spec.rules.action_parameters.cache
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.cache_by_device_type
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.cache_deception_armor
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.cookie.check_presence
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.cookie.include
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.header.check_presence
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.header.contains.values
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.header.exclude_origin
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.header.include
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.host.resolved
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.query_string.exclude.all
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.query_string.exclude.list
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.query_string.include.all
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.query_string.include.list
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.user.device_type
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.user.geo
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.custom_key.user.lang
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_key.ignore_query_strings_order
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_reserve.eligible
+        arg: rules
+      - spec: spec.rules.action_parameters.cache_reserve.minimum_file_size
+        arg: rules
+      - spec: spec.rules.action_parameters.content
+        arg: rules
+      - spec: spec.rules.action_parameters.content_converter
+        arg: rules
+      - spec: spec.rules.action_parameters.content_type
+        arg: rules
+      - spec: spec.rules.action_parameters.cookie_fields.name
+        arg: rules
+      - spec: spec.rules.action_parameters.disable_apps
+        arg: rules
+      - spec: spec.rules.action_parameters.disable_rum
+        arg: rules
+      - spec: spec.rules.action_parameters.disable_zaraz
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.default_ttl
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.mode
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.status_code_ttls.status_code
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.status_code_ttls.status_code_range.from
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.status_code_ttls.status_code_range.to
+        arg: rules
+      - spec: spec.rules.action_parameters.edge_ttl.status_code_ttls.value
+        arg: rules
+      - spec: spec.rules.action_parameters.email_obfuscation
+        arg: rules
+      - spec: spec.rules.action_parameters.expression
+        arg: rules
+      - spec: spec.rules.action_parameters.fonts
+        arg: rules
+      - spec: spec.rules.action_parameters.from_list.key
+        arg: rules
+      - spec: spec.rules.action_parameters.from_list.name
+        arg: rules
+      - spec: spec.rules.action_parameters.from_value.preserve_query_string
+        arg: rules
+      - spec: spec.rules.action_parameters.from_value.status_code
+        arg: rules
+      - spec: spec.rules.action_parameters.from_value.target_url.expression
+        arg: rules
+      - spec: spec.rules.action_parameters.from_value.target_url.value
+        arg: rules
+      - spec: spec.rules.action_parameters.headers.expression
+        arg: rules
+      - spec: spec.rules.action_parameters.headers.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.headers.value
+        arg: rules
+      - spec: spec.rules.action_parameters.host_header
+        arg: rules
+      - spec: spec.rules.action_parameters.hotlink_protection
+        arg: rules
+      - spec: spec.rules.action_parameters.id
+        arg: rules
+      - spec: spec.rules.action_parameters.immutable.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.immutable.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.increment
+        arg: rules
+      - spec: spec.rules.action_parameters.matched_data.public_key
+        arg: rules
+      - spec: spec.rules.action_parameters.max_age.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.max_age.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.max_age.value
+        arg: rules
+      - spec: spec.rules.action_parameters.mirage
+        arg: rules
+      - spec: spec.rules.action_parameters.must_revalidate.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.must_revalidate.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.must_understand.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.must_understand.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.no_cache.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.no_cache.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.no_cache.qualifiers
+        arg: rules
+      - spec: spec.rules.action_parameters.no_store.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.no_store.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.no_transform.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.no_transform.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.opportunistic_encryption
+        arg: rules
+      - spec: spec.rules.action_parameters.origin.host
+        arg: rules
+      - spec: spec.rules.action_parameters.origin.port
+        arg: rules
+      - spec: spec.rules.action_parameters.origin_cache_control
+        arg: rules
+      - spec: spec.rules.action_parameters.origin_error_page_passthru
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.action
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.categories.action
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.categories.category
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.categories.enabled
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.categories.sensitivity_level
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.enabled
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.rules.action
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.rules.enabled
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.rules.id
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.rules.score_threshold
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.rules.sensitivity_level
+        arg: rules
+      - spec: spec.rules.action_parameters.overrides.sensitivity_level
+        arg: rules
+      - spec: spec.rules.action_parameters.phases
+        arg: rules
+      - spec: spec.rules.action_parameters.polish
+        arg: rules
+      - spec: spec.rules.action_parameters.private.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.private.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.private.qualifiers
+        arg: rules
+      - spec: spec.rules.action_parameters.products
+        arg: rules
+      - spec: spec.rules.action_parameters.proxy_revalidate.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.proxy_revalidate.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.public.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.public.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.raw_response_fields.name
+        arg: rules
+      - spec: spec.rules.action_parameters.raw_response_fields.preserve_duplicates
+        arg: rules
+      - spec: spec.rules.action_parameters.read_timeout
+        arg: rules
+      - spec: spec.rules.action_parameters.redirects_for_ai_training
+        arg: rules
+      - spec: spec.rules.action_parameters.request_body_buffering
+        arg: rules
+      - spec: spec.rules.action_parameters.request_fields.name
+        arg: rules
+      - spec: spec.rules.action_parameters.respect_strong_etags
+        arg: rules
+      - spec: spec.rules.action_parameters.response.content
+        arg: rules
+      - spec: spec.rules.action_parameters.response.content_type
+        arg: rules
+      - spec: spec.rules.action_parameters.response.status_code
+        arg: rules
+      - spec: spec.rules.action_parameters.response_body_buffering
+        arg: rules
+      - spec: spec.rules.action_parameters.response_fields.name
+        arg: rules
+      - spec: spec.rules.action_parameters.response_fields.preserve_duplicates
+        arg: rules
+      - spec: spec.rules.action_parameters.rocket_loader
+        arg: rules
+      - spec: spec.rules.action_parameters.rules.values
+        arg: rules
+      - spec: spec.rules.action_parameters.ruleset
+        arg: rules
+      - spec: spec.rules.action_parameters.rulesets
+        arg: rules
+      - spec: spec.rules.action_parameters.s_maxage.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.s_maxage.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.s_maxage.value
+        arg: rules
+      - spec: spec.rules.action_parameters.security_level
+        arg: rules
+      - spec: spec.rules.action_parameters.serve_stale.disable_stale_while_updating
+        arg: rules
+      - spec: spec.rules.action_parameters.server_side_excludes
+        arg: rules
+      - spec: spec.rules.action_parameters.sni.value
+        arg: rules
+      - spec: spec.rules.action_parameters.ssl
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_if_error.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_if_error.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_if_error.value
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_while_revalidate.cloudflare_only
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_while_revalidate.operation
+        arg: rules
+      - spec: spec.rules.action_parameters.stale_while_revalidate.value
+        arg: rules
+      - spec: spec.rules.action_parameters.status_code
+        arg: rules
+      - spec: spec.rules.action_parameters.strip_etags
+        arg: rules
+      - spec: spec.rules.action_parameters.strip_last_modified
+        arg: rules
+      - spec: spec.rules.action_parameters.strip_set_cookie
+        arg: rules
+      - spec: spec.rules.action_parameters.sxg
+        arg: rules
+      - spec: spec.rules.action_parameters.transformed_request_fields.name
+        arg: rules
+      - spec: spec.rules.action_parameters.uri.path.expression
+        arg: rules
+      - spec: spec.rules.action_parameters.uri.path.value
+        arg: rules
+      - spec: spec.rules.action_parameters.uri.query.expression
+        arg: rules
+      - spec: spec.rules.action_parameters.uri.query.value
+        arg: rules
+      - spec: spec.rules.action_parameters.values
+        arg: rules
+      - spec: spec.rules.action_parameters.vary.default.action
+        arg: rules
+      - spec: spec.rules.action_parameters.vary.headers.action
+        arg: rules
+      - spec: spec.rules.action_parameters.vary.headers.languages
+        arg: rules
+      - spec: spec.rules.action_parameters.vary.headers.media_types
+        arg: rules
+      - spec: spec.rules.description
+        arg: rules
+      - spec: spec.rules.enabled
+        arg: rules
+      - spec: spec.rules.exposed_credential_check.password_expression
+        arg: rules
+      - spec: spec.rules.exposed_credential_check.username_expression
+        arg: rules
+      - spec: spec.rules.expression
+        arg: rules
+      - spec: spec.rules.logging.enabled
+        arg: rules
+      - spec: spec.rules.ratelimit.characteristics
+        arg: rules
+      - spec: spec.rules.ratelimit.counting_expression
+        arg: rules
+      - spec: spec.rules.ratelimit.mitigation_timeout
+        arg: rules
+      - spec: spec.rules.ratelimit.period
+        arg: rules
+      - spec: spec.rules.ratelimit.requests_per_period
+        arg: rules
+      - spec: spec.rules.ratelimit.requests_to_origin
+        arg: rules
+      - spec: spec.rules.ratelimit.score_per_period
+        arg: rules
+      - spec: spec.rules.ratelimit.score_response_header_name
+        arg: rules
+      - spec: spec.rules.ref
+        arg: rules

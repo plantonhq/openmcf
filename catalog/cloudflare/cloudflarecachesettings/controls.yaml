@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarecachesettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only setting that persists data is cache_reserve, and Cloudflare's durable storage tier encrypts stored objects at rest by default with no way to opt out.
+      notes: Every other setting is a routing/caching toggle that stores nothing.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cache Reserve offers no customer-managed key option -- keys are Cloudflare-managed.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Tiered-cache and Argo paths run inside Cloudflare's network under Cloudflare's own inter-data-center encryption; not a component choice. Edge-to-origin encryption is CloudflareZoneTlsSettings and the zone's ssl mode.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Cache settings configure how a publicly-served zone caches; there is no component endpoint to hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering is CloudflareZoneSettings (security_level, browser_check) and CloudflareRuleset territory; caching posture filters nothing.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records configuration changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Cache analytics are always on for the zone; this kind adds or removes no monitoring signal.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration over ephemeral cache state -- cached objects are reconstructable from the origin by definition.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Tiered caching topology spans Cloudflare's global network by design; replication is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Four of the six settings have NO delete at Cloudflare -- destroy abandons the live values rather than removing anything (and Argo keeps billing). The GUIDE teaches the turn-off-before-retire discipline instead.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and patches the caching infrastructure; no customer-visible patch surface exists.

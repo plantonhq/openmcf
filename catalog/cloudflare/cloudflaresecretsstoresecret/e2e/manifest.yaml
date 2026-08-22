@@ -1,0 +1,20 @@
+# Complete example manifest for CloudflareSecretsStoreSecret. Stores one
+# secret in the account Secrets Store, readable by Workers bindings and AI
+# Gateway. The value is write-only at Cloudflare (never returned); scopes
+# must be listed alphabetically -- the API returns them sorted and any other
+# order would drift forever.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSecretsStoreSecret
+metadata:
+  name: openai-api-key
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  store_id:
+    value: "7b0a3d5c1e9f42c68d1a2b3c4d5e6f70"
+  name: openai-api-key
+  value:
+    value: REPLACE_WITH_SECRET_VALUE
+  scopes:
+    - ai_gateway
+    - workers
+  comment: Provider API key consumed by the AI gateway and Workers.

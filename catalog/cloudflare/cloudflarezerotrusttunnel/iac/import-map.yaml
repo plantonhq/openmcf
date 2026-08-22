@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrusttunnel
+spec:
+  # The tunnel and its remote-ingress config are separate provider resources
+  # sharing ONE import identity: the config is a tunnel-singleton, so both
+  # import as "{account_id}/{tunnel_id}" (two catalog rows, the same two
+  # placeholders). account_id is spec-relative; tunnel_id is the deploy's own
+  # output. The import target must be an ACTIVE tunnel -- Cloudflare
+  # soft-deletes, and a deleted_at-bearing tunnel cannot be adopted.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: tunnel_id
+      derivations:
+        - from_stack_output: tunnel_id
+      where_to_find: >-
+        Zero Trust dashboard -> Networks -> Tunnels -> the tunnel (the
+        tunnel ID on its overview), or
+        `GET /accounts/<account_id>/cfd_tunnel?is_deleted=false` on the
+        Cloudflare v4 API (the id field of the entry whose name matches).

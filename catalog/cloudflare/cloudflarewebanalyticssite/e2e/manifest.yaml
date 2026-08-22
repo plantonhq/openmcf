@@ -1,0 +1,19 @@
+# Complete example manifest for CloudflareWebAnalyticsSite.
+# Measures a hostname with the full beacon, excluding checkout pages from
+# measurement (three resources: the site and two folded rules).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWebAnalyticsSite
+metadata:
+  name: www-example-rum
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  host: www.example.com
+  auto_install: false
+  rules:
+    - host: www.example.com
+      paths:
+        - "/checkout/*"
+      inclusive: false
+    - paths:
+        - "/*"
+      inclusive: true

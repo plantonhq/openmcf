@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarelist
+spec:
+  # A Cloudflare List under live E2E: account-scoped, no catalog
+  # prerequisites -- deploy -> GET accounts/{account_id}/rules/lists/{id}
+  # verify -> destroy -> verify-destroyed on both provisioners. Two
+  # scenarios: `ip-minimal` (an empty IP list) and `redirect` (an empty
+  # bulk-redirect list). Inline `items` is deliberately unmodeled -- entries
+  # live on the CloudflareListItem kind; the provider forbids mixing the
+  # two. List names are unique within an account and CEL-constrained to
+  # letters/digits/underscores (no hyphens), so both names are underscored
+  # and carry the run id. Free; objects create in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

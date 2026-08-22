@@ -1,0 +1,15 @@
+# A complete, protovalidate-valid CloudflareSnippet example: a single-file
+# snippet that adds a response header. Code travels inline; keep content
+# byte-stable (Cloudflare re-serves the stored content on reads).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSnippet
+metadata:
+  name: add-debug-header
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  snippet_name: add_debug_header
+  files:
+    - name: main.js
+      content: "export default { async fetch(request) { const response = await fetch(request); const newResponse = new Response(response.body, response); newResponse.headers.set('x-served-by', 'snippet'); return newResponse; } };"
+  main_module: main.js

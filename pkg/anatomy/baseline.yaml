@@ -130,61 +130,51 @@ violations:
   - catalog/aws/awswafipset/iac/tf:missing-iac-readme
   - catalog/aws/awswafregexpatternset/iac/pulumi:missing-iac-readme
   - catalog/aws/awswafregexpatternset/iac/tf:missing-iac-readme
-  - catalog/cloudflare/cloudflarecertificatepack/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarecertificatepack/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareaccountapitoken/iac:missing-permissions
+  - catalog/cloudflare/cloudflareaigateway/iac:missing-permissions
+  - catalog/cloudflare/cloudflareauthenticatedoriginpulls/iac:missing-permissions
+  - catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/iac:missing-permissions
+  - catalog/cloudflare/cloudflarebotmanagement/iac:missing-permissions
+  - catalog/cloudflare/cloudflarecachesettings/iac:missing-permissions
   - catalog/cloudflare/cloudflarecertificatepack/iac:missing-permissions
   - catalog/cloudflare/cloudflarecertificatepack:missing-control-profile
   - catalog/cloudflare/cloudflarecertificatepack:missing-cost-profile
   - catalog/cloudflare/cloudflarecustomhostname/iac:missing-permissions
   - catalog/cloudflare/cloudflarecustomhostname:missing-control-profile
   - catalog/cloudflare/cloudflarecustomhostname:missing-cost-profile
-  - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac:missing-permissions
   - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin:missing-control-profile
   - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin:missing-cost-profile
+  - catalog/cloudflare/cloudflarecustomsslcertificate/iac:missing-permissions
   - catalog/cloudflare/cloudflared1database/iac:missing-permissions
   - catalog/cloudflare/cloudflared1database:missing-control-profile
   - catalog/cloudflare/cloudflared1database:missing-cost-profile
   - catalog/cloudflare/cloudflarednsrecord/iac:missing-permissions
   - catalog/cloudflare/cloudflarednsrecord:missing-control-profile
   - catalog/cloudflare/cloudflarednsrecord:missing-cost-profile
-  - catalog/cloudflare/cloudflarednszone/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarednszone/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarednszone/iac:missing-permissions
   - catalog/cloudflare/cloudflarednszone:missing-control-profile
   - catalog/cloudflare/cloudflarednszone:missing-cost-profile
-  - catalog/cloudflare/cloudflareemailroutingaddress/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareemailroutingaddress/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingaddress/iac:missing-permissions
   - catalog/cloudflare/cloudflareemailroutingaddress:missing-control-profile
   - catalog/cloudflare/cloudflareemailroutingaddress:missing-cost-profile
-  - catalog/cloudflare/cloudflareemailroutingrule/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareemailroutingrule/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingrule/iac:missing-permissions
   - catalog/cloudflare/cloudflareemailroutingrule:missing-control-profile
   - catalog/cloudflare/cloudflareemailroutingrule:missing-cost-profile
-  - catalog/cloudflare/cloudflareemailroutingzone/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareemailroutingzone/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingzone/iac:missing-permissions
   - catalog/cloudflare/cloudflareemailroutingzone:missing-control-profile
   - catalog/cloudflare/cloudflareemailroutingzone:missing-cost-profile
-  - catalog/cloudflare/cloudflarehyperdriveconfig/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarehyperdriveconfig/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarehealthcheck/iac:missing-permissions
   - catalog/cloudflare/cloudflarehyperdriveconfig/iac:missing-permissions
   - catalog/cloudflare/cloudflarehyperdriveconfig:missing-control-profile
   - catalog/cloudflare/cloudflarehyperdriveconfig:missing-cost-profile
-  - catalog/cloudflare/cloudflarekvnamespace/iac/pulumi:missing-iac-readme
+  - catalog/cloudflare/cloudflareipaccessrule/iac:missing-permissions
   - catalog/cloudflare/cloudflarekvnamespace/iac:missing-permissions
   - catalog/cloudflare/cloudflarekvnamespace:missing-control-profile
   - catalog/cloudflare/cloudflarekvnamespace:missing-cost-profile
-  - catalog/cloudflare/cloudflarelist/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarelist/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarelist/iac:missing-permissions
   - catalog/cloudflare/cloudflarelist:missing-control-profile
   - catalog/cloudflare/cloudflarelist:missing-cost-profile
-  - catalog/cloudflare/cloudflarelistitem/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarelistitem/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarelistitem/iac:missing-permissions
   - catalog/cloudflare/cloudflarelistitem:missing-control-profile
   - catalog/cloudflare/cloudflarelistitem:missing-cost-profile
@@ -197,18 +187,16 @@ violations:
   - catalog/cloudflare/cloudflareloadbalancerpool/iac:missing-permissions
   - catalog/cloudflare/cloudflareloadbalancerpool:missing-control-profile
   - catalog/cloudflare/cloudflareloadbalancerpool:missing-cost-profile
-  - catalog/cloudflare/cloudflareorigincacertificate/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareorigincacertificate/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarelogpushjob/iac:missing-permissions
+  - catalog/cloudflare/cloudflaremtlscertificate/iac:missing-permissions
+  - catalog/cloudflare/cloudflarenotificationpolicy/iac:missing-permissions
+  - catalog/cloudflare/cloudflarenotificationwebhook/iac:missing-permissions
   - catalog/cloudflare/cloudflareorigincacertificate/iac:missing-permissions
   - catalog/cloudflare/cloudflareorigincacertificate:missing-control-profile
   - catalog/cloudflare/cloudflareorigincacertificate:missing-cost-profile
-  - catalog/cloudflare/cloudflarepagesproject/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarepagesproject/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarepagesproject/iac:missing-permissions
   - catalog/cloudflare/cloudflarepagesproject:missing-control-profile
   - catalog/cloudflare/cloudflarepagesproject:missing-cost-profile
-  - catalog/cloudflare/cloudflarequeue/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarequeue/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarequeue/iac:missing-permissions
   - catalog/cloudflare/cloudflarequeue:missing-control-profile
   - catalog/cloudflare/cloudflarequeue:missing-cost-profile
@@ -218,43 +206,56 @@ violations:
   - catalog/cloudflare/cloudflareruleset/iac:missing-permissions
   - catalog/cloudflare/cloudflareruleset:missing-control-profile
   - catalog/cloudflare/cloudflareruleset:missing-cost-profile
-  - catalog/cloudflare/cloudflareturnstilewidget/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareturnstilewidget/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflaresecretsstore/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresecretsstoresecret/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresnippet/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresnippetrules/iac:missing-permissions
   - catalog/cloudflare/cloudflareturnstilewidget/iac:missing-permissions
   - catalog/cloudflare/cloudflareturnstilewidget:missing-control-profile
   - catalog/cloudflare/cloudflareturnstilewidget:missing-cost-profile
+  - catalog/cloudflare/cloudflarewaitingroom/iac:missing-permissions
+  - catalog/cloudflare/cloudflarewaitingroomevent/iac:missing-permissions
+  - catalog/cloudflare/cloudflarewebanalyticssite/iac:missing-permissions
   - catalog/cloudflare/cloudflareworker/iac:missing-permissions
   - catalog/cloudflare/cloudflareworker:missing-control-profile
   - catalog/cloudflare/cloudflareworker:missing-cost-profile
-  - catalog/cloudflare/cloudflareworkerskvpair/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflareworkerskvpair/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflareworkerskvpair/iac:missing-permissions
   - catalog/cloudflare/cloudflareworkerskvpair:missing-control-profile
   - catalog/cloudflare/cloudflareworkerskvpair:missing-cost-profile
+  - catalog/cloudflare/cloudflareworkflow/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccessapplication/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrustaccessgroup/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-cost-profile
+  - catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-cost-profile
-  - catalog/cloudflare/cloudflarezerotrusttunnel/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarezerotrusttunnel/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarezerotrustaccessservicetoken/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdeviceposturerule/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdnslocation/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustgatewaypolicy/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustgatewaysettings/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustlist/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustmcpportal/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustmcpserver/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustorganization/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnel/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnel:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnel:missing-cost-profile
-  - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnelroute:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelroute:missing-cost-profile
-  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/pulumi:missing-iac-readme
-  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-cost-profile
+  - catalog/cloudflare/cloudflarezonesettings/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezonetlssettings/iac:missing-permissions
   - catalog/digitalocean/digitaloceanapp/iac:missing-permissions
   - catalog/digitalocean/digitaloceanapp:missing-control-profile
   - catalog/digitalocean/digitaloceanapp:missing-cost-profile

@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarecustomsslcertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareCustomSslCertificateSpec uploads a bring-your-own TLS certificate
+// to a zone (Cloudflare calls this a custom SSL certificate): Cloudflare
+// presents this certificate to visitors instead of a Universal SSL or
+// Advanced certificate. The certificate must be issued by a certificate
+// authority on Cloudflare's trust list -- self-signed certificates are
+// rejected at the API. Custom certificates are a Business/Enterprise zone
+// feature; Cloudflare enforces the plan gate at create -- the API, not this
+// spec, is the wall.
+//
+// Rotation is replacement: changing the certificate or private key
+// destroys and re-creates the upload (the certificate id changes). Cloudflare
+// serves the previous certificate until the replacement deploys, so rotation
+// is not an outage, but anything referencing the old certificate id must
+// follow the new one.
+message CloudflareCustomSslCertificateSpec {
+  // The zone the certificate is uploaded to.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // The certificate in PEM form, including any intermediate chain the chosen
+  // bundle method expects. Must cover the zone's hostnames and be issued by a
+  // publicly trusted certificate authority. Keep the PEM byte-stable
+  // (trailing newline included) -- a formatting-only change still replaces
+  // the upload.
+  string certificate = 2 [(buf.validate.field).required = true];
+
+  // The certificate's private key in PEM form. Provide a managed-secret
+  // reference; the platform resolves it just-in-time at deploy and never
+  // stores it in plaintext. The API never returns the key, so an imported or
+  // refreshed resource re-asserts it from configuration.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef private_key = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The SNI class of the upload (Cloudflare's default: legacy_custom).
+  // legacy_custom works on every TLS client but consumes the zone's single
+  // legacy slot; sni_custom requires SNI-capable clients (all modern
+  // browsers) and allows multiple uploads. Changing this on an existing
+  // upload replaces it.
+  optional string type = 4 [
+    (dev.planton.shared.options.default) = "legacy_custom",
+    (buf.validate.field).string = {
+      in: [
+        "legacy_custom",
+        "sni_custom"
+      ]
+    }
+  ];
+
+  // How Cloudflare bundles the certificate chain (Cloudflare's default:
+  // ubiquitous). ubiquitous maximizes older-client compatibility; optimal
+  // prefers the shortest modern chain; force uses the chain exactly as
+  // uploaded.
+  optional string bundle_method = 5 [
+    (dev.planton.shared.options.default) = "ubiquitous",
+    (buf.validate.field).string = {
+      in: [
+        "ubiquitous",
+        "optimal",
+        "force"
+      ]
+    }
+  ];
+
+  // A geo-policy expression restricting which data centers hold the private
+  // key (for example "(country: US) or (region: EU)"). The API accepts this
+  // as "policy" and returns the parsed form in a separate read-only field;
+  // both engines send exactly what is written here.
+  string policy = 6;
+
+  // Coarse-grained private-key geo restriction: a single label instead of a
+  // policy expression. us and eu keep the key in that region; highest_security
+  // keeps it only in data centers meeting Cloudflare's highest security
+  // requirements.
+  CloudflareCustomSslCertificateGeoRestrictions geo_restrictions = 7;
+
+  // The ID of a Cloudflare-generated custom CSR this certificate was issued
+  // from, when the CSR flow was used. A plain ID string -- CSR generation is
+  // its own Cloudflare surface.
+  string custom_csr_id = 8;
+
+  // Deploy the certificate to Cloudflare's staging network first
+  // (staging) or straight to production (Cloudflare's default). The staging
+  // network is a Business/Enterprise validation surface; the value is
+  // write-only bookkeeping on the upload.
+  optional string deploy = 9 [(buf.validate.field).string = {
+    in: [
+      "staging",
+      "production"
+    ]
+  }];
+}
+
+// CloudflareCustomSslCertificateGeoRestrictions restricts where the
+// certificate's private key may be held.
+message CloudflareCustomSslCertificateGeoRestrictions {
+  // The restriction label.
+  optional string label = 1 [(buf.validate.field).string = {
+    in: [
+      "us",
+      "eu",
+      "highest_security"
+    ]
+  }];
+}

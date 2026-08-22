@@ -76,27 +76,95 @@ func (CloudflareEmailRoutingCatchAllActionType) EnumDescriptor() ([]byte, []int)
 	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
+// CloudflareEmailRoutingCatchAllAction is one action the catch-all rule takes
+// on unmatched mail. The catch-all carries a LIST of actions (matching the
+// Cloudflare API), so it can, for example, forward to addresses AND invoke an
+// Email Worker. The provider models each action as a generic {type, value[]};
+// this typed shape exposes real foreign keys and the module maps it back.
+type CloudflareEmailRoutingCatchAllAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The action type.
+	Type CloudflareEmailRoutingCatchAllActionType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionType" json:"type,omitempty"`
+	// Destination addresses to forward to (required when type is forward). Each is
+	// a verified destination email, or a reference to a CloudflareEmailRoutingAddress.
+	ForwardTo []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=forward_to,json=forwardTo,proto3" json:"forward_to,omitempty"`
+	// The Email Worker script to invoke (required when type is worker). A script
+	// name or a reference to a CloudflareWorker.
+	Worker        *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=worker,proto3" json:"worker,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareEmailRoutingCatchAllAction) Reset() {
+	*x = CloudflareEmailRoutingCatchAllAction{}
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareEmailRoutingCatchAllAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareEmailRoutingCatchAllAction) ProtoMessage() {}
+
+func (x *CloudflareEmailRoutingCatchAllAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareEmailRoutingCatchAllAction.ProtoReflect.Descriptor instead.
+func (*CloudflareEmailRoutingCatchAllAction) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *CloudflareEmailRoutingCatchAllAction) GetType() CloudflareEmailRoutingCatchAllActionType {
+	if x != nil {
+		return x.Type
+	}
+	return CloudflareEmailRoutingCatchAllActionType_catch_all_action_type_unspecified
+}
+
+func (x *CloudflareEmailRoutingCatchAllAction) GetForwardTo() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.ForwardTo
+	}
+	return nil
+}
+
+func (x *CloudflareEmailRoutingCatchAllAction) GetWorker() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Worker
+	}
+	return nil
+}
+
 // CloudflareEmailRoutingZoneCatchAll configures the single catch-all rule that
 // applies to mail addressed to the zone that no other routing rule matched.
+// (The rule's matcher is always the fixed "all" matcher — Cloudflare permits no
+// other matcher type on the catch-all, so the module supplies it.)
 type CloudflareEmailRoutingZoneCatchAll struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Whether the catch-all rule is active.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// What to do with unmatched mail.
-	Type CloudflareEmailRoutingCatchAllActionType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionType" json:"type,omitempty"`
-	// Destination addresses to forward to (required when type is forward). Each is
-	// a verified destination email, or a reference to a CloudflareEmailRoutingAddress.
-	ForwardTo []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=forward_to,json=forwardTo,proto3" json:"forward_to,omitempty"`
-	// The Email Worker script to invoke (required when type is worker). A script
-	// name or a reference to a CloudflareWorker.
-	Worker        *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=worker,proto3" json:"worker,omitempty"`
+	// The actions taken on unmatched mail, applied in order (at least one).
+	Actions []*CloudflareEmailRoutingCatchAllAction `protobuf:"bytes,2,rep,name=actions,proto3" json:"actions,omitempty"`
+	// An optional descriptive name for the catch-all rule.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareEmailRoutingZoneCatchAll) Reset() {
 	*x = CloudflareEmailRoutingZoneCatchAll{}
-	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[0]
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -108,7 +176,7 @@ func (x *CloudflareEmailRoutingZoneCatchAll) String() string {
 func (*CloudflareEmailRoutingZoneCatchAll) ProtoMessage() {}
 
 func (x *CloudflareEmailRoutingZoneCatchAll) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[0]
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -121,7 +189,7 @@ func (x *CloudflareEmailRoutingZoneCatchAll) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use CloudflareEmailRoutingZoneCatchAll.ProtoReflect.Descriptor instead.
 func (*CloudflareEmailRoutingZoneCatchAll) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
+	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CloudflareEmailRoutingZoneCatchAll) GetEnabled() bool {
@@ -131,25 +199,18 @@ func (x *CloudflareEmailRoutingZoneCatchAll) GetEnabled() bool {
 	return false
 }
 
-func (x *CloudflareEmailRoutingZoneCatchAll) GetType() CloudflareEmailRoutingCatchAllActionType {
+func (x *CloudflareEmailRoutingZoneCatchAll) GetActions() []*CloudflareEmailRoutingCatchAllAction {
 	if x != nil {
-		return x.Type
-	}
-	return CloudflareEmailRoutingCatchAllActionType_catch_all_action_type_unspecified
-}
-
-func (x *CloudflareEmailRoutingZoneCatchAll) GetForwardTo() []*v1.StringValueOrRef {
-	if x != nil {
-		return x.ForwardTo
+		return x.Actions
 	}
 	return nil
 }
 
-func (x *CloudflareEmailRoutingZoneCatchAll) GetWorker() *v1.StringValueOrRef {
+func (x *CloudflareEmailRoutingZoneCatchAll) GetName() string {
 	if x != nil {
-		return x.Worker
+		return x.Name
 	}
-	return nil
+	return ""
 }
 
 // CloudflareEmailRoutingZoneSpec enables Email Routing on a zone — the anchor for
@@ -170,13 +231,19 @@ type CloudflareEmailRoutingZoneSpec struct {
 	// The records are created automatically on enable regardless; locking manages
 	// them explicitly. Defaults to false.
 	LockDnsRecords bool `protobuf:"varint,3,opt,name=lock_dns_records,json=lockDnsRecords,proto3" json:"lock_dns_records,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The domain to create the managed Email Routing DNS records for. Leave empty
+	// for the zone apex (the common case). Set a subdomain of the zone (e.g.
+	// "mail.example.com" on zone "example.com") to route email addressed to that
+	// subdomain. Applies only when lock_dns_records is true (that is what
+	// instantiates the managed DNS records).
+	DnsName       string `protobuf:"bytes,4,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareEmailRoutingZoneSpec) Reset() {
 	*x = CloudflareEmailRoutingZoneSpec{}
-	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -188,7 +255,7 @@ func (x *CloudflareEmailRoutingZoneSpec) String() string {
 func (*CloudflareEmailRoutingZoneSpec) ProtoMessage() {}
 
 func (x *CloudflareEmailRoutingZoneSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -201,7 +268,7 @@ func (x *CloudflareEmailRoutingZoneSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareEmailRoutingZoneSpec.ProtoReflect.Descriptor instead.
 func (*CloudflareEmailRoutingZoneSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CloudflareEmailRoutingZoneSpec) GetZoneId() *v1.StringValueOrRef {
@@ -225,24 +292,36 @@ func (x *CloudflareEmailRoutingZoneSpec) GetLockDnsRecords() bool {
 	return false
 }
 
+func (x *CloudflareEmailRoutingZoneSpec) GetDnsName() string {
+	if x != nil {
+		return x.DnsName
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/cloudflare/cloudflareemailroutingzone/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x98\x06\n" +
-	"\"CloudflareEmailRoutingZoneCatchAll\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xe5\x01\n" +
-	"\x04type\x18\x02 \x01(\x0e2d.dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionTypeBk\xbaHh\xba\x01`\n" +
-	"\x1ecatch_all.type_not_unspecified\x123catch-all type must be one of drop, forward, worker\x1a\tthis != 0\x82\x01\x02\x10\x01R\x04type\x12p\n" +
+	"Acatalog/cloudflare/cloudflareemailroutingzone/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xab\x06\n" +
+	"$CloudflareEmailRoutingCatchAllAction\x12\xf3\x01\n" +
+	"\x04type\x18\x01 \x01(\x0e2d.dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionTypeBy\xbaHv\xba\x01n\n" +
+	"%catch_all_action.type_not_unspecified\x12:catch-all action type must be one of drop, forward, worker\x1a\tthis != 0\x82\x01\x02\x10\x01R\x04type\x12p\n" +
 	"\n" +
-	"forward_to\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xf16\x92\xd4a\x14status.outputs.emailR\tforwardTo\x12o\n" +
-	"\x06worker\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\x06worker:\x8c\x02\xbaH\x88\x02\x1a\x8b\x01\n" +
-	"%catch_all.forward_requires_forward_to\x125forward_to is required when catch-all type is forward\x1a+this.type != 2 || size(this.forward_to) > 0\x1ax\n" +
-	" catch_all.worker_requires_worker\x120worker is required when catch-all type is worker\x1a\"this.type != 3 || has(this.worker)\"\xbb\x02\n" +
+	"forward_to\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xf16\x92\xd4a\x14status.outputs.emailR\tforwardTo\x12o\n" +
+	"\x06worker\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\x06worker:\xa9\x02\xbaH\xa5\x02\x1a\x99\x01\n" +
+	",catch_all_action.forward_requires_forward_to\x12<forward_to is required when catch-all action type is forward\x1a+this.type != 2 || size(this.forward_to) > 0\x1a\x86\x01\n" +
+	"'catch_all_action.worker_requires_worker\x127worker is required when catch-all action type is worker\x1a\"this.type != 3 || has(this.worker)\"\xd9\x01\n" +
+	"\"CloudflareEmailRoutingZoneCatchAll\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x84\x01\n" +
+	"\aactions\x18\x02 \x03(\v2`.dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionB\b\xbaH\x05\x92\x01\x02\b\x01R\aactions\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xd7\x03\n" +
 	"\x1eCloudflareEmailRoutingZoneSpec\x12r\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12{\n" +
 	"\tcatch_all\x18\x02 \x01(\v2^.dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAllR\bcatchAll\x12(\n" +
-	"\x10lock_dns_records\x18\x03 \x01(\bR\x0elockDnsRecords*t\n" +
+	"\x10lock_dns_records\x18\x03 \x01(\bR\x0elockDnsRecords\x12\x19\n" +
+	"\bdns_name\x18\x04 \x01(\tR\adnsName:\x7f\xbaH|\x1az\n" +
+	"\x1bspec.dns_name_requires_lock\x12-dns_name requires lock_dns_records to be true\x1a,this.dns_name == '' || this.lock_dns_records*t\n" +
 	"(CloudflareEmailRoutingCatchAllActionType\x12%\n" +
 	"!catch_all_action_type_unspecified\x10\x00\x12\b\n" +
 	"\x04drop\x10\x01\x12\v\n" +
@@ -264,24 +343,26 @@ func file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawD
 }
 
 var file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_goTypes = []any{
 	(CloudflareEmailRoutingCatchAllActionType)(0), // 0: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionType
-	(*CloudflareEmailRoutingZoneCatchAll)(nil),    // 1: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll
-	(*CloudflareEmailRoutingZoneSpec)(nil),        // 2: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec
-	(*v1.StringValueOrRef)(nil),                   // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*CloudflareEmailRoutingCatchAllAction)(nil),  // 1: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllAction
+	(*CloudflareEmailRoutingZoneCatchAll)(nil),    // 2: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll
+	(*CloudflareEmailRoutingZoneSpec)(nil),        // 3: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec
+	(*v1.StringValueOrRef)(nil),                   // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_depIdxs = []int32{
-	0, // 0: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll.type:type_name -> dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionType
-	3, // 1: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll.forward_to:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll.worker:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 4: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec.catch_all:type_name -> dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0, // 0: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllAction.type:type_name -> dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllActionType
+	4, // 1: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllAction.forward_to:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllAction.worker:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 3: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll.actions:type_name -> dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingCatchAllAction
+	4, // 4: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 5: dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneSpec.catch_all:type_name -> dev.planton.cloudflare.cloudflareemailroutingzone.v1alpha1.CloudflareEmailRoutingZoneCatchAll
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_init() }
@@ -295,7 +376,7 @@ func file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_init
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDesc), len(file_catalog_cloudflare_cloudflareemailroutingzone_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

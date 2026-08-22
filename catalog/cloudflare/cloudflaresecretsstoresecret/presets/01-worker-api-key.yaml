@@ -1,0 +1,18 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSecretsStoreSecret
+metadata:
+  name: openai-api-key
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  store_id:
+    valueFrom:
+      kind: CloudflareSecretsStore
+      name: account-secrets
+      fieldPath: status.outputs.store_id
+  name: openai-api-key
+  value:
+    value: ${secrets-group/prod-ai/openai-key}
+  scopes:
+    - ai_gateway
+    - workers
+  comment: Provider API key consumed by the AI gateway and Workers.

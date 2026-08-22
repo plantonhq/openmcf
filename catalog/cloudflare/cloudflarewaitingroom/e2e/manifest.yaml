@@ -1,0 +1,23 @@
+# A complete, protovalidate-valid CloudflareWaitingRoom example: a basic room
+# on a shop's checkout path with one bypass rule. Free-plan-safe shape --
+# Advanced-subscription fields (additional_routes, custom_page_html, non-fifo
+# queueing, non-off turnstile) appear in the presets, gated per field.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoom
+metadata:
+  name: checkout-queue
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: checkout-queue
+  host: shop.example.com
+  path: /checkout
+  new_users_per_minute: 300
+  total_active_users: 1000
+  session_duration: 5
+  cookie_attributes:
+    samesite: lax
+    secure: auto
+  bypass_rules:
+    - expression: 'ip.src in {203.0.113.0/24}'
+      description: "Office network skips the queue"

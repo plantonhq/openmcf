@@ -1,0 +1,14 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarewebanalyticssite
+spec:
+  billing_model: free
+  notes: >-
+    Cloudflare Web Analytics is free on every plan, including for sites that
+    do not proxy through Cloudflare at all. Beacon requests are not billed
+    and there is no per-pageview charge; retention and metric depth differ by
+    plan rather than by price.

@@ -1,0 +1,35 @@
+# Structured CloudflareDnsRecord scenario: an SRV record through the typed
+# `data` union -- the kind's structured-record surface (13 record types share
+# this send path; SRV exercises it with all four sub-fields) -- plus an
+# explicit TTL and a comment. The zone_id resolves from the CloudflareDnsZone
+# prerequisite's outputs, and the underscore service/protocol labels follow
+# the SRV owner-name convention.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsRecord
+metadata:
+  name: planton-oss-e2e-cloudflarednsrecord-srv
+  id: planton-oss-e2e-cloudflarednsrecord-srv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarednsrecord
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: _e2e._tcp
+  type: SRV
+  ttl: 300
+  comment: planton e2e structured-record scenario
+  srv:
+    priority: 10
+    weight: 5
+    port: 8443
+    target: e2e-minimal.planton-e2e.example.com

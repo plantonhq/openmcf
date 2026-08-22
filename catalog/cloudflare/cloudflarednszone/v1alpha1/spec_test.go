@@ -61,6 +61,50 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 				}))
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("accepts structured records (SRV and CAA data blocks)", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "test-account-123",
+					Records: []*CloudflareDnsZoneRecord{
+						{Name: "_sip._tcp", Type: CloudflareDnsZoneRecord_SRV,
+							Data: &CloudflareDnsZoneRecord_Srv{Srv: &SrvData{Priority: 10, Weight: 5, Port: 5060, Target: "sip.example.com"}}},
+						{Name: "@", Type: CloudflareDnsZoneRecord_CAA,
+							Data: &CloudflareDnsZoneRecord_Caa{Caa: &CaaData{Tag: "issue", Value: "letsencrypt.org"}}},
+					},
+				}))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("accepts a record with tags and settings", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "test-account-123",
+					Records: []*CloudflareDnsZoneRecord{
+						{Name: "app", Type: CloudflareDnsZoneRecord_A, Content: "192.0.2.7", Proxied: true,
+							Tags:     []string{"team:web", "env:prod"},
+							Settings: &CloudflareDnsZoneRecordSettings{Ipv4Only: true}},
+					},
+				}))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("hold and subscription", func() {
+
+			ginkgo.It("accepts an enabled hold with subdomains and hold_after", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "test-account-123",
+					Hold: &CloudflareDnsZoneHold{Enabled: true, IncludeSubdomains: true, HoldAfter: "2026-01-31T00:00:00Z"},
+				}))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("accepts a subscription with rate_plan and frequency", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "test-account-123",
+					Subscription: &CloudflareDnsZoneSubscription{RatePlan: "pro", Frequency: "monthly"},
+				}))
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 
 		ginkgo.Context("folded dns_settings and dnssec", func() {
@@ -162,6 +206,82 @@ var _ = ginkgo.Describe("CloudflareDnsZoneSpec Custom Validation Tests", func() 
 				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
 					ZoneName: "example.com", AccountId: "a",
 					Records: []*CloudflareDnsZoneRecord{{Name: "@", Type: CloudflareDnsZoneRecord_MX, Content: "mail.example.com"}},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects a record setting both content and a data block", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Records: []*CloudflareDnsZoneRecord{
+						{Name: "_sip._tcp", Type: CloudflareDnsZoneRecord_SRV, Content: "bogus",
+							Data: &CloudflareDnsZoneRecord_Srv{Srv: &SrvData{Target: "sip.example.com"}}},
+					},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects a structured type without its data block", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Records:  []*CloudflareDnsZoneRecord{{Name: "_sip._tcp", Type: CloudflareDnsZoneRecord_SRV, Content: "10 5 5060 sip.example.com"}},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects a data block that does not match the record type", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Records: []*CloudflareDnsZoneRecord{
+						{Name: "@", Type: CloudflareDnsZoneRecord_SRV,
+							Data: &CloudflareDnsZoneRecord_Caa{Caa: &CaaData{Tag: "issue", Value: "letsencrypt.org"}}},
+					},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects a CAA data block missing its required tag", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Records: []*CloudflareDnsZoneRecord{
+						{Name: "@", Type: CloudflareDnsZoneRecord_CAA,
+							Data: &CloudflareDnsZoneRecord_Caa{Caa: &CaaData{Value: "letsencrypt.org"}}},
+					},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("hold and subscription constraints", func() {
+
+			ginkgo.It("rejects a malformed hold_after timestamp", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Hold: &CloudflareDnsZoneHold{Enabled: true, HoldAfter: "next tuesday"},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects an unknown rate_plan", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Subscription: &CloudflareDnsZoneSubscription{RatePlan: "platinum"},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects an invalid frequency", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Subscription: &CloudflareDnsZoneSubscription{RatePlan: "pro", Frequency: "daily"},
+				}))
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("rejects an empty subscription block", func() {
+				err := protovalidate.Validate(zone("z", &CloudflareDnsZoneSpec{
+					ZoneName: "example.com", AccountId: "a",
+					Subscription: &CloudflareDnsZoneSubscription{},
 				}))
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

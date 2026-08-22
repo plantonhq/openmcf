@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareaccountapitoken
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare stores only a hash of the token; the plaintext value is returned once at create and never again by any read.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cloudflare offers no customer-managed key for token material.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Tokens are minted and used exclusively over the HTTPS Cloudflare API.
+    - control_id: no-public-access
+      status: configurable
+      field_path: condition.request_ip.in_cidrs
+      evidence:
+        type: spec_default
+        reference: A token is usable from anywhere unless request_ip.in_cidrs narrows it; the condition block is the component's network-exposure control.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: condition.request_ip.not_in_cidrs
+      evidence:
+        type: spec_default
+        reference: request_ip.not_in_cidrs bars named client networks outright, evaluated ahead of the allow list.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The token API runs on Cloudflare's anycast edge with its standard DDoS posture.
+    - control_id: rbac
+      status: configurable
+      field_path: policies
+      evidence:
+        type: spec_default
+        reference: This component IS an authorization surface -- each policy binds permission groups (allow or deny) to explicitly named account and zone resources, so least privilege is expressed here.
+    - control_id: workload-identity
+      status: configurable
+      field_path: policies.permission_group_ids
+      evidence:
+        type: spec_default
+        reference: An account-owned token is the machine identity for automation -- it belongs to the account rather than to a person, so it survives staff changes.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Account tokens ARE the modern replacement for Cloudflare's legacy global API key; this component never models the key/email credential pair.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Token create/update/delete land in the Cloudflare account audit log, and the object reports issued_on plus last_used_on.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own; token usage surfaces through the account audit log and last_used_on.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Deliberately unrecoverable -- the secret value cannot be re-fetched, so a lost token is rotated rather than restored (see GUIDE.md).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data beyond the token record.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare-operated SaaS identity plane on its global network; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: status
+      evidence:
+        type: spec_default
+        reference: No provider-side deletion guard exists, but status = disabled suspends a token without destroying it -- the safe way to test a revocation before deleting.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

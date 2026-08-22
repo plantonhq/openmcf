@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareEmailRoutingAddressSpec declares a verified destination address for
 Email Routing. Destination addresses are account-scoped (shared across zones)
 and referenced by routing rules and catch-all rules as forwarding targets.
@@ -24,6 +26,7 @@ metadata:
 spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   email: ops@example.com
+  status: unverified
 ```
 
 ## Spec Fields
@@ -32,6 +35,7 @@ spec:
 |---|---|---|---|---|
 | `spec.accountId` | `string` | yes |  |  |
 | `spec.email` | `string` | yes |  |  |
+| `spec.status` | `string` |  |  |  |
 
 ## Field Details
 
@@ -52,6 +56,17 @@ is sent here on creation. Immutable — changing it replaces the address.
 
 - rule: {"required":true,"string":{"email":true}}
 
+### spec.status
+
+`string`
+
+Explicit verification-state override. Leave empty to let the normal
+verification flow (the emailed link) manage the state. Cloudflare permits
+non-admin callers only to set a verified address back to "unverified";
+setting "verified" requires admin privileges on the account.
+
+- rule: status must be empty, 'unverified', or 'verified'
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: CloudflareEmailRoutingAddress, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -69,8 +84,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| CloudflareEmailRoutingRule | `spec.action.forwardTo` | `status.outputs.email` |
-| CloudflareEmailRoutingZone | `spec.catchAll.forwardTo` | `status.outputs.email` |
+| CloudflareEmailRoutingRule | `spec.actions[].forwardTo` | `status.outputs.email` |
+| CloudflareEmailRoutingZone | `spec.catchAll.actions[].forwardTo` | `status.outputs.email` |
 
 ## See Also
 

@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareHyperdriveConfigSpec configures a Cloudflare Hyperdrive: a connection
 pooler and global cache that lets a Worker reach a regional SQL database with
 low latency. A Worker binds to this config (the `hyperdrive` binding) to query

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewaitingroom.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarewaitingroom/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarewaitingroom/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareWaitingRoom is a KRM-style resource for managing one Cloudflare
+// waiting room: a virtual queue in front of a host+path, with its bypass rules
+// managed as part of the room.
+message CloudflareWaitingRoom {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareWaitingRoom'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareWaitingRoomSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareWaitingRoomStatus status = 5;
+}
+
+// CloudflareWaitingRoomStatus represents the observed state of a waiting room.
+message CloudflareWaitingRoomStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareWaitingRoomStackOutputs outputs = 1;
+}

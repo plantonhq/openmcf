@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustmcpportal.v1alpha1;
+
+// CloudflareZeroTrustMcpPortalStackOutputs captures the observable outputs
+// after publishing the MCP portal.
+message CloudflareZeroTrustMcpPortalStackOutputs {
+  // The portal's identifier (the user-chosen slug).
+  string portal_id = 1;
+
+  // The hostname the portal is served on -- what users and AI clients
+  // connect to.
+  string hostname = 2;
+}

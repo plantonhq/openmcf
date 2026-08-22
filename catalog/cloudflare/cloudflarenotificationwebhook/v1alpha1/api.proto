@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarenotificationwebhook.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarenotificationwebhook/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarenotificationwebhook/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareNotificationWebhook is a KRM-style resource for registering
+// webhook destinations that notification policies deliver alerts to.
+message CloudflareNotificationWebhook {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareNotificationWebhook'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareNotificationWebhookSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareNotificationWebhookStatus status = 5;
+}
+
+// CloudflareNotificationWebhookStatus represents the observed state of the
+// webhook destination.
+message CloudflareNotificationWebhookStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareNotificationWebhookStackOutputs outputs = 1;
+}

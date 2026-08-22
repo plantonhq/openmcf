@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareipaccessrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflareipaccessrule/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflareipaccessrule/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareIpAccessRule is a KRM-style resource for managing one Cloudflare IP
+// Access rule: an allow/block/challenge decision on an IP, IP range, ASN, or
+// country, applied account-wide or to a single zone.
+message CloudflareIpAccessRule {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareIpAccessRule'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareIpAccessRuleSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareIpAccessRuleStatus status = 5;
+}
+
+// CloudflareIpAccessRuleStatus represents the observed state of an IP Access rule.
+message CloudflareIpAccessRuleStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareIpAccessRuleStackOutputs outputs = 1;
+}

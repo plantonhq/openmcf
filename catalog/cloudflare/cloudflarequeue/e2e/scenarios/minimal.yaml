@@ -1,0 +1,20 @@
+# Minimal CloudflareQueue scenario: one bare queue -- producers could write
+# to it, nothing consumes it. Queue names are unique within an account, so
+# the name carries the run id. The account comes from the harness env.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareQueue
+metadata:
+  name: planton-oss-e2e-cloudflarequeue-minimal
+  id: planton-oss-e2e-cloudflarequeue-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarequeue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  queueName: planton-e2e-${E2E_RUN_ID}-q-min

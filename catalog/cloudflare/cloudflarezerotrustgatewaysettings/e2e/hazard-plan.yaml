@@ -1,0 +1,56 @@
+# OFFLINE-PLAN-ONLY arm (never run live): the Gateway surfaces the provider
+# itself documents as hazardous or drift-prone at v5.23.0 --
+#   - block_page mode/include_context/suppress_footer/target_uri: the
+#     provider's own migration tests accept PERMANENT refresh drift on
+#     these four fields ("a known issue where it removes Optional+Computed
+#     fields from block_page during refresh");
+#   - tls_decrypt / fips.tls / deep body_scanning: enabling any without an
+#     ACTIVATED Gateway certificate errors (code 2211) and the provider's
+#     sweeper documents the account staying in that state;
+#   - sandbox + inspection: certificate-adjacent controls proven
+#     representable here.
+# The offline tofu plan proves both engines RENDER every one of these
+# fields; live proof waits for a Gateway-certificate story (a future kind).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewaySettings
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustgatewaysettings-hazard-plan
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  settings:
+    block_page:
+      enabled: true
+      mode: redirect_uri
+      target_uri: https://it.example.com/blocked
+      include_context: true
+      suppress_footer: true
+    body_scanning:
+      inspection_mode: deep
+    browser_isolation:
+      non_identity_enabled: true
+      url_browser_isolation_enabled: true
+    certificate:
+      id:
+        value: f70ff985a4ef4643bbbc4a0ed4fc8415
+    extended_email_matching:
+      enabled: true
+    fips:
+      tls: true
+    host_selector:
+      enabled: false
+    inspection:
+      mode: static
+    sandbox:
+      enabled: true
+      fallback_action: block
+    tls_decrypt:
+      enabled: true
+    antivirus:
+      enabled_download_phase: true
+      enabled_upload_phase: true
+      fail_closed: false
+      notification_settings:
+        enabled: true
+        msg: File blocked by antivirus scan
+        support_url: https://it.example.com/help
+        include_context: true

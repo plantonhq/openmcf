@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarehealthcheck.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarehealthcheck/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarehealthcheck/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareHealthcheck is a KRM-style resource for managing one standalone
+// Cloudflare health check: scheduled origin probes with healthy/unhealthy
+// status, no load balancer required.
+message CloudflareHealthcheck {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareHealthcheck'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareHealthcheckSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareHealthcheckStatus status = 5;
+}
+
+// CloudflareHealthcheckStatus represents the observed state of a health check.
+message CloudflareHealthcheckStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareHealthcheckStackOutputs outputs = 1;
+}

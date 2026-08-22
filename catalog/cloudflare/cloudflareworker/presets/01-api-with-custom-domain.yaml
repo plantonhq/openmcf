@@ -6,7 +6,8 @@ spec:
   accountId: <cloudflare-account-id>
   workerName: edge-api
   r2Bundle:
-    bucket: <build-artifacts-bucket>
+    bucket:
+      value: <build-artifacts-bucket>
     path: <path/to/worker-bundle.js>
   compatibilityDate: "2025-01-15"
   compatibilityFlags:
@@ -16,7 +17,8 @@ spec:
     API_VERSION: v1
   secrets:
     - name: API_KEY
-      value: <managed-secret-reference>
+      value:
+        value: <managed-secret-reference>
   kvNamespaces:
     - name: CONFIG
       namespaceId:

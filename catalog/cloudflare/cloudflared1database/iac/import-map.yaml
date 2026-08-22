@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflared1database
+spec:
+  # A D1 database's import identity is {account_id}/{database_id} (the
+  # server-assigned UUID, not the name). account_id is spec-relative; the
+  # database id is the deploy's own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: database_id
+      derivations:
+        - from_stack_output: database_id
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> D1 -> the database
+        (the UUID under the name), or `GET /accounts/<account_id>/d1/database`
+        on the Cloudflare v4 API (the uuid field).

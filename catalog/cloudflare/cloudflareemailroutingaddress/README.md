@@ -30,6 +30,7 @@ spec:
 |---|---|---|
 | `accountId` | yes | 32-char Cloudflare account ID |
 | `email` | yes | Destination email address (immutable) |
+| `status` | no | Explicit verification-state override (`unverified` \| `verified`). Empty leaves the state to the emailed-link flow; Cloudflare permits non-admin callers only to flip a verified address back to `unverified` |
 
 ## Outputs
 

@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareZeroTrustAccessGroupSpec defines a reusable Cloudflare Zero Trust
 Access group: a named bundle of access rules (the same include/exclude/require
 building blocks an Access policy uses) that can be referenced by many policies

@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarecustomhostnamefallbackorigin
+spec:
+  # A custom-hostname fallback origin under live E2E: a zone singleton (one
+  # per SaaS zone). The harness installs the CloudflareDnsZone prerequisite
+  # first, then deploy -> GET zones/{zone_id}/custom_hostnames/fallback_origin
+  # verify -> destroy -> verify-destroyed. The origin hostname composes the
+  # fixture zone's run token; there is no DNS-record fixture (the DNS-record
+  # kind is already in the proof queue and has no reusable install profile).
+  # Watch: the provider's own test unsets CLOUDFLARE_API_TOKEN because this
+  # endpoint's write path is a PUT that "does not yet support API tokens" --
+  # Create and Update are the same call, so the token-only harness (and the
+  # idempotency re-apply) may 403. Watch: the API may also reject an origin
+  # with no DNS record on a pending zone. The proving session tries, then
+  # defers with those unblock conditions. The verifier treats GET 200 with
+  # status pending_deletion as gone (async delete).
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

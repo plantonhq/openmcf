@@ -1,0 +1,25 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLogpushJob
+metadata:
+  name: http-logs-to-r2
+spec:
+  zone_id:
+    value: "023e105f4ecef8ad9ca31a8372d0c353"
+  dataset: http_requests
+  destination_conf:
+    value: "r2://web-logs/http/{DATE}?account-id=0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d&access-key-id=REPLACE_WITH_R2_ACCESS_KEY_ID&secret-access-key=REPLACE_WITH_R2_SECRET_ACCESS_KEY"
+  name: http-logs-to-r2
+  max_upload_interval_seconds: 60
+  output_options:
+    output_type: ndjson
+    timestamp_format: rfc3339
+    field_names:
+      - EdgeStartTimestamp
+      - ClientIP
+      - ClientCountry
+      - ClientRequestHost
+      - ClientRequestMethod
+      - ClientRequestURI
+      - EdgeResponseStatus
+      - EdgeResponseBytes
+      - RayID

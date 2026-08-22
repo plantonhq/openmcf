@@ -1,0 +1,36 @@
+# Rule-mix CloudflareZeroTrustAccessGroup scenario: all three rule lists
+# (include OR, exclude NOT, require AND) over the self-contained rule types --
+# email, email_domain, ip, geo -- the variants needing no identity provider,
+# Cloudflare list, or service token to exist first. IdP-coupled variants
+# (azure_ad, okta, saml, ...) and list/token references cannot ride a
+# throwaway lane; the group-of-groups edge is offline-plan-proven at
+# e2e/group-of-groups-plan.yaml (a group fixture for a group would be a
+# self-kind fixture the framework rejects).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessGroup
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessgroup-rule-mix
+  id: planton-oss-e2e-cloudflarezerotrustaccessgroup-rule-mix
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-grp-mix
+  include:
+    - email:
+        email: e2e-proof@planton.dev
+    - emailDomain:
+        domain: planton.dev
+  exclude:
+    - ip:
+        ip: 203.0.113.0/24
+  require:
+    - geo:
+        countryCode: US

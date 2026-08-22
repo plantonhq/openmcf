@@ -1,0 +1,29 @@
+# Deny-require CloudflareZeroTrustAccessPolicy scenario: a deny decision with
+# a require list -- proving the decision enum beyond its default and the AND
+# semantics on a self-contained rule type (geo needs no IdP or list to exist).
+# Approval flows and purpose justification stay offline: approval_groups need
+# real approver mailboxes a throwaway lane does not own (preset-proven at
+# presets/02-admins-with-approval).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccesspolicy-deny-require
+  id: planton-oss-e2e-cloudflarezerotrustaccesspolicy-deny-require
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccesspolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-pol-deny
+  decision: deny
+  include:
+    - everyone: {}
+  require:
+    - geo:
+        countryCode: US

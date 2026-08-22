@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustdevicecustomprofile
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: policy_id
+      derivations:
+        - from_stack_output: policy_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/devices/policies` on the Cloudflare v4
+        API (the policy_id field; match by name or precedence), or the Zero
+        Trust dashboard -> Settings -> WARP Client -> Profile settings. The
+        per-profile fallback list imports with the same
+        `<account_id>/<policy_id>` pair; the provider's import tests ignore
+        exclude/include on verify -- re-assert split-tunnel routes from
+        configuration after import.

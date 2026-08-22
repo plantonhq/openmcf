@@ -1,0 +1,22 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareRuleset
+metadata:
+  name: skip-noisy-managed-rules
+spec:
+  zone_id:
+    value: "<cloudflare-zone-id>"
+  ruleset_kind: zone
+  phase: http_request_firewall_custom
+  name: "Skip noisy managed rules for trusted paths"
+  rules:
+    - ref: "skip-for-webhooks"
+      expression: 'http.request.uri.path starts_with "/webhooks"'
+      action: skip
+      description: "Skip two specific managed rules that false-positive on webhook payloads"
+      enabled: true
+      action_parameters:
+        rules:
+          "<target-ruleset-id>":
+            values:
+              - "<rule-id-to-skip>"
+              - "<second-rule-id-to-skip>"

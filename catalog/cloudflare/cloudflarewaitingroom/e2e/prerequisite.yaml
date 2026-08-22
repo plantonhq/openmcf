@@ -1,0 +1,33 @@
+# CloudflareWaitingRoom install profile used as a prerequisite by
+# CloudflareWaitingRoomEvent (its registry prerequisite): an event runs on a
+# room, so one must exist before the event's lane deploys. The fixture is the
+# cheapest valid room -- thresholds at Cloudflare's floor of 200, host = the
+# run-scoped fixture zone's own domain (both manifests expand the same
+# ${E2E_RUN_ID} token, so they always agree within a lane), no bypass rules.
+# metadata.name stays stable -- it is the key consumers' valueFrom references
+# resolve against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoom
+metadata:
+  name: planton-oss-e2e-cloudflarewaitingroom-prereq
+  id: planton-oss-e2e-cloudflarewaitingroom-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarewaitingroom
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-wroom-prereq-${E2E_RUN_ID}
+  host: planton-e2e-${E2E_RUN_ID}.com
+  path: /prereq-queue
+  new_users_per_minute: 200
+  total_active_users: 200

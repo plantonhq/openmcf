@@ -1,0 +1,23 @@
+# Minimal CloudflareZeroTrustAccessGroup scenario: the smallest valid group --
+# account-scoped with a single include: everyone rule (the unconditional
+# building block; include needs at least one rule by CEL). The name carries
+# the run id so concurrent lanes stay distinguishable in the dashboard.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessGroup
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessgroup-minimal
+  id: planton-oss-e2e-cloudflarezerotrustaccessgroup-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessgroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-grp-min
+  include:
+    - everyone: {}

@@ -1,0 +1,28 @@
+# OS-version scenario: the most common posture check -- devices must run at
+# least the named OS version. Proves the type wall, the platform match, and
+# the version/operator input pair live.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDevicePostureRule
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdeviceposturerule-os-version
+  id: planton-oss-e2e-cloudflarezerotrustdeviceposturerule-os-version
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdeviceposturerule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-os-version-${E2E_RUN_ID}
+  type: os_version
+  description: planton e2e os version check
+  schedule: 5m
+  match:
+    - platform: mac
+  input:
+    version: 14.0.0
+    operator: ">="

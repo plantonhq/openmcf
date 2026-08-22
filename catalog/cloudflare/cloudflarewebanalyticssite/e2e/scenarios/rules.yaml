@@ -1,0 +1,28 @@
+# The rules arm: a site with an exclude row and an include row -- proves the
+# folded rule fan-out live (one provider object per declared row, wired to
+# the created site's ruleset) and the real delete of both layers.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWebAnalyticsSite
+metadata:
+  name: planton-oss-e2e-cloudflarewebanalyticssite-rules
+  id: planton-oss-e2e-cloudflarewebanalyticssite-rules
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarewebanalyticssite
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  host: e2e-rules-${E2E_RUN_ID}.example.com
+  rules:
+    - host: e2e-rules-${E2E_RUN_ID}.example.com
+      paths:
+        - "/private/*"
+      inclusive: false
+    - paths:
+        - "/*"
+      inclusive: true

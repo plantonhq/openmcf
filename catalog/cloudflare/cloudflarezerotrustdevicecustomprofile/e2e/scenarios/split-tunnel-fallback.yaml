@@ -1,0 +1,38 @@
+# Split-tunnel + fallback scenario: proves the settings body (exclude-mode
+# split tunnel, toggles) AND the folded per-profile local-DNS fallback list
+# in one lane -- the fold's write is the second resource (2 to add). The
+# fallback rows ride the profile: deleting the profile retires them, so the
+# lane is self-cleaning. The fallback companion's upstream tests blank
+# CLOUDFLARE_API_TOKEN -- a 403 on that write under our token credential is
+# the expected ambush. Precedence is a fixed high value distinct from the
+# minimal scenario's.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceCustomProfile
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdevicecustomprofile-split-tunnel-fallback
+  id: planton-oss-e2e-cloudflarezerotrustdevicecustomprofile-split-tunnel-fallback
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdevicecustomprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-profile-split-${E2E_RUN_ID}
+  match: identity.email == "e2e-split-${E2E_RUN_ID}@invalid.planton.test"
+  precedence: 8600
+  switch_locked: true
+  captive_portal: 180
+  exclude:
+    - address: 192.0.2.0/24
+      description: planton e2e lab route
+    - host: printers-${E2E_RUN_ID}.example.com
+  fallback_domains:
+    - suffix: corp-${E2E_RUN_ID}.internal
+      description: planton e2e resolver row
+      dns_server:
+        - 10.255.255.53

@@ -16,4 +16,18 @@ message CloudflareWorkerStackOutputs {
 
   // The route patterns mapped to this Worker.
   repeated string route_patterns = 4;
+
+  // Cloudflare-assigned custom-domain ids, keyed by hostname (the for_each
+  // key). Needed so import can address cloudflare_workers_custom_domain as
+  // {account_id}/{domain_id}.
+  map<string, string> custom_domain_ids = 5;
+
+  // Cloudflare-assigned route ids, keyed by the same index key the module
+  // uses for for_each (the list index as a string). Needed so import can
+  // address cloudflare_workers_route as {zone_id}/{route_id}.
+  map<string, string> route_ids = 6;
+
+  // Zone id of each route, keyed the same way as route_ids. Import needs
+  // both halves of {zone_id}/{route_id}.
+  map<string, string> route_zone_ids = 7;
 }

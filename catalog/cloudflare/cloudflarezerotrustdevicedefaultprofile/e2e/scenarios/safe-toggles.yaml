@@ -1,0 +1,25 @@
+# Safe-toggles scenario: proves the singleton PATCH upsert with low-blast
+# fields (the E2E account has no enrolled devices, but the discipline is the
+# same as every account singleton: the proof lane captures the profile's
+# prior values before this runs and restores them afterward -- no-op destroy
+# reverts nothing). Deliberately no split tunnel and no fallback list: the
+# fallback fold has its own scenario with its own restore discipline.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceDefaultProfile
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdevicedefaultprofile-safe-toggles
+  id: planton-oss-e2e-cloudflarezerotrustdevicedefaultprofile-safe-toggles
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdevicedefaultprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  allow_updates: true
+  captive_portal: 180
+  support_url: https://support.example.com/warp-${E2E_RUN_ID}

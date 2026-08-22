@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarebotmanagement
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Bot Management stores scoring configuration at Cloudflare, not customer data this component encrypts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Configuration traffic to the Cloudflare API is HTTPS. The component has no toggle that would send settings in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration is a zone singleton, not a public endpoint this component exposes.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: fight_mode
+      evidence:
+        type: spec_default
+        reference: fight_mode, the sbfm_* actions, and the AI/crawler fields decide how automated traffic is challenged or blocked at the edge.
+      notes: Unset fields are not managed -- the zone keeps its current ingress posture for those knobs.
+    - control_id: edge-protection
+      status: configurable
+      field_path: sbfm_definitely_automated
+      evidence:
+        type: spec_default
+        reference: Super Bot Fight Mode and Enterprise knobs are the scored-bot edge protection; fight_mode is the free-plan equivalent.
+      notes: Plan-gated fields fail at the API on a zone that lacks the entitlement. Blocking sbfm_verified_bots blocks search indexing.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the configuration exposes no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records Bot Management changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch. Bot analytics live in the Cloudflare dashboard.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration. Destroy does not revert live values -- the last apply is what the zone keeps.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone-scoped singleton served by Cloudflare's global edge.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a NO-OP at Cloudflare -- the state entry disappears and the last-applied values stay on the zone. Revert settings to their off values and apply before destroying.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates Bot Management; no customer-visible patch surface exists. auto_update_model (Enterprise) adopts new ML models as Cloudflare releases them.

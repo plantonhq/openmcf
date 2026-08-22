@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustgatewaypolicy
+spec:
+  billing_model: free
+  notes: Gateway DNS/HTTP allow and block policies are included in Zero Trust Free. isolate requires the Browser Isolation add-on and egress requires dedicated egress IPs -- those actions fail the apply on an account that lacks the entitlement rather than incurring cost through this component. The add-on bills on the organization, never here.

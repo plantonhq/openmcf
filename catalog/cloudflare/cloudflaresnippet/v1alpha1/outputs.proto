@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresnippet.v1alpha1;
+
+// CloudflareSnippetStackOutputs captures the observable outputs after deploying
+// a snippet.
+message CloudflareSnippetStackOutputs {
+  // The snippet's name -- its identity within the zone, and what snippet rules
+  // reference. Exported as an output so consumers can wire references without
+  // repeating the literal.
+  string snippet_name = 1;
+
+  // The zone the snippet is deployed to.
+  string zone_id = 2;
+}

@@ -12,8 +12,10 @@ resource "cloudflare_email_routing_rule" "main" {
     value = try(m.value, "") != "" ? m.value : null
   }]
 
-  actions = [{
-    type  = var.spec.action.type
-    value = length(local.action_values) > 0 ? local.action_values : null
-  }]
+  actions = [
+    for a in local.actions : {
+      type  = a.type
+      value = length(a.value) > 0 ? a.value : null
+    }
+  ]
 }

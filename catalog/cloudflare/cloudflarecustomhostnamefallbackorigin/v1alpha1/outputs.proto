@@ -16,4 +16,10 @@ message CloudflareCustomHostnameFallbackOriginStackOutputs {
 
   // Any errors reported while deploying the fallback origin.
   repeated string errors = 4;
+
+  // The Cloudflare Zone ID this singleton belongs to. The fallback origin has
+  // no resource id of its own -- its API identity IS the zone
+  // (GET zones/{zone_id}/custom_hostnames/fallback_origin) -- so this is the
+  // handle verification, import, and chart blocks consume.
+  string zone_id = 5;
 }

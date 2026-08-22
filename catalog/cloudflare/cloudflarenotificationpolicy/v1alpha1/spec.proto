@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarenotificationpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareNotificationPolicySpec creates a notification policy: "when
+// THIS happens, tell THESE destinations." One policy watches one alert type
+// (a tunnel degrading, an origin failing health checks, a usage threshold,
+// a DDoS event, ...) and fans the alert out to email addresses, PagerDuty
+// services, and webhook destinations. A plain CRUD object -- real create,
+// update, delete.
+//
+// The `filters` message narrows WHICH events of the alert type fire the
+// policy. Which filter fields a given alert type reads is owned by
+// Cloudflare's API (69 types x 43 filter fields is an API-side pairing);
+// each filter field's comment names the alert families that use it, with
+// the provider's own wording. Many alert types are themselves gated by plan
+// or product subscription -- the gate is Cloudflare's, surfaced at create
+// time.
+message CloudflareNotificationPolicySpec {
+  // The Cloudflare account the policy belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The policy's name, shown in the dashboard's notifications list.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // The event class this policy watches. The 69 values are the provider's
+  // own list at v5.23.0.
+  string alert_type = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "alert_type.values"
+      message: "alert_type must be one of the provider's notification alert types at v5.23.0 (abuse_report_alert, access_custom_certificate_expiration_type, advanced_ddos_attack_l4_alert, advanced_ddos_attack_l7_alert, advanced_http_alert_error, bgp_hijack_notification, billing_usage_alert, block_notification_block_removed, block_notification_new_block, block_notification_review_rejected, bot_traffic_basic_alert, brand_protection_alert, brand_protection_digest, clickhouse_alert_fw_anomaly, clickhouse_alert_fw_ent_anomaly, cloudforce_one_request_notification, cni_maintenance_notification, custom_analytics, custom_bot_detection_alert, custom_ssl_certificate_event_type, dedicated_ssl_certificate_event_type, device_connectivity_anomaly_alert, dos_attack_l4, dos_attack_l7, expiring_service_token_alert, failing_logpush_job_disabled_alert, fbm_auto_advertisement, fbm_dosd_attack, fbm_volumetric_attack, health_check_status_notification, hostname_aop_custom_certificate_expiration_type, http_alert_edge_error, http_alert_origin_error, image_notification, image_resizing_notification, incident_alert, load_balancing_health_alert, load_balancing_pool_enablement_alert, logo_match_alert, magic_tunnel_health_check_event, magic_wan_tunnel_health, maintenance_event_notification, mtls_certificate_store_certificate_expiration_type, pages_event_alert, radar_notification, real_origin_monitoring, scriptmonitor_alert_new_code_change_detections, scriptmonitor_alert_new_hosts, scriptmonitor_alert_new_malicious_hosts, scriptmonitor_alert_new_malicious_scripts, scriptmonitor_alert_new_malicious_url, scriptmonitor_alert_new_max_length_resource_url, scriptmonitor_alert_new_resources, secondary_dns_all_primaries_failing, secondary_dns_primaries_failing, secondary_dns_warning, secondary_dns_zone_successfully_updated, secondary_dns_zone_validation_warning, security_insights_alert, sentinel_alert, stream_live_notifications, synthetic_test_latency_alert, synthetic_test_low_availability_alert, traffic_anomalies_alert, tunnel_health_event, tunnel_update_event, universal_ssl_event_type, web_analytics_metrics_update, zone_aop_custom_certificate_expiration_type)"
+      expression: "this in ['abuse_report_alert', 'access_custom_certificate_expiration_type', 'advanced_ddos_attack_l4_alert', 'advanced_ddos_attack_l7_alert', 'advanced_http_alert_error', 'bgp_hijack_notification', 'billing_usage_alert', 'block_notification_block_removed', 'block_notification_new_block', 'block_notification_review_rejected', 'bot_traffic_basic_alert', 'brand_protection_alert', 'brand_protection_digest', 'clickhouse_alert_fw_anomaly', 'clickhouse_alert_fw_ent_anomaly', 'cloudforce_one_request_notification', 'cni_maintenance_notification', 'custom_analytics', 'custom_bot_detection_alert', 'custom_ssl_certificate_event_type', 'dedicated_ssl_certificate_event_type', 'device_connectivity_anomaly_alert', 'dos_attack_l4', 'dos_attack_l7', 'expiring_service_token_alert', 'failing_logpush_job_disabled_alert', 'fbm_auto_advertisement', 'fbm_dosd_attack', 'fbm_volumetric_attack', 'health_check_status_notification', 'hostname_aop_custom_certificate_expiration_type', 'http_alert_edge_error', 'http_alert_origin_error', 'image_notification', 'image_resizing_notification', 'incident_alert', 'load_balancing_health_alert', 'load_balancing_pool_enablement_alert', 'logo_match_alert', 'magic_tunnel_health_check_event', 'magic_wan_tunnel_health', 'maintenance_event_notification', 'mtls_certificate_store_certificate_expiration_type', 'pages_event_alert', 'radar_notification', 'real_origin_monitoring', 'scriptmonitor_alert_new_code_change_detections', 'scriptmonitor_alert_new_hosts', 'scriptmonitor_alert_new_malicious_hosts', 'scriptmonitor_alert_new_malicious_scripts', 'scriptmonitor_alert_new_malicious_url', 'scriptmonitor_alert_new_max_length_resource_url', 'scriptmonitor_alert_new_resources', 'secondary_dns_all_primaries_failing', 'secondary_dns_primaries_failing', 'secondary_dns_warning', 'secondary_dns_zone_successfully_updated', 'secondary_dns_zone_validation_warning', 'security_insights_alert', 'sentinel_alert', 'stream_live_notifications', 'synthetic_test_latency_alert', 'synthetic_test_low_availability_alert', 'traffic_anomalies_alert', 'tunnel_health_event', 'tunnel_update_event', 'universal_ssl_event_type', 'web_analytics_metrics_update', 'zone_aop_custom_certificate_expiration_type']"
+    }
+  ];
+
+  // A description of what the policy watches, shown in the dashboard.
+  string description = 4;
+
+  // Whether the policy fires. Cloudflare's default is enabled; the modules
+  // send the flag only when set.
+  optional bool enabled = 5;
+
+  // Minimum time between successive notifications for the same condition
+  // (e.g. "30m", "2h"). Only some alert types honor a refire interval;
+  // empty uses Cloudflare's per-type behavior.
+  string alert_interval = 6;
+
+  // Where alerts are delivered. At least one destination must be declared.
+  CloudflareNotificationPolicyMechanisms mechanisms = 7 [(buf.validate.field).required = true];
+
+  // Narrows which events of the alert type fire this policy. Empty fires on
+  // every event of the type.
+  CloudflareNotificationPolicyFilters filters = 8;
+}
+
+// CloudflareNotificationPolicyMechanisms lists the destinations a policy
+// delivers to. Cloudflare's API takes each destination as an object whose
+// only key is its identity; this spec flattens each to the identity itself
+// and the modules rebuild the API shape.
+message CloudflareNotificationPolicyMechanisms {
+  option (buf.validate.message).cel = {
+    id: "mechanisms.at_least_one"
+    message: "declare at least one destination (an email address, a PagerDuty service, or a webhook)"
+    expression: "size(this.emails) > 0 || size(this.pagerduty_ids) > 0 || size(this.webhook_ids) > 0"
+  };
+
+  // Email addresses to notify.
+  repeated string emails = 1;
+
+  // PagerDuty service UUIDs to page (from the account's PagerDuty
+  // integrations, connected in the Cloudflare dashboard).
+  repeated string pagerduty_ids = 2;
+
+  // Webhook destinations to invoke, by webhook UUID.
+  // When using value_from, defaults to CloudflareNotificationWebhook kind and status.outputs.webhook_id field path.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef webhook_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareNotificationWebhook,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.webhook_id"
+  ];
+}
+
+// CloudflareNotificationPolicyFilters narrows which events fire a policy.
+// Every field is a list of string values (Cloudflare's own grammar -- even
+// numeric thresholds and booleans travel as strings); which fields a given
+// alert_type reads is the API's pairing, and each comment carries the
+// provider's own guidance at v5.23.0.
+message CloudflareNotificationPolicyFilters {
+  // Usage depends on specific alert type.
+  repeated string actions = 1;
+
+  // Used for configuring radar_notification.
+  repeated string affected_asns = 2;
+
+  // Used for configuring incident_alert.
+  repeated string affected_components = 3;
+
+  // Used for configuring radar_notification.
+  repeated string affected_locations = 4;
+
+  // Used for configuring maintenance_event_notification.
+  repeated string airport_code = 5;
+
+  // Usage depends on specific alert type.
+  repeated string alert_trigger_preferences = 6;
+
+  // Usage depends on specific alert type.
+  repeated string alert_trigger_preferences_value = 7;
+
+  // Used for configuring load_balancing_pool_enablement_alert (the pool
+  // enablement state, as "true"/"false" strings).
+  repeated string enabled = 8;
+
+  // Used for configuring pages_event_alert.
+  repeated string environment = 9;
+
+  // Used for configuring pages_event_alert.
+  repeated string event = 10;
+
+  // Used for configuring load_balancing_health_alert.
+  repeated string event_source = 11;
+
+  // Usage depends on specific alert type.
+  repeated string event_type = 12;
+
+  // Usage depends on specific alert type.
+  repeated string group_by = 13;
+
+  // Used for configuring health_check_status_notification.
+  repeated string health_check_id = 14;
+
+  // Used for configuring incident_alert.
+  repeated string incident_impact = 15 [(buf.validate.field).cel = {
+    id: "incident_impact.values"
+    message: "incident_impact entries must be one of INCIDENT_IMPACT_NONE, INCIDENT_IMPACT_MINOR, INCIDENT_IMPACT_MAJOR, INCIDENT_IMPACT_CRITICAL"
+    expression: "this.all(v, v in ['INCIDENT_IMPACT_NONE', 'INCIDENT_IMPACT_MINOR', 'INCIDENT_IMPACT_MAJOR', 'INCIDENT_IMPACT_CRITICAL'])"
+  }];
+
+  // Used for configuring stream_live_notifications.
+  repeated string input_id = 16;
+
+  // Used for configuring security_insights_alert.
+  repeated string insight_class = 17;
+
+  // Used for configuring billing_usage_alert (the usage threshold).
+  repeated string limit = 18;
+
+  // Used for configuring logo_match_alert.
+  repeated string logo_tag = 19;
+
+  // Used for configuring advanced_ddos_attack_l4_alert.
+  repeated string megabits_per_second = 20;
+
+  // Used for configuring load_balancing_health_alert.
+  repeated string new_health = 21;
+
+  // Used for configuring tunnel_health_event.
+  repeated string new_status = 22;
+
+  // Used for configuring advanced_ddos_attack_l4_alert.
+  repeated string packets_per_second = 23;
+
+  // Usage depends on specific alert type.
+  repeated string pool_id = 24;
+
+  // Usage depends on specific alert type.
+  repeated string pop_names = 25;
+
+  // Used for configuring billing_usage_alert (the product the threshold
+  // watches).
+  repeated string product = 26;
+
+  // Used for configuring pages_event_alert.
+  repeated string project_id = 27;
+
+  // Used for configuring advanced_ddos_attack_l4_alert.
+  repeated string protocol = 28;
+
+  // Usage depends on specific alert type.
+  repeated string query_tag = 29;
+
+  // Used for configuring advanced_ddos_attack_l7_alert.
+  repeated string requests_per_second = 30;
+
+  // Usage depends on specific alert type.
+  repeated string selectors = 31;
+
+  // Used for configuring clickhouse_alert_fw_ent_anomaly.
+  repeated string services = 32;
+
+  // Usage depends on specific alert type.
+  repeated string slo = 33;
+
+  // Used for configuring health_check_status_notification.
+  repeated string status = 34;
+
+  // Used for configuring advanced_ddos_attack_l7_alert.
+  repeated string target_hostname = 35;
+
+  // Used for configuring advanced_ddos_attack_l4_alert.
+  repeated string target_ip = 36;
+
+  // Used for configuring advanced_ddos_attack_l7_alert.
+  repeated string target_zone_name = 37;
+
+  // Used for configuring traffic_anomalies_alert.
+  repeated string traffic_exclusions = 38 [(buf.validate.field).cel = {
+    id: "traffic_exclusions.values"
+    message: "traffic_exclusions entries must be security_events"
+    expression: "this.all(v, v == 'security_events')"
+  }];
+
+  // Used for configuring tunnel_health_event.
+  repeated string tunnel_id = 39;
+
+  // Usage depends on specific alert type.
+  repeated string tunnel_name = 40;
+
+  // Usage depends on specific alert type.
+  repeated string type = 41;
+
+  // Usage depends on specific alert type.
+  repeated string where = 42;
+
+  // Usage depends on specific alert type (the zones the policy watches).
+  repeated string zones = 43;
+}

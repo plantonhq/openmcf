@@ -1,0 +1,34 @@
+# Provider-parity manifest for CloudflareZeroTrustDnsLocation.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_dns_location at the pinned provider version.
+# Unlisted arguments (account_id, name, client_default, ecs_support,
+# dns_destination_ips_id) match spec fields by exact name.
+resources:
+  cloudflare_zero_trust_dns_location:
+    mappings:
+      # endpoints is a nested attribute (all four types declared at once);
+      # fan-in of every spec leaf.
+      - spec: spec.endpoints.doh.enabled
+        arg: endpoints
+      - spec: spec.endpoints.doh.require_token
+        arg: endpoints
+      - spec: spec.endpoints.doh.networks.network
+        arg: endpoints
+      - spec: spec.endpoints.dot.enabled
+        arg: endpoints
+      - spec: spec.endpoints.dot.networks.network
+        arg: endpoints
+      - spec: spec.endpoints.ipv4.enabled
+        arg: endpoints
+      - spec: spec.endpoints.ipv6.enabled
+        arg: endpoints
+      - spec: spec.endpoints.ipv6.networks.network
+        arg: endpoints
+      # max_ttl is a nested attribute; fan-in of both leaves.
+      - spec: spec.max_ttl.mode
+        arg: max_ttl
+      - spec: spec.max_ttl.ttl_secs
+        arg: max_ttl
+      # networks is a nested list attribute with a single leaf.
+      - spec: spec.networks.network
+        arg: networks

@@ -30,8 +30,12 @@ type CloudflareLoadBalancerStackOutputs struct {
 	LoadBalancerDnsRecordName string `protobuf:"bytes,2,opt,name=load_balancer_dns_record_name,json=loadBalancerDnsRecordName,proto3" json:"load_balancer_dns_record_name,omitempty"`
 	// The canonical CNAME target that the hostname resolves to (Cloudflare endpoint).
 	LoadBalancerCnameTarget string `protobuf:"bytes,3,opt,name=load_balancer_cname_target,json=loadBalancerCnameTarget,proto3" json:"load_balancer_cname_target,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// The Cloudflare zone that owns the load balancer. A zone-scoped resource
+	// publishes its parent scope: the load balancer's API identity (and its
+	// Terraform import ID) is compound -- zones/{zone_id}/load_balancers/{id}.
+	ZoneId        string `protobuf:"bytes,4,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareLoadBalancerStackOutputs) Reset() {
@@ -85,15 +89,23 @@ func (x *CloudflareLoadBalancerStackOutputs) GetLoadBalancerCnameTarget() string
 	return ""
 }
 
+func (x *CloudflareLoadBalancerStackOutputs) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflareloadbalancer_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/cloudflare/cloudflareloadbalancer/v1alpha1/outputs.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\"\xcd\x01\n" +
+	"@catalog/cloudflare/cloudflareloadbalancer/v1alpha1/outputs.proto\x126dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1\"\xe6\x01\n" +
 	"\"CloudflareLoadBalancerStackOutputs\x12(\n" +
 	"\x10load_balancer_id\x18\x01 \x01(\tR\x0eloadBalancerId\x12@\n" +
 	"\x1dload_balancer_dns_record_name\x18\x02 \x01(\tR\x19loadBalancerDnsRecordName\x12;\n" +
-	"\x1aload_balancer_cname_target\x18\x03 \x01(\tR\x17loadBalancerCnameTargetB\xb7\x03\n" +
+	"\x1aload_balancer_cname_target\x18\x03 \x01(\tR\x17loadBalancerCnameTarget\x12\x17\n" +
+	"\azone_id\x18\x04 \x01(\tR\x06zoneIdB\xb7\x03\n" +
 	":com.dev.planton.cloudflare.cloudflareloadbalancer.v1alpha1B\fOutputsProtoP\x01Zngithub.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancer/v1alpha1;cloudflareloadbalancerv1alpha1\xa2\x02\x04DPCC\xaa\x026Dev.Planton.Cloudflare.Cloudflareloadbalancer.V1alpha1\xca\x026Dev\\Planton\\Cloudflare\\Cloudflareloadbalancer\\V1alpha1\xe2\x02BDev\\Planton\\Cloudflare\\Cloudflareloadbalancer\\V1alpha1\\GPBMetadata\xea\x02:Dev::Planton::Cloudflare::Cloudflareloadbalancer::V1alpha1b\x06proto3"
 
 var (

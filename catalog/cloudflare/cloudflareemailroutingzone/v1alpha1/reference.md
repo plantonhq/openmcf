@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareEmailRoutingZoneSpec enables Email Routing on a zone — the anchor for
 the Email Routing family. Enabling provisions the zone's required MX/SPF/DKIM
 DNS records automatically. The single per-zone catch-all rule is folded in
@@ -25,8 +27,11 @@ spec:
     value: "023e105f4ecef8ad9ca31a8372d0c353"
   catchAll:
     enabled: true
-    type: drop
-  lockDnsRecords: false
+    name: fallback-drop
+    actions:
+      - type: drop
+  lockDnsRecords: true
+  dnsName: mail.example.com
 ```
 
 ## Spec Fields
@@ -36,10 +41,13 @@ spec:
 | `spec.zoneId` | `string \| valueFrom` | yes |  | CloudflareDnsZone (`status.outputs.zone_id`) |
 | `spec.catchAll` | `CloudflareEmailRoutingZoneCatchAll` |  |  |  |
 | `spec.catchAll.enabled` | `bool` |  |  |  |
-| `spec.catchAll.type` | `enum` |  |  |  |
-| `spec.catchAll.forwardTo` | `[]string \| valueFrom` |  |  | CloudflareEmailRoutingAddress (`status.outputs.email`) |
-| `spec.catchAll.worker` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.catchAll.actions` | `[]CloudflareEmailRoutingCatchAllAction` | yes |  |  |
+| `spec.catchAll.actions[].type` | `enum` |  |  |  |
+| `spec.catchAll.actions[].forwardTo` | `[]string \| valueFrom` |  |  | CloudflareEmailRoutingAddress (`status.outputs.email`) |
+| `spec.catchAll.actions[].worker` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.catchAll.name` | `string` |  |  |  |
 | `spec.lockDnsRecords` | `bool` |  |  |  |
+| `spec.dnsName` | `string` |  |  |  |
 
 ## Field Details
 
@@ -61,22 +69,29 @@ CloudflareDnsZone resource.
 Optional catch-all rule for mail no other rule matched. Omit to leave the
 zone's catch-all at Cloudflare's default (drop, disabled).
 
-- rule: forward_to is required when catch-all type is forward
-- rule: worker is required when catch-all type is worker
-
 ### spec.catchAll.enabled
 
 `bool`
 
 Whether the catch-all rule is active.
 
-### spec.catchAll.type
+### spec.catchAll.actions
+
+`[]CloudflareEmailRoutingCatchAllAction` · required
+
+The actions taken on unmatched mail, applied in order (at least one).
+
+- rule: {"repeated":{"minItems":"1"}}
+- rule: forward_to is required when catch-all action type is forward
+- rule: worker is required when catch-all action type is worker
+
+### spec.catchAll.actions[].type
 
 `enum`
 
-What to do with unmatched mail.
+The action type.
 
-- rule: catch-all type must be one of drop, forward, worker
+- rule: catch-all action type must be one of drop, forward, worker
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
@@ -86,7 +101,7 @@ Allowed values (use exactly as shown):
 - `forward`
 - `worker`
 
-### spec.catchAll.forwardTo
+### spec.catchAll.actions[].forwardTo
 
 `[]string | valueFrom`
 
@@ -96,7 +111,7 @@ a verified destination email, or a reference to a CloudflareEmailRoutingAddress.
 - references: CloudflareEmailRoutingAddress (`status.outputs.email`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareEmailRoutingAddress, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
 
-### spec.catchAll.worker
+### spec.catchAll.actions[].worker
 
 `string | valueFrom`
 
@@ -106,6 +121,12 @@ name or a reference to a CloudflareWorker.
 - references: CloudflareWorker (`status.outputs.script_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareWorker, name: <that resource's name>, fieldPath: status.outputs.script_name}} -- a bare string does not parse
 
+### spec.catchAll.name
+
+`string`
+
+An optional descriptive name for the catch-all rule.
+
 ### spec.lockDnsRecords
 
 `bool`
@@ -113,6 +134,20 @@ name or a reference to a CloudflareWorker.
 Lock the Email Routing DNS records so they cannot be modified out-of-band.
 The records are created automatically on enable regardless; locking manages
 them explicitly. Defaults to false.
+
+### spec.dnsName
+
+`string`
+
+The domain to create the managed Email Routing DNS records for. Leave empty
+for the zone apex (the common case). Set a subdomain of the zone (e.g.
+"mail.example.com" on zone "example.com") to route email addressed to that
+subdomain. Applies only when lock_dns_records is true (that is what
+instantiates the managed DNS records).
+
+## Validation Rules
+
+- `spec.dns_name_requires_lock`: dns_name requires lock_dns_records to be true
 
 ## Outputs
 
@@ -132,8 +167,8 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.zoneId` | CloudflareDnsZone | `status.outputs.zone_id` |
-| `spec.catchAll.forwardTo` | CloudflareEmailRoutingAddress | `status.outputs.email` |
-| `spec.catchAll.worker` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.catchAll.actions[].forwardTo` | CloudflareEmailRoutingAddress | `status.outputs.email` |
+| `spec.catchAll.actions[].worker` | CloudflareWorker | `status.outputs.script_name` |
 
 ## See Also
 

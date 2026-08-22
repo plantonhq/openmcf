@@ -1,0 +1,267 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewaitingroom.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareWaitingRoomSpec defines one waiting room: a virtual queue in front
+// of a host+path that admits visitors at a controlled rate and parks the
+// overflow on a branded queue page. The room's thresholds (new users per
+// minute, total active users) decide when queueing kicks in; everything else
+// shapes the queueing experience.
+//
+// The room's BYPASS RULES ride along in this spec (bypass_rules): Cloudflare
+// models them as a separate per-room rules list with full-replacement updates,
+// and this kind manages that list as part of the room -- every apply replaces
+// the room's whole rules list with exactly what the manifest declares.
+//
+// Several fields need the WAITING ROOMS ADVANCED add-on (marked "Advanced" in
+// their comments): additional_routes, custom_page_html, disable_session_renewal,
+// json_response_enabled, a non-default queueing_method, the infinite_queue
+// turnstile action, and non-off turnstile modes. Cloudflare enforces the
+// entitlement at the API -- setting an Advanced field on a plan without the
+// add-on fails at apply, not here.
+message CloudflareWaitingRoomSpec {
+  // The zone the waiting room belongs to.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // A name for the waiting room (shown in the dashboard).
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The host the room protects (e.g. shop.example.com). Together with path this
+  // is WHERE the queue sits.
+  string host = 3 [(buf.validate.field).required = true];
+
+  // The path the room protects (Cloudflare's default: /, the whole host). A
+  // more specific path scopes the queue to that subtree.
+  optional string path = 4;
+
+  // How many NEW users per minute may enter the protected route before new
+  // arrivals queue. Cloudflare's floor is 200.
+  int32 new_users_per_minute = 5 [(buf.validate.field).int32.gte = 200];
+
+  // How many users may be on the protected route AT ONCE before new arrivals
+  // queue. Cloudflare's floor is 200.
+  int32 total_active_users = 6 [(buf.validate.field).int32.gte = 200];
+
+  // Minutes a user's slot stays valid after leaving the route before they must
+  // re-queue (Cloudflare's default: 5; the ceiling is 30).
+  optional int32 session_duration = 7 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 30
+  }];
+
+  // Pause the room's queueing without deleting its configuration.
+  optional bool suspended = 8;
+
+  // Send everyone to the queue regardless of thresholds -- the "close the shop"
+  // switch for maintenance windows.
+  optional bool queue_all = 9;
+
+  // How queued users are admitted (Cloudflare's default: fifo).
+  //   - fifo: strict arrival order.
+  //   - random: random draw each admission cycle (fairer under reload-storms).
+  //   - passthrough: nobody queues; useful for testing the room's wiring.
+  //   - reject: turn overflow away instead of queueing.
+  // Non-default methods need the Advanced add-on.
+  optional string queueing_method = 10 [
+    (dev.planton.shared.options.default) = "fifo",
+    (buf.validate.field).string = {
+      in: [
+        "fifo",
+        "random",
+        "passthrough",
+        "reject"
+      ]
+    }
+  ];
+
+  // HTTP status the queue page answers with (Cloudflare's default: 200; 202 and
+  // 429 are the alternatives some monitoring stacks prefer).
+  optional int32 queueing_status_code = 11 [(buf.validate.field).int32 = {
+    in: [
+      200,
+      202,
+      429
+    ]
+  }];
+
+  // Attributes of the __cfwaitingroom cookie that tracks a visitor's place.
+  CloudflareWaitingRoomCookieAttributes cookie_attributes = 12;
+
+  // Suffix appended to the __cfwaitingroom cookie name, for hosts running
+  // several rooms whose cookies must not collide.
+  string cookie_suffix = 13;
+
+  // Custom HTML for the queue page (Advanced). Supports Cloudflare's waiting
+  // room template variables. Unset serves Cloudflare's default queue page in
+  // default_template_language.
+  string custom_page_html = 14;
+
+  // Language of Cloudflare's default queue page (Cloudflare's default: en-US).
+  // Ignored when custom_page_html is set.
+  optional string default_template_language = 15 [
+    (dev.planton.shared.options.default) = "en-US",
+    (buf.validate.field).string = {
+      in: [
+        "en-US",
+        "es-ES",
+        "de-DE",
+        "fr-FR",
+        "it-IT",
+        "ja-JP",
+        "ko-KR",
+        "pt-BR",
+        "zh-CN",
+        "zh-TW",
+        "nl-NL",
+        "pl-PL",
+        "id-ID",
+        "tr-TR",
+        "ar-EG",
+        "ru-RU",
+        "fa-IR",
+        "bg-BG",
+        "hr-HR",
+        "cs-CZ",
+        "da-DK",
+        "fi-FI",
+        "lt-LT",
+        "ms-MY",
+        "nb-NO",
+        "ro-RO",
+        "el-GR",
+        "he-IL",
+        "hi-IN",
+        "hu-HU",
+        "sr-BA",
+        "sk-SK",
+        "sl-SI",
+        "sv-SE",
+        "tl-PH",
+        "th-TH",
+        "uk-UA",
+        "vi-VN"
+      ]
+    }
+  ];
+
+  // Description shown in the dashboard's room list.
+  string description = 16;
+
+  // Do not renew a user's session while they stay on the route (Advanced): the
+  // session expires session_duration minutes after ENTRY instead of after their
+  // last request, forcing periodic re-queueing under sustained load.
+  optional bool disable_session_renewal = 17;
+
+  // Answer queued API clients with JSON instead of the HTML queue page
+  // (Advanced) -- for native apps and XHR callers that cannot render HTML.
+  optional bool json_response_enabled = 18;
+
+  // Additional host+path routes covered by the SAME room and quota (Advanced) --
+  // e.g. queue www and apex together so a visitor holds one place across both.
+  repeated CloudflareWaitingRoomRoute additional_routes = 19;
+
+  // Origin commands the room accepts from the protected origin.
+  // Cloudflare currently supports only "revoke" (revoke a visitor's session
+  // from the origin side).
+  repeated string enabled_origin_commands = 20 [(buf.validate.field).repeated.items.string = {
+    in: ["revoke"]
+  }];
+
+  // What happens when Turnstile (the room's bot check) flags a visitor
+  // (Cloudflare's default: log).
+  //   - log: record it and let them through.
+  //   - infinite_queue: park suspected bots in a queue that never admits
+  //     (Advanced).
+  optional string turnstile_action = 21 [
+    (dev.planton.shared.options.default) = "log",
+    (buf.validate.field).string = {
+      in: [
+        "log",
+        "infinite_queue"
+      ]
+    }
+  ];
+
+  // How Turnstile challenges queued visitors (Cloudflare's default: invisible;
+  // off disables it). Non-off modes need the Advanced add-on.
+  optional string turnstile_mode = 22 [
+    (dev.planton.shared.options.default) = "invisible",
+    (buf.validate.field).string = {
+      in: [
+        "off",
+        "invisible",
+        "visible_non_interactive",
+        "visible_managed"
+      ]
+    }
+  ];
+
+  // The room's bypass rules: requests matching an expression skip the queue
+  // entirely (the action is fixed to bypass_waiting_room -- the module supplies
+  // it). Cloudflare stores these as a per-room list replaced WHOLE on every
+  // apply -- this list is the entire rule set, and destroying the room's rules
+  // (or the room) clears rules added outside the manifest too.
+  repeated CloudflareWaitingRoomBypassRule bypass_rules = 23;
+}
+
+// CloudflareWaitingRoomCookieAttributes shapes the __cfwaitingroom cookie.
+message CloudflareWaitingRoomCookieAttributes {
+  // SameSite attribute (Cloudflare's default: auto -- None when Always Use
+  // HTTPS is on, Lax otherwise). Note: none requires the cookie be Secure.
+  optional string samesite = 1 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "auto",
+        "lax",
+        "none",
+        "strict"
+      ]
+    }
+  ];
+
+  // Secure attribute (Cloudflare's default: auto -- Secure when Always Use
+  // HTTPS is on).
+  optional string secure = 2 [
+    (dev.planton.shared.options.default) = "auto",
+    (buf.validate.field).string = {
+      in: [
+        "auto",
+        "always",
+        "never"
+      ]
+    }
+  ];
+}
+
+// CloudflareWaitingRoomRoute is one extra host+path covered by the room.
+message CloudflareWaitingRoomRoute {
+  // The additional host (e.g. www.example.com).
+  string host = 1 [(buf.validate.field).required = true];
+
+  // The path on that host (Cloudflare's default: /).
+  optional string path = 2;
+}
+
+// CloudflareWaitingRoomBypassRule is one queue-bypass rule of the room.
+message CloudflareWaitingRoomBypassRule {
+  // The match expression in Cloudflare's Rules language (wirefilter), e.g.
+  // `ip.src in {203.0.113.0/24}` to let an office network skip the queue.
+  string expression = 1 [(buf.validate.field).required = true];
+
+  // Optional description shown in the dashboard's rule list.
+  string description = 2;
+
+  // Whether the rule is active (Cloudflare's default for waiting-room rules:
+  // true -- unlike snippet rules, a declared bypass rule runs unless disabled).
+  optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
+}

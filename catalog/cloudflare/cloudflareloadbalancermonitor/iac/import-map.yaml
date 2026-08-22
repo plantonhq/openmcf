@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareloadbalancermonitor
+spec:
+  # A monitor's import identity is {account_id}/{monitor_id}. account_id is
+  # spec-relative; monitor_id is the deploy's own output. Requires the
+  # Load Balancing add-on.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: monitor_id
+      derivations:
+        - from_stack_output: monitor_id
+      where_to_find: >-
+        Cloudflare dashboard -> Traffic -> Load Balancing -> Monitors
+        (open the monitor; the id is in the URL), or
+        `GET /accounts/<account_id>/load_balancers/monitors` on the
+        Cloudflare v4 API (the id field).

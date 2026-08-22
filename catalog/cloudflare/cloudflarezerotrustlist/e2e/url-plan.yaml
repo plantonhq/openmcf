@@ -1,0 +1,18 @@
+# Offline-plan arm: a URL-type list. NEVER a live scenario from authoring: the
+# API normalizes URL values while the provider does none, so URL lists show a
+# PERPETUAL plan diff (the provider's own acceptance test at v5.23.0 marks its
+# URL step ExpectNonEmptyPlan) -- the harness's idempotency gate would
+# false-fail. The shape is proven by offline `tofu plan`; a live URL arm is
+# the proof lane's call under its design authority.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustList
+metadata:
+  name: test-zt-list-urls
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: blocked-urls
+  type: URL
+  items:
+    - value: https://example.com/blocked-path
+      description: policy-blocked URL
+    - value: https://blocked.example.net

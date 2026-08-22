@@ -1,0 +1,24 @@
+# Complete example manifest for CloudflareAccountApiToken.
+# A read-only DNS token limited to one office network, expiring at the end
+# of 2027.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAccountApiToken
+metadata:
+  name: dns-readonly
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: dns-readonly
+  policies:
+    - effect: allow
+      permission_group_ids:
+        - "REPLACE_WITH_PERMISSION_GROUP_UUID"
+      resources:
+        "com.cloudflare.api.account.0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d":
+          subresources:
+            "com.cloudflare.api.account.zone.*": "*"
+  condition:
+    request_ip:
+      in_cidrs:
+        - "198.51.100.0/24"
+  expires_on: "2027-12-31T23:59:59Z"
+  status: active

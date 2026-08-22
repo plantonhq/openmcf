@@ -1,0 +1,15 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustgatewaysettings
+spec:
+  billing_model: free
+  notes: >-
+    Gateway configuration, logging switches, and PAC files create no charge
+    of their own. Zero Trust seat billing is driven by enrolled USERS, and
+    some configured features gate on plan level (browser isolation is a
+    paid add-on) -- the switches here configure them but never provision
+    seats or add-ons.

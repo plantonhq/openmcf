@@ -1,0 +1,35 @@
+# Minimal CloudflareHyperdriveConfig scenario: one Postgres-backed config
+# with explicit caching. Cloudflare validates the origin connection at
+# CREATE, so this arm is env-gated on a reachable origin database the proof
+# session provides; without the env vars the lane skips honestly. The
+# password enters by env reference -- never a literal in the manifest. The
+# config name carries the run id (names are unique within an account).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareHyperdriveConfig
+metadata:
+  name: planton-oss-e2e-cloudflarehyperdriveconfig-minimal
+  id: planton-oss-e2e-cloudflarehyperdriveconfig-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarehyperdriveconfig
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_HYPERDRIVE_ORIGIN_HOST,PLANTON_E2E_HYPERDRIVE_ORIGIN_USER,PLANTON_E2E_HYPERDRIVE_ORIGIN_PASSWORD,PLANTON_E2E_HYPERDRIVE_ORIGIN_DATABASE
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-hyp-min
+  origin:
+    database: ${E2E_ENV:PLANTON_E2E_HYPERDRIVE_ORIGIN_DATABASE}
+    scheme: postgres
+    user: ${E2E_ENV:PLANTON_E2E_HYPERDRIVE_ORIGIN_USER}
+    host: ${E2E_ENV:PLANTON_E2E_HYPERDRIVE_ORIGIN_HOST}
+    port: 5432
+    password:
+      value: ${E2E_ENV:PLANTON_E2E_HYPERDRIVE_ORIGIN_PASSWORD}
+  caching:
+    maxAge: 60
+    staleWhileRevalidate: 15

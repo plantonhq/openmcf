@@ -1,0 +1,19 @@
+# A complete, protovalidate-valid CloudflareSnippetRules example: the zone's
+# whole snippet routing table (this list REPLACES all snippet rules in the
+# zone on every apply).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSnippetRules
+metadata:
+  name: zone-snippet-routing
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  rules:
+    - expression: 'http.request.uri.path starts_with "/legacy"'
+      snippet_name:
+        value: redirect_legacy_urls
+      description: "Send legacy URLs to the redirect snippet"
+    - expression: 'http.host eq "beta.example.com"'
+      snippet_name:
+        value: add_debug_header
+      enabled: false

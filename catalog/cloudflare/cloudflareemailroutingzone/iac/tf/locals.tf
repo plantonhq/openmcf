@@ -3,12 +3,15 @@ locals {
 
   catch_all = try(var.spec.catch_all, null)
 
-  # Map the typed catch-all action onto the provider's generic {type, value[]}:
+  # Map each typed catch-all action onto the provider's generic {type, value[]}:
   # forward -> the destination addresses; worker -> the single script name;
   # drop -> no values.
-  catch_all_values = local.catch_all == null ? [] : (
-    local.catch_all.type == "forward" ? local.catch_all.forward_to : (
-      local.catch_all.type == "worker" ? [local.catch_all.worker] : []
-    )
-  )
+  catch_all_actions = local.catch_all == null ? [] : [
+    for a in local.catch_all.actions : {
+      type = a.type
+      value = a.type == "forward" ? a.forward_to : (
+        a.type == "worker" ? [a.worker] : []
+      )
+    }
+  ]
 }

@@ -1,0 +1,25 @@
+# Minimal CloudflareAiGateway scenario: the five required scalars only --
+# the smallest gateway Cloudflare accepts (caching on with a short TTL, logs
+# collected, a generous rate limit). Free tier.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: planton-oss-e2e-cloudflareaigateway-minimal
+  id: planton-oss-e2e-cloudflareaigateway-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  gateway_id: e2e-aig-min-${E2E_RUN_ID}
+  cache_invalidate_on_update: true
+  cache_ttl: 60
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 1000

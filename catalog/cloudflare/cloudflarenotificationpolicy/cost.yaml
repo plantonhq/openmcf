@@ -1,0 +1,14 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarenotificationpolicy
+spec:
+  billing_model: free
+  notes: >-
+    Notification policies are free to create and deliver on every plan. What
+    IS plan-gated is which alert types an account may use: advanced DDoS,
+    bot, and several security alert families require Business or Enterprise,
+    and Cloudflare refuses the create when the plan does not carry the type.

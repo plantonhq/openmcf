@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareAuthenticatedOriginPulls is a KRM-style resource for managing a
+// zone's Authenticated Origin Pulls enablement: the zone-wide toggle and the
+// per-hostname certificate associations.
+message CloudflareAuthenticatedOriginPulls {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareAuthenticatedOriginPulls'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareAuthenticatedOriginPullsSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareAuthenticatedOriginPullsStatus status = 5;
+}
+
+// CloudflareAuthenticatedOriginPullsStatus represents the observed state of
+// the zone's Authenticated Origin Pulls surface.
+message CloudflareAuthenticatedOriginPullsStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareAuthenticatedOriginPullsStackOutputs outputs = 1;
+}

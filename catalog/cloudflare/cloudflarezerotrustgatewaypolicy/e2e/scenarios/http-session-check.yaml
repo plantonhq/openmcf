@@ -1,0 +1,32 @@
+# HTTP allow policy with session enforcement and untrusted-cert handling --
+# exercises the http filter and two allow-action settings WITHOUT the
+# upstream-defect fields (add_headers/override_ips drift on first apply at
+# v5.23.0; that shape is plan-proven offline instead).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustgatewaypolicy-http-session-check
+  id: planton-oss-e2e-cloudflarezerotrustgatewaypolicy-http-session-check
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustgatewaypolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-http-session
+  action: allow
+  filter: http
+  enabled: true
+  precedence: 15100
+  traffic: http.request.host == "app-${E2E_RUN_ID}.example.com"
+  ruleSettings:
+    checkSession:
+      duration: 24h0m0s
+      enforce: true
+    untrustedCert:
+      action: error

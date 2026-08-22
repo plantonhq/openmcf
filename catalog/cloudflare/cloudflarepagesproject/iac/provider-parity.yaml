@@ -1,0 +1,222 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The project's nested trees (build_config, source, and the two deployment
+# configs) are nested provider attributes, each one configurable argument;
+# the spec models the same trees as typed messages -- with each deployment
+# config's generic env_vars {type, value} split into a plain vars map plus
+# a typed secrets list, and every binding class given a named message.
+# Fan-in mappings record every spec leaf each argument realizes.
+#
+# Two sub-surfaces inside these trees are deliberately restructured away,
+# with no capability loss:
+#   - source.config.owner_id / repo_id: numeric alternative addressing of
+#     the repository the spec already identifies canonically by
+#     owner + repo_name.
+#   - deployment_configs.*.wrangler_config_hash: drift-detection
+#     bookkeeping for wrangler-managed projects; Planton is the manager
+#     here, so there is no wrangler state to fingerprint.
+
+resources:
+  cloudflare_pages_project:
+    mappings:
+      - spec: spec.build_config.build_caching
+        arg: build_config
+      - spec: spec.build_config.build_command
+        arg: build_config
+      - spec: spec.build_config.destination_dir
+        arg: build_config
+      - spec: spec.build_config.root_dir
+        arg: build_config
+      - spec: spec.build_config.web_analytics_tag
+        arg: build_config
+      - spec: spec.build_config.web_analytics_token
+        arg: build_config
+      - spec: spec.deployment_configs.preview.ai_bindings.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.ai_bindings.project_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.always_use_latest_compatibility_date
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.analytics_engine_datasets.dataset
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.analytics_engine_datasets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.browsers.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.build_image_major_version
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.compatibility_date
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.compatibility_flags
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.d1_databases.database_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.d1_databases.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.durable_object_namespaces.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.durable_object_namespaces.namespace_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.fail_open
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.hyperdrive_bindings.config_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.hyperdrive_bindings.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.kv_namespaces.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.kv_namespaces.namespace_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.limits.cpu_ms
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.mtls_certificates.certificate_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.mtls_certificates.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.placement.mode
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.queue_producers.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.queue_producers.queue_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.r2_buckets.bucket_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.r2_buckets.jurisdiction
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.r2_buckets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.secrets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.secrets.value
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.services.entrypoint
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.services.environment
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.services.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.services.service
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.usage_model
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.vars
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.vectorize_bindings.index_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.preview.vectorize_bindings.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.ai_bindings.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.ai_bindings.project_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.always_use_latest_compatibility_date
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.analytics_engine_datasets.dataset
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.analytics_engine_datasets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.browsers.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.build_image_major_version
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.compatibility_date
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.compatibility_flags
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.d1_databases.database_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.d1_databases.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.durable_object_namespaces.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.durable_object_namespaces.namespace_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.fail_open
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.hyperdrive_bindings.config_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.hyperdrive_bindings.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.kv_namespaces.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.kv_namespaces.namespace_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.limits.cpu_ms
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.mtls_certificates.certificate_id
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.mtls_certificates.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.placement.mode
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.queue_producers.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.queue_producers.queue_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.r2_buckets.bucket_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.r2_buckets.jurisdiction
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.r2_buckets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.secrets.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.secrets.value
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.services.entrypoint
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.services.environment
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.services.name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.services.service
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.usage_model
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.vars
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.vectorize_bindings.index_name
+        arg: deployment_configs
+      - spec: spec.deployment_configs.production.vectorize_bindings.name
+        arg: deployment_configs
+      - spec: spec.source.config.deployments_enabled
+        arg: source
+      - spec: spec.source.config.owner
+        arg: source
+      - spec: spec.source.config.path_excludes
+        arg: source
+      - spec: spec.source.config.path_includes
+        arg: source
+      - spec: spec.source.config.pr_comments_enabled
+        arg: source
+      - spec: spec.source.config.preview_branch_excludes
+        arg: source
+      - spec: spec.source.config.preview_branch_includes
+        arg: source
+      - spec: spec.source.config.preview_deployment_setting
+        arg: source
+      - spec: spec.source.config.production_branch
+        arg: source
+      - spec: spec.source.config.production_deployments_enabled
+        arg: source
+      - spec: spec.source.config.repo_name
+        arg: source
+      - spec: spec.source.type
+        arg: source
+  cloudflare_pages_domain:
+    mappings:
+      # One domain resource per entry of the spec's domains list; the
+      # argument is the custom domain itself. Recorded explicitly because
+      # exact matching would otherwise bind it to the project-name field.
+      - spec: spec.domains
+        arg: name
+      # The attachment names the same project the primary resource creates
+      # -- one spec field consumed by both resources.
+      - spec: spec.name
+        arg: project_name

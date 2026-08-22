@@ -1,3 +1,9 @@
+# Offline development manifest exercising the full spec surface: zone core,
+# simple and structured inline records (typed data cases at the record level),
+# record tags/settings, zone-wide DNS settings, DNSSEC, zone hold, and the plan
+# subscription. Hold and subscription stay OUT of the live scenarios (billing
+# token scope; unverified hold semantics on a throwaway fixture zone) -- this
+# manifest is their offline tofu-plan proof.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
@@ -12,13 +18,40 @@ spec:
       content: "192.0.2.1"
       proxied: true
       ttl: 1
+      settings:
+        ipv4Only: true
+      tags:
+        - team:web
     - name: "@"
       type: MX
       content: mail.planton-example.com
       ttl: 1
       priority: 10
+    - name: _sip._tcp
+      type: SRV
+      srv:
+        priority: 10
+        weight: 5
+        port: 5060
+        target: sip.planton-example.com
+    - name: "@"
+      type: CAA
+      caa:
+        tag: issue
+        value: letsencrypt.org
+    - name: "@"
+      type: HTTPS
+      https:
+        priority: 1
+        target: "."
+        value: alpn="h2"
   dnsSettings:
     flattenAllCnames: true
     zoneMode: standard
   dnssec:
     enabled: true
+  hold:
+    enabled: true
+    includeSubdomains: true
+  subscription:
+    ratePlan: free

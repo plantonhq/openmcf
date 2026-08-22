@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarehyperdriveconfig
+spec:
+  # A Hyperdrive config under live E2E: account-scoped, no catalog
+  # prerequisites -- deploy -> GET
+  # accounts/{account_id}/hyperdrive/configs/{hyperdrive_id} verify ->
+  # destroy -> verify-destroyed on both provisioners. The real-world
+  # dependency is not a catalog kind: Cloudflare validates the origin
+  # database connection at CREATE, so the minimal scenario is env-gated
+  # (planton.dev/e2e-required-env) on a reachable origin Postgres the proof
+  # session provides -- PLANTON_E2E_HYPERDRIVE_ORIGIN_HOST / _USER /
+  # _PASSWORD / _DATABASE. Until those are set the lane skips honestly
+  # instead of failing on an unreachable origin. The scenario also exercises
+  # explicit caching (maxAge + staleWhileRevalidate). Deliberately not live:
+  # mtls (needs CA/client certificates pre-uploaded to Cloudflare) and a VPC
+  # Service origin (needs a Workers VPC setup); both module paths are
+  # offline-plan-proven via the kind's e2e manifest and presets. Watch: the
+  # origin password is write-only (the API never returns it) -- the blind
+  # import round-trip lands with an empty password in state and must
+  # re-assert it from configuration. Objects create in seconds at zero cost
+  # (the origin database is the proof session's only real expense).
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

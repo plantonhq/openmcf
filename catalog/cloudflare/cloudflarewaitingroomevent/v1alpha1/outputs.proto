@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewaitingroomevent.v1alpha1;
+
+// CloudflareWaitingRoomEventStackOutputs captures the observable outputs after
+// creating a waiting room event.
+message CloudflareWaitingRoomEventStackOutputs {
+  // The ID of the created event.
+  string event_id = 1;
+
+  // The waiting room the event runs on.
+  string waiting_room_id = 2;
+
+  // The zone the waiting room belongs to.
+  string zone_id = 3;
+}

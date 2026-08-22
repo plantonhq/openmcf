@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarehyperdriveconfig
+spec:
+  # A Hyperdrive config's import identity is {account_id}/{hyperdrive_id}.
+  # The origin password is write-only (the API never returns it), so the
+  # imported state lands with an empty password until the configuration
+  # re-asserts it -- the round-trip plan must expect that one diff.
+  # account_id is spec-relative; the config id is the deploy's own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: hyperdrive_id
+      derivations:
+        - from_stack_output: hyperdrive_id
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> Hyperdrive -> the
+        config (the ID on the settings pane), or
+        `GET /accounts/<account_id>/hyperdrive/configs` on the Cloudflare v4
+        API (the id field).

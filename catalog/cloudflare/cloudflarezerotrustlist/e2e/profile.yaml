@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustlist
+spec:
+  # Zero Trust lists under live E2E: account-scoped, no prerequisites -- the
+  # harness runs deploy -> API verify -> destroy -> verify-absent on both
+  # provisioners. Delete is a real API DELETE and reads 404 honestly after it.
+  # The live scenarios cover DOMAIN and IP lists (free; creates in seconds).
+  # URL-type lists never enter a live lane from authoring: the provider does
+  # no URL normalization while the API does, so URL lists produce a PERPETUAL
+  # plan diff (the provider's own acceptance test expects a non-empty plan) --
+  # the idempotency gate would false-fail. The URL shape is offline-plan-proven
+  # via e2e/url-plan.yaml; a live URL arm is the proof lane's call under its
+  # design authority. Watch item: the list TYPE is immutable (RequiresReplace)
+  # -- type changes replace the list and break referencing policies.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
+  cost_class: cheap_ephemeral

@@ -1,0 +1,21 @@
+# Minimal CloudflareD1Database scenario: one bare database; Cloudflare picks
+# the placement. Database names are unique within an account, so the name
+# carries the run id to keep concurrent lanes from colliding. The account
+# comes from the harness env.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareD1Database
+metadata:
+  name: planton-oss-e2e-cloudflared1database-minimal
+  id: planton-oss-e2e-cloudflared1database-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflared1database
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  databaseName: planton-e2e-${E2E_RUN_ID}-d1-min

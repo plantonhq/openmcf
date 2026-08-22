@@ -10,9 +10,11 @@ Cloudflare DNS provides authoritative DNS served from a global anycast network, 
 
 - **Global Anycast DNS**: authoritative DNS from a worldwide edge network
 - **Zone types**: full, partial (CNAME setup), secondary, and internal zones
-- **Inline records**: a lean set of DNS records managed with the zone (use standalone CloudflareDnsRecord for the full record feature set)
+- **Inline records at full depth**: all 21 record types managed with the zone — simple records via `content`, structured records (SRV, CAA, TLSA, LOC, …) via typed data blocks, plus per-record tags, settings, and private routing. Records with independent lifecycles are better modeled as standalone CloudflareDnsRecord resources; the surface is identical.
 - **Folded DNS settings**: CNAME flattening, zone mode, SOA, nameserver set, and NS TTL
 - **DNSSEC**: enable Cloudflare zone signing and export the DS material for your registrar
+- **Zone hold**: block the zone's hostname (and optionally subdomains) from being added as a zone in any other Cloudflare account
+- **Plan subscription**: subscribe the zone to a Cloudflare rate plan directly from the spec
 - **Vanity name servers**: custom name servers on Business/Enterprise plans
 
 ## Prerequisites
@@ -61,6 +63,31 @@ spec:
       priority: 10
 ```
 
+### With Structured Records
+
+Structured record types carry their fields in a typed block named after the
+record type (exactly one of `content` or a typed block is set, and it must
+match `type`):
+
+```yaml
+spec:
+  zone_name: "example.com"
+  account_id: "your-cloudflare-account-id"
+  records:
+    - name: _sip._tcp
+      type: SRV
+      srv:
+        priority: 10
+        weight: 5
+        port: 5060
+        target: sip.example.com
+    - name: "@"
+      type: CAA
+      caa:
+        tag: issue
+        value: letsencrypt.org
+```
+
 ### With DNS Settings and DNSSEC
 
 ```yaml
@@ -90,9 +117,11 @@ spec:
 | `type` | enum | Zone type: full, partial, secondary, internal | full |
 | `paused` | bool | If true, zone is DNS-only (no proxy/CDN/WAF) | false |
 | `vanity_name_servers` | []string | Custom name servers (Business/Enterprise) | [] |
-| `records` | object[] | Inline DNS records (name, type, content, proxied, ttl, priority, comment) | [] |
+| `records` | object[] | Inline DNS records: name, type (all 21 types), content or a typed data block (srv/caa/cert/dnskey/ds/https/loc/naptr/smimea/sshfp/svcb/tlsa/uri), proxied, ttl, priority, comment, tags, settings (ipv4_only/ipv6_only/flatten_cname), private_routing | [] |
 | `dns_settings` | object | Zone-wide DNS settings (see below) | — |
 | `dnssec` | object | DNSSEC config: enabled, multi_signer, presigned, use_nsec3 | — |
+| `hold` | object | Zone hold: enabled, include_subdomains, hold_after (RFC3339) | — |
+| `subscription` | object | Zone plan: rate_plan (free/lite/pro/pro_plus/business/enterprise/partner variants), frequency, scope. A paid plan bills real money and needs Billing Write token scope | — |
 
 ### DNS Settings
 
@@ -114,6 +143,15 @@ spec:
 planton output zone_id
 planton output nameservers
 ```
+
+## Zone Hold and Plan
+
+Set `hold.enabled: true` to protect the zone's hostname from being created as a
+zone in any other Cloudflare account (add `include_subdomains: true` to extend
+the hold to every subdomain) — the standard guard during account migrations.
+Set `subscription.rate_plan` to subscribe the zone to a Cloudflare plan; paid
+plans start billing at apply and the deploying API token needs Billing Write
+scope.
 
 ## Nameserver Configuration
 

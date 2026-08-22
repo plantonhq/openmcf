@@ -1,0 +1,38 @@
+# Complete example manifest for CloudflareZeroTrustGatewaySettings.
+# Manages the account's Secure Web Gateway configuration (unset sub-objects
+# stay unmanaged), the logging controls (the full tree is sent when
+# declared), and PAC files (each row a real resource).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewaySettings
+metadata:
+  name: acme-gateway
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  settings:
+    activity_log:
+      enabled: true
+    protocol_detection:
+      enabled: true
+    block_page:
+      enabled: true
+      name: Blocked by Acme IT
+      header_text: This site is blocked
+      footer_text: Questions? Contact IT.
+      background_color: "#0f172a"
+    max_ttl_secs: 300
+  logging:
+    redact_pii: true
+    settings_by_rule_type:
+      dns:
+        log_all: false
+        log_blocks: true
+      http:
+        log_all: false
+        log_blocks: true
+      l4:
+        log_all: false
+        log_blocks: false
+  pac_files:
+    - name: default-proxy
+      contents: 'function FindProxyForURL(url, host) { return "DIRECT"; }'
+      description: Default direct PAC file

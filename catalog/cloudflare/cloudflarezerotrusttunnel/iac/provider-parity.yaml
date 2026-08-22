@@ -1,0 +1,105 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The kind fuses the tunnel with its remotely-managed configuration: a
+# tunnel's ingress has no meaning without the tunnel, and the module still
+# provisions the config as its own resource so ingress edits never recreate
+# the tunnel.
+
+resources:
+  cloudflare_zero_trust_tunnel_cloudflared_config:
+    mappings:
+      # The provider's config is one nested object attribute (a single
+      # configurable argument); the spec models the same tree as typed
+      # messages -- ingress rules plus the shared origin_request message
+      # reused at both the per-rule and top-level positions. Fan-in
+      # mappings record every spec leaf the argument realizes. One naming
+      # divergence inside the tree: the generated provider schema carries
+      # the typo match_sn_ito_host; the spec names it match_sni_to_host.
+      - spec: spec.ingress.hostname
+        arg: config
+      - spec: spec.ingress.path
+        arg: config
+      - spec: spec.ingress.service
+        arg: config
+      - spec: spec.ingress.origin_request.access.aud_tag
+        arg: config
+      - spec: spec.ingress.origin_request.access.required
+        arg: config
+      - spec: spec.ingress.origin_request.access.team_name
+        arg: config
+      - spec: spec.ingress.origin_request.ca_pool
+        arg: config
+      - spec: spec.ingress.origin_request.connect_timeout
+        arg: config
+      - spec: spec.ingress.origin_request.disable_chunked_encoding
+        arg: config
+      - spec: spec.ingress.origin_request.http2_origin
+        arg: config
+      - spec: spec.ingress.origin_request.http_host_header
+        arg: config
+      - spec: spec.ingress.origin_request.keep_alive_connections
+        arg: config
+      - spec: spec.ingress.origin_request.keep_alive_timeout
+        arg: config
+      - spec: spec.ingress.origin_request.match_sni_to_host
+        arg: config
+      - spec: spec.ingress.origin_request.no_happy_eyeballs
+        arg: config
+      - spec: spec.ingress.origin_request.no_tls_verify
+        arg: config
+      - spec: spec.ingress.origin_request.origin_server_name
+        arg: config
+      - spec: spec.ingress.origin_request.proxy_type
+        arg: config
+      - spec: spec.ingress.origin_request.tcp_keep_alive
+        arg: config
+      - spec: spec.ingress.origin_request.tls_timeout
+        arg: config
+      - spec: spec.origin_request.access.aud_tag
+        arg: config
+      - spec: spec.origin_request.access.required
+        arg: config
+      - spec: spec.origin_request.access.team_name
+        arg: config
+      - spec: spec.origin_request.ca_pool
+        arg: config
+      - spec: spec.origin_request.connect_timeout
+        arg: config
+      - spec: spec.origin_request.disable_chunked_encoding
+        arg: config
+      - spec: spec.origin_request.http2_origin
+        arg: config
+      - spec: spec.origin_request.http_host_header
+        arg: config
+      - spec: spec.origin_request.keep_alive_connections
+        arg: config
+      - spec: spec.origin_request.keep_alive_timeout
+        arg: config
+      - spec: spec.origin_request.match_sni_to_host
+        arg: config
+      - spec: spec.origin_request.no_happy_eyeballs
+        arg: config
+      - spec: spec.origin_request.no_tls_verify
+        arg: config
+      - spec: spec.origin_request.origin_server_name
+        arg: config
+      - spec: spec.origin_request.proxy_type
+        arg: config
+      - spec: spec.origin_request.tcp_keep_alive
+        arg: config
+      - spec: spec.origin_request.tls_timeout
+        arg: config
+      # Rename across resources: the config resource's source is the same
+      # management-mode choice the tunnel resource takes as config_src --
+      # one spec field, consumed by both.
+      - spec: spec.config_src
+        arg: source
+    exclusions:
+      - arg: tunnel_id
+        reason: wired by the module to the tunnel this kind just created -- the config has no independent target

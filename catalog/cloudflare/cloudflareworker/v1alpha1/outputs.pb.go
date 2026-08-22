@@ -33,6 +33,17 @@ type CloudflareWorkerStackOutputs struct {
 	CustomDomainHostnames []string `protobuf:"bytes,3,rep,name=custom_domain_hostnames,json=customDomainHostnames,proto3" json:"custom_domain_hostnames,omitempty"`
 	// The route patterns mapped to this Worker.
 	RoutePatterns []string `protobuf:"bytes,4,rep,name=route_patterns,json=routePatterns,proto3" json:"route_patterns,omitempty"`
+	// Cloudflare-assigned custom-domain ids, keyed by hostname (the for_each
+	// key). Needed so import can address cloudflare_workers_custom_domain as
+	// {account_id}/{domain_id}.
+	CustomDomainIds map[string]string `protobuf:"bytes,5,rep,name=custom_domain_ids,json=customDomainIds,proto3" json:"custom_domain_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Cloudflare-assigned route ids, keyed by the same index key the module
+	// uses for for_each (the list index as a string). Needed so import can
+	// address cloudflare_workers_route as {zone_id}/{route_id}.
+	RouteIds map[string]string `protobuf:"bytes,6,rep,name=route_ids,json=routeIds,proto3" json:"route_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Zone id of each route, keyed the same way as route_ids. Import needs
+	// both halves of {zone_id}/{route_id}.
+	RouteZoneIds  map[string]string `protobuf:"bytes,7,rep,name=route_zone_ids,json=routeZoneIds,proto3" json:"route_zone_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,17 +106,50 @@ func (x *CloudflareWorkerStackOutputs) GetRoutePatterns() []string {
 	return nil
 }
 
+func (x *CloudflareWorkerStackOutputs) GetCustomDomainIds() map[string]string {
+	if x != nil {
+		return x.CustomDomainIds
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerStackOutputs) GetRouteIds() map[string]string {
+	if x != nil {
+		return x.RouteIds
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerStackOutputs) GetRouteZoneIds() map[string]string {
+	if x != nil {
+		return x.RouteZoneIds
+	}
+	return nil
+}
+
 var File_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	":catalog/cloudflare/cloudflareworker/v1alpha1/outputs.proto\x120dev.planton.cloudflare.cloudflareworker.v1alpha1\"\xbb\x01\n" +
+	":catalog/cloudflare/cloudflareworker/v1alpha1/outputs.proto\x120dev.planton.cloudflare.cloudflareworker.v1alpha1\"\x93\x06\n" +
 	"\x1cCloudflareWorkerStackOutputs\x12\x1b\n" +
 	"\tscript_id\x18\x01 \x01(\tR\bscriptId\x12\x1f\n" +
 	"\vscript_name\x18\x02 \x01(\tR\n" +
 	"scriptName\x126\n" +
 	"\x17custom_domain_hostnames\x18\x03 \x03(\tR\x15customDomainHostnames\x12%\n" +
-	"\x0eroute_patterns\x18\x04 \x03(\tR\rroutePatternsB\x8d\x03\n" +
+	"\x0eroute_patterns\x18\x04 \x03(\tR\rroutePatterns\x12\x8f\x01\n" +
+	"\x11custom_domain_ids\x18\x05 \x03(\v2c.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.CustomDomainIdsEntryR\x0fcustomDomainIds\x12y\n" +
+	"\troute_ids\x18\x06 \x03(\v2\\.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteIdsEntryR\brouteIds\x12\x86\x01\n" +
+	"\x0eroute_zone_ids\x18\a \x03(\v2`.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteZoneIdsEntryR\frouteZoneIds\x1aB\n" +
+	"\x14CustomDomainIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rRouteIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11RouteZoneIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x8d\x03\n" +
 	"4com.dev.planton.cloudflare.cloudflareworker.v1alpha1B\fOutputsProtoP\x01Zbgithub.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1;cloudflareworkerv1alpha1\xa2\x02\x04DPCC\xaa\x020Dev.Planton.Cloudflare.Cloudflareworker.V1alpha1\xca\x020Dev\\Planton\\Cloudflare\\Cloudflareworker\\V1alpha1\xe2\x02<Dev\\Planton\\Cloudflare\\Cloudflareworker\\V1alpha1\\GPBMetadata\xea\x024Dev::Planton::Cloudflare::Cloudflareworker::V1alpha1b\x06proto3"
 
 var (
@@ -120,16 +164,22 @@ func file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_rawDescGZIP
 	return file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_goTypes = []any{
 	(*CloudflareWorkerStackOutputs)(nil), // 0: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs
+	nil,                                  // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.CustomDomainIdsEntry
+	nil,                                  // 2: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteIdsEntry
+	nil,                                  // 3: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteZoneIdsEntry
 }
 var file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.custom_domain_ids:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.CustomDomainIdsEntry
+	2, // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.route_ids:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteIdsEntry
+	3, // 2: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.route_zone_ids:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerStackOutputs.RouteZoneIdsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_init() }
@@ -143,7 +193,7 @@ func file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_rawDesc), len(file_catalog_cloudflare_cloudflareworker_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccessidentityprovider
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The identity provider stores connection parameters at Cloudflare, not customer data at rest that this component encrypts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Sign-in and SCIM traffic to Cloudflare Access is HTTPS. The component has no toggle that would send credentials in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The identity provider is a sign-in connection, not a data-plane endpoint to hide. Access restriction for applications is CloudflareZeroTrustAccessApplication / Policy territory.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Edge filtering is Gateway and Ruleset territory; this kind only connects an identity source.
+    - control_id: rbac
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: The type field chooses which identity source users authenticate against (Google, Okta, Azure AD, SAML, one-time PIN, and kin). Access policies then authorize against that identity.
+      notes: Authorization lives on Access policies; this component chooses the identity source those policies evaluate.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Human sign-in. Machine credentials are CloudflareZeroTrustAccessServiceToken.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: Prefer OIDC/SAML/Okta/Azure AD over onetimepin for production doors; onetimepin is a fallback with no IdP-side MFA.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records Access configuration changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch; Access login analytics live at the organization.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration. The SCIM secret is create-only -- capture the scim_secret output at deploy; a lost secret is refreshed via the Access API, not restored from state.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Account-scoped (or zone-scoped) configuration served by Cloudflare's global edge; replication is Cloudflare's infrastructure property.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: read_only
+      evidence:
+        type: spec_default
+        reference: Setting read_only true tells Cloudflare to refuse API updates and deletes until an explicit apply clears the latch.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates Access; no customer-visible patch surface exists.

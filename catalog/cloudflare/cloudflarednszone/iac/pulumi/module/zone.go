@@ -75,6 +75,20 @@ func zone(
 		}
 	}
 
+	// Zone hold (folded onto the zone), placed only when enabled.
+	if spec.Hold != nil && spec.Hold.Enabled {
+		if err := hold(ctx, resourceName, createdZone, spec.Hold, cloudflareProvider); err != nil {
+			return nil, err
+		}
+	}
+
+	// Zone plan subscription (folded onto the zone), applied only when set.
+	if spec.Subscription != nil {
+		if err := subscription(ctx, resourceName, createdZone, spec.Subscription, cloudflareProvider); err != nil {
+			return nil, err
+		}
+	}
+
 	// Export outputs.
 	ctx.Export(OpZoneId, createdZone.ID())
 	ctx.Export(OpNameservers, createdZone.NameServers)

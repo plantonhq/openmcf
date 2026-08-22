@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaigateway.v1alpha1;
+
+// CloudflareAiGatewayStackOutputs captures the observable outputs after
+// creating the gateway.
+message CloudflareAiGatewayStackOutputs {
+  // The gateway's id (URL slug) -- the segment clients put in the gateway
+  // endpoint URL, and what dynamic-routing objects attach to.
+  string gateway_id = 1;
+
+  // The id of each managed dynamic route, keyed by route name. What the
+  // per-route import identity ({account_id}/{gateway_id}/{route_id})
+  // derives from.
+  map<string, string> dynamic_route_ids = 2;
+}

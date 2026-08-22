@@ -32,6 +32,7 @@ func fallbackOrigin(
 	ctx.Export(OpCreatedAt, created.CreatedAt)
 	ctx.Export(OpUpdatedAt, created.UpdatedAt)
 	ctx.Export(OpErrors, created.Errors)
+	ctx.Export(OpZoneId, created.ZoneId)
 
 	return nil
 }

@@ -1,0 +1,28 @@
+# Login-design scenario: proves the singleton upsert with SAFE cosmetic
+# fields plus the folded key-rotation cadence -- deliberately NO auth_domain
+# (changing the team domain would break every Access login on the account)
+# and no MFA policy mutation. The proof lane captures the organization's
+# prior values before this runs and restores them afterward (no-op destroy
+# reverts nothing).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustOrganization
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustorganization-login-design
+  id: planton-oss-e2e-cloudflarezerotrustorganization-login-design
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustorganization
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  session_duration: 24h
+  login_design:
+    background_color: "#0f172a"
+    text_color: "#e2e8f0"
+    header_text: Planton E2E ${E2E_RUN_ID}
+  key_rotation_interval_days: 90

@@ -1,0 +1,30 @@
+# Offline-only Durable Object migration plan. Cloudflare rejects a second
+# apply of the same new_tag, so this file is NOT under e2e/scenarios/ (the
+# provider profile asserts apply idempotency). tofu plan against it proves
+# the module sends the migrations block; live proof of a migration is a
+# later, one-shot, human-run step.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorker
+metadata:
+  name: planton-oss-e2e-cloudflareworker-migrations
+  org: planton-oss
+  env: e2e
+spec:
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  workerName: e2e-cfw-migrations
+  content: |
+    export class Counter {
+      constructor(state) { this.state = state; }
+      async fetch() { return new Response("0"); }
+    }
+    export default {
+      async fetch() { return new Response("ok"); }
+    };
+  compatibilityDate: "2025-01-15"
+  durableObjects:
+    - name: COUNTER
+      className: Counter
+  migrations:
+    newSqliteClasses:
+      - Counter
+    newTag: v1

@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdnslocation.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// CloudflareZeroTrustDnsLocationSpec creates a Gateway DNS location: a named
+// entry point (office, site, network) whose DNS traffic Gateway filters.
+// Cloudflare assigns the location its resolver endpoints -- a DoH subdomain
+// and destination IPs -- and Gateway policies can then match on the
+// location.
+//
+// A location is a plain CRUD object (real create, update, delete). Two
+// behaviors worth knowing:
+//   - Update is a full replace: omitting max_ttl on update resets the TTL
+//     behavior to inherit.
+//   - dns_destination_ips_id left unset lets Cloudflare auto-assign the
+//     shared IPv4 destination pair -- never pin the shared pool's UUID
+//     yourself.
+message CloudflareZeroTrustDnsLocationSpec {
+  // The Cloudflare account the location belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The location's name, shown in the dashboard and matched by policies.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // When true, this location is the account's default: traffic from
+  // unregistered sources is attributed to it.
+  optional bool client_default = 3;
+
+  // When true, the location's resolver honors EDNS Client Subnet, letting
+  // upstream resolvers see the querying network for better geo-answers.
+  optional bool ecs_support = 4;
+
+  // The DNS destination IPs to assign, by Cloudflare mapping UUID. Leave
+  // unset to auto-assign the shared IPv4 destination pair (recommended);
+  // set only when the account has a dedicated (BYOIP / dedicated resolver
+  // IP) mapping to pin.
+  string dns_destination_ips_id = 5;
+
+  // The resolver endpoint types this location accepts queries on. Setting
+  // this declares ALL FOUR endpoint types (Cloudflare's API takes the whole
+  // tree at once); unset keeps Cloudflare's endpoint defaults.
+  CloudflareZeroTrustDnsLocationEndpoints endpoints = 6;
+
+  // The source networks allowed to use this location's IPv4 endpoint, as
+  // IPv4 CIDRs. Cloudflare caps IPv4 CIDRs at /24 (nothing broader).
+  // Effective only while the IPv4 endpoint is enabled.
+  repeated CloudflareZeroTrustDnsLocationNetwork networks = 7;
+
+  // How DNS response TTLs are capped for this location relative to the
+  // account setting. OMITTING this on an update RESETS the behavior to
+  // inherit -- a managed location should keep it declared.
+  CloudflareZeroTrustDnsLocationMaxTtl max_ttl = 8;
+}
+
+// CloudflareZeroTrustDnsLocationEndpoints declares all four resolver
+// endpoint types for the location. Cloudflare requires the whole tree in
+// one write: each endpoint type must be declared (enabled or not).
+message CloudflareZeroTrustDnsLocationEndpoints {
+  // DNS over HTTPS -- the endpoint WARP and browsers use.
+  CloudflareZeroTrustDnsLocationDohEndpoint doh = 1 [(buf.validate.field).required = true];
+
+  // DNS over TLS.
+  CloudflareZeroTrustDnsLocationNetworkEndpoint dot = 2 [(buf.validate.field).required = true];
+
+  // Plain IPv4 DNS. Source networks for IPv4 are declared at the spec's
+  // top-level networks field, not here -- the one endpoint type without an
+  // inline network list.
+  CloudflareZeroTrustDnsLocationIpv4Endpoint ipv4 = 3 [(buf.validate.field).required = true];
+
+  // Plain IPv6 DNS.
+  CloudflareZeroTrustDnsLocationNetworkEndpoint ipv6 = 4 [(buf.validate.field).required = true];
+}
+
+// CloudflareZeroTrustDnsLocationDohEndpoint is the DNS-over-HTTPS endpoint:
+// the only endpoint type with a token option.
+message CloudflareZeroTrustDnsLocationDohEndpoint {
+  // Whether the endpoint accepts queries.
+  optional bool enabled = 1;
+
+  // Require a per-location authentication token on DoH queries (rejects
+  // anonymous resolvers pointed at the subdomain).
+  optional bool require_token = 2;
+
+  // The source networks allowed to query this endpoint, as IPs or CIDRs.
+  // Empty allows any source.
+  repeated CloudflareZeroTrustDnsLocationNetwork networks = 3;
+}
+
+// CloudflareZeroTrustDnsLocationNetworkEndpoint is an endpoint type with a
+// source-network allowlist (DoT and IPv6).
+message CloudflareZeroTrustDnsLocationNetworkEndpoint {
+  // Whether the endpoint accepts queries.
+  optional bool enabled = 1;
+
+  // The source networks allowed to query this endpoint, as IPs or CIDRs.
+  // Empty allows any source.
+  repeated CloudflareZeroTrustDnsLocationNetwork networks = 2;
+}
+
+// CloudflareZeroTrustDnsLocationIpv4Endpoint is the plain-IPv4 endpoint; its
+// source networks live at the spec's top-level networks field.
+message CloudflareZeroTrustDnsLocationIpv4Endpoint {
+  // Whether the endpoint accepts queries.
+  optional bool enabled = 1;
+}
+
+// CloudflareZeroTrustDnsLocationNetwork is one allowed source network.
+message CloudflareZeroTrustDnsLocationNetwork {
+  // The IP address or CIDR (e.g. "203.0.113.0/24").
+  string network = 1 [(buf.validate.field).required = true];
+}
+
+// CloudflareZeroTrustDnsLocationMaxTtl caps the TTLs the location's resolver
+// returns.
+message CloudflareZeroTrustDnsLocationMaxTtl {
+  // Cloudflare enforces this pairing only at the API -- the wall lives
+  // here so a bad manifest fails at validation, not at deploy.
+  option (buf.validate.message).cel = {
+    id: "max_ttl.ttl_secs_iff_override"
+    message: "ttl_secs is required with mode override and must be omitted with inherit or disabled"
+    expression: "(this.mode == 'override') == has(this.ttl_secs)"
+  };
+
+  // inherit follows the account's max-TTL setting; override caps at this
+  // location's ttl_secs; disabled returns TTLs unchanged.
+  string mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "mode.values"
+      message: "mode must be one of inherit, override, disabled"
+      expression: "this in ['inherit', 'override', 'disabled']"
+    }
+  ];
+
+  // The TTL cap in seconds (60-36000). Only with mode override.
+  optional int64 ttl_secs = 2 [
+    (buf.validate.field).int64.gte = 60,
+    (buf.validate.field).int64.lte = 36000
+  ];
+}

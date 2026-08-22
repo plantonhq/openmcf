@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresecretsstore.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// CloudflareSecretsStoreSpec creates the account-level Secrets Store: the
+// vault that holds secrets consumed by Workers bindings, AI Gateway
+// authentication, and other Cloudflare surfaces. The store itself is just a
+// named container -- the secrets inside it are managed by
+// CloudflareSecretsStoreSecret resources referencing this store.
+//
+// Two hard provider facts shape how this resource behaves:
+//   - EVERY field is create-only: changing the name (or account) replaces
+//     the store, destroying every secret inside it. Treat the store as
+//     permanent infrastructure and name it accordingly.
+//   - Cloudflare currently allows ONE store per account ("default"-style
+//     deployments): creating a second store fails at the API. If the
+//     account already has a store (e.g. created from the dashboard), adopt
+//     it by import instead of creating a new one.
+message CloudflareSecretsStoreSpec {
+  // The Cloudflare account the store belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The store's name. Create-only: renaming replaces the store AND every
+  // secret it holds.
+  string name = 2 [(buf.validate.field).required = true];
+}

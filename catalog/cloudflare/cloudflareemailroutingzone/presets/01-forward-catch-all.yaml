@@ -10,6 +10,8 @@ spec:
       fieldPath: status.outputs.zone_id
   catchAll:
     enabled: true
-    type: forward
-    forwardTo:
-      - value: <destination-email>
+    name: fallback-forward
+    actions:
+      - type: forward
+        forwardTo:
+          - value: <destination-email>

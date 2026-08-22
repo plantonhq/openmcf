@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdeviceposturerule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustdeviceposturerule/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustdeviceposturerule/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustDevicePostureRule is a KRM-style resource for creating
+// device posture rules: health checks Access and Gateway policies can
+// require before admitting a device.
+message CloudflareZeroTrustDevicePostureRule {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustDevicePostureRule'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustDevicePostureRuleSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustDevicePostureRuleStatus status = 5;
+}
+
+// CloudflareZeroTrustDevicePostureRuleStatus represents the observed state
+// of the posture rule.
+message CloudflareZeroTrustDevicePostureRuleStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustDevicePostureRuleStackOutputs outputs = 1;
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/s3"
+	cloudflareworkerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1"
 	cloudfl "github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -35,16 +36,29 @@ func worker(
 
 	// Script source: inline content, else the R2 bundle body. A worker may instead
 	// be a pure static site (assets only, no script) — main_module is then omitted.
+	// body_part marks service-worker syntax and is mutually exclusive with main_module.
 	if spec.GetContent() != "" {
 		scriptArgs.Content = pulumi.StringPtr(spec.GetContent())
-		scriptArgs.MainModule = pulumi.String(spec.MainModule)
+		if spec.BodyPart != "" {
+			scriptArgs.BodyPart = pulumi.String(spec.BodyPart)
+		} else {
+			scriptArgs.MainModule = pulumi.String(spec.MainModule)
+		}
 	} else if bundle := spec.GetR2Bundle(); bundle != nil {
 		obj := s3.GetObjectOutput(ctx, s3.GetObjectOutputArgs{
-			Bucket: pulumi.String(bundle.Bucket),
+			Bucket: pulumi.String(fkValue(bundle.Bucket)),
 			Key:    pulumi.String(bundle.Path),
 		}, pulumi.Provider(r2Provider))
 		scriptArgs.Content = obj.Body().ApplyT(func(s string) *string { return &s }).(pulumi.StringPtrOutput)
-		scriptArgs.MainModule = pulumi.String(spec.MainModule)
+		if spec.BodyPart != "" {
+			scriptArgs.BodyPart = pulumi.String(spec.BodyPart)
+		} else {
+			scriptArgs.MainModule = pulumi.String(spec.MainModule)
+		}
+	}
+
+	if spec.ContentType != "" {
+		scriptArgs.ContentType = pulumi.String(spec.ContentType)
 	}
 
 	// Workers Static Assets: upload a built site directory served from the edge.
@@ -86,10 +100,57 @@ func worker(
 		scriptArgs.CompatibilityFlags = flags
 	}
 
+	if spec.KeepAssets {
+		scriptArgs.KeepAssets = pulumi.Bool(true)
+	}
+	if len(spec.KeepBindings) > 0 {
+		scriptArgs.KeepBindings = pulumi.ToStringArray(spec.KeepBindings)
+	}
+	if spec.UsageModel != "" {
+		scriptArgs.UsageModel = pulumi.String(spec.UsageModel)
+	}
+
+	if m := spec.Migrations; m != nil {
+		scriptArgs.Migrations = buildMigrations(m)
+	}
+
 	if o := spec.Observability; o != nil {
 		obsArgs := &cloudfl.WorkersScriptObservabilityArgs{Enabled: pulumi.Bool(o.Enabled)}
 		if o.HeadSamplingRate > 0 {
 			obsArgs.HeadSamplingRate = pulumi.Float64(o.HeadSamplingRate)
+		}
+		if l := o.Logs; l != nil {
+			logsArgs := &cloudfl.WorkersScriptObservabilityLogsArgs{
+				Enabled:        pulumi.Bool(l.Enabled),
+				InvocationLogs: pulumi.Bool(l.InvocationLogs),
+			}
+			if len(l.Destinations) > 0 {
+				logsArgs.Destinations = pulumi.ToStringArray(l.Destinations)
+			}
+			if l.HeadSamplingRate > 0 {
+				logsArgs.HeadSamplingRate = pulumi.Float64(l.HeadSamplingRate)
+			}
+			if l.Persist {
+				logsArgs.Persist = pulumi.Bool(true)
+			}
+			obsArgs.Logs = logsArgs
+		}
+		if t := o.Traces; t != nil {
+			// PARITY-EXCEPTION: pulumi-cloudflare SDK v6.17.0 has no
+			// PropagationPolicy on traces — tofu honors it, this engine skips it.
+			tracesArgs := &cloudfl.WorkersScriptObservabilityTracesArgs{
+				Enabled: pulumi.Bool(t.Enabled),
+			}
+			if len(t.Destinations) > 0 {
+				tracesArgs.Destinations = pulumi.ToStringArray(t.Destinations)
+			}
+			if t.HeadSamplingRate > 0 {
+				tracesArgs.HeadSamplingRate = pulumi.Float64(t.HeadSamplingRate)
+			}
+			if t.Persist {
+				tracesArgs.Persist = pulumi.Bool(true)
+			}
+			obsArgs.Traces = tracesArgs
 		}
 		scriptArgs.Observability = obsArgs
 	}
@@ -116,7 +177,7 @@ func worker(
 	if len(spec.TailConsumers) > 0 {
 		var tc cloudfl.WorkersScriptTailConsumerArray
 		for _, t := range spec.TailConsumers {
-			a := cloudfl.WorkersScriptTailConsumerArgs{Service: pulumi.String(t.Service)}
+			a := cloudfl.WorkersScriptTailConsumerArgs{Service: pulumi.String(fkValue(t.Service))}
 			if t.Environment != "" {
 				a.Environment = pulumi.String(t.Environment)
 			}
@@ -126,6 +187,30 @@ func worker(
 			tc = append(tc, a)
 		}
 		scriptArgs.TailConsumers = tc
+	}
+
+	if a := spec.Annotations; a != nil && (a.WorkersMessage != "" || a.WorkersTag != "") {
+		ann := &cloudfl.WorkersScriptAnnotationsArgs{}
+		if a.WorkersMessage != "" {
+			ann.WorkersMessage = pulumi.String(a.WorkersMessage)
+		}
+		if a.WorkersTag != "" {
+			ann.WorkersTag = pulumi.String(a.WorkersTag)
+		}
+		scriptArgs.Annotations = ann
+	}
+
+	// PARITY-EXCEPTION: pulumi-cloudflare SDK v6.17.0 has no CacheOptions,
+	// Exports, or PackageDependencies inputs. tofu honors them; this engine
+	// skips them so a set field is never silently dropped without a trail.
+	if spec.CacheOptions != nil {
+		_ = ctx.Log.Warn("PARITY-EXCEPTION: cache_options is absent from pulumi-cloudflare SDK v6.17.0; tofu honors it, this engine skips it", nil)
+	}
+	if len(spec.Exports) > 0 {
+		_ = ctx.Log.Warn("PARITY-EXCEPTION: exports is absent from pulumi-cloudflare SDK v6.17.0; tofu honors it, this engine skips it", nil)
+	}
+	if len(spec.PackageDependencies) > 0 {
+		_ = ctx.Log.Warn("PARITY-EXCEPTION: package_dependencies is absent from pulumi-cloudflare SDK v6.17.0; tofu honors it, this engine skips it", nil)
 	}
 
 	createdScript, err := cloudfl.NewWorkersScript(ctx, "workers-script", scriptArgs, pulumi.Provider(cloudflareProvider))
@@ -145,40 +230,47 @@ func worker(
 		}
 	}
 
-	// Managed custom domains.
+	// Managed custom domains. environment is deprecated on the provider and
+	// is omitted — Cloudflare defaults the hostname to production.
 	customDomainHostnames := make(pulumi.StringArray, 0, len(spec.CustomDomains))
+	customDomainIds := pulumi.StringMap{}
 	for i, cd := range spec.CustomDomains {
 		cdArgs := &cloudfl.WorkersCustomDomainArgs{
-			AccountId:   pulumi.String(spec.AccountId),
-			Environment: pulumi.String("production"),
-			Hostname:    pulumi.String(cd.Hostname),
-			Service:     createdScript.ScriptName,
+			AccountId: pulumi.String(spec.AccountId),
+			Hostname:  pulumi.String(cd.Hostname),
+			Service:   createdScript.ScriptName,
 		}
 		// Zone is optional — Cloudflare infers it from the hostname when omitted.
-		if cd.ZoneId != nil && cd.ZoneId.GetValue() != "" {
-			cdArgs.ZoneId = pulumi.String(cd.ZoneId.GetValue())
+		if v := fkValue(cd.ZoneId); v != "" {
+			cdArgs.ZoneId = pulumi.String(v)
 		}
-		if _, err := cloudfl.NewWorkersCustomDomain(ctx, fmt.Sprintf("custom-domain-%d", i), cdArgs, pulumi.Provider(cloudflareProvider)); err != nil {
+		created, err := cloudfl.NewWorkersCustomDomain(ctx, fmt.Sprintf("custom-domain-%d", i), cdArgs, pulumi.Provider(cloudflareProvider))
+		if err != nil {
 			return errors.Wrap(err, "failed to create workers custom domain")
 		}
 		customDomainHostnames = append(customDomainHostnames, pulumi.String(cd.Hostname))
+		customDomainIds[cd.Hostname] = created.ID()
 	}
 
-	// Pattern-based routes.
+	// Pattern-based routes, keyed by list index so import can reassemble
+	// {zone_id}/{route_id} from the two maps.
 	routePatterns := make(pulumi.StringArray, 0, len(spec.Routes))
+	routeIds := pulumi.StringMap{}
+	routeZoneIds := pulumi.StringMap{}
 	for i, r := range spec.Routes {
-		zoneId := ""
-		if r.ZoneId != nil {
-			zoneId = r.ZoneId.GetValue()
-		}
-		if _, err := cloudfl.NewWorkersRoute(ctx, fmt.Sprintf("workers-route-%d", i), &cloudfl.WorkersRouteArgs{
+		zoneId := fkValue(r.ZoneId)
+		created, err := cloudfl.NewWorkersRoute(ctx, fmt.Sprintf("workers-route-%d", i), &cloudfl.WorkersRouteArgs{
 			ZoneId:  pulumi.String(zoneId),
 			Pattern: pulumi.String(r.Pattern),
 			Script:  createdScript.ScriptName,
-		}, pulumi.Provider(cloudflareProvider)); err != nil {
+		}, pulumi.Provider(cloudflareProvider))
+		if err != nil {
 			return errors.Wrap(err, "failed to create workers route")
 		}
+		key := fmt.Sprintf("%d", i)
 		routePatterns = append(routePatterns, pulumi.String(r.Pattern))
+		routeIds[key] = created.ID()
+		routeZoneIds[key] = pulumi.String(zoneId)
 	}
 
 	// Cron-triggered invocations.
@@ -200,6 +292,98 @@ func worker(
 	ctx.Export(OpScriptName, createdScript.ScriptName)
 	ctx.Export(OpCustomDomainHostnames, customDomainHostnames)
 	ctx.Export(OpRoutePatterns, routePatterns)
+	ctx.Export(OpCustomDomainIds, customDomainIds)
+	ctx.Export(OpRouteIds, routeIds)
+	ctx.Export(OpRouteZoneIds, routeZoneIds)
 
 	return nil
+}
+
+func buildMigrations(m *cloudflareworkerv1alpha1.CloudflareWorkerMigrations) *cloudfl.WorkersScriptMigrationsArgs {
+	args := &cloudfl.WorkersScriptMigrationsArgs{}
+	if len(m.DeletedClasses) > 0 {
+		args.DeletedClasses = pulumi.ToStringArray(m.DeletedClasses)
+	}
+	if len(m.NewClasses) > 0 {
+		args.NewClasses = pulumi.ToStringArray(m.NewClasses)
+	}
+	if len(m.NewSqliteClasses) > 0 {
+		args.NewSqliteClasses = pulumi.ToStringArray(m.NewSqliteClasses)
+	}
+	if m.NewTag != "" {
+		args.NewTag = pulumi.String(m.NewTag)
+	}
+	if m.OldTag != "" {
+		args.OldTag = pulumi.String(m.OldTag)
+	}
+	if len(m.RenamedClasses) > 0 {
+		var renamed cloudfl.WorkersScriptMigrationsRenamedClassArray
+		for _, r := range m.RenamedClasses {
+			renamed = append(renamed, cloudfl.WorkersScriptMigrationsRenamedClassArgs{
+				From: pulumi.String(r.From),
+				To:   pulumi.String(r.To),
+			})
+		}
+		args.RenamedClasses = renamed
+	}
+	if len(m.TransferredClasses) > 0 {
+		args.TransferredClasses = buildTransferred(m.TransferredClasses)
+	}
+	if len(m.Steps) > 0 {
+		var steps cloudfl.WorkersScriptMigrationsStepArray
+		for _, s := range m.Steps {
+			step := cloudfl.WorkersScriptMigrationsStepArgs{}
+			if len(s.DeletedClasses) > 0 {
+				step.DeletedClasses = pulumi.ToStringArray(s.DeletedClasses)
+			}
+			if len(s.NewClasses) > 0 {
+				step.NewClasses = pulumi.ToStringArray(s.NewClasses)
+			}
+			if len(s.NewSqliteClasses) > 0 {
+				step.NewSqliteClasses = pulumi.ToStringArray(s.NewSqliteClasses)
+			}
+			if len(s.RenamedClasses) > 0 {
+				var renamed cloudfl.WorkersScriptMigrationsStepRenamedClassArray
+				for _, r := range s.RenamedClasses {
+					renamed = append(renamed, cloudfl.WorkersScriptMigrationsStepRenamedClassArgs{
+						From: pulumi.String(r.From),
+						To:   pulumi.String(r.To),
+					})
+				}
+				step.RenamedClasses = renamed
+			}
+			if len(s.TransferredClasses) > 0 {
+				var transferred cloudfl.WorkersScriptMigrationsStepTransferredClassArray
+				for _, t := range s.TransferredClasses {
+					ta := cloudfl.WorkersScriptMigrationsStepTransferredClassArgs{
+						From: pulumi.String(t.From),
+						To:   pulumi.String(t.To),
+					}
+					if v := fkValue(t.FromScript); v != "" {
+						ta.FromScript = pulumi.String(v)
+					}
+					transferred = append(transferred, ta)
+				}
+				step.TransferredClasses = transferred
+			}
+			steps = append(steps, step)
+		}
+		args.Steps = steps
+	}
+	return args
+}
+
+func buildTransferred(in []*cloudflareworkerv1alpha1.CloudflareWorkerTransferredClass) cloudfl.WorkersScriptMigrationsTransferredClassArray {
+	var out cloudfl.WorkersScriptMigrationsTransferredClassArray
+	for _, t := range in {
+		ta := cloudfl.WorkersScriptMigrationsTransferredClassArgs{
+			From: pulumi.String(t.From),
+			To:   pulumi.String(t.To),
+		}
+		if v := fkValue(t.FromScript); v != "" {
+			ta.FromScript = pulumi.String(v)
+		}
+		out = append(out, ta)
+	}
+	return out
 }

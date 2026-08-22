@@ -1,0 +1,25 @@
+# Minimal CloudflareEmailRoutingZone scenario: enable Email Routing on the
+# prerequisite zone with nothing else -- the enable/disable lifecycle is the
+# resource (its create IS the enable, its destroy IS the disable). The
+# zone_id resolves from the CloudflareDnsZone prerequisite's outputs; the
+# fixture zone's name is already run-scoped.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareEmailRoutingZone
+metadata:
+  name: planton-oss-e2e-cloudflareemailroutingzone-minimal
+  id: planton-oss-e2e-cloudflareemailroutingzone-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareemailroutingzone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id

@@ -1,0 +1,27 @@
+# Provider-parity manifest for CloudflareAccountApiToken.
+# Records only divergences from exact-name matching against
+# cloudflare_account_token at the pinned provider version. Unlisted
+# arguments (account_id, name, expires_on, not_before, status) match spec
+# fields by exact name.
+resources:
+  cloudflare_account_token:
+    mappings:
+      # policies is a nested-attribute list; fan-in of every spec leaf. The
+      # provider's policies[].resources argument is a raw JSON string -- the
+      # spec types it (permission | subresources per entry, exactly one) and
+      # the modules serialize each entry back to the API's object shape.
+      - spec: spec.policies.effect
+        arg: policies
+      - spec: spec.policies.permission_group_ids
+        arg: policies
+      - spec: spec.policies.resources.permission
+        arg: policies
+      - spec: spec.policies.resources.subresources
+        arg: policies
+      # condition is a nested attribute; fan-in of every spec leaf. The
+      # provider names the CIDR lists in/not_in; the spec names them
+      # in_cidrs/not_in_cidrs for clarity.
+      - spec: spec.condition.request_ip.in_cidrs
+        arg: condition
+      - spec: spec.condition.request_ip.not_in_cidrs
+        arg: condition

@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezonesettings
+spec:
+  billing_model: free
+  notes: Zone settings are plan features, not billed SKUs -- toggling them creates no charge of its own. Several settings are only EDITABLE on paid zone plans (advanced_ddos, orange_to_orange, prefetch_preload, response_buffering, true_client_ip_header, sort_query_string_for_cache are Enterprise-gated; image_resizing, polish, mirage need Pro or higher; aegis needs its own entitlement), but the plan subscription bills on the zone itself, never through this component. Applying a plan-gated setting to a zone whose plan lacks it fails the apply rather than incurring cost.

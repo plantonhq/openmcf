@@ -1,0 +1,35 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneSettings
+metadata:
+  name: test-zone-settings
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  always_use_https: true
+  min_tls_version: "1.2"
+  ssl: strict
+  browser_cache_ttl: 14400
+  security_level: medium
+  ciphers:
+    - "ECDHE-ECDSA-AES128-GCM-SHA256"
+    - "ECDHE-RSA-AES128-GCM-SHA256"
+  security_header:
+    enabled: true
+    include_subdomains: true
+    max_age: 31536000
+    nosniff: true
+    preload: false
+  managed_request_headers:
+    - id: add_true_client_ip_headers
+      enabled: true
+  managed_response_headers:
+    - id: remove_x-powered-by_header
+      enabled: true
+  url_normalization:
+    scope: incoming
+    type: cloudflare
+  origin_cloud_regions:
+    - origin_ip: "203.0.113.10"
+      region: us-east-1
+      vendor: aws
+  waiting_room_crawler_bypass: false

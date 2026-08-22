@@ -1,0 +1,15 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustOrganization
+metadata:
+  name: acme-zero-trust-org
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  auth_domain: acme
+  name: Acme Zero Trust
+  session_duration: 24h
+  login_design:
+    background_color: "#0f172a"
+    text_color: "#e2e8f0"
+    header_text: Sign in to Acme
+    footer_text: Managed by Acme IT
+  auto_redirect_to_identity: false

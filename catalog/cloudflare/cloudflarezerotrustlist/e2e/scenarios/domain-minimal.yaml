@@ -1,0 +1,26 @@
+# Minimal CloudflareZeroTrustList scenario: a DOMAIN list with two entries --
+# the shape nearly every Gateway policy references. The name carries the run
+# id so concurrent lanes stay distinguishable in the dashboard.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustList
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustlist-domain-minimal
+  id: planton-oss-e2e-cloudflarezerotrustlist-domain-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustlist
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-domains
+  type: DOMAIN
+  description: E2E domain list
+  items:
+    - value: blocked-${E2E_RUN_ID}.example.com
+      description: e2e entry
+    - value: also-blocked-${E2E_RUN_ID}.example.com

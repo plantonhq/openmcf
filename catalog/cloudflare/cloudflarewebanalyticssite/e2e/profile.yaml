@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarewebanalyticssite
+spec:
+  # Web Analytics sites under live E2E: plain CRUD objects (real create,
+  # update, delete on both the site and its folded rules), account-scoped,
+  # free on every plan. Watch items for the proving session: (1) the
+  # provider's rule refresh is deliberately BLIND (empty Read) -- the
+  # idempotency re-plan proves our declared rows only, never server drift;
+  # (2) four site fields (enabled, host, lite, zone_tag) are never read
+  # back (no_refresh) -- state carries the configured values, so drift on
+  # them is invisible by design; (3) site_token and snippet are
+  # secret-marked outputs -- verify the conformance map surfaces them
+  # without leaking to logs.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

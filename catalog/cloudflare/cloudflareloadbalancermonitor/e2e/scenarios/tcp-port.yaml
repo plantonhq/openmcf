@@ -1,0 +1,21 @@
+# Tcp-port CloudflareLoadBalancerMonitor scenario: a TCP health check.
+# CEL requires a port > 0 for tcp/udp_icmp/smtp; 443 is the cheapest
+# well-known choice. Requires the Load Balancing add-on.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerMonitor
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancermonitor-tcp-port
+  id: planton-oss-e2e-cloudflareloadbalancermonitor-tcp-port
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancermonitor
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  type: tcp
+  port: 443

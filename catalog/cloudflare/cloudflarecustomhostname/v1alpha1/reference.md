@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareCustomHostnameSpec attaches a customer's own domain to a Cloudflare
 for SaaS zone (the "SaaS zone"). It extends Cloudflare's edge — TLS termination,
 caching, WAF — onto a hostname your customer owns (e.g. "support.acme.com"),
@@ -283,6 +285,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 | `status.outputs.ownership_verification_http_body` | `string` | The body the customer must serve at the HTTP verification URL. |
 | `status.outputs.verification_errors` | `[]string` | Any verification errors reported by Cloudflare. |
 | `status.outputs.created_at` | `string` | RFC3339 timestamp of when the custom hostname was created. |
+| `status.outputs.zone_id` | `string` | The Cloudflare Zone ID the hostname was onboarded onto. A custom hostname's API identity is (zone_id, custom_hostname_id), so downstream consumers -- verification tooling, imports, chart blocks composing on the hostname -- need the zone alongside the hostname's own id. |
 
 ## References
 

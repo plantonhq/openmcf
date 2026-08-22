@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Email Routing Rule on Cloudflare**, and click **Deploy**. The creation wizard captures the zone and rule metadata (name, enabled, priority), at least one matcher (a specific recipient or all messages), and the action (drop / forward / Email Worker).
+Open the deployment store, find **Email Routing Rule on Cloudflare**, and click **Deploy**. The creation wizard captures the zone and rule metadata (name, enabled, priority), at least one matcher (a specific recipient or all messages), and the ordered actions (drop / forward / Email Worker — combinable in one rule).
 
 ### CLI
 
@@ -49,10 +49,10 @@ spec:
     - type: literal
       field: to
       value: support@example.com
-  action:
-    type: forward
-    forwardTo:
-      - value: ops@example.com
+  actions:
+    - type: forward
+      forwardTo:
+        - value: ops@example.com
 ```
 
 ```shell
@@ -69,7 +69,7 @@ These are the most important decisions when configuring a routing rule. Explore 
 
 **Matchers (`matchers`)** -- At least one. A `literal` matcher (on the `to` field) matches a specific recipient; an `all` matcher matches every message. A message matches the rule if any matcher matches it.
 
-**Action (`action.type`)** -- `drop` discards the message, `forward` delivers it to `forwardTo` destinations, `worker` hands it to an Email Worker referenced by `worker`.
+**Actions (`actions`)** -- One or more, applied in order: `drop` discards the message, `forward` delivers it to `forwardTo` destinations, `worker` hands it to an Email Worker referenced by `worker`. One rule can forward AND invoke a Worker in the same match.
 
 **Priority (`priority`)** -- Lower numbers evaluate first. Put specific rules above broad ones so a catch-all-style rule does not shadow them.
 
@@ -77,7 +77,7 @@ These are the most important decisions when configuring a routing rule. Explore 
 
 ### What This Component Consumes
 
-The rule references a **CloudflareDnsZone** (via `zoneId`). A forwarding action references **CloudflareEmailRoutingAddress** mailboxes (via `action.forwardTo`); a worker action references a **CloudflareWorker** (via `action.worker`).
+The rule references a **CloudflareDnsZone** (via `zoneId`). A forwarding action references **CloudflareEmailRoutingAddress** mailboxes (via `actions[].forwardTo`); a worker action references a **CloudflareWorker** (via `actions[].worker`).
 
 ### What This Component Provides
 

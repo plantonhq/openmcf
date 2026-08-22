@@ -1,0 +1,22 @@
+# Minimal CloudflareR2Bucket scenario: one private bucket in the default
+# jurisdiction, no public access, Cloudflare picks the region. Bucket names
+# are unique within an account, so the name carries the run id. Nothing ever
+# writes an object, so destroy stays clean (R2 refuses to delete a non-empty
+# bucket). The account comes from the harness env.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareR2Bucket
+metadata:
+  name: planton-oss-e2e-cloudflarer2bucket-minimal
+  id: planton-oss-e2e-cloudflarer2bucket-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarer2bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-e2e-${E2E_RUN_ID}-r2-min
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

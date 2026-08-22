@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflaremtlscertificate
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: certificate_id
+      derivations:
+        - from_stack_output: certificate_id
+      where_to_find: >-
+        Cloudflare dashboard -> SSL/TLS -> Client Certificates (mTLS
+        certificates list), or `GET /accounts/<account_id>/mtls_certificates`
+        on the Cloudflare v4 API (the id field of the matching entry).

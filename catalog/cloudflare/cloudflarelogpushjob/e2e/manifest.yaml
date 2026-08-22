@@ -1,0 +1,29 @@
+# Complete example manifest for CloudflareLogpushJob.
+# Ships HTTP request logs for one zone to an R2 bucket, issuing the
+# destination ownership challenge in the same deploy (two resources: the
+# job and the one-shot challenge).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLogpushJob
+metadata:
+  name: http-logs-to-r2
+spec:
+  zone_id:
+    value: "REPLACE_WITH_ZONE_ID"
+  dataset: http_requests
+  destination_conf:
+    value: "r2://REPLACE_WITH_BUCKET/logs/{DATE}?account-id=REPLACE_WITH_ACCOUNT_ID&access-key-id=REPLACE_WITH_R2_ACCESS_KEY_ID&secret-access-key=REPLACE_WITH_R2_SECRET_ACCESS_KEY"
+  name: http-logs-to-r2
+  filter: '{"where":{"and":[{"key":"ClientRequestHost","operator":"eq","value":"www.example.com"}]}}'
+  max_upload_bytes: 5000000
+  max_upload_interval_seconds: 60
+  output_options:
+    output_type: ndjson
+    timestamp_format: rfc3339
+    field_names:
+      - ClientIP
+      - ClientRequestHost
+      - ClientRequestURI
+      - EdgeResponseStatus
+      - RayID
+      - EdgeStartTimestamp
+  generate_ownership_challenge: true

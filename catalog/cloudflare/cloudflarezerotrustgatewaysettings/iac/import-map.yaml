@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustgatewaysettings
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field). The settings and logging singletons import as the bare
+        account id; PAC files import as
+        "<account_id>/<pacfile_id>".
+    # No derivation: the file id is server-assigned and the spec's pac_files
+    # rows are a repeated field (per-row paths cannot derive).
+    - name: pacfile_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/gateway/pacfiles` on the Cloudflare v4
+        API (the id field of the file whose name/slug matches the spec row)
+        -- the file id is server-assigned, so listing the collection is the
+        only way to find it.

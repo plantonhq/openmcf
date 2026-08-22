@@ -7,4 +7,7 @@ const (
 	OpLoadBalancerDnsRecordName = "load_balancer_dns_record_name"
 	// OpLoadBalancerCnameTarget is the canonical CNAME target returned by Cloudflare.
 	OpLoadBalancerCnameTarget = "load_balancer_cname_target"
+	// OpZoneId is the owning zone: a zone-scoped resource publishes its parent
+	// scope (the load balancer's API identity is zones/{zone_id}/load_balancers/{id}).
+	OpZoneId = "zone_id"
 )

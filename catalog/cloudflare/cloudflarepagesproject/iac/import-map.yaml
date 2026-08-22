@@ -1,0 +1,34 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarepagesproject
+spec:
+  # The project imports as {account_id}/{project_name} -- the name IS the
+  # identity (Pages has no separate id). Custom domains are a companion
+  # resource keyed by hostname (the module's for_each key), so domain_name
+  # comes from the enumerated address. Secret env vars inside
+  # deployment_configs do not survive import.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: project_name
+      derivations:
+        - from_spec_field: name
+        - from_stack_output: project_name
+      where_to_find: >-
+        Cloudflare dashboard -> Workers & Pages -> the project (the name
+        in the list), or `GET /accounts/<account_id>/pages/projects` on the
+        Cloudflare v4 API (the name field).
+    - name: domain_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The hostname in spec.domains (the module keys one
+        cloudflare_pages_domain per name); Cloudflare dashboard -> the
+        project -> Custom domains, or
+        `GET /accounts/<account_id>/pages/projects/<project_name>/domains`
+        on the Cloudflare v4 API.

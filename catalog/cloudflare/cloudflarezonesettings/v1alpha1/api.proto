@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezonesettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezonesettings/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezonesettings/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZoneSettings is a KRM-style resource for managing a Cloudflare zone's
+// behavior settings: the HTTP, SSL/TLS, cache-adjacent, and network posture shown
+// under the dashboard's Speed, Security, and Network tabs, plus managed header
+// transforms, URL normalization, origin cloud-region hints, and the zone-wide
+// waiting-room crawler bypass.
+message CloudflareZoneSettings {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZoneSettings'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZoneSettingsSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZoneSettingsStatus status = 5;
+}
+
+// CloudflareZoneSettingsStatus represents the observed state of a zone's settings.
+message CloudflareZoneSettingsStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZoneSettingsStackOutputs outputs = 1;
+}

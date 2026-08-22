@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustdnslocation
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A resolver entry point -- no customer data stored.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: endpoints
+      evidence:
+        type: spec_default
+        reference: endpoints declares which resolver transports serve the location -- DoH and DoT carry DNS encrypted; the plain IPv4/IPv6 endpoints are classic DNS by design (office networks behind allowlists).
+    - control_id: no-public-access
+      status: configurable
+      field_path: endpoints.doh.require_token
+      evidence:
+        type: spec_default
+        reference: endpoints.doh.require_token rejects resolvers that merely discovered the world-reachable DoH URL; per-endpoint source-network allowlists gate the rest.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: networks
+      evidence:
+        type: spec_default
+        reference: networks (top-level, for the IPv4 endpoint) and the per-endpoint allowlists on doh/dot/ipv6 restrict which source networks may query the location.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The resolver endpoints run on Cloudflare's anycast edge with its standard DDoS posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may change locations is Cloudflare account-membership posture; filtering decisions live in Gateway policies.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A resolver entry point, not an identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: DNS endpoints have no user-auth surface beyond the DoH token gate (covered under no-public-access).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Location changes land in the account audit log; query logging is governed by the account's Gateway logging settings.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own; Gateway analytics cover query volumes per location.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Configuration-only surface, reproducible from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Resolver endpoints are served from Cloudflare's global anycast network; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No provider-side deletion guard; a deleted location is recreated from the manifest (clients re-point at the new endpoints).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

@@ -1,0 +1,61 @@
+# Flagship CloudflareLoadBalancer scenario: the traffic-rules surface plus
+# session affinity. Two rules prove the two rule modes -- a terminating
+# fixed-response rule (answers matched requests at the edge; a 503 maintenance
+# page) and a steering-overrides rule (explicit steering_policy "off" and
+# session_affinity "none", proving the override-presence semantics: an
+# explicit default-valued override is SENT, not dropped). Proxied, with
+# cookie affinity at the top level so the override has something real to
+# override. Deliberately absent: pop_pools (Enterprise entitlement) and
+# networks (needs a private-network setup; offline plan proves the send path).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancer
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancer-rules
+  id: planton-oss-e2e-cloudflareloadbalancer-rules
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  hostname: e2e-lb-rules
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  defaultPools:
+    - valueFrom:
+        kind: CloudflareLoadBalancerPool
+        name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+        fieldPath: status.outputs.pool_id
+  fallbackPool:
+    valueFrom:
+      kind: CloudflareLoadBalancerPool
+      name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+      fieldPath: status.outputs.pool_id
+  proxied: true
+  sessionAffinity: cookie
+  sessionAffinityTtl: 1800
+  sessionAffinityAttributes:
+    samesite: Lax
+    secure: Auto
+    zeroDowntimeFailover: temporary
+  rules:
+    - name: maintenance-page
+      condition: http.request.uri.path contains "/maintenance"
+      priority: 1
+      fixedResponse:
+        contentType: text/html
+        messageBody: "<h1>Down for maintenance</h1>"
+        statusCode: 503
+    - name: api-no-affinity
+      condition: http.request.uri.path contains "/api"
+      priority: 2
+      overrides:
+        steeringPolicy: "off"
+        sessionAffinity: none

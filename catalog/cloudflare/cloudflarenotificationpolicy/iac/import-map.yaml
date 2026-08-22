@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarenotificationpolicy
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: policy_id
+      derivations:
+        - from_stack_output: policy_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/alerting/v3/policies` on the Cloudflare v4
+        API (the id field; match by name), or the dashboard -> Notifications
+        -> the policy's Edit link (the id in the URL).

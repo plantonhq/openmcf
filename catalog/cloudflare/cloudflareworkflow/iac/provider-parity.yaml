@@ -1,0 +1,20 @@
+# Provider-parity manifest for CloudflareWorkflow.
+# Records only divergences from exact-name matching against
+# cloudflare_workflow at the pinned provider version. Unlisted arguments
+# (account_id, workflow_name, class_name, script_name) match spec fields by
+# exact name.
+#
+# The provider's default_retention, limits, and schedules are nested
+# attributes; the spec models each as a typed message. Fan-in mappings
+# record every spec leaf those arguments realize.
+resources:
+  cloudflare_workflow:
+    mappings:
+      - spec: spec.default_retention.error_retention
+        arg: default_retention
+      - spec: spec.default_retention.success_retention
+        arg: default_retention
+      - spec: spec.limits.steps
+        arg: limits
+      - spec: spec.schedules.cron
+        arg: schedules

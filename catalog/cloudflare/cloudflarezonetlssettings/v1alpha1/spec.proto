@@ -1,0 +1,123 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarezonetlssettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZoneTlsSettingsSpec manages a zone's edge TLS posture: Universal SSL
+// issuance, Total TLS per-hostname certificates, automatic origin TLS key
+// exchange, origin TLS compliance modes, per-hostname TLS overrides, and
+// certificate-authority hostname associations.
+//
+// A field left unset is NOT MANAGED: the module never sends it and the zone keeps
+// its current value. Universal SSL, Total TLS, auto origin TLS key exchange, and
+// CA hostname associations have NO DELETE at Cloudflare -- destroy abandons the
+// last-applied values. Per-hostname settings and origin TLS compliance modes have
+// real deletes: destroying the resource removes those overrides.
+//
+// The sharpest edge in this kind: setting universal_ssl_enabled to false stops
+// Universal SSL certificate issuance for the zone. If no other certificate covers
+// a proxied hostname, that hostname becomes UNREACHABLE over HTTPS. Only disable
+// Universal SSL when dedicated, custom, or Total TLS certificates already cover
+// every proxied hostname.
+message CloudflareZoneTlsSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_setting"
+    message: "configure at least one TLS setting -- a CloudflareZoneTlsSettings resource that manages nothing would deploy nothing"
+    expression: "has(this.universal_ssl_enabled) || has(this.total_tls) || has(this.auto_origin_tls_kex) || this.origin_tls_compliance_modes.size() > 0 || this.hostname_settings.size() > 0 || this.ca_hostname_associations.size() > 0"
+  };
+
+  // The zone whose TLS settings are managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Universal SSL certificate issuance for the zone. Setting false STOPS issuance
+  // and can make proxied hostnames unreachable over HTTPS unless other
+  // certificates cover them -- see the message-level warning above. No delete at
+  // Cloudflare: destroy abandons the last-applied value.
+  optional bool universal_ssl_enabled = 2;
+
+  // Total TLS: automatically issue individual certificates for every proxied
+  // hostname in the zone, including deep subdomains Universal SSL's wildcard does
+  // not cover. No delete at Cloudflare: destroy abandons the last-applied value.
+  CloudflareZoneTlsSettingsTotalTls total_tls = 3;
+
+  // Automatic origin TLS key exchange: let Cloudflare negotiate the strongest key
+  // exchange the origin supports on origin-facing TLS. No delete at Cloudflare:
+  // destroy abandons the last-applied value.
+  optional bool auto_origin_tls_kex = 4;
+
+  // Origin TLS compliance modes required on Cloudflare-to-origin connections.
+  // Cloudflare documents fips and pqh (post-quantum hybrid) and may add values;
+  // unknown strings pass through to the API unvalidated, deliberately -- treat the
+  // values as an open vocabulary. Real delete at Cloudflare: destroying the
+  // resource (or ceasing to manage the list) clears the compliance requirement
+  // via the module's destroy; the module never sends an empty list.
+  repeated string origin_tls_compliance_modes = 5;
+
+  // Per-hostname TLS overrides within the zone. Each row targets one hostname and
+  // sets any of the three overridable settings; each set setting becomes its own
+  // per-hostname override object at Cloudflare. Real delete: destroying the
+  // resource removes the overrides and the hostnames fall back to zone-wide
+  // settings.
+  repeated CloudflareZoneTlsSettingsHostnameSetting hostname_settings = 6;
+
+  // Certificate-authority hostname associations: restrict which hostnames a
+  // certificate authority may issue for. A row WITHOUT mtls_certificate_id
+  // manages the zone's managed-CA association list; a row WITH it manages the
+  // hostname list of that mTLS certificate. No delete at Cloudflare: destroy
+  // abandons the last-applied associations.
+  repeated CloudflareZoneTlsSettingsCaHostnameAssociation ca_hostname_associations = 7;
+}
+
+// Total TLS configuration.
+message CloudflareZoneTlsSettingsTotalTls {
+  // Whether Total TLS issues per-hostname certificates for the zone.
+  bool enabled = 1;
+
+  // The certificate authority issuing Total TLS certificates. Unset lets
+  // Cloudflare choose. The certificates' validity period is fixed by Cloudflare
+  // (90 days) and is not configurable.
+  optional string certificate_authority = 2 [(buf.validate.field).string = {in: ["google", "lets_encrypt", "ssl_com"]}];
+}
+
+// One hostname's TLS overrides. At least one of min_tls_version, http2, or
+// ciphers must be set -- a row that overrides nothing manages nothing.
+message CloudflareZoneTlsSettingsHostnameSetting {
+  option (buf.validate.message).cel = {
+    id: "hostname_setting.at_least_one_override"
+    message: "set at least one of min_tls_version, http2, or ciphers on the hostname row -- a row that overrides nothing manages nothing"
+    expression: "has(this.min_tls_version) || has(this.http2) || this.ciphers.size() > 0"
+  };
+
+  // The hostname the overrides apply to. Changing the hostname replaces the
+  // override objects (the hostname is part of their API identity).
+  string hostname = 1 [(buf.validate.field).required = true];
+
+  // Minimum TLS version for this hostname, overriding the zone-wide setting.
+  optional string min_tls_version = 2 [(buf.validate.field).string = {in: ["1.0", "1.1", "1.2", "1.3"]}];
+
+  // HTTP/2 support for this hostname, overriding the zone-wide setting.
+  optional bool http2 = 3;
+
+  // TLS cipher allowlist for this hostname in BoringSSL format, overriding the
+  // zone-wide ciphers.
+  repeated string ciphers = 4;
+}
+
+// One certificate-authority hostname association list.
+message CloudflareZoneTlsSettingsCaHostnameAssociation {
+  // The hostnames the certificate authority may issue for. An explicit empty
+  // list is not sendable -- provide at least one hostname per managed row.
+  repeated string hostnames = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // The mTLS certificate whose hostname associations this row manages. Leave
+  // unset to manage the zone's managed-CA association list instead. Accepts a
+  // literal certificate id or a reference to a CloudflareMtlsCertificate
+  // resource's certificate_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef mtls_certificate_id = 2;
+}

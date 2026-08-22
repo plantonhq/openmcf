@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflarePagesProjectSpec configures a Cloudflare Pages project: a managed
 site host that builds and serves a static site or full-stack app (static
 assets + Pages Functions) from Cloudflare's edge.

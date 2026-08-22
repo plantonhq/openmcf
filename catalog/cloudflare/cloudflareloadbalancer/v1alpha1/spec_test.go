@@ -39,6 +39,41 @@ var _ = ginkgo.Describe("CloudflareLoadBalancerSpec Custom Validation Tests", fu
 			gomega.Expect(protovalidate.Validate(validLoadBalancer())).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts traffic rules with a fixed response and steering overrides", func() {
+			in := validLoadBalancer()
+			affinity := CloudflareLoadBalancerSessionAffinity_none
+			policy := CloudflareLoadBalancerSteeringPolicy_off
+			var priority int32 = 5
+			in.Spec.Networks = []string{"network-a"}
+			in.Spec.Rules = []*CloudflareLoadBalancerRule{
+				{
+					Name:      "maintenance-page",
+					Condition: `http.request.uri.path contains "/maintenance"`,
+					Priority:  &priority,
+					FixedResponse: &CloudflareLoadBalancerRuleFixedResponse{
+						ContentType: "text/html",
+						MessageBody: "<h1>Down for maintenance</h1>",
+						StatusCode:  503,
+					},
+				},
+				{
+					Name:      "api-steering",
+					Condition: `http.request.uri.path contains "/api"`,
+					Overrides: &CloudflareLoadBalancerRuleOverrides{
+						SessionAffinity: &affinity,
+						SteeringPolicy:  &policy,
+						DefaultPools:    []*foreignkeyv1.StringValueOrRef{ref("pool-api")},
+						FallbackPool:    ref("pool-api-fallback"),
+						SessionAffinityAttributes: &CloudflareLoadBalancerSessionAffinityAttributes{
+							Samesite: "None", Secure: "Always",
+						},
+						Ttl: 30,
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts geo steering with region/country pools and affinity", func() {
 			in := validLoadBalancer()
 			in.Spec.SteeringPolicy = CloudflareLoadBalancerSteeringPolicy_geo
@@ -93,6 +128,49 @@ var _ = ginkgo.Describe("CloudflareLoadBalancerSpec Custom Validation Tests", fu
 		ginkgo.It("rejects a geo pool entry with no pools", func() {
 			in := validLoadBalancer()
 			in.Spec.RegionPools = []*CloudflareLoadBalancerGeoPools{{Code: "WNAM"}}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative rule priority", func() {
+			in := validLoadBalancer()
+			var priority int32 = -1
+			in.Spec.Rules = []*CloudflareLoadBalancerRule{{Priority: &priority}}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid fixed_response status code", func() {
+			in := validLoadBalancer()
+			in.Spec.Rules = []*CloudflareLoadBalancerRule{
+				{FixedResponse: &CloudflareLoadBalancerRuleFixedResponse{StatusCode: 99}},
+			}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects samesite None combined with secure Never", func() {
+			in := validLoadBalancer()
+			in.Spec.SessionAffinityAttributes = &CloudflareLoadBalancerSessionAffinityAttributes{
+				Samesite: "None", Secure: "Never",
+			}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects samesite None with secure Never inside rule overrides", func() {
+			in := validLoadBalancer()
+			in.Spec.Rules = []*CloudflareLoadBalancerRule{
+				{Overrides: &CloudflareLoadBalancerRuleOverrides{
+					SessionAffinityAttributes: &CloudflareLoadBalancerSessionAffinityAttributes{
+						Samesite: "None", Secure: "Never",
+					},
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative ttl override", func() {
+			in := validLoadBalancer()
+			in.Spec.Rules = []*CloudflareLoadBalancerRule{
+				{Overrides: &CloudflareLoadBalancerRuleOverrides{Ttl: -1}},
+			}
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 	})

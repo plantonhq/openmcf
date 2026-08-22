@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareZeroTrustTunnelVirtualNetworkSpec configures a Cloudflare Tunnel virtual
 network: an isolated routing segment that lets the same private CIDR (for example
 10.0.0.0/8) be connected through more than one tunnel without collision. Routes
@@ -89,6 +91,14 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareZeroTrustAccessInfrastructureTarget | `spec.ip.ipv4.virtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustAccessInfrastructureTarget | `spec.ip.ipv6.virtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceCustomProfile | `spec.virtualNetworks.allowed` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceCustomProfile | `spec.virtualNetworks.defaultVirtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceDefaultProfile | `spec.virtualNetworks.allowed` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceDefaultProfile | `spec.virtualNetworks.defaultVirtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv4[].vnetId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv6[].vnetId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustTunnelRoute | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |
 
 ## See Also

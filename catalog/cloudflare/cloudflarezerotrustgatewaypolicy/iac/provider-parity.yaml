@@ -1,0 +1,160 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Divergences recorded here:
+#   - `filters` is a provider list that "can only contain a single value"
+#     (API-enforced); the spec models it as the singular `filter` string and
+#     the modules wrap it into the one-element list.
+#   - `expiration`, `schedule`, and `rule_settings` are single-nested
+#     attributes (one configurable argument each); the spec models their full
+#     field surfaces as typed messages under the provider's own field names.
+#     Fan-in mappings record every spec leaf each argument realizes. The
+#     spec's add_headers/set_headers wrapper messages ({values: [...]})
+#     realize the provider's map-of-lists shape.
+
+resources:
+  cloudflare_zero_trust_gateway_policy:
+    mappings:
+      - spec: spec.filter
+        arg: filters
+      - spec: spec.expiration.expires_at
+        arg: expiration
+      - spec: spec.expiration.duration
+        arg: expiration
+      - spec: spec.schedule.mon
+        arg: schedule
+      - spec: spec.schedule.tue
+        arg: schedule
+      - spec: spec.schedule.wed
+        arg: schedule
+      - spec: spec.schedule.thu
+        arg: schedule
+      - spec: spec.schedule.fri
+        arg: schedule
+      - spec: spec.schedule.sat
+        arg: schedule
+      - spec: spec.schedule.sun
+        arg: schedule
+      - spec: spec.schedule.time_zone
+        arg: schedule
+      - spec: spec.rule_settings.add_headers.values
+        arg: rule_settings
+      - spec: spec.rule_settings.allow_child_bypass
+        arg: rule_settings
+      - spec: spec.rule_settings.audit_ssh.command_logging
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.copy
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.dcp
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.dd
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.dk
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.download
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.dp
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.du
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.keyboard
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.paste
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.printing
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.upload
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.version
+        arg: rule_settings
+      - spec: spec.rule_settings.biso_admin_controls.wm_id
+        arg: rule_settings
+      - spec: spec.rule_settings.block_page.include_context
+        arg: rule_settings
+      - spec: spec.rule_settings.block_page.target_uri
+        arg: rule_settings
+      - spec: spec.rule_settings.block_page_enabled
+        arg: rule_settings
+      - spec: spec.rule_settings.block_reason
+        arg: rule_settings
+      - spec: spec.rule_settings.bypass_parent_rule
+        arg: rule_settings
+      - spec: spec.rule_settings.check_session.duration
+        arg: rule_settings
+      - spec: spec.rule_settings.check_session.enforce
+        arg: rule_settings
+      - spec: spec.rule_settings.delete_headers
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv4.ip
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv4.port
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv4.route_through_private_network
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv4.vnet_id
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv6.ip
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv6.port
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv6.route_through_private_network
+        arg: rule_settings
+      - spec: spec.rule_settings.dns_resolvers.ipv6.vnet_id
+        arg: rule_settings
+      - spec: spec.rule_settings.egress.ipv4
+        arg: rule_settings
+      - spec: spec.rule_settings.egress.ipv4_fallback
+        arg: rule_settings
+      - spec: spec.rule_settings.egress.ipv6
+        arg: rule_settings
+      - spec: spec.rule_settings.forensic_copy.enabled
+        arg: rule_settings
+      - spec: spec.rule_settings.ignore_cname_category_matches
+        arg: rule_settings
+      - spec: spec.rule_settings.insecure_disable_dnssec_validation
+        arg: rule_settings
+      - spec: spec.rule_settings.ip_categories
+        arg: rule_settings
+      - spec: spec.rule_settings.ip_indicator_feeds
+        arg: rule_settings
+      - spec: spec.rule_settings.l4override.ip
+        arg: rule_settings
+      - spec: spec.rule_settings.l4override.port
+        arg: rule_settings
+      - spec: spec.rule_settings.notification_settings.enabled
+        arg: rule_settings
+      - spec: spec.rule_settings.notification_settings.include_context
+        arg: rule_settings
+      - spec: spec.rule_settings.notification_settings.msg
+        arg: rule_settings
+      - spec: spec.rule_settings.notification_settings.support_url
+        arg: rule_settings
+      - spec: spec.rule_settings.override_host
+        arg: rule_settings
+      - spec: spec.rule_settings.override_ips
+        arg: rule_settings
+      - spec: spec.rule_settings.payload_log.enabled
+        arg: rule_settings
+      - spec: spec.rule_settings.quarantine.file_types
+        arg: rule_settings
+      - spec: spec.rule_settings.redirect.include_context
+        arg: rule_settings
+      - spec: spec.rule_settings.redirect.preserve_path_and_query
+        arg: rule_settings
+      - spec: spec.rule_settings.redirect.target_uri
+        arg: rule_settings
+      - spec: spec.rule_settings.resolve_dns_internally.fallback
+        arg: rule_settings
+      - spec: spec.rule_settings.resolve_dns_internally.view_id
+        arg: rule_settings
+      - spec: spec.rule_settings.resolve_dns_through_cloudflare
+        arg: rule_settings
+      - spec: spec.rule_settings.set_headers.values
+        arg: rule_settings
+      - spec: spec.rule_settings.untrusted_cert.action
+        arg: rule_settings

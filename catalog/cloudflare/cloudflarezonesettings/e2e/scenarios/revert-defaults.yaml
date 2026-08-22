@@ -1,0 +1,25 @@
+# The defaults posture AND the revert: applies Cloudflare's default values
+# for every setting the posture scenario managed. Because destroy is a no-op
+# for zone settings, running this scenario AFTER free-plan-posture is what
+# returns the zone to its default posture -- the ordering IS the revert
+# discipline (and the run-scoped fixture zone's destroy is the backstop).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneSettings
+metadata:
+  name: e2e-zoneset-revert-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  always_use_https: false
+  min_tls_version: "1.0"
+  browser_cache_ttl: 14400
+  security_level: medium
+  security_header:
+    enabled: false
+    include_subdomains: false
+    max_age: 0
+    nosniff: false
+    preload: false

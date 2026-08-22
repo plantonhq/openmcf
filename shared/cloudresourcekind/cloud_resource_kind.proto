@@ -5884,10 +5884,18 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "cfwrk"
   }];
+  // CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because
+  // a load balancer is a DNS-level construct inside a zone (the spec's zone_id
+  // reference must resolve) and traffic must land somewhere (the required
+  // fallback_pool reference must resolve to a live pool).
   CloudflareLoadBalancer = 7004 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cflb"
+    prerequisites: [
+      CloudflareDnsZone,
+      CloudflareLoadBalancerPool
+    ]
   }];
   CloudflareD1Database = 7005 [(kind_meta) = {
     provider: cloudflare
@@ -5899,20 +5907,32 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "cfzta"
   }];
+  // CloudflareDnsZone is a prerequisite because every record lives inside a
+  // zone -- the spec's zone_id reference must resolve before the record can
+  // be created.
   CloudflareDnsRecord = 7007 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfrec"
+    prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the
+  // common case; the spec's zone_id reference defaults to the zone kind) must
+  // resolve their zone first. Account-scoped rulesets simply leave the
+  // reference unused.
   CloudflareRuleset = 7008 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfrs"
+    prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareKvNamespace is a prerequisite because a KV pair is written into
+  // a namespace -- the spec's namespace_id reference must resolve first.
   CloudflareWorkersKvPair = 7009 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfkvp"
+    prerequisites: [CloudflareKvNamespace]
   }];
   CloudflareHyperdriveConfig = 7010 [(kind_meta) = {
     provider: cloudflare
@@ -5960,35 +5980,56 @@ enum CloudResourceKind {
     id_prefix: "cfztvn"
     container_kind: true
   }];
+  // CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR
+  // through an existing tunnel -- the spec's tunnel_id reference must resolve
+  // first. (The optional virtual_network_id is scenario-declared, not a
+  // registry prerequisite.)
   CloudflareZeroTrustTunnelRoute = 7019 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfztrt"
+    prerequisites: [CloudflareZeroTrustTunnel]
   }];
   CloudflareList = 7020 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cflist"
   }];
+  // CloudflareList is a prerequisite because an item exists only inside a
+  // list -- the spec's list_id reference must resolve first.
   CloudflareListItem = 7021 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfli"
+    prerequisites: [CloudflareList]
   }];
   CloudflareTurnstileWidget = 7022 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfturn"
   }];
+  // CloudflareDnsZone is a prerequisite because email routing is enabled ON a
+  // zone -- the spec's zone_id reference must resolve first.
   CloudflareEmailRoutingZone = 7023 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cferz"
+    prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because a routing rule lives in a
+  // zone's email routing configuration -- the spec's zone_id reference must
+  // resolve first. CloudflareEmailRoutingZone is a prerequisite because the
+  // zone's Email Routing must be ENABLED before the API accepts rules.
+  // (Forward destinations reference CloudflareEmailRoutingAddress only for
+  // forward-type rules, so that edge is scenario-declared.)
   CloudflareEmailRoutingRule = 7024 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cferr"
+    prerequisites: [
+      CloudflareDnsZone,
+      CloudflareEmailRoutingZone
+    ]
   }];
   CloudflareEmailRoutingAddress = 7025 [(kind_meta) = {
     provider: cloudflare
@@ -6000,20 +6041,352 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "cfoca"
   }];
+  // CloudflareDnsZone is a prerequisite because a certificate pack is ordered
+  // for a zone's hostnames -- the spec's zone_id reference must resolve first.
   CloudflareCertificatePack = 7027 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfcertp"
+    prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because a custom hostname (SSL for
+  // SaaS) is provisioned inside a zone -- the spec's zone_id reference must
+  // resolve first.
   CloudflareCustomHostname = 7028 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfchost"
+    prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because the fallback origin is a
+  // zone-level SSL-for-SaaS setting -- the spec's zone_id reference must
+  // resolve first.
   CloudflareCustomHostnameFallbackOrigin = 7029 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfchfo"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
+  // --- 7030-7059: Cloudflare Zero Trust Access sub-band ---
+
+  // No prerequisites: identity providers are account-scoped in the canonical
+  // case (the optional zone scope is a per-manifest choice, not a structural
+  // dependency).
+  CloudflareZeroTrustAccessIdentityProvider = 7030 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztidp"
+  }];
+  // No prerequisites: service tokens are account-scoped in the canonical case
+  // (the optional zone scope is a per-manifest choice, not a structural
+  // dependency).
+  CloudflareZeroTrustAccessServiceToken = 7031 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztst"
+  }];
+  // No prerequisites: the organization is an account-scoped configuration
+  // singleton (the optional zone scope is a per-manifest choice, not a
+  // structural dependency).
+  CloudflareZeroTrustOrganization = 7032 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztorg"
+  }];
+  // No prerequisites: targets are account-scoped, and the virtual-network
+  // reference is an optional per-manifest edge (omitted = the account's
+  // default virtual network).
+  CloudflareZeroTrustAccessInfrastructureTarget = 7033 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztit"
+  }];
+  // No prerequisites: portals are account-scoped, and the servers[] rows'
+  // MCP-server references are optional per-manifest edges.
+  CloudflareZeroTrustMcpPortal = 7034 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmcpp"
+  }];
+  // No prerequisites: MCP server registrations are account-scoped and
+  // self-contained -- portals reference them, not the reverse.
+  CloudflareZeroTrustMcpServer = 7035 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmcps"
+  }];
+
+  // --- 7060-7079: Cloudflare Zero Trust Gateway sub-band ---
+
+  // No prerequisites: Gateway policies are account-scoped, and their list /
+  // virtual-network references are optional per-manifest edges.
+  CloudflareZeroTrustGatewayPolicy = 7060 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztgp"
+  }];
+  // No prerequisites: Zero Trust lists are account-scoped and self-contained.
+  CloudflareZeroTrustList = 7061 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztl"
+  }];
+  // No prerequisites: the Gateway configuration is an account-scoped
+  // singleton, and its certificate reference is an optional per-manifest
+  // edge.
+  CloudflareZeroTrustGatewaySettings = 7062 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztgs"
+  }];
+  // No prerequisites: DNS locations are account-scoped and self-contained.
+  CloudflareZeroTrustDnsLocation = 7063 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztdl"
+  }];
+
+  // --- 7080-7109: Cloudflare Zero Trust Devices & DEX sub-band ---
+
+  // No prerequisites: the default device profile is an account-scoped
+  // configuration singleton; its virtual-network and zone-certificate
+  // references are optional per-manifest edges.
+  CloudflareZeroTrustDeviceDefaultProfile = 7080 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztddp"
+  }];
+  // No prerequisites: custom device profiles are account-scoped, and the
+  // virtual-network reference is an optional per-manifest edge.
+  CloudflareZeroTrustDeviceCustomProfile = 7081 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztdcp"
+  }];
+  // No prerequisites: posture rules are account-scoped and self-contained
+  // (list and integration references are literal UUIDs today).
+  CloudflareZeroTrustDevicePostureRule = 7082 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztdpr"
+  }];
+
+  // --- 7150-7179: Cloudflare zone TLS-posture sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
+  // configuration -- the spec's zone_id reference must resolve first.
+  CloudflareZoneTlsSettings = 7150 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cftls"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because a custom certificate is
+  // uploaded to an existing zone -- the spec's zone_id reference must resolve
+  // first.
+  CloudflareCustomSslCertificate = 7151 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfcssl"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // No prerequisites: mTLS certificates are account-scoped uploads and
+  // self-contained -- consumers (zone TLS CA associations, Authenticated
+  // Origin Pulls rows, Workers mTLS bindings) reference them, not the
+  // reverse.
+  CloudflareMtlsCertificate = 7152 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmtls"
+  }];
+  // CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls
+  // enablement configures an existing zone -- the spec's zone_id reference
+  // must resolve first. The per-hostname certificate edge is optional and
+  // scenario-declared, never a registry prerequisite.
+  CloudflareAuthenticatedOriginPulls = 7153 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaop"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because the client certificate is
+  // uploaded to an existing zone -- the spec's zone_id reference must resolve
+  // first.
+  CloudflareAuthenticatedOriginPullsCertificate = 7154 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaopc"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
+  // --- 7180-7209: Cloudflare zone-behavior sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because zone settings configure an
+  // existing zone -- the spec's zone_id reference must resolve first.
+  CloudflareZoneSettings = 7180 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfzset"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because cache settings configure an
+  // existing zone -- the spec's zone_id reference must resolve first.
+  CloudflareCacheSettings = 7181 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfcache"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
+  // --- 7210-7239: Cloudflare zone-security sub-band ---
+
+  // No prerequisites: IP Access rules are account-scoped in the canonical case
+  // (the zone scope is a per-manifest choice, not a structural dependency).
+  CloudflareIpAccessRule = 7210 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfipar"
+  }];
+  // CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton
+  // configuration -- the spec's zone_id reference must resolve first.
+  CloudflareBotManagement = 7211 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfbot"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because snippets deploy to a zone --
+  // the spec's zone_id reference must resolve first.
+  CloudflareSnippet = 7212 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsnip"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table
+  // is zone-scoped and every rule invokes a snippet by name.
+  CloudflareSnippetRules = 7213 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsnipr"
+    prerequisites: [
+      CloudflareDnsZone,
+      CloudflareSnippet
+    ]
+  }];
+
+  // --- 7240-7249: Cloudflare waiting-room sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's
+  // host+path -- the spec's zone_id reference must resolve first.
+  CloudflareWaitingRoom = 7240 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwroom"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareWaitingRoom is a prerequisite because events run on a room (and
+  // the room's own chain brings the zone).
+  CloudflareWaitingRoomEvent = 7241 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwrev"
+    prerequisites: [CloudflareWaitingRoom]
+  }];
+
+  // --- 7250-7269: Cloudflare logs, notifications & analytics sub-band ---
+
+  // No prerequisites: logpush jobs are dual-scope (account or zone) and the
+  // zone reference is optional -- zone-scoped lanes declare the edge at the
+  // scenario level.
+  CloudflareLogpushJob = 7250 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cflpj"
+  }];
+  // No prerequisites: every delivery mechanism (email, PagerDuty, webhook)
+  // is optional -- policies referencing a webhook declare the edge at the
+  // scenario level.
+  CloudflareNotificationPolicy = 7251 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfnp"
+  }];
+  // No prerequisites: a webhook destination is account-scoped and
+  // self-contained -- notification policies reference it, not the reverse.
+  CloudflareNotificationWebhook = 7252 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfnw"
+  }];
+  // No prerequisites: a site is identified by host OR zone, and the zone
+  // reference is optional -- zone-measured lanes declare the edge at the
+  // scenario level.
+  CloudflareWebAnalyticsSite = 7253 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwas"
+  }];
+
+  // --- 7270-7299: Cloudflare Workers-platform sub-band ---
+
+  // CloudflareWorker is a prerequisite because a workflow registers a class
+  // exported by a DEPLOYED Worker script -- the spec's script_name reference
+  // must resolve first.
+  CloudflareWorkflow = 7270 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwf"
+    prerequisites: [CloudflareWorker]
+  }];
+  // No prerequisites: the Secrets Store is an account-scoped container and
+  // self-contained -- consumers (store secrets, Worker bindings, AI Gateway
+  // authentication) reference it, not the reverse.
+  CloudflareSecretsStore = 7271 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfss"
+  }];
+  // CloudflareSecretsStore is a prerequisite because every secret lives
+  // inside a store -- the spec's store_id reference must resolve first.
+  CloudflareSecretsStoreSecret = 7272 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsss"
+    prerequisites: [CloudflareSecretsStore]
+  }];
+
+  // --- 7300-7369: Cloudflare AI sub-band ---
+
+  // No prerequisites: the gateway is account-scoped and self-contained; its
+  // optional Secrets Store link (BYO provider keys) is a scenario-level
+  // composition, not a structural requirement.
+  CloudflareAiGateway = 7300 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaig"
+  }];
+
+  // --- 7370-7399: Cloudflare accounts & IAM sub-band ---
+
+  // No prerequisites: an account-owned API token is self-contained; the
+  // resources its policies cover are identifiers, not references.
+  CloudflareAccountApiToken = 7370 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfatok"
+  }];
+
+  // --- 7400-7409: Cloudflare load-balancing & health completions sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because standalone health checks are
+  // zone-scoped -- the spec's zone_id reference must resolve first.
+  CloudflareHealthcheck = 7400 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfhc"
+    prerequisites: [CloudflareDnsZone]
   }];
 
   // 8000–8999: Auth0 resources

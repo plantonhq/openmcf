@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustmcpportal
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: portal_id
+      derivations:
+        - from_spec_field: portal_id
+      where_to_find: >-
+        The portal's user-chosen slug (the spec's own portal_id), or
+        `GET /accounts/<account_id>/access/ai-controls/mcp/portals` on the
+        Cloudflare v4 API.

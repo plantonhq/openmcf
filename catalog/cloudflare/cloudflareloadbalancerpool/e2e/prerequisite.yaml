@@ -1,0 +1,31 @@
+# CloudflareLoadBalancerPool install profile used as a prerequisite by the
+# zone-scoped CloudflareLoadBalancer (its registry prerequisite). The pool is
+# account-scoped and minimal: one TEST-NET-1 origin (192.0.2.x is reserved for
+# documentation and never routed) and no monitor -- origins without a monitor
+# are always considered healthy, which is exactly right for a fixture. The
+# pool's spec NAME must be run-scoped: Cloudflare pool names are unique per
+# account, so a fixed name would collide across concurrent engine lanes.
+# metadata.name stays stable -- it is the key consumers' valueFrom references
+# resolve against. Requires the account's Load Balancing add-on subscription
+# (pools are part of the paid Load Balancing product).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+  id: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancerpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-pool-${E2E_RUN_ID}
+  origins:
+    - name: origin-1
+      address:
+        value: 192.0.2.20

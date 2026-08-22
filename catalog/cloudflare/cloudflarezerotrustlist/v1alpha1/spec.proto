@@ -1,0 +1,71 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarezerotrustlist.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// CloudflareZeroTrustListSpec defines a reusable Zero Trust list: a named set of
+// values (domains, IPs, URLs, emails, serial numbers, and kin) that Gateway
+// policies and device-posture rules reference by ID instead of repeating the
+// values inline. Centralizing the values in a list lets many policies share one
+// source of truth that evolves in one place.
+//
+// Lists are account-scoped. The list TYPE is immutable at Cloudflare (changing it
+// replaces the list, which breaks any policy referencing the old list ID) -- pick
+// the type deliberately.
+message CloudflareZeroTrustListSpec {
+  // The Cloudflare account ID that owns this list.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The display name of the list.
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The list type -- what kind of values the items carry. IMMUTABLE at
+  // Cloudflare: changing the type replaces the list (new list ID), breaking any
+  // Gateway policy or posture rule that references the old ID. Use the
+  // canonical UPPERCASE form (the API stores it uppercase; lowercase input
+  // would round-trip as permanent drift).
+  string type = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "SERIAL",
+        "URL",
+        "DOMAIN",
+        "EMAIL",
+        "IP",
+        "CATEGORY",
+        "LOCATION",
+        "DEVICE",
+        "AAGUID"
+      ]
+    }
+  ];
+
+  // Optional description of the list's purpose.
+  string description = 4;
+
+  // The list's entries. Cloudflare treats items as a SET: order is not
+  // significant and is not preserved -- two lists with the same values in a
+  // different order are the same list. URL-type values are normalized by the
+  // API (a known upstream drift source); prefer already-normalized URLs.
+  repeated CloudflareZeroTrustListItem items = 5;
+}
+
+// CloudflareZeroTrustListItem is one entry in a Zero Trust list.
+message CloudflareZeroTrustListItem {
+  // The item value, interpreted per the list's type (a domain for DOMAIN lists,
+  // an IP for IP lists, and so on). Required here even though the API tolerates
+  // value-less items -- an entry without a value matches nothing and can only
+  // be a mistake.
+  string value = 1 [(buf.validate.field).required = true];
+
+  // Optional description of this entry.
+  string description = 2;
+}

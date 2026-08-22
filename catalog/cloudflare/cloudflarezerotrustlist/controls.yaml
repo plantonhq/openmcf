@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustlist
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The list stores indicator values (domains, IPs, emails) at Cloudflare, not customer data this component encrypts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: List management traffic to the Cloudflare API is HTTPS. The component has no toggle that would send items in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The list is referenced by Gateway policies and posture rules; it is not a public endpoint.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own (see no-public-access).
+    - control_id: edge-protection
+      status: configurable
+      field_path: items
+      evidence:
+        type: spec_default
+        reference: items plus type define the reusable set of domains, IPs, URLs, emails, or device identifiers that Gateway policies match against.
+      notes: The list is the shared source of truth; the policy that references it decides allow vs block.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the list exposes no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records list changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Account-scoped list served by Cloudflare's global Gateway edge.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete. Changing type also replaces the list (new list ID) and breaks every policy that referenced the old ID -- pick the type deliberately.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates Gateway lists; no customer-visible patch surface exists.

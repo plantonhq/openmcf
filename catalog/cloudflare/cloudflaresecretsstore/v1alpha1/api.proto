@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresecretsstore.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflaresecretsstore/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflaresecretsstore/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareSecretsStore is a KRM-style resource for managing the
+// account-level Secrets Store that Workers bindings and AI Gateway consume
+// secrets from.
+message CloudflareSecretsStore {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareSecretsStore'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareSecretsStoreSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareSecretsStoreStatus status = 5;
+}
+
+// CloudflareSecretsStoreStatus represents the observed state of the store.
+message CloudflareSecretsStoreStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareSecretsStoreStackOutputs outputs = 1;
+}

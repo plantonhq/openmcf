@@ -1,0 +1,20 @@
+# Minimal scenario: name-only location -- Cloudflare assigns the DoH
+# subdomain and destination IPs, and endpoint defaults stay server-side
+# (the omit-everything path).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDnsLocation
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdnslocation-minimal
+  id: planton-oss-e2e-cloudflarezerotrustdnslocation-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdnslocation
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-location-min-${E2E_RUN_ID}

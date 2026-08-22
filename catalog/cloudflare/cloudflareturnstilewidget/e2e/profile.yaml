@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflareturnstilewidget
+spec:
+  # A Turnstile widget under live E2E: account-scoped, no catalog
+  # prerequisites -- deploy -> GET
+  # accounts/{account_id}/challenges/widgets/{sitekey} verify -> destroy ->
+  # verify-destroyed on both provisioners. Identity is the sitekey. Two
+  # scenarios: `managed` (Cloudflare decides the challenge) and `invisible`.
+  # Domains are a dummy hostname -- they do not need to be a Cloudflare zone.
+  # Deliberately not live: Enterprise-only fields (bot_fight_mode,
+  # ephemeral_id, offlabel). The secret output is sensitive; VERIFY-OUT
+  # confirms it exists and logs must never print it. Free; objects create in
+  # seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

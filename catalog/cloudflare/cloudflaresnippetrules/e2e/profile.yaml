@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflaresnippetrules
+spec:
+  # Snippet rules under live E2E: the harness deploys the CloudflareDnsZone
+  # AND CloudflareSnippet prerequisites (registry-declared -- every rule
+  # invokes a snippet), resolves the references, applies the table, verifies
+  # via the zone's snippets/snippet_rules API, destroys. THE COLLECTION
+  # CONTRACT: destroy really deletes (all rules in the zone), but the
+  # collection ENDPOINT keeps answering 200 with an empty list -- the
+  # verifier's absent-check asserts the list is EMPTY, never a 404 (the
+  # empty-collection probe). Watch items for the proving session: (a) the
+  # provider's Read never parses the response body -- out-of-band rule
+  # changes are invisible to refresh, so drift assertions can only catch
+  # what the module itself sends; (b) destroy wipes rules created outside
+  # the manifest too -- on the run-scoped fixture zone that is exactly the
+  # zero-orphan behavior the lane wants. Rules are free-plan objects,
+  # applied in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

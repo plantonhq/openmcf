@@ -1,0 +1,21 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareauthenticatedoriginpulls
+spec:
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).
+    # No mechanical derivation: the hostname lives inside the repeated
+    # association rows, one import per row.
+    - name: hostname
+      where_to_find: >-
+        The hostname the association covers -- one import per association
+        row. `GET /zones/<zone_id>/origin_tls_client_auth/hostnames` on the
+        Cloudflare v4 API lists the zone's associations. The zone-wide
+        toggle imports separately with the bare zone id.

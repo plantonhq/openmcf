@@ -93,6 +93,7 @@ func dnsRecord(
 	ctx.Export(OpRecordName, createdRecord.Name)
 	ctx.Export(OpRecordType, pulumi.String(recordType))
 	ctx.Export(OpProxied, createdRecord.Proxied)
+	ctx.Export(OpZoneId, createdRecord.ZoneId)
 
 	return createdRecord, nil
 }

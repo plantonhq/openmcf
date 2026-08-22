@@ -1,0 +1,19 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider's `items` is a set-nested attribute (one configurable
+# argument); the spec models each entry as a typed {value, description}
+# message. Fan-in mappings record both spec leaves the argument realizes.
+
+resources:
+  cloudflare_zero_trust_list:
+    mappings:
+      - spec: spec.items.value
+        arg: items
+      - spec: spec.items.description
+        arg: items

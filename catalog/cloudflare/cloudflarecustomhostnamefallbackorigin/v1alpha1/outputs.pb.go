@@ -32,7 +32,12 @@ type CloudflareCustomHostnameFallbackOriginStackOutputs struct {
 	// RFC3339 timestamp of when the fallback origin was last updated.
 	UpdatedAt string `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Any errors reported while deploying the fallback origin.
-	Errors        []string `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
+	Errors []string `protobuf:"bytes,4,rep,name=errors,proto3" json:"errors,omitempty"`
+	// The Cloudflare Zone ID this singleton belongs to. The fallback origin has
+	// no resource id of its own -- its API identity IS the zone
+	// (GET zones/{zone_id}/custom_hostnames/fallback_origin) -- so this is the
+	// handle verification, import, and chart blocks consume.
+	ZoneId        string `protobuf:"bytes,5,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,18 +100,26 @@ func (x *CloudflareCustomHostnameFallbackOriginStackOutputs) GetErrors() []strin
 	return nil
 }
 
+func (x *CloudflareCustomHostnameFallbackOriginStackOutputs) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarecustomhostnamefallbackorigin_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Pcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/outputs.proto\x12Fdev.planton.cloudflare.cloudflarecustomhostnamefallbackorigin.v1alpha1\"\xa2\x01\n" +
+	"Pcatalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1/outputs.proto\x12Fdev.planton.cloudflare.cloudflarecustomhostnamefallbackorigin.v1alpha1\"\xbb\x01\n" +
 	"2CloudflareCustomHostnameFallbackOriginStackOutputs\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x02 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x03 \x01(\tR\tupdatedAt\x12\x16\n" +
-	"\x06errors\x18\x04 \x03(\tR\x06errorsB\xa8\x04\n" +
+	"\x06errors\x18\x04 \x03(\tR\x06errors\x12\x17\n" +
+	"\azone_id\x18\x05 \x01(\tR\x06zoneIdB\xa8\x04\n" +
 	"Jcom.dev.planton.cloudflare.cloudflarecustomhostnamefallbackorigin.v1alpha1B\fOutputsProtoP\x01Z\x8e\x01github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1;cloudflarecustomhostnamefallbackoriginv1alpha1\xa2\x02\x04DPCC\xaa\x02FDev.Planton.Cloudflare.Cloudflarecustomhostnamefallbackorigin.V1alpha1\xca\x02FDev\\Planton\\Cloudflare\\Cloudflarecustomhostnamefallbackorigin\\V1alpha1\xe2\x02RDev\\Planton\\Cloudflare\\Cloudflarecustomhostnamefallbackorigin\\V1alpha1\\GPBMetadata\xea\x02JDev::Planton::Cloudflare::Cloudflarecustomhostnamefallbackorigin::V1alpha1b\x06proto3"
 
 var (

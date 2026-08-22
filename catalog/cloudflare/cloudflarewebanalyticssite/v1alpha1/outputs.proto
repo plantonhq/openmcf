@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1;
+
+// CloudflareWebAnalyticsSiteStackOutputs captures the observable outputs
+// after creating the Web Analytics site.
+message CloudflareWebAnalyticsSiteStackOutputs {
+  // The Cloudflare-assigned site tag (the site's identity in every RUM API
+  // path).
+  string site_tag = 1;
+
+  // The site's measurement token, embedded by the JavaScript beacon.
+  // Treated as a credential in these outputs (marked secret by the modules)
+  // even though it ships inside public pages once deployed.
+  string site_token = 2;
+
+  // The ready-to-embed JavaScript snippet (carries the site token).
+  // Secret-marked by the modules for the same reason as site_token.
+  string snippet = 3;
+
+  // The site's ruleset ID -- the parent object Cloudflare stores the
+  // include/exclude rules under.
+  string ruleset_id = 4;
+}

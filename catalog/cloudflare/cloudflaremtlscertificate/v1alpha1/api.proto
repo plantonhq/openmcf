@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaremtlscertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflaremtlscertificate/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflaremtlscertificate/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareMtlsCertificate is a KRM-style resource for managing one
+// certificate in the account-level mTLS certificate store.
+message CloudflareMtlsCertificate {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareMtlsCertificate'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareMtlsCertificateSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareMtlsCertificateStatus status = 5;
+}
+
+// CloudflareMtlsCertificateStatus represents the observed state of the
+// uploaded certificate.
+message CloudflareMtlsCertificateStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareMtlsCertificateStackOutputs outputs = 1;
+}

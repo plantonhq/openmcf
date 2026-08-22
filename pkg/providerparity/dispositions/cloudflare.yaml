@@ -1,0 +1,485 @@
+# Breadth dispositions ledger for the cloudflare (GA) provider -- the
+# recorded judgment for GA resources the computed classes do not cover. Two
+# classes never appear here because they are computed: modeled (the module
+# census proves consumption) and iam-covered (the *_iam_member/binding/policy
+# pattern); schema-flagged deprecations are computed too, and the checker
+# fails a ledger entry that shadows any computed class. All seven of this
+# provider's deprecated resources carry the schema flag, so this ledger has
+# no excluded-deprecated entries.
+#
+# Entries record judgment, one disposition per resource, reason mandatory:
+#   composed            -- covered by fields of an existing kind (name it)
+#   model-planned       -- covered by a planned kind not built yet: a kind
+#                          of its own, or a planned kind (or planned
+#                          composition) it folds into; flips to modeled or
+#                          composed when the kind ships
+#   deferred            -- deliberately not offered, with the reason
+#   excluded-deprecated -- deprecated/superseded in docs but not flagged in
+#                          the schema
+#
+# A GA resource with no computed class and no entry here is a finding; the
+# not-yet-judged remainder is carried loudly in baseline.yaml and burns down
+# as judgments are recorded.
+provider: cloudflare
+resources:
+  # ---- DNS & zone lifecycle -------------------------------------------------
+  - resource: cloudflare_dns_firewall
+    disposition: model-planned
+    reason: "judged as a planned CloudflareDnsFirewall kind (standalone DNS firewall clusters with their own nameserver IPs and lifecycle)"
+  - resource: cloudflare_account_dns_settings
+    disposition: model-planned
+    reason: "judged as a planned CloudflareAccountDnsSettings kind (account-level DNS settings singleton with apply/revert semantics)"
+  - resource: cloudflare_account_dns_settings_internal_view
+    disposition: deferred
+    reason: "Enterprise-only entitlement: internal DNS views"
+  - resource: cloudflare_dns_zone_transfers_incoming
+    disposition: deferred
+    reason: "Enterprise-only entitlement: secondary DNS zone transfers"
+  - resource: cloudflare_dns_zone_transfers_outgoing
+    disposition: deferred
+    reason: "Enterprise-only entitlement: secondary DNS zone transfers"
+  - resource: cloudflare_dns_zone_transfers_acl
+    disposition: deferred
+    reason: "Enterprise-only entitlement: secondary DNS zone transfers"
+  - resource: cloudflare_dns_zone_transfers_peer
+    disposition: deferred
+    reason: "Enterprise-only entitlement: secondary DNS zone transfers"
+  - resource: cloudflare_dns_zone_transfers_tsig
+    disposition: deferred
+    reason: "Enterprise-only entitlement: secondary DNS zone transfers"
+  # ---- Zone configuration ---------------------------------------------------
+  # (cloudflare_zone_setting, cloudflare_managed_transforms,
+  # cloudflare_url_normalization_settings, and cloudflare_origin_cloud_region
+  # are consumed by CloudflareZoneSettings -- census-proven, so absent here.)
+  - resource: cloudflare_custom_pages
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCustomPage kind (one instance per error-page identifier with independent lifecycle)"
+  - resource: cloudflare_custom_page_asset
+    disposition: model-planned
+    reason: "folds into the planned CloudflareCustomPage kind (uploaded assets exist only to serve custom pages)"
+  - resource: cloudflare_cloud_connector_rules
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCloudConnectorRules kind (zone-singleton ordered routing table to cloud storage origins)"
+  - resource: cloudflare_google_tag_gateway
+    disposition: model-planned
+    reason: "judged as a planned CloudflareGoogleTagGateway kind (zone-singleton tag-gateway configuration)"
+  - resource: cloudflare_page_rule
+    disposition: deferred
+    reason: "legacy surface superseded by the Rulesets engine, which the catalog already models; Cloudflare is migrating users off Page Rules"
+  # ---- Caching & performance ------------------------------------------------
+  # (cloudflare_tiered_cache, cloudflare_zone_cache_reserve,
+  # cloudflare_zone_cache_variants, cloudflare_regional_tiered_cache,
+  # cloudflare_argo_smart_routing, and cloudflare_argo_tiered_caching are
+  # consumed by CloudflareCacheSettings -- census-proven, so absent here.)
+  - resource: cloudflare_observatory_scheduled_test
+    disposition: model-planned
+    reason: "judged as a planned CloudflareObservatoryScheduledTest kind (scheduled speed tests per page)"
+  # ---- TLS & certificates ---------------------------------------------------
+  # (cloudflare_universal_ssl_setting, cloudflare_total_tls,
+  # cloudflare_zone_auto_origin_tls_kex, cloudflare_hostname_tls_setting,
+  # cloudflare_origin_tls_compliance_modes, and
+  # cloudflare_certificate_authorities_hostname_associations are consumed by
+  # CloudflareZoneTlsSettings -- census-proven, so absent here.)
+  - resource: cloudflare_custom_csr
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCustomCsr kind (CSR generation referenced during certificate issuance)"
+  - resource: cloudflare_client_certificate
+    disposition: model-planned
+    reason: "judged as a planned CloudflareClientCertificate kind (Cloudflare-issued client certificates for API Shield mTLS)"
+  - resource: cloudflare_keyless_certificate
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Keyless SSL"
+  - resource: cloudflare_custom_origin_trust_store
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCustomOriginTrustStore kind (uploaded CA bundle for origin verification)"
+  # ---- Rulesets & zone security ----------------------------------------------
+  - resource: cloudflare_zone_lockdown
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZoneLockdown kind (URL lockdown rules, many per zone with independent lifecycle)"
+  - resource: cloudflare_user_agent_blocking_rule
+    disposition: model-planned
+    reason: "judged as a planned CloudflareUserAgentBlockingRule kind (standalone user-agent blocking rule object)"
+  - resource: cloudflare_leaked_credential_check
+    disposition: model-planned
+    reason: "judged as a planned CloudflareLeakedCredentialCheck kind (enablement plus custom detection rules in one kind)"
+  - resource: cloudflare_leaked_credential_check_rule
+    disposition: model-planned
+    reason: "folds into the planned CloudflareLeakedCredentialCheck kind (detection rows are meaningless without the check)"
+  - resource: cloudflare_content_scanning
+    disposition: model-planned
+    reason: "judged as a planned CloudflareContentScanning kind (malicious-upload scanning enablement plus expressions)"
+  - resource: cloudflare_content_scanning_expression
+    disposition: model-planned
+    reason: "folds into the planned CloudflareContentScanning kind (custom expression rows of the parent)"
+  - resource: cloudflare_page_shield_policy
+    disposition: deferred
+    reason: "Enterprise add-on entitlement: Page Shield CSP policies"
+  # ---- Load balancing & health -----------------------------------------------
+  # cloudflare_healthcheck is census-consumed by CloudflareHealthcheck.
+  - resource: cloudflare_load_balancer_monitor_group
+    disposition: model-planned
+    reason: "judged as a planned CloudflareLoadBalancerMonitorGroup kind (monitor groups referenced by pools)"
+  # ---- Waiting room -----------------------------------------------------------
+  # cloudflare_waiting_room, cloudflare_waiting_room_event, and
+  # cloudflare_waiting_room_rules are census-consumed by CloudflareWaitingRoom
+  # and CloudflareWaitingRoomEvent. cloudflare_waiting_room_settings is
+  # consumed by CloudflareZoneSettings. All four are absent here.
+  # ---- Workers platform --------------------------------------------------------
+  - resource: cloudflare_worker
+    disposition: model-planned
+    reason: "folds into the existing CloudflareWorker kind's planned depth expansion (the modern script-settings surface of the worker the kind already owns)"
+  - resource: cloudflare_worker_version
+    disposition: model-planned
+    reason: "folds into the existing CloudflareWorker kind's planned depth expansion (versions are deployment artifacts of the worker, not independent objects)"
+  - resource: cloudflare_workers_deployment
+    disposition: model-planned
+    reason: "folds into the existing CloudflareWorker kind's planned depth expansion (gradual-deployment configuration of the worker)"
+  - resource: cloudflare_workers_for_platforms_dispatch_namespace
+    disposition: model-planned
+    reason: "judged as a planned CloudflareWorkersDispatchNamespace kind (Workers for Platforms dispatch namespace referenced by dispatch workers)"
+  - resource: cloudflare_pipeline
+    disposition: model-planned
+    reason: "judged as a planned CloudflarePipeline kind (ingestion pipeline referencing sinks and streams)"
+  - resource: cloudflare_pipeline_sink
+    disposition: model-planned
+    reason: "judged as a planned CloudflarePipelineSink kind (pipeline destination, e.g. an R2 bucket)"
+  - resource: cloudflare_pipeline_stream
+    disposition: model-planned
+    reason: "judged as a planned CloudflarePipelineStream kind (pipeline stream input)"
+  # ---- R2 ----------------------------------------------------------------------
+  - resource: cloudflare_r2_bucket_sippy
+    disposition: model-planned
+    reason: "folds into the existing CloudflareR2Bucket kind's planned depth expansion (incremental-migration setting of a bucket)"
+  - resource: cloudflare_r2_data_catalog
+    disposition: model-planned
+    reason: "folds into the existing CloudflareR2Bucket kind's planned depth expansion (per-bucket data catalog toggle)"
+  # ---- AI ----------------------------------------------------------------------
+  - resource: cloudflare_ai_search_instance
+    disposition: model-planned
+    reason: "judged as a planned CloudflareAiSearchInstance kind (managed retrieval-augmented search instance)"
+  - resource: cloudflare_ai_search_namespace
+    disposition: model-planned
+    reason: "judged as a planned CloudflareAiSearchNamespace kind (grouping namespace referenced by search instances)"
+  - resource: cloudflare_ai_search_token
+    disposition: model-planned
+    reason: "folds into the planned CloudflareAiSearchInstance kind (endpoint access token of the instance)"
+  # ---- Media: Stream, Images, Realtime ------------------------------------------
+  - resource: cloudflare_stream
+    disposition: deferred
+    reason: "per-video content object; application data rather than provisioned infrastructure"
+  - resource: cloudflare_stream_audio_track
+    disposition: deferred
+    reason: "content-follower of a video; application data rather than provisioned infrastructure"
+  - resource: cloudflare_stream_caption_language
+    disposition: deferred
+    reason: "content-follower of a video; application data rather than provisioned infrastructure"
+  - resource: cloudflare_stream_download
+    disposition: deferred
+    reason: "content-follower of a video; application data rather than provisioned infrastructure"
+  - resource: cloudflare_stream_watermark
+    disposition: model-planned
+    reason: "judged as a planned CloudflareStreamWatermarkProfile kind (created once, referenced at every upload)"
+  - resource: cloudflare_stream_live_input
+    disposition: model-planned
+    reason: "judged as a planned CloudflareStreamLiveInput kind (live ingest endpoint with keys and independent lifecycle)"
+  - resource: cloudflare_stream_key
+    disposition: model-planned
+    reason: "judged as a planned CloudflareStreamSigningKey kind (signing key referenced by application code for signed playback URLs)"
+  - resource: cloudflare_stream_webhook
+    disposition: model-planned
+    reason: "judged as a planned CloudflareStreamWebhook kind (account-level notification webhook singleton)"
+  - resource: cloudflare_image
+    disposition: deferred
+    reason: "per-image content object; application data rather than provisioned infrastructure"
+  - resource: cloudflare_image_variant
+    disposition: model-planned
+    reason: "judged as a planned CloudflareImagesVariant kind (named transformation preset referenced by delivery URLs)"
+  - resource: cloudflare_calls_sfu_app
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCallsSfuApp kind (realtime SFU application credentials provisioned per application)"
+  - resource: cloudflare_calls_turn_app
+    disposition: model-planned
+    reason: "judged as a planned CloudflareCallsTurnApp kind (TURN service credentials provisioned per application)"
+  - resource: cloudflare_moq_relay
+    disposition: deferred
+    reason: "experimental Media-over-QUIC relay; revisit when the product stabilizes"
+  # ---- Email security ------------------------------------------------------------
+  - resource: cloudflare_email_security_block_sender
+    disposition: deferred
+    reason: "Enterprise add-on entitlement: cloud email security"
+  - resource: cloudflare_email_security_impersonation_registry
+    disposition: deferred
+    reason: "Enterprise add-on entitlement: cloud email security"
+  - resource: cloudflare_email_security_trusted_domains
+    disposition: deferred
+    reason: "Enterprise add-on entitlement: cloud email security"
+  # ---- Zero Trust Access ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_access_custom_page
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustAccessCustomPage kind (branded block and login pages referenced by applications)"
+  - resource: cloudflare_zero_trust_access_tag
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustAccessTag kind (label referenced by name across applications)"
+  - resource: cloudflare_zero_trust_access_short_lived_certificate
+    disposition: model-planned
+    reason: "folds into the existing CloudflareZeroTrustAccessApplication kind's planned depth expansion (SSH short-lived certificate issuance is a per-application toggle)"
+  - resource: cloudflare_zero_trust_access_mtls_certificate
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustAccessMtlsCertificate kind (client CA certificate with associated hostnames and independent lifecycle)"
+  - resource: cloudflare_zero_trust_access_mtls_hostname_settings
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustAccessMtlsCertificate kind (hostname settings exist in service of the mTLS certificates)"
+  # ---- Zero Trust Gateway ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_gateway_proxy_endpoint
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustGatewayProxyEndpoint kind (proxy endpoints with allowed-IP configuration)"
+  - resource: cloudflare_zero_trust_gateway_certificate
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustGatewayCertificate kind (TLS inspection certificates with activation lifecycle)"
+  # ---- Zero Trust Devices & DEX ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_device_posture_integration
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDevicePostureIntegration kind (third-party posture providers with credentials and lifecycle)"
+  - resource: cloudflare_zero_trust_device_managed_networks
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDeviceManagedNetwork kind (network fingerprints referenced by profile targeting)"
+  - resource: cloudflare_zero_trust_device_settings
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDeviceSettings kind (account-wide device enrollment settings singleton)"
+  - resource: cloudflare_zero_trust_device_ip_profile
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDeviceIpProfile kind (IP-scoped WARP profile variant)"
+  - resource: cloudflare_zero_trust_device_deployment_groups
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDeviceDeploymentGroup kind (WARP client rollout rings with independent membership lifecycle)"
+  - resource: cloudflare_zero_trust_device_subnet
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDeviceSubnet kind (virtual device subnets referencing virtual networks)"
+  - resource: cloudflare_zero_trust_dex_test
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDexTest kind (synthetic experience tests)"
+  - resource: cloudflare_zero_trust_dex_rule
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDexTest kind (targeting rules exist in service of the tests)"
+  # ---- Zero Trust DLP ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_dlp_custom_profile
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDlpCustomProfile kind (custom detection profile)"
+  - resource: cloudflare_zero_trust_dlp_predefined_profile
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDlpPredefinedProfile kind (enablement and configuration of predefined profiles)"
+  - resource: cloudflare_zero_trust_dlp_dataset
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDlpDataset kind (exact-data-match and wordlist datasets with upload lifecycle)"
+  - resource: cloudflare_zero_trust_dlp_settings
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustDlpSettings kind (account-level DLP configuration including the sensitivity and tag taxonomy)"
+  - resource: cloudflare_zero_trust_dlp_entry
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpCustomProfile kind (generic entry rows inside a profile)"
+  - resource: cloudflare_zero_trust_dlp_custom_entry
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpCustomProfile kind (custom detection rows of the profile)"
+  - resource: cloudflare_zero_trust_dlp_predefined_entry
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpPredefinedProfile kind (enablement rows of predefined entries)"
+  - resource: cloudflare_zero_trust_dlp_integration_entry
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (integration-sourced entries managed at account level)"
+  - resource: cloudflare_zero_trust_dlp_sensitivity_group
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (sensitivity taxonomy row)"
+  - resource: cloudflare_zero_trust_dlp_sensitivity_level
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (sensitivity taxonomy row)"
+  - resource: cloudflare_zero_trust_dlp_sensitivity_level_order
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (ordering of the sensitivity taxonomy)"
+  - resource: cloudflare_zero_trust_dlp_data_tag_category
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (tag taxonomy row)"
+  - resource: cloudflare_zero_trust_dlp_data_tag
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (tag taxonomy row)"
+  - resource: cloudflare_zero_trust_dlp_data_class
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustDlpSettings kind (classification taxonomy row)"
+  # ---- Zero Trust network & tunnels ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_tunnel_warp_connector
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustWarpConnector kind (site-to-site WARP connector tunnels)"
+  - resource: cloudflare_zero_trust_tunnel_warp_connector_config
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustWarpConnector kind (configuration of the connector, mirroring the cloudflared pattern)"
+  - resource: cloudflare_zero_trust_network_hostname_route
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustNetworkHostnameRoute kind (hostname-based private network routes referencing tunnels and virtual networks)"
+  - resource: cloudflare_connectivity_directory_service
+    disposition: model-planned
+    reason: "judged as a planned CloudflareConnectivityDirectoryService kind (service directory entries referencing tunnels)"
+  # ---- Zero Trust risk ------------------------------------------------------------
+  - resource: cloudflare_zero_trust_risk_behavior
+    disposition: model-planned
+    reason: "judged as a planned CloudflareZeroTrustRiskScoring kind (account risk-behavior configuration)"
+  - resource: cloudflare_zero_trust_risk_scoring_integration
+    disposition: model-planned
+    reason: "folds into the planned CloudflareZeroTrustRiskScoring kind (SIEM/IdP integration exists in service of risk scoring)"
+  # ---- API security (API Shield) ------------------------------------------------------------
+  - resource: cloudflare_api_shield
+    disposition: model-planned
+    reason: "judged as a planned CloudflareApiShield kind (the zone's API Shield configuration umbrella: auth characteristics, validation defaults)"
+  - resource: cloudflare_api_shield_operation
+    disposition: model-planned
+    reason: "folds into the planned CloudflareApiShield kind (endpoint registrations are per-zone configuration rows meaningless outside the shield)"
+  - resource: cloudflare_api_shield_schema_validation_settings
+    disposition: model-planned
+    reason: "folds into the planned CloudflareApiShield kind (zone validation defaults)"
+  - resource: cloudflare_schema_validation_schemas
+    disposition: model-planned
+    reason: "judged as a planned CloudflareSchemaValidationSchema kind (uploaded OpenAPI schema with its own upload and activation lifecycle)"
+  - resource: cloudflare_schema_validation_settings
+    disposition: model-planned
+    reason: "folds into the planned CloudflareApiShield kind (v2 zone validation defaults)"
+  - resource: cloudflare_schema_validation_operation_settings
+    disposition: model-planned
+    reason: "folds into the planned CloudflareApiShield kind (per-operation validation overrides)"
+  - resource: cloudflare_token_validation_config
+    disposition: model-planned
+    reason: "judged as a planned CloudflareTokenValidationConfig kind (JWT credential sets referenced by validation rules)"
+  - resource: cloudflare_token_validation_rules
+    disposition: model-planned
+    reason: "folds into the planned CloudflareApiShield kind (zone-level JWT rules spanning multiple credential configs)"
+  # ---- Logs ------------------------------------------------------------
+  - resource: cloudflare_logpull_retention
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Logpull API"
+  # ---- Accounts, IAM & organization ------------------------------------------------------------
+  - resource: cloudflare_account
+    disposition: model-planned
+    reason: "judged as a planned CloudflareAccount kind (foundational for multi-account and MSP automation)"
+  - resource: cloudflare_account_member
+    disposition: model-planned
+    reason: "judged as a planned CloudflareAccountMember kind (memberships with roles)"
+  - resource: cloudflare_account_subscription
+    disposition: model-planned
+    reason: "folds into the planned CloudflareAccount kind (the plan is an attribute of the account)"
+  - resource: cloudflare_api_token
+    disposition: model-planned
+    reason: "judged as a planned CloudflareApiToken kind (user-scoped tokens; the API and ownership model differ from account tokens)"
+  - resource: cloudflare_user
+    disposition: deferred
+    reason: "manages the calling user's own profile; not a deployable infrastructure object"
+  - resource: cloudflare_user_group
+    disposition: model-planned
+    reason: "judged as a planned CloudflareUserGroup kind (permission groups referenced by policies)"
+  - resource: cloudflare_user_group_members
+    disposition: model-planned
+    reason: "folds into the planned CloudflareUserGroup kind (membership rows of the group)"
+  - resource: cloudflare_organization
+    disposition: model-planned
+    reason: "judged as a planned CloudflareOrganization kind (organization hierarchy container)"
+  - resource: cloudflare_organization_profile
+    disposition: model-planned
+    reason: "folds into the planned CloudflareOrganization kind (the profile is settings of the organization)"
+  - resource: cloudflare_sso_connector
+    disposition: deferred
+    reason: "Enterprise-only entitlement: dashboard single sign-on"
+  - resource: cloudflare_oauth_client
+    disposition: model-planned
+    reason: "judged as a planned CloudflareOauthClient kind (OAuth clients against Cloudflare as identity provider)"
+  - resource: cloudflare_share
+    disposition: model-planned
+    reason: "judged as a planned CloudflareShare kind (cross-account resource sharing)"
+  - resource: cloudflare_share_recipient
+    disposition: model-planned
+    reason: "folds into the planned CloudflareShare kind (recipient rows of the share)"
+  - resource: cloudflare_share_resource
+    disposition: model-planned
+    reason: "folds into the planned CloudflareShare kind (resource rows of the share)"
+  # ---- Addressing & network services ------------------------------------------------------------
+  - resource: cloudflare_spectrum_application
+    disposition: model-planned
+    reason: "judged as a planned CloudflareSpectrumApplication kind (TCP/UDP proxying applications)"
+  - resource: cloudflare_address_map
+    disposition: deferred
+    reason: "requires the BYOIP entitlement"
+  - resource: cloudflare_byo_ip_prefix
+    disposition: deferred
+    reason: "requires the BYOIP entitlement"
+  - resource: cloudflare_dls_prefix_binding
+    disposition: deferred
+    reason: "requires the BYOIP and Data Localization Suite entitlements"
+  - resource: cloudflare_regional_hostname
+    disposition: deferred
+    reason: "Enterprise add-on entitlement: Regional Services"
+  - resource: cloudflare_web3_hostname
+    disposition: deferred
+    reason: "Cloudflare has de-emphasized its Web3 gateways; revisit on demand"
+  # ---- Magic Transit / Magic WAN / Network Monitoring ------------------------------------------------------------
+  - resource: cloudflare_magic_wan_gre_tunnel
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic WAN"
+  - resource: cloudflare_magic_wan_ipsec_tunnel
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic WAN"
+  - resource: cloudflare_magic_wan_static_route
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic WAN"
+  - resource: cloudflare_magic_transit_site
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_transit_site_acl
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_transit_site_lan
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_transit_site_wan
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_transit_connector
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_transit_cf1_site
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Transit"
+  - resource: cloudflare_magic_network_monitoring_configuration
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Network Monitoring"
+  - resource: cloudflare_magic_network_monitoring_rule
+    disposition: deferred
+    reason: "Enterprise-only entitlement: Magic Network Monitoring"
+  # ---- Cloudforce One ------------------------------------------------------------
+  - resource: cloudflare_cloudforce_one_request
+    disposition: deferred
+    reason: "threat-intelligence request workflow, not provisioned infrastructure"
+  - resource: cloudflare_cloudforce_one_request_message
+    disposition: deferred
+    reason: "message on a threat-intelligence request ticket, not provisioned infrastructure"
+  - resource: cloudflare_cloudforce_one_request_priority
+    disposition: deferred
+    reason: "priority row of the threat-intelligence request workflow, not provisioned infrastructure"
+  - resource: cloudflare_cloudforce_one_request_asset
+    disposition: deferred
+    reason: "asset attachment of the threat-intelligence request workflow, not provisioned infrastructure"
+  # ---- Vulnerability scanning ------------------------------------------------------------
+  - resource: cloudflare_vulnerability_scanner_credential_set
+    disposition: deferred
+    reason: "nascent scanning surface; revisit on demand"
+  - resource: cloudflare_vulnerability_scanner_credential
+    disposition: deferred
+    reason: "nascent scanning surface; revisit on demand"
+  - resource: cloudflare_vulnerability_scanner_target_environment
+    disposition: deferred
+    reason: "nascent scanning surface; revisit on demand"
+  # ---- Registrar ------------------------------------------------------------
+  - resource: cloudflare_registrar_domain
+    disposition: deferred
+    reason: "interactive, account-singular domain transfers; not fleet-deployable infrastructure"
+  # ---- Flagship (feature flags) ------------------------------------------------------------
+  - resource: cloudflare_flagship_app
+    disposition: model-planned
+    reason: "judged as a planned CloudflareFlagshipApp kind (feature-flags application container)"
+  - resource: cloudflare_flagship_flag
+    disposition: model-planned
+    reason: "judged as a planned CloudflareFlagshipFlag kind (flags with independent lifecycle referenced by SDKs)"

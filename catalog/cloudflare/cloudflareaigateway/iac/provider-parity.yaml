@@ -1,0 +1,190 @@
+# Provider-parity manifest for CloudflareAiGateway.
+# Records only divergences from exact-name matching against
+# cloudflare_ai_gateway and the folded cloudflare_ai_gateway_dynamic_routing
+# at the pinned provider version. Unlisted arguments (account_id, id via the
+# gateway identity, the five required scalars, rate_limiting_technique,
+# authentication, logpush, logpush_public_key, zdr, workers_ai_billing_mode,
+# store_id) match spec fields by exact name.
+#
+# Two grouping divergences are deliberate: the provider's flat retry_* and
+# log_management* arguments are grouped into the spec's retry{} and
+# log_management{} messages (the modules fan them back out), and the
+# separate cloudflare_ai_gateway_dynamic_routing resource folds into the
+# spec's dynamic_routes[] list (one provider object per row). The spec's
+# on_true/on_false edges are the wire's true/false (proto cannot use boolean
+# literals as field names), and the spec's `provider` fields are the
+# arguments the Terraform provider renamed to ai_gateway_provider /
+# ai_gateway_dynamic_routing_provider to dodge the reserved word.
+resources:
+  cloudflare_ai_gateway:
+    mappings:
+      # retry{} fans out to three flat arguments.
+      - spec: spec.retry.backoff
+        arg: retry_backoff
+      - spec: spec.retry.delay
+        arg: retry_delay
+      - spec: spec.retry.max_attempts
+        arg: retry_max_attempts
+      # log_management{} fans out to the record cap and the strategy.
+      - spec: spec.log_management.max_records
+        arg: log_management
+      - spec: spec.log_management.strategy
+        arg: log_management_strategy
+      # dlp is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.dlp.enabled
+        arg: dlp
+      - spec: spec.dlp.action
+        arg: dlp
+      - spec: spec.dlp.profiles
+        arg: dlp
+      - spec: spec.dlp.policies.id
+        arg: dlp
+      - spec: spec.dlp.policies.enabled
+        arg: dlp
+      - spec: spec.dlp.policies.action
+        arg: dlp
+      - spec: spec.dlp.policies.check
+        arg: dlp
+      - spec: spec.dlp.policies.profiles
+        arg: dlp
+      # guardrails is a nested attribute; fan-in of every hazard control.
+      - spec: spec.guardrails.prompt.p1
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s1
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s2
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s3
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s4
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s5
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s6
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s7
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s8
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s9
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s10
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s11
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s12
+        arg: guardrails
+      - spec: spec.guardrails.prompt.s13
+        arg: guardrails
+      - spec: spec.guardrails.response.p1
+        arg: guardrails
+      - spec: spec.guardrails.response.s1
+        arg: guardrails
+      - spec: spec.guardrails.response.s2
+        arg: guardrails
+      - spec: spec.guardrails.response.s3
+        arg: guardrails
+      - spec: spec.guardrails.response.s4
+        arg: guardrails
+      - spec: spec.guardrails.response.s5
+        arg: guardrails
+      - spec: spec.guardrails.response.s6
+        arg: guardrails
+      - spec: spec.guardrails.response.s7
+        arg: guardrails
+      - spec: spec.guardrails.response.s8
+        arg: guardrails
+      - spec: spec.guardrails.response.s9
+        arg: guardrails
+      - spec: spec.guardrails.response.s10
+        arg: guardrails
+      - spec: spec.guardrails.response.s11
+        arg: guardrails
+      - spec: spec.guardrails.response.s12
+        arg: guardrails
+      - spec: spec.guardrails.response.s13
+        arg: guardrails
+      # otel is a nested list attribute; fan-in of every spec leaf.
+      - spec: spec.otel.url
+        arg: otel
+      - spec: spec.otel.headers
+        arg: otel
+      - spec: spec.otel.authorization
+        arg: otel
+      - spec: spec.otel.content_type
+        arg: otel
+      # stripe is a nested attribute; fan-in of every spec leaf.
+      - spec: spec.stripe.authorization
+        arg: stripe
+      - spec: spec.stripe.usage_events.payload
+        arg: stripe
+      # spend_limits is a nested attribute; fan-in of every spec leaf. The
+      # spec's rules.provider is the wire name of the provider's
+      # ai_gateway_provider sub-attribute.
+      - spec: spec.spend_limits.enabled
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.id
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.enabled
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.limit
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.limit_type
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.window
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.technique
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.metadata.mode
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.metadata.values
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.model.mode
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.model.values
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.provider.mode
+        arg: spend_limits
+      - spec: spec.spend_limits.rules.provider.values
+        arg: spend_limits
+  # The dynamic-routing resource folds into the spec's dynamic_routes[]
+  # list: one provider object per row, keyed by route name (account_id and
+  # gateway_id are module-wired from the gateway above).
+  cloudflare_ai_gateway_dynamic_routing:
+    mappings:
+      - spec: spec.dynamic_routes.name
+        arg: name
+      - spec: spec.dynamic_routes.elements.id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.type
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.next.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.on_true.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.on_false.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.success.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.fallback.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.outputs.element_id
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.conditions
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.key
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.limit
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.limit_type
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.window
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.model
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.provider
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.retries
+        arg: elements
+      - spec: spec.dynamic_routes.elements.properties.timeout
+        arg: elements

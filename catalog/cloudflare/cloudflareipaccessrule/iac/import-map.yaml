@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareipaccessrule
+spec:
+  # Dual-scope: the documented import ID carries a literal "accounts/" or
+  # "zones/" prefix. Live scenarios are account-scoped, so the accounts/
+  # arm is the one recorded here.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: rule_id
+      derivations:
+        - from_stack_output: rule_id
+      where_to_find: >-
+        Cloudflare dashboard -> Security -> WAF -> Tools -> IP Access Rules,
+        or `GET /accounts/<account_id>/firewall/access_rules/rules` on the
+        Cloudflare v4 API (the id field of the matching rule).

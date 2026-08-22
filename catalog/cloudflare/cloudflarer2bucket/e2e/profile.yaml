@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarer2bucket
+spec:
+  # An R2 bucket under live E2E: account-scoped -- deploy -> GET
+  # accounts/{account_id}/r2/buckets/{bucket_name} verify -> destroy ->
+  # verify-destroyed on both provisioners. Three scenarios: `minimal` (a
+  # private bucket, default jurisdiction), `data-governance` (CORS + object
+  # lifecycle + object lock -- the three bucket-scoped policy resources,
+  # self-contained), and `event-notification` (object events delivered to a
+  # queue; the queue fixture is scenario-declared via
+  # planton.dev/e2e-prerequisites because a bucket does not require one).
+  # Bucket names are unique within an account, so all three carry the run id.
+  # No scenario ever writes an object, so destroy stays clean: R2 refuses to
+  # delete a non-empty bucket (upstream API behavior; the provider does no
+  # draining). Deliberately not live: custom domains (need a zone, and
+  # whether a PENDING undelegated zone can serve one is unverified offline)
+  # and the managed r2.dev public domain (the provider's Read AND Delete for
+  # it are empty -- it stays in the API until manually removed, an orphan
+  # class this lane refuses to create); both are proven by a real offline
+  # plan at e2e/domains-plan.yaml. Entitlement gates: R2 must be enabled on
+  # the account (requires a payment method on file even at the free tier),
+  # and the event-notification arm rides the Queues entitlement (see the
+  # queue kind's profile). Objects create in seconds at zero cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 15

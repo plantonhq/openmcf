@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflareaccountapitoken
+spec:
+  # Account API tokens under live E2E: plain CRUD objects (real create,
+  # update, delete), account-scoped, free -- self-cleaning lanes. Watch
+  # items for the proving session: (1) creating tokens requires the harness
+  # token to carry "Account API Tokens Write" -- add it to the token
+  # template if absent; (2) both live arms need a real permission-group
+  # UUID, provided by env (one-line fetch:
+  # GET /accounts/{account_id}/tokens/permission_groups?name=DNS%20Read);
+  # (3) the token value is returned exactly once on create and both engines
+  # secret-mark it -- verify the outputs map carries it without logging it;
+  # (4) Cloudflare canonically re-orders policies and permission groups --
+  # the idempotency re-plan is the drift probe for the provider's
+  # order-matching machinery.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

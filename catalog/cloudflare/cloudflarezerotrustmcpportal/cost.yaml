@@ -1,0 +1,13 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustmcpportal
+spec:
+  billing_model: free
+  notes: >-
+    Portals create no charge of their own. Zero Trust seat billing is
+    driven by the USERS who authenticate through Access to reach the portal
+    (Zero Trust Free covers 50 users; paid plans price per seat).

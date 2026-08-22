@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrustmcpserver
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: server_id
+      derivations:
+        - from_spec_field: server_id
+      where_to_find: >-
+        The registration's user-chosen id (the spec's own server_id), or
+        `GET /accounts/<account_id>/access/ai-controls/mcp/servers` on the
+        Cloudflare v4 API. auth_credentials and client_secret are write-only
+        and never round-trip -- re-assert them from configuration after
+        import.

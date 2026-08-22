@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrusttunnelroute
+spec:
+  # The route imports as "{account_id}/{route_id}": the owning account plus
+  # the route's server-assigned UUID. account_id is spec-relative; route_id
+  # is the deploy's own output. The import target must be an ACTIVE route --
+  # Cloudflare soft-deletes, and a deleted_at-bearing route cannot be
+  # adopted.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: route_id
+      derivations:
+        - from_stack_output: route_id
+      where_to_find: >-
+        Zero Trust dashboard -> Networks -> Routes (the route ID is in the
+        API, not the UI), or
+        `GET /accounts/<account_id>/teamnet/routes?is_deleted=false` on the
+        Cloudflare v4 API (the id field of the entry whose network matches).

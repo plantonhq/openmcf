@@ -1,0 +1,12 @@
+# Complete example manifest for CloudflareNotificationWebhook.
+# Registers a Slack incoming-webhook URL as an alert destination.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationWebhook
+metadata:
+  name: ops-slack
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: ops-slack
+  url: "https://hooks.slack.com/services/REPLACE/WITH/WEBHOOK"
+  secret:
+    value: "REPLACE_WITH_SHARED_SECRET"

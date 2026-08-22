@@ -1,0 +1,106 @@
+# Provider-parity manifest for CloudflareNotificationPolicy.
+# Records only divergences from exact-name matching against
+# cloudflare_notification_policy at the pinned provider version. Unlisted
+# arguments (account_id, name, alert_type, description, enabled,
+# alert_interval) match spec fields by exact name.
+resources:
+  cloudflare_notification_policy:
+    mappings:
+      # mechanisms is a nested attribute of three destination sets; the spec
+      # flattens each row to its identity (an address or a UUID) and the
+      # modules rebuild the API's {id} object rows. Fan-in of every spec
+      # leaf.
+      - spec: spec.mechanisms.emails
+        arg: mechanisms
+      - spec: spec.mechanisms.pagerduty_ids
+        arg: mechanisms
+      - spec: spec.mechanisms.webhook_ids
+        arg: mechanisms
+      # filters is a nested attribute of 43 list fields; fan-in of every
+      # spec leaf (spec field names match the provider's own).
+      - spec: spec.filters.actions
+        arg: filters
+      - spec: spec.filters.affected_asns
+        arg: filters
+      - spec: spec.filters.affected_components
+        arg: filters
+      - spec: spec.filters.affected_locations
+        arg: filters
+      - spec: spec.filters.airport_code
+        arg: filters
+      - spec: spec.filters.alert_trigger_preferences
+        arg: filters
+      - spec: spec.filters.alert_trigger_preferences_value
+        arg: filters
+      - spec: spec.filters.enabled
+        arg: filters
+      - spec: spec.filters.environment
+        arg: filters
+      - spec: spec.filters.event
+        arg: filters
+      - spec: spec.filters.event_source
+        arg: filters
+      - spec: spec.filters.event_type
+        arg: filters
+      - spec: spec.filters.group_by
+        arg: filters
+      - spec: spec.filters.health_check_id
+        arg: filters
+      - spec: spec.filters.incident_impact
+        arg: filters
+      - spec: spec.filters.input_id
+        arg: filters
+      - spec: spec.filters.insight_class
+        arg: filters
+      - spec: spec.filters.limit
+        arg: filters
+      - spec: spec.filters.logo_tag
+        arg: filters
+      - spec: spec.filters.megabits_per_second
+        arg: filters
+      - spec: spec.filters.new_health
+        arg: filters
+      - spec: spec.filters.new_status
+        arg: filters
+      - spec: spec.filters.packets_per_second
+        arg: filters
+      - spec: spec.filters.pool_id
+        arg: filters
+      - spec: spec.filters.pop_names
+        arg: filters
+      - spec: spec.filters.product
+        arg: filters
+      - spec: spec.filters.project_id
+        arg: filters
+      - spec: spec.filters.protocol
+        arg: filters
+      - spec: spec.filters.query_tag
+        arg: filters
+      - spec: spec.filters.requests_per_second
+        arg: filters
+      - spec: spec.filters.selectors
+        arg: filters
+      - spec: spec.filters.services
+        arg: filters
+      - spec: spec.filters.slo
+        arg: filters
+      - spec: spec.filters.status
+        arg: filters
+      - spec: spec.filters.target_hostname
+        arg: filters
+      - spec: spec.filters.target_ip
+        arg: filters
+      - spec: spec.filters.target_zone_name
+        arg: filters
+      - spec: spec.filters.traffic_exclusions
+        arg: filters
+      - spec: spec.filters.tunnel_id
+        arg: filters
+      - spec: spec.filters.tunnel_name
+        arg: filters
+      - spec: spec.filters.type
+        arg: filters
+      - spec: spec.filters.where
+        arg: filters
+      - spec: spec.filters.zones
+        arg: filters

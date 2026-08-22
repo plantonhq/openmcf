@@ -1,0 +1,26 @@
+# IP-list scenario: TEST-NET addresses (RFC 5737), never real infrastructure.
+# Exercises the second-most-referenced list type and the set semantics (order
+# is not significant at Cloudflare).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustList
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustlist-ip-items
+  id: planton-oss-e2e-cloudflarezerotrustlist-ip-items
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustlist
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-ips
+  type: IP
+  items:
+    - value: 192.0.2.10
+      description: TEST-NET-1 entry
+    - value: 198.51.100.20
+      description: TEST-NET-2 entry

@@ -1,0 +1,20 @@
+# The HTTP arm: a minimal probe against a documentation-range origin (the
+# target never needs to answer -- the object's lifecycle is what the lane
+# proves). Plan-gate watch item: health checks are Pro+; a 403/402 on the
+# free fixture zone is the entitlement deferral class.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareHealthcheck
+metadata:
+  name: e2e-hc-http-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-hc-http-${E2E_RUN_ID}
+  address: "203.0.113.50"
+  http_config:
+    path: /healthz
+    expected_codes:
+      - "200"

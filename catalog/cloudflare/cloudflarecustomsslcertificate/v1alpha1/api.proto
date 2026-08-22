@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarecustomsslcertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareCustomSslCertificate is a KRM-style resource for managing one
+// bring-your-own TLS certificate uploaded to a Cloudflare zone.
+message CloudflareCustomSslCertificate {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareCustomSslCertificate'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareCustomSslCertificateSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareCustomSslCertificateStatus status = 5;
+}
+
+// CloudflareCustomSslCertificateStatus represents the observed state of the
+// uploaded certificate.
+message CloudflareCustomSslCertificateStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareCustomSslCertificateStackOutputs outputs = 1;
+}

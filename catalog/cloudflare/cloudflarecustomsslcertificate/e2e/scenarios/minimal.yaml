@@ -1,0 +1,23 @@
+# Minimal CloudflareCustomSslCertificate scenario: upload an env-supplied
+# certificate to the run-scoped fixture zone. Env-gated twice over -- the
+# certificate must be issued by a publicly trusted CA covering the run
+# zone's hostnames, and custom certificates are a Business/Enterprise zone
+# feature -- so without the env vars the lane skips honestly (the offline
+# e2e/manifest.yaml plan is the always-on shape proof). The PEMs enter by
+# env reference, never literals in the manifest.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCustomSslCertificate
+metadata:
+  name: e2e-cssl-min-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CUSTOM_SSL_CERT_PEM,PLANTON_E2E_CUSTOM_SSL_KEY_PEM
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  certificate: ${E2E_ENV:PLANTON_E2E_CUSTOM_SSL_CERT_PEM}
+  private_key:
+    value: ${E2E_ENV:PLANTON_E2E_CUSTOM_SSL_KEY_PEM}
+  type: sni_custom

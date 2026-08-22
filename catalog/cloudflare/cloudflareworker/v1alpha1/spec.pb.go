@@ -117,9 +117,93 @@ type CloudflareWorkerSpec struct {
 	// asset. When assets are set without a script source, the Worker is a pure
 	// static site. This is Cloudflare's converged successor to Pages for the
 	// "build-and-upload" hosting model.
-	Assets        *CloudflareWorkerAssets `protobuf:"bytes,30,opt,name=assets,proto3" json:"assets,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Assets *CloudflareWorkerAssets `protobuf:"bytes,30,opt,name=assets,proto3" json:"assets,omitempty"`
+	// Durable Object migrations applied on this upload. Cloudflare rejects a
+	// second apply of the same tag, so this is a one-shot plan — not something
+	// the live E2E harness can re-apply. Author it, plan it, prove it later by
+	// hand if needed.
+	Migrations *CloudflareWorkerMigrations `protobuf:"bytes,31,opt,name=migrations,proto3" json:"migrations,omitempty"`
+	// Keep previously uploaded assets instead of sending a new bundle. An
+	// explicit assets upload wins over this flag.
+	KeepAssets bool `protobuf:"varint,32,opt,name=keep_assets,json=keepAssets,proto3" json:"keep_assets,omitempty"`
+	// Binding types to keep from the previous upload (e.g. "secret_text") so a
+	// redeploy does not have to resend every secret.
+	KeepBindings []string `protobuf:"bytes,33,rep,name=keep_bindings,json=keepBindings,proto3" json:"keep_bindings,omitempty"`
+	// Usage model for invocations: "standard", "bundled", or "unbound". Empty
+	// lets Cloudflare default to "standard".
+	UsageModel string `protobuf:"bytes,34,opt,name=usage_model,json=usageModel,proto3" json:"usage_model,omitempty"`
+	// Global CacheW settings. Pulumi's Cloudflare SDK v6.17.0 has no matching
+	// input — tofu honors this; Pulumi logs a PARITY-EXCEPTION and skips it.
+	CacheOptions *CloudflareWorkerCacheOptions `protobuf:"bytes,35,opt,name=cache_options,json=cacheOptions,proto3" json:"cache_options,omitempty"`
+	// Per-entrypoint export configuration. Map key is the export name. Pulumi
+	// SDK v6.17.0 has no matching input — tofu honors this; Pulumi skips it.
+	Exports map[string]*CloudflareWorkerExport `protobuf:"bytes,36,rep,name=exports,proto3" json:"exports,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// npm packages recorded against this Worker build. Pulumi SDK v6.17.0 has
+	// no matching input — tofu honors this; Pulumi skips it.
+	PackageDependencies []*CloudflareWorkerPackageDependency `protobuf:"bytes,37,rep,name=package_dependencies,json=packageDependencies,proto3" json:"package_dependencies,omitempty"`
+	// Version annotations written on this upload (message + tag). The
+	// server-set workers_triggered_by leaf is computed-only and omitted.
+	Annotations *CloudflareWorkerAnnotations `protobuf:"bytes,38,opt,name=annotations,proto3" json:"annotations,omitempty"`
+	// Uploaded file that contains the service-worker-syntax script (the file
+	// that adds a fetch listener). Mutually exclusive with main_module.
+	BodyPart string `protobuf:"bytes,39,opt,name=body_part,json=bodyPart,proto3" json:"body_part,omitempty"`
+	// Content-Type of the Worker. Required when uploading a non-JavaScript
+	// Worker (e.g. Python). Empty is JavaScript.
+	ContentType string `protobuf:"bytes,40,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	// mTLS certificate bindings. certificate_id is a literal — Planton has no
+	// Cloudflare mTLS kind yet.
+	MtlsCertificates []*CloudflareWorkerMtlsCertificateBinding `protobuf:"bytes,41,rep,name=mtls_certificates,json=mtlsCertificates,proto3" json:"mtls_certificates,omitempty"`
+	// Dispatch-namespace bindings (Workers for Platforms). The outbound worker
+	// service is a CloudflareWorker FK when set.
+	DispatchNamespaces []*CloudflareWorkerDispatchNamespaceBinding `protobuf:"bytes,42,rep,name=dispatch_namespaces,json=dispatchNamespaces,proto3" json:"dispatch_namespaces,omitempty"`
+	// Rate-limit bindings (the Workers rate-limiting API).
+	RateLimits []*CloudflareWorkerRateLimitBinding `protobuf:"bytes,43,rep,name=rate_limits,json=rateLimits,proto3" json:"rate_limits,omitempty"`
+	// send_email bindings: let the Worker send email through Email Routing.
+	SendEmail []*CloudflareWorkerSendEmailBinding `protobuf:"bytes,44,rep,name=send_email,json=sendEmail,proto3" json:"send_email,omitempty"`
+	// Secrets Store bindings. store_id and secret_name are literals — Planton
+	// has no Secrets Store kind yet.
+	SecretsStoreSecrets []*CloudflareWorkerSecretsStoreBinding `protobuf:"bytes,45,rep,name=secrets_store_secrets,json=secretsStoreSecrets,proto3" json:"secrets_store_secrets,omitempty"`
+	// SubtleCrypto secret-key bindings. Material fields are sensitive; the
+	// wrapper list is exempt like `secrets`.
+	SecretKeys []*CloudflareWorkerSecretKeyBinding `protobuf:"bytes,46,rep,name=secret_keys,json=secretKeys,proto3" json:"secret_keys,omitempty"`
+	// Workflow bindings. workflow_name is a literal — Planton has no Workflows kind yet.
+	Workflows []*CloudflareWorkerWorkflowBinding `protobuf:"bytes,47,rep,name=workflows,proto3" json:"workflows,omitempty"`
+	// Pipeline bindings. pipeline is a literal — Planton has no Pipelines kind yet.
+	Pipelines []*CloudflareWorkerPipelineBinding `protobuf:"bytes,48,rep,name=pipelines,proto3" json:"pipelines,omitempty"`
+	// JSON bindings: structured config exposed to the Worker as a parsed object.
+	JsonBindings []*CloudflareWorkerJsonBinding `protobuf:"bytes,49,rep,name=json_bindings,json=jsonBindings,proto3" json:"json_bindings,omitempty"`
+	// Inherit bindings: copy a binding from a previous version (optionally renamed).
+	InheritBindings []*CloudflareWorkerInheritBinding `protobuf:"bytes,50,rep,name=inherit_bindings,json=inheritBindings,proto3" json:"inherit_bindings,omitempty"`
+	// data_blob bindings (service-worker syntax). `part` is the uploaded file name.
+	DataBlobs []*CloudflareWorkerBlobBinding `protobuf:"bytes,51,rep,name=data_blobs,json=dataBlobs,proto3" json:"data_blobs,omitempty"`
+	// text_blob bindings (service-worker syntax). `part` is the uploaded file name.
+	TextBlobs []*CloudflareWorkerBlobBinding `protobuf:"bytes,52,rep,name=text_blobs,json=textBlobs,proto3" json:"text_blobs,omitempty"`
+	// Browser Rendering bindings. Each entry is just the JS variable name.
+	Browsers []*CloudflareWorkerNamedBinding `protobuf:"bytes,53,rep,name=browsers,proto3" json:"browsers,omitempty"`
+	// AI Search instance bindings. instance_name is a literal — Planton has no
+	// AI Search kind yet. app_id is the Flagship leaf the provider hangs on the
+	// same binding object.
+	AiSearch []*CloudflareWorkerAiSearchBinding `protobuf:"bytes,54,rep,name=ai_search,json=aiSearch,proto3" json:"ai_search,omitempty"`
+	// AI Search namespace bindings.
+	AiSearchNamespaces []*CloudflareWorkerAiSearchNamespaceBinding `protobuf:"bytes,55,rep,name=ai_search_namespaces,json=aiSearchNamespaces,proto3" json:"ai_search_namespaces,omitempty"`
+	// Images bindings. Each entry is just the JS variable name.
+	Images []*CloudflareWorkerNamedBinding `protobuf:"bytes,56,rep,name=images,proto3" json:"images,omitempty"`
+	// Media bindings. Each entry is just the JS variable name.
+	Media []*CloudflareWorkerNamedBinding `protobuf:"bytes,57,rep,name=media,proto3" json:"media,omitempty"`
+	// wasm_module bindings (service-worker syntax). `part` is the uploaded file name.
+	WasmModules []*CloudflareWorkerBlobBinding `protobuf:"bytes,58,rep,name=wasm_modules,json=wasmModules,proto3" json:"wasm_modules,omitempty"`
+	// VPC service bindings. service_id is a literal — Planton has no VPC-service kind yet.
+	VpcServices []*CloudflareWorkerVpcServiceBinding `protobuf:"bytes,59,rep,name=vpc_services,json=vpcServices,proto3" json:"vpc_services,omitempty"`
+	// VPC network bindings. network_id is a literal ("cf1:network"); tunnel_id
+	// is a CloudflareZeroTrustTunnel FK. The two are mutually exclusive.
+	VpcNetworks []*CloudflareWorkerVpcNetworkBinding `protobuf:"bytes,60,rep,name=vpc_networks,json=vpcNetworks,proto3" json:"vpc_networks,omitempty"`
+	// tail_consumer *bindings* (type=tail_consumer on the script). Distinct from
+	// the top-level tail_consumers list, which names Workers that consume this
+	// Worker's logs. This list binds another Worker as a tail consumer resource
+	// the script can call.
+	TailConsumerBindings []*CloudflareWorkerTailConsumerBinding `protobuf:"bytes,61,rep,name=tail_consumer_bindings,json=tailConsumerBindings,proto3" json:"tail_consumer_bindings,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CloudflareWorkerSpec) Reset() {
@@ -373,6 +457,223 @@ func (x *CloudflareWorkerSpec) GetAssets() *CloudflareWorkerAssets {
 	return nil
 }
 
+func (x *CloudflareWorkerSpec) GetMigrations() *CloudflareWorkerMigrations {
+	if x != nil {
+		return x.Migrations
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetKeepAssets() bool {
+	if x != nil {
+		return x.KeepAssets
+	}
+	return false
+}
+
+func (x *CloudflareWorkerSpec) GetKeepBindings() []string {
+	if x != nil {
+		return x.KeepBindings
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetUsageModel() string {
+	if x != nil {
+		return x.UsageModel
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSpec) GetCacheOptions() *CloudflareWorkerCacheOptions {
+	if x != nil {
+		return x.CacheOptions
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetExports() map[string]*CloudflareWorkerExport {
+	if x != nil {
+		return x.Exports
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetPackageDependencies() []*CloudflareWorkerPackageDependency {
+	if x != nil {
+		return x.PackageDependencies
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetAnnotations() *CloudflareWorkerAnnotations {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetBodyPart() string {
+	if x != nil {
+		return x.BodyPart
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSpec) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSpec) GetMtlsCertificates() []*CloudflareWorkerMtlsCertificateBinding {
+	if x != nil {
+		return x.MtlsCertificates
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetDispatchNamespaces() []*CloudflareWorkerDispatchNamespaceBinding {
+	if x != nil {
+		return x.DispatchNamespaces
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetRateLimits() []*CloudflareWorkerRateLimitBinding {
+	if x != nil {
+		return x.RateLimits
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetSendEmail() []*CloudflareWorkerSendEmailBinding {
+	if x != nil {
+		return x.SendEmail
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetSecretsStoreSecrets() []*CloudflareWorkerSecretsStoreBinding {
+	if x != nil {
+		return x.SecretsStoreSecrets
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetSecretKeys() []*CloudflareWorkerSecretKeyBinding {
+	if x != nil {
+		return x.SecretKeys
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetWorkflows() []*CloudflareWorkerWorkflowBinding {
+	if x != nil {
+		return x.Workflows
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetPipelines() []*CloudflareWorkerPipelineBinding {
+	if x != nil {
+		return x.Pipelines
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetJsonBindings() []*CloudflareWorkerJsonBinding {
+	if x != nil {
+		return x.JsonBindings
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetInheritBindings() []*CloudflareWorkerInheritBinding {
+	if x != nil {
+		return x.InheritBindings
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetDataBlobs() []*CloudflareWorkerBlobBinding {
+	if x != nil {
+		return x.DataBlobs
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetTextBlobs() []*CloudflareWorkerBlobBinding {
+	if x != nil {
+		return x.TextBlobs
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetBrowsers() []*CloudflareWorkerNamedBinding {
+	if x != nil {
+		return x.Browsers
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetAiSearch() []*CloudflareWorkerAiSearchBinding {
+	if x != nil {
+		return x.AiSearch
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetAiSearchNamespaces() []*CloudflareWorkerAiSearchNamespaceBinding {
+	if x != nil {
+		return x.AiSearchNamespaces
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetImages() []*CloudflareWorkerNamedBinding {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetMedia() []*CloudflareWorkerNamedBinding {
+	if x != nil {
+		return x.Media
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetWasmModules() []*CloudflareWorkerBlobBinding {
+	if x != nil {
+		return x.WasmModules
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetVpcServices() []*CloudflareWorkerVpcServiceBinding {
+	if x != nil {
+		return x.VpcServices
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetVpcNetworks() []*CloudflareWorkerVpcNetworkBinding {
+	if x != nil {
+		return x.VpcNetworks
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSpec) GetTailConsumerBindings() []*CloudflareWorkerTailConsumerBinding {
+	if x != nil {
+		return x.TailConsumerBindings
+	}
+	return nil
+}
+
 type isCloudflareWorkerSpec_Source interface {
 	isCloudflareWorkerSpec_Source()
 }
@@ -395,8 +696,9 @@ func (*CloudflareWorkerSpec_R2Bundle) isCloudflareWorkerSpec_Source() {}
 // CloudflareWorkerScriptBundle references a pre-built script bundle in R2.
 type CloudflareWorkerScriptBundle struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The R2 bucket name where the script bundle is stored.
-	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
+	// The R2 bucket that holds the bundle, or a reference to a CloudflareR2Bucket.
+	// Widened from a plain string so a Worker can compose against a bucket Planton manages.
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
 	// The object key (path) of the script bundle within the bucket.
 	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -433,11 +735,11 @@ func (*CloudflareWorkerScriptBundle) Descriptor() ([]byte, []int) {
 	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CloudflareWorkerScriptBundle) GetBucket() string {
+func (x *CloudflareWorkerScriptBundle) GetBucket() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Bucket
 	}
-	return ""
+	return nil
 }
 
 func (x *CloudflareWorkerScriptBundle) GetPath() string {
@@ -869,12 +1171,18 @@ type CloudflareWorkerDurableObjectBinding struct {
 	// The Durable Object class name that implements the namespace.
 	ClassName string `protobuf:"bytes,2,opt,name=class_name,json=className,proto3" json:"class_name,omitempty"`
 	// Script that defines the class, when it lives in a different Worker. Leave
-	// empty when the class is defined in this Worker.
-	ScriptName string `protobuf:"bytes,3,opt,name=script_name,json=scriptName,proto3" json:"script_name,omitempty"`
+	// empty when the class is defined in this Worker. Widened to a Worker FK so
+	// a Durable Object defined in another Planton Worker composes as a graph edge.
+	ScriptName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=script_name,json=scriptName,proto3" json:"script_name,omitempty"`
 	// Optional environment of the defining script.
-	Environment   string `protobuf:"bytes,4,opt,name=environment,proto3" json:"environment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Environment string `protobuf:"bytes,4,opt,name=environment,proto3" json:"environment,omitempty"`
+	// Durable Object namespace identifier. Optional alternative to class_name
+	// when binding an already-created namespace by id.
+	NamespaceId string `protobuf:"bytes,5,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Dispatch namespace the Durable Object script belongs to (Workers for Platforms).
+	DispatchNamespace string `protobuf:"bytes,6,opt,name=dispatch_namespace,json=dispatchNamespace,proto3" json:"dispatch_namespace,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CloudflareWorkerDurableObjectBinding) Reset() {
@@ -921,16 +1229,30 @@ func (x *CloudflareWorkerDurableObjectBinding) GetClassName() string {
 	return ""
 }
 
-func (x *CloudflareWorkerDurableObjectBinding) GetScriptName() string {
+func (x *CloudflareWorkerDurableObjectBinding) GetScriptName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ScriptName
 	}
-	return ""
+	return nil
 }
 
 func (x *CloudflareWorkerDurableObjectBinding) GetEnvironment() string {
 	if x != nil {
 		return x.Environment
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerDurableObjectBinding) GetNamespaceId() string {
+	if x != nil {
+		return x.NamespaceId
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerDurableObjectBinding) GetDispatchNamespace() string {
+	if x != nil {
+		return x.DispatchNamespace
 	}
 	return ""
 }
@@ -1304,7 +1626,7 @@ func (x *CloudflareWorkerRoute) GetPattern() string {
 	return ""
 }
 
-// CloudflareWorkerObservability configures Workers Logs.
+// CloudflareWorkerObservability configures Workers Logs and traces.
 type CloudflareWorkerObservability struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Enable Workers Logs (structured logs visible in the dashboard / queryable).
@@ -1312,8 +1634,14 @@ type CloudflareWorkerObservability struct {
 	// Fraction of requests sampled for logging, 0.0–1.0. Leave 0 for the default
 	// (1.0 = sample all) when enabled.
 	HeadSamplingRate float64 `protobuf:"fixed64,2,opt,name=head_sampling_rate,json=headSamplingRate,proto3" json:"head_sampling_rate,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Nested log export / persistence settings. Distinct from the top-level
+	// enabled + head_sampling_rate pair — Cloudflare lets you turn logs on
+	// independently of the overall observability switch.
+	Logs *CloudflareWorkerObservabilityLogs `protobuf:"bytes,3,opt,name=logs,proto3" json:"logs,omitempty"`
+	// Nested trace export / persistence settings.
+	Traces        *CloudflareWorkerObservabilityTraces `protobuf:"bytes,4,opt,name=traces,proto3" json:"traces,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudflareWorkerObservability) Reset() {
@@ -1360,11 +1688,183 @@ func (x *CloudflareWorkerObservability) GetHeadSamplingRate() float64 {
 	return 0
 }
 
+func (x *CloudflareWorkerObservability) GetLogs() *CloudflareWorkerObservabilityLogs {
+	if x != nil {
+		return x.Logs
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerObservability) GetTraces() *CloudflareWorkerObservabilityTraces {
+	if x != nil {
+		return x.Traces
+	}
+	return nil
+}
+
+// CloudflareWorkerObservabilityLogs is the observability.logs subtree.
+type CloudflareWorkerObservabilityLogs struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Enabled          bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	InvocationLogs   bool                   `protobuf:"varint,2,opt,name=invocation_logs,json=invocationLogs,proto3" json:"invocation_logs,omitempty"`
+	Destinations     []string               `protobuf:"bytes,3,rep,name=destinations,proto3" json:"destinations,omitempty"`
+	HeadSamplingRate float64                `protobuf:"fixed64,4,opt,name=head_sampling_rate,json=headSamplingRate,proto3" json:"head_sampling_rate,omitempty"`
+	Persist          bool                   `protobuf:"varint,5,opt,name=persist,proto3" json:"persist,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerObservabilityLogs) Reset() {
+	*x = CloudflareWorkerObservabilityLogs{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerObservabilityLogs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerObservabilityLogs) ProtoMessage() {}
+
+func (x *CloudflareWorkerObservabilityLogs) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerObservabilityLogs.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerObservabilityLogs) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *CloudflareWorkerObservabilityLogs) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CloudflareWorkerObservabilityLogs) GetInvocationLogs() bool {
+	if x != nil {
+		return x.InvocationLogs
+	}
+	return false
+}
+
+func (x *CloudflareWorkerObservabilityLogs) GetDestinations() []string {
+	if x != nil {
+		return x.Destinations
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerObservabilityLogs) GetHeadSamplingRate() float64 {
+	if x != nil {
+		return x.HeadSamplingRate
+	}
+	return 0
+}
+
+func (x *CloudflareWorkerObservabilityLogs) GetPersist() bool {
+	if x != nil {
+		return x.Persist
+	}
+	return false
+}
+
+// CloudflareWorkerObservabilityTraces is the observability.traces subtree.
+type CloudflareWorkerObservabilityTraces struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Destinations     []string               `protobuf:"bytes,1,rep,name=destinations,proto3" json:"destinations,omitempty"`
+	Enabled          bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	HeadSamplingRate float64                `protobuf:"fixed64,3,opt,name=head_sampling_rate,json=headSamplingRate,proto3" json:"head_sampling_rate,omitempty"`
+	Persist          bool                   `protobuf:"varint,4,opt,name=persist,proto3" json:"persist,omitempty"`
+	// How inbound traceparent/tracestate headers are handled: "authenticated"
+	// (default) or "accept".
+	PropagationPolicy string `protobuf:"bytes,5,opt,name=propagation_policy,json=propagationPolicy,proto3" json:"propagation_policy,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerObservabilityTraces) Reset() {
+	*x = CloudflareWorkerObservabilityTraces{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerObservabilityTraces) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerObservabilityTraces) ProtoMessage() {}
+
+func (x *CloudflareWorkerObservabilityTraces) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerObservabilityTraces.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerObservabilityTraces) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *CloudflareWorkerObservabilityTraces) GetDestinations() []string {
+	if x != nil {
+		return x.Destinations
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerObservabilityTraces) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CloudflareWorkerObservabilityTraces) GetHeadSamplingRate() float64 {
+	if x != nil {
+		return x.HeadSamplingRate
+	}
+	return 0
+}
+
+func (x *CloudflareWorkerObservabilityTraces) GetPersist() bool {
+	if x != nil {
+		return x.Persist
+	}
+	return false
+}
+
+func (x *CloudflareWorkerObservabilityTraces) GetPropagationPolicy() string {
+	if x != nil {
+		return x.PropagationPolicy
+	}
+	return ""
+}
+
 // CloudflareWorkerPlacement configures Smart Placement.
 type CloudflareWorkerPlacement struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Placement mode. "smart" lets Cloudflare run the Worker near the backends it
-	// calls. Leave empty to keep the default (run near the user).
+	// calls. "targeted" pins it (region/hostname/host are computed-only on the
+	// provider and are not authorable here). Leave empty to keep the default
+	// (run near the user).
 	Mode          string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1372,7 +1872,7 @@ type CloudflareWorkerPlacement struct {
 
 func (x *CloudflareWorkerPlacement) Reset() {
 	*x = CloudflareWorkerPlacement{}
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1384,7 +1884,7 @@ func (x *CloudflareWorkerPlacement) String() string {
 func (*CloudflareWorkerPlacement) ProtoMessage() {}
 
 func (x *CloudflareWorkerPlacement) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1397,7 +1897,7 @@ func (x *CloudflareWorkerPlacement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareWorkerPlacement.ProtoReflect.Descriptor instead.
 func (*CloudflareWorkerPlacement) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CloudflareWorkerPlacement) GetMode() string {
@@ -1421,7 +1921,7 @@ type CloudflareWorkerLimits struct {
 
 func (x *CloudflareWorkerLimits) Reset() {
 	*x = CloudflareWorkerLimits{}
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1433,7 +1933,7 @@ func (x *CloudflareWorkerLimits) String() string {
 func (*CloudflareWorkerLimits) ProtoMessage() {}
 
 func (x *CloudflareWorkerLimits) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1446,7 +1946,7 @@ func (x *CloudflareWorkerLimits) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareWorkerLimits.ProtoReflect.Descriptor instead.
 func (*CloudflareWorkerLimits) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CloudflareWorkerLimits) GetCpuMs() int64 {
@@ -1466,8 +1966,10 @@ func (x *CloudflareWorkerLimits) GetSubrequests() int64 {
 // CloudflareWorkerTailConsumer names another Worker that consumes tail events.
 type CloudflareWorkerTailConsumer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The consuming Worker's service (script) name.
-	Service string `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+	// The consuming Worker's service (script) name, or a reference to a
+	// CloudflareWorker. Widened from a plain string so tail consumers compose
+	// as graph edges.
+	Service *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
 	// Optional environment of the consuming Worker.
 	Environment string `protobuf:"bytes,2,opt,name=environment,proto3" json:"environment,omitempty"`
 	// Optional dispatch namespace of the consuming Worker.
@@ -1478,7 +1980,7 @@ type CloudflareWorkerTailConsumer struct {
 
 func (x *CloudflareWorkerTailConsumer) Reset() {
 	*x = CloudflareWorkerTailConsumer{}
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1490,7 +1992,7 @@ func (x *CloudflareWorkerTailConsumer) String() string {
 func (*CloudflareWorkerTailConsumer) ProtoMessage() {}
 
 func (x *CloudflareWorkerTailConsumer) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1503,14 +2005,14 @@ func (x *CloudflareWorkerTailConsumer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareWorkerTailConsumer.ProtoReflect.Descriptor instead.
 func (*CloudflareWorkerTailConsumer) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
-func (x *CloudflareWorkerTailConsumer) GetService() string {
+func (x *CloudflareWorkerTailConsumer) GetService() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Service
 	}
-	return ""
+	return nil
 }
 
 func (x *CloudflareWorkerTailConsumer) GetEnvironment() string {
@@ -1551,7 +2053,7 @@ type CloudflareWorkerAssets struct {
 
 func (x *CloudflareWorkerAssets) Reset() {
 	*x = CloudflareWorkerAssets{}
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1563,7 +2065,7 @@ func (x *CloudflareWorkerAssets) String() string {
 func (*CloudflareWorkerAssets) ProtoMessage() {}
 
 func (x *CloudflareWorkerAssets) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1576,7 +2078,7 @@ func (x *CloudflareWorkerAssets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareWorkerAssets.ProtoReflect.Descriptor instead.
 func (*CloudflareWorkerAssets) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CloudflareWorkerAssets) GetDirectory() string {
@@ -1633,7 +2135,7 @@ type CloudflareWorkerAssetsConfig struct {
 
 func (x *CloudflareWorkerAssetsConfig) Reset() {
 	*x = CloudflareWorkerAssetsConfig{}
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1645,7 +2147,7 @@ func (x *CloudflareWorkerAssetsConfig) String() string {
 func (*CloudflareWorkerAssetsConfig) ProtoMessage() {}
 
 func (x *CloudflareWorkerAssetsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1658,7 +2160,7 @@ func (x *CloudflareWorkerAssetsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloudflareWorkerAssetsConfig.ProtoReflect.Descriptor instead.
 func (*CloudflareWorkerAssetsConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CloudflareWorkerAssetsConfig) GetHtmlHandling() string {
@@ -1703,11 +2205,1723 @@ func (x *CloudflareWorkerAssetsConfig) GetRunWorkerFirstRules() []string {
 	return nil
 }
 
+// CloudflareWorkerMigrations is the Durable Object migration plan applied on
+// this upload. Cloudflare treats the tag as a one-shot: a second apply of the
+// same new_tag is rejected. Keep this out of live E2E scenarios that assert
+// apply idempotency.
+type CloudflareWorkerMigrations struct {
+	state              protoimpl.MessageState              `protogen:"open.v1"`
+	DeletedClasses     []string                            `protobuf:"bytes,1,rep,name=deleted_classes,json=deletedClasses,proto3" json:"deleted_classes,omitempty"`
+	NewClasses         []string                            `protobuf:"bytes,2,rep,name=new_classes,json=newClasses,proto3" json:"new_classes,omitempty"`
+	NewSqliteClasses   []string                            `protobuf:"bytes,3,rep,name=new_sqlite_classes,json=newSqliteClasses,proto3" json:"new_sqlite_classes,omitempty"`
+	NewTag             string                              `protobuf:"bytes,4,opt,name=new_tag,json=newTag,proto3" json:"new_tag,omitempty"`
+	OldTag             string                              `protobuf:"bytes,5,opt,name=old_tag,json=oldTag,proto3" json:"old_tag,omitempty"`
+	RenamedClasses     []*CloudflareWorkerRenamedClass     `protobuf:"bytes,6,rep,name=renamed_classes,json=renamedClasses,proto3" json:"renamed_classes,omitempty"`
+	TransferredClasses []*CloudflareWorkerTransferredClass `protobuf:"bytes,7,rep,name=transferred_classes,json=transferredClasses,proto3" json:"transferred_classes,omitempty"`
+	Steps              []*CloudflareWorkerMigrationStep    `protobuf:"bytes,8,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerMigrations) Reset() {
+	*x = CloudflareWorkerMigrations{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerMigrations) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerMigrations) ProtoMessage() {}
+
+func (x *CloudflareWorkerMigrations) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerMigrations.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerMigrations) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *CloudflareWorkerMigrations) GetDeletedClasses() []string {
+	if x != nil {
+		return x.DeletedClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrations) GetNewClasses() []string {
+	if x != nil {
+		return x.NewClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrations) GetNewSqliteClasses() []string {
+	if x != nil {
+		return x.NewSqliteClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrations) GetNewTag() string {
+	if x != nil {
+		return x.NewTag
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerMigrations) GetOldTag() string {
+	if x != nil {
+		return x.OldTag
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerMigrations) GetRenamedClasses() []*CloudflareWorkerRenamedClass {
+	if x != nil {
+		return x.RenamedClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrations) GetTransferredClasses() []*CloudflareWorkerTransferredClass {
+	if x != nil {
+		return x.TransferredClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrations) GetSteps() []*CloudflareWorkerMigrationStep {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+type CloudflareWorkerRenamedClass struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	From          string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	To            string                 `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerRenamedClass) Reset() {
+	*x = CloudflareWorkerRenamedClass{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerRenamedClass) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerRenamedClass) ProtoMessage() {}
+
+func (x *CloudflareWorkerRenamedClass) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerRenamedClass.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerRenamedClass) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *CloudflareWorkerRenamedClass) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerRenamedClass) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type CloudflareWorkerTransferredClass struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	From  string                 `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
+	// Source Worker that currently owns the class. A CloudflareWorker FK so a
+	// transfer composes as a graph edge.
+	FromScript    *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=from_script,json=fromScript,proto3" json:"from_script,omitempty"`
+	To            string               `protobuf:"bytes,3,opt,name=to,proto3" json:"to,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerTransferredClass) Reset() {
+	*x = CloudflareWorkerTransferredClass{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerTransferredClass) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerTransferredClass) ProtoMessage() {}
+
+func (x *CloudflareWorkerTransferredClass) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerTransferredClass.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerTransferredClass) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *CloudflareWorkerTransferredClass) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerTransferredClass) GetFromScript() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FromScript
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerTransferredClass) GetTo() string {
+	if x != nil {
+		return x.To
+	}
+	return ""
+}
+
+type CloudflareWorkerMigrationStep struct {
+	state              protoimpl.MessageState              `protogen:"open.v1"`
+	DeletedClasses     []string                            `protobuf:"bytes,1,rep,name=deleted_classes,json=deletedClasses,proto3" json:"deleted_classes,omitempty"`
+	NewClasses         []string                            `protobuf:"bytes,2,rep,name=new_classes,json=newClasses,proto3" json:"new_classes,omitempty"`
+	NewSqliteClasses   []string                            `protobuf:"bytes,3,rep,name=new_sqlite_classes,json=newSqliteClasses,proto3" json:"new_sqlite_classes,omitempty"`
+	RenamedClasses     []*CloudflareWorkerRenamedClass     `protobuf:"bytes,4,rep,name=renamed_classes,json=renamedClasses,proto3" json:"renamed_classes,omitempty"`
+	TransferredClasses []*CloudflareWorkerTransferredClass `protobuf:"bytes,5,rep,name=transferred_classes,json=transferredClasses,proto3" json:"transferred_classes,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerMigrationStep) Reset() {
+	*x = CloudflareWorkerMigrationStep{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerMigrationStep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerMigrationStep) ProtoMessage() {}
+
+func (x *CloudflareWorkerMigrationStep) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerMigrationStep.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerMigrationStep) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CloudflareWorkerMigrationStep) GetDeletedClasses() []string {
+	if x != nil {
+		return x.DeletedClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrationStep) GetNewClasses() []string {
+	if x != nil {
+		return x.NewClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrationStep) GetNewSqliteClasses() []string {
+	if x != nil {
+		return x.NewSqliteClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrationStep) GetRenamedClasses() []*CloudflareWorkerRenamedClass {
+	if x != nil {
+		return x.RenamedClasses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerMigrationStep) GetTransferredClasses() []*CloudflareWorkerTransferredClass {
+	if x != nil {
+		return x.TransferredClasses
+	}
+	return nil
+}
+
+// CloudflareWorkerCacheOptions is the provider cache_options block. Pulumi
+// SDK v6.17.0 has no matching input — tofu honors this; Pulumi skips it.
+type CloudflareWorkerCacheOptions struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Enabled           bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	CrossVersionCache bool                   `protobuf:"varint,2,opt,name=cross_version_cache,json=crossVersionCache,proto3" json:"cross_version_cache,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerCacheOptions) Reset() {
+	*x = CloudflareWorkerCacheOptions{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerCacheOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerCacheOptions) ProtoMessage() {}
+
+func (x *CloudflareWorkerCacheOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerCacheOptions.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerCacheOptions) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *CloudflareWorkerCacheOptions) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *CloudflareWorkerCacheOptions) GetCrossVersionCache() bool {
+	if x != nil {
+		return x.CrossVersionCache
+	}
+	return false
+}
+
+type CloudflareWorkerExport struct {
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Type          string                       `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Cache         *CloudflareWorkerExportCache `protobuf:"bytes,2,opt,name=cache,proto3" json:"cache,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerExport) Reset() {
+	*x = CloudflareWorkerExport{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerExport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerExport) ProtoMessage() {}
+
+func (x *CloudflareWorkerExport) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerExport.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerExport) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CloudflareWorkerExport) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerExport) GetCache() *CloudflareWorkerExportCache {
+	if x != nil {
+		return x.Cache
+	}
+	return nil
+}
+
+type CloudflareWorkerExportCache struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerExportCache) Reset() {
+	*x = CloudflareWorkerExportCache{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerExportCache) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerExportCache) ProtoMessage() {}
+
+func (x *CloudflareWorkerExportCache) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerExportCache.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerExportCache) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *CloudflareWorkerExportCache) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type CloudflareWorkerPackageDependency struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Name               string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	InstalledVersion   string                 `protobuf:"bytes,2,opt,name=installed_version,json=installedVersion,proto3" json:"installed_version,omitempty"`
+	PackageJsonVersion string                 `protobuf:"bytes,3,opt,name=package_json_version,json=packageJsonVersion,proto3" json:"package_json_version,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerPackageDependency) Reset() {
+	*x = CloudflareWorkerPackageDependency{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerPackageDependency) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerPackageDependency) ProtoMessage() {}
+
+func (x *CloudflareWorkerPackageDependency) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerPackageDependency.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerPackageDependency) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *CloudflareWorkerPackageDependency) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerPackageDependency) GetInstalledVersion() string {
+	if x != nil {
+		return x.InstalledVersion
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerPackageDependency) GetPackageJsonVersion() string {
+	if x != nil {
+		return x.PackageJsonVersion
+	}
+	return ""
+}
+
+type CloudflareWorkerAnnotations struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	WorkersMessage string                 `protobuf:"bytes,1,opt,name=workers_message,json=workersMessage,proto3" json:"workers_message,omitempty"`
+	WorkersTag     string                 `protobuf:"bytes,2,opt,name=workers_tag,json=workersTag,proto3" json:"workers_tag,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerAnnotations) Reset() {
+	*x = CloudflareWorkerAnnotations{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerAnnotations) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerAnnotations) ProtoMessage() {}
+
+func (x *CloudflareWorkerAnnotations) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerAnnotations.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerAnnotations) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *CloudflareWorkerAnnotations) GetWorkersMessage() string {
+	if x != nil {
+		return x.WorkersMessage
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerAnnotations) GetWorkersTag() string {
+	if x != nil {
+		return x.WorkersTag
+	}
+	return ""
+}
+
+type CloudflareWorkerMtlsCertificateBinding struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Literal certificate id — Planton has no mTLS kind yet.
+	CertificateId string `protobuf:"bytes,2,opt,name=certificate_id,json=certificateId,proto3" json:"certificate_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerMtlsCertificateBinding) Reset() {
+	*x = CloudflareWorkerMtlsCertificateBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerMtlsCertificateBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerMtlsCertificateBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerMtlsCertificateBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerMtlsCertificateBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerMtlsCertificateBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *CloudflareWorkerMtlsCertificateBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerMtlsCertificateBinding) GetCertificateId() string {
+	if x != nil {
+		return x.CertificateId
+	}
+	return ""
+}
+
+type CloudflareWorkerDispatchNamespaceBinding struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Name          string                            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Namespace     string                            `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Outbound      *CloudflareWorkerDispatchOutbound `protobuf:"bytes,3,opt,name=outbound,proto3" json:"outbound,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) Reset() {
+	*x = CloudflareWorkerDispatchNamespaceBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerDispatchNamespaceBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerDispatchNamespaceBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerDispatchNamespaceBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerDispatchNamespaceBinding) GetOutbound() *CloudflareWorkerDispatchOutbound {
+	if x != nil {
+		return x.Outbound
+	}
+	return nil
+}
+
+type CloudflareWorkerDispatchOutbound struct {
+	state         protoimpl.MessageState                  `protogen:"open.v1"`
+	Params        []string                                `protobuf:"bytes,1,rep,name=params,proto3" json:"params,omitempty"`
+	Worker        *CloudflareWorkerDispatchOutboundWorker `protobuf:"bytes,2,opt,name=worker,proto3" json:"worker,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerDispatchOutbound) Reset() {
+	*x = CloudflareWorkerDispatchOutbound{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerDispatchOutbound) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerDispatchOutbound) ProtoMessage() {}
+
+func (x *CloudflareWorkerDispatchOutbound) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerDispatchOutbound.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerDispatchOutbound) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *CloudflareWorkerDispatchOutbound) GetParams() []string {
+	if x != nil {
+		return x.Params
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerDispatchOutbound) GetWorker() *CloudflareWorkerDispatchOutboundWorker {
+	if x != nil {
+		return x.Worker
+	}
+	return nil
+}
+
+type CloudflareWorkerDispatchOutboundWorker struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Outbound Worker name, or a reference to a CloudflareWorker.
+	Service       *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+	Environment   string               `protobuf:"bytes,2,opt,name=environment,proto3" json:"environment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerDispatchOutboundWorker) Reset() {
+	*x = CloudflareWorkerDispatchOutboundWorker{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerDispatchOutboundWorker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerDispatchOutboundWorker) ProtoMessage() {}
+
+func (x *CloudflareWorkerDispatchOutboundWorker) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerDispatchOutboundWorker.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerDispatchOutboundWorker) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *CloudflareWorkerDispatchOutboundWorker) GetService() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Service
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerDispatchOutboundWorker) GetEnvironment() string {
+	if x != nil {
+		return x.Environment
+	}
+	return ""
+}
+
+type CloudflareWorkerRateLimitBinding struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Rate-limit namespace id (a Cloudflare-side identifier, not a Planton kind).
+	Namespace     string                           `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Simple        *CloudflareWorkerRateLimitSimple `protobuf:"bytes,3,opt,name=simple,proto3" json:"simple,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerRateLimitBinding) Reset() {
+	*x = CloudflareWorkerRateLimitBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerRateLimitBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerRateLimitBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerRateLimitBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerRateLimitBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerRateLimitBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *CloudflareWorkerRateLimitBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerRateLimitBinding) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerRateLimitBinding) GetSimple() *CloudflareWorkerRateLimitSimple {
+	if x != nil {
+		return x.Simple
+	}
+	return nil
+}
+
+type CloudflareWorkerRateLimitSimple struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Limit             float64                `protobuf:"fixed64,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Period            int64                  `protobuf:"varint,2,opt,name=period,proto3" json:"period,omitempty"`
+	MitigationTimeout int64                  `protobuf:"varint,3,opt,name=mitigation_timeout,json=mitigationTimeout,proto3" json:"mitigation_timeout,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerRateLimitSimple) Reset() {
+	*x = CloudflareWorkerRateLimitSimple{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerRateLimitSimple) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerRateLimitSimple) ProtoMessage() {}
+
+func (x *CloudflareWorkerRateLimitSimple) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerRateLimitSimple.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerRateLimitSimple) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *CloudflareWorkerRateLimitSimple) GetLimit() float64 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *CloudflareWorkerRateLimitSimple) GetPeriod() int64 {
+	if x != nil {
+		return x.Period
+	}
+	return 0
+}
+
+func (x *CloudflareWorkerRateLimitSimple) GetMitigationTimeout() int64 {
+	if x != nil {
+		return x.MitigationTimeout
+	}
+	return 0
+}
+
+type CloudflareWorkerSendEmailBinding struct {
+	state                       protoimpl.MessageState `protogen:"open.v1"`
+	Name                        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DestinationAddress          string                 `protobuf:"bytes,2,opt,name=destination_address,json=destinationAddress,proto3" json:"destination_address,omitempty"`
+	AllowedDestinationAddresses []string               `protobuf:"bytes,3,rep,name=allowed_destination_addresses,json=allowedDestinationAddresses,proto3" json:"allowed_destination_addresses,omitempty"`
+	AllowedSenderAddresses      []string               `protobuf:"bytes,4,rep,name=allowed_sender_addresses,json=allowedSenderAddresses,proto3" json:"allowed_sender_addresses,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerSendEmailBinding) Reset() {
+	*x = CloudflareWorkerSendEmailBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerSendEmailBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerSendEmailBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerSendEmailBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerSendEmailBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerSendEmailBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *CloudflareWorkerSendEmailBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSendEmailBinding) GetDestinationAddress() string {
+	if x != nil {
+		return x.DestinationAddress
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSendEmailBinding) GetAllowedDestinationAddresses() []string {
+	if x != nil {
+		return x.AllowedDestinationAddresses
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSendEmailBinding) GetAllowedSenderAddresses() []string {
+	if x != nil {
+		return x.AllowedSenderAddresses
+	}
+	return nil
+}
+
+type CloudflareWorkerSecretsStoreBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	StoreId       string                 `protobuf:"bytes,2,opt,name=store_id,json=storeId,proto3" json:"store_id,omitempty"`
+	SecretName    string                 `protobuf:"bytes,3,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerSecretsStoreBinding) Reset() {
+	*x = CloudflareWorkerSecretsStoreBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerSecretsStoreBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerSecretsStoreBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerSecretsStoreBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerSecretsStoreBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerSecretsStoreBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *CloudflareWorkerSecretsStoreBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretsStoreBinding) GetStoreId() string {
+	if x != nil {
+		return x.StoreId
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretsStoreBinding) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+type CloudflareWorkerSecretKeyBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Algorithm     string                 `protobuf:"bytes,2,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	Format        string                 `protobuf:"bytes,3,opt,name=format,proto3" json:"format,omitempty"`
+	Usages        []string               `protobuf:"bytes,4,rep,name=usages,proto3" json:"usages,omitempty"`
+	KeyBase64     string                 `protobuf:"bytes,5,opt,name=key_base64,json=keyBase64,proto3" json:"key_base64,omitempty"`
+	KeyJwk        string                 `protobuf:"bytes,6,opt,name=key_jwk,json=keyJwk,proto3" json:"key_jwk,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) Reset() {
+	*x = CloudflareWorkerSecretKeyBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerSecretKeyBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerSecretKeyBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerSecretKeyBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerSecretKeyBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetAlgorithm() string {
+	if x != nil {
+		return x.Algorithm
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetUsages() []string {
+	if x != nil {
+		return x.Usages
+	}
+	return nil
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetKeyBase64() string {
+	if x != nil {
+		return x.KeyBase64
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerSecretKeyBinding) GetKeyJwk() string {
+	if x != nil {
+		return x.KeyJwk
+	}
+	return ""
+}
+
+type CloudflareWorkerWorkflowBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	WorkflowName  string                 `protobuf:"bytes,2,opt,name=workflow_name,json=workflowName,proto3" json:"workflow_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerWorkflowBinding) Reset() {
+	*x = CloudflareWorkerWorkflowBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerWorkflowBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerWorkflowBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerWorkflowBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerWorkflowBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerWorkflowBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *CloudflareWorkerWorkflowBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerWorkflowBinding) GetWorkflowName() string {
+	if x != nil {
+		return x.WorkflowName
+	}
+	return ""
+}
+
+type CloudflareWorkerPipelineBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Pipeline      string                 `protobuf:"bytes,2,opt,name=pipeline,proto3" json:"pipeline,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerPipelineBinding) Reset() {
+	*x = CloudflareWorkerPipelineBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerPipelineBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerPipelineBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerPipelineBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerPipelineBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerPipelineBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *CloudflareWorkerPipelineBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerPipelineBinding) GetPipeline() string {
+	if x != nil {
+		return x.Pipeline
+	}
+	return ""
+}
+
+type CloudflareWorkerJsonBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Json          string                 `protobuf:"bytes,2,opt,name=json,proto3" json:"json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerJsonBinding) Reset() {
+	*x = CloudflareWorkerJsonBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerJsonBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerJsonBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerJsonBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerJsonBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerJsonBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *CloudflareWorkerJsonBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerJsonBinding) GetJson() string {
+	if x != nil {
+		return x.Json
+	}
+	return ""
+}
+
+type CloudflareWorkerInheritBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	OldName       string                 `protobuf:"bytes,2,opt,name=old_name,json=oldName,proto3" json:"old_name,omitempty"`
+	VersionId     string                 `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerInheritBinding) Reset() {
+	*x = CloudflareWorkerInheritBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerInheritBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerInheritBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerInheritBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerInheritBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerInheritBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *CloudflareWorkerInheritBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerInheritBinding) GetOldName() string {
+	if x != nil {
+		return x.OldName
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerInheritBinding) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
+// CloudflareWorkerBlobBinding is shared by data_blob, text_blob, and wasm_module
+// — each only needs a JS name and the uploaded file (`part`).
+type CloudflareWorkerBlobBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Part          string                 `protobuf:"bytes,2,opt,name=part,proto3" json:"part,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerBlobBinding) Reset() {
+	*x = CloudflareWorkerBlobBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerBlobBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerBlobBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerBlobBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerBlobBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerBlobBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *CloudflareWorkerBlobBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerBlobBinding) GetPart() string {
+	if x != nil {
+		return x.Part
+	}
+	return ""
+}
+
+// CloudflareWorkerNamedBinding is a type-only binding (browser, images, media):
+// the JS name is the whole configuration.
+type CloudflareWorkerNamedBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerNamedBinding) Reset() {
+	*x = CloudflareWorkerNamedBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerNamedBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerNamedBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerNamedBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerNamedBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerNamedBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *CloudflareWorkerNamedBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type CloudflareWorkerAiSearchBinding struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Name         string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	InstanceName string                 `protobuf:"bytes,2,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`
+	// Namespace the instance belongs to. Cloudflare defaults this to "default".
+	Namespace string `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Flagship app id — the provider hangs this leaf on the same binding object.
+	AppId         string `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerAiSearchBinding) Reset() {
+	*x = CloudflareWorkerAiSearchBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerAiSearchBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerAiSearchBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerAiSearchBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerAiSearchBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerAiSearchBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *CloudflareWorkerAiSearchBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerAiSearchBinding) GetInstanceName() string {
+	if x != nil {
+		return x.InstanceName
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerAiSearchBinding) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerAiSearchBinding) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type CloudflareWorkerAiSearchNamespaceBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerAiSearchNamespaceBinding) Reset() {
+	*x = CloudflareWorkerAiSearchNamespaceBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerAiSearchNamespaceBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerAiSearchNamespaceBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerAiSearchNamespaceBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerAiSearchNamespaceBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerAiSearchNamespaceBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *CloudflareWorkerAiSearchNamespaceBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerAiSearchNamespaceBinding) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+type CloudflareWorkerVpcServiceBinding struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerVpcServiceBinding) Reset() {
+	*x = CloudflareWorkerVpcServiceBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerVpcServiceBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerVpcServiceBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerVpcServiceBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerVpcServiceBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerVpcServiceBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *CloudflareWorkerVpcServiceBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerVpcServiceBinding) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+type CloudflareWorkerVpcNetworkBinding struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Literal network id. Only "cf1:network" is currently supported by Cloudflare.
+	NetworkId string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	// Cloudflare Tunnel to bind, or a reference to a CloudflareZeroTrustTunnel.
+	TunnelId      *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerVpcNetworkBinding) Reset() {
+	*x = CloudflareWorkerVpcNetworkBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerVpcNetworkBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerVpcNetworkBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerVpcNetworkBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerVpcNetworkBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerVpcNetworkBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *CloudflareWorkerVpcNetworkBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerVpcNetworkBinding) GetNetworkId() string {
+	if x != nil {
+		return x.NetworkId
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerVpcNetworkBinding) GetTunnelId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TunnelId
+	}
+	return nil
+}
+
+type CloudflareWorkerTailConsumerBinding struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Worker that is the tail-consumer resource, or a reference to a CloudflareWorker.
+	Service       *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudflareWorkerTailConsumerBinding) Reset() {
+	*x = CloudflareWorkerTailConsumerBinding{}
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudflareWorkerTailConsumerBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudflareWorkerTailConsumerBinding) ProtoMessage() {}
+
+func (x *CloudflareWorkerTailConsumerBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudflareWorkerTailConsumerBinding.ProtoReflect.Descriptor instead.
+func (*CloudflareWorkerTailConsumerBinding) Descriptor() ([]byte, []int) {
+	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *CloudflareWorkerTailConsumerBinding) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CloudflareWorkerTailConsumerBinding) GetService() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Service
+	}
+	return nil
+}
+
 var File_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/cloudflare/cloudflareworker/v1alpha1/spec.proto\x120dev.planton.cloudflare.cloudflareworker.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\x19\n" +
+	"7catalog/cloudflare/cloudflareworker/v1alpha1/spec.proto\x120dev.planton.cloudflare.cloudflareworker.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xae9\n" +
 	"\x14CloudflareWorkerSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12-\n" +
@@ -1744,14 +3958,60 @@ const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" 
 	"\x06limits\x18\x1b \x01(\v2H.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerLimitsR\x06limits\x12\x18\n" +
 	"\alogpush\x18\x1c \x01(\bR\alogpush\x12u\n" +
 	"\x0etail_consumers\x18\x1d \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumerR\rtailConsumers\x12`\n" +
-	"\x06assets\x18\x1e \x01(\v2H.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsR\x06assets\x1a7\n" +
+	"\x06assets\x18\x1e \x01(\v2H.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsR\x06assets\x12l\n" +
+	"\n" +
+	"migrations\x18\x1f \x01(\v2L.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationsR\n" +
+	"migrations\x12\x1f\n" +
+	"\vkeep_assets\x18  \x01(\bR\n" +
+	"keepAssets\x12#\n" +
+	"\rkeep_bindings\x18! \x03(\tR\fkeepBindings\x12\xb4\x01\n" +
+	"\vusage_model\x18\" \x01(\tB\x92\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +
+	"\x11usage_model.valid\x12;usage_model must be one of \"standard\", \"bundled\", \"unbound\"\x1a8this == '' || this in ['standard', 'bundled', 'unbound']R\n" +
+	"usageModel\x12s\n" +
+	"\rcache_options\x18# \x01(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCacheOptionsR\fcacheOptions\x12m\n" +
+	"\aexports\x18$ \x03(\v2S.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ExportsEntryR\aexports\x12\x86\x01\n" +
+	"\x14package_dependencies\x18% \x03(\v2S.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPackageDependencyR\x13packageDependencies\x12o\n" +
+	"\vannotations\x18& \x01(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAnnotationsR\vannotations\x12\x1b\n" +
+	"\tbody_part\x18' \x01(\tR\bbodyPart\x12\x95\x02\n" +
+	"\fcontent_type\x18( \x01(\tB\xf1\x01\xbaH\xed\x01\xba\x01\xe9\x01\n" +
+	"\x12content_type.valid\x12Acontent_type must be one of the five Cloudflare Worker MIME types\x1a\x8f\x01this == '' || this in ['application/javascript+module', 'application/javascript', 'text/javascript+module', 'text/javascript', 'text/x-python']R\vcontentType\x12\x85\x01\n" +
+	"\x11mtls_certificates\x18) \x03(\v2X.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMtlsCertificateBindingR\x10mtlsCertificates\x12\x8b\x01\n" +
+	"\x13dispatch_namespaces\x18* \x03(\v2Z.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchNamespaceBindingR\x12dispatchNamespaces\x12s\n" +
+	"\vrate_limits\x18+ \x03(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitBindingR\n" +
+	"rateLimits\x12q\n" +
+	"\n" +
+	"send_email\x18, \x03(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSendEmailBindingR\tsendEmail\x12\x89\x01\n" +
+	"\x15secrets_store_secrets\x18- \x03(\v2U.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretsStoreBindingR\x13secretsStoreSecrets\x12\xe1\x01\n" +
+	"\vsecret_keys\x18. \x03(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretKeyBindingBl\xaa\xa6\x1dhwrapper list; the secret is the inner binding's key_base64/key_jwk fields, which are annotated sensitiveR\n" +
+	"secretKeys\x12o\n" +
+	"\tworkflows\x18/ \x03(\v2Q.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerWorkflowBindingR\tworkflows\x12o\n" +
+	"\tpipelines\x180 \x03(\v2Q.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPipelineBindingR\tpipelines\x12r\n" +
+	"\rjson_bindings\x181 \x03(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerJsonBindingR\fjsonBindings\x12{\n" +
+	"\x10inherit_bindings\x182 \x03(\v2P.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerInheritBindingR\x0finheritBindings\x12l\n" +
+	"\n" +
+	"data_blobs\x183 \x03(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBindingR\tdataBlobs\x12l\n" +
+	"\n" +
+	"text_blobs\x184 \x03(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBindingR\ttextBlobs\x12j\n" +
+	"\bbrowsers\x185 \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBindingR\bbrowsers\x12n\n" +
+	"\tai_search\x186 \x03(\v2Q.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchBindingR\baiSearch\x12\x8c\x01\n" +
+	"\x14ai_search_namespaces\x187 \x03(\v2Z.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchNamespaceBindingR\x12aiSearchNamespaces\x12f\n" +
+	"\x06images\x188 \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBindingR\x06images\x12d\n" +
+	"\x05media\x189 \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBindingR\x05media\x12p\n" +
+	"\fwasm_modules\x18: \x03(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBindingR\vwasmModules\x12v\n" +
+	"\fvpc_services\x18; \x03(\v2S.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcServiceBindingR\vvpcServices\x12v\n" +
+	"\fvpc_networks\x18< \x03(\v2S.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcNetworkBindingR\vvpcNetworks\x12\x8b\x01\n" +
+	"\x16tail_consumer_bindings\x18= \x03(\v2U.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumerBindingR\x14tailConsumerBindings\x1a7\n" +
 	"\tVarsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
-	"\x1cspec.code_or_assets_required\x12Wprovide a script source (content or r2_bundle) and/or a static-asset directory (assets)\x1a<has(this.content) || has(this.r2_bundle) || has(this.assets)B\b\n" +
-	"\x06source\"Z\n" +
-	"\x1cCloudflareWorkerScriptBundle\x12\x1e\n" +
-	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x1a\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a\x84\x01\n" +
+	"\fExportsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12^\n" +
+	"\x05value\x18\x02 \x01(\v2H.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExportR\x05value:\x028\x01:\xe5\x02\xbaH\xe1\x02\x1a\xb5\x01\n" +
+	"\x1cspec.code_or_assets_required\x12Wprovide a script source (content or r2_bundle) and/or a static-asset directory (assets)\x1a<has(this.content) || has(this.r2_bundle) || has(this.assets)\x1a\xa6\x01\n" +
+	"\x1espec.body_part_xor_main_module\x12Qset body_part (service-worker syntax) or main_module (ES-module syntax), not both\x1a1!(this.body_part != '' && this.main_module != '')B\b\n" +
+	"\x06source\"\xb1\x01\n" +
+	"\x1cCloudflareWorkerScriptBundle\x12u\n" +
+	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xda6\x92\xd4a\x1astatus.outputs.bucket_nameR\x06bucket\x12\x1a\n" +
 	"\x04path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04path\"\x91\x01\n" +
 	"\x1dCloudflareWorkerSecretBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12T\n" +
@@ -1783,14 +4043,16 @@ const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" 
 	"\x1cCloudflareWorkerQueueBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12{\n" +
 	"\n" +
-	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe76\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xac\x01\n" +
+	"queue_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe76\x92\xd4a\x19status.outputs.queue_nameR\tqueueName\"\xd7\x02\n" +
 	"$CloudflareWorkerDurableObjectBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
 	"\n" +
-	"class_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tclassName\x12\x1f\n" +
-	"\vscript_name\x18\x03 \x01(\tR\n" +
+	"class_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tclassName\x12x\n" +
+	"\vscript_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\n" +
 	"scriptName\x12 \n" +
-	"\venvironment\x18\x04 \x01(\tR\venvironment\"f\n" +
+	"\venvironment\x18\x04 \x01(\tR\venvironment\x12!\n" +
+	"\fnamespace_id\x18\x05 \x01(\tR\vnamespaceId\x12-\n" +
+	"\x12dispatch_namespace\x18\x06 \x01(\tR\x11dispatchNamespace\"f\n" +
 	"&CloudflareWorkerAnalyticsEngineBinding\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12 \n" +
 	"\adataset\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\adataset\"e\n" +
@@ -1810,21 +4072,38 @@ const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" 
 	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\"\xb1\x01\n" +
 	"\x15CloudflareWorkerRoute\x12v\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
-	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xe6\x01\n" +
+	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xbe\x03\n" +
 	"\x1dCloudflareWorkerObservability\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xaa\x01\n" +
 	"\x12head_sampling_rate\x18\x02 \x01(\x01B|\xbaHy\xba\x01v\n" +
-	",observability_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\x10headSamplingRate\"\x8c\x01\n" +
-	"\x19CloudflareWorkerPlacement\x12o\n" +
-	"\x04mode\x18\x01 \x01(\tB[\xbaHX\xba\x01U\n" +
-	"\x14placement_mode.valid\x12\x1eplacement mode must be \"smart\"\x1a\x1dthis == '' || this == 'smart'R\x04mode\"\x8a\x02\n" +
+	",observability_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\x10headSamplingRate\x12g\n" +
+	"\x04logs\x18\x03 \x01(\v2S.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityLogsR\x04logs\x12m\n" +
+	"\x06traces\x18\x04 \x01(\v2U.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityTracesR\x06traces\"\xd7\x02\n" +
+	"!CloudflareWorkerObservabilityLogs\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12'\n" +
+	"\x0finvocation_logs\x18\x02 \x01(\bR\x0einvocationLogs\x12\"\n" +
+	"\fdestinations\x18\x03 \x03(\tR\fdestinations\x12\xb0\x01\n" +
+	"\x12head_sampling_rate\x18\x04 \x01(\x01B\x81\x01\xbaH~\xba\x01{\n" +
+	"1observability_logs_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\x10headSamplingRate\x12\x18\n" +
+	"\apersist\x18\x05 \x01(\bR\apersist\"\x88\x04\n" +
+	"#CloudflareWorkerObservabilityTraces\x12\"\n" +
+	"\fdestinations\x18\x01 \x03(\tR\fdestinations\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\xb3\x01\n" +
+	"\x12head_sampling_rate\x18\x03 \x01(\x01B\x84\x01\xbaH\x80\x01\xba\x01}\n" +
+	"3observability_traces_head_sampling_rate.valid_range\x12*head_sampling_rate must be between 0 and 1\x1a\x1athis >= 0.0 && this <= 1.0R\x10headSamplingRate\x12\x18\n" +
+	"\apersist\x18\x04 \x01(\bR\apersist\x12\xd2\x01\n" +
+	"\x12propagation_policy\x18\x05 \x01(\tB\xa2\x01\xbaH\x9e\x01\xba\x01\x9a\x01\n" +
+	"-observability_traces_propagation_policy.valid\x126propagation_policy must be \"authenticated\" or \"accept\"\x1a1this == '' || this in ['authenticated', 'accept']R\x11propagationPolicy\"\xb1\x01\n" +
+	"\x19CloudflareWorkerPlacement\x12\x93\x01\n" +
+	"\x04mode\x18\x01 \x01(\tB\x7f\xbaH|\xba\x01y\n" +
+	"\x14placement_mode.valid\x12,placement mode must be \"smart\" or \"targeted\"\x1a3this == '' || this == 'smart' || this == 'targeted'R\x04mode\"\x8a\x02\n" +
 	"\x16CloudflareWorkerLimits\x12l\n" +
 	"\x06cpu_ms\x18\x01 \x01(\x03BU\xbaHR\xba\x01O\n" +
 	"\x1alimits_cpu_ms.non_negative\x12&cpu_ms must be 0 (default) or positive\x1a\tthis >= 0R\x05cpuMs\x12\x81\x01\n" +
 	"\vsubrequests\x18\x02 \x01(\x03B_\xbaH\\\xba\x01Y\n" +
-	"\x1flimits_subrequests.non_negative\x12+subrequests must be 0 (default) or positive\x1a\tthis >= 0R\vsubrequests\"\x80\x01\n" +
-	"\x1cCloudflareWorkerTailConsumer\x12 \n" +
-	"\aservice\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aservice\x12 \n" +
+	"\x1flimits_subrequests.non_negative\x12+subrequests must be 0 (default) or positive\x1a\tthis >= 0R\vsubrequests\"\xd7\x01\n" +
+	"\x1cCloudflareWorkerTailConsumer\x12w\n" +
+	"\aservice\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12 \n" +
 	"\venvironment\x18\x02 \x01(\tR\venvironment\x12\x1c\n" +
 	"\tnamespace\x18\x03 \x01(\tR\tnamespace\"\xc9\x01\n" +
 	"\x16CloudflareWorkerAssets\x12$\n" +
@@ -1840,7 +4119,128 @@ const file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc = "" 
 	"\tredirects\x18\x04 \x01(\tR\tredirects\x12(\n" +
 	"\x10run_worker_first\x18\x05 \x01(\bR\x0erunWorkerFirst\x123\n" +
 	"\x16run_worker_first_rules\x18\x06 \x03(\tR\x13runWorkerFirstRules:\xce\x01\xbaH\xca\x01\x1a\xc7\x01\n" +
-	"(assets_config.run_worker_first_exclusive\x12Xset run_worker_first (apply to all paths) or run_worker_first_rules (per-path), not both\x1aA!(this.run_worker_first && size(this.run_worker_first_rules) > 0)B\x8a\x03\n" +
+	"(assets_config.run_worker_first_exclusive\x12Xset run_worker_first (apply to all paths) or run_worker_first_rules (per-path), not both\x1aA!(this.run_worker_first && size(this.run_worker_first_rules) > 0)\"\xac\x04\n" +
+	"\x1aCloudflareWorkerMigrations\x12'\n" +
+	"\x0fdeleted_classes\x18\x01 \x03(\tR\x0edeletedClasses\x12\x1f\n" +
+	"\vnew_classes\x18\x02 \x03(\tR\n" +
+	"newClasses\x12,\n" +
+	"\x12new_sqlite_classes\x18\x03 \x03(\tR\x10newSqliteClasses\x12\x17\n" +
+	"\anew_tag\x18\x04 \x01(\tR\x06newTag\x12\x17\n" +
+	"\aold_tag\x18\x05 \x01(\tR\x06oldTag\x12w\n" +
+	"\x0frenamed_classes\x18\x06 \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRenamedClassR\x0erenamedClasses\x12\x83\x01\n" +
+	"\x13transferred_classes\x18\a \x03(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClassR\x12transferredClasses\x12e\n" +
+	"\x05steps\x18\b \x03(\v2O.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationStepR\x05steps\"B\n" +
+	"\x1cCloudflareWorkerRenamedClass\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
+	"\x02to\x18\x02 \x01(\tR\x02to\"\xc0\x01\n" +
+	" CloudflareWorkerTransferredClass\x12\x12\n" +
+	"\x04from\x18\x01 \x01(\tR\x04from\x12x\n" +
+	"\vfrom_script\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\n" +
+	"fromScript\x12\x0e\n" +
+	"\x02to\x18\x03 \x01(\tR\x02to\"\x96\x03\n" +
+	"\x1dCloudflareWorkerMigrationStep\x12'\n" +
+	"\x0fdeleted_classes\x18\x01 \x03(\tR\x0edeletedClasses\x12\x1f\n" +
+	"\vnew_classes\x18\x02 \x03(\tR\n" +
+	"newClasses\x12,\n" +
+	"\x12new_sqlite_classes\x18\x03 \x03(\tR\x10newSqliteClasses\x12w\n" +
+	"\x0frenamed_classes\x18\x04 \x03(\v2N.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRenamedClassR\x0erenamedClasses\x12\x83\x01\n" +
+	"\x13transferred_classes\x18\x05 \x03(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClassR\x12transferredClasses\"h\n" +
+	"\x1cCloudflareWorkerCacheOptions\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12.\n" +
+	"\x13cross_version_cache\x18\x02 \x01(\bR\x11crossVersionCache\"\x99\x01\n" +
+	"\x16CloudflareWorkerExport\x12\x1a\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12c\n" +
+	"\x05cache\x18\x02 \x01(\v2M.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExportCacheR\x05cache\"7\n" +
+	"\x1bCloudflareWorkerExportCache\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\"\xae\x01\n" +
+	"!CloudflareWorkerPackageDependency\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x123\n" +
+	"\x11installed_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10installedVersion\x128\n" +
+	"\x14package_json_version\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12packageJsonVersion\"g\n" +
+	"\x1bCloudflareWorkerAnnotations\x12'\n" +
+	"\x0fworkers_message\x18\x01 \x01(\tR\x0eworkersMessage\x12\x1f\n" +
+	"\vworkers_tag\x18\x02 \x01(\tR\n" +
+	"workersTag\"s\n" +
+	"&CloudflareWorkerMtlsCertificateBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12-\n" +
+	"\x0ecertificate_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rcertificateId\"\xdc\x01\n" +
+	"(CloudflareWorkerDispatchNamespaceBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12$\n" +
+	"\tnamespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tnamespace\x12n\n" +
+	"\boutbound\x18\x03 \x01(\v2R.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutboundR\boutbound\"\xac\x01\n" +
+	" CloudflareWorkerDispatchOutbound\x12\x16\n" +
+	"\x06params\x18\x01 \x03(\tR\x06params\x12p\n" +
+	"\x06worker\x18\x02 \x01(\v2X.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutboundWorkerR\x06worker\"\xbd\x01\n" +
+	"&CloudflareWorkerDispatchOutboundWorker\x12q\n" +
+	"\aservice\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\aservice\x12 \n" +
+	"\venvironment\x18\x02 \x01(\tR\venvironment\"\xd7\x01\n" +
+	" CloudflareWorkerRateLimitBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12$\n" +
+	"\tnamespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tnamespace\x12q\n" +
+	"\x06simple\x18\x03 \x01(\v2Q.dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitSimpleB\x06\xbaH\x03\xc8\x01\x01R\x06simple\"\x8e\x01\n" +
+	"\x1fCloudflareWorkerRateLimitSimple\x12\x1c\n" +
+	"\x05limit\x18\x01 \x01(\x01B\x06\xbaH\x03\xc8\x01\x01R\x05limit\x12\x1e\n" +
+	"\x06period\x18\x02 \x01(\x03B\x06\xbaH\x03\xc8\x01\x01R\x06period\x12-\n" +
+	"\x12mitigation_timeout\x18\x03 \x01(\x03R\x11mitigationTimeout\"\xed\x01\n" +
+	" CloudflareWorkerSendEmailBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12/\n" +
+	"\x13destination_address\x18\x02 \x01(\tR\x12destinationAddress\x12B\n" +
+	"\x1dallowed_destination_addresses\x18\x03 \x03(\tR\x1ballowedDestinationAddresses\x128\n" +
+	"\x18allowed_sender_addresses\x18\x04 \x03(\tR\x16allowedSenderAddresses\"\x8d\x01\n" +
+	"#CloudflareWorkerSecretsStoreBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12!\n" +
+	"\bstore_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\astoreId\x12'\n" +
+	"\vsecret_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"secretName\"\xdc\x02\n" +
+	" CloudflareWorkerSecretKeyBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12$\n" +
+	"\talgorithm\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\talgorithm\x12\x99\x01\n" +
+	"\x06format\x18\x03 \x01(\tB\x80\x01\xbaH}\xba\x01w\n" +
+	"\x17secret_key_format.valid\x123format must be one of \"raw\", \"pkcs8\", \"spki\", \"jwk\"\x1a'this in ['raw', 'pkcs8', 'spki', 'jwk']\xc8\x01\x01R\x06format\x12\x16\n" +
+	"\x06usages\x18\x04 \x03(\tR\x06usages\x12#\n" +
+	"\n" +
+	"key_base64\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\tkeyBase64\x12\x1d\n" +
+	"\akey_jwk\x18\x06 \x01(\tB\x04\xa0\xa6\x1d\x01R\x06keyJwk\"j\n" +
+	"\x1fCloudflareWorkerWorkflowBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12+\n" +
+	"\rworkflow_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fworkflowName\"a\n" +
+	"\x1fCloudflareWorkerPipelineBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\"\n" +
+	"\bpipeline\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bpipeline\"U\n" +
+	"\x1bCloudflareWorkerJsonBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1a\n" +
+	"\x04json\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04json\"v\n" +
+	"\x1eCloudflareWorkerInheritBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x19\n" +
+	"\bold_name\x18\x02 \x01(\tR\aoldName\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x03 \x01(\tR\tversionId\"U\n" +
+	"\x1bCloudflareWorkerBlobBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1a\n" +
+	"\x04part\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04part\":\n" +
+	"\x1cCloudflareWorkerNamedBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"\x9f\x01\n" +
+	"\x1fCloudflareWorkerAiSearchBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12+\n" +
+	"\rinstance_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\finstanceName\x12\x1c\n" +
+	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x15\n" +
+	"\x06app_id\x18\x04 \x01(\tR\x05appId\"l\n" +
+	"(CloudflareWorkerAiSearchNamespaceBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12$\n" +
+	"\tnamespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tnamespace\"f\n" +
+	"!CloudflareWorkerVpcServiceBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
+	"\n" +
+	"service_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tserviceId\"\xd3\x02\n" +
+	"!CloudflareWorkerVpcNetworkBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1d\n" +
+	"\n" +
+	"network_id\x18\x02 \x01(\tR\tnetworkId\x12r\n" +
+	"\ttunnel_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe96\x92\xd4a\x18status.outputs.tunnel_idR\btunnelId:\x7f\xbaH|\x1az\n" +
+	"\x1evpc_network.network_xor_tunnel\x12%set network_id or tunnel_id, not both\x1a1!((this.network_id != '') && has(this.tunnel_id))\"\xba\x01\n" +
+	"#CloudflareWorkerTailConsumerBinding\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12w\n" +
+	"\aservice\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xdb6\x92\xd4a\x1astatus.outputs.script_nameR\aserviceB\x8a\x03\n" +
 	"4com.dev.planton.cloudflare.cloudflareworker.v1alpha1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1;cloudflareworkerv1alpha1\xa2\x02\x04DPCC\xaa\x020Dev.Planton.Cloudflare.Cloudflareworker.V1alpha1\xca\x020Dev\\Planton\\Cloudflare\\Cloudflareworker\\V1alpha1\xe2\x02<Dev\\Planton\\Cloudflare\\Cloudflareworker\\V1alpha1\\GPBMetadata\xea\x024Dev::Planton::Cloudflare::Cloudflareworker::V1alpha1b\x06proto3"
 
 var (
@@ -1855,37 +4255,69 @@ func file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescGZIP() 
 	return file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
+var file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 56)
 var file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_goTypes = []any{
-	(*CloudflareWorkerSpec)(nil),                   // 0: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec
-	(*CloudflareWorkerScriptBundle)(nil),           // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerScriptBundle
-	(*CloudflareWorkerSecretBinding)(nil),          // 2: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretBinding
-	(*CloudflareWorkerKvBinding)(nil),              // 3: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerKvBinding
-	(*CloudflareWorkerR2Binding)(nil),              // 4: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerR2Binding
-	(*CloudflareWorkerD1Binding)(nil),              // 5: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerD1Binding
-	(*CloudflareWorkerHyperdriveBinding)(nil),      // 6: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerHyperdriveBinding
-	(*CloudflareWorkerServiceBinding)(nil),         // 7: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerServiceBinding
-	(*CloudflareWorkerQueueBinding)(nil),           // 8: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerQueueBinding
-	(*CloudflareWorkerDurableObjectBinding)(nil),   // 9: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDurableObjectBinding
-	(*CloudflareWorkerAnalyticsEngineBinding)(nil), // 10: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAnalyticsEngineBinding
-	(*CloudflareWorkerVectorizeBinding)(nil),       // 11: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVectorizeBinding
-	(*CloudflareWorkerAiBinding)(nil),              // 12: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiBinding
-	(*CloudflareWorkerVersionMetadataBinding)(nil), // 13: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVersionMetadataBinding
-	(*CloudflareWorkerWorkersDev)(nil),             // 14: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerWorkersDev
-	(*CloudflareWorkerCustomDomain)(nil),           // 15: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCustomDomain
-	(*CloudflareWorkerRoute)(nil),                  // 16: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRoute
-	(*CloudflareWorkerObservability)(nil),          // 17: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservability
-	(*CloudflareWorkerPlacement)(nil),              // 18: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPlacement
-	(*CloudflareWorkerLimits)(nil),                 // 19: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerLimits
-	(*CloudflareWorkerTailConsumer)(nil),           // 20: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumer
-	(*CloudflareWorkerAssets)(nil),                 // 21: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets
-	(*CloudflareWorkerAssetsConfig)(nil),           // 22: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsConfig
-	nil,                                            // 23: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.VarsEntry
-	(*v1.StringValueOrRef)(nil),                    // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*CloudflareWorkerSpec)(nil),                     // 0: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec
+	(*CloudflareWorkerScriptBundle)(nil),             // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerScriptBundle
+	(*CloudflareWorkerSecretBinding)(nil),            // 2: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretBinding
+	(*CloudflareWorkerKvBinding)(nil),                // 3: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerKvBinding
+	(*CloudflareWorkerR2Binding)(nil),                // 4: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerR2Binding
+	(*CloudflareWorkerD1Binding)(nil),                // 5: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerD1Binding
+	(*CloudflareWorkerHyperdriveBinding)(nil),        // 6: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerHyperdriveBinding
+	(*CloudflareWorkerServiceBinding)(nil),           // 7: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerServiceBinding
+	(*CloudflareWorkerQueueBinding)(nil),             // 8: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerQueueBinding
+	(*CloudflareWorkerDurableObjectBinding)(nil),     // 9: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDurableObjectBinding
+	(*CloudflareWorkerAnalyticsEngineBinding)(nil),   // 10: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAnalyticsEngineBinding
+	(*CloudflareWorkerVectorizeBinding)(nil),         // 11: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVectorizeBinding
+	(*CloudflareWorkerAiBinding)(nil),                // 12: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiBinding
+	(*CloudflareWorkerVersionMetadataBinding)(nil),   // 13: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVersionMetadataBinding
+	(*CloudflareWorkerWorkersDev)(nil),               // 14: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerWorkersDev
+	(*CloudflareWorkerCustomDomain)(nil),             // 15: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCustomDomain
+	(*CloudflareWorkerRoute)(nil),                    // 16: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRoute
+	(*CloudflareWorkerObservability)(nil),            // 17: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservability
+	(*CloudflareWorkerObservabilityLogs)(nil),        // 18: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityLogs
+	(*CloudflareWorkerObservabilityTraces)(nil),      // 19: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityTraces
+	(*CloudflareWorkerPlacement)(nil),                // 20: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPlacement
+	(*CloudflareWorkerLimits)(nil),                   // 21: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerLimits
+	(*CloudflareWorkerTailConsumer)(nil),             // 22: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumer
+	(*CloudflareWorkerAssets)(nil),                   // 23: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets
+	(*CloudflareWorkerAssetsConfig)(nil),             // 24: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsConfig
+	(*CloudflareWorkerMigrations)(nil),               // 25: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrations
+	(*CloudflareWorkerRenamedClass)(nil),             // 26: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRenamedClass
+	(*CloudflareWorkerTransferredClass)(nil),         // 27: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClass
+	(*CloudflareWorkerMigrationStep)(nil),            // 28: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationStep
+	(*CloudflareWorkerCacheOptions)(nil),             // 29: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCacheOptions
+	(*CloudflareWorkerExport)(nil),                   // 30: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExport
+	(*CloudflareWorkerExportCache)(nil),              // 31: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExportCache
+	(*CloudflareWorkerPackageDependency)(nil),        // 32: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPackageDependency
+	(*CloudflareWorkerAnnotations)(nil),              // 33: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAnnotations
+	(*CloudflareWorkerMtlsCertificateBinding)(nil),   // 34: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMtlsCertificateBinding
+	(*CloudflareWorkerDispatchNamespaceBinding)(nil), // 35: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchNamespaceBinding
+	(*CloudflareWorkerDispatchOutbound)(nil),         // 36: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutbound
+	(*CloudflareWorkerDispatchOutboundWorker)(nil),   // 37: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutboundWorker
+	(*CloudflareWorkerRateLimitBinding)(nil),         // 38: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitBinding
+	(*CloudflareWorkerRateLimitSimple)(nil),          // 39: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitSimple
+	(*CloudflareWorkerSendEmailBinding)(nil),         // 40: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSendEmailBinding
+	(*CloudflareWorkerSecretsStoreBinding)(nil),      // 41: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretsStoreBinding
+	(*CloudflareWorkerSecretKeyBinding)(nil),         // 42: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretKeyBinding
+	(*CloudflareWorkerWorkflowBinding)(nil),          // 43: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerWorkflowBinding
+	(*CloudflareWorkerPipelineBinding)(nil),          // 44: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPipelineBinding
+	(*CloudflareWorkerJsonBinding)(nil),              // 45: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerJsonBinding
+	(*CloudflareWorkerInheritBinding)(nil),           // 46: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerInheritBinding
+	(*CloudflareWorkerBlobBinding)(nil),              // 47: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBinding
+	(*CloudflareWorkerNamedBinding)(nil),             // 48: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBinding
+	(*CloudflareWorkerAiSearchBinding)(nil),          // 49: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchBinding
+	(*CloudflareWorkerAiSearchNamespaceBinding)(nil), // 50: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchNamespaceBinding
+	(*CloudflareWorkerVpcServiceBinding)(nil),        // 51: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcServiceBinding
+	(*CloudflareWorkerVpcNetworkBinding)(nil),        // 52: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcNetworkBinding
+	(*CloudflareWorkerTailConsumerBinding)(nil),      // 53: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumerBinding
+	nil,                         // 54: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.VarsEntry
+	nil,                         // 55: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ExportsEntry
+	(*v1.StringValueOrRef)(nil), // 56: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.r2_bundle:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerScriptBundle
-	23, // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.vars:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.VarsEntry
+	54, // 1: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.vars:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.VarsEntry
 	2,  // 2: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.secrets:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretBinding
 	3,  // 3: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.kv_namespaces:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerKvBinding
 	4,  // 4: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.r2_buckets:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerR2Binding
@@ -1902,25 +4334,70 @@ var file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_depIdxs = []int
 	15, // 15: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.custom_domains:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCustomDomain
 	16, // 16: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.routes:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRoute
 	17, // 17: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.observability:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservability
-	18, // 18: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.placement:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPlacement
-	19, // 19: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.limits:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerLimits
-	20, // 20: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.tail_consumers:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumer
-	21, // 21: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.assets:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets
-	24, // 22: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretBinding.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 23: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerKvBinding.namespace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 24: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerR2Binding.bucket_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 25: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerD1Binding.database_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 26: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerHyperdriveBinding.config_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 27: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerServiceBinding.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 28: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerQueueBinding.queue_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 29: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCustomDomain.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 30: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRoute.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	22, // 31: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets.config:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsConfig
-	32, // [32:32] is the sub-list for method output_type
-	32, // [32:32] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	20, // 18: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.placement:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPlacement
+	21, // 19: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.limits:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerLimits
+	22, // 20: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.tail_consumers:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumer
+	23, // 21: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.assets:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets
+	25, // 22: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.migrations:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrations
+	29, // 23: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.cache_options:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCacheOptions
+	55, // 24: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.exports:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ExportsEntry
+	32, // 25: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.package_dependencies:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPackageDependency
+	33, // 26: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.annotations:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAnnotations
+	34, // 27: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.mtls_certificates:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMtlsCertificateBinding
+	35, // 28: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.dispatch_namespaces:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchNamespaceBinding
+	38, // 29: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.rate_limits:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitBinding
+	40, // 30: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.send_email:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSendEmailBinding
+	41, // 31: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.secrets_store_secrets:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretsStoreBinding
+	42, // 32: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.secret_keys:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretKeyBinding
+	43, // 33: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.workflows:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerWorkflowBinding
+	44, // 34: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.pipelines:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerPipelineBinding
+	45, // 35: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.json_bindings:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerJsonBinding
+	46, // 36: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.inherit_bindings:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerInheritBinding
+	47, // 37: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.data_blobs:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBinding
+	47, // 38: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.text_blobs:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBinding
+	48, // 39: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.browsers:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBinding
+	49, // 40: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ai_search:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchBinding
+	50, // 41: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ai_search_namespaces:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAiSearchNamespaceBinding
+	48, // 42: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.images:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBinding
+	48, // 43: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.media:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerNamedBinding
+	47, // 44: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.wasm_modules:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerBlobBinding
+	51, // 45: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.vpc_services:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcServiceBinding
+	52, // 46: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.vpc_networks:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcNetworkBinding
+	53, // 47: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.tail_consumer_bindings:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumerBinding
+	56, // 48: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerScriptBundle.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 49: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSecretBinding.value:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 50: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerKvBinding.namespace_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 51: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerR2Binding.bucket_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 52: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerD1Binding.database_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 53: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerHyperdriveBinding.config_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 54: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerServiceBinding.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 55: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerQueueBinding.queue_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 56: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDurableObjectBinding.script_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 57: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerCustomDomain.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 58: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRoute.zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 59: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservability.logs:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityLogs
+	19, // 60: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservability.traces:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerObservabilityTraces
+	56, // 61: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumer.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 62: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssets.config:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerAssetsConfig
+	26, // 63: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrations.renamed_classes:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRenamedClass
+	27, // 64: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrations.transferred_classes:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClass
+	28, // 65: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrations.steps:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationStep
+	56, // 66: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClass.from_script:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // 67: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationStep.renamed_classes:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRenamedClass
+	27, // 68: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerMigrationStep.transferred_classes:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTransferredClass
+	31, // 69: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExport.cache:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExportCache
+	36, // 70: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchNamespaceBinding.outbound:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutbound
+	37, // 71: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutbound.worker:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutboundWorker
+	56, // 72: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerDispatchOutboundWorker.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	39, // 73: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitBinding.simple:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerRateLimitSimple
+	56, // 74: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerVpcNetworkBinding.tunnel_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	56, // 75: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerTailConsumerBinding.service:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	30, // 76: dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerSpec.ExportsEntry.value:type_name -> dev.planton.cloudflare.cloudflareworker.v1alpha1.CloudflareWorkerExport
+	77, // [77:77] is the sub-list for method output_type
+	77, // [77:77] is the sub-list for method input_type
+	77, // [77:77] is the sub-list for extension type_name
+	77, // [77:77] is the sub-list for extension extendee
+	0,  // [0:77] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_init() }
@@ -1938,7 +4415,7 @@ func file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc), len(file_catalog_cloudflare_cloudflareworker_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   24,
+			NumMessages:   56,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,24 @@
+# The free-surface arm: per-hostname TLS overrides (both fan-out shapes: a
+# row with min_tls_version + http2, a row with ciphers) plus origin TLS
+# compliance modes. Hostnames live under the run-scoped fixture zone. Both
+# surfaces have REAL deletes, so verify-destroyed's still-answers contract
+# is about the zone's settings surface, not these rows.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: e2e-tls-hostnames-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  origin_tls_compliance_modes:
+    - fips
+  hostname_settings:
+    - hostname: api.planton-e2e-${E2E_RUN_ID}.com
+      min_tls_version: "1.3"
+      http2: true
+    - hostname: legacy.planton-e2e-${E2E_RUN_ID}.com
+      ciphers:
+        - "ECDHE-RSA-AES128-GCM-SHA256"

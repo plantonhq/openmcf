@@ -1,80 +1,162 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "CloudflareDnsZoneSpec defines a Cloudflare DNS zone"
+  description = "CloudflareDnsZone specification"
   type = object({
-    # (Required) The fully qualified domain name of the DNS zone (e.g., "example.com").
     zone_name = string
-
-    # (Required) The Cloudflare account identifier under which to create the zone.
     account_id = string
-
-    # (Optional) Whether the zone is created paused (DNS-only, no proxy/CDN/WAF).
     paused = optional(bool, false)
-
-    # (Optional) The zone deployment type: "full", "partial", "secondary", "internal".
-    # Defaults to "full".
-    type = optional(string, "full")
-
-    # (Optional) Custom (vanity) name servers (Business/Enterprise plans).
-    vanity_name_servers = optional(list(string), [])
-
-    # (Optional) DNS records managed alongside the zone (the lean inline model).
     records = optional(list(object({
-      name     = string
-      type     = string
-      content  = string
-      proxied  = optional(bool, false)
-      ttl      = optional(number, 1)
+      name = string
+      type = string
+      content = optional(string, "")
+      proxied = optional(bool, false)
+      ttl = optional(number, 0)
       priority = optional(number, 0)
-      comment  = optional(string, "")
+      comment = optional(string, "")
+      caa = optional(object({
+        flags = optional(number, 0)
+        tag = string
+        value = string
+      }))
+      cert = optional(object({
+        type = optional(number, 0)
+        key_tag = optional(number, 0)
+        algorithm = optional(number, 0)
+        certificate = string
+      }))
+      dnskey = optional(object({
+        flags = optional(number, 0)
+        protocol = optional(number, 0)
+        algorithm = optional(number, 0)
+        public_key = string
+      }))
+      ds = optional(object({
+        key_tag = optional(number, 0)
+        algorithm = optional(number, 0)
+        digest_type = optional(number, 0)
+        digest = string
+      }))
+      https = optional(object({
+        priority = optional(number, 0)
+        target = string
+        value = optional(string, "")
+      }))
+      loc = optional(object({
+        lat_direction = optional(string, "")
+        lat_degrees = optional(number, 0)
+        lat_minutes = optional(number, 0)
+        lat_seconds = optional(number, 0)
+        long_direction = optional(string, "")
+        long_degrees = optional(number, 0)
+        long_minutes = optional(number, 0)
+        long_seconds = optional(number, 0)
+        altitude = optional(number, 0)
+        size = optional(number, 0)
+        precision_horz = optional(number, 0)
+        precision_vert = optional(number, 0)
+      }))
+      naptr = optional(object({
+        order = optional(number, 0)
+        preference = optional(number, 0)
+        flags = optional(string, "")
+        service = optional(string, "")
+        regex = optional(string, "")
+        replacement = optional(string, "")
+      }))
+      smimea = optional(object({
+        usage = optional(number, 0)
+        selector = optional(number, 0)
+        matching_type = optional(number, 0)
+        certificate = string
+      }))
+      srv = optional(object({
+        priority = optional(number, 0)
+        weight = optional(number, 0)
+        port = optional(number, 0)
+        target = string
+      }))
+      sshfp = optional(object({
+        algorithm = optional(number, 0)
+        type = optional(number, 0)
+        fingerprint = string
+      }))
+      svcb = optional(object({
+        priority = optional(number, 0)
+        target = string
+        value = optional(string, "")
+      }))
+      tlsa = optional(object({
+        usage = optional(number, 0)
+        selector = optional(number, 0)
+        matching_type = optional(number, 0)
+        certificate = string
+      }))
+      uri = optional(object({
+        priority = optional(number, 0)
+        weight = optional(number, 0)
+        target = string
+      }))
+      tags = optional(list(string), [])
+      settings = optional(object({
+        ipv4_only = optional(bool, false)
+        ipv6_only = optional(bool, false)
+        flatten_cname = optional(bool, false)
+      }))
+      private_routing = optional(bool, false)
     })), [])
-
-    # (Optional) Zone-wide DNS settings. Unset fields keep Cloudflare's defaults.
+    type = optional(string, "")
+    vanity_name_servers = optional(list(string), [])
     dns_settings = optional(object({
-      flatten_all_cnames  = optional(bool)
-      foundation_dns      = optional(bool)
-      multi_provider      = optional(bool)
-      secondary_overrides = optional(bool)
-      ns_ttl              = optional(number)
-      zone_mode           = optional(string)
+      flatten_all_cnames = optional(bool, false)
+      foundation_dns = optional(bool, false)
+      multi_provider = optional(bool, false)
+      secondary_overrides = optional(bool, false)
+      ns_ttl = optional(number, 0)
+      zone_mode = optional(string, "")
       soa = optional(object({
-        expire  = optional(number)
-        min_ttl = optional(number)
-        mname   = optional(string)
-        refresh = optional(number)
-        retry   = optional(number)
-        rname   = optional(string)
-        ttl     = optional(number)
+        expire = optional(number, 0)
+        min_ttl = optional(number, 0)
+        mname = optional(string, "")
+        refresh = optional(number, 0)
+        retry = optional(number, 0)
+        rname = optional(string, "")
+        ttl = optional(number, 0)
       }))
       nameservers = optional(object({
-        ns_set = optional(number)
-        type   = optional(string)
+        ns_set = optional(number, 0)
+        type = optional(string, "")
       }))
       internal_dns = optional(object({
-        # StringValueOrRef is flattened to a plain string by the tfvars converter.
-        reference_zone_id = optional(string)
+        reference_zone_id = optional(string, "")
       }))
     }))
-
-    # (Optional) DNSSEC configuration. When enabled, Cloudflare signs the zone and
-    # the DS material is published as stack outputs.
     dnssec = optional(object({
-      enabled      = optional(bool, false)
-      multi_signer = optional(bool)
-      presigned    = optional(bool)
-      use_nsec3    = optional(bool)
+      enabled = optional(bool, false)
+      multi_signer = optional(bool, false)
+      presigned = optional(bool, false)
+      use_nsec3 = optional(bool, false)
+    }))
+    hold = optional(object({
+      enabled = optional(bool, false)
+      include_subdomains = optional(bool, false)
+      hold_after = optional(string, "")
+    }))
+    subscription = optional(object({
+      rate_plan = optional(string, "")
+      frequency = optional(string, "")
+      scope = optional(string, "")
     }))
   })
 }

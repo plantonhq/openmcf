@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ProviderE2EProfile
+metadata:
+  name: cloudflare
+spec:
+  # Cloudflare is a SaaS control plane: everything is an API object behind
+  # api.cloudflare.com, authenticated by a scoped API token (the same
+  # CLOUDFLARE_API_TOKEN both IaC engines read from the environment). There is
+  # no cloud CLI in the loop -- the harness and verifiers speak the REST API
+  # directly.
+  credential_approach: api_token
+  test_substrate: real_cloud
+  # Most of the catalog provisions on the free plan (DNS, rulesets, Workers
+  # free tier, KV, R2/D1/Queues free tiers, tunnels, Access free seats).
+  # Kinds that need a paid add-on override cost_class in their own profile.
+  default_cost_class: free_cloud
+  default_schedule_lane: weekly
+  required_tools:
+    - pulumi
+    - tofu
+  github_environment: e2e-cloudflare
+  # Cloudflare rate-limits the API at 1,200 requests per 5 minutes per token;
+  # lanes are fast (seconds per object) so modest parallelism keeps verifier
+  # and engine traffic comfortably under the ceiling.
+  max_concurrent_tests: 4
+  # Every lane re-plans after apply and fails on any pending change. The v5
+  # provider is auto-generated (Stainless) and rich in Optional+Computed
+  # arguments -- exactly the echo class this gate catches -- so the contract
+  # is held mechanically from each kind's very first proof.
+  assert_apply_idempotency: true

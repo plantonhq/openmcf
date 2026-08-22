@@ -1,0 +1,30 @@
+# Minimal CloudflareWorker scenario: inline ES-module content on workers.dev.
+# No bindings, no routes, no prerequisites. The worker name is run-scoped so
+# two lanes in the same account cannot collide. Account comes from the
+# harness via ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorker
+metadata:
+  name: planton-oss-e2e-cloudflareworker-minimal
+  id: planton-oss-e2e-cloudflareworker-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareworker
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  workerName: e2e-cfw-min-${E2E_RUN_ID}
+  content: |
+    export default {
+      async fetch() {
+        return new Response("ok");
+      }
+    };
+  compatibilityDate: "2025-01-15"
+  workersDev:
+    enabled: true

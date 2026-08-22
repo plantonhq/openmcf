@@ -1,0 +1,31 @@
+# Minimal CloudflareWorkersKvPair scenario: one entry in the run-scoped
+# namespace fixture, resolved through the namespace_id reference. The key is
+# namespace-scoped, so it needs no run-scoping of its own -- and it stays
+# slash-free because the terraform import ID is slash-delimited
+# ({account_id}/{namespace_id}/{key_name}). The metadata JSON document proves
+# the optional metadata path in the same lifecycle. The account comes from
+# the harness env.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorkersKvPair
+metadata:
+  name: planton-oss-e2e-cloudflareworkerskvpair-minimal
+  id: planton-oss-e2e-cloudflareworkerskvpair-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareworkerskvpair
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  namespaceId:
+    valueFrom:
+      kind: CloudflareKvNamespace
+      name: planton-oss-e2e-cloudflarekvnamespace-prereq
+      fieldPath: status.outputs.namespace_id
+  keyName: e2e-config-entry
+  value: e2e-config-value
+  metadata: '{"source":"planton-e2e","purpose":"lifecycle-proof"}'

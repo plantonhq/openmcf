@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustaccessinfrastructuretarget.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustAccessInfrastructureTarget is a KRM-style resource for
+// registering servers that Access infrastructure applications broker SSH
+// access to.
+message CloudflareZeroTrustAccessInfrastructureTarget {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustAccessInfrastructureTarget'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustAccessInfrastructureTargetSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustAccessInfrastructureTargetStatus status = 5;
+}
+
+// CloudflareZeroTrustAccessInfrastructureTargetStatus represents the observed
+// state of the target.
+message CloudflareZeroTrustAccessInfrastructureTargetStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustAccessInfrastructureTargetStackOutputs outputs = 1;
+}

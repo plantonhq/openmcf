@@ -1,0 +1,27 @@
+# Ip-entry CloudflareListItem scenario: one TEST-NET-1 CIDR in the ip-kind
+# list fixture (the cheapest arm of the ip/asn/hostname/redirect oneof).
+# The list_id resolves from the CloudflareList prerequisite. 192.0.2.x is
+# reserved for documentation and never routed.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareListItem
+metadata:
+  name: planton-oss-e2e-cloudflarelistitem-ip-entry
+  id: planton-oss-e2e-cloudflarelistitem-ip-entry
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarelistitem
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  listId:
+    valueFrom:
+      kind: CloudflareList
+      name: planton-oss-e2e-cloudflarelist-prereq
+      fieldPath: status.outputs.list_id
+  ip: "192.0.2.0/24"
+  comment: planton-e2e test-net cidr

@@ -1,0 +1,33 @@
+# Kv-binding CloudflarePagesProject scenario: a direct-upload project with
+# one production KV namespace binding. The namespace is a SCENARIO-declared
+# prerequisite (planton.dev/e2e-prerequisites) -- a project does not require
+# a namespace, so the edge is per-scenario. The reference resolves against
+# the KV namespace kind's existing install fixture (read, not rewritten).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflarePagesProject
+metadata:
+  name: planton-oss-e2e-cloudflarepagesproject-kv-binding
+  id: planton-oss-e2e-cloudflarepagesproject-kv-binding
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarepagesproject
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareKvNamespace
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: plante2e-${E2E_RUN_ID}-pg-kv
+  productionBranch: main
+  deploymentConfigs:
+    production:
+      kvNamespaces:
+        - name: CONFIG
+          namespaceId:
+            valueFrom:
+              kind: CloudflareKvNamespace
+              name: planton-oss-e2e-cloudflarekvnamespace-prereq
+              fieldPath: status.outputs.namespace_id

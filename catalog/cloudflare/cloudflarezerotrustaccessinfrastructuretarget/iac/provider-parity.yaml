@@ -1,0 +1,18 @@
+# Provider-parity manifest for CloudflareZeroTrustAccessInfrastructureTarget.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_access_infrastructure_target at the pinned provider
+# version. Unlisted arguments (account_id, hostname) match spec fields by
+# exact name.
+resources:
+  cloudflare_zero_trust_access_infrastructure_target:
+    mappings:
+      # ip is a nested attribute; fan-in of every spec leaf across both
+      # address families.
+      - spec: spec.ip.ipv4.ip_addr
+        arg: ip
+      - spec: spec.ip.ipv4.virtual_network_id
+        arg: ip
+      - spec: spec.ip.ipv6.ip_addr
+        arg: ip
+      - spec: spec.ip.ipv6.virtual_network_id
+        arg: ip

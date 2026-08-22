@@ -1,0 +1,226 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider's include/exclude/require rule lists are nested list
+# attributes (one configurable argument each); the spec models the same
+# 22-rule-type block as typed messages under the provider's own names.
+# Fan-in mappings record every spec leaf each argument realizes.
+
+resources:
+  cloudflare_zero_trust_access_group:
+    mappings:
+      - spec: spec.exclude.auth_context.ac_id
+        arg: exclude
+      - spec: spec.exclude.auth_context.id
+        arg: exclude
+      - spec: spec.exclude.auth_context.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.auth_method.auth_method
+        arg: exclude
+      - spec: spec.exclude.azure_ad.id
+        arg: exclude
+      - spec: spec.exclude.azure_ad.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.cloudflare_account_member.account_id
+        arg: exclude
+      - spec: spec.exclude.common_name.common_name
+        arg: exclude
+      - spec: spec.exclude.device_posture.integration_uid
+        arg: exclude
+      - spec: spec.exclude.email_domain.domain
+        arg: exclude
+      - spec: spec.exclude.email_list.id
+        arg: exclude
+      - spec: spec.exclude.email.email
+        arg: exclude
+      - spec: spec.exclude.external_evaluation.evaluate_url
+        arg: exclude
+      - spec: spec.exclude.external_evaluation.keys_url
+        arg: exclude
+      - spec: spec.exclude.geo.country_code
+        arg: exclude
+      - spec: spec.exclude.github_organization.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.github_organization.name
+        arg: exclude
+      - spec: spec.exclude.github_organization.team
+        arg: exclude
+      - spec: spec.exclude.group.id
+        arg: exclude
+      - spec: spec.exclude.gsuite.email
+        arg: exclude
+      - spec: spec.exclude.gsuite.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.ip_list.id
+        arg: exclude
+      - spec: spec.exclude.ip.ip
+        arg: exclude
+      - spec: spec.exclude.linked_app_token.app_uid
+        arg: exclude
+      - spec: spec.exclude.login_method.id
+        arg: exclude
+      - spec: spec.exclude.oidc.claim_name
+        arg: exclude
+      - spec: spec.exclude.oidc.claim_value
+        arg: exclude
+      - spec: spec.exclude.oidc.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.okta.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.okta.name
+        arg: exclude
+      - spec: spec.exclude.saml.attribute_name
+        arg: exclude
+      - spec: spec.exclude.saml.attribute_value
+        arg: exclude
+      - spec: spec.exclude.saml.identity_provider_id
+        arg: exclude
+      - spec: spec.exclude.service_token.token_id
+        arg: exclude
+      - spec: spec.exclude.user_risk_score.user_risk_score
+        arg: exclude
+      - spec: spec.include.auth_context.ac_id
+        arg: include
+      - spec: spec.include.auth_context.id
+        arg: include
+      - spec: spec.include.auth_context.identity_provider_id
+        arg: include
+      - spec: spec.include.auth_method.auth_method
+        arg: include
+      - spec: spec.include.azure_ad.id
+        arg: include
+      - spec: spec.include.azure_ad.identity_provider_id
+        arg: include
+      - spec: spec.include.cloudflare_account_member.account_id
+        arg: include
+      - spec: spec.include.common_name.common_name
+        arg: include
+      - spec: spec.include.device_posture.integration_uid
+        arg: include
+      - spec: spec.include.email_domain.domain
+        arg: include
+      - spec: spec.include.email_list.id
+        arg: include
+      - spec: spec.include.email.email
+        arg: include
+      - spec: spec.include.external_evaluation.evaluate_url
+        arg: include
+      - spec: spec.include.external_evaluation.keys_url
+        arg: include
+      - spec: spec.include.geo.country_code
+        arg: include
+      - spec: spec.include.github_organization.identity_provider_id
+        arg: include
+      - spec: spec.include.github_organization.name
+        arg: include
+      - spec: spec.include.github_organization.team
+        arg: include
+      - spec: spec.include.group.id
+        arg: include
+      - spec: spec.include.gsuite.email
+        arg: include
+      - spec: spec.include.gsuite.identity_provider_id
+        arg: include
+      - spec: spec.include.ip_list.id
+        arg: include
+      - spec: spec.include.ip.ip
+        arg: include
+      - spec: spec.include.linked_app_token.app_uid
+        arg: include
+      - spec: spec.include.login_method.id
+        arg: include
+      - spec: spec.include.oidc.claim_name
+        arg: include
+      - spec: spec.include.oidc.claim_value
+        arg: include
+      - spec: spec.include.oidc.identity_provider_id
+        arg: include
+      - spec: spec.include.okta.identity_provider_id
+        arg: include
+      - spec: spec.include.okta.name
+        arg: include
+      - spec: spec.include.saml.attribute_name
+        arg: include
+      - spec: spec.include.saml.attribute_value
+        arg: include
+      - spec: spec.include.saml.identity_provider_id
+        arg: include
+      - spec: spec.include.service_token.token_id
+        arg: include
+      - spec: spec.include.user_risk_score.user_risk_score
+        arg: include
+      - spec: spec.require.auth_context.ac_id
+        arg: require
+      - spec: spec.require.auth_context.id
+        arg: require
+      - spec: spec.require.auth_context.identity_provider_id
+        arg: require
+      - spec: spec.require.auth_method.auth_method
+        arg: require
+      - spec: spec.require.azure_ad.id
+        arg: require
+      - spec: spec.require.azure_ad.identity_provider_id
+        arg: require
+      - spec: spec.require.cloudflare_account_member.account_id
+        arg: require
+      - spec: spec.require.common_name.common_name
+        arg: require
+      - spec: spec.require.device_posture.integration_uid
+        arg: require
+      - spec: spec.require.email_domain.domain
+        arg: require
+      - spec: spec.require.email_list.id
+        arg: require
+      - spec: spec.require.email.email
+        arg: require
+      - spec: spec.require.external_evaluation.evaluate_url
+        arg: require
+      - spec: spec.require.external_evaluation.keys_url
+        arg: require
+      - spec: spec.require.geo.country_code
+        arg: require
+      - spec: spec.require.github_organization.identity_provider_id
+        arg: require
+      - spec: spec.require.github_organization.name
+        arg: require
+      - spec: spec.require.github_organization.team
+        arg: require
+      - spec: spec.require.group.id
+        arg: require
+      - spec: spec.require.gsuite.email
+        arg: require
+      - spec: spec.require.gsuite.identity_provider_id
+        arg: require
+      - spec: spec.require.ip_list.id
+        arg: require
+      - spec: spec.require.ip.ip
+        arg: require
+      - spec: spec.require.linked_app_token.app_uid
+        arg: require
+      - spec: spec.require.login_method.id
+        arg: require
+      - spec: spec.require.oidc.claim_name
+        arg: require
+      - spec: spec.require.oidc.claim_value
+        arg: require
+      - spec: spec.require.oidc.identity_provider_id
+        arg: require
+      - spec: spec.require.okta.identity_provider_id
+        arg: require
+      - spec: spec.require.okta.name
+        arg: require
+      - spec: spec.require.saml.attribute_name
+        arg: require
+      - spec: spec.require.saml.attribute_value
+        arg: require
+      - spec: spec.require.saml.identity_provider_id
+        arg: require
+      - spec: spec.require.service_token.token_id
+        arg: require
+      - spec: spec.require.user_risk_score.user_risk_score
+        arg: require

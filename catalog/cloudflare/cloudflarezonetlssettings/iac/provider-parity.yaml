@@ -1,0 +1,67 @@
+# Provider-parity manifest: recorded modeling judgment for
+# CloudflareZoneTlsSettings against the cloudflare@5.23.0 distilled schema.
+# Only divergences are recorded; everything else must exact-name-match.
+#
+# The kind wraps six zone-scoped TLS resources. cloudflare_hostname_tls_setting
+# is a FAN-OUT: one provider instance per (setting id, hostname), driven by the
+# spec's typed hostname_settings rows -- each row's set attribute supplies the
+# dynamic `value` for its own setting id.
+resources:
+  cloudflare_universal_ssl_setting:
+    mappings:
+      # Rename: the spec says what the toggle IS (Universal SSL issuance for
+      # the zone) where the provider carries a bare `enabled`.
+      - spec: spec.universal_ssl_enabled
+        arg: enabled
+  cloudflare_total_tls:
+    mappings:
+      # Fan-in: the provider's bare args live under the spec's total_tls
+      # message (the two are one API object).
+      - spec: spec.total_tls.enabled
+        arg: enabled
+      - spec: spec.total_tls.certificate_authority
+        arg: certificate_authority
+      # (validity_period is computed-only at v5.23.0 -- Cloudflare fixes Total
+      # TLS certificates at 90 days -- so the distilled schema carries no such
+      # configurable argument and no exclusion is needed; the judgment is
+      # recorded in GUIDE.md.)
+  cloudflare_zone_auto_origin_tls_kex:
+    mappings:
+      # Rename: the spec says what the toggle IS (automatic origin TLS key
+      # exchange) where the provider carries a bare `enabled`.
+      - spec: spec.auto_origin_tls_kex
+        arg: enabled
+  cloudflare_origin_tls_compliance_modes:
+    mappings:
+      # Rename: the provider's generic `value` list IS the compliance-modes
+      # list; the open vocabulary (fips, pqh, future values) is deliberately
+      # not CEL-walled per the provider's own guidance.
+      - spec: spec.origin_tls_compliance_modes
+        arg: value
+  cloudflare_hostname_tls_setting:
+    mappings:
+      # The row's hostname is each override object's API identity.
+      - spec: spec.hostname_settings.hostname
+        arg: hostname
+      # Each set attribute of a row supplies the dynamic value for its own
+      # setting id (min_tls_version, http2, ciphers).
+      - spec: spec.hostname_settings.min_tls_version
+        arg: value
+      - spec: spec.hostname_settings.http2
+        arg: value
+      - spec: spec.hostname_settings.ciphers
+        arg: value
+    exclusions:
+      # The setting id is carried by which row attribute is set: the module
+      # emits one override per set attribute with the matching setting id.
+      # User input never supplies it.
+      - arg: setting_id
+        reason: "realized by the typed row itself -- the module derives the setting id (min_tls_version, http2, ciphers) from which row attribute is set; a user-supplied setting id would be the untyped escape hatch the design rejects"
+  cloudflare_certificate_authorities_hostname_associations:
+    mappings:
+      # Fan-in: the provider's bare args live under the spec's association
+      # rows (one row per managed-CA or per-mTLS-certificate list).
+      - spec: spec.ca_hostname_associations.hostnames
+        arg: hostnames
+      - spec: spec.ca_hostname_associations.mtls_certificate_id
+        arg: mtls_certificate_id

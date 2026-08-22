@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustgatewaysettings
+spec:
+  # Gateway settings under live E2E: an ACCOUNT-SCOPED SINGLETON fold
+  # (settings + logging, both no-op destroy) plus the real-lifecycle PAC
+  # files. The lane MUTATES THE ACCOUNT'S REAL GATEWAY CONFIGURATION.
+  # Watch items for the proving session: (1) capture the prior settings and
+  # logging values (GET accounts/{a}/gateway/configuration and /logging)
+  # BEFORE the lane and restore them in VERIFY-CLN -- destroy reverts
+  # nothing; (2) the live scenario touches only drift-safe surfaces -- the
+  # provider's own tests record PERMANENT refresh drift on
+  # block_page.{mode,include_context,suppress_footer,target_uri}, and its
+  # sweeper documents that enabling tls_decrypt/fips/deep body_scanning
+  # without an activated certificate leaves the account erroring (code
+  # 2211): those surfaces stay offline-plan-only (e2e/hazard-plan.yaml);
+  # (3) the settings acceptance tests upstream blank CLOUDFLARE_API_TOKEN
+  # (the Access auth-defect class) -- a 403 under our token credential is
+  # the expected ambush; (4) PAC files delete for real and ride the same
+  # lane.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

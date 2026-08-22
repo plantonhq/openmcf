@@ -1,0 +1,33 @@
+# Lets-encrypt-txt CloudflareCertificatePack scenario: an advanced pack
+# covering the run-scoped pending-zone apex (the provider requires the apex
+# in hosts). The zone_id resolves from the CloudflareDnsZone prerequisite.
+# DCV sits pending -- the fixture zone is undelegated -- that is the
+# lifecycle we can prove. Hosts compose the SAME run token the zone fixture
+# uses, so they resolve to the same domain by construction.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCertificatePack
+metadata:
+  name: planton-oss-e2e-cloudflarecertificatepack-lets-encrypt-txt
+  id: planton-oss-e2e-cloudflarecertificatepack-lets-encrypt-txt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarecertificatepack
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  certificateAuthority: lets_encrypt
+  type: advanced
+  validationMethod: txt
+  validityDays: 90
+  hosts:
+    - planton-e2e-${E2E_RUN_ID}.com
+    - "*.planton-e2e-${E2E_RUN_ID}.com"

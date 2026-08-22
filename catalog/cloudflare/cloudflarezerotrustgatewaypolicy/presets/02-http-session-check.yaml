@@ -1,0 +1,19 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: allow-intranet
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
+  name: allow-intranet-with-reauth
+  action: allow
+  filter: http
+  enabled: true
+  precedence: 2000
+  traffic: http.request.host == "intranet.example.com" # replace with your host
+  rule_settings:
+    check_session:
+      enforce: true
+      duration: 24h
+    block_page:
+      target_uri: https://block.example.com # replace with your block-page URL
+      include_context: true

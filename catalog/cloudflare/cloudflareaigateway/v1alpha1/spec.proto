@@ -1,0 +1,542 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaigateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareAiGatewaySpec manages one AI Gateway: the control plane
+// Cloudflare puts in front of AI model traffic. Requests to model providers
+// route through the gateway's endpoint, which then applies caching,
+// rate limiting, retries, logging, guardrails, data-loss prevention, spend
+// limits, and dynamic request routing -- all configured here.
+//
+// The gateway's id is its URL slug and is create-only: renaming replaces
+// the gateway (and its endpoint URL). Dynamic routes are managed as part of
+// this resource; note their elements list is create-only at the provider,
+// so editing a route's graph recreates that route object (never the
+// gateway itself).
+message CloudflareAiGatewaySpec {
+  // The Cloudflare account the gateway lives in.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The gateway's id -- the user-chosen slug that appears in the gateway's
+  // endpoint URL (https://gateway.ai.cloudflare.com/v1/<account>/<id>/...).
+  // Create-only: renaming replaces the gateway and changes the URL every
+  // client calls.
+  string gateway_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Whether a configuration update invalidates previously cached responses.
+  // Required by Cloudflare -- state the choice explicitly.
+  optional bool cache_invalidate_on_update = 3 [(buf.validate.field).required = true];
+
+  // How long cached model responses are served, in seconds. 0 disables
+  // caching. Required by Cloudflare.
+  optional int64 cache_ttl = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 0
+  ];
+
+  // Whether request/response logs are collected for this gateway. Required
+  // by Cloudflare. Logs are what the dashboard analytics, log management
+  // cap, and logpush all feed from.
+  optional bool collect_logs = 5 [(buf.validate.field).required = true];
+
+  // The rate-limiting window, in seconds. 0 disables rate limiting.
+  // Required by Cloudflare.
+  optional int64 rate_limiting_interval = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 0
+  ];
+
+  // The number of requests allowed per rate-limiting window. 0 disables
+  // rate limiting. Required by Cloudflare.
+  optional int64 rate_limiting_limit = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 0
+  ];
+
+  // How the rate-limiting window advances: "fixed" resets the counter at
+  // interval boundaries; "sliding" evaluates a rolling window. Omit for
+  // Cloudflare's default.
+  string rate_limiting_technique = 8 [(buf.validate.field).cel = {
+    id: "rate_limiting_technique.enum"
+    message: "rate_limiting_technique must be fixed or sliding"
+    expression: "this == '' || this in ['fixed', 'sliding']"
+  }];
+
+  // Automatic retries toward the model provider on failures. Omit to leave
+  // retries at Cloudflare's defaults. The provider models these as three
+  // flat arguments (retry_backoff / retry_delay / retry_max_attempts); this
+  // spec groups them for authoring clarity and the modules fan them out.
+  CloudflareAiGatewayRetry retry = 9;
+
+  // Log-storage management for this gateway: a cap on stored log records
+  // and what happens when the cap is reached. The provider models these as
+  // two flat arguments (log_management / log_management_strategy); this spec
+  // groups them and the modules fan them out.
+  CloudflareAiGatewayLogManagement log_management = 10;
+
+  // Require callers to present a gateway authentication token (the
+  // cf-aig-authorization header) on every request. Without it the gateway
+  // endpoint is callable by anyone who knows the URL slug.
+  optional bool authentication = 11;
+
+  // Push this gateway's logs to the account's Logpush destination.
+  optional bool logpush = 12;
+
+  // The public key used to encrypt logpushed log bodies, when logpush
+  // encryption is desired.
+  string logpush_public_key = 13;
+
+  // Zero Data Retention: prevent Cloudflare from storing request and
+  // response bodies for this gateway. Mutually constraining with logging
+  // features at the API (bodies cannot be both unretained and logged) --
+  // Cloudflare enforces the combination server-side.
+  optional bool zdr = 14;
+
+  // How Workers AI inference calls routed through this gateway are billed.
+  // Cloudflare currently supports only "postpaid" (also the default) -- the
+  // field exists so future billing modes are representable.
+  string workers_ai_billing_mode = 15 [(buf.validate.field).cel = {
+    id: "workers_ai_billing_mode.enum"
+    message: "workers_ai_billing_mode must be postpaid (the only mode Cloudflare currently supports)"
+    expression: "this == '' || this == 'postpaid'"
+  }];
+
+  // The Secrets Store holding provider API keys the gateway uses (Bring
+  // Your Own Keys): a literal store ID, or a reference to a
+  // CloudflareSecretsStore resource's store_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef store_id = 16 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareSecretsStore,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.store_id"
+  ];
+
+  // Data-loss prevention over prompts and responses, driven by the
+  // account's DLP profiles.
+  CloudflareAiGatewayDlp dlp = 17;
+
+  // Content guardrails: per-hazard-category FLAG/BLOCK controls evaluated
+  // on prompts and on model responses.
+  CloudflareAiGatewayGuardrails guardrails = 18;
+
+  // OpenTelemetry export destinations for gateway telemetry.
+  repeated CloudflareAiGatewayOtel otel = 19;
+
+  // Stripe usage-based billing integration: report gateway usage events to
+  // Stripe.
+  CloudflareAiGatewayStripe stripe = 20;
+
+  // Spend limits: cost budgets over configurable windows, optionally
+  // filtered by model, provider, or request metadata.
+  CloudflareAiGatewaySpendLimits spend_limits = 21;
+
+  // Dynamic request routes: named routing graphs (condition, percentage,
+  // rate, and model nodes) that requests can address by route name. Each
+  // route is its own provider object keyed by name; a route's elements list
+  // is CREATE-ONLY at the provider, so editing a graph recreates that route
+  // (in-flight requests re-resolve on the next call).
+  repeated CloudflareAiGatewayDynamicRoute dynamic_routes = 22;
+}
+
+// CloudflareAiGatewayRetry controls automatic retries toward the model
+// provider.
+message CloudflareAiGatewayRetry {
+  // The backoff shape between attempts: constant, linear, or exponential.
+  string backoff = 1 [(buf.validate.field).cel = {
+    id: "retry.backoff_enum"
+    message: "backoff must be constant, linear, or exponential"
+    expression: "this == '' || this in ['constant', 'linear', 'exponential']"
+  }];
+
+  // The base delay between attempts, in milliseconds (up to 5000).
+  optional int64 delay = 2 [
+    (buf.validate.field).int64.gte = 0,
+    (buf.validate.field).int64.lte = 5000
+  ];
+
+  // The maximum number of attempts (1-5).
+  optional int64 max_attempts = 3 [
+    (buf.validate.field).int64.gte = 1,
+    (buf.validate.field).int64.lte = 5
+  ];
+}
+
+// CloudflareAiGatewayLogManagement caps stored logs for the gateway.
+message CloudflareAiGatewayLogManagement {
+  // The maximum number of log records retained (10,000 to 10,000,000).
+  optional int64 max_records = 1 [
+    (buf.validate.field).int64.gte = 10000,
+    (buf.validate.field).int64.lte = 10000000
+  ];
+
+  // What happens when the cap is reached: STOP_INSERTING drops new logs,
+  // DELETE_OLDEST evicts the oldest to make room.
+  string strategy = 2 [(buf.validate.field).cel = {
+    id: "log_management.strategy_enum"
+    message: "strategy must be STOP_INSERTING or DELETE_OLDEST"
+    expression: "this == '' || this in ['STOP_INSERTING', 'DELETE_OLDEST']"
+  }];
+}
+
+// CloudflareAiGatewayDlp screens prompts and responses against the
+// account's data-loss-prevention profiles.
+message CloudflareAiGatewayDlp {
+  // Whether DLP screening is active for this gateway. Required inside dlp.
+  optional bool enabled = 1 [(buf.validate.field).required = true];
+
+  // The default action when a DLP profile matches: FLAG logs the match,
+  // BLOCK refuses the request.
+  string action = 2 [(buf.validate.field).cel = {
+    id: "dlp.action_enum"
+    message: "action must be FLAG or BLOCK"
+    expression: "this == '' || this in ['FLAG', 'BLOCK']"
+  }];
+
+  // The DLP profile IDs applied gateway-wide.
+  repeated string profiles = 3;
+
+  // Fine-grained DLP policies: per-policy profiles, direction, and action.
+  repeated CloudflareAiGatewayDlpPolicy policies = 4;
+}
+
+// CloudflareAiGatewayDlpPolicy is one DLP policy row on the gateway.
+message CloudflareAiGatewayDlpPolicy {
+  // The policy's ID (user-chosen identifier for this row).
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Whether this policy row is active.
+  optional bool enabled = 2 [(buf.validate.field).required = true];
+
+  // The action when the policy matches: FLAG logs, BLOCK refuses.
+  string action = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["FLAG", "BLOCK"]}
+  ];
+
+  // Which traffic direction the policy screens: the REQUEST (prompt), the
+  // RESPONSE (model output), or both.
+  repeated string check = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {string: {in: ["REQUEST", "RESPONSE"]}}
+  ];
+
+  // The DLP profile IDs this policy evaluates.
+  repeated string profiles = 5 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareAiGatewayGuardrails evaluates prompts and responses against
+// Cloudflare's hazard taxonomy. Each control names a hazard-category code
+// from the Guardrails taxonomy (p1 and s1-s13 -- see Cloudflare's AI
+// Gateway Guardrails documentation for the category each code covers) and
+// sets FLAG (log the match) or BLOCK (refuse the request/response). An
+// absent code leaves that category unevaluated. On the wire the codes are
+// uppercase (P1, S1, ...); the modules handle the casing.
+message CloudflareAiGatewayGuardrails {
+  // Controls applied to incoming prompts. Required when guardrails is set
+  // (send an empty object to evaluate nothing on prompts).
+  CloudflareAiGatewayGuardrailsControls prompt = 1 [(buf.validate.field).required = true];
+
+  // Controls applied to model responses. Required when guardrails is set
+  // (send an empty object to evaluate nothing on responses).
+  CloudflareAiGatewayGuardrailsControls response = 2 [(buf.validate.field).required = true];
+}
+
+// CloudflareAiGatewayGuardrailsControls holds one FLAG/BLOCK choice per
+// hazard-category code. Every field takes exactly FLAG or BLOCK; leave a
+// field unset to skip that category.
+message CloudflareAiGatewayGuardrailsControls {
+  option (buf.validate.message).cel = {
+    id: "guardrails.controls_enum"
+    message: "every guardrail control must be FLAG or BLOCK"
+    expression: "[this.p1, this.s1, this.s2, this.s3, this.s4, this.s5, this.s6, this.s7, this.s8, this.s9, this.s10, this.s11, this.s12, this.s13].all(v, v == '' || v in ['FLAG', 'BLOCK'])"
+  };
+
+  // Hazard category P1.
+  string p1 = 1;
+  // Hazard category S1.
+  string s1 = 2;
+  // Hazard category S2.
+  string s2 = 3;
+  // Hazard category S3.
+  string s3 = 4;
+  // Hazard category S4.
+  string s4 = 5;
+  // Hazard category S5.
+  string s5 = 6;
+  // Hazard category S6.
+  string s6 = 7;
+  // Hazard category S7.
+  string s7 = 8;
+  // Hazard category S8.
+  string s8 = 9;
+  // Hazard category S9.
+  string s9 = 10;
+  // Hazard category S10.
+  string s10 = 11;
+  // Hazard category S11.
+  string s11 = 12;
+  // Hazard category S12.
+  string s12 = 13;
+  // Hazard category S13.
+  string s13 = 14;
+}
+
+// CloudflareAiGatewayOtel is one OpenTelemetry export destination for the
+// gateway's telemetry.
+message CloudflareAiGatewayOtel {
+  // The OTLP endpoint URL telemetry is exported to.
+  string url = 1 [(buf.validate.field).required = true];
+
+  // Headers sent with every export request (header name -> value).
+  // Required by Cloudflare -- use an empty map when none are needed.
+  map<string, string> headers = 2;
+
+  // The Authorization header value for the export endpoint (e.g. a bearer
+  // token). The provider leaves this unmarked, but it is a credential --
+  // this spec treats it as sensitive: provide a managed-secret reference
+  // and the platform resolves it just-in-time at deploy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorization = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The export payload encoding: json or protobuf. Omit for Cloudflare's
+  // default (json).
+  string content_type = 4 [(buf.validate.field).cel = {
+    id: "otel.content_type_enum"
+    message: "content_type must be json or protobuf"
+    expression: "this == '' || this in ['json', 'protobuf']"
+  }];
+}
+
+// CloudflareAiGatewayStripe reports gateway usage to Stripe for
+// usage-based billing.
+message CloudflareAiGatewayStripe {
+  // The Stripe API credential used to report usage. The provider leaves
+  // this unmarked, but it is a credential -- this spec treats it as
+  // sensitive: provide a managed-secret reference and the platform resolves
+  // it just-in-time at deploy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorization = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The usage events reported to Stripe.
+  repeated CloudflareAiGatewayStripeUsageEvent usage_events = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareAiGatewayStripeUsageEvent is one usage-event template reported
+// to Stripe.
+message CloudflareAiGatewayStripeUsageEvent {
+  // The event payload template.
+  string payload = 1 [(buf.validate.field).required = true];
+}
+
+// CloudflareAiGatewaySpendLimits enforces cost budgets on gateway traffic.
+message CloudflareAiGatewaySpendLimits {
+  option (buf.validate.message).cel = {
+    id: "spend_limits.rule_ids_unique"
+    message: "every spend-limit rule needs its own unique id -- Cloudflare's API defaults omitted ids to one shared placeholder value, which silently collapses multiple rules into one"
+    expression: "this.rules.map(r, r.id).unique()"
+  };
+
+  // Whether spend limits are enforced. Cloudflare defaults this to false.
+  optional bool enabled = 1;
+
+  // The budget rules. Each rule caps spend (in the account's billing
+  // currency) over a window, optionally scoped by model, provider, or
+  // request metadata.
+  repeated CloudflareAiGatewaySpendLimitsRule rules = 2;
+}
+
+// CloudflareAiGatewaySpendLimitsRule is one spend budget.
+message CloudflareAiGatewaySpendLimitsRule {
+  // This rule's identifier. REQUIRED HERE though the provider marks it
+  // optional: the provider's schema ships a leaked example value as the
+  // default, so every rule authored without an id would share one identity
+  // and silently collapse. Choose short stable slugs (e.g. "daily-cap").
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Whether this rule is enforced. Cloudflare defaults it to true.
+  optional bool enabled = 2;
+
+  // The spend cap for the window.
+  optional double limit = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).double.gte = 0
+  ];
+
+  // What the limit measures. Cloudflare currently supports only "cost".
+  string limit_type = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["cost"]}
+  ];
+
+  // The budget window, in seconds.
+  optional int64 window = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 0
+  ];
+
+  // How the window advances: fixed or sliding. Cloudflare defaults to
+  // sliding.
+  string technique = 6 [(buf.validate.field).cel = {
+    id: "spend_rule.technique_enum"
+    message: "technique must be fixed or sliding"
+    expression: "this == '' || this in ['fixed', 'sliding']"
+  }];
+
+  // Scope the budget by request metadata: metadata key -> partition/filter
+  // over its values. "partition" tracks a separate budget per value;
+  // "filter" counts only requests matching the listed values.
+  map<string, CloudflareAiGatewaySpendLimitsMetadataFilter> metadata = 7;
+
+  // Scope the budget to specific models.
+  CloudflareAiGatewaySpendLimitsFilter model = 8;
+
+  // Scope the budget to specific model providers (wire name "provider";
+  // the Terraform provider calls it ai_gateway_provider to dodge the
+  // reserved word).
+  CloudflareAiGatewaySpendLimitsFilter provider = 9;
+}
+
+// CloudflareAiGatewaySpendLimitsMetadataFilter partitions or filters a
+// spend budget by one metadata key's values.
+message CloudflareAiGatewaySpendLimitsMetadataFilter {
+  // partition tracks a separate budget per observed value; filter counts
+  // only requests whose value is in `values`.
+  string mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["partition", "filter"]}
+  ];
+
+  // The values filtered on (used by filter mode).
+  repeated string values = 2;
+}
+
+// CloudflareAiGatewaySpendLimitsFilter scopes a spend budget to listed
+// models or providers.
+message CloudflareAiGatewaySpendLimitsFilter {
+  // The only mode Cloudflare supports here is "filter".
+  string mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["filter"]}
+  ];
+
+  // The model or provider names counted against this budget.
+  repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareAiGatewayDynamicRoute is one named routing graph on the
+// gateway. Requests address it by name; the graph's nodes (elements) decide
+// where each request goes.
+message CloudflareAiGatewayDynamicRoute {
+  // The route's name -- what requests address. Renaming is the only
+  // in-place update the provider supports; any change to the elements
+  // recreates the route object.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The routing graph's nodes. CREATE-ONLY at the provider: any edit
+  // replaces the whole route object.
+  repeated CloudflareAiGatewayRouteElement elements = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareAiGatewayRouteElement is one node in a routing graph. The
+// graph starts at a start node and flows along the outputs edges; which
+// properties and outputs apply depends on the node type (the API validates
+// the combination -- the provider enforces nothing at plan time).
+message CloudflareAiGatewayRouteElement {
+  // This node's identifier within the graph (what outputs edges point at).
+  string id = 1 [(buf.validate.field).required = true];
+
+  // The node type: start (the entry), conditional (branch on conditions),
+  // percentage (split traffic), rate (rate-limit branch), model (send to a
+  // model), end (terminate).
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {in: ["start", "conditional", "percentage", "rate", "model", "end"]}
+  ];
+
+  // Where the flow goes next. Which edges apply depends on the node type
+  // (e.g. conditional uses on_true/on_false, rate uses next/fallback,
+  // model uses success/fallback).
+  CloudflareAiGatewayRouteElementOutputs outputs = 3 [(buf.validate.field).required = true];
+
+  // The node's type-specific settings.
+  CloudflareAiGatewayRouteElementProperties properties = 4;
+}
+
+// CloudflareAiGatewayRouteElementOutputs names the edges leaving a node.
+// Each edge points at another element's id.
+message CloudflareAiGatewayRouteElementOutputs {
+  // The unconditional next node.
+  CloudflareAiGatewayRouteElementBranch next = 1;
+
+  // The branch taken when a conditional node's conditions match (wire
+  // name: true).
+  CloudflareAiGatewayRouteElementBranch on_true = 2;
+
+  // The branch taken when a conditional node's conditions do not match
+  // (wire name: false).
+  CloudflareAiGatewayRouteElementBranch on_false = 3;
+
+  // The branch taken on success (model nodes).
+  CloudflareAiGatewayRouteElementBranch success = 4;
+
+  // The branch taken on failure or when a limit trips (model and rate
+  // nodes).
+  CloudflareAiGatewayRouteElementBranch fallback = 5;
+
+  // A bare next-element id, for node types that take the edge directly
+  // rather than as a named branch.
+  string element_id = 6;
+}
+
+// CloudflareAiGatewayRouteElementBranch points one edge at an element.
+message CloudflareAiGatewayRouteElementBranch {
+  // The id of the element this edge leads to.
+  string element_id = 1 [(buf.validate.field).required = true];
+}
+
+// CloudflareAiGatewayRouteElementProperties carries a node's type-specific
+// settings. The API owns which fields are legal for which node type.
+message CloudflareAiGatewayRouteElementProperties {
+  // Conditional nodes: the condition expression, as a JSON document.
+  // Whitespace and key order are normalized by the API (the provider
+  // diffs it semantically).
+  string conditions = 1;
+
+  // Rate nodes: the key the rate is tracked by.
+  string key = 2;
+
+  // Rate nodes: the limit value.
+  optional double limit = 3;
+
+  // Rate nodes: what the limit counts -- requests (count) or spend (cost).
+  string limit_type = 4 [(buf.validate.field).cel = {
+    id: "route_properties.limit_type_enum"
+    message: "limit_type must be count or cost"
+    expression: "this == '' || this in ['count', 'cost']"
+  }];
+
+  // Rate nodes: the window the limit applies over, in seconds.
+  optional double window = 5;
+
+  // Model nodes: the model requests are sent to.
+  string model = 6;
+
+  // Model nodes: the model provider (wire name "provider").
+  string provider = 7;
+
+  // Model nodes: retry attempts toward this model.
+  optional double retries = 8;
+
+  // Model nodes: the request timeout, in milliseconds.
+  optional double timeout = 9;
+}

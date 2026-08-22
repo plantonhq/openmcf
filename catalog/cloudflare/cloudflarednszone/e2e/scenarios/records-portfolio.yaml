@@ -1,0 +1,67 @@
+# Records-portfolio CloudflareDnsZone scenario: one zone carrying the folded
+# satellites -- inline records through BOTH value paths (simple `content`
+# records and typed structured-data records at the record level: srv/caa),
+# record tags and settings, zone-wide DNS settings (free-plan fields only),
+# and DNSSEC. Proves the zone's full send surface in one lane. The A record
+# stays gray-clouded (proxied=false): a proxied record on a pending zone
+# serves nothing and adds no verification value. Everything here is
+# free-plan-safe; the plan-gated levers (vanity nameservers, foundation_dns,
+# multi_provider) and the deliberately-offline hold/subscription are covered
+# by the kind's e2e/manifest.yaml offline plan.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsZone
+metadata:
+  name: planton-oss-e2e-cloudflarednszone-portfolio
+  id: planton-oss-e2e-cloudflarednszone-portfolio
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneName: planton-e2e-rec-${E2E_RUN_ID}.com
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  records:
+    - name: www
+      type: A
+      content: "192.0.2.10"
+      ttl: 300
+      comment: planton e2e portfolio scenario
+      tags:
+        - planton-e2e
+      settings:
+        ipv4Only: true
+    - name: "@"
+      type: MX
+      content: mail.planton-e2e.example.com
+      ttl: 300
+      priority: 10
+    - name: _e2e._tcp
+      type: SRV
+      srv:
+        priority: 10
+        weight: 5
+        port: 8443
+        target: e2e.planton-e2e.example.com
+    - name: "@"
+      type: CAA
+      caa:
+        tag: issue
+        value: letsencrypt.org
+    - name: "@"
+      type: TXT
+      content: "planton-e2e-verification=portfolio"
+  dnsSettings:
+    flattenAllCnames: true
+    zoneMode: standard
+    nsTtl: 3600
+    soa:
+      minTtl: 1800
+      ttl: 3600
+  dnssec:
+    enabled: true
+    useNsec3: true

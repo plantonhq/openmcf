@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  values:
+    - name: scope_prefix
+      where_to_find: >-
+        The literal "accounts" for an account-scoped job (the spec sets
+        account_id) or "zones" for a zone-scoped job (the spec sets zone_id).
+        Cloudflare's import id carries the scope discriminator.
+    - name: scope_id
+      where_to_find: >-
+        The account id or zone id matching the scope prefix above. Value-or-
+        reference fields cannot derive, so read it from the manifest: for an
+        account job the spec's account_id; for a zone job the referenced
+        zone's zone_id output (or Cloudflare dashboard -> the zone overview,
+        Zone ID in the right-hand panel).
+    - name: job_id
+      derivations:
+        - from_stack_output: job_id
+      where_to_find: >-
+        `GET /{accounts|zones}/<scope_id>/logpush/jobs` on the Cloudflare v4
+        API (the numeric id field; match by name or destination_conf), or the
+        dashboard -> the zone or account -> Analytics & Logs -> Logpush.

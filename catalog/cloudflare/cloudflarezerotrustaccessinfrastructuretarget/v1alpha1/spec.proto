@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustaccessinfrastructuretarget.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZeroTrustAccessInfrastructureTargetSpec registers an
+// infrastructure target: a server (by hostname and private IP) that Access
+// infrastructure applications grant SSH access to. Targets are the inventory
+// layer -- an infrastructure application selects targets by hostname or IP,
+// and Access brokers short-lived SSH access to them through the account's
+// tunnels.
+//
+// A target is a plain CRUD object (real create, update, delete), unlike the
+// Zero Trust settings singletons.
+message CloudflareZeroTrustAccessInfrastructureTargetSpec {
+  // The Cloudflare account the target belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The target's hostname: up to 255 characters, letters, digits, dashes and
+  // periods only, starting and ending alphanumeric, case-insensitive.
+  // Hostnames are how infrastructure applications select groups of targets,
+  // so a consistent naming scheme (e.g. "prod-db-1") is the access-control
+  // surface itself.
+  string hostname = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).cel = {
+      id: "hostname.shape"
+      message: "hostname may contain only letters, digits, dashes and periods, and must start and end with a letter or digit (e.g. prod-db-1)"
+      expression: "this.matches('^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // The target's IP addressing. Declare the IPv4 arm, the IPv6 arm, or both
+  // -- each binds one address inside one virtual network.
+  CloudflareZeroTrustAccessInfrastructureTargetIp ip = 3 [(buf.validate.field).required = true];
+}
+
+// CloudflareZeroTrustAccessInfrastructureTargetIp carries the target's
+// address per IP family. At least one family must be declared.
+message CloudflareZeroTrustAccessInfrastructureTargetIp {
+  // An empty ip block would register a target no application could reach --
+  // Cloudflare's schema tolerates it, but the API does not.
+  option (buf.validate.message).cel = {
+    id: "ip.at_least_one_family"
+    message: "declare at least one of ipv4 or ipv6"
+    expression: "has(this.ipv4) || has(this.ipv6)"
+  };
+
+  // The IPv4 address of the target.
+  CloudflareZeroTrustAccessInfrastructureTargetIpInfo ipv4 = 1;
+
+  // The IPv6 address of the target.
+  CloudflareZeroTrustAccessInfrastructureTargetIpInfo ipv6 = 2;
+}
+
+// CloudflareZeroTrustAccessInfrastructureTargetIpInfo is one IP family's
+// address and the virtual network it lives in.
+message CloudflareZeroTrustAccessInfrastructureTargetIpInfo {
+  // The IP address. Cloudflare's schema leaves this optional, but a declared
+  // family without an address is meaningless -- this spec requires it.
+  string ip_addr = 1 [(buf.validate.field).required = true];
+
+  // The virtual network the address belongs to: a literal virtual-network
+  // UUID, or a reference to a CloudflareZeroTrustTunnelVirtualNetwork.
+  // Omit to use the account's default virtual network.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnelVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+}

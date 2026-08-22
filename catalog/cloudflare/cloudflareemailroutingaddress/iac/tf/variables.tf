@@ -19,5 +19,9 @@ variable "spec" {
 
     # (Required) The destination email address. Immutable.
     email = string
+
+    # (Optional) Explicit verification-state override: "unverified" or
+    # "verified". Empty leaves the state to the emailed-link flow.
+    status = optional(string, "")
   })
 }

@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareR2BucketSpec defines the user configuration for a Cloudflare R2 bucket
 and its bucket-scoped configuration (custom domains, public access, CORS,
 object lifecycle, and object lock). These sub-resources have no independent
@@ -634,6 +636,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | CloudflarePagesProject | `spec.deploymentConfigs.preview.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.production.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
+| CloudflareWorker | `spec.r2Bundle.bucket` | `status.outputs.bucket_name` |
 | CloudflareWorker | `spec.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
 
 ## See Also

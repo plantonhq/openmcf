@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareWebAnalyticsSite is a KRM-style resource for creating Web
+// Analytics (RUM) sites: privacy-first real-user monitoring for a website,
+// with include/exclude measurement rules.
+message CloudflareWebAnalyticsSite {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareWebAnalyticsSite'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareWebAnalyticsSiteSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareWebAnalyticsSiteStatus status = 5;
+}
+
+// CloudflareWebAnalyticsSiteStatus represents the observed state of the
+// site.
+message CloudflareWebAnalyticsSiteStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareWebAnalyticsSiteStackOutputs outputs = 1;
+}

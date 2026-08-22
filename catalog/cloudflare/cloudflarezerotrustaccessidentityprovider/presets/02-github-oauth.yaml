@@ -1,0 +1,12 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: github-login
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
+  name: github
+  type: github
+  config:
+    client_id: your-github-oauth-app-id # replace with your GitHub OAuth App client id
+    client_secret:
+      value: your-github-oauth-app-secret # replace with a managed-secret reference in production

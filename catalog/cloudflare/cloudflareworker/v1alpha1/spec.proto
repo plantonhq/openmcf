@@ -24,6 +24,13 @@ message CloudflareWorkerSpec {
     message: "provide a script source (content or r2_bundle) and/or a static-asset directory (assets)"
     expression: "has(this.content) || has(this.r2_bundle) || has(this.assets)"
   };
+  // body_part marks service-worker syntax; main_module marks ES-module syntax.
+  // Cloudflare rejects a script that claims both.
+  option (buf.validate.message).cel = {
+    id: "spec.body_part_xor_main_module"
+    message: "set body_part (service-worker syntax) or main_module (ES-module syntax), not both"
+    expression: "!(this.body_part != '' && this.main_module != '')"
+  };
 
   // The Cloudflare account ID in which to create the worker.
   string account_id = 1 [
@@ -149,12 +156,140 @@ message CloudflareWorkerSpec {
   // static site. This is Cloudflare's converged successor to Pages for the
   // "build-and-upload" hosting model.
   CloudflareWorkerAssets assets = 30;
+
+  // Durable Object migrations applied on this upload. Cloudflare rejects a
+  // second apply of the same tag, so this is a one-shot plan — not something
+  // the live E2E harness can re-apply. Author it, plan it, prove it later by
+  // hand if needed.
+  CloudflareWorkerMigrations migrations = 31;
+
+  // Keep previously uploaded assets instead of sending a new bundle. An
+  // explicit assets upload wins over this flag.
+  bool keep_assets = 32;
+
+  // Binding types to keep from the previous upload (e.g. "secret_text") so a
+  // redeploy does not have to resend every secret.
+  repeated string keep_bindings = 33;
+
+  // Usage model for invocations: "standard", "bundled", or "unbound". Empty
+  // lets Cloudflare default to "standard".
+  string usage_model = 34 [(buf.validate.field).cel = {
+    id: "usage_model.valid"
+    message: "usage_model must be one of \"standard\", \"bundled\", \"unbound\""
+    expression: "this == '' || this in ['standard', 'bundled', 'unbound']"
+  }];
+
+  // Global CacheW settings. Pulumi's Cloudflare SDK v6.17.0 has no matching
+  // input — tofu honors this; Pulumi logs a PARITY-EXCEPTION and skips it.
+  CloudflareWorkerCacheOptions cache_options = 35;
+
+  // Per-entrypoint export configuration. Map key is the export name. Pulumi
+  // SDK v6.17.0 has no matching input — tofu honors this; Pulumi skips it.
+  map<string, CloudflareWorkerExport> exports = 36;
+
+  // npm packages recorded against this Worker build. Pulumi SDK v6.17.0 has
+  // no matching input — tofu honors this; Pulumi skips it.
+  repeated CloudflareWorkerPackageDependency package_dependencies = 37;
+
+  // Version annotations written on this upload (message + tag). The
+  // server-set workers_triggered_by leaf is computed-only and omitted.
+  CloudflareWorkerAnnotations annotations = 38;
+
+  // Uploaded file that contains the service-worker-syntax script (the file
+  // that adds a fetch listener). Mutually exclusive with main_module.
+  string body_part = 39;
+
+  // Content-Type of the Worker. Required when uploading a non-JavaScript
+  // Worker (e.g. Python). Empty is JavaScript.
+  string content_type = 40 [(buf.validate.field).cel = {
+    id: "content_type.valid"
+    message: "content_type must be one of the five Cloudflare Worker MIME types"
+    expression: "this == '' || this in ['application/javascript+module', 'application/javascript', 'text/javascript+module', 'text/javascript', 'text/x-python']"
+  }];
+
+  // mTLS certificate bindings. certificate_id is a literal — Planton has no
+  // Cloudflare mTLS kind yet.
+  repeated CloudflareWorkerMtlsCertificateBinding mtls_certificates = 41;
+
+  // Dispatch-namespace bindings (Workers for Platforms). The outbound worker
+  // service is a CloudflareWorker FK when set.
+  repeated CloudflareWorkerDispatchNamespaceBinding dispatch_namespaces = 42;
+
+  // Rate-limit bindings (the Workers rate-limiting API).
+  repeated CloudflareWorkerRateLimitBinding rate_limits = 43;
+
+  // send_email bindings: let the Worker send email through Email Routing.
+  repeated CloudflareWorkerSendEmailBinding send_email = 44;
+
+  // Secrets Store bindings. store_id and secret_name are literals — Planton
+  // has no Secrets Store kind yet.
+  repeated CloudflareWorkerSecretsStoreBinding secrets_store_secrets = 45;
+
+  // SubtleCrypto secret-key bindings. Material fields are sensitive; the
+  // wrapper list is exempt like `secrets`.
+  repeated CloudflareWorkerSecretKeyBinding secret_keys = 46 [(dev.planton.shared.options.sensitive_exempt_reason) = "wrapper list; the secret is the inner binding's key_base64/key_jwk fields, which are annotated sensitive"];
+
+  // Workflow bindings. workflow_name is a literal — Planton has no Workflows kind yet.
+  repeated CloudflareWorkerWorkflowBinding workflows = 47;
+
+  // Pipeline bindings. pipeline is a literal — Planton has no Pipelines kind yet.
+  repeated CloudflareWorkerPipelineBinding pipelines = 48;
+
+  // JSON bindings: structured config exposed to the Worker as a parsed object.
+  repeated CloudflareWorkerJsonBinding json_bindings = 49;
+
+  // Inherit bindings: copy a binding from a previous version (optionally renamed).
+  repeated CloudflareWorkerInheritBinding inherit_bindings = 50;
+
+  // data_blob bindings (service-worker syntax). `part` is the uploaded file name.
+  repeated CloudflareWorkerBlobBinding data_blobs = 51;
+
+  // text_blob bindings (service-worker syntax). `part` is the uploaded file name.
+  repeated CloudflareWorkerBlobBinding text_blobs = 52;
+
+  // Browser Rendering bindings. Each entry is just the JS variable name.
+  repeated CloudflareWorkerNamedBinding browsers = 53;
+
+  // AI Search instance bindings. instance_name is a literal — Planton has no
+  // AI Search kind yet. app_id is the Flagship leaf the provider hangs on the
+  // same binding object.
+  repeated CloudflareWorkerAiSearchBinding ai_search = 54;
+
+  // AI Search namespace bindings.
+  repeated CloudflareWorkerAiSearchNamespaceBinding ai_search_namespaces = 55;
+
+  // Images bindings. Each entry is just the JS variable name.
+  repeated CloudflareWorkerNamedBinding images = 56;
+
+  // Media bindings. Each entry is just the JS variable name.
+  repeated CloudflareWorkerNamedBinding media = 57;
+
+  // wasm_module bindings (service-worker syntax). `part` is the uploaded file name.
+  repeated CloudflareWorkerBlobBinding wasm_modules = 58;
+
+  // VPC service bindings. service_id is a literal — Planton has no VPC-service kind yet.
+  repeated CloudflareWorkerVpcServiceBinding vpc_services = 59;
+
+  // VPC network bindings. network_id is a literal ("cf1:network"); tunnel_id
+  // is a CloudflareZeroTrustTunnel FK. The two are mutually exclusive.
+  repeated CloudflareWorkerVpcNetworkBinding vpc_networks = 60;
+
+  // tail_consumer *bindings* (type=tail_consumer on the script). Distinct from
+  // the top-level tail_consumers list, which names Workers that consume this
+  // Worker's logs. This list binds another Worker as a tail consumer resource
+  // the script can call.
+  repeated CloudflareWorkerTailConsumerBinding tail_consumer_bindings = 61;
 }
 
 // CloudflareWorkerScriptBundle references a pre-built script bundle in R2.
 message CloudflareWorkerScriptBundle {
-  // The R2 bucket name where the script bundle is stored.
-  string bucket = 1 [(buf.validate.field).required = true];
+  // The R2 bucket that holds the bundle, or a reference to a CloudflareR2Bucket.
+  // Widened from a plain string so a Worker can compose against a bucket Planton manages.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareR2Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_name"
+  ];
 
   // The object key (path) of the script bundle within the bucket.
   string path = 2 [(buf.validate.field).required = true];
@@ -274,11 +409,22 @@ message CloudflareWorkerDurableObjectBinding {
   string class_name = 2 [(buf.validate.field).required = true];
 
   // Script that defines the class, when it lives in a different Worker. Leave
-  // empty when the class is defined in this Worker.
-  string script_name = 3;
+  // empty when the class is defined in this Worker. Widened to a Worker FK so
+  // a Durable Object defined in another Planton Worker composes as a graph edge.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef script_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
 
   // Optional environment of the defining script.
   string environment = 4;
+
+  // Durable Object namespace identifier. Optional alternative to class_name
+  // when binding an already-created namespace by id.
+  string namespace_id = 5;
+
+  // Dispatch namespace the Durable Object script belongs to (Workers for Platforms).
+  string dispatch_namespace = 6;
 }
 
 // CloudflareWorkerAnalyticsEngineBinding binds an Analytics Engine dataset.
@@ -349,7 +495,7 @@ message CloudflareWorkerRoute {
   string pattern = 2 [(buf.validate.field).required = true];
 }
 
-// CloudflareWorkerObservability configures Workers Logs.
+// CloudflareWorkerObservability configures Workers Logs and traces.
 message CloudflareWorkerObservability {
   // Enable Workers Logs (structured logs visible in the dashboard / queryable).
   bool enabled = 1;
@@ -361,16 +507,58 @@ message CloudflareWorkerObservability {
     message: "head_sampling_rate must be between 0 and 1"
     expression: "this >= 0.0 && this <= 1.0"
   }];
+
+  // Nested log export / persistence settings. Distinct from the top-level
+  // enabled + head_sampling_rate pair — Cloudflare lets you turn logs on
+  // independently of the overall observability switch.
+  CloudflareWorkerObservabilityLogs logs = 3;
+
+  // Nested trace export / persistence settings.
+  CloudflareWorkerObservabilityTraces traces = 4;
+}
+
+// CloudflareWorkerObservabilityLogs is the observability.logs subtree.
+message CloudflareWorkerObservabilityLogs {
+  bool enabled = 1;
+  bool invocation_logs = 2;
+  repeated string destinations = 3;
+  double head_sampling_rate = 4 [(buf.validate.field).cel = {
+    id: "observability_logs_head_sampling_rate.valid_range"
+    message: "head_sampling_rate must be between 0 and 1"
+    expression: "this >= 0.0 && this <= 1.0"
+  }];
+  bool persist = 5;
+}
+
+// CloudflareWorkerObservabilityTraces is the observability.traces subtree.
+message CloudflareWorkerObservabilityTraces {
+  repeated string destinations = 1;
+  bool enabled = 2;
+  double head_sampling_rate = 3 [(buf.validate.field).cel = {
+    id: "observability_traces_head_sampling_rate.valid_range"
+    message: "head_sampling_rate must be between 0 and 1"
+    expression: "this >= 0.0 && this <= 1.0"
+  }];
+  bool persist = 4;
+  // How inbound traceparent/tracestate headers are handled: "authenticated"
+  // (default) or "accept".
+  string propagation_policy = 5 [(buf.validate.field).cel = {
+    id: "observability_traces_propagation_policy.valid"
+    message: "propagation_policy must be \"authenticated\" or \"accept\""
+    expression: "this == '' || this in ['authenticated', 'accept']"
+  }];
 }
 
 // CloudflareWorkerPlacement configures Smart Placement.
 message CloudflareWorkerPlacement {
   // Placement mode. "smart" lets Cloudflare run the Worker near the backends it
-  // calls. Leave empty to keep the default (run near the user).
+  // calls. "targeted" pins it (region/hostname/host are computed-only on the
+  // provider and are not authorable here). Leave empty to keep the default
+  // (run near the user).
   string mode = 1 [(buf.validate.field).cel = {
     id: "placement_mode.valid"
-    message: "placement mode must be \"smart\""
-    expression: "this == '' || this == 'smart'"
+    message: "placement mode must be \"smart\" or \"targeted\""
+    expression: "this == '' || this == 'smart' || this == 'targeted'"
   }];
 }
 
@@ -394,8 +582,14 @@ message CloudflareWorkerLimits {
 
 // CloudflareWorkerTailConsumer names another Worker that consumes tail events.
 message CloudflareWorkerTailConsumer {
-  // The consuming Worker's service (script) name.
-  string service = 1 [(buf.validate.field).required = true];
+  // The consuming Worker's service (script) name, or a reference to a
+  // CloudflareWorker. Widened from a plain string so tail consumers compose
+  // as graph edges.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
 
   // Optional environment of the consuming Worker.
   string environment = 2;
@@ -472,4 +666,217 @@ message CloudflareWorkerAssetsConfig {
   // (negative, higher precedence) excludes a subtree. Mutually exclusive with
   // run_worker_first.
   repeated string run_worker_first_rules = 6;
+}
+
+// CloudflareWorkerMigrations is the Durable Object migration plan applied on
+// this upload. Cloudflare treats the tag as a one-shot: a second apply of the
+// same new_tag is rejected. Keep this out of live E2E scenarios that assert
+// apply idempotency.
+message CloudflareWorkerMigrations {
+  repeated string deleted_classes = 1;
+  repeated string new_classes = 2;
+  repeated string new_sqlite_classes = 3;
+  string new_tag = 4;
+  string old_tag = 5;
+  repeated CloudflareWorkerRenamedClass renamed_classes = 6;
+  repeated CloudflareWorkerTransferredClass transferred_classes = 7;
+  repeated CloudflareWorkerMigrationStep steps = 8;
+}
+
+message CloudflareWorkerRenamedClass {
+  string from = 1;
+  string to = 2;
+}
+
+message CloudflareWorkerTransferredClass {
+  string from = 1;
+  // Source Worker that currently owns the class. A CloudflareWorker FK so a
+  // transfer composes as a graph edge.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef from_script = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
+  string to = 3;
+}
+
+message CloudflareWorkerMigrationStep {
+  repeated string deleted_classes = 1;
+  repeated string new_classes = 2;
+  repeated string new_sqlite_classes = 3;
+  repeated CloudflareWorkerRenamedClass renamed_classes = 4;
+  repeated CloudflareWorkerTransferredClass transferred_classes = 5;
+}
+
+// CloudflareWorkerCacheOptions is the provider cache_options block. Pulumi
+// SDK v6.17.0 has no matching input — tofu honors this; Pulumi skips it.
+message CloudflareWorkerCacheOptions {
+  bool enabled = 1;
+  bool cross_version_cache = 2;
+}
+
+message CloudflareWorkerExport {
+  string type = 1 [(buf.validate.field).required = true];
+  CloudflareWorkerExportCache cache = 2;
+}
+
+message CloudflareWorkerExportCache {
+  bool enabled = 1;
+}
+
+message CloudflareWorkerPackageDependency {
+  string name = 1 [(buf.validate.field).required = true];
+  string installed_version = 2 [(buf.validate.field).required = true];
+  string package_json_version = 3 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerAnnotations {
+  string workers_message = 1;
+  string workers_tag = 2;
+}
+
+message CloudflareWorkerMtlsCertificateBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  // Literal certificate id — Planton has no mTLS kind yet.
+  string certificate_id = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerDispatchNamespaceBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string namespace = 2 [(buf.validate.field).required = true];
+  CloudflareWorkerDispatchOutbound outbound = 3;
+}
+
+message CloudflareWorkerDispatchOutbound {
+  repeated string params = 1;
+  CloudflareWorkerDispatchOutboundWorker worker = 2;
+}
+
+message CloudflareWorkerDispatchOutboundWorker {
+  // Outbound Worker name, or a reference to a CloudflareWorker.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
+  string environment = 2;
+}
+
+message CloudflareWorkerRateLimitBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  // Rate-limit namespace id (a Cloudflare-side identifier, not a Planton kind).
+  string namespace = 2 [(buf.validate.field).required = true];
+  CloudflareWorkerRateLimitSimple simple = 3 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerRateLimitSimple {
+  double limit = 1 [(buf.validate.field).required = true];
+  int64 period = 2 [(buf.validate.field).required = true];
+  int64 mitigation_timeout = 3;
+}
+
+message CloudflareWorkerSendEmailBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string destination_address = 2;
+  repeated string allowed_destination_addresses = 3;
+  repeated string allowed_sender_addresses = 4;
+}
+
+message CloudflareWorkerSecretsStoreBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string store_id = 2 [(buf.validate.field).required = true];
+  string secret_name = 3 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerSecretKeyBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string algorithm = 2 [(buf.validate.field).required = true];
+  string format = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "secret_key_format.valid"
+      message: "format must be one of \"raw\", \"pkcs8\", \"spki\", \"jwk\""
+      expression: "this in ['raw', 'pkcs8', 'spki', 'jwk']"
+    }
+  ];
+  repeated string usages = 4;
+  string key_base64 = 5 [(dev.planton.shared.options.sensitive) = true];
+  string key_jwk = 6 [(dev.planton.shared.options.sensitive) = true];
+}
+
+message CloudflareWorkerWorkflowBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string workflow_name = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerPipelineBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string pipeline = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerJsonBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string json = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerInheritBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string old_name = 2;
+  string version_id = 3;
+}
+
+// CloudflareWorkerBlobBinding is shared by data_blob, text_blob, and wasm_module
+// — each only needs a JS name and the uploaded file (`part`).
+message CloudflareWorkerBlobBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string part = 2 [(buf.validate.field).required = true];
+}
+
+// CloudflareWorkerNamedBinding is a type-only binding (browser, images, media):
+// the JS name is the whole configuration.
+message CloudflareWorkerNamedBinding {
+  string name = 1 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerAiSearchBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string instance_name = 2 [(buf.validate.field).required = true];
+  // Namespace the instance belongs to. Cloudflare defaults this to "default".
+  string namespace = 3;
+  // Flagship app id — the provider hangs this leaf on the same binding object.
+  string app_id = 4;
+}
+
+message CloudflareWorkerAiSearchNamespaceBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string namespace = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerVpcServiceBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  string service_id = 2 [(buf.validate.field).required = true];
+}
+
+message CloudflareWorkerVpcNetworkBinding {
+  option (buf.validate.message).cel = {
+    id: "vpc_network.network_xor_tunnel"
+    message: "set network_id or tunnel_id, not both"
+    expression: "!((this.network_id != '') && has(this.tunnel_id))"
+  };
+  string name = 1 [(buf.validate.field).required = true];
+  // Literal network id. Only "cf1:network" is currently supported by Cloudflare.
+  string network_id = 2;
+  // Cloudflare Tunnel to bind, or a reference to a CloudflareZeroTrustTunnel.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef tunnel_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnel,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.tunnel_id"
+  ];
+}
+
+message CloudflareWorkerTailConsumerBinding {
+  string name = 1 [(buf.validate.field).required = true];
+  // Worker that is the tail-consumer resource, or a reference to a CloudflareWorker.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
 }

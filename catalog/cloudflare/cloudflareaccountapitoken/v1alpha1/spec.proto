@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// CloudflareAccountApiTokenSpec creates an account-owned API token: a
+// scoped credential belonging to the ACCOUNT (not any user), with its own
+// policies, optional client-IP conditions, and optional validity window.
+// The token's secret value is returned exactly once, by the create call --
+// it can never be fetched again (see the outputs). A plain CRUD object --
+// real create, update, delete.
+//
+// Each policy grants (or denies) a set of permission groups over a set of
+// resources. Permission groups are Cloudflare-defined and referenced by
+// UUID; list them with
+// GET /accounts/{account_id}/tokens/permission_groups (filterable by name
+// and scope) -- the catalog deliberately does not model that read-only
+// registry. Cloudflare canonically re-orders policies and permission groups
+// on its side, so treat their order as insignificant.
+message CloudflareAccountApiTokenSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.validity_window"
+    message: "not_before must be earlier than expires_on when both are set"
+    expression: "this.expires_on == '' || this.not_before == '' || timestamp(this.not_before) < timestamp(this.expires_on)"
+  };
+
+  // The Cloudflare account that owns the token.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The token's name, shown in the account's API Tokens list.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // What the token may (or may not) do. At least one policy is required.
+  repeated CloudflareAccountApiTokenPolicy policies = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // When the token expires, RFC 3339 (e.g. 2027-01-01T00:00:00Z). Empty
+  // never expires. Cloudflare reports an expired token with status
+  // "expired" and the provider recreates it on the next apply.
+  string expires_on = 4 [(buf.validate.field).cel = {
+    id: "expires_on.rfc3339"
+    message: "expires_on must be an RFC 3339 timestamp (e.g. 2027-01-01T00:00:00Z)"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // The earliest time the token works, RFC 3339. Empty is immediately.
+  string not_before = 5 [(buf.validate.field).cel = {
+    id: "not_before.rfc3339"
+    message: "not_before must be an RFC 3339 timestamp (e.g. 2026-09-01T00:00:00Z)"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // Restricts which client IPs may use the token.
+  CloudflareAccountApiTokenCondition condition = 6;
+
+  // The token's administrative state: active (usable) or disabled
+  // (suspended without deleting). Cloudflare additionally reports
+  // server-side states -- "expired" and "revoked (exposed)" -- that are
+  // never configured, only observed; the provider drops such tokens from
+  // state and recreates them on the next apply.
+  string status = 7 [(buf.validate.field).cel = {
+    id: "status.values"
+    message: "status must be active or disabled"
+    expression: "this == '' || this in ['active', 'disabled']"
+  }];
+}
+
+// CloudflareAccountApiTokenPolicy grants or denies a set of permission
+// groups over a set of resources.
+message CloudflareAccountApiTokenPolicy {
+  // Whether the policy grants (allow) or withholds (deny) the permissions.
+  // Deny policies override allow policies that cover the same resources.
+  string effect = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "allow",
+        "deny"
+      ]
+    }
+  ];
+
+  // The Cloudflare permission groups this policy applies, by UUID (e.g.
+  // "DNS Read", "Workers Scripts Write"). List available groups with
+  // GET /accounts/{account_id}/tokens/permission_groups.
+  repeated string permission_group_ids = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // The resources the policy covers, keyed by Cloudflare resource
+  // identifier (e.g. "com.cloudflare.api.account.<account_id>" or
+  // "com.cloudflare.api.account.zone.<zone_id>"). Each value either grants
+  // the whole resource (permission, normally "*") or scopes into
+  // sub-resources (subresources) -- exactly one per entry. Cloudflare's API
+  // takes this map as one raw JSON object; the modules serialize it.
+  map<string, CloudflareAccountApiTokenResourceScope> resources = 3 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// CloudflareAccountApiTokenResourceScope is one resource entry's grant:
+// either the whole resource or a nested sub-resource scoping -- exactly one.
+message CloudflareAccountApiTokenResourceScope {
+  option (buf.validate.message).cel = {
+    id: "resource_scope.exactly_one"
+    message: "set exactly one of permission (whole-resource grant, normally \"*\") or subresources (nested scoping)"
+    expression: "(this.permission != '') != (size(this.subresources) > 0)"
+  };
+
+  // Whole-resource grant, normally "*" (all operations the policy's
+  // permission groups allow).
+  string permission = 1;
+
+  // Nested scoping: sub-resource identifier (e.g.
+  // "com.cloudflare.api.account.zone.*") to its grant (normally "*").
+  map<string, string> subresources = 2;
+}
+
+// CloudflareAccountApiTokenCondition restricts where the token works.
+message CloudflareAccountApiTokenCondition {
+  // Client IP restrictions checked on every API request made with the
+  // token.
+  CloudflareAccountApiTokenRequestIp request_ip = 1;
+}
+
+// CloudflareAccountApiTokenRequestIp lists client IP CIDRs the token is
+// limited to (or barred from).
+message CloudflareAccountApiTokenRequestIp {
+  // CIDRs the token may be used from (IPv4 or IPv6, e.g. 198.51.100.0/24).
+  // Empty allows any origin not explicitly denied.
+  repeated string in_cidrs = 1;
+
+  // CIDRs the token is barred from, evaluated before in_cidrs.
+  repeated string not_in_cidrs = 2;
+}

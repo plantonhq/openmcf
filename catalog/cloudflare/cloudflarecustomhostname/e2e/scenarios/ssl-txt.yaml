@@ -1,0 +1,27 @@
+# Ssl-txt CloudflareCustomHostname scenario: explicit TXT DCV on the
+# per-hostname certificate. Same zone fixture and run-token hostname as
+# `minimal`, distinct metadata.name so both can coexist if ever run together.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCustomHostname
+metadata:
+  name: planton-oss-e2e-cloudflarecustomhostname-ssl-txt
+  id: planton-oss-e2e-cloudflarecustomhostname-ssl-txt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarecustomhostname
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  hostname: saas-txt.planton-e2e-${E2E_RUN_ID}.com
+  ssl:
+    method: txt
+    type: dv

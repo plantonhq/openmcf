@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflaresnippet
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The snippet stores JavaScript source at Cloudflare, not customer data this component encrypts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Snippet management traffic to the Cloudflare API is HTTPS. The component has no toggle that would send source in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The snippet runs only when a snippet rule matches; it is not a public endpoint this component exposes.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress is decided by CloudflareSnippetRules, not by this kind.
+    - control_id: edge-protection
+      status: configurable
+      field_path: files
+      evidence:
+        type: spec_default
+        reference: files plus main_module are the edge code that runs on matching requests -- redirects, header rewrites, and request/response touch-ups.
+      notes: The snippet is inert until a CloudflareSnippetRules rule invokes it by snippet_name.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the snippet exposes no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials. Snippets have no bindings -- secrets belong on CloudflareWorker.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records snippet changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest. Create is an upsert -- a name collision overwrites the live snippet.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone-scoped snippet served by Cloudflare's global edge.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete. The snippet name is the identity -- renaming replaces the snippet, and rules that referenced the old name keep pointing at it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the snippet runtime; no customer-visible patch surface exists.

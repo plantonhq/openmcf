@@ -1,0 +1,243 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdevicecustomprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZeroTrustDeviceCustomProfileSpec creates a TARGETED WARP device
+// profile: the same settings body as the account's default profile, applied
+// only to the devices matched by a wirefilter expression. An account can
+// carry many custom profiles; the lowest precedence value wins when several
+// match. Unlike the default profile, a custom profile is a real object --
+// create, update, and delete all do what they say.
+//
+// The profile's local-DNS fallback list folds into this kind: Cloudflare
+// reports it read-only on the profile's own API and writes it through a
+// dedicated per-profile full-replacement endpoint, so the list here is
+// declarative -- what you declare is exactly what exists after apply.
+//
+// The provider's global_acceleration block (China network endpoints) is
+// deliberately not modeled: Cloudflare enables that feature per account
+// through an account representative, so no self-service caller can use it.
+message CloudflareZeroTrustDeviceCustomProfileSpec {
+  // Split tunnel directions are mutually exclusive at the API: a profile
+  // either excludes routes from the tunnel or includes only listed routes.
+  option (buf.validate.message).cel = {
+    id: "spec.exclude_xor_include"
+    message: "exclude and include cannot both be set -- a profile runs in exclude mode or include mode, never both"
+    expression: "!(this.exclude.size() > 0 && this.include.size() > 0)"
+  };
+
+  // The Cloudflare account the profile belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The profile's name, shown in the dashboard.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // The wirefilter expression selecting which devices get this profile.
+  // Available selectors at the provider: identity.email,
+  // identity.groups.id, identity.groups.name, identity.groups.email,
+  // identity.service_token_uuid, identity.saml_attributes, network,
+  // os.name, os.version. Example:
+  //   identity.email == "dev@example.com" or os.name == "windows"
+  string match = 3 [(buf.validate.field).required = true];
+
+  // The profile's evaluation order: LOWER values win when several profiles
+  // match a device. Required here although the provider marks it optional
+  // -- Cloudflare's API rejects a create without it (every provider test
+  // sets one), and an explicit ordering is what makes multi-profile
+  // accounts predictable.
+  int64 precedence = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int64.gte = 1
+  ];
+
+  // Whether the profile is applied to matching devices. Unset keeps
+  // Cloudflare's default (ON).
+  optional bool enabled = 5;
+
+  // A description of the profile.
+  string description = 6;
+
+  // Whether users may switch the WARP client between modes (e.g. from full
+  // tunnel to DNS-only). Unset keeps Cloudflare's default (off).
+  optional bool allow_mode_switch = 7;
+
+  // Whether devices show update notifications when a new client version is
+  // available. Unset keeps Cloudflare's default (off).
+  optional bool allow_updates = 8;
+
+  // Whether users may unenroll their device from the organization. Unset
+  // keeps Cloudflare's default (ON) -- set false to lock devices in.
+  optional bool allowed_to_leave = 9;
+
+  // Seconds after which a user-disabled WARP client reconnects on its own.
+  // 0 means stay disabled until the user re-enables. Unset keeps
+  // Cloudflare's default (0).
+  optional int64 auto_connect = 10 [(buf.validate.field).int64.gte = 0];
+
+  // Seconds WARP waits behind a captive portal (hotel/airport Wi-Fi login
+  // page) before re-engaging. Unset keeps Cloudflare's default (180).
+  optional int64 captive_portal = 11 [(buf.validate.field).int64.gte = 0];
+
+  // When true, a fallback domain row without dns_server entries fails
+  // closed instead of guessing the system resolvers. Unset keeps
+  // Cloudflare's default (off).
+  optional bool disable_auto_fallback = 12;
+
+  // Whether Microsoft 365 IPs are automatically added to the split-tunnel
+  // exclude list. Unset keeps Cloudflare's default (off).
+  optional bool exclude_office_ips = 13;
+
+  // Whether the OS registers WARP's local interface IP with the
+  // organization's on-premises DNS servers. Unset keeps Cloudflare's
+  // default (ON).
+  optional bool register_interface_ip_with_dns = 14;
+
+  // Windows only: whether WARP tells Microsoft SCCM it is inside a VPN
+  // boundary. Unset keeps Cloudflare's default (off).
+  optional bool sccm_vpn_boundary_support = 15;
+
+  // The URL the client's "Send feedback" button opens.
+  string support_url = 16;
+
+  // Whether users are BLOCKED from turning WARP off. Unset keeps
+  // Cloudflare's default (off -- users may disconnect).
+  optional bool switch_locked = 17;
+
+  // The tunnel transport protocol: wireguard or masque. Cloudflare's API
+  // accepts the value it currently supports for the account; empty keeps
+  // the account default. Deliberately not CEL-walled -- the provider schema
+  // carries no value list at v5.23.0 and Cloudflare has grown this set
+  // before.
+  string tunnel_protocol = 18;
+
+  // Minutes a user may access their local network (LAN) after toggling
+  // local-network access. 0 allows LAN access until the next WARP
+  // reconnection (reboot, wake from sleep).
+  optional int64 lan_allow_minutes = 19 [(buf.validate.field).int64.gte = 0];
+
+  // The subnet size WARP carves out for local access network traffic (e.g.
+  // 24 for a /24).
+  optional int64 lan_allow_subnet_size = 20 [
+    (buf.validate.field).int64.gte = 0,
+    (buf.validate.field).int64.lte = 128
+  ];
+
+  // Routes EXCLUDED from the WARP tunnel (everything else tunnels).
+  // Mutually exclusive with include.
+  repeated CloudflareZeroTrustDeviceCustomProfileSplitTunnelEntry exclude = 21;
+
+  // Routes INCLUDED in the WARP tunnel (everything else bypasses).
+  // Mutually exclusive with exclude.
+  repeated CloudflareZeroTrustDeviceCustomProfileSplitTunnelEntry include = 22;
+
+  // The client's service mode (e.g. proxy mode with a local port). Unset
+  // keeps the default full-tunnel warp mode.
+  CloudflareZeroTrustDeviceCustomProfileServiceMode service_mode_v2 = 23;
+
+  // Which Zero Trust virtual networks devices on this profile may reach,
+  // and which one they land in by default. Unset leaves virtual network
+  // routing to the account's default virtual network.
+  CloudflareZeroTrustDeviceCustomProfileVirtualNetworks virtual_networks = 24;
+
+  // DNS search suffixes appended when devices resolve short hostnames,
+  // evaluated in order.
+  repeated CloudflareZeroTrustDeviceCustomProfileDnsSearchSuffix dns_search_suffixes = 25;
+
+  // This profile's local-DNS fallback list: domain suffixes resolved by the
+  // declared resolvers instead of Gateway. FULL-REPLACEMENT semantics --
+  // this list, exactly, is what exists after apply. Rows ride the profile:
+  // deleting the profile retires them with it.
+  repeated CloudflareZeroTrustDeviceCustomProfileFallbackDomain fallback_domains = 26;
+}
+
+// CloudflareZeroTrustDeviceCustomProfileSplitTunnelEntry is one split
+// tunnel route: a CIDR or a hostname, never both.
+message CloudflareZeroTrustDeviceCustomProfileSplitTunnelEntry {
+  option (buf.validate.message).cel = {
+    id: "split_tunnel.address_xor_host"
+    message: "declare exactly one of address (CIDR) or host (domain name)"
+    expression: "(this.address != '') != (this.host != '')"
+  };
+
+  // The route as a CIDR (e.g. "192.0.2.0/24"). Exactly one of address or
+  // host.
+  string address = 1;
+
+  // The route as a domain name (e.g. "internal.example.com"). Exactly one
+  // of address or host.
+  string host = 2;
+
+  // A note shown in the client UI next to the route.
+  string description = 3;
+}
+
+// CloudflareZeroTrustDeviceCustomProfileServiceMode selects how the WARP
+// client processes traffic.
+message CloudflareZeroTrustDeviceCustomProfileServiceMode {
+  // The client mode. Cloudflare's common values are warp (full tunnel) and
+  // proxy (local proxy on `port`); the API owns the accepted set, so this
+  // is deliberately not CEL-walled.
+  string mode = 1 [(buf.validate.field).required = true];
+
+  // The localhost port for proxy mode.
+  optional int64 port = 2 [
+    (buf.validate.field).int64.gte = 1,
+    (buf.validate.field).int64.lte = 65535
+  ];
+}
+
+// CloudflareZeroTrustDeviceCustomProfileVirtualNetworks scopes which Zero
+// Trust virtual networks the profile's devices may reach.
+message CloudflareZeroTrustDeviceCustomProfileVirtualNetworks {
+  // The virtual networks devices may access -- literal virtual network
+  // UUIDs or references to CloudflareZeroTrustTunnelVirtualNetwork
+  // resources. At least one.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef allowed = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnelVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+
+  // The virtual network devices land in by default. Must be one of the
+  // allowed entries (Cloudflare enforces the containment at the API).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef default_virtual_network_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustTunnelVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+}
+
+// CloudflareZeroTrustDeviceCustomProfileDnsSearchSuffix is one DNS search
+// suffix row.
+message CloudflareZeroTrustDeviceCustomProfileDnsSearchSuffix {
+  // The suffix appended when resolving short hostnames (e.g.
+  // "corp.example.com").
+  string suffix = 1 [(buf.validate.field).required = true];
+
+  // A note describing the suffix.
+  string description = 2;
+}
+
+// CloudflareZeroTrustDeviceCustomProfileFallbackDomain is one local-DNS
+// fallback row: a suffix resolved locally instead of through Gateway.
+message CloudflareZeroTrustDeviceCustomProfileFallbackDomain {
+  // The domain suffix to resolve locally (e.g. "corp.internal").
+  string suffix = 1 [(buf.validate.field).required = true];
+
+  // A note shown in the client UI next to the row.
+  string description = 2;
+
+  // The resolver IPs handling this suffix. Empty falls back to the
+  // system's resolvers unless the profile sets disable_auto_fallback.
+  repeated string dns_server = 3;
+}

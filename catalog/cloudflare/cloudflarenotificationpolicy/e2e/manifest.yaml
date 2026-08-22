@@ -1,0 +1,20 @@
+# Complete example manifest for CloudflareNotificationPolicy.
+# Pages the on-call inbox and a webhook destination when origin health
+# checks fail, narrowed to one health check status.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationPolicy
+metadata:
+  name: origin-health-alerts
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: origin-health-alerts
+  alert_type: health_check_status_notification
+  description: page on-call when an origin health check turns unhealthy
+  mechanisms:
+    emails:
+      - oncall@example.com
+    webhook_ids:
+      - value: "REPLACE_WITH_NOTIFICATION_WEBHOOK_UUID"
+  filters:
+    status:
+      - Unhealthy

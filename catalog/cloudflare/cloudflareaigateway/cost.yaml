@@ -1,0 +1,18 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareaigateway
+spec:
+  billing_model: free
+  notes: >-
+    The gateway itself is free on every plan -- configuration, guardrails,
+    routing, and log collection within the stored-log cap create no
+    Cloudflare charge. The real spend is at the MODEL PROVIDERS the gateway
+    fronts (OpenAI, Anthropic, Workers AI inference, and kin), driven by
+    traffic volume no manifest can predict -- which is exactly what
+    spend_limits exists to cap (and cache_ttl exists to reduce: cached
+    prompts never reach a paid provider). Shipping logs out rides the
+    account's Logpush entitlement, plan-gated on some destinations.

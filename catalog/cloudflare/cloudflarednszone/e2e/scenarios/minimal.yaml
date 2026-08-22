@@ -1,0 +1,24 @@
+# Minimal CloudflareDnsZone scenario: the bare zone, nothing folded. The zone
+# name is run-scoped (Cloudflare rejects duplicate zone names within an
+# account, and concurrent engine lanes share one account) and distinct from
+# the shared prerequisite fixture's name so this scenario can never collide
+# with lanes that consume the fixture. The domain is never registered, so the
+# zone stays in Cloudflare's "pending" state -- fully functional for API
+# verification and safe to destroy.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsZone
+metadata:
+  name: planton-oss-e2e-cloudflarednszone-minimal
+  id: planton-oss-e2e-cloudflarednszone-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarednszone
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zoneName: planton-e2e-min-${E2E_RUN_ID}.com
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

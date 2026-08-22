@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareloadbalancer
+spec:
+  # A load balancer's import identity is compound: the zone it lives in plus
+  # the load balancer's own Cloudflare-assigned id (with a literal "zones/"
+  # scope prefix recorded in the provider catalog's id_format). Both values
+  # are discoverable from a prior deploy's stack outputs; neither is derivable
+  # from metadata.
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).
+    - name: load_balancer_id
+      derivations:
+        - from_stack_output: load_balancer_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone -> Traffic -> Load Balancing (open
+        the load balancer; the id is in the URL), or
+        `GET /zones/<zone_id>/load_balancers` on the Cloudflare v4 API (the
+        id field of the entry whose name is the load balancer's hostname).

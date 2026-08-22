@@ -1,0 +1,19 @@
+# Complete example manifest for CloudflareZeroTrustDevicePostureRule.
+# Creates an OS-version check requiring macOS 14.4.1 or newer, polled every
+# five minutes.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDevicePostureRule
+metadata:
+  name: macos-current
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: macos-current
+  type: os_version
+  description: laptops must run macOS 14.4.1 or newer
+  schedule: 5m
+  expiration: 1h
+  match:
+    - platform: mac
+  input:
+    version: 14.4.1
+    operator: ">="

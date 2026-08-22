@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarewebanalyticssite
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: site_tag
+      derivations:
+        - from_stack_output: site_tag
+      where_to_find: >-
+        `GET /accounts/<account_id>/rum/site_info/list` on the Cloudflare v4
+        API (the site_tag field; match by host or the site's ruleset zone
+        name), or the dashboard -> Web Analytics -> the site's settings. Note
+        Cloudflare keys every RUM path on the site TAG, not on the resource's
+        id copy.
