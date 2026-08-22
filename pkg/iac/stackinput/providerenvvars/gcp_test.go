@@ -39,6 +39,46 @@ func TestLoadGcpEnvVars_EmptyKey_NoEmptyEnvVar(t *testing.T) {
 	assert.Empty(t, env)
 }
 
+func TestLoadGcpEnvVars_AccessToken_Emitted(t *testing.T) {
+	env, err := loadGcpEnvVars(gcpConfigYaml(t, &gcpprovider.GcpProviderConfig{
+		AccessToken: "ya29.test-token",
+	}))
+	require.NoError(t, err)
+
+	assert.Equal(t, "ya29.test-token", env["GOOGLE_OAUTH_ACCESS_TOKEN"])
+	_, credentialsPresent := env["GOOGLE_CREDENTIALS"]
+	assert.False(t, credentialsPresent)
+}
+
+func TestLoadGcpEnvVars_AccessToken_WinsOverStaleKey(t *testing.T) {
+	// A pre-minted token is the deliberate credential for this run; a lingering
+	// service_account_key must neither win nor be co-emitted (two credential variables
+	// would leave the effective identity to provider precedence rules).
+	env, err := loadGcpEnvVars(gcpConfigYaml(t, &gcpprovider.GcpProviderConfig{
+		AccessToken:       "ya29.test-token",
+		ServiceAccountKey: `{"type":"service_account"}`,
+	}))
+	require.NoError(t, err)
+
+	assert.Equal(t, "ya29.test-token", env["GOOGLE_OAUTH_ACCESS_TOKEN"])
+	_, credentialsPresent := env["GOOGLE_CREDENTIALS"]
+	assert.False(t, credentialsPresent)
+	assert.Len(t, env, 1)
+}
+
+func TestLoadGcpEnvVars_EmptyAccessToken_NoEmptyEnvVar(t *testing.T) {
+	// An empty GOOGLE_OAUTH_ACCESS_TOKEN would poison the ambient credential chain the
+	// same way an empty GOOGLE_CREDENTIALS would.
+	env, err := loadGcpEnvVars(gcpConfigYaml(t, &gcpprovider.GcpProviderConfig{
+		AccessToken: "",
+	}))
+	require.NoError(t, err)
+
+	_, present := env["GOOGLE_OAUTH_ACCESS_TOKEN"]
+	assert.False(t, present)
+	assert.Empty(t, env)
+}
+
 func TestLoadGcpEnvVars_WebIdentity_FailsLoudly(t *testing.T) {
 	// Keyless auth has no terraform env-var form; silently degrading to ambient credentials
 	// would run the deploy as the wrong identity, so the loader must reject it outright.
