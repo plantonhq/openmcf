@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudfunction
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Everything the function stores -- the source archive copy, the built container image, and the function configuration -- is encrypted at rest with Google-managed keys without configuration, per Google Cloud's default encryption at rest. Instances are stateless; durable data lives on the components the code writes to.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset (the default) leaves the built image and source artifacts under Google-managed keys; naming a Cloud KMS key (or referencing a GcpKmsKey resource) encrypts them with the customer-managed key instead. CMEK deployments require a customer-managed docker_repository, and the Cloud Functions and Artifact Registry service agents need encrypter/decrypter on the key.
+      notes: No preset enables CMEK.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The function's HTTPS endpoint is the only inbound surface -- Google's front end terminates TLS and no plaintext listener exists. Eventarc deliveries for event triggers arrive over Google's encrypted infrastructure.
+      notes: Whether the code encrypts its own outbound calls is the workload's affair.
+    - control_id: no-public-access
+      status: configurable
+      field_path: service_config.ingress_settings
+      evidence:
+        type: spec_default
+        reference: The default (ALLOW_ALL) leaves the endpoint reachable from the public internet, subject to the IAM invoker check; ALLOW_INTERNAL_ONLY removes internet reachability entirely -- only the project's VPC networks and internal GCP services (Eventarc among them) reach the function.
+      notes: The 02-pubsub-event preset sets ALLOW_INTERNAL_ONLY -- event-driven functions need no public ingress; 01-http-api deliberately serves the public with allow_unauthenticated. The layers are independent -- ingress ALLOW_ALL with allow_unauthenticated false is network-reachable yet rejects anonymous callers at the IAM check.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: service_config.ingress_settings
+      evidence:
+        type: spec_default
+        reference: The ingress enum restricts inbound traffic to declared network source classes -- ALLOW_INTERNAL_ONLY (the project's VPCs and internal GCP services) or ALLOW_INTERNAL_AND_GCLB (internal plus Cloud Load Balancing). The default ALLOW_ALL accepts every path.
+      notes: Source-IP or geography scoping finer than these classes lives on a Cloud Armor policy attached to the external load balancer fronting the function -- separate resources, paired with ALLOW_INTERNAL_AND_GCLB.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The function has no WAF attachment point of its own; Cloud Armor policies attach to the external Application Load Balancer composed in front of it (serverless NEG, backend service), with ingress_settings ALLOW_INTERNAL_AND_GCLB closing the direct path.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane operations (deploy, update, delete) authorize against Cloud Functions IAM roles unconditionally, and every invocation passes the IAM run.invoker check on the underlying Cloud Run service unless the spec explicitly grants allUsers through allow_unauthenticated (recommended default false).
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_config.service_account_email
+      evidence:
+        type: spec_default
+        reference: Instances authenticate to Google APIs as the spec's runtime service account through short-lived credentials from the metadata server -- no static key is ever provisioned. Unset defaults to the project's Compute Engine default service account; naming a dedicated GcpServiceAccount is the least-privilege posture.
+      notes: The 03-private-vpc-egress preset pins a dedicated runtime identity; the default compute account is broader than any single function needs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The function exposes no weaker authentication path to disable -- invocation is governed exclusively by the IAM invoker check (allUsers is an explicit grant, not a separate mechanism), and runtime credentials are exclusively the metadata server's short-lived tokens.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Function create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally, as do IAM policy changes on the underlying Cloud Run service; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The underlying Cloud Run service exports invocation count, latencies, instance count, and billable instance time to Cloud Monitoring and streams function stdout/stderr to Cloud Logging without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The function is declarative configuration fully re-creatable from the manifest plus the source archive, which lives in a GCS bucket -- a separate resource whose versioning and backup are its own concern. Instances are stateless.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Gen 2 functions run on Cloud Run's regional infrastructure with instances placed across the region's zones; this spec exposes no single-zone opt-out (the GPU-only zonal-redundancy lever does not exist here).
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset (same as DELETE) removes the function -- and the Cloud Run service serving it -- on destroy; PREVENT fails destroy operations outright until the policy is lifted, protecting a function other systems invoke; ABANDON unmanages it while it keeps serving and consuming events in GCP.
+      notes: No preset sets PREVENT. Unlike GcpCloudRun, this spec carries no API-side deletion_protection boolean -- the engine-side policy is the only guard.
+    - control_id: managed-patching
+      status: configurable
+      field_path: build_config.update_policy
+      evidence:
+        type: spec_default
+        reference: AUTOMATIC (the API default when unset) has Google apply security updates to the runtime base image continuously, without a redeploy; ON_DEPLOY pins the runtime version at deploy time so instances never change between deploys.
+      notes: The function's own dependencies (the packages the source declares) are patched by shipping a new source archive; the execution sandbox is Google's infrastructure, patched invisibly either way.

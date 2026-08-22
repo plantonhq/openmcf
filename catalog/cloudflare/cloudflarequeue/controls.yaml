@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarequeue
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Messages rest transiently (up to the retention period, at most 4 days by default on the paid plan and 1 day via this spec) inside Cloudflare's managed infrastructure. Cloudflare publishes no queue-level encryption-at-rest documentation or configuration surface, and no spec field can affect one -- the at-rest posture is Cloudflare's platform posture, not per-object configuration this profile can claim or tune.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No key-management surface exists for Queues at any level; the spec has no key field because the provider offers none.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every access path that leaves Cloudflare's network is HTTPS-only -- the management API and the http_pull consumer API are token-authenticated api.cloudflare.com endpoints served exclusively over TLS. Producer and worker-consumer traffic flows through Workers bindings inside Cloudflare's network and never traverses the public internet.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A queue has no public endpoint -- no host or URL exists. Producers write through a Worker's queues binding or R2 event notifications; consumers are either a bound Worker (push) or external clients that must authenticate to the pull API with an API token.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network listener to filter -- access is governed by identity (bindings and API-token scopes), not by network sources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The queue receives no HTTP requests of its own beyond the token-authenticated Cloudflare API -- a web application firewall has nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access on both planes is governed by Cloudflare's account-level token model (the Queues Read/Write permission groups) and by which Workers declare bindings -- account posture outside this spec, which carries no per-queue access-control field because the provider offers none.
+    - control_id: workload-identity
+      status: configurable
+      field_path: consumer.type
+      evidence:
+        type: spec_default
+        reference: Choosing the worker consumer type keeps consumption keyless -- Cloudflare invokes the bound Worker with message batches through a platform binding, no credential held. Choosing http_pull moves consumption to external clients that authenticate with a Cloudflare API token (a static credential managed outside this spec).
+      notes: Preset 01-worker-consumer is fully keyless (push); preset 02-http-pull requires its external pullers to hold an API token. Producers are keyless in both (Workers bindings or R2 event notifications).
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Queues exposes no wire protocol and no username/password authentication -- the only access paths are platform bindings and the token-authenticated HTTPS API, so no weaker legacy path exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations against the queue land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-queue audit toggle.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Queue metrics (backlog, operations, consumer lag) surface through the Cloudflare dashboard and GraphQL Analytics API as account-level features; the spec exposes no export or integration field.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A queue is transient message transport, not a data store -- messages are consumed or expire within the retention period, and Cloudflare offers no queue backup facility. The dead_letter_queue field preserves failed messages, which is delivery semantics rather than backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). The settings.message_retention_period field bounds how long unconsumed messages wait for delivery -- delivery retention, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Queues is a globally available managed service with no zonal or regional placement for this spec to configure -- there is no availability topology to choose.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Cloudflare API nor either official module exposes a deletion-protection flag for queues; deleting the queue drops its messages whenever the credential allows.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Queues is a fully managed serverless service -- Cloudflare operates and patches the queueing infrastructure; no version, maintenance window, or upgrade surface exists on the queue.

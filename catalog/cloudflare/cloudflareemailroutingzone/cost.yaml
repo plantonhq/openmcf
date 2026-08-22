@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareemailroutingzone
+spec:
+  billing_model: free
+  free_tier: "Email Routing is available on both the Workers Free and Workers Paid plans, and inbound routed email is Unlimited on both (https://developers.cloudflare.com/email-service/platform/pricing/, retrieved 2026-08-22). Enabling routing on a zone -- including the MX/SPF/DKIM records it auto-provisions and the optional locked DNS records -- creates no charge on any plan."
+  notes: "No field of this spec commits spend: zone_id names the zone, lock_dns_records and dns_name only manage the free DNS records explicitly, and the catch_all block's forward and drop actions ride the free inbound surface (both presets use exactly those). Two adjacent meters are worth naming so nobody hunts for them here: a catch_all worker action hands every unmatched message to an Email Worker, and \"Email Routing Workers is billed according to Workers pricing\" -- that usage bills through the referenced CloudflareWorker kind. And the paid line on the same pricing page, outbound Email Sending (3,000 included per month then $0.35 per 1,000 on Workers Paid), belongs to the separate sending product that nothing on this spec can invoke."

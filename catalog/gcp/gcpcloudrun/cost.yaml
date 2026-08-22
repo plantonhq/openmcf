@@ -1,0 +1,57 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudrun
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloud Run
+      sku_meter: min-instance idle vCPU
+      pricing_unit: vCPU-seconds
+      description: Every instance scaling.min_instance_count keeps warm bills its allocated vCPUs at the idle rate ($0.0000025 per vCPU-second in Tier 1 regions, per cloud.google.com/run/pricing read 2026-08-22) for every second it sits idle -- committed spend that starts at deploy and runs around the clock while the floor is above zero. A floor of zero (the default) makes this charge vanish entirely.
+    - service_name: Cloud Run
+      sku_meter: min-instance idle memory
+      pricing_unit: GiB-seconds
+      description: The same warm instances bill their allocated memory at the idle rate ($0.0000025 per GiB-second in Tier 1 regions, same source) for every idle second -- the second half of the min-instance commitment.
+  cost_drivers:
+    - field_path: scaling.min_instance_count
+      sku_meter: min-instance idle vCPU
+      pricing_unit: vCPU-seconds
+      impact: The committed-spend dial -- every unit above zero keeps one instance warm 24x7, billing its full vCPU and memory allocation at the idle rates even with zero traffic. Zero (the default) scales to zero and owes nothing at rest.
+    - field_path: containers.resources.cpu
+      sku_meter: active vCPU
+      pricing_unit: vCPU-seconds
+      impact: Each container's CPU limit multiplies every billed second -- $0.000024 per vCPU-second while serving requests under request-based billing, $0.000018 per vCPU-second for the whole instance lifetime under instance-based billing (Tier 1, read 2026-08-22) -- and multiplies the idle floor when min instances are set. Sidecars add their limits to the instance total.
+    - field_path: containers.resources.memory
+      sku_meter: active memory
+      pricing_unit: GiB-seconds
+      impact: Each container's memory limit bills alongside the CPU -- $0.0000025 per GiB-second active (request-based) or $0.000002 per GiB-second (instance-based) in Tier 1 -- and multiplies the idle floor when min instances are set.
+    - field_path: containers.resources.cpu_idle
+      sku_meter: active vCPU
+      impact: The billing-model switch. True (the default) is request-based billing -- CPU billed only while requests are in flight (plus the idle rate on min instances). False is instance-based billing -- every instance bills its full lifetime at $0.000018 per vCPU-second and $0.000002 per GiB-second with no separate idle rate and no per-request fee.
+    - field_path: node_selector.accelerator
+      sku_meter: GPU seconds
+      pricing_unit: GPU-seconds
+      impact: One GPU per instance for the instance's entire lifetime -- NVIDIA L4 without zonal redundancy bills $0.0001867 per second in us-central1 (read 2026-08-22), roughly 10x the CPU meter of a 4-vCPU instance; the dominant meter whenever it is set. GPU services keep the GPU allocated even between requests.
+    - field_path: gpu_zonal_redundancy_disabled
+      sku_meter: GPU seconds
+      impact: The GPU rate selector -- false (the default) buys zonally redundant GPU capacity at $0.0002909 per L4-second in us-central1; true takes single-zone capacity at $0.0001867 per second, about 36% cheaper, in exchange for zonal-failure risk.
+    - field_path: region
+      sku_meter: active vCPU
+      impact: Picks the price tier -- Tier 1 regions (us-central1, europe-west1, ...) bill the base rates; Tier 2 regions (asia-southeast1, australia-southeast1, ...) bill higher ones. Multi-region services multiply the serving footprint across every region listed.
+    - field_path: vpc_access.connector
+      sku_meter: Serverless VPC Access connector
+      impact: A connector's own instances bill on the GcpServerlessVpcConnector component around the clock whether or not this service sees traffic; direct VPC egress (vpc_access.network_interfaces) avoids that standing cost and bills only the VPC data transfer the service actually moves.
+  free_tier: Under request-based billing Google zero-rates the first 180,000 vCPU-seconds and 360,000 GiB-seconds of active time plus the first 2,000,000 requests each month, aggregated per billing account (instance-based billing gets 240,000 vCPU-seconds and 450,000 GiB-seconds instead); applied as a spend-based discount at Tier 1 pricing per cloud.google.com/run/pricing (read 2026-08-22). Estimates state list prices and never net the free tier out.
+  estimate_exclusions:
+    - requests -- $0.40 per million beyond the free 2 million under request-based billing, billed only for requests that pass authentication; volume is the workload's, not the manifest's
+    - active-time upcharge on warm instances -- every second a min instance actually serves swaps the $0.0000025 idle vCPU rate for the $0.000024 active rate, so real traffic bills above the committed idle floor
+    - GPU seconds -- billed per instance lifetime; a GPU service that scales to zero owes nothing between requests, and instance counts follow traffic
+    - network egress to the internet and to VPC networks follows Google Cloud networking pricing; same-region traffic to other GCP services is free
+    - Cloud Build minutes and Artifact Registry storage for deploy-from-source services (build_config) bill on those services per deploy
+    - Secret Manager access operations for secret env vars and volumes bill on the secret's project
+    - ephemeral disk (empty_dir DISK volumes) bills $0.000109589 per GiB-hour in us-central1 while instances run
+  notes: "The manifest commits exactly one thing: the min-instance idle floor. Everything else -- requests, active compute, GPU seconds, egress -- follows traffic. The floor's arithmetic is min_instance_count x (vCPU x idle vCPU rate + memory GiB x idle memory rate) x seconds in the month, and it bills around the clock from deploy until the floor is lowered. cpu_idle false (instance-based billing) is the other commitment shape: paired with a min-instance floor it bills the full active-lifetime rates 24x7, not the idle rates."

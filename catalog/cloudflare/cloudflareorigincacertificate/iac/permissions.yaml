@@ -1,0 +1,55 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), and the write group is additionally named by
+# Cloudflare's own Origin CA product page, whose "API calls" section says to
+# authenticate with "an API token with Permissions that include
+# Zone - SSL and Certificates - Edit"
+# (https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/,
+# retrieved 2026-08-22):
+#
+#   "SSL and Certificates Write"  -- zone-scoped, granted on the zones the
+#                                    requested hostnames belong to;
+#                                    create/revoke the certificate via
+#                                    POST /certificates and
+#                                    DELETE /certificates/{certificate_id}
+#                                    (the Origin CA endpoints are unprefixed
+#                                    -- account/user-level paths -- but the
+#                                    token permission Cloudflare documents
+#                                    for them is the zone-scoped SSL and
+#                                    Certificates group)
+#                                    (provenance: documented)
+#   "SSL and Certificates Read"   -- zone-scoped; refresh/import the
+#                                    certificate via
+#                                    GET /certificates/{certificate_id}
+#                                    (Write covers the whole lifecycle; Read
+#                                    is only needed for read-only
+#                                    credentials) (provenance: derived)
+#
+# The modules' remaining resources create nothing at Cloudflare: when the
+# spec omits csr, both engines generate the private key and CSR locally
+# (Terraform: tls_private_key + tls_cert_request; Pulumi: the matching
+# pulumi-tls PrivateKey + CertRequest), so no additional API permission is
+# involved and the key never transits the Cloudflare API.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_origin_ca_certificate resource and
+# the Pulumi module's matching OriginCaCertificate resource; neither engine
+# performs secondary lookups), with the write group upgraded to documented
+# provenance by the product page cited above. The live capture lane upgrades
+# entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareorigincacertificate
+spec: {}

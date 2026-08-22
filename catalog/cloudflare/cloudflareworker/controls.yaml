@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareworker
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A Worker stores no application data -- it is code plus configuration held by Cloudflare's control plane; state lives in the services it binds (KV, D1, R2, Durable Objects), each with its own control profile. Secret bindings are managed-secret references resolved just-in-time at deploy (the spec marks their values sensitive), never plaintext in the manifest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data-at-rest key surface exists for this component class (see enc-at-rest); Cloudflare offers no customer-managed-key option for Worker scripts or their configuration.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The component-owned exposure surfaces terminate TLS managed by Cloudflare -- workers.dev serves HTTPS, and for each custom domain the spec's contract states Cloudflare provisions and manages TLS automatically. Worker-to-worker service bindings never traverse the public internet.
+      notes: A pattern-based route inherits its zone's TLS posture (for example Always Use HTTPS), which belongs to zone-scoped components rather than any field here.
+    - control_id: no-public-access
+      status: configurable
+      field_path: workers_dev
+      evidence:
+        type: spec_default
+        reference: With workers_dev omitted (its enabled defaults false) and no custom_domains or routes declared, the Worker has no public URL at all -- it is invocable only through service bindings from other Workers, cron schedules, or queue consumption. Every exposure surface is an explicit opt-in.
+      notes: Presets 02-minimal and 03-static-site opt into workers.dev; preset 01-api-with-custom-domain exposes a custom domain. A Worker deployed with none of the three stays private to the platform.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The Worker itself has no source-based network filter -- inbound restriction for routes and custom domains lives on the fronting zone (WAF, IP access rules) through zone-scoped components. The rate_limits bindings expose a rate-limiting API to the script's own logic, not a platform ingress filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Web application firewall and rate-limiting protections for a Worker's public hostnames attach at the zone serving them, outside this spec; the spec carries no filtering field of its own.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is governed by Cloudflare's account-level token model (the Workers Scripts and zone Workers Routes permission groups); the serving plane is anonymous public traffic on whatever surfaces are opted into. The spec carries no per-worker access-control field because the provider offers none.
+    - control_id: workload-identity
+      status: configurable
+      field_path: kv_namespaces
+      evidence:
+        type: spec_default
+        reference: The spec's binding families -- kv_namespaces (the cited field; the same holds for r2_buckets, d1_databases, queues, services, durable_objects, hyperdrive_configs, ai, and the rest) -- give the script keyless, platform-issued access to every bound service; no static credential is ever held for a bound resource, and foreign-key references compose the bindings from other catalog components' outputs.
+      notes: Preset 01-api-with-custom-domain binds KV and D1 keylessly. The secrets list exists for external systems the binding model cannot reach; each value is a managed-secret reference resolved at deploy.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The serving plane is anonymous public traffic by design on opted-in surfaces, and the management plane accepts only token-authenticated HTTPS -- there is no weaker legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations against the Worker land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-worker audit toggle. (Runtime request logging is monitoring, covered below.)
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: observability
+      evidence:
+        type: spec_default
+        reference: The observability block turns on Workers Logs and traces with per-surface controls (enabled, head_sampling_rate, destinations, persist), and both modules pass it through to the script. The logpush flag and tail_consumers list extend export -- Logpush delivers request logs to a configured destination, and tail consumers stream live trace events to another Worker.
+      notes: Preset 01-api-with-custom-domain enables observability at full sampling; the other presets leave it off.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Worker is a stateless, redeployable code artifact -- this manifest plus the script source (inline content or the R2 bundle) fully recreate it. Application state lives in bound services with their own recovery postures.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Worker runs across Cloudflare's global network with no zonal or regional placement for this spec to configure -- placement.mode (smart) optimizes where invocations run for latency, not an availability topology.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Cloudflare API nor either official module exposes a deletion-protection flag for Worker scripts; deletion succeeds whenever the credential allows it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare operates and patches the Workers runtime fleet continuously. The spec's compatibility_date and compatibility_flags pin runtime behavior semantics for the script's benefit -- they do not hold back security patching, which has no customer surface.

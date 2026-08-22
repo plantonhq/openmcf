@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareloadbalancermonitor
+spec:
+  billing_model: free
+  free_tier: A monitor is a probe definition inside Cloudflare Load Balancing -- no Cloudflare page prices monitors, and nothing on this spec (protocol, path, expected codes, interval, timeout, retries, headers, port) can express a charge. Creating, holding, or reusing one across many pools costs nothing of its own.
+  notes: "The real spend lives in the product this object presupposes: \"Load balancing is an add-on for your account\" that requires a billing profile, where you \"Choose your plan options and confirm payment\" (https://developers.cloudflare.com/load-balancing/get-started/enable-load-balancing/, retrieved 2026-08-22). That add-on subscription -- carried in this catalog by the CloudflareLoadBalancer kind's hybrid cost profile -- is what bills, and Cloudflare publishes no dollar figures for it in its docs. Probe traffic itself (interval controls its frequency) lands as ordinary requests on YOUR origins, whatever infrastructure bills for those; Cloudflare meters none of it through this object. Applying this resource on an account without the add-on fails the apply rather than incurring cost."

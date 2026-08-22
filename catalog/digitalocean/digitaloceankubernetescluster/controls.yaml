@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceankubernetescluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The spec has no encryption surface because DigitalOcean exposes none for DOKS -- control-plane state is platform-managed, worker local disks carry no encryption toggle, and persistent data lives on block storage volumes (their own resource class, encrypted at rest by the platform).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service anywhere on the platform -- there is no CMK to configure for cluster state or node disks.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Kubernetes API server endpoint serves TLS only, and the provisioner-fetched kubeconfig authenticates over TLS with time-limited credentials -- no plaintext control-plane path exists on DOKS.
+      notes: In-cluster pod-to-pod encryption is a workload/CNI concern outside this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: isolated_workers
+      evidence:
+        type: spec_default
+        reference: Defaults false; true blocks worker nodes from public internet access entirely, with control-plane connectivity routed internally. Create-only.
+      notes: "The API server endpoint remains public either way -- restricting who reaches it is the control_plane_firewall's job (see restricted-ingress). Neither preset isolates workers."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: control_plane_firewall
+      evidence:
+        type: spec_default
+        reference: Unset leaves the public Kubernetes API endpoint open to connections from anywhere; a block with enabled true restricts it to the declared allowed_addresses (IPs or CIDRs, validated at manifest time).
+      notes: The production preset enables the firewall with a CIDR allowlist. Workload ingress restriction belongs to the firewalls and load balancers in front of node workloads, outside this spec.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DigitalOcean attaches no WAF to the Kubernetes API endpoint, and workload HTTP traffic enters through load balancer or CDN tiers that are separate resources -- there is no request-filtering surface on the cluster itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every DOKS cluster runs with Kubernetes RBAC active -- authorization inside the cluster is role-based and cannot be switched off at any configuration level.
+      notes: "The honest caveat: DigitalOcean-issued kubeconfig credentials carry cluster-admin, so meaningful role separation comes from provisioning additional in-cluster users, roles, and bindings -- or from sso with OIDC group claims."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean has no workload-identity federation for DOKS -- pods calling DigitalOcean APIs must carry a static API token they manage themselves; no platform-issued short-lived credential path exists.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: sso.required
+      evidence:
+        type: spec_default
+        reference: With sso enabled, required true makes OpenID Connect single sign-on mandatory for all cluster access, closing the standalone certificate-credential path; default false leaves both paths open.
+      notes: kubeconfig_expire_seconds additionally bounds how long any issued credential stays valid (DigitalOcean's default is 7 days). Neither preset configures SSO.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: DOKS exposes no control-plane audit log configuration -- neither the API nor the provider carries an audit surface, and management-plane actions land in the team's account activity outside this component.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Node and cluster metrics flow to the DigitalOcean control panel's built-in Kubernetes monitoring automatically for every DOKS cluster -- not a spec choice.
+      notes: Deeper observability (Prometheus, Cilium Hubble flows) is deployed as workloads inside the cluster, outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: DigitalOcean offers no managed backup service for DOKS cluster state or workloads -- application-level backup (e.g. Velero) is deployed inside the cluster, and volume snapshots belong to the block storage resources. There is nothing here to enable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no managed backup channel on the cluster (see backup-recovery), no retention knob exists either.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: highly_available
+      evidence:
+        type: spec_default
+        reference: Defaults false (the spec deliberately sends an explicit false to keep the cheaper single-replica control plane); true runs multiple control-plane replicas with automatic failover. One-way -- HA can never be turned off.
+      notes: "Control-plane redundancy is within the region (DigitalOcean regions are single facilities, not multi-AZ). Worker redundancy is node_count spread across the pool -- DigitalOcean recommends at least two nodes to survive upgrades. The production preset enables HA; development does not."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a deletion-protection flag for DOKS clusters. destroy_all_associated_resources is the opposite concern -- it widens what a deliberate destroy sweeps.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_upgrade
+      evidence:
+        type: spec_default
+        reference: Defaults false; true lets DigitalOcean apply new Kubernetes patch releases automatically inside the maintenance window. Minor/major upgrades are never automatic.
+      notes: maintenance_policy pins the weekly window and surge_upgrade (provider default on) provisions temporary surge nodes to minimize upgrade downtime. The production preset enables auto_upgrade with a Sunday 03:00 window.

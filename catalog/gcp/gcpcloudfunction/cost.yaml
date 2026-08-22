@@ -1,0 +1,55 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudfunction
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloud Run Functions
+      sku_meter: min-instance idle vCPU
+      pricing_unit: vCPU-seconds
+      description: Every instance service_config.scaling.min_instance_count keeps warm bills its allocated vCPUs at the idle rate ($0.0000025 per vCPU-second in us-central1, per cloud.google.com/run/pricing read 2026-08-22 -- Gen 2 functions run on Cloud Run and bill its request-based rates) for every second it sits idle. A floor of zero (the default) makes this charge vanish entirely.
+    - service_name: Cloud Run Functions
+      sku_meter: min-instance idle memory
+      pricing_unit: GiB-seconds
+      description: The same warm instances bill their allocated memory at the idle rate ($0.0000025 per GiB-second in us-central1, same source) for every idle second -- the second half of the min-instance commitment.
+  cost_drivers:
+    - field_path: service_config.scaling.min_instance_count
+      sku_meter: min-instance idle vCPU
+      pricing_unit: vCPU-seconds
+      impact: The committed-spend dial -- every unit above zero keeps one instance warm 24x7, billing its full vCPU and memory allocation at the idle rates even with zero invocations. Zero (the default) scales to zero and owes nothing at rest.
+    - field_path: service_config.available_memory
+      sku_meter: active memory
+      pricing_unit: GiB-seconds
+      impact: The instance's memory allocation multiplies every billed second -- $0.0000025 per GiB-second active in us-central1 -- and multiplies the idle floor when min instances are set. Unset defaults to 256 MiB, and when available_cpu is also unset GCP derives the CPU allocation from this value, so memory moves both meters.
+    - field_path: service_config.available_cpu
+      sku_meter: active vCPU
+      pricing_unit: vCPU-seconds
+      impact: The instance's vCPU allocation multiplies every billed second at $0.000024 per vCPU-second active in us-central1 (idle min instances bill $0.0000025). Unset lets GCP derive it from available_memory.
+    - field_path: service_config.max_instance_request_concurrency
+      sku_meter: active vCPU
+      impact: The default of 1 gives every in-flight request its own instance, so concurrent traffic multiplies billed instance-seconds one-for-one; raising it lets I/O-bound requests share an instance's clock, cutting billed seconds (needs at least 1 CPU and thread-safe code).
+    - field_path: trigger.trigger_type
+      sku_meter: invocations
+      impact: HTTP functions bill $0.40 per million requests beyond the free 2 million; EVENT_TRIGGER functions additionally ride Eventarc and Pub/Sub, whose delivery and message charges bill on those services.
+    - field_path: service_config.vpc_connector
+      sku_meter: Serverless VPC Access connector
+      impact: The connector's own instances bill on the GcpServerlessVpcConnector component around the clock whether or not the function runs; direct VPC egress (direct_vpc_network_interface) avoids that standing cost and bills only the VPC data transfer the function actually moves.
+    - field_path: region
+      sku_meter: active vCPU
+      impact: Picks the price tier -- Tier 1 regions (us-central1, europe-west1, ...) bill the base rates; Tier 2 regions bill higher ones.
+    - field_path: build_config
+      sku_meter: function build
+      impact: Every deploy runs a Cloud Build build of the source archive and stores the image in Artifact Registry -- both bill on their own services per deploy, beyond their free tiers, even when the function's own usage stays free.
+  free_tier: Google zero-rates the first 2,000,000 invocations plus the first 180,000 vCPU-seconds and 360,000 GiB-seconds of active time each month, aggregated per billing account, applied as a spend-based discount at Tier 1 pricing per cloud.google.com/run/pricing (read 2026-08-22). Estimates state list prices and never net the free tier out.
+  estimate_exclusions:
+    - invocations -- $0.40 per million beyond the free 2 million; volume is the workload's, not the manifest's
+    - active-time upcharge on warm instances -- every second a min instance actually serves swaps the $0.0000025 idle vCPU rate for the $0.000024 active rate
+    - Cloud Build minutes and Artifact Registry storage per deploy bill on those services
+    - Eventarc delivery and Pub/Sub message charges for event-triggered functions bill on those services, and retries redeliver at the same rates
+    - network egress follows Google Cloud networking pricing; connector-routed traffic adds the GcpServerlessVpcConnector's own standing cost on that component
+    - Secret Manager access operations for secret env vars and volumes bill on the secret's project
+  notes: "A Gen 2 function IS a Cloud Run service under request-based billing -- the bill shows Cloud Run Functions SKUs at Cloud Run's rates. The manifest commits exactly one thing: the min-instance idle floor, min_instance_count x (derived vCPU x idle vCPU rate + memory GiB x idle memory rate) x seconds in the month. Everything else follows invocations. When available_cpu and available_memory are both unset, the floor prices GCP's documented 256 MiB default with its derived fractional vCPU."

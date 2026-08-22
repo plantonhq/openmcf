@@ -6,13 +6,42 @@ kind: ComponentCostProfile
 metadata:
   name: cloudflareaigateway
 spec:
-  billing_model: free
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: guardrails
+      sku_meter: Workers AI token-based inference (guardrail evaluations)
+      pricing_unit: tokens evaluated
+      impact: >-
+        Enabling guardrails runs every guarded prompt and response through
+        @cf/meta/llama-guard-3-8b on Workers AI, and Cloudflare bills that
+        evaluation as Workers AI token-based inference -- cost scales with
+        the length of the prompts and responses being evaluated
+        (https://developers.cloudflare.com/ai-gateway/reference/pricing/,
+        retrieved 2026-08-22). Zero traffic means zero evaluations, but a
+        busy gateway pays this Cloudflare-side meter on every guarded
+        request.
+    - field_path: logpush
+      sku_meter: AI Gateway Logpush delivery
+      pricing_unit: log requests delivered (per million)
+      impact: >-
+        Turning logpush on ships gateway logs on the Workers Logpush meter,
+        available only on the Workers Paid plan -- 10 million requests per
+        month included, then $0.05 per additional million
+        (https://developers.cloudflare.com/ai-gateway/reference/pricing/,
+        retrieved 2026-08-22).
+  estimate_exclusions:
+    - guardrail evaluation spend depends on request volume and prompt/response token length, which no manifest can predict
+    - logpush delivery volume tracks gateway traffic, unknowable from the manifest
   notes: >-
-    The gateway itself is free on every plan -- configuration, guardrails,
-    routing, and log collection within the stored-log cap create no
-    Cloudflare charge. The real spend is at the MODEL PROVIDERS the gateway
-    fronts (OpenAI, Anthropic, Workers AI inference, and kin), driven by
-    traffic volume no manifest can predict -- which is exactly what
-    spend_limits exists to cap (and cache_ttl exists to reduce: cached
-    prompts never reach a paid provider). Shipping logs out rides the
-    account's Logpush entitlement, plan-gated on some destinations.
+    The gateway's core features are free on every plan -- configuration,
+    dashboard analytics, caching, rate limiting, DLP scanning, and log
+    collection within the stored-log cap create no Cloudflare charge
+    (https://developers.cloudflare.com/ai-gateway/reference/pricing/,
+    retrieved 2026-08-22). Two spec fields start Cloudflare-side meters:
+    guardrails (billed as Workers AI token-based inference per evaluated
+    request) and logpush (Workers Paid plan only, $0.05/million past 10
+    million/month). Even so, the DOMINANT spend is at the MODEL PROVIDERS
+    the gateway fronts (OpenAI, Anthropic, Workers AI inference, and kin),
+    driven by traffic volume no manifest can predict -- which is exactly
+    what spend_limits exists to cap (and cache_ttl exists to reduce --
+    cached prompts never reach a paid provider).

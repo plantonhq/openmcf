@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareloadbalancer
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloudflare Load Balancing
+      sku_meter: Load Balancing subscription
+      pricing_unit: subscription-months
+      description: "A live load balancer presupposes the account's paid Load Balancing add-on -- \"Load balancing is an add-on for your account\" (https://developers.cloudflare.com/load-balancing/get-started/enable-load-balancing/, retrieved 2026-08-22). The published entry price is \"Starting at $5/mo\" (https://www.cloudflare.com/plans/, retrieved 2026-08-22), and Cloudflare's own invoice example bills it in advance as \"Basic Load Balancing\" at $5.00 per month (https://developers.cloudflare.com/billing/understand/how-billing-works/, retrieved 2026-08-22). The subscription is account-scoped and shared by every load balancer on the account."
+  cost_drivers:
+    - field_path: default_pools
+      sku_meter: origins and pools sub-line items
+      impact: "Every pool this load balancer steers across brings its origins onto the subscription's meters -- Cloudflare invoices Load Balancing with separate sub-line items for pools, origins, health check intervals, and health check regions, showing $0.00 while within the subscription's included allocation. Cloudflare publishes neither the allocations nor the overage rates on a fetchable page."
+    - field_path: hostname
+      sku_meter: DNS queries to load-balanced hostnames
+      pricing_unit: queries
+      impact: "DNS queries to the load-balanced hostname are metered -- the first 500,000 per month are included; the overage rate is not published on a fetchable Cloudflare-own page (https://developers.cloudflare.com/billing/understand/usage-based-billing/, retrieved 2026-08-22)."
+    - field_path: steering_policy
+      sku_meter: Load Balancing subscription
+      impact: "The entry price is \"Starting at\" -- geographic and other advanced steering selections made when purchasing the add-on can set the subscription above the $5 entry tier; Cloudflare publishes the tier contents only in the dashboard checkout, not on a fetchable page."
+    - field_path: pop_pools
+      sku_meter: Load Balancing subscription
+      impact: Per-PoP steering is Enterprise-only -- using it presupposes an Enterprise contract whose Load Balancing terms are contract-priced.
+    - field_path: rules
+      sku_meter: Load Balancing subscription
+      impact: "Custom traffic rules ride the add-on subscription; whether they require a tier above the entry price is published only in the dashboard checkout, not on a fetchable page."
+  free_tier: "The first 500,000 DNS queries to load-balanced hostnames per month are included with the Load Balancing subscription."
+  estimate_exclusions:
+    - "per-origin, per-pool, health-check-interval, and health-check-region charges: Cloudflare invoices these as Load Balancing sub-line items but publishes neither the included allocations nor the overage rates on a fetchable Cloudflare-own page"
+    - the DNS-query overage rate past the included 500,000 per month is not published on a fetchable Cloudflare-own page
+    - "the subscription's actual tier is chosen at purchase in the dashboard (\"Starting at $5/mo\") -- origin counts and steering features selected there can raise it above the entry price"
+    - the add-on subscription is account-scoped and shared across all load balancers, pools, and monitors on the account -- attributing its full fee to one load balancer overstates the marginal cost of the second one
+  notes: "Hybrid billing -- the account's Load Balancing add-on subscription is committed the moment a load balancer exists (the API returns 403 without it), and origins, health checks, and DNS queries meter on top. Origins live on the referenced CloudflareLoadBalancerPool resources, so this manifest shapes the origin meter only indirectly through which pools it references. Cloudflare prices the add-on globally (no regional variants)."

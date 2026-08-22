@@ -109,13 +109,13 @@ spec:
       region: eastus
       currency: USD
       list_unit_price: "0.115"
-      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
-      retrieved_on: "2026-08-14"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for PostgreSQL Flex Server Storage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-22"
       azure_selector:
         service_name: Azure Database for PostgreSQL
         arm_region_name: eastus
         meter_name: Storage Data Stored
-        product_name: Az DB for PostgreSQL Flexible Server Storage
+        product_name: Azure Database for PostgreSQL Flex Server Storage
     - name: managed-redis-balanced-b1-eastus
       service_name: Redis Cache
       pricing_unit: hours

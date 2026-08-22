@@ -1,0 +1,59 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22; the page lists this account-scoped group in two
+# naming variants -- "Workers R2 Storage Edit" and "Workers R2 Storage
+# Write" -- both verbatim on the page; the Write form is used here):
+#
+#   Workers R2 Storage Write  -- account-scoped; the modules drive seven
+#                                bucket-scoped resources, all under the
+#                                account R2 API at
+#                                /accounts/{account_id}/r2/buckets...:
+#                                the bucket itself (create/delete), the
+#                                managed r2.dev public domain
+#                                (.../domains/managed), custom domains
+#                                (.../domains/custom[/{domain}]), CORS
+#                                (.../cors), lifecycle (.../lifecycle),
+#                                object lock (.../lock), and event
+#                                notifications
+#                                (.../event_notifications/configuration/queues/{queue_id})
+#                                (derived from the modules' API surface)
+#                                (provenance: derived)
+#   Workers R2 Storage Read   -- account-scoped; refresh/import the bucket and
+#                                its sub-resources via GET on the same paths
+#                                (derived from the modules' API surface)
+#                                (provenance: derived)
+#
+# HONEST UNKNOWNS: (1) custom-domain attachment operates through the R2 API
+# but connects a hostname in a Cloudflare zone on the same account -- whether
+# Cloudflare additionally requires a zone-scoped permission (e.g. DNS Write
+# on the target zone) for that call is not stated on the permissions
+# reference page; the live capture lane should settle it. (2) Event
+# notifications target a queue by ID; whether the R2 group alone authorizes
+# the subscription or a Queues-scoped permission is also checked is likewise
+# unstated. Both entries stay derived until proven.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_r2_bucket, cloudflare_r2_managed_domain,
+# cloudflare_r2_custom_domain, cloudflare_r2_bucket_cors,
+# cloudflare_r2_bucket_lifecycle, cloudflare_r2_bucket_lock, and
+# cloudflare_r2_bucket_event_notification resources, mirrored by the Pulumi
+# module; neither engine performs secondary lookups or data-source reads).
+# The component catalog.md says only that the token needs "R2 permissions"
+# -- no more specific prose existed to migrate. The live capture lane
+# upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarer2bucket
+spec: {}

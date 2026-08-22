@@ -1,0 +1,72 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22; the page lists each group in two naming variants --
+# "...Edit" and "...Write" -- both verbatim on the page; the Write form is
+# used here):
+#
+#   Workers Scripts Write  -- account-scoped; upload/update/delete the script
+#                             (with its bindings, secrets, assets manifest,
+#                             observability settings, and migrations) via
+#                             PUT/DELETE /accounts/{account_id}/workers/scripts/{script_name},
+#                             manage workers.dev exposure via the script's
+#                             subdomain endpoint, manage cron triggers via
+#                             PUT .../workers/scripts/{script_name}/schedules,
+#                             and attach custom domains via PUT
+#                             /accounts/{account_id}/workers/domains
+#                             (derived from the modules' API surface)
+#                             (provenance: derived)
+#   Workers Scripts Read   -- account-scoped; refresh/import the script and its
+#                             settings via GET on the same paths
+#                             (derived from the modules' API surface)
+#                             (provenance: derived)
+#   Workers Routes Write   -- zone-scoped (on every zone named in routes[]);
+#                             create/delete pattern routes via POST/DELETE
+#                             /zones/{zone_id}/workers/routes[/{route_id}].
+#                             Only needed when the spec declares routes.
+#                             (derived from the modules' API surface)
+#                             (provenance: derived)
+#   Workers Routes Read    -- zone-scoped; refresh/import routes via GET on the
+#                             same path. Only needed when the spec declares routes.
+#                             (derived from the modules' API surface)
+#                             (provenance: derived)
+#
+# SEPARATE CREDENTIAL -- R2 bundle fetch: when spec.r2_bundle is set, BOTH
+# modules read the pre-built script bundle through R2's S3-compatible API
+# (the Terraform module's aws_s3_object data source against the account's
+# r2.cloudflarestorage.com endpoint; the Pulumi module's s3.GetObject via an
+# aws provider configured the same way). That path authenticates with an R2
+# access key ID and secret (S3 credentials minted from an R2 API token at
+# the account), NOT with the Cloudflare API token above. The runner needs
+# read access to the bundle bucket through that credential.
+#
+# HONEST UNKNOWN: custom-domain attachment (PUT /accounts/{account_id}/workers/domains)
+# connects a hostname in a Cloudflare zone -- whether Cloudflare additionally
+# requires a zone-scoped permission (e.g. DNS Write on the target zone) for
+# that call is not stated on the permissions reference page; the live capture
+# lane should settle it.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_workers_script, cloudflare_workers_script_subdomain,
+# cloudflare_workers_custom_domain, cloudflare_workers_route, and
+# cloudflare_workers_cron_trigger resources, mirrored by the Pulumi module).
+# Binding targets (KV, D1, R2, Queues, other Workers) are referenced by
+# id/name resolved from other components' outputs -- the modules never call
+# those services' APIs. The component README and catalog.md carried no named
+# permission prose to migrate. The live capture lane upgrades entries to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareworker
+spec: {}

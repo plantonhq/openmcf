@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudfunction
+spec:
+  gcp:
+    groups:
+      - purpose: EnableServerlessApis
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling the five APIs a Gen 2 deploy exercises -- cloudfunctions, cloudbuild, run, artifactregistry, and eventarc -- so a fresh project works on the first deploy. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageFunction
+        permissions:
+          - cloudfunctions.functions.create
+          - cloudfunctions.functions.get
+          - cloudfunctions.functions.update
+          - cloudfunctions.functions.delete
+          - cloudfunctions.operations.get
+        provenance: derived
+        notes: Covers google_cloudfunctions2_function -- create, read/refresh, in-place updates (build config, service config, scaling, networking, event trigger), and destroy. Function mutations on the Cloud Functions v2 API return long-running operations the provider polls, which authorize as cloudfunctions.operations.get. The committed action-inventory snapshot (pkg/iac/actioninventory/gcp.yaml) carries the cloudfunctions service prefix (iam.googleapis.com queryTestablePermissions, retrieved 2026-08-22) and lists all five permissions named here.
+      - purpose: GrantPublicInvoker
+        permissions:
+          - run.services.setIamPolicy
+          - run.services.getIamPolicy
+        provenance: derived
+        notes: Covers google_cloud_run_service_iam_member -- Gen 2 functions are served by Cloud Run, so "allow unauthenticated" is a roles/run.invoker grant to allUsers on the UNDERLYING Cloud Run service, created only for HTTP-triggered functions with service_config.allow_unauthenticated true (the 01-http-api preset). IAM member resources read the current policy before modifying it, so getIamPolicy rides along.
+      - purpose: ActAsServiceAccounts
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Deploying a Gen 2 function requires iam.serviceAccounts.actAs on the runtime identity (service_config.service_account_email, or the project's Compute Engine default service account when unset) -- and additionally on the build identity when build_config.service_account names one, and on the trigger identity when event_trigger.service_account_email names one. No shape of this component escapes the runtime-identity requirement.
+      - purpose: ResolveAmbientProject
+        permissions:
+          - resourcemanager.projects.get
+        provenance: derived
+        notes: Covers the count-gated data google_project lookup, needed only when a secret env var or secret volume omits its project_id and the manifest names no project of its own -- the v2 API requires an explicit project on every secret reference, so the module resolves the ambient one. Plans that name their project (or carry no ambient-project secrets) never exercise it.

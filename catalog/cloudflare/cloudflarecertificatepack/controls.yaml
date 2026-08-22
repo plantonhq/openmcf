@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarecertificatepack
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A certificate pack stores no customer data -- the issued certificate's private key is generated and held inside Cloudflare's edge infrastructure as provider internals, never exposed to or configured by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no component-owned data at rest to key (see enc-at-rest); Cloudflare exposes no customer-managed-key surface for edge certificates.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pack SUPPLIES publicly-trusted certificate material for the zone's edge TLS -- it enables encrypted transit but terminates nothing itself. Whether and how strictly TLS is enforced (SSL mode, minimum version, ciphers) is CloudflareZoneTlsSettings and zone-settings territory, outside this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A certificate pack has no network endpoint -- the certificate is served during TLS handshakes on the zone's hostnames, which expose the zone, not this object.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A certificate receives no HTTP requests -- request filtering is the zone's WAF and ruleset territory.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials -- domain control validation (txt/http/email) proves zone control to the CA, and txt validation completes automatically on Cloudflare-hosted zones.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records configuration changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Certificate lifecycle notifications (expiry, validation issues) are Cloudflare Notifications configured at the account, outside this spec -- the pack itself publishes no metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable -- destroying and re-applying the manifest re-orders the pack and Cloudflare re-issues the certificate; there is no data to restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The issued certificate is distributed across Cloudflare's global anycast edge by design -- replication is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag for certificate packs -- deleting the pack removes the certificate from the edge (the zone falls back to Universal SSL where applicable).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare provisions AND auto-renews the certificate for the pack's lifetime -- rotation is the provider's managed channel, with validity_days (14, 30, 90, or 365) selecting how often the certificate is replaced. Fully managed service; no customer-visible patch surface exists.
+      notes: Shorter validity_days values mean faster automatic rotation -- a hygiene dial, not a patching burden, since renewal is Cloudflare's job in every case.

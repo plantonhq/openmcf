@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
+#
+#   Custom-scopes token (recommended):
+#     droplet:create              -- create the droplet via POST /v2/droplets (image, size, ssh keys, backups, volume ids, and tags all ride the create body) (provenance: derived)
+#     droplet:read                -- read the droplet via GET /v2/droplets/{id} on refresh/import and while the create waiter polls for active status (derived)
+#     droplet:update              -- in-place changes (rename, resize, backup toggles/policy, tag set, volume set) via PUT /v2/droplets/{id} and POST /v2/droplets/{id}/actions (derived)
+#     droplet:delete              -- destroy via DELETE /v2/droplets/{id}; graceful_shutdown first issues a shutdown action, which also needs droplet:update (derived)
+#     tag:create                  -- both modules always apply the Planton label tags (plus spec tags); assigning a tag name the account has never used materializes it (derived)
+#     ssh_key:read                -- when ssh_keys are set: the provider resolves each ID/fingerprint against GET /v2/account/keys to build the create request (derived)
+#     block_storage_action:create -- when volume_ids change after create: the provider attaches/detaches volumes via POST /v2/volumes/{id}/actions (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_droplet's create/read/update/delete/import paths in both the
+# Terraform and Pulumi modules, waiters included); the live capture lane
+# upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandroplet
+spec: {}

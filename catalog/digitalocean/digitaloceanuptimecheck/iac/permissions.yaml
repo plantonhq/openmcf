@@ -7,13 +7,14 @@
 # kubernetes) applies -- their absence is the schema's own claim that the
 # modules touch no such API. The DigitalOcean least-privilege story lives in
 # the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
 #
 #   Custom-scopes token (recommended):
 #     uptime:read    -- read the check and its alerts through GET /v2/uptime/checks/{id} and .../alerts/{id} (provenance: derived)
-#     uptime:create  -- create the check and its alert rows via POST /v2/uptime/checks and .../alerts (derived)
-#     uptime:update  -- update the check and its alert rows via PUT (derived)
-#     uptime:delete  -- delete the check (its alerts die with it) and individual alert rows via DELETE (derived)
+#     uptime:create  -- create the check via POST /v2/uptime/checks; alert-row creation via POST .../alerts additionally requires uptime:update -- DigitalOcean's own OpenAPI spec (uptime/create_alert.yml) declares both scopes on that endpoint (derived)
+#     uptime:update  -- update the check and its alert rows via PUT; also co-required (per the OpenAPI declarations) for alert-row create and delete (derived)
+#     uptime:delete  -- delete the check (its alerts die with it) via DELETE /v2/uptime/checks/{id}; individual alert-row deletion via DELETE .../alerts/{id} additionally requires uptime:update per the OpenAPI spec (uptime/delete_alert.yml) (derived)
 #   A full-access token also works; it is never least-privilege.
 #
 # All entries are derived from static analysis of the official modules

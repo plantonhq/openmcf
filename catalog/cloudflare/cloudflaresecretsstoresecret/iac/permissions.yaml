@@ -1,0 +1,42 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. The general API token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22) lists NO Secrets Store group; the names below are
+# verbatim from the Secrets Store access-control page
+# (https://developers.cloudflare.com/secrets-store/access-control/,
+# retrieved 2026-08-22), which documents the product's two API token
+# permission levels:
+#
+#   Account Secrets Store Edit  -- account-scoped; create the secret via POST
+#                                  /accounts/{account_id}/secrets_store/stores/{store_id}/secrets,
+#                                  update value/scopes/comment via PATCH
+#                                  /accounts/{account_id}/secrets_store/stores/{store_id}/secrets/{secret_id},
+#                                  and delete it via DELETE on the same path
+#                                  (derived from the module's API surface)
+#                                  (provenance: derived)
+#   Account Secrets Store Read  -- account-scoped; refresh/import the secret's
+#                                  metadata (name, scopes, comment -- the value
+#                                  is write-only and never returned) via GET
+#                                  /accounts/{account_id}/secrets_store/stores/{store_id}/secrets/{secret_id}
+#                                  (derived from the module's API surface)
+#                                  (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_secrets_store_secret resource and the
+# Pulumi module's matching SecretsStoreSecret resource; neither engine
+# performs secondary lookups or data-source reads). The live capture lane
+# upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflaresecretsstoresecret
+spec: {}

@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. The general API token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22) lists no infrastructure-targets-specific group, and
+# the targets API endpoint docs carry no "Accepted Permissions" section; the
+# group below is the one Cloudflare's own SSH infrastructure access guide
+# (https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-infrastructure-access/,
+# retrieved 2026-08-22) explicitly instructs adding to the API token when
+# managing the infrastructure target with the Cloudflare Terraform provider:
+#
+#   Zero Trust Write  -- account-scoped; create/update/delete the target via
+#                        POST/PUT/DELETE
+#                        /accounts/{account_id}/infrastructure/targets[/{target_id}]
+#                        and refresh/import it via GET on the same path (the
+#                        guide names only this single group for the Terraform
+#                        lifecycle; no narrower read-level group is documented
+#                        for these endpoints)
+#                        (derived from the module's API surface)
+#                        (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_zero_trust_access_infrastructure_target
+# resource and the Pulumi module's matching
+# ZeroTrustAccessInfrastructureTarget resource; neither engine performs
+# secondary lookups or data-source reads -- an omitted virtual_network_id is
+# assigned server-side, not looked up by the module). The live capture lane
+# upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccessinfrastructuretarget
+spec: {}

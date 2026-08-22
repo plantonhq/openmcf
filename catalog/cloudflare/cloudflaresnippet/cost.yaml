@@ -7,4 +7,12 @@ metadata:
   name: cloudflaresnippet
 spec:
   billing_model: free
-  notes: Snippets are included on every plan. Creating a snippet creates no charge of its own. Cloudflare caps snippet COUNT per zone (a small number on free plans; more on higher plans) and code size per snippet -- the API enforces both at create. Plan upgrades that raise the count bill on the zone, never through this component.
+  notes: >-
+    Snippets are included on every PAID plan but are NOT available on the
+    Free plan -- Cloudflare's availability table shows Free at 0 snippets,
+    Pro 25, Business 50, Enterprise 300
+    (https://developers.cloudflare.com/rules/snippets/, retrieved
+    2026-08-22). Creating a snippet creates no charge of its own. Cloudflare
+    caps snippet COUNT per zone (per the plan tiers above) and code size per
+    snippet -- the API enforces both at create. Plan upgrades that raise the
+    count bill on the zone, never through this component.

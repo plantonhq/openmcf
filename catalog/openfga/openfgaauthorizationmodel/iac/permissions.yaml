@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's OpenFGA credential needs to
+# provision, update, and destroy this component with the official modules.
+# Schema: iac/componentpermissions/v1.
+#
+# OpenFGA authenticates with a bearer credential against the customer-run
+# OpenFGA server, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The credential
+# the openfga/openfga Terraform provider (>= 0.5.0 per iac/tf/provider.tf)
+# takes is one of (verified against the provider registry docs and
+# openfga.dev/docs/getting-started/setup-openfga/configure-openfga,
+# retrieved 2026-08-22):
+#
+#   Pre-shared key:      FGA_API_URL + FGA_API_TOKEN (a key from the server's
+#                        authn.preshared.keys list, sent as a Bearer header)
+#   OIDC client creds:   FGA_API_URL + FGA_CLIENT_ID + FGA_CLIENT_SECRET +
+#                        FGA_API_TOKEN_ISSUER (optional FGA_API_SCOPES,
+#                        FGA_API_AUDIENCE)
+#   No authentication:   FGA_API_URL alone, when the server runs authn
+#                        method "none" (local development only)
+#
+# OpenFGA's API credentials carry no scope granularity: a valid pre-shared
+# key grants the server's ENTIRE API -- every store, every endpoint -- and
+# OIDC validates who may call (issuer/audience/optional subjects) without
+# scoping which endpoints they may hit. The only finer-grained mechanism is
+# the server's experimental access-control feature (>= 1.7.0, off by
+# default), so least privilege today means a dedicated OpenFGA server (or
+# dedicated pre-shared key) per trust boundary, not a narrower token. Should
+# the schema grow an OpenFGA section, this inventory converts mechanically:
+#
+#   Authorization model lifecycle (provenance: derived):
+#     "POST /stores/{store_id}/authorization-models"     -- write the model (WriteAuthorizationModel); models are immutable, so create AND every change hit this endpoint (each producing a new version)
+#     "GET /stores/{store_id}/authorization-models/{id}" -- read it back on refresh (ReadAuthorizationModel)
+#   Destroy calls NO API: the OpenFGA API cannot delete a model, and the
+#   provider treats delete as a state-only no-op. The DSL-to-JSON conversion
+#   (openfga_authorization_model_document data source) is a local transform
+#   via the openfga/language library -- no API call.
+#
+# All entries are derived from static analysis of the official module
+# (openfga_authorization_model's create/read paths and no-op delete in the
+# provider's authorization_model_client.go / authorization_model_resource.go,
+# github.com/openfga/terraform-provider-openfga, retrieved 2026-08-22); the
+# live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: openfgaauthorizationmodel
+spec: {}

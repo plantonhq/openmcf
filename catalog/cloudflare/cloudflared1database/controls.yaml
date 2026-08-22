@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract, the official modules, and Cloudflare's own documentation
+# (D1 data security and Time Travel pages, retrieved 2026-08-22). Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflared1database
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Cloudflare's D1 data security page states \"All objects stored in D1, including metadata, live databases, and inactive databases are encrypted at rest. Encryption and decryption are automatic, do not require user configuration to enable\" using AES-256 in GCM mode (https://developers.cloudflare.com/d1/reference/data-security/, retrieved 2026-08-22). No spec choice can disable it."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "D1 exposes no customer-managed-key surface at any level -- the same data security page states \"Encryption keys are managed by Cloudflare and securely stored in the same key management systems we use for managing encrypted data across Cloudflare internally.\" The spec has no key field because the provider offers none."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The D1 data security page states data transfer between a Worker (or nodes within Cloudflare's network) and D1 is secured with TLS/SSL, and \"API access via the HTTP API or using the wrangler command-line interface is also over TLS/SSL (HTTPS)\" (https://developers.cloudflare.com/d1/reference/data-security/, retrieved 2026-08-22). There is no plaintext path to configure away."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "A D1 database has no public network endpoint -- no host, port, or connection string exists. It is reachable only through a Worker's d1 binding inside Cloudflare's network or the token-authenticated HTTPS management API; the Pulumi module's own comment records that \"there is no connection string to export (none exists on the v5 resource)\"."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network listener to filter -- access is governed by identity (Worker bindings and API-token scopes), not by network sources, so ingress restriction has nothing to attach to.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The database receives no HTTP requests of its own -- a web application firewall would sit in front of the Worker that queries it, not the database.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access on both planes is governed by Cloudflare's account-level token model (the D1 Read/Write permission groups) and by which Workers declare a d1 binding -- account posture outside this spec, which carries no per-database access-control field because the provider offers none.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A Worker reaches D1 exclusively through its d1 binding -- a platform-issued capability declared in the Worker's configuration. No database credential, password, or connection string exists for a workload to hold, so keyless access is the only access.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: D1 exposes no database wire protocol and no username/password authentication at all -- the only access paths are the Worker binding and the token-authenticated HTTPS API, so no weaker legacy path exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations against the database land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-database audit toggle.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: D1 usage metrics (rows read, rows written, query analytics) surface through the Cloudflare dashboard and GraphQL Analytics API as account-level features; the spec exposes no export or integration field.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "D1 Time Travel is built-in point-in-time recovery -- Cloudflare's page states \"You do not need to enable Time Travel. It is always on\" and it \"allows you to restore a database to any minute within the last 30 days\" at no additional cost, with bookmarks created automatically (https://developers.cloudflare.com/d1/reference/time-travel/, retrieved 2026-08-22)."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Time Travel's restore window is fixed by Cloudflare -- the same page states bookmarks older than 30 days are invalid and cannot be used as a restore point. No retention knob exists in D1, the spec, or the modules.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: read_replication.mode
+      evidence:
+        type: spec_default
+        reference: Setting read_replication.mode to auto provisions read-only replicas in multiple regions (both modules pass the mode through to the provider's read_replication attribute). The primary instance remains single -- replicas serve reads for latency and read availability, not write failover.
+      notes: The shipped preset (01-standard) omits read_replication, so replication is off by default. The spec's own warning applies -- enabling it requires the querying Worker to use the D1 Sessions API for sequential consistency.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Cloudflare D1 API nor either official module exposes a deletion-protection flag for databases; deletion succeeds whenever the credential allows it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: D1 is a fully managed serverless service -- Cloudflare operates and patches the SQLite engine and storage subsystem; no version, maintenance window, or upgrade surface exists on the database.

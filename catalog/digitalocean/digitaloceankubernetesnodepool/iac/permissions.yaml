@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
+#
+#   Custom-scopes token (recommended):
+#     kubernetes:create -- create the pool via POST /v2/kubernetes/clusters/{cluster}/node_pools (size, count, autoscale bounds, labels, taints, tags ride the create body) (provenance: derived)
+#     kubernetes:read   -- read the pool via GET /v2/kubernetes/clusters/{cluster}/node_pools/{id} on refresh/import and while the create waiter polls node readiness (derived)
+#     kubernetes:update -- update count/bounds/labels/taints/tags via PUT /v2/kubernetes/clusters/{cluster}/node_pools/{id} (derived)
+#     kubernetes:delete -- destroy the pool AND its member droplets via DELETE /v2/kubernetes/clusters/{cluster}/node_pools/{id} (derived)
+#     tag:create        -- both modules always apply the Planton tags (plus spec tags) to the pool's droplets; assigning a tag name the account has never used materializes it (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_kubernetes_node_pool's create/read/update/delete/import
+# paths, waiters included) in both the Terraform and Pulumi modules; the
+# live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceankubernetesnodepool
+spec: {}

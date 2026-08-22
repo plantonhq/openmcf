@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarer2bucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: storage_class
+      sku_meter: R2 storage
+      pricing_unit: GB-months
+      impact: "Selects the default rate card for newly uploaded objects. Verbatim from Cloudflare's R2 pricing page (https://developers.cloudflare.com/r2/pricing/, retrieved 2026-08-22): Standard stores at \"$0.015 / GB-month\" with Class A operations at \"$4.50 / million requests\" and Class B at \"$0.36 / million requests\"; Infrequent Access stores at \"$0.01 / GB-month\" but operations cost more (Class A \"$9.00 / million requests\", Class B \"$0.90 / million requests\"), every read pays a data-retrieval fee of \"$0.01 / GB\", objects bill a 30-day minimum storage duration even if deleted sooner, and the free tier does not apply."
+    - field_path: lifecycle
+      sku_meter: R2 storage
+      pricing_unit: GB-months
+      impact: The automatic brake on the storage meter -- transition rules move aging objects to the cheaper Infrequent Access rate (each transition is itself a Class A operation, LifecycleStorageTierTransition), expiration rules delete objects (DeleteObject is a free operation), and abort rules clean up incomplete multipart uploads (AbortMultipartUpload is free) that would otherwise store bytes forever.
+    - field_path: lock
+      sku_meter: R2 storage
+      pricing_unit: GB-months
+      impact: Object-lock retention prevents deletion or overwrite of matching objects for the rule's duration (or indefinitely), putting a compliance floor under the storage meter -- locked bytes keep billing GB-months until the retention window ends, and no lifecycle rule can remove them early.
+    - field_path: public_access
+      sku_meter: R2 Class B operations
+      pricing_unit: millions of requests
+      impact: Exposing the bucket on the managed r2.dev domain (rate-limited, development-grade) invites anonymous read traffic -- reads that reach R2 bill as Class B operations, though egress itself is free at any volume.
+    - field_path: custom_domains
+      sku_meter: R2 Class B operations
+      pricing_unit: millions of requests
+      impact: The production public path -- serving objects on your own hostnames invites read traffic that bills Class B operations when it reaches R2. Egress stays free; the attached zone's own plan and features are the zone's spend, not the bucket's.
+    - field_path: event_notifications
+      sku_meter: Queues standard operations
+      pricing_unit: operations
+      impact: Every matching object event (uploads, deletions, lifecycle deletions) enqueues a message to the referenced CloudflareQueue, metering write operations on that queue's cost profile -- volume tracks the bucket's object churn.
+  free_tier: "R2's own permanent monthly free tier, verbatim from the pricing page: 10 GB-month of storage, 1 million Class A requests, and 10 million Class B requests per month -- with the caution that \"The free tier only applies to Standard storage, and does not apply to Infrequent Access storage\" (https://developers.cloudflare.com/r2/pricing/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - storage volume is push-driven -- GB-months (averaged from daily peak storage over the billing period) grow with what applications upload, and an empty bucket bills nothing
+    - Class A operations (writes, lists, multipart uploads, lifecycle tier transitions) and Class B operations (reads, heads) follow application and visitor traffic
+    - Infrequent Access retrieval fees ($0.01/GB) apply only when IA objects are read, driven by access patterns this manifest cannot know
+    - messages pushed by event notifications bill as operations on the referenced CloudflareQueue component, not here
+  notes: "An empty bucket costs $0, and R2's headline differentiator is real and worth repeating: \"There are no charges for egress bandwidth for any storage class\" -- the pricing page's footnote adds that egressing directly from R2, including via the Workers API, S3 API, and r2.dev domains, is free (https://developers.cloudflare.com/r2/pricing/, retrieved 2026-08-22). Cloudflare's page enumerates R2's entire charge model as storage plus two operation classes (plus IA retrieval): DeleteObject, DeleteBucket, and AbortMultipartUpload are explicitly free operations, and billable usage rounds UP to the next billing unit (1.1 GB-month bills as 2 GB-month). The location hint and jurisdiction fix placement and residency, not price -- the pricing table carries no region dimension."

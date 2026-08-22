@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are from the Cloudflare API token permissions
+# reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22); the reference's API-name table renders the pair as
+# "Waiting Rooms Read" / "Waiting RoomsWrite" -- the missing space before
+# "Write" is a rendering artifact affecting many rows of that page:
+#
+#   Waiting Rooms Write  -- zone-scoped; create/update/delete the event via
+#                           POST/PATCH/DELETE
+#                           /zones/{zone_id}/waiting_rooms/{waiting_room_id}/events[/{event_id}]
+#                           (derived from the module's API surface)
+#                           (provenance: derived)
+#   Waiting Rooms Read   -- zone-scoped; refresh/import the event via GET
+#                           /zones/{zone_id}/waiting_rooms/{waiting_room_id}/events/{event_id}
+#                           (derived from the module's API surface)
+#                           (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_waiting_room_event resource and the
+# Pulumi module's matching WaitingRoomEvent resource; neither engine performs
+# secondary lookups or data-source reads). The live capture lane upgrades
+# entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarewaitingroomevent
+spec: {}

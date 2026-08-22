@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarelistitem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An entry is one rule-expression value (an IP/CIDR, ASN, hostname, or redirect) inside a Cloudflare list -- no customer data store exists here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The entry terminates no connections; it is match data evaluated at Cloudflare's edge.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No endpoint is exposed -- the entry is readable and writable only through the account's management plane.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own. An ip entry may BE part of another zone's source-restriction data, but the filtering is the consuming ruleset's posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The entry is match data; the WAF custom rules and redirect rulesets that consume its parent list do the request filtering.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management is Cloudflare account-membership and API-token posture; the entry exposes no data plane of its own to govern.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token over the legacy Global API Key when provisioning.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records list-content changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface; rule-match analytics belong to the consuming rulesets and zones.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The entry lives in an account-level list replicated across Cloudflare's global network as provider behavior; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag for entries. Destroy is a real delete -- rules referencing the parent list simply stop matching this value. Item values are immutable in the provider, so changing one replaces it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration value with no software of its own to patch; the rule engine evaluating it is Cloudflare-operated.

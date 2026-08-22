@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22):
+#
+#   Zero Trust Write   -- account-scoped; create/update/delete the WARP
+#                         custom device profile via
+#                         POST/PUT/DELETE /accounts/{account_id}/devices/policy[/{policy_id}]
+#                         and replace its local-domain fallback list via
+#                         PUT /accounts/{account_id}/devices/policy/{policy_id}/fallback_domains.
+#                         The reference publishes no narrower group for WARP
+#                         device settings profiles (derived from the
+#                         module's API surface) (provenance: derived)
+#   Zero Trust Read    -- account-scoped; refresh/import the profile and its
+#                         fallback-domain list via GET on the same paths
+#                         (derived from the module's API surface)
+#                         (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_zero_trust_device_custom_profile resource
+# plus its cloudflare_zero_trust_device_custom_profile_local_domain_fallback
+# companion, and the Pulumi module's matching ZeroTrustDeviceCustomProfile
+# and ZeroTrustDeviceCustomProfileLocalDomainFallback resources; neither
+# engine performs secondary lookups). The live capture lane upgrades entries
+# to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustdevicecustomprofile
+spec: {}

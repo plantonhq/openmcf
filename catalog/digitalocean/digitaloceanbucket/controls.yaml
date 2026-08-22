@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanbucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The spec exposes no encryption surface -- Spaces offers no per-bucket encryption toggle or SSE-header configuration through the provider; whatever encryption the platform applies to its storage fleet is DigitalOcean's side of the line, not configurable here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service for Spaces -- no CMK surface exists anywhere in the API.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spaces serves its S3-compatible API and the bucket's public endpoint over HTTPS -- uploads, downloads, and the provisioners' own calls all travel TLS, with no plaintext endpoint to configure.
+      notes: Platform-wide guarantee.
+    - control_id: no-public-access
+      status: configurable
+      field_path: access_control
+      evidence:
+        type: spec_default
+        reference: Defaults PRIVATE -- objects are reachable only with signed Spaces-key requests; PUBLIC_READ makes every object anonymously readable at the bucket URL.
+      notes: The private preset keeps the default; the static-website preset opts into PUBLIC_READ deliberately, its whole purpose. Finer grants belong to the policy document.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: Unset leaves access entirely to the ACL and key grants; a bucket policy (S3 policy grammar, validated as JSON at plan time) can restrict requests by source IP condition, the S3-native ingress restriction.
+      notes: Neither preset carries a policy.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attaches to a Spaces bucket -- the optional CDN in front of Spaces is a separate DigitalOceanCdn resource, and it caches rather than filters.
+    - control_id: rbac
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The bucket policy's S3 grammar grants or denies actions per Spaces access key -- key-scoped access control over this bucket, the closest thing Spaces has to per-principal authorization.
+      notes: Spaces access keys themselves (and their per-bucket grants) are minted and scoped outside this spec, on the account's Spaces Keys surface.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Spaces authenticates S3-style with static access key pairs -- no keyless, platform-issued identity path exists for bucket access.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Spaces speaks one authentication scheme -- S3 signature with Spaces keys -- with no weaker legacy path to disable. Anonymous read is the ACL's concern (see no-public-access).
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset delivers no access logs; the logging block delivers S3-style access logs for every request on this bucket to another bucket under a key prefix.
+      notes: Neither preset enables it. Logging a bucket to itself works but compounds -- reads of the logs generate more logs.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean exposes no bucket-scoped metrics surface -- Spaces usage is visible in the control panel but nothing integrates with DigitalOcean Monitoring or alert policies.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: versioning_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults false; true keeps every overwritten or deleted object as a recoverable noncurrent version -- in-place protection against accidental loss. Once enabled, versioning can never be removed, only suspended.
+      notes: The private preset enables it. Cross-bucket or cross-region replication does not exist on Spaces -- versioning is the recovery story.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: lifecycle_rules
+      evidence:
+        type: spec_default
+        reference: noncurrent_version_expiration sets exactly how many days old versions are kept before permanent deletion -- retention tuned to policy rather than forever-by-default.
+      notes: The private preset keeps noncurrent versions 90 days and aborts stale multipart uploads after 7.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A bucket lives in exactly one Spaces region with no replication surface -- DigitalOcean offers no cross-zone or cross-region bucket redundancy to configure; durability within the region is the platform's storage layer.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Defaults false -- a destroy against a non-empty bucket FAILS, which is the protection; true removes it, emptying every object and version before deleting. One field, both directions.
+      notes: Both presets leave it false, the safe default for buckets holding real data.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spaces is a fully managed object store -- DigitalOcean operates and updates the storage service invisibly, with no version or patch surface exposed anywhere in the API.
+      notes: There is nothing for the operator to patch.

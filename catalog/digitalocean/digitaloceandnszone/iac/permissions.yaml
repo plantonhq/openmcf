@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22; the
+# domain scope family covers "domains and domain records", which is exactly
+# this module's whole surface -- one digitalocean_domain plus one
+# digitalocean_record per record value):
+#
+#   Custom-scopes token (recommended):
+#     domain:read    -- read the zone via GET /v2/domains/{name} and each managed record via GET /v2/domains/{name}/records/{id} on refresh/import (provenance: derived)
+#     domain:create  -- create the zone via POST /v2/domains (ip_address rides the create body) and each record via POST /v2/domains/{name}/records (derived)
+#     domain:update  -- in-place record changes (values, ttl, per-type fields) via PUT /v2/domains/{name}/records/{id}; the zone itself has no update path (domain_name changes recreate) (derived)
+#     domain:delete  -- delete records via DELETE /v2/domains/{name}/records/{id} and the zone via DELETE /v2/domains/{name} (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_domain's and digitalocean_record's create/read/update/delete/
+# import paths); the live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandnszone
+spec: {}

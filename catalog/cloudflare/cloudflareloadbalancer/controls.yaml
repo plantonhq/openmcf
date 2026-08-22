@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareloadbalancer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A load balancer stores no customer data -- it is steering configuration held in Cloudflare's control plane. The session-affinity cookie lives in the client's browser, not in a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no component-owned data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "TLS termination for a proxied load balancer follows the zone's SSL mode and certificates (CloudflareZoneTlsSettings territory), not this spec. The one transport-adjacent surface this spec does carry is the affinity cookie's Secure attribute (session_affinity_attributes.secure, default \"Auto\"), and the spec's own CEL rule forbids the insecure combination samesite \"None\" with secure \"Never\"."
+    - control_id: no-public-access
+      status: configurable
+      field_path: networks
+      evidence:
+        type: spec_default
+        reference: An ordinary load balancer answers on the public zone hostname, but the networks field scopes where the load balancer is enabled -- with Cloudflare private networking (Magic WAN / WARP connector networks), the same steering runs on private network paths instead of the public edge.
+      notes: The default posture is public by purpose -- steering public traffic to origins is what the component is for. The private-networking arm exists for internal load balancing; leaving networks empty means public.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress filter of its own -- inbound filtering for the hostname is the zone's WAF, IP access rules, and rulesets. The load balancer decides WHERE matched traffic goes, not WHO may send it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A proxied load balancer sits behind Cloudflare's edge where the zone's WAF applies, but that filtering is zone and ruleset posture -- this spec carries no WAF surface. Load-balancing rules steer or answer traffic; they are routing logic, not request filtering.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records configuration changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Load-balancing analytics are a zone-plan feature (paid plans -- Pro, Business, Enterprise), always on where entitled; health probes and their alerting live on the referenced CloudflareLoadBalancerMonitor and pool notification settings, outside this spec. This object adds or removes no monitoring signal of its own."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest; pools and monitors are independent resources with their own lifecycles.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: default_pools
+      evidence:
+        type: spec_default
+        reference: High availability across failure domains is the component's core function -- default_pools is an ordered failover list across pools (each pool a separate origin group, typically a separate site or region), the required fallback_pool guarantees a pool of last resort on every load balancer, and adaptive_routing.failover_across_pools extends zero-downtime failover to healthy origins in alternate pools. Geo maps (region_pools, country_pools) spread traffic across regional deployments.
+      notes: The redundancy is real only when the operator declares more than one pool (or multiple origins within the referenced pools) -- a single-pool, single-origin topology has Cloudflare's global anycast edge but no origin-side failover, so the control is configurable rather than enforced. Session affinity and steering policy are traffic-management dials, not availability guarantees.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag for load balancers -- deleting the object removes the steering and the hostname falls back to ordinary DNS records.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and patches the global load-balancing infrastructure; no customer-visible patch surface exists.

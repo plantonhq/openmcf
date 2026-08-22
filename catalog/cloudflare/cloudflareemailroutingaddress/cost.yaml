@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareemailroutingaddress
+spec:
+  billing_model: free
+  free_tier: "Email Routing is available on both the Workers Free and Workers Paid plans, inbound routed email is Unlimited on both, and Cloudflare's own pricing page states \"Sending to verified destination addresses in your account is free on all plans, including when only Email Routing is configured\" (https://developers.cloudflare.com/email-service/platform/pricing/, retrieved 2026-08-22). A destination address costs nothing to create, verify, hold, or receive forwarded mail."
+  notes: "No field of this spec can spend: account_id scopes the address, email is the mailbox that receives a verification link, and status only overrides the verification state. The one paid line on the same pricing page -- outbound Email Sending, 3,000 included per month then $0.35 per 1,000 emails on Workers Paid -- belongs to the separate sending product and even it exempts sends to verified destination addresses; nothing on this spec can invoke it. The mailbox behind the address is external infrastructure billed by whoever operates it, never by Cloudflare through this object."

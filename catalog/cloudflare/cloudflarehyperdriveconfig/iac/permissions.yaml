@@ -1,0 +1,42 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22):
+#
+#   Hyperdrive Write  -- account-scoped; create/update/delete the Hyperdrive
+#                        config via POST/PUT/DELETE
+#                        /accounts/{account_id}/hyperdrive/configs[/{id}]
+#                        (dedicated group, direct name match; the path
+#                        mapping is derived from the module's API surface)
+#                        (provenance: derived)
+#   Hyperdrive Read   -- account-scoped; refresh/import the config via GET
+#                        /accounts/{account_id}/hyperdrive/configs/{id}
+#                        (provenance: derived)
+#
+# The component's catalog.md states the requirement in prose ("a Cloudflare
+# API token that has Hyperdrive edit access") -- migrated here losslessly;
+# "edit access" is the dashboard-name spelling of the same write grant on
+# the permissions reference. The origin database password and optional
+# Access service-token secret the config carries are payload values resolved
+# from managed secrets, not Cloudflare token permissions.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_hyperdrive_config resource and the
+# Pulumi module's matching HyperdriveConfig resource; neither engine
+# performs secondary lookups). The live capture lane upgrades entries to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarehyperdriveconfig
+spec: {}

@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrusttunnelvirtualnetwork
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A virtual network stores no customer data -- it is a routing namespace in Cloudflare's control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The segment carries no traffic itself -- packets inside it ride the member tunnels' always-encrypted cloudflared connections (see the CloudflareZeroTrustTunnel profile).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A virtual network is reachable only from inside the account's Zero Trust fabric -- authenticated WARP clients that select it and the tunnels routed within it; no field can expose the segment to the public internet.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: is_default_network
+      evidence:
+        type: spec_default
+        reference: Segmentation is the object's whole function -- routes and WARP clients that do not name a virtual network land on the account DEFAULT segment, so keeping is_default_network false (the spec default) keeps this segment opt-in, reachable only by clients that explicitly select it.
+      notes: Exactly one virtual network can be the account default at a time; flipping this segment to default re-homes every unpinned route and client onto it, so change it deliberately.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The segment moves packets between tunnels and clients; it inspects nothing. Traffic filtering inside it is Gateway network-policy territory.
+    - control_id: rbac
+      status: not_applicable
+      notes: The segment grants namespace isolation, not permission -- which users may enter it is decided by WARP enrollment and Gateway network policies (CloudflareZeroTrustGatewayPolicy), not by any field of this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials and calls no cloud APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Virtual-network changes land in the Cloudflare account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch; a routing namespace has no runtime of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- but recreating it mints a new virtual-network ID, so routes and WARP client profiles that referenced the old ID must be re-pointed.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The segment is control-plane state on Cloudflare's global network; path availability is the member tunnels' connector story.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete -- routes inside the segment lose their namespace and WARP clients can no longer select it, severing reachability to everything routed within. That fails CLOSED (connectivity lost, nothing exposed); delete the member routes first for a clean teardown.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A routing namespace is static configuration; nothing runs, so nothing patches.

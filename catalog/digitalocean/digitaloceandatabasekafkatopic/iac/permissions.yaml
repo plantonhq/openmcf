@@ -7,11 +7,14 @@
 # kubernetes) applies -- their absence is the schema's own claim that the
 # modules touch no such API. The DigitalOcean least-privilege story lives in
 # the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
 #
 #   Custom-scopes token (recommended):
 #     database:read    -- read the topic via GET /v2/databases/{cluster}/topics/{name} (provenance: derived)
-#     database:update  -- create/update/delete the topic via POST/PUT/DELETE on /v2/databases/{cluster}/topics (derived; DigitalOcean gates topic sub-resources under the database scope)
+#     database:create  -- create the topic via POST /v2/databases/{cluster}/topics; DigitalOcean's own OpenAPI spec (databases_create_kafka_topic.yml) declares database:create on this endpoint (derived)
+#     database:update  -- update partitions/replication/config via PUT /v2/databases/{cluster}/topics/{name}; the OpenAPI spec (databases_update_kafka_topic.yml) declares database:update (derived)
+#     database:delete  -- delete the topic via DELETE /v2/databases/{cluster}/topics/{name}; the OpenAPI spec (databases_delete_kafka_topic.yml) declares database:delete (derived)
 #   A full-access token also works; it is never least-privilege.
 #
 # All entries are derived from static analysis of the official modules

@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22); the endpoint mapping is confirmed by the Order
+# Certificate Pack endpoint reference's "Accepted Permissions" section
+# (https://developers.cloudflare.com/api/resources/ssl/subresources/certificate_packs/methods/create/,
+# retrieved 2026-08-22):
+#
+#   SSL and Certificates Write   -- zone-scoped; order/restart/delete the
+#                                   certificate pack via POST/PATCH/DELETE
+#                                   /zones/{zone_id}/ssl/certificate_packs[/{id}]
+#                                   (the order endpoint's Accepted
+#                                   Permissions names exactly this group)
+#                                   (provenance: derived)
+#   SSL and Certificates Read    -- zone-scoped; refresh/import the pack via
+#                                   GET /zones/{zone_id}/ssl/certificate_packs/{id}
+#                                   (derived from the module's API surface)
+#                                   (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_certificate_pack resource and the
+# Pulumi module's matching CertificatePack resource; neither engine performs
+# secondary lookups). The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarecertificatepack
+spec: {}

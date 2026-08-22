@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanfunction
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The component owns no data store -- code arrives from the declared git source on every deploy, and function execution state is ephemeral. What App Platform holds (the built code and env values) lives inside DigitalOcean's platform, with no at-rest encryption surface exposed on this spec; secret-typed env values are the API's write-only SECRET class, submitted once and redacted on every read-back.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data store here to key (see enc-at-rest); App Platform exposes no customer-managed-key option.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Platform serves the function's endpoint exclusively over HTTPS on the app's default domain -- TLS termination is platform behavior with no plaintext-HTTP option, and the modules export the https_endpoint output from the app's live URL.
+      notes: Nothing to configure and no opt-out on this surface. Connections the function's own code makes outward are the code's responsibility.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Public reachability is the product -- a deployed function component gets a public HTTPS endpoint on the app's default ingress, and this spec has no private-only or VPC-internal mode to select. Callers who should not use it must be turned away by the function's own request handling (see restricted-ingress).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network-level source filtering exists on this surface -- App Platform function endpoints accept requests from anywhere, and the spec carries no allowlist. Authentication and rejection of unwanted callers happen inside the function's code (e.g. validating a secret delivered through the envs surface).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF or request-filtering surface exists on this spec or the modules for the function's public endpoint.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, update, or delete the app is governed by DigitalOcean team membership and API token scopes (the app scope family) -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean offers no keyless workload identity for App Platform functions -- code that calls external APIs authenticates with credentials delivered through the envs surface as SECRET-typed values, which is exactly the static-credential pattern this control exists to replace. Rotate those secrets deliberately; nothing rotates them for you.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists on the component itself to disable -- the endpoint is anonymous by default, and any auth is the function code's own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. App management calls and deployments are captured in the DigitalOcean team's account-level activity history, not per-app configuration.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: alerts
+      evidence:
+        type: spec_default
+        reference: The spec carries a real monitoring surface on the function component -- alerts declares App Platform alert rules (rule, operator, window, threshold, disabled), and log_destinations forwards runtime logs to Papertrail, Datadog, Logtail, or an OpenSearch cluster. Both wire through to the digitalocean_app spec in the modules.
+      notes: Nothing is exported unless declared -- the shipped preset configures neither. Engine parity caveat the Pulumi module enforces loudly -- alert DESTINATIONS (emails, Slack webhooks) are modeled and Terraform wires them, but the Pulumi DigitalOcean SDK has no destinations field on function alerts, so Pulumi deploys that set them fail with a parity exception rather than silently dropping them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- the function re-deploys entirely from the declared git source and manifest; no persistent data lives on the component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The serverless platform owns placement -- the spec picks a region, and DigitalOcean runs the function on its managed App Platform infrastructure with no zonal or replica lever to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither DigitalOcean nor the modules expose a deletion-protection flag for apps; destroying the resource removes the app and its endpoint immediately.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: There is no server to patch -- functions run on DigitalOcean's managed serverless infrastructure, and the platform maintains the underlying hosts and runtime images; every deploy rebuilds from source on current platform images.
+      notes: The one version choice that remains is the operator's -- the language runtime pin lives in the repo's project.yml (not this spec), and moving off a deprecated runtime version requires editing that file and redeploying.

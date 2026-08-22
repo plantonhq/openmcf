@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
+# section of the Access policies create endpoint doc
+# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/policies/methods/create/,
+# retrieved 2026-08-22), which names exactly one group:
+#
+#   "Access: Apps and Policies Write"  -- account-scoped (this kind is
+#                                         account-scoped only: the spec
+#                                         requires account_id);
+#                                         create/update/delete the policy
+#                                         via POST/PUT/DELETE
+#                                         /accounts/{account_id}/access/policies
+#                                         [/{policy_id}].
+#                                         (provenance: documented)
+#   "Access: Apps and Policies Read"   -- account-scoped; refresh/import via
+#                                         GET .../access/policies/{policy_id}
+#                                         (Write covers the whole lifecycle;
+#                                         Read is only needed for read-only
+#                                         credentials) (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_zero_trust_access_policy resource and
+# the Pulumi module's matching ZeroTrustAccessPolicy resource; Access
+# groups, IdPs, and email lists appearing in rules are referenced by ID,
+# never created or read by these modules), with the write group upgraded to
+# documented provenance by the endpoint page cited above. The live capture
+# lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccesspolicy
+spec: {}

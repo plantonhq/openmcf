@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. This kind is the special case in the
+# DigitalOcean catalog: NONE of its resources go through the DigitalOcean
+# REST API at all. All four provider resources (digitalocean_spaces_bucket
+# and its CORS, policy, and logging satellites) speak the S3-COMPATIBLE
+# SPACES API, authenticated by a SPACES KEY PAIR (spaces_access_id /
+# spaces_secret_key) -- a second credential plane the API token cannot
+# reach, as the kind's own docs state. The catalog.md prerequisite prose
+# (migrated here losslessly) requires a DigitalOcean Provider Connection
+# carrying BOTH the API token AND a Spaces key pair, minted under
+# API -> Spaces Keys.
+#
+#   API token scopes (per https://docs.digitalocean.com/reference/api/scopes/,
+#   read 2026-08-22): NONE exercised by this kind's modules -- the token
+#   only authenticates the provider itself.
+#
+#   Spaces key pair (the real least-privilege story):
+#     bucket create/read/delete    -- S3 CreateBucket/HeadBucket/ListObjects/DeleteBucket calls against the regional Spaces endpoint (provenance: derived)
+#     bucket configuration         -- S3 Get/Put ACL, versioning, and lifecycle calls carry the acl, versioning_enabled, and lifecycle_rules fields (derived)
+#     CORS, policy, and logging    -- S3 Get/Put/Delete BucketCors, BucketPolicy, and BucketLogging calls for the three satellite resources (derived)
+#     force_destroy sweeps         -- when true, destroy first lists and deletes EVERY object and object version (derived)
+#   DigitalOcean scopes Spaces keys per bucket (read/readwrite/full grants);
+#   a key with full access limited to this bucket (plus create rights for
+#   new buckets) is least-privilege. An unscoped (all-buckets) key also
+#   works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (the four spaces resources' create/read/update/delete paths) in both the
+# Terraform and Pulumi modules; the live capture lane upgrades them to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanbucket
+spec: {}

@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarecustomhostname
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A custom hostname stores no customer data -- it is TLS/routing configuration. The certificate and any uploaded private key (ssl.custom_key) live in Cloudflare's managed certificate infrastructure as provider internals, not a data store this component configures.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no component-owned data at rest to key (see enc-at-rest); Cloudflare exposes no customer-managed-key surface for custom hostnames.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: ssl.settings.min_tls_version
+      evidence:
+        type: spec_default
+        reference: The component's whole purpose is TLS termination for the customer's hostname at Cloudflare's edge, with a Cloudflare-provisioned DV certificate by default. The ssl.settings block tunes the termination posture -- min_tls_version ("1.0" through "1.3"), tls_1_3 on/off, and a BoringSSL cipher allowlist -- and the 01-saas-vanity-domain preset pins min_tls_version "1.2".
+      notes: Edge TLS always terminates with a valid certificate, but floor quality is the operator's -- min_tls_version left empty inherits Cloudflare's default, and "1.0" is an accepted value, so the control is configurable rather than enforced. Edge-to-origin encryption follows the SaaS zone's SSL mode, outside this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The component's purpose is to serve a customer's hostname on Cloudflare's public edge -- there is no private-only mode to configure. WHO may reach the origin behind it is zone posture, not this object's.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress filter of its own -- inbound filtering for custom hostnames is the SaaS zone's WAF-for-SaaS and ruleset territory.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "WAF for SaaS applies the zone plan's WAF rules to custom hostnames (Enterprise can build custom firewall rulesets), but that filtering is configured on the zone and its rulesets -- this spec carries no WAF surface of its own."
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no cloud credentials. The only secret it can carry (ssl.custom_key for a BYO certificate) is marked sensitive in the spec and delivered through Planton's secret handling.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own -- domain-control validation (http/txt/email) proves ownership once; it is not an ongoing auth surface.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records configuration changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Custom hostname analytics are included on every SaaS plan as a zone-level feature (the plans page's \"Custom analytics: Yes\") -- this object adds or removes no monitoring signal."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- Cloudflare re-provisions the managed certificate on re-create, and the ownership-verification records re-export in the outputs.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The hostname is served by Cloudflare's global anycast edge by design -- replication across failure domains is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag for custom hostnames -- deleting the object detaches the hostname and stops its billing immediately.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and patches the edge that terminates TLS for the hostname, and the per-hostname DV certificate is provisioned and auto-renewed by Cloudflare with no customer-visible patch surface.

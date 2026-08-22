@@ -9,11 +9,12 @@
 # the token's SCOPES until the schema grows a DigitalOcean section, at which
 # point this inventory converts mechanically:
 #
-#   Custom-scopes token (recommended):
-#     vpc:read    -- read the peering via GET /v2/vpcs/peerings/{id} and poll its status waiter (provenance: derived)
-#     vpc:create  -- create the peering via POST /v2/vpcs/peerings (derived)
-#     vpc:update  -- rename the peering via PATCH /v2/vpcs/peerings/{id} (derived)
-#     vpc:delete  -- delete the peering via DELETE /v2/vpcs/peerings/{id} (derived)
+#   Custom-scopes token (recommended; scope names verified against
+#   https://docs.digitalocean.com/reference/api/scopes/, retrieved 2026-08-22):
+#     vpc_peering:read    -- read the peering via GET /v2/vpcs/peerings/{id} and poll its status waiter (provenance: derived)
+#     vpc_peering:create  -- create the peering via POST /v2/vpcs/peerings (derived)
+#     vpc_peering:update  -- rename the peering via PATCH /v2/vpcs/peerings/{id} (derived)
+#     vpc_peering:delete  -- delete the peering via DELETE /v2/vpcs/peerings/{id} (derived)
 #   A full-access token also works; it is never least-privilege.
 #
 # All entries are derived from static analysis of the official modules

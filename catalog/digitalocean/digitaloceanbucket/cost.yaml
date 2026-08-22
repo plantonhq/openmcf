@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanbucket
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Spaces Object Storage
+      sku_meter: Spaces subscription
+      pricing_unit: months
+      description: Spaces bills a flat 5.00 USD/mo subscription that includes 250 GiB of storage, 1 TiB of outbound transfer, and up to 100 buckets -- the subscription is ACCOUNT-level, so the first bucket starts it and further buckets ride the same one for free.
+  cost_drivers:
+    - field_path: versioning_enabled
+      sku_meter: additional storage
+      pricing_unit: GiB-months
+      impact: "Versioning keeps every noncurrent object version as billable storage -- overwrites and deletes stop reclaiming space, pushing usage toward the 0.02 USD/GiB overage sooner. Once enabled it can never be removed, only suspended."
+    - field_path: lifecycle_rules
+      sku_meter: additional storage
+      pricing_unit: GiB-months
+      impact: "The cost-control lever, free itself: expiring current versions, deleting noncurrent versions, and aborting stale multipart uploads all reclaim billable storage automatically."
+  free_tier: ""
+  estimate_exclusions:
+    - "storage beyond the subscription's included 250 GiB bills 0.02 USD/GiB/mo, following object volume no manifest can predict (https://www.digitalocean.com/pricing/spaces-object-storage, retrieved 2026-08-22)"
+    - "outbound transfer beyond the included 1 TiB bills 0.01 USD/GiB; inbound and CDN-to-origin traffic are free"
+    - "cold storage bills 0.007 USD/GiB/mo on its own meter, selected per object outside this spec"
+    - "access logs delivered by the logging block land as objects in the target bucket and bill as its storage"
+  notes: "The 5.00 USD/mo subscription (https://www.digitalocean.com/pricing/spaces-object-storage, retrieved 2026-08-22) covers the whole account's Spaces usage: one subscription, up to 100 buckets, shared 250 GiB / 1 TiB allowances. An account already running Spaces adds this bucket for free; an account where this is the first bucket starts the subscription. ACLs, CORS, policy, lifecycle rules, and versioning are all free configuration. Spaces pricing carries no region dimension -- the region moves data placement, not the rate. Deleting the last bucket ends the subscription; force_destroy only governs whether destroy empties the bucket first."

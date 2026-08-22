@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanfirewall
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A firewall stores no customer data -- its rule set is network control-plane configuration held inside DigitalOcean's own platform, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The firewall terminates no connections -- it is a stateful layer-3/4 packet filter that allows or drops traffic without participating in it. Whether allowed flows are encrypted is decided by the endpoints (e.g. permitting only 443 pushes traffic toward TLS, but the firewall cannot verify what runs over an allowed port).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The firewall itself has no network address to expose -- it is the exposure LEVER for the droplets it protects. Whether those droplets are publicly reachable is exactly what the inbound rules decide (see restricted-ingress); a rule with source 0.0.0.0/0 is a deliberate public opening on the protected tier.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: inbound_rules
+      evidence:
+        type: spec_default
+        reference: The firewall IS the ingress restriction -- DigitalOcean Cloud Firewalls are default-deny for configured directions, so traffic not matched by any inbound rule is dropped, and the provider rejects a firewall with no rules at all (the spec enforces at least one rule in either direction up front). Each inbound rule declares exactly which sources may reach the protected droplets -- CIDR addresses, droplet tags, specific droplets, Kubernetes clusters, or load balancers -- per protocol and port range.
+      notes: The mechanism is enforced but its quality is the operator's -- a source of 0.0.0.0/0 on port 22 restricts nothing worth having, and the two shipped presets model the intended shape (web tier opens 80/443 to the world but SSH only to an admin CIDR; database tier admits only tag-matched app-tier droplets). Attachment matters as much as rules -- a droplet neither listed in droplet_ids nor carrying a matching tag is not protected by this firewall at all.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: This is a layer-3/4 packet filter, not an HTTP-aware request filter -- it matches protocol, port, and source, and cannot inspect methods, paths, headers, or payloads. DigitalOcean offers no WAF surface on this resource.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, modify, or delete firewalls is governed by DigitalOcean team membership and API token scopes -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists on a firewall to disable; it filters packets, it does not authenticate peers.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Rule and attachment changes are captured in the DigitalOcean team's account-level activity history; DigitalOcean Cloud Firewalls publish no per-flow or dropped-traffic logs at all, so there is no traffic log to enable.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean publishes no metrics for Cloud Firewalls -- no allowed/dropped counters exist to export. Runtime visibility lives on the protected droplets' own monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A firewall holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, including every rule and attachment.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The firewall is a platform-enforced rule set with no placement of its own -- DigitalOcean applies it to the protected droplets wherever they run; there is no zonal lever to configure and no instance to fail.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither DigitalOcean nor the modules expose a deletion-protection flag. The failure mode deserves naming -- destroying the firewall silently REMOVES the restriction, and protected droplets fall back to whatever other firewalls still cover them, or to fully open if none do.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A firewall is a pure configuration object; the enforcement infrastructure behind it is DigitalOcean's own managed platform with no software surface exposed to patch.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustaccesspolicy
+spec:
+  billing_model: free
+  free_tier: "An Access policy is a named allow/deny decision inside Cloudflare Zero Trust, whose billable unit is the SEAT, never the object: \"Cloudflare One subscriptions consist of seats that active users in your account consume... A user consumes a seat when they perform an authentication event\" (https://developers.cloudflare.com/cloudflare-one/team-and-resources/users/seat-management/, fetched 2026-08-22). Cloudflare's Access product page carries a Free Plan with a 50-user limit (https://www.cloudflare.com/en-au/sase/products/access/, fetched 2026-08-22). No meter counts policies, rules per policy, or policy evaluations."
+  notes: "No field of this spec pins a plan, seat count, or subscription: decision, the include/exclude/require rules, session_duration, approval workflow (approval_required, approval_groups, purpose justification), isolation_required, RDP connection rules, and mfa_config are all evaluation configuration. The real spend lives in the Zero Trust PLAN -- seats consumed by users authenticating through the applications this policy is attached to, free through 50 users and per-user above, chosen at the account. One field deserves a spend-adjacent note: isolation_required routes matched sessions through Remote Browser Isolation, which Cloudflare sells \"as an add-on to Zero Trust Pay-as-you-go and Enterprise plans\" (https://developers.cloudflare.com/cloudflare-one/remote-browser-isolation/, fetched 2026-08-22) -- the flag uses an add-on the account already bought; it never buys one."

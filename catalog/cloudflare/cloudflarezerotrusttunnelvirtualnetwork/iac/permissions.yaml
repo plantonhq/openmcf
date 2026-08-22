@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
+# section of the virtual networks create endpoint doc
+# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/networks/subresources/virtual_networks/methods/create/,
+# retrieved 2026-08-22), which accepts two groups (either suffices):
+# "Cloudflare One Networks Write" and "Cloudflare Tunnel Write" -- the same
+# pair as tunnel routes.
+#
+#   "Cloudflare Tunnel Write"  -- account-scoped; create/update/delete the
+#                                 virtual network via POST/PATCH/DELETE
+#                                 /accounts/{account_id}/teamnet/virtual_networks
+#                                 [/{virtual_network_id}]. Chosen as the
+#                                 primary claim because it is the group the
+#                                 permissions reference documents and the
+#                                 one a stack that also manages tunnels and
+#                                 routes already holds; "Cloudflare One
+#                                 Networks Write" is the documented narrower
+#                                 alternate for routes/vnets-only
+#                                 credentials. (provenance: documented)
+#   "Cloudflare Tunnel Read"   -- account-scoped; refresh/import via GET
+#                                 (Write covers the whole lifecycle; Read is
+#                                 only needed for read-only credentials)
+#                                 (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single
+# cloudflare_zero_trust_tunnel_cloudflared_virtual_network resource and the
+# Pulumi module's matching ZeroTrustTunnelCloudflaredVirtualNetwork
+# resource; no other API is touched), with the write groups upgraded to
+# documented provenance by the endpoint page cited above. The live capture
+# lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrusttunnelvirtualnetwork
+spec: {}

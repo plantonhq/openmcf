@@ -9,11 +9,13 @@
 # the token's SCOPES until the schema grows a DigitalOcean section, at which
 # point this inventory converts mechanically:
 #
-#   Custom-scopes token (recommended):
-#     project:read    -- read the project through GET /v2/projects/{id} (provenance: derived)
-#     project:create  -- create the project via POST /v2/projects (derived)
-#     project:update  -- update fields and (re)assign member resources via PATCH /v2/projects/{id} and POST /v2/projects/{id}/resources (derived)
-#     project:delete  -- delete the project via DELETE /v2/projects/{id}; destroy also relocates members to the default project, which needs project:update on it (derived)
+#   Custom-scopes token (recommended; scope names verified against
+#   https://docs.digitalocean.com/reference/api/scopes/, retrieved 2026-08-22):
+#     project:read             -- read the project through GET /v2/projects/{id} (provenance: derived)
+#     project:create           -- create the project via POST /v2/projects (derived)
+#     project:update           -- update fields via PATCH /v2/projects/{id} (derived)
+#     project:assign_resource  -- (re)assign member resources via POST /v2/projects/{id}/resources; also covers destroy-time relocation of members to the default project (derived)
+#     project:delete           -- delete the project via DELETE /v2/projects/{id} (derived)
 #   A full-access token also works; it is never least-privilege.
 #
 # All entries are derived from static analysis of the official modules

@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
+#
+#   Custom-scopes token (recommended):
+#     vpc:read    -- read the VPC via GET /v2/vpcs/{id} on refresh/import (also how an auto-assigned ip_range lands in state) (provenance: derived)
+#     vpc:create  -- create the VPC via POST /v2/vpcs (region, description, and the optional CIDR ride the create body) (derived)
+#     vpc:update  -- rename or re-describe via PUT/PATCH /v2/vpcs/{id}; region and ip_range are immutable -- changing them REPLACES the VPC instead (derived)
+#     vpc:delete  -- delete the VPC via DELETE /v2/vpcs/{id}; DigitalOcean refuses while member resources remain, so destroy ordering matters (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_vpc's create/read/update/delete/import paths); the live
+# capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanvpc
+spec: {}

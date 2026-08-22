@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarequeue
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: consumer
+      sku_meter: standard operations
+      pricing_unit: operations
+      impact: "Attaching a consumer completes the delivery loop that drives the only Queues meter: Cloudflare's pricing page states \"In most cases, it takes 3 operations to deliver a message: 1 write, 1 read, and 1 delete\", with an operation counted \"for each 64 KB of data that is written, read, or deleted\" (https://developers.cloudflare.com/queues/platform/pricing/, retrieved 2026-08-22). A queue with producers but no consumer still meters writes (and eventual expiry deletes)."
+    - field_path: consumer.settings.max_retries
+      sku_meter: standard operations
+      pricing_unit: operations
+      impact: "Each retry incurs a read operation per message -- Cloudflare's own example: a message retried 3 times (the default), failing on the fourth attempt and landing in a dead-letter queue, incurs five read operations. Higher ceilings multiply the operations a poison message can bill before leaving the queue."
+    - field_path: consumer.dead_letter_queue
+      sku_meter: standard operations
+      pricing_unit: operations
+      impact: Messages that exhaust their retries incur a write operation per 64 KB chunk into the dead-letter queue -- billed against that queue's operations, preserving the message instead of dropping it.
+    - field_path: settings.message_retention_period
+      sku_meter: standard operations
+      pricing_unit: operations
+      impact: "Messages that expire unread incur only a write and delete operation per 64 KB chunk (2 operations instead of a delivered message's 3). Retention length decides how long a message may wait before that cheaper-but-wasted path; the spec accepts up to 86400 seconds (1 day) on the v5 API."
+  free_tier: "Two distinct allowances. The Workers Free plan permanently includes 10,000 operations/day (with a fixed 24-hour, non-configurable message retention). The Workers Paid plan's 1,000,000 operations/month included allotment is conditional on holding that $5/mo subscription (https://developers.cloudflare.com/queues/platform/pricing/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - message volume is producer-driven -- Workers queues bindings and R2 event notifications decide how many messages arrive, unknowable from this manifest
+    - operations per message depend on message size (one operation per 64 KB chunk written, read, or deleted; each message carries about 100 bytes of internal metadata) and on retry behavior
+    - the compute of a worker (push) consumer bills as Workers requests and CPU time on the consuming CloudflareWorker component, not here
+    - the $5/mo Workers Paid subscription is account-level plan spend chosen at the account -- no field in this spec pins or creates it
+  notes: "An idle queue costs $0 -- it performs no operations. The single meter, verbatim from Cloudflare's Queues pricing page's Workers Paid column: standard operations \"1,000,000 operations/month included + $0.40/million operations\" (https://developers.cloudflare.com/queues/platform/pricing/, retrieved 2026-08-22) -- a list-price overage rate past the plan's included allotment, never netted against it. The page's own estimating formula: ((Number of Messages * 3) - 1,000,000) / 1,000,000 * $0.40. Operations are per message, not per batch (a processed batch of 10 messages incurs 10x write, 10x read, and 10x delete operations), and there are no data transfer (egress) or throughput (bandwidth) charges. Delivery settings like delivery_delay, delivery_paused, batch sizes, and concurrency shape timing and throughput, not the rate card -- though pausing delivery long enough for messages to expire converts 3-operation deliveries into 2-operation expiries."

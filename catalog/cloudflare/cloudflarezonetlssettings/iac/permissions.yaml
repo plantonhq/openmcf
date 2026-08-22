@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22); per-endpoint mappings are confirmed by the
+# "Accepted Permissions" sections of the endpoint references (retrieved
+# 2026-08-22):
+#
+#   SSL and Certificates Write   -- zone-scoped; Universal SSL issuance via
+#                                   PATCH /zones/{zone_id}/ssl/universal/settings,
+#                                   Total TLS via
+#                                   POST /zones/{zone_id}/acm/total_tls,
+#                                   per-hostname TLS overrides via
+#                                   PUT/DELETE /zones/{zone_id}/hostnames/settings/{setting_id}/{hostname},
+#                                   and CA hostname associations via
+#                                   PUT /zones/{zone_id}/certificate_authorities/hostname_associations
+#                                   (each named by its endpoint reference's
+#                                   Accepted Permissions) (provenance: derived)
+#   SSL and Certificates Read    -- zone-scoped; refresh/import the same
+#                                   four surfaces via GET on the same paths
+#                                   (named by the matching get endpoint
+#                                   references) (provenance: derived)
+#   Zone Settings Write          -- zone-scoped; auto origin TLS key
+#                                   exchange via
+#                                   PATCH /zones/{zone_id}/settings/auto_origin_tls_kex
+#                                   and origin TLS compliance modes via
+#                                   PUT/PATCH/DELETE /zones/{zone_id}/settings/origin_tls_compliance_modes.
+#                                   These two endpoint references publish no
+#                                   Accepted Permissions section; the group
+#                                   is derived from the module's API surface
+#                                   -- both are named settings under the
+#                                   zone-settings path, whose generic edit
+#                                   endpoint names Zone Settings Write
+#                                   (provenance: derived)
+#   Zone Settings Read           -- zone-scoped; refresh the two settings
+#                                   via GET on the same paths (derived from
+#                                   the module's API surface)
+#                                   (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's conditional cloudflare_universal_ssl_setting,
+# cloudflare_total_tls, cloudflare_zone_auto_origin_tls_kex, and
+# cloudflare_origin_tls_compliance_modes singletons plus per-row
+# cloudflare_hostname_tls_setting and
+# cloudflare_certificate_authorities_hostname_associations resources, and
+# the Pulumi module's matching UniversalSslSetting, TotalTls,
+# ZoneAutoOriginTlsKex, OriginTlsComplianceModes, HostnameTlsSetting, and
+# CertificateAuthoritiesHostnameAssociations resources; neither engine
+# performs secondary lookups). The live capture lane upgrades entries to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezonetlssettings
+spec: {}

@@ -1,0 +1,51 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22; the reference's rendering collapses the space in
+# "Cache Settings Write" -- the paired "Cache Settings Read" row and the
+# dashboard-name row for the same group confirm the spelling):
+#
+#   Cache Settings Write  -- zone-scoped; write the four cache zone settings
+#                            the modules manage under /zones/{zone_id}/cache/
+#                            (smart tiered cache, cache reserve, regional
+#                            tiered cache, cache variants) via PATCH/PUT and,
+#                            for the two real-delete surfaces (smart tiered
+#                            cache, variants), DELETE (derived from the
+#                            module's API surface; the reference describes
+#                            this group as Cache Rules access, so the
+#                            cache-settings coverage is our inference from
+#                            the group's name and API family)
+#                            (provenance: derived)
+#   Cache Settings Read   -- zone-scoped; refresh/import those settings via
+#                            GET on the same paths (derived from the
+#                            module's API surface) (provenance: derived)
+#
+#   HONEST UNKNOWN -- the two Argo-backed settings (tiered_caching via
+#   /zones/{zone_id}/argo/tiered_caching, argo_smart_routing via
+#   /zones/{zone_id}/argo/smart_routing) map to NO permission group on the
+#   reference: no group names Argo or these paths, and no fetched source
+#   documents which group covers them, so none is claimed here.
+#   (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's six conditional resources -- cloudflare_tiered_cache,
+# cloudflare_argo_tiered_caching, cloudflare_zone_cache_reserve,
+# cloudflare_regional_tiered_cache, cloudflare_argo_smart_routing,
+# cloudflare_zone_cache_variants -- and the Pulumi module's six matching
+# resources in cache_settings.go; neither engine performs secondary
+# lookups). The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarecachesettings
+spec: {}

@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are checked verbatim against the Cloudflare API
+# token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22):
+#
+#   HONEST UNKNOWN -- the permissions reference lists NO permission group
+#   that covers managing ACCOUNT-OWNED API tokens (the modules' single
+#   resource, cloudflare_account_token, calls
+#   POST/PATCH/DELETE/GET /accounts/{account_id}/tokens[/{token_id}]).
+#   The user-scoped "API Tokens Read" / "API Tokens Write" groups cover
+#   only the calling USER's own tokens per their reference descriptions,
+#   not account-owned tokens. Cloudflare's account API tokens page
+#   (https://developers.cloudflare.com/fundamentals/api/get-started/account-owned-tokens/,
+#   retrieved 2026-08-22) states that creating an account-owned token
+#   requires Super Administrator permission on the account; no narrower
+#   named permission group is documented for this surface, so none is
+#   claimed here. (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_account_token resource and the
+# Pulumi module's matching AccountToken resource; neither engine performs
+# secondary lookups). The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareaccountapitoken
+spec: {}

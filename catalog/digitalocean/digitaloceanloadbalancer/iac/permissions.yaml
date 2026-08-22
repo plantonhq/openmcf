@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
+#
+#   Custom-scopes token (recommended):
+#     load_balancer:create -- create the balancer via POST /v2/load_balancers (type, region, size, forwarding rules, health check, firewall, backends, and network settings all ride the create body) (provenance: derived)
+#     load_balancer:read   -- read the balancer via GET /v2/load_balancers/{id} on refresh/import and while the create waiter polls for active status (derived)
+#     load_balancer:update -- in-place changes (rules, health check, sticky sessions, size_unit resizes, firewall, backend set) via PUT /v2/load_balancers/{id} (derived)
+#     load_balancer:delete -- destroy via DELETE /v2/load_balancers/{id} (derived)
+#     certificate:read     -- when a forwarding rule or GLB domain carries a certificate name: the provider resolves the name against GET /v2/certificates to validate and build the request (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# The balancer resource takes no DigitalOcean tags, so no tag scope is
+# needed -- backends attach by ID or by pre-existing droplet tag carried
+# verbatim in the request body.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_loadbalancer's create/read/update/delete/import paths,
+# waiters included) in both the Terraform and Pulumi modules; the live
+# capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanloadbalancer
+spec: {}

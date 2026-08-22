@@ -1,0 +1,73 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22); per-endpoint mappings are confirmed by the
+# "Accepted Permissions" sections of the endpoint references (retrieved
+# 2026-08-22):
+#
+#   Zone Settings Write    -- zone-scoped; the per-setting fan-out via
+#                             PATCH /zones/{zone_id}/settings/{setting_id}
+#                             (named by
+#                             https://developers.cloudflare.com/api/resources/zones/subresources/settings/methods/edit/)
+#                             (provenance: derived)
+#   Zone Settings Read     -- zone-scoped; refresh each managed setting via
+#                             GET /zones/{zone_id}/settings/{setting_id}
+#                             (named by the matching get endpoint reference)
+#                             (provenance: derived)
+#   Managed headers Write  -- zone-scoped; managed transforms via
+#                             PUT /zones/{zone_id}/managed_headers and URL
+#                             normalization via
+#                             PUT /zones/{zone_id}/url_normalization. Both
+#                             endpoints accept any one of a shared set of
+#                             ruleset-phase groups; this single group covers
+#                             both (named by
+#                             https://developers.cloudflare.com/api/resources/managed_transforms/methods/edit/
+#                             and
+#                             https://developers.cloudflare.com/api/resources/url_normalization/methods/update/)
+#                             (provenance: derived)
+#   Managed headers Read   -- zone-scoped; refresh both surfaces via GET on
+#                             the same paths (named by the matching
+#                             list/get endpoint references)
+#                             (provenance: derived)
+#   Waiting Rooms Write    -- zone-scoped; the waiting-room crawler-bypass
+#                             singleton via
+#                             PATCH /zones/{zone_id}/waiting_rooms/settings
+#                             (named by
+#                             https://developers.cloudflare.com/api/resources/waiting_rooms/subresources/settings/methods/edit/)
+#                             (provenance: derived)
+#   Waiting Rooms Read     -- zone-scoped; refresh the singleton via GET on
+#                             the same path (named by the matching get
+#                             endpoint reference) (provenance: derived)
+#
+#   UNRESOLVED: origin cloud region mappings
+#     (PUT/GET/DELETE /zones/{zone_id}/origin/cloud_regions/{origin_ip},
+#     the cloudflare_origin_cloud_region rows). Cloudflare publishes NO
+#     "Accepted Permissions" section on any of this endpoint's reference
+#     pages, and the general permissions reference lists no matching group,
+#     so the required group cannot be stated without guessing. The live
+#     capture lane is the honest path to resolving it.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's per-setting cloudflare_zone_setting fan-out plus its
+# conditional cloudflare_managed_transforms,
+# cloudflare_url_normalization_settings, cloudflare_waiting_room_settings
+# singletons and per-row cloudflare_origin_cloud_region resources, and the
+# Pulumi module's matching ZoneSetting, ManagedTransforms,
+# UrlNormalizationSettings, WaitingRoomSettings, and OriginCloudRegion
+# resources; neither engine performs secondary lookups). The live capture
+# lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezonesettings
+spec: {}

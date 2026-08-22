@@ -1,0 +1,83 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanDroplet manifest's spec values into metered quantities and
+# price choices. DigitalOcean bills droplets per second (60-second minimum)
+# capped at the size's flat monthly price, so a droplet that exists all
+# month pays exactly the cap -- the committed quantity is one month of the
+# size the manifest pins, priced by a value-keyed lookup on the size slug.
+# Enabled percentage-based backups add a second monthly line (20 percent of
+# droplet cost weekly, 30 percent daily), also size-keyed. Sizes and
+# size/plan pairs the price book does not carry refuse through the lookup
+# itself -- zero matches is a refusal, never a pick. DigitalOcean prices
+# droplets identically in every region, so every entry is pinned "global".
+# The estimate generator replays the catalog presets through these rules to
+# emit ../estimates/digitaloceandroplet.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceandroplet
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  lines:
+    - sku_meter: droplet instance
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: Droplets
+        pricing_unit: months
+        attributes:
+          - key: size_slug
+            from_field: size
+      basis: "one droplet of the manifest's size existing the whole month -- per-second billing caps at the size's flat monthly price, so the cap is the committed monthly charge"
+    - sku_meter: automated backups
+      applies_when:
+        - field_path: enable_backups
+          op: equals
+          value: "true"
+        - field_path: backup_policy.plan
+          op: equals
+          value: weekly
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: Droplets
+        pricing_unit: months
+        attributes:
+          - key: size_slug
+            from_field: size
+          - key: backup_plan
+            constant: weekly
+      basis: "weekly automated backups bill 20 percent of the droplet's monthly cost while enabled -- the book entry pins that surcharge for this size"
+    - sku_meter: automated backups
+      applies_when:
+        - field_path: enable_backups
+          op: equals
+          value: "true"
+        - field_path: backup_policy.plan
+          op: not_equals
+          value: weekly
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: Droplets
+        pricing_unit: months
+        attributes:
+          - key: size_slug
+            from_field: size
+          - key: backup_plan
+            constant: daily
+      basis: "daily automated backups bill 30 percent of the droplet's monthly cost while enabled; with backups on and no weekly policy, DigitalOcean's default plan is daily"
+  exclusions:
+    - text: "outbound data transfer beyond the size's included monthly allowance bills per GiB; inbound is free"
+    - applies_when:
+        - field_path: volume_ids
+          op: is_set
+      text: "attached block storage volumes bill on their own DigitalOceanVolume components at 0.10 USD/GiB/mo -- attachment adds no droplet-side charge"
+    - text: "droplet snapshots bill 0.06 USD/GB per month and are taken outside this spec"
+  notes:
+    - text: "Priced at DigitalOcean's global droplet rates -- the pricing page carries one price table with no region dimension, so the resolved region moves availability, not the rate."
+    - text: "The estimate assumes the droplet exists all 730 hours; per-second billing means a short-lived droplet bills less, never more, than this cap."

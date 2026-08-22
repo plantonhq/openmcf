@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandnszone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A DNS zone stores no customer data -- it is zone data held in DigitalOcean's DNS control plane, and authoritative DNS data is public by design. There is no data store here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); DigitalOcean DNS exposes no key-management surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The zone terminates no connections of its own. Queries are answered by DigitalOcean's authoritative nameservers over the standard DNS protocol -- provider serving infrastructure, not per-zone configuration; the spec has no transport lever.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Public resolvability IS this resource's purpose -- an authoritative zone exists so any resolver on the internet can read its records. The operational consequence is a content rule, not a network one -- never place secrets in record values, because the whole zone is world-readable (and zone data should be assumed enumerable).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the zone is data served by DigitalOcean's nameservers, not an endpoint. The adjacent governance lever is a CAA record in the zone, which restricts WHICH certificate authorities may issue for its names.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A zone receives no HTTP requests -- request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, modify, or delete the zone and its records is governed by DigitalOcean team membership and API token scopes (the domain scope family) -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists on a DNS zone to disable. Zone changes authenticate through the DigitalOcean API; resolution requires no authentication at all, by design.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Zone and record management calls are captured in the DigitalOcean team's account-level activity history, not per-zone configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean publishes no per-zone metrics or query logs. Verifying that the zone resolves as intended (and that the registrar's delegation to ns1/ns2/ns3.digitalocean.com is intact) is external monitoring, outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The zone is declarative configuration fully re-creatable from the manifest -- with one honest carve-out the spec itself documents -- the create-only ip_address convenience seeds an apex A record that is never tracked afterwards, so a zone relying on it instead of the records list would not restore that record from state. Declare records in the records list to keep the whole zone re-creatable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every zone is served by DigitalOcean's platform-wide authoritative nameserver set -- ns1, ns2, and ns3.digitalocean.com -- three redundant nameservers the modules export as a fixed output because the platform serves all zones from them with no per-zone choice.
+      notes: There is nothing to configure and no way to opt out -- redundant serving is inherent to the platform. The availability risk that remains is at the registrar (a broken delegation), outside DigitalOcean.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither DigitalOcean nor the modules expose a deletion-protection flag for zones; destroying the zone removes it and every record in it, and the domain's names stop resolving as cached TTLs expire.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A zone is a pure configuration object with no software to patch; the nameservers serving it are DigitalOcean's own managed fleet.

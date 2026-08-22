@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
+# section of the Access groups create endpoint doc
+# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/groups/methods/create/,
+# retrieved 2026-08-22), which names exactly one group:
+#
+#   "Access: Organizations, Identity Providers, and Groups Write"
+#       -- create/update/delete the group via POST/PUT/DELETE
+#          /{accounts|zones}/{account_or_zone_id}/access/groups[/{group_id}].
+#          The spec's account_id/zone_id oneof decides the scope. Cloudflare
+#          publishes no narrower groups-only permission group.
+#          (provenance: documented)
+#   "Access: Organizations, Identity Providers, and Groups Read"
+#       -- refresh/import the group via GET .../access/groups/{group_id}
+#          (Write covers the whole lifecycle; Read is only needed for
+#          read-only credentials) (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_zero_trust_access_group resource and
+# the Pulumi module's matching ZeroTrustAccessGroup resource; identity
+# providers, lists, and nested groups are referenced by ID, never created or
+# read by these modules), with the write group upgraded to documented
+# provenance by the endpoint page cited above. The live capture lane
+# upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccessgroup
+spec: {}

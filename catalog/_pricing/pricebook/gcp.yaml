@@ -931,3 +931,47 @@ spec:
       gcp_selector:
         service_id: D73B-5EEA-8215
         sku_id: 8722-D45E-5E7C
+    - name: cloudrun-idle-min-instance-vcpu-us-central1
+      service_name: Cloud Run
+      pricing_unit: vCPU-seconds
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0000025"
+      price_source: https://cloudbilling.googleapis.com/v1/services/152E-C115-5142/skus
+      retrieved_on: "2026-08-22"
+      gcp_selector:
+        service_id: 152E-C115-5142
+        sku_id: 7EBB-8579-2C98
+    - name: cloudrun-idle-min-instance-memory-us-central1
+      service_name: Cloud Run
+      pricing_unit: GiB-seconds
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0000025"
+      price_source: https://cloudbilling.googleapis.com/v1/services/152E-C115-5142/skus
+      retrieved_on: "2026-08-22"
+      gcp_selector:
+        service_id: 152E-C115-5142
+        sku_id: 740D-08F2-7A11
+    - name: cloudrunfunctions-idle-min-instance-vcpu-us-central1
+      service_name: Cloud Run Functions
+      pricing_unit: vCPU-seconds
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0000025"
+      price_source: https://cloudbilling.googleapis.com/v1/services/29E7-DA93-CA13/skus
+      retrieved_on: "2026-08-22"
+      gcp_selector:
+        service_id: 29E7-DA93-CA13
+        sku_id: BE64-07F9-2DB8
+    - name: cloudrunfunctions-idle-min-instance-memory-us-central1
+      service_name: Cloud Run Functions
+      pricing_unit: GiB-seconds
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0000025"
+      price_source: https://cloudbilling.googleapis.com/v1/services/29E7-DA93-CA13/skus
+      retrieved_on: "2026-08-22"
+      gcp_selector:
+        service_id: 29E7-DA93-CA13
+        sku_id: 4D7F-F6C9-CC43

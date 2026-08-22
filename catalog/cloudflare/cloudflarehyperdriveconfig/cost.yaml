@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarehyperdriveconfig
+spec:
+  billing_model: free
+  free_tier: "\"Hyperdrive is included in both the Free and Paid Workers plans\" (https://developers.cloudflare.com/hyperdrive/platform/pricing/, retrieved 2026-08-22) -- 100,000 database queries per day on the Workers Free plan, Unlimited on Paid, and the same page's FAQ answers \"Does connection pooling or query caching incur additional charges?\" with \"No\" and \"Does Hyperdrive charge for data transfer / egress?\" with \"No\". There is no per-query dollar meter at any volume: exceeding the free-plan daily quota makes further queries fail with an error rather than bill."
+  notes: "No field of this spec commits spend: origin holds connection details, caching tunes the free query cache, mtls selects certificates already uploaded to Cloudflare, and origin_connection_limit is a pool-size quota whose ceiling is plan-dependent (20 on the free plan, up to 100 on paid) -- a limit, not a fee. The real spend lives on either side of this config: the Workers that bind to it bill their own requests and CPU on the account's Workers plan (through the CloudflareWorker kind), and the origin database it pools into bills on whatever infrastructure runs it -- including PlanetScale databases created via Cloudflare, whose usage the pricing page notes is billed separately at PlanetScale's rates. All three presets are plain origin configs."

@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccessgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A group stores no customer data -- it is membership logic (rule criteria) held in Cloudflare's control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A group terminates no connections -- it is membership logic evaluated inside Access during authentication events on Cloudflare's own TLS-fronted flows.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A group has no network endpoint; it is a named rule bundle referenced by policies.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The group's ip, ip_list, and geo criteria ARE network-source conditions, but the group gates nothing by itself -- those criteria only bite when an Access policy references the group (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A group inspects no traffic -- payload filtering (WAF, rate limiting) is CloudflareRuleset territory on the zones the protected applications live in.
+    - control_id: rbac
+      status: configurable
+      field_path: include
+      evidence:
+        type: spec_default
+        reference: The group IS a reusable RBAC membership definition -- include rules OR together (at least one is required), require rules AND on top (geo, device posture, auth method), exclude rules veto (exclude wins over include), and 26 criteria are available including IdP groups (Okta, Azure AD, GitHub, SAML, OIDC), mTLS certificates, service tokens, and group-of-groups composition.
+      notes: Membership quality is the rules' quality -- an include of everyone matches everyone. is_default true auto-includes the group in newly created applications' membership, a powerful account-wide default to set deliberately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group can match service tokens as a criterion, but the machine credentials themselves are the CloudflareZeroTrustAccessServiceToken kind's territory.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: require
+      evidence:
+        type: spec_default
+        reference: A require rule of type auth_method (an AMR value such as "mfa", "hwk", or "swk") drops users who authenticated with anything weaker from the group, so every policy built on the group inherits the stronger-auth floor -- the second preset requires hardware-key MFA this way.
+      notes: This is opt-in per group; without an auth_method (or auth_context) require rule, the group accepts whatever authentication strength the IdP allowed.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group changes land in the Cloudflare account audit log, and group membership is evaluated inside Access authentication decisions that Access logs unconditionally -- neither is a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch; a group has no runtime of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Groups are evaluated wherever Access runs -- Cloudflare's global edge; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete. Policies and other groups that reference this group by ID lose the membership criteria it carried -- re-point or retire those references before deleting the group.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the Access rule-evaluation engine; no customer-visible patch surface exists.

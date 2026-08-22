@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanvpc
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPC stores no customer data -- it is a network boundary definition held in DigitalOcean's control plane, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The VPC terminates no connections of its own, and private isolation is NOT encryption -- DigitalOcean documents VPC traffic as private to the network, not as encrypted on the wire, so workloads handling sensitive data should still speak TLS inside the VPC. Transport security is the member resources' posture.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Isolation is the product -- DigitalOcean documents that VPC networks are inaccessible from the public internet and from other VPC networks, with no flag to make the private network itself publicly routable. Every VPC is private by construction, whether the CIDR is declared or auto-assigned.
+      notes: The guarantee covers the private NETWORK, not its members -- a droplet inside the VPC can still carry its own public interface, and that exposure is governed on the droplet and firewall kinds. The VPC ensures the private side never leaks; it cannot prevent a member from also having a public side.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The VPC is coarse segmentation, not source filtering -- it admits member resources into one private network but declares no per-source, per-port rules. Rule-level ingress restriction on DigitalOcean lives on the DigitalOceanFirewall kind (and database-side trusted sources), which complement the boundary this VPC draws.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A VPC receives no HTTP requests -- request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, modify, or delete VPCs is governed by DigitalOcean team membership and API token scopes -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists on a VPC to disable; membership is placement, not login.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. VPC management calls are captured in the DigitalOcean team's account-level activity history; DigitalOcean offers no VPC flow logs, so there is no traffic log to enable.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean publishes no per-VPC metrics -- network visibility lives on the member resources' own monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A VPC holds no data to back up -- it is declarative configuration re-creatable from the manifest. One recovery nuance is worth knowing -- when ip_range_cidr was left for DigitalOcean to auto-assign, a re-created VPC may receive a DIFFERENT range, so anything that hard-coded the old range must follow the ip_range output instead.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A VPC is a regional network definition with no zonal placement or replicas to configure -- there is no VPC instance to fail; availability concerns belong to the member resources.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. DigitalOcean does refuse to delete a VPC that still contains member resources, and a region's default VPC cannot be deleted at all -- dependency guards that surface other owners' wiring, not configurable protections.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A VPC is a pure configuration object with no software to patch; the network fabric enforcing it is DigitalOcean's own managed platform.

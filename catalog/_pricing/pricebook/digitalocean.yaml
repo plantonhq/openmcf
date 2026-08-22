@@ -1,0 +1,194 @@
+# The DigitalOcean price book: every DigitalOcean unit price the catalog's
+# cost estimates cite, pinned with source URL and retrieval date. Entries
+# are referenced by slug from the estimate models under ../models/ and
+# selected by value-keyed attribute identity from the cost derivations
+# under ../derivations/. DigitalOcean publishes no machine-readable price
+# API, so every entry here is hand-pinned from DigitalOcean's own
+# published pricing pages and carries NO fetcher selector -- the fetcher
+# leaves selectorless entries untouched by design, and refreshing this
+# book means re-reading the cited pages and updating retrieved_on.
+# DigitalOcean prices identically in every region (its pricing pages
+# carry no region dimension), so entries pin region "global".
+# Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: digitalocean
+spec:
+  entries:
+    - name: do-droplet-s-1vcpu-1gb-monthly
+      service_name: Droplets
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "6.00"
+      price_source: https://www.digitalocean.com/pricing/droplets
+      retrieved_on: "2026-08-22"
+      attributes:
+        size_slug: s-1vcpu-1gb
+    - name: do-droplet-s-2vcpu-4gb-monthly
+      service_name: Droplets
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "24.00"
+      price_source: https://www.digitalocean.com/pricing/droplets
+      retrieved_on: "2026-08-22"
+      attributes:
+        size_slug: s-2vcpu-4gb
+    - name: do-droplet-backup-weekly-s-2vcpu-4gb-monthly
+      service_name: Droplets
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "4.80"
+      price_source: https://www.digitalocean.com/pricing/droplets
+      retrieved_on: "2026-08-22"
+      attributes:
+        size_slug: s-2vcpu-4gb
+        backup_plan: weekly
+    - name: do-managed-db-pg-db-s-2vcpu-4gb-node-monthly
+      service_name: Managed Databases
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "60.90"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-managed-db-pg-db-s-1vcpu-1gb-node-monthly
+      service_name: Managed Databases
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "15.15"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-managed-db-caching-db-s-1vcpu-1gb-node-monthly
+      service_name: Managed Databases
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "15.00"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-managed-db-kafka-db-s-2vcpu-2gb-broker-monthly
+      service_name: Managed Databases
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "49.60"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-managed-db-opensearch-db-s-2vcpu-4gb-node-monthly
+      service_name: Managed Databases
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "37.05"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-managed-db-additional-storage-gib-monthly
+      service_name: Managed Databases
+      pricing_unit: GiB-months
+      region: global
+      currency: USD
+      list_unit_price: "0.215"
+      price_source: https://www.digitalocean.com/pricing/managed-databases
+      retrieved_on: "2026-08-22"
+    - name: do-doks-worker-s-4vcpu-8gb-monthly
+      service_name: Kubernetes
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "48.00"
+      price_source: https://www.digitalocean.com/pricing/droplets
+      retrieved_on: "2026-08-22"
+      attributes:
+        size_slug: s-4vcpu-8gb
+    - name: do-doks-worker-s-2vcpu-4gb-monthly
+      service_name: Kubernetes
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "24.00"
+      price_source: https://www.digitalocean.com/pricing/droplets
+      retrieved_on: "2026-08-22"
+      attributes:
+        size_slug: s-2vcpu-4gb
+    - name: do-doks-ha-control-plane-monthly
+      service_name: Kubernetes
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "40.00"
+      price_source: https://www.digitalocean.com/pricing/kubernetes
+      retrieved_on: "2026-08-22"
+    - name: do-lb-regional-node-monthly
+      service_name: Load Balancers
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "12.00"
+      price_source: https://www.digitalocean.com/pricing/load-balancers
+      retrieved_on: "2026-08-22"
+    - name: do-volume-storage-gib-monthly
+      service_name: Volumes Block Storage
+      pricing_unit: GiB-months
+      region: global
+      currency: USD
+      list_unit_price: "0.10"
+      price_source: https://www.digitalocean.com/pricing/volumes
+      retrieved_on: "2026-08-22"
+    - name: do-app-instance-basic-xxs-monthly
+      service_name: App Platform
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "5.00"
+      price_source: https://docs.digitalocean.com/products/app-platform/details/pricing/
+      retrieved_on: "2026-08-22"
+      attributes:
+        instance_size_slug: basic-xxs
+    - name: do-app-instance-professional-xs-monthly
+      service_name: App Platform
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "12.00"
+      price_source: https://docs.digitalocean.com/products/app-platform/details/pricing/
+      retrieved_on: "2026-08-22"
+      attributes:
+        instance_size_slug: professional-xs
+    - name: do-docr-basic-monthly
+      service_name: Container Registry
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "5.00"
+      price_source: https://www.digitalocean.com/pricing/container-registry
+      retrieved_on: "2026-08-22"
+    - name: do-docr-professional-monthly
+      service_name: Container Registry
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "20.00"
+      price_source: https://www.digitalocean.com/pricing/container-registry
+      retrieved_on: "2026-08-22"
+    - name: do-spaces-subscription-monthly
+      service_name: Spaces Object Storage
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "5.00"
+      price_source: https://www.digitalocean.com/pricing/spaces-object-storage
+      retrieved_on: "2026-08-22"
+    # --- Droplets (kind 1) ---
+    - name: do-uptime-check-monthly
+      service_name: Uptime
+      pricing_unit: months
+      region: global
+      currency: USD
+      list_unit_price: "1.00"
+      price_source: https://docs.digitalocean.com/products/uptime/details/pricing/
+      retrieved_on: "2026-08-22"

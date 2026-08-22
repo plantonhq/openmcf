@@ -7,10 +7,12 @@
 # kubernetes) applies -- their absence is the schema's own claim that the
 # modules touch no such API. The DigitalOcean least-privilege story lives in
 # the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
+# point this inventory converts mechanically (scope names per
+# https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22):
 #
 #   Custom-scopes token (recommended):
 #     database:read    -- read the user through GET /v2/databases/{c}/users/{n} (provenance: derived)
+#     database:view_credentials -- see the user's password (and a Kafka user's access certificate/key) in that read; DigitalOcean's own OpenAPI spec (databases_get_user.yml) states the password "will not show up unless the database:view_credentials scope is present", and the modules export these credentials as stack outputs (derived)
 #     database:create  -- create the user via POST /v2/databases/{c}/users (derived)
 #     database:update  -- reset the MySQL auth plugin / update ACLs (derived)
 #     database:delete  -- delete the user via DELETE /v2/databases/{c}/users/{n} (derived)

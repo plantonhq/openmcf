@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
+# sections of the Access identity provider API endpoint docs
+# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/identity_providers/,
+# create/get/update/delete method pages, retrieved 2026-08-22):
+#
+#   "Access: Organizations, Identity Providers, and Groups Write"
+#       -- account-scoped; create/update/delete the identity provider via
+#          POST/PUT/DELETE
+#          /accounts/{account_id}/access/identity_providers[/{idp_id}] (or the
+#          /zones/{zone_id}/... variant when the spec targets a zone). Each
+#          endpoint's docs name THIS combined group as the accepted
+#          permission; the narrower "Access: Identity Providers Write" group
+#          also exists on the general reference, but the endpoint docs do not
+#          list it as accepted, so we do not claim it suffices.
+#          (provenance: derived)
+#   "Access: Organizations, Identity Providers, and Groups Read"
+#       -- account-scoped; refresh/import the identity provider via GET
+#          /accounts/{account_id}/access/identity_providers/{idp_id} (the get
+#          endpoint accepts Read or Write; Write alone covers the whole
+#          lifecycle, so Read is only needed for read-only credentials)
+#          (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_zero_trust_access_identity_provider
+# resource and the Pulumi module's matching ZeroTrustAccessIdentityProvider
+# resource; neither engine performs secondary lookups or data-source reads).
+# The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccessidentityprovider
+spec: {}

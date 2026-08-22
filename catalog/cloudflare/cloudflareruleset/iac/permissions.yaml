@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22) and the "Accepted Permissions" section of the
+# rulesets create endpoint doc
+# (https://developers.cloudflare.com/api/resources/rulesets/methods/create/,
+# retrieved 2026-08-22).
+#
+# The module manages one cloudflare_ruleset resource against
+# POST/PUT/GET/DELETE /{accounts|zones}/{account_or_zone_id}/rulesets
+# [/{ruleset_id}] -- the spec's zone_id/account_id oneof decides the scope.
+#
+#   ACCOUNT-LEVEL rulesets (spec sets account_id):
+#   "Account Rulesets Write"  -- account-scoped; the general account-rulesets
+#                                group. The create endpoint's Accepted
+#                                Permissions list names it verbatim
+#                                (alongside narrower product groups: "Mass
+#                                URL Redirects Write", "Magic Firewall
+#                                Write", "L4 DDoS Managed Ruleset Write",
+#                                "Transform Rules Write", "Select
+#                                Configuration Write", "Account WAF Write",
+#                                "Logs Write" -- at least one is required,
+#                                and the product groups only cover their own
+#                                phases). (provenance: documented)
+#   "Account Rulesets Read"   -- account-scoped; refresh/import via GET
+#                                (Write covers the whole lifecycle; Read is
+#                                only needed for read-only credentials)
+#                                (provenance: derived)
+#
+#   ZONE-LEVEL rulesets (spec sets zone_id): HONEST UNKNOWN. The create
+#   endpoint doc publishes only the account-scope list above, and Cloudflare
+#   publishes no phase-to-group mapping for zone rulesets. The permissions
+#   reference's zone tables carry per-product write groups ("Zone WAF
+#   Write", "Cache Settings Write", "Zone Transform Rules Write", "Dynamic
+#   URL Redirects Write", "Origin Write", "Zone Settings Write"), each
+#   plausibly scoped to its own phase, but no Cloudflare page states which
+#   group unlocks which phase, so this file does not guess. This component's
+#   README has long claimed "Zone > Zone Settings > Edit for most phases"
+#   (migrated here verbatim as the README's claim, not Cloudflare's). The
+#   live capture lane resolves the zone-scope story to proven.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_ruleset resource and the Pulumi
+# module's matching Ruleset resource; neither engine performs secondary
+# lookups), upgraded to documented provenance where the endpoint doc names
+# the group. The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareruleset
+spec: {}

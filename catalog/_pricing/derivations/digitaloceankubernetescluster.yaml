@@ -1,0 +1,77 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanKubernetesCluster manifest's spec values into metered
+# quantities and price choices. The DOKS control plane is free; the
+# committed spend is the required default node pool's worker droplets
+# (billed at droplet rates, priced by a value-keyed lookup on the pool's
+# size slug) plus the flat 40.00 USD/mo highly available control plane when
+# highly_available is true. With autoscaling on, the committed quantity is
+# the FLOOR (min_nodes) -- nodes above it follow demand and ride the
+# exclusions; with autoscaling off, it is node_count. Sizes the price book
+# does not carry refuse through the lookup itself -- zero matches is a
+# refusal, never a pick. DigitalOcean prices DOKS identically in every
+# region, so every entry is pinned "global". The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/digitaloceankubernetescluster.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceankubernetescluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  lines:
+    - sku_meter: worker nodes
+      applies_when:
+        - field_path: default_node_pool.auto_scale
+          op: equals
+          value: "false"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.node_count
+      price_lookup:
+        service_name: Kubernetes
+        pricing_unit: months
+        attributes:
+          - key: size_slug
+            from_field: default_node_pool.size
+      basis: "a fixed pool of node_count worker droplets, each billing the size slug's flat monthly droplet rate from creation"
+    - sku_meter: worker nodes
+      applies_when:
+        - field_path: default_node_pool.auto_scale
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.min_nodes
+      price_lookup:
+        service_name: Kubernetes
+        pricing_unit: months
+        attributes:
+          - key: size_slug
+            from_field: default_node_pool.size
+      basis: "the autoscaling FLOOR -- min_nodes worker droplets run and bill even at zero load; the ceiling is named in the exclusions, and node_count is only the initial count"
+    - sku_meter: HA control plane
+      applies_when:
+        - field_path: highly_available
+          op: equals
+          value: "true"
+      quantity:
+        - constant: "1"
+      price_slug: do-doks-ha-control-plane-monthly
+      basis: "the highly available control plane bills a flat 40.00 USD per month; the single-replica control plane (highly_available false) is free"
+  exclusions:
+    - applies_when:
+        - field_path: default_node_pool.auto_scale
+          op: equals
+          value: "true"
+      text: "the cluster autoscaler grows the pool above the min_nodes floor up to max_nodes with workload demand -- each extra node bills the same monthly rate while it exists"
+    - text: "outbound data transfer past the pooled free allowance (starting at 2,000 GiB per Basic node per month) bills 0.01 USD/GiB; inbound and node-to-node transfer are free"
+    - text: "block storage volumes and load balancers created by the cluster's workloads (PersistentVolumeClaims, Services of type LoadBalancer) bill as their own DigitalOcean resources"
+    - text: "additional node pools bill on their own DigitalOceanKubernetesNodePool components"
+  notes:
+    - text: "Worker nodes bill at DigitalOcean's droplet rates -- the DOKS pricing page charges only the underlying droplets and prices per single node; the control plane, version updates, and the autoscaler are free."
+    - text: "Priced at DigitalOcean's global rates -- the DOKS and droplet pricing pages carry no region dimension."

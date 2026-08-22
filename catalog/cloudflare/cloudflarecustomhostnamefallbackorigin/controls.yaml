@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarecustomhostnamefallbackorigin
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The fallback origin is one hostname string stored as zone configuration inside Cloudflare's control plane -- it holds no customer data this component could encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Cloudflare exposes no KMS surface for zone configuration.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pointer terminates no connections. TLS between visitors and the edge is each custom hostname's certificate, and TLS between the edge and this origin is the zone's SSL mode -- both are posture of other objects, with no field on this two-field spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The component exposes no endpoint -- it names which backend the zone's custom hostnames route to. Public exposure belongs to the hostnames and the origin itself, not to this pointer.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own to filter (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF and request filtering for custom-hostname traffic are zone and ruleset posture; this spec carries only zone_id and origin.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture; the pointer has no data plane of its own to govern.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials -- the origin field is a hostname, not a secret.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token over the legacy Global API Key when provisioning.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records fallback-origin changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface. Both modules export the provider's status output (pending/active) after apply, but no metric or alert integration is configurable here.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The pointer lives in Cloudflare's global control plane and is served from the anycast edge -- there is no zonal placement to configure. Availability of the backend it names belongs to the origin infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag. Destroy is a real delete -- the zone's custom hostnames lose their default backend until a fallback origin is set again.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration pointer with no software of its own to patch; the edge serving the hostnames is Cloudflare-operated.

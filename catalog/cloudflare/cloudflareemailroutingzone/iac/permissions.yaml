@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22):
+#
+#   Email Routing Rules Write  -- zone-scoped; the modules' three resources
+#                                 all write under the zone's email-routing
+#                                 API: enable/disable settings via
+#                                 POST/DELETE /zones/{zone_id}/email/routing,
+#                                 the catch-all via PUT
+#                                 /zones/{zone_id}/email/routing/rules/catch_all,
+#                                 and the managed DNS records (when
+#                                 lock_dns_records is set) via
+#                                 /zones/{zone_id}/email/routing/dns
+#                                 (the reference lists no separate group for
+#                                 routing settings; Email Routing Rules is
+#                                 the product's only zone-scoped group, and
+#                                 the mapping is derived from the modules'
+#                                 API surface)
+#                                 (provenance: derived)
+#   Email Routing Rules Read   -- zone-scoped; refresh/import the settings,
+#                                 catch-all, and DNS state via GET on the
+#                                 same endpoints
+#                                 (provenance: derived)
+#   DNS Write / DNS Read       -- zone-scoped; carried from the component's
+#                                 catalog.md prose ("and DNS edit access for
+#                                 the auto-provisioned records"), migrated
+#                                 here losslessly. The modules never call the
+#                                 dns_records API directly -- enabling
+#                                 routing auto-provisions MX/SPF/DKIM
+#                                 server-side, and the email_routing_dns
+#                                 resource works the email-routing endpoint
+#                                 above -- so whether the token actually
+#                                 needs a DNS grant for those server-side
+#                                 record writes is unverified: an honest
+#                                 unknown for the live capture lane to
+#                                 settle.
+#                                 (provenance: catalog.md prose, underived)
+#
+# All entries except the DNS pair are derived from static analysis of the
+# official modules (Terraform: cloudflare_email_routing_settings, a
+# count-gated cloudflare_email_routing_catch_all, and a count-gated
+# cloudflare_email_routing_dns; Pulumi: the matching EmailRoutingSettings,
+# EmailRoutingCatchAll, and EmailRoutingDns resources; neither engine
+# performs secondary lookups). The live capture lane upgrades entries to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareemailroutingzone
+spec: {}

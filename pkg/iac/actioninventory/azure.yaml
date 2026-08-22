@@ -10,7 +10,7 @@ provider: azure
 services:
   - prefix: Microsoft.App
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.App?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-18"
+    retrieved_on: "2026-08-22"
     actions:
       - agents/dataconnectors/delete
       - agents/dataconnectors/listSecrets/action
@@ -28,9 +28,6 @@ services:
       - artifactApps/read
       - artifactApps/replicas/read
       - artifactApps/write
-      - artifactapps/delete
-      - artifactapps/read
-      - artifactapps/write
       - artifacts/delete
       - artifacts/read
       - artifacts/versions/cancel/action
@@ -214,9 +211,6 @@ services:
       - sandboxGroups/vnetConnections/read
       - sandboxGroups/vnetConnections/write
       - sandboxGroups/write
-      - sandboxgroups/delete
-      - sandboxgroups/read
-      - sandboxgroups/write
       - sessionpools/delete
       - sessionpools/fetchmcpservercredentials/action
       - sessionpools/read
@@ -247,6 +241,7 @@ services:
       - artifactApps/start/action
       - artifactApps/stop/action
       - artifacts/listSecrets/action
+      - artifacts/versions/pull/read
       - containerApps/debug/action
       - containerApps/exec/action
       - containerApps/logstream/action
@@ -2437,7 +2432,7 @@ services:
       - accounts/WebSearch/search/action
   - prefix: Microsoft.Compute
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Compute?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-18"
+    retrieved_on: "2026-08-22"
     actions:
       - availabilitySets/delete
       - availabilitySets/read
@@ -2572,10 +2567,6 @@ services:
       - locations/sharedGalleries/images/read
       - locations/sharedGalleries/images/versions/read
       - locations/sharedGalleries/read
-      - locations/sharedGallerySubscriptions/sharedGalleries/accept/action
-      - locations/sharedGallerySubscriptions/sharedGalleries/reject/action
-      - locations/tenantLevelSharedGallerySubscriptions/sharedGalleries/accept/action
-      - locations/tenantLevelSharedGallerySubscriptions/sharedGalleries/reject/action
       - locations/usages/read
       - locations/vmSizeRecommendations/generate/action
       - locations/vmSizes/read
@@ -2613,8 +2604,6 @@ services:
       - snapshots/delete
       - snapshots/endGetAccess/action
       - snapshots/read
-      - snapshots/updateImmutabilityPolicy/action
-      - snapshots/updateImmutabilityPolicyLock/action
       - snapshots/write
       - sshPublicKeys/delete
       - sshPublicKeys/generateKeyPair/action
@@ -3263,6 +3252,7 @@ services:
       - aiManagers/healthz/poststarthook/start-kube-aggregator-informers/read
       - aiManagers/healthz/poststarthook/start-kube-apiserver-admission-initializer/read
       - aiManagers/healthz/read
+      - aiManagers/inference/action
       - aiManagers/limitranges/delete
       - aiManagers/limitranges/read
       - aiManagers/limitranges/write
@@ -3290,7 +3280,6 @@ services:
       - aiManagers/metrics.k8s.io/pods/read
       - aiManagers/metrics/read
       - aiManagers/namespaces/delete
-      - aiManagers/namespaces/inference/action
       - aiManagers/namespaces/read
       - aiManagers/namespaces/write
       - aiManagers/networking.k8s.io/ingressclasses/delete
@@ -7898,7 +7887,7 @@ services:
       - vpnsites/write
   - prefix: Microsoft.OperationalInsights
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.OperationalInsights?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-18"
+    retrieved_on: "2026-08-22"
     actions:
       - clusters/delete
       - clusters/operationresults/read
@@ -8708,6 +8697,7 @@ services:
       - workspaces/query/PGSQLQueryStoreRuntime/read
       - workspaces/query/PGSQLQueryStoreWaits/read
       - workspaces/query/PGSQLServerLogs/read
+      - workspaces/query/PaymentHsmHardwareOperationAuditLogs/read
       - workspaces/query/Perf/read
       - workspaces/query/PerfInsightsFindings/read
       - workspaces/query/PerfInsightsImpactedResources/read

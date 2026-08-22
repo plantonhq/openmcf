@@ -1,0 +1,60 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22), cross-checked against the "Accepted Permissions"
+# sections of the cloudflared tunnel endpoint docs (create, configurations
+# update, and token get method pages under
+# https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/,
+# retrieved 2026-08-22). All three endpoints the module touches accept the
+# same three write groups: "Cloudflare One Connectors Write", "Cloudflare
+# One Connector: cloudflared Write", and "Cloudflare Tunnel Write" (any one
+# suffices).
+#
+#   "Cloudflare Tunnel Write"  -- account-scoped; covers the module's entire
+#                                 API surface: create/update/delete the
+#                                 tunnel (POST/PATCH/DELETE
+#                                 /accounts/{account_id}/cfd_tunnel
+#                                 [/{tunnel_id}]), manage the remote ingress
+#                                 configuration (PUT .../cfd_tunnel/
+#                                 {tunnel_id}/configurations -- a separate
+#                                 resource in both modules so ingress edits
+#                                 never recreate the tunnel), and fetch the
+#                                 connector run token (GET .../cfd_tunnel/
+#                                 {tunnel_id}/token). This is the group the
+#                                 permissions reference documents for
+#                                 creating and deleting Cloudflare Tunnels;
+#                                 the endpoint docs also accept the
+#                                 "Cloudflare One Connector(s)" groups named
+#                                 above as alternates.
+#                                 (provenance: documented)
+#
+#   NOTE on read-only credentials: the token GET endpoint's Accepted
+#   Permissions list names ONLY the three Write groups -- "Cloudflare Tunnel
+#   Read" is NOT listed there, so a read-only credential holding only the
+#   Read group can refresh the tunnel object but cannot fetch the run token
+#   the stack exports. A drift-checking credential for this component
+#   therefore still needs a Write group. (observed on the endpoint doc
+#   cited above; provenance: documented)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_zero_trust_tunnel_cloudflared resource +
+# cloudflare_zero_trust_tunnel_cloudflared_config resource + the
+# cloudflare_zero_trust_tunnel_cloudflared_token data source, and the Pulumi
+# module's matching trio), with the groups upgraded to documented provenance
+# by the endpoint pages cited above. The live capture lane upgrades entries
+# to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrusttunnel
+spec: {}

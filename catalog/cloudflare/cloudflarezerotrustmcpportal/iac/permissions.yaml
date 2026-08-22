@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. The MCP Portals groups are not yet listed on the general API
+# token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22); their names are verbatim from the "Accepted
+# Permissions" section of the MCP Portals API endpoint reference
+# (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/ai_controls/subresources/mcp/subresources/portals/methods/list/,
+# retrieved 2026-08-22):
+#
+#   MCP Portals Write   -- account-scoped; create/update/delete the MCP
+#                          portal via
+#                          POST/PUT/DELETE /accounts/{account_id}/access/ai-controls/mcp/portals[/{portal_id}]
+#                          (named by the endpoint reference's Accepted
+#                          Permissions) (provenance: derived)
+#   MCP Portals Read    -- account-scoped; refresh/import the portal via
+#                          GET /accounts/{account_id}/access/ai-controls/mcp/portals/{portal_id}
+#                          (named by the endpoint reference's Accepted
+#                          Permissions) (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_zero_trust_access_ai_controls_mcp_portal
+# resource and the Pulumi module's matching ZeroTrustAccessAiControlsMcpPortal
+# resource; neither engine performs secondary lookups). The live capture
+# lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustmcpportal
+spec: {}

@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarehyperdriveconfig
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Hyperdrive stores no customer rows -- data at rest belongs to the origin database. What Cloudflare holds for this object is the config itself (including the origin credential, submitted as a managed-secret reference resolved just-in-time at deploy); protecting that stored secret is Cloudflare's provider-side posture with no spec surface here. Cached query results live in Cloudflare's edge cache, equally provider-operated.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface exists for Hyperdrive config or its cache (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: mtls.sslmode
+      evidence:
+        type: spec_default
+        reference: The mtls block governs TLS on the Hyperdrive-to-origin connection -- sslmode selects require (encrypt without verification), verify-ca, or verify-full (CA plus hostname), and ca_certificate_id / mtls_certificate_id pin the CA and the client certificate Hyperdrive presents. Empty uses the engine default. For VPC Service origins the CEL rule mtls.not_with_vpc_service forbids the block because TLS is managed on the VPC Service.
+      notes: Preset 02-postgres-mtls sets sslmode verify-full with both certificates. The Worker-to-Hyperdrive leg rides Cloudflare's internal fabric, outside this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: origin.service_id
+      evidence:
+        type: spec_default
+        reference: origin.service_id routes Hyperdrive's egress to the origin through a Workers VPC Service (private connectivity) instead of dialing a public host; alternatively origin.access_client_id/access_client_secret reach an origin published behind Cloudflare Access with a service token. Empty means Hyperdrive dials origin.host directly, which must then be publicly reachable.
+      notes: The config object itself has no inbound endpoint -- this control is about whether the database it fronts must be exposed. Preset 03-postgres-vpc uses the VPC Service path; preset 01 dials a public host.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The component accepts no inbound connections to filter -- Workers reach it through the hyperdrive binding inside Cloudflare's fabric, and it egresses to the origin. Origin-side source filtering (allowing only Cloudflare/VPC paths) is the database's network posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Hyperdrive serves database wire protocols to Workers, not HTTP from the internet; a web application firewall has nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management is Cloudflare account-membership and API-token posture. Authorization inside the origin database (what the configured user may do) is the database's grant model, expressed only as the origin.user choice here.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Hyperdrive authenticates to the origin with a static database credential -- origin.password, plus optionally an Access service token -- because SQL databases offer no short-lived platform-issued identity path here. The spec keeps the secrets as sensitive managed-secret references resolved just-in-time, never stored in the manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The origin's authentication method is the database's posture; this spec carries whatever credential the origin requires. No weaker alternative path exists on the component itself to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records Hyperdrive config changes in the account audit log unconditionally. Query-level auditing belongs to the origin database.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface; Hyperdrive metrics (query counts, cache hit rates) are Cloudflare dashboard/GraphQL features outside this object.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The config is declarative and re-creatable from the manifest; the data worth backing up lives in the origin database, which is its own component's concern. The query cache is disposable by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Hyperdrive's pooling and caching run across Cloudflare's global network as provider behavior; there is no zonal placement to configure. Origin availability is the database's posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag. Destroy is a real delete -- Workers still bound to the config fail their binding until it is recreated.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Hyperdrive is a fully managed service -- Cloudflare operates the connection pooler and query cache across its network; no customer-visible patch surface exists.

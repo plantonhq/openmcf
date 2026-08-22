@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarelistitem
+spec:
+  billing_model: free
+  free_tier: "List entries are quota-limited per plan, never priced. Cloudflare's Lists availability table allows 10,000 items across all custom lists on Free/Pro/Business and 500,000 on Enterprise (https://developers.cloudflare.com/waf/tools/lists/, retrieved 2026-08-22); redirect entries count against the Bulk Redirects quotas instead -- 10,000 URL redirects across lists on Free up to 1,000,000 on Enterprise (https://developers.cloudflare.com/rules/url-forwarding/, retrieved 2026-08-22). No plan charges per entry at any volume."
+  notes: "No field of this spec can spend: the entry value (one of ip, asn, hostname, redirect) must match the parent list's kind, and comment is a label. An entry consumes one unit of the plan quotas above -- exceeding a quota fails the write rather than billing. What the entries DO costs nothing either: matching an ip entry in a WAF rule or serving a redirect entry's 301 is unmetered edge behavior; the consuming rulesets are their own kinds. Note the hostname and asn entry shapes only exist inside Enterprise-gated list kinds (see the cloudflarelist profile) -- a plan gate at the parent, not a fee here."

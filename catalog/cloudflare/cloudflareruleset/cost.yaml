@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareruleset
+spec:
+  billing_model: free
+  free_tier: "A ruleset is Ruleset Engine configuration -- the engine that powers Origin Rules, WAF rules, Cache Rules, Transform Rules, Redirects, and Rate Limiting across every plan. Cloudflare's Ruleset Engine docs describe availability per product and phase with no per-ruleset or per-rule charge anywhere (https://developers.cloudflare.com/ruleset-engine/, fetched 2026-08-22). Rule quotas and which phases a zone may use are plan features, not meters: creating a ruleset within your plan's entitlement costs nothing, and rule evaluations are never billed."
+  notes: "No field of this spec creates a subscription, but a rule can INVOKE products whose spend lives on the zone or account plan, so know where the money actually is. (1) An execute action deploying WAF managed rulesets: which managed rulesets a zone may deploy depends on the plan -- the Free Managed Ruleset is on all plans, the Cloudflare Managed Ruleset and OWASP Core Ruleset need Pro or higher (https://developers.cloudflare.com/waf/managed-rules/, fetched 2026-08-22); the spend is the zone-plan upgrade, never this object. (2) The http_ratelimit phase: rate limiting availability depends on the zone's WAF plan (https://developers.cloudflare.com/waf/rate-limiting-rules/, fetched 2026-08-22); same routing. (3) A set_cache_settings rule with cache_reserve.eligible true steers matching objects into Cache Reserve, a usage-based paid product billed per GB-month stored plus Class A/B operations on the account's Cache Reserve subscription (https://developers.cloudflare.com/cache/advanced-configuration/cache-reserve/, fetched 2026-08-22) -- the rule is the steering wheel, the Cache Reserve subscription is the bill. On unentitled zones, plan-gated phases and managed rulesets fail the apply rather than incurring cost."

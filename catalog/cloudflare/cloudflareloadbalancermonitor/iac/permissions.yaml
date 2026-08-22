@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. Group names are verbatim from the Cloudflare API token
+# permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22):
+#
+#   Load Balancing: Monitors and Pools Write  -- account-scoped ("grants
+#                                                write access to account
+#                                                level load balancer
+#                                                resources"); create/update/
+#                                                delete the monitor via
+#                                                POST/PUT/DELETE
+#                                                /accounts/{account_id}/load_balancers/monitors[/{id}]
+#                                                (path mapping derived from
+#                                                the module's API surface)
+#                                                (provenance: derived)
+#   Load Balancing: Monitors and Pools Read   -- account-scoped; refresh/
+#                                                import the monitor via GET
+#                                                /accounts/{account_id}/load_balancers/monitors/{id}
+#                                                (provenance: derived)
+#
+# The component's catalog.md states the requirement in prose ("a Cloudflare
+# API token that has Load Balancing edit access") -- migrated here
+# losslessly; the precise account-scoped group for monitors is the pair
+# above (the zone-scoped "Load Balancers Write" group governs the
+# zone-attached load balancers, not this account-level resource).
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's single cloudflare_load_balancer_monitor resource and
+# the Pulumi module's matching LoadBalancerMonitor resource; neither engine
+# performs secondary lookups). The live capture lane upgrades entries to
+# proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareloadbalancermonitor
+spec: {}

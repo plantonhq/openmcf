@@ -1,0 +1,51 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. The spec pins the job to exactly ONE scope (account XOR
+# zone), so a given stack needs only that scope's entries. Group names are
+# verbatim from the Cloudflare API token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22; "Logs Read" / "Logs Write" exist at BOTH account and
+# zone scope -- grant the one matching the spec's scope):
+#
+# When the job is zone-scoped (spec.zone_id set):
+#   Logs Write  -- zone-scoped; the reference describes it as write access
+#                  to Logpull and Logpush: create/update/delete the job via
+#                  POST/PUT/DELETE /zones/{zone_id}/logpush/jobs[/{id}] and
+#                  issue the one-shot ownership challenge via POST
+#                  /zones/{zone_id}/logpush/ownership (derived from the
+#                  module's API surface) (provenance: derived)
+#   Logs Read   -- zone-scoped; refresh/import the job via GET
+#                  /zones/{zone_id}/logpush/jobs/{id}. The reference
+#                  describes this group as Logpull log reads only, so
+#                  whether job-config reads need it or are already covered
+#                  by "Logs Write" is our inference (derived from the
+#                  module's API surface) (provenance: derived)
+#
+# When the job is account-scoped (spec.account_id set):
+#   Logs Write  -- account-scoped; the reference describes it as read AND
+#                  write access to Logpull, Logpush, and Instant Logs:
+#                  create/read/update/delete the job via
+#                  /accounts/{account_id}/logpush/jobs[/{id}] and issue the
+#                  ownership challenge via POST
+#                  /accounts/{account_id}/logpush/ownership (derived from
+#                  the module's API surface) (provenance: derived)
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_logpush_job and conditional
+# cloudflare_logpush_ownership_challenge resources and the Pulumi module's
+# matching LogpushJob and LogpushOwnershipChallenge resources; neither
+# engine performs secondary lookups). The live capture lane upgrades entries
+# to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarelogpushjob
+spec: {}

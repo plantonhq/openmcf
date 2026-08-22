@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceankubernetescluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Kubernetes
+      sku_meter: worker nodes
+      pricing_unit: months
+      description: The required default node pool provisions worker droplets that bill monthly (prorated hourly) from cluster creation -- every cluster carries at least one always-running paid node, even though the control plane itself is free.
+  cost_drivers:
+    - field_path: default_node_pool.size
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The droplet size slug sets the per-node monthly rate -- worker nodes bill at droplet rates (s-2vcpu-4gb is 24.00 USD/mo, s-4vcpu-8gb is 48.00 USD/mo per https://www.digitalocean.com/pricing/droplets, retrieved 2026-08-22; https://www.digitalocean.com/pricing/kubernetes, retrieved 2026-08-22, states all pricing is per single node and charges only the underlying droplets)."
+    - field_path: default_node_pool.node_count
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "Each node is a full billed droplet; the bill scales linearly with the count. With auto_scale enabled this is only the initial count."
+    - field_path: highly_available
+      sku_meter: HA control plane
+      pricing_unit: months
+      impact: "true adds the highly available control plane at a flat 40.00 USD/mo (https://www.digitalocean.com/pricing/kubernetes, retrieved 2026-08-22); false keeps the free single-replica control plane. One-way: HA can never be turned off again."
+    - field_path: default_node_pool.auto_scale
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "Hands the node count to the cluster autoscaler between min_nodes and max_nodes -- the committed floor is min_nodes always-running droplets; everything above follows workload demand."
+    - field_path: default_node_pool.min_nodes
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The autoscaling floor: this many nodes run and bill even at zero load."
+    - field_path: default_node_pool.max_nodes
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The autoscaling ceiling: the worst-case node bill is max_nodes at the size's monthly rate."
+  free_tier: "The DOKS control plane is free unless highly_available is set; Kubernetes version updates and the cluster autoscaler are free (https://www.digitalocean.com/pricing/kubernetes, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - "outbound data transfer past the pooled free allowance (starting at 2,000 GiB per Basic node per month) bills 0.01 USD/GiB; inbound and node-to-node transfer are free"
+    - "block storage volumes and load balancers the cluster's workloads create (PersistentVolumeClaims, Services of type LoadBalancer) bill as their own DigitalOcean resources outside this manifest"
+    - "additional node pools bill on their own DigitalOceanKubernetesNodePool components"
+    - "with auto_scale enabled, nodes above min_nodes up to max_nodes follow actual workload demand"
+  notes: "Worker droplets bill from creation whether or not pods run on them. Changing default_node_pool.size replaces the ENTIRE cluster -- the cost lever with the biggest blast radius. destroy_all_associated_resources sweeps workload-created load balancers, volumes, and snapshots at destroy time, ending their bills with the cluster's. DigitalOcean prices DOKS identically across regions -- the pricing page carries no region dimension."

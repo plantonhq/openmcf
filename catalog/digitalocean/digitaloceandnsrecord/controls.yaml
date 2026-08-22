@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandnsrecord
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A DNS record stores no customer data -- it is zone data held in DigitalOcean's DNS control plane, and DNS data is public by design (any resolver on the internet can read it). There is no data store here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); DigitalOcean DNS exposes no key-management surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The record terminates no connections of its own. Queries against it are answered by DigitalOcean's authoritative nameservers over the standard DNS protocol -- provider serving infrastructure, not per-record configuration; the spec has no transport lever.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Public resolvability IS this resource's purpose -- an authoritative DNS record exists to be read by any resolver on the internet. The operational consequence is a content rule, not a network one -- never place secrets in record values (TXT included), because everything here is world-readable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a record is data served by DigitalOcean's nameservers, not an endpoint with addresses or ports. One record type is an adjacent governance lever rather than a network filter -- a CAA record restricts WHICH certificate authorities may issue for the name.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A record receives no HTTP requests -- request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, modify, or delete records is governed by DigitalOcean team membership and API token scopes (the domain scope family) -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists on a DNS record to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Record management calls are captured in the DigitalOcean team's account-level activity history, not per-record configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean publishes no per-record metrics or query logs. Verifying that the record resolves as intended is external monitoring (e.g. an uptime check against the name), outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A record holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. The one read-back nuance (the provider's trailing-dot normalization on CNAME/MX/NS/SRV/CAA values) is cosmetic and survives re-creation.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The record has no placement of its own -- it is served wherever its zone is served, on DigitalOcean's redundant authoritative nameservers (ns1/ns2/ns3.digitalocean.com). Serving redundancy is the zone's and provider's posture, with nothing to configure per record.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither DigitalOcean nor the modules expose a deletion-protection flag for DNS records; a destroy removes the record immediately, and resolvers notice as their cached TTLs expire.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A record is a pure configuration object with no software to patch; the nameservers serving it are DigitalOcean's own managed fleet.

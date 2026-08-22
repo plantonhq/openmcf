@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# Cloudflare authenticates with a bearer API token built from named
+# permission groups, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The Cloudflare
+# least-privilege story lives in the token's PERMISSION GROUPS until the
+# schema grows a Cloudflare section, at which point this inventory converts
+# mechanically. The general API token permissions reference
+# (https://developers.cloudflare.com/fundamentals/api/reference/permissions/,
+# retrieved 2026-08-22) lists NO Web Analytics group; the groups below are
+# verbatim from the "Accepted Permissions" sections of the Web Analytics
+# site API endpoint docs
+# (https://developers.cloudflare.com/api/resources/rum/subresources/site_info/,
+# create/get/update/delete method pages, retrieved 2026-08-22):
+#
+#   Account Settings Write  -- account-scoped; create/update/delete the site
+#                              via POST/PUT/DELETE
+#                              /accounts/{account_id}/rum/site_info[/{site_id}]
+#                              (each method page names this group as its
+#                              accepted permission)
+#                              (provenance: derived)
+#   Account Settings Read   -- account-scoped; refresh/import the site via GET
+#                              /accounts/{account_id}/rum/site_info/{site_id}
+#                              (the get method page names this group)
+#                              (provenance: derived)
+#
+# HONEST UNKNOWN: the module also manages the site's include/exclude rules
+# via POST/PUT/DELETE /accounts/{account_id}/rum/v2/{ruleset_id}/rule --
+# those endpoint docs carry NO "Accepted Permissions" section, so the exact
+# group for the rules endpoints is undocumented. They belong to the same RUM
+# API family as the site endpoints above, but we do not assert a group we
+# cannot cite.
+#
+# All entries are derived from static analysis of the official modules (the
+# Terraform module's cloudflare_web_analytics_site and per-row
+# cloudflare_web_analytics_rule resources and the Pulumi module's matching
+# WebAnalyticsSite and WebAnalyticsRule resources; neither engine performs
+# secondary lookups -- the provider deliberately never reads rules back after
+# writing them). The live capture lane upgrades entries to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarewebanalyticssite
+spec: {}
