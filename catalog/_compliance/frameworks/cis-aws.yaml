@@ -5,6 +5,9 @@
 # not component posture, and are deliberately absent. A mapping says catalog
 # controls SERVE a recommendation -- it never declares a component or
 # deployment "CIS-compliant". Schema: compliance/frameworkcrosswalk/v1.
+#
+# This benchmark names AWS in its own title, so it declares provider scope:
+# it appears only on AWS components, never on another provider's.
 apiVersion: compliance.planton.dev/v1
 kind: FrameworkCrosswalk
 metadata:
@@ -12,6 +15,7 @@ metadata:
 spec:
   framework_name: CIS Amazon Web Services Foundations Benchmark
   framework_version: v3.0.0
+  providers: [aws]
   mappings:
     - requirement_id: "2.1.1"
       requirement_name: Ensure S3 Bucket Policy is set to deny HTTP requests

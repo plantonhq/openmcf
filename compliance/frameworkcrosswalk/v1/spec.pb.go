@@ -7,6 +7,7 @@
 package frameworkcrosswalkv1
 
 import (
+	cloudresourcekind "github.com/plantonhq/planton/shared/cloudresourcekind"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -37,8 +38,16 @@ type FrameworkCrosswalkSpec struct {
 	// -- components are untouched.
 	FrameworkVersion string                `protobuf:"bytes,2,opt,name=framework_version,json=frameworkVersion,proto3" json:"framework_version,omitempty"`
 	Mappings         []*RequirementMapping `protobuf:"bytes,3,rep,name=mappings,proto3" json:"mappings,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The providers this framework names in its own scope. A benchmark whose
+	// title names a provider declares it here (CIS AWS -> [aws]) and then
+	// appears ONLY on that provider's components; every consumer surface
+	// filters by this list. EMPTY means provider-neutral: the framework
+	// applies to every provider (HIPAA, SOC 2), and stating no scope IS the
+	// statement. Values are the platform's one provider vocabulary -- a
+	// misspelled provider refuses at parse time by construction.
+	Providers     []cloudresourcekind.CloudResourceProvider `protobuf:"varint,4,rep,packed,name=providers,proto3,enum=dev.planton.shared.cloudresourcekind.CloudResourceProvider" json:"providers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *FrameworkCrosswalkSpec) Reset() {
@@ -88,6 +97,13 @@ func (x *FrameworkCrosswalkSpec) GetFrameworkVersion() string {
 func (x *FrameworkCrosswalkSpec) GetMappings() []*RequirementMapping {
 	if x != nil {
 		return x.Mappings
+	}
+	return nil
+}
+
+func (x *FrameworkCrosswalkSpec) GetProviders() []cloudresourcekind.CloudResourceProvider {
+	if x != nil {
+		return x.Providers
 	}
 	return nil
 }
@@ -176,11 +192,12 @@ var File_compliance_frameworkcrosswalk_v1_spec_proto protoreflect.FileDescriptor
 
 const file_compliance_frameworkcrosswalk_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+compliance/frameworkcrosswalk/v1/spec.proto\x12,dev.planton.compliance.frameworkcrosswalk.v1\"\xca\x01\n" +
+	"+compliance/frameworkcrosswalk/v1/spec.proto\x12,dev.planton.compliance.frameworkcrosswalk.v1\x1a6shared/cloudresourcekind/cloud_resource_provider.proto\"\xa5\x02\n" +
 	"\x16FrameworkCrosswalkSpec\x12%\n" +
 	"\x0eframework_name\x18\x01 \x01(\tR\rframeworkName\x12+\n" +
 	"\x11framework_version\x18\x02 \x01(\tR\x10frameworkVersion\x12\\\n" +
-	"\bmappings\x18\x03 \x03(\v2@.dev.planton.compliance.frameworkcrosswalk.v1.RequirementMappingR\bmappings\"\x9d\x01\n" +
+	"\bmappings\x18\x03 \x03(\v2@.dev.planton.compliance.frameworkcrosswalk.v1.RequirementMappingR\bmappings\x12Y\n" +
+	"\tproviders\x18\x04 \x03(\x0e2;.dev.planton.shared.cloudresourcekind.CloudResourceProviderR\tproviders\"\x9d\x01\n" +
 	"\x12RequirementMapping\x12%\n" +
 	"\x0erequirement_id\x18\x01 \x01(\tR\rrequirementId\x12)\n" +
 	"\x10requirement_name\x18\x02 \x01(\tR\x0frequirementName\x12\x1f\n" +
@@ -203,16 +220,18 @@ func file_compliance_frameworkcrosswalk_v1_spec_proto_rawDescGZIP() []byte {
 
 var file_compliance_frameworkcrosswalk_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_compliance_frameworkcrosswalk_v1_spec_proto_goTypes = []any{
-	(*FrameworkCrosswalkSpec)(nil), // 0: dev.planton.compliance.frameworkcrosswalk.v1.FrameworkCrosswalkSpec
-	(*RequirementMapping)(nil),     // 1: dev.planton.compliance.frameworkcrosswalk.v1.RequirementMapping
+	(*FrameworkCrosswalkSpec)(nil),               // 0: dev.planton.compliance.frameworkcrosswalk.v1.FrameworkCrosswalkSpec
+	(*RequirementMapping)(nil),                   // 1: dev.planton.compliance.frameworkcrosswalk.v1.RequirementMapping
+	(cloudresourcekind.CloudResourceProvider)(0), // 2: dev.planton.shared.cloudresourcekind.CloudResourceProvider
 }
 var file_compliance_frameworkcrosswalk_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.compliance.frameworkcrosswalk.v1.FrameworkCrosswalkSpec.mappings:type_name -> dev.planton.compliance.frameworkcrosswalk.v1.RequirementMapping
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: dev.planton.compliance.frameworkcrosswalk.v1.FrameworkCrosswalkSpec.providers:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceProvider
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_compliance_frameworkcrosswalk_v1_spec_proto_init() }

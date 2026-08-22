@@ -5,6 +5,10 @@
 # mapping says catalog controls SERVE a requirement -- it never declares a
 # component or deployment "HIPAA-compliant". Schema:
 # compliance/frameworkcrosswalk/v1.
+#
+# HIPAA is provider-neutral: it regulates the data, not the cloud it sits
+# on, so this crosswalk declares NO provider scope (spec.providers stays
+# absent) and applies to every provider's components.
 apiVersion: compliance.planton.dev/v1
 kind: FrameworkCrosswalk
 metadata:

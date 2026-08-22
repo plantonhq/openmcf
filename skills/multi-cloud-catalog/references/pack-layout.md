@@ -33,7 +33,9 @@ resolves the pack from where you are working.
 │   │                             # control's id, name, and statement
 │   └── frameworks/
 │       └── <framework>.yaml      # crosswalks (hipaa-security-rule, cis-aws)
-│                                 # mapping framework requirements to controls
+│                                 # mapping framework requirements to controls;
+│                                 # spec.providers declares provider scope
+│                                 # (empty = provider-neutral)
 └── <provider>/                   # aws/, gcp/, azure/, kubernetes/, ...
     ├── reference-index.md        # every kind in the provider, one line each
     └── <kind>/
