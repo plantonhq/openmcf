@@ -1,0 +1,11 @@
+# Provider-config fixture: opts this component's e2e lane into a non-nil
+# provider config on both engines (absent = the exact historical ambient
+# contract). Non-secret by design -- credentials stay on the ambient chain;
+# default_tags is the natural proof because it is observable on every
+# created resource (the SNS topic's tags carry these without the scenario
+# manifest mentioning them).
+accountId: "859666865785"
+defaultTags:
+  tags:
+    planton-e2e-provider-config: proven
+    managed-by: planton-e2e-provider-config-lane
