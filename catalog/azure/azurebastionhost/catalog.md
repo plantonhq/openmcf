@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Azure Subscription
 
-- **Billing starts at provisioning**: hourly per SKU (Basic ~$0.19/h) plus per-scale-unit on Standard/Premium. Developer is free.
+- **Billing starts at provisioning**: hourly per SKU plus per-scale-unit on Standard/Premium. Developer is free.
 - **Creates take ~10 minutes**; deletes are similar. SKU upgrades are in-place, downgrades replace the host.
 - **Developer SKU is region-limited** -- check availability before choosing it.
 

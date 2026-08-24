@@ -4,7 +4,7 @@ Live-earned judgment lands here as proof runs and adopter operations teach it; t
 
 ## The endpoint is the cost; rules are free
 
-Endpoint ENIs bill hourly (~$0.125 each, two minimum) whether or not queries flow. Rules, associations, and queries cost fractions of a cent per million. Share ONE outbound endpoint across many rules and VPCs — never create an endpoint per rule.
+Endpoint ENIs bill hourly (two minimum) whether or not queries flow; rules, associations, and per-query charges are negligible beside them. Share ONE outbound endpoint across many rules and VPCs — never create an endpoint per rule. Verified figures live in the generated estimate at `catalog/_pricing/estimates/awsroute53resolverendpoint.yaml`, computed from the pinned, source-dated price book.
 
 ## FORWARD needs reachability; the control plane does not check it
 

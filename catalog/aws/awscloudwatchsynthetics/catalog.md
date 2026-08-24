@@ -23,7 +23,7 @@ Outside-in monitoring: a canary runs your script on a schedule — hitting the h
 ## After You Deploy
 
 - The canary is READY; with `start_canary: true` it runs on schedule and each run writes artifacts (screenshots, HAR, logs) to S3.
-- Runs bill ~$0.0012 each plus the Lambda execution — a 5-minute-rate canary is ~$10/month.
+- Runs bill per canary run plus the underlying Lambda execution — cost scales linearly with schedule frequency, so the run rate is the cost knob.
 
 ## Common Changes
 

@@ -8,8 +8,8 @@ confinement and security lockdown.
 ## What Gets Created
 
 - A notebook instance on an `ml.*` type (ml.t3.medium is the cheapest
-  current-generation choice, ~$0.05/hour) with a 5–16384 GB storage
-  volume.
+  current-generation choice; the instance type sets the hourly rate)
+  with a 5–16384 GB storage volume.
 - A folded lifecycle configuration: plain-shell `on_create` (runs
   once) and `on_start` (runs every start) scripts, base64-encoded by
   the modules, run as root under AWS's 5-minute limit.

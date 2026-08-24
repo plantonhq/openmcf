@@ -33,5 +33,7 @@ offers), referencing the instance component, so the chart graph reads
 
 ## Cost
 
-- **Free** while the instance runs; **$0.005/hour** (~$3.60/month) if the
-  instance stops and the address sits idle
+- **Free** while the instance runs; **billed hourly** if the instance stops
+  and the address sits idle — the idle state is the only cost driver
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awselasticip.yaml` — computed from the pinned price book, never hand-typed here.

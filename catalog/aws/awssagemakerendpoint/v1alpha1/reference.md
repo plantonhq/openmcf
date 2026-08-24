@@ -276,7 +276,8 @@ traffic while keeping the variant deployed.
 `AwsSagemakerEndpointServerlessConfig`
 
 Serverless compute instead of dedicated instances: SageMaker scales
-capacity with traffic and bills per inference ($0 idle). Excludes
+capacity with traffic and bills per inference (nothing while idle).
+Excludes
 every instance-based setting on this variant.
 
 - rule: provisioned_concurrency must not exceed max_concurrency
@@ -513,7 +514,8 @@ traffic while keeping the variant deployed.
 `AwsSagemakerEndpointServerlessConfig`
 
 Serverless compute instead of dedicated instances: SageMaker scales
-capacity with traffic and bills per inference ($0 idle). Excludes
+capacity with traffic and bills per inference (nothing while idle).
+Excludes
 every instance-based setting on this variant.
 
 - rule: provisioned_concurrency must not exceed max_concurrency

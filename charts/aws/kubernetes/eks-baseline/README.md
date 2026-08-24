@@ -153,10 +153,11 @@ connection, so nothing races the control plane.
   gradually), system instance types (node group replacement).
 - **One-way doors**: VPC/subnet CIDRs and the cluster name replace the
   world; `gateway_controller_name` requires recreating the GatewayClass.
-- **Cost levers**: the single NAT gateway (~$32/month + processing) is the
-  deliberate default — add per-zone NAT gateways for zone-independent
-  egress. Spot in `karpenter_capacity_types` is the biggest saving; the
-  interruption queue costs pennies and keeps it graceful.
+- **Cost levers**: the single NAT gateway (an always-on charge plus data
+  processing) is the deliberate default — add per-zone NAT gateways for
+  zone-independent egress. Spot in `karpenter_capacity_types` is the
+  biggest saving; the interruption queue costs next to nothing and keeps
+  it graceful.
 - **Second node pool**: GPU or arm64 workloads get their own
   KubernetesKarpenterEc2NodeClass + NodePool (taint them; don't widen the
   default pool's envelope).

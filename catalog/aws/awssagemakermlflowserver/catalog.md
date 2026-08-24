@@ -7,8 +7,8 @@ runs. For the serverless successor, see `AwsSagemakerMlflowApp`.
 
 ## What Gets Created
 
-- A tracking server sized `Small` (~25 users, ~$0.6/hour), `Medium`
-  (~50), or `Large` (~100) — resizes in place.
+- A tracking server sized `Small` (~25 users), `Medium` (~50), or
+  `Large` (~100) — size sets the hourly rate and resizes in place.
 - The S3 artifact store wiring (`artifact_store_uri`) accessed through
   the server's IAM role.
 - Optional: an `mlflow_version` pin (`major.minor`), automatic model

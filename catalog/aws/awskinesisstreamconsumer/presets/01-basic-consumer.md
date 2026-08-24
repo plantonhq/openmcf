@@ -18,4 +18,4 @@ Register an enhanced fan-out consumer with an existing Kinesis stream using a di
 
 ## Cost
 
-~$0.015/consumer-shard-hour + $0.013/GB retrieved. For a 4-shard stream: ~$43.80/month base consumer cost (before data retrieval).
+Enhanced fan-out bills per consumer-shard-hour plus per GB retrieved. The base cost scales with the stream's shard count — every shard the stream carries is billed for this consumer around the clock, before any data retrieval.

@@ -8,8 +8,10 @@ turning it on is effectively one-way).
 ## When to Use
 
 - The first MLflow deployment for a team of up to ~25 users
-- Steady, daily tracking load that justifies an always-on server
-  (~$0.6/hour from Created onward)
+- Steady, daily tracking load that justifies an always-on server —
+  the `Small` size bills hourly from Created onward, traffic or not;
+  the verified figure lives in the component's generated estimate at
+  `catalog/_pricing/estimates/awssagemakermlflowserver.yaml`
 
 ## What You Get
 
@@ -26,4 +28,4 @@ turning it on is effectively one-way).
 - Point `roleArn` at a composed `AwsIamRole` with `valueFrom` instead
   of a literal ARN
 - If tracking is intermittent, consider the serverless
-  `AwsSagemakerMlflowApp` instead — $0 idle, billed per use
+  `AwsSagemakerMlflowApp` instead — no idle charge, billed per use

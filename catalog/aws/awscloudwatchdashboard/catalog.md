@@ -21,7 +21,7 @@ The dashboard's name is the spec's `dashboard_name` (letters, digits, hyphens, u
 ## After You Deploy
 
 - `dashboard_arn` and `dashboard_name` land in outputs; the console URL is `https://console.aws.amazon.com/cloudwatch/home?region=<region>#dashboards/dashboard/<name>`.
-- Dashboards above the account's free tier (3) bill ~$3/month each, prorated.
+- Dashboards above the account's free tier (3) bill a flat monthly rate each, prorated.
 
 ## Common Changes
 

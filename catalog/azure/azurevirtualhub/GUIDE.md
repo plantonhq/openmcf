@@ -4,8 +4,11 @@ Judgment that does not fit in field references.
 
 ## The hub bills from creation, and it is slow
 
-A Standard hub costs ~$0.25/hr (plus per-unit router capacity) the
+A Standard hub bills hourly (plus per-unit router capacity) the
 moment ARM accepts the create -- before anything is connected to it.
+Verified figures live in the generated estimate at
+`catalog/_pricing/estimates/azurevirtualhub.yaml`, computed from the
+pinned, source-dated price book.
 Provisioning takes 15-30 minutes: ARM builds a managed router and
 brings its routing state to Provisioned (measured live: ~17-20 minutes
 for a plain hub). Composed children stretch the deploy further -- a

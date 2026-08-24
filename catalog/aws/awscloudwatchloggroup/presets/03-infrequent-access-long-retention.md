@@ -37,6 +37,8 @@ It **does** support:
 
 ## Cost
 
-- **Ingestion**: $0.25/GB (50% cheaper than STANDARD)
-- **Storage**: $0.0125/GB/month (~58% cheaper than STANDARD)
-- **KMS**: $1.00/month per key + $0.03/10,000 API calls
+- **Ingestion**: billed per GB written, at roughly half the STANDARD class rate
+- **Storage**: billed per GB-month, at well under half the STANDARD class rate — the class choice is the cost cliff here
+- **KMS**: the customer-managed key adds a flat monthly per-key charge plus per-API-call usage
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awscloudwatchloggroup.yaml` — computed from the pinned price book, never hand-typed here.

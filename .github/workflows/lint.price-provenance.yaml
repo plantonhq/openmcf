@@ -1,0 +1,52 @@
+# =============================================================================
+# Price Provenance Guard
+# =============================================================================
+# Fails the PR when a hand-typed dollar figure ships in catalog or chart
+# PROSE (component READMEs, guides, catalog pages, preset docs, generated
+# reference pages, chart READMEs) outside the accepted baseline. Verified
+# prices have exactly one home -- the pinned, source-dated price books and
+# generated estimates in catalog/_pricing/ -- and prose teaches cost DRIVERS,
+# never dollar amounts a provider can silently reprice. It also fails on a
+# stale baseline entry, so the burn-down list can only shrink truthfully.
+#
+# To fix a failure: rewrite the price to driver-teaching copy, or -- ONLY for
+# a user-chosen dollar-typed config example (a budget limit, an alert
+# threshold) -- add an `allowed` entry with its reason. Regenerate the
+# burn-down list with PLANTON_REGEN_PRICE_BASELINE=1. See pkg/priceprovenance.
+# =============================================================================
+
+name: lint.price-provenance
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**'
+      - 'charts/**'
+      - 'pkg/priceprovenance/**'
+      - '.github/workflows/lint.price-provenance.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**'
+      - 'charts/**'
+      - 'pkg/priceprovenance/**'
+      - '.github/workflows/lint.price-provenance.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  price-provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run price-provenance gate
+        run: go test ./pkg/priceprovenance/...

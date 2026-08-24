@@ -5,9 +5,11 @@ Judgment that does not fit in field references.
 ## This is the expensive, slow object of the branch family
 
 The site and the connection are free, second-class citizens of the
-lifecycle; the GATEWAY bills from creation (~$0.36/hr per scale unit
-class) and takes 32-36 minutes to create and 11-13 to delete
-(measured live, one scale unit, eastus). Design
+lifecycle; the GATEWAY bills hourly per scale unit from creation
+and takes 32-36 minutes to create and 11-13 to delete
+(measured live, one scale unit, eastus). Verified figures live in the
+generated estimate at
+`catalog/_pricing/estimates/azurevpngateway.yaml`. Design
 everything else around not recreating it: its ForceNew set (hub,
 region, routing preference, BGP asn/peer_weight) deserves a decision
 BEFORE the first deploy, because changing any of them later replaces

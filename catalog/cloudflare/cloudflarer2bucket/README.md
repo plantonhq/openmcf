@@ -6,7 +6,7 @@ A Planton component for deploying and managing Cloudflare R2 buckets - S3-compat
 
 ## Overview
 
-Cloudflare R2 revolutionizes cloud object storage economics by eliminating the egress fees that plague traditional cloud providers. While AWS S3, Google Cloud Storage, and Azure Blob charge $0.08-0.12 per GB transferred out, R2 charges **zero** for egress. You pay only for storage ($0.015/GB-month) and API operations.
+Cloudflare R2 revolutionizes cloud object storage economics by eliminating the egress fees that plague traditional cloud providers. While AWS S3, Google Cloud Storage, and Azure Blob bill for every gigabyte transferred out, R2 charges **zero** for egress. You pay only for storage (per GB-month) and API operations.
 
 This fundamental shift makes R2 ideal for:
 - **Content delivery and media hosting** (serve TBs without bandwidth charges)
@@ -282,39 +282,15 @@ spec:
 
 ## Cost Model
 
-R2's pricing is simple and predictable:
+R2 bills on three dimensions, and the shape of the pricing is the story:
 
-### Storage Costs
+- **Stored data** (per GB-month) — two storage classes, with Infrequent Access cheaper per GB but carrying a 30+ day retention minimum.
+- **Operations** — Class A (writes: PUT, POST, LIST, COPY) cost roughly an order of magnitude more per million than Class B (reads: GET, HEAD). Write-heavy workloads pay for their writes.
+- **Egress** — free. This is R2's structural difference: object storage providers typically charge for every byte leaving, and for serving-heavy workloads (media libraries, public downloads, model weights) egress is usually the DOMINANT line of an object-storage bill. Removing it changes which workloads are economical, which is why serving-heavy libraries migrate here.
 
-- **Standard Storage**: $0.015/GB-month
-- **Infrequent Access**: $0.010/GB-month (30+ day retention minimum)
+A free monthly allotment covers small buckets (storage and both operation classes) before any charge accrues.
 
-### Operation Costs
-
-- **Class A Operations** (writes): $4.50 per million
-  - PUT, POST, LIST, COPY
-- **Class B Operations** (reads): $0.36 per million
-  - GET, HEAD
-
-### Free Tier
-
-- **First 10 GB** of storage: Free
-- **1 million Class A operations**: Free per month
-- **10 million Class B operations**: Free per month
-
-### Egress
-
-- **All egress**: **$0.00** (completely free)
-
-**Cost Example**: A 1TB media library serving 100TB/month:
-- Storage: 1000 GB × $0.015 = **$15/month**
-- Reads: ~300M requests × $0.36/M = **$108/month**
-- Egress: 100TB × $0 = **$0/month**
-- **Total: $123/month**
-
-**AWS S3 Equivalent**: $15 (storage) + $27 (requests) + **$9,000 (egress)** = **$9,042/month**
-
-**Savings: 98.6%**
+The verified per-preset figures live in the component's generated estimate at `catalog/_pricing/estimates/cloudflarer2bucket.yaml`, computed from the pinned, source-dated price book — current rates belong there and on Cloudflare's published pricing page, never hand-typed in this document.
 
 ## Migration from S3
 

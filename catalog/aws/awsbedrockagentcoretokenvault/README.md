@@ -22,7 +22,8 @@ AWS.
 Destroying this component is a **no-op at AWS**: the last-applied key
 setting remains in effect. To return to AWS-managed encryption, apply
 an instance with `ServiceManagedKey` — destroy alone does not revert
-it. The setting is free; a customer-managed KMS key bills ~$1/month.
+it. The setting is free; a customer-managed KMS key carries KMS's
+flat monthly per-key charge.
 
 See [v1alpha1/reference.md](v1alpha1/reference.md) for the full field
 reference generated from the spec proto.

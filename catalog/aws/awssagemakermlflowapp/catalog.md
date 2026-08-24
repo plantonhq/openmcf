@@ -2,7 +2,7 @@
 
 Serverless MLflow as managed infrastructure — the MLflow 3.x successor
 to the hourly-billed tracking server, with nothing to size, billed per
-use and $0 when idle, storing artifacts in your S3 bucket and serving
+use and nothing when idle, storing artifacts in your S3 bucket and serving
 as the default MLflow for the SageMaker domains you associate.
 
 ## What Gets Created

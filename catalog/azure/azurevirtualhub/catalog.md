@@ -59,7 +59,7 @@ spec:
 planton apply -f azure-virtual-hub.yaml
 ```
 
-A Standard hub bills (~$0.25/hr class) from creation, and ARM takes 15-30 minutes to bring the hub's router to a Provisioned state.
+A Standard hub bills hourly from creation, and ARM takes 15-30 minutes to bring the hub's router to a Provisioned state.
 
 ### InfraChart
 

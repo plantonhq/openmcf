@@ -444,8 +444,8 @@ const (
 	// with folded AWS-numbered versions (append-only by position).
 	CloudResourceKind_AwsSagemakerImage CloudResourceKind = 1226
 	// The classic hourly-billed managed MLflow tracking server (~25 min
-	// to provision; Small ~$0.6/hour). The serverless successor is
-	// AwsSagemakerMlflowApp.
+	// to provision; billed hourly from creation whether or not anyone is
+	// tracking). The serverless successor is AwsSagemakerMlflowApp.
 	CloudResourceKind_AwsSagemakerMlflowServer CloudResourceKind = 1227
 	// The serverless MLflow 3.x deployment (billed per use) - standalone,
 	// associating with SageMaker domains; NOT a tracking-server

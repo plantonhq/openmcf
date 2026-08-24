@@ -16,4 +16,4 @@ The DLQ is named by reference, not created on demand: point it at another Cloudf
 
 ## Queues ride the Workers Paid plan
 
-Cloudflare has historically gated Queues behind the Workers Paid plan (~$5/mo). On a free account the create call fails at the API, not at validation — budget the entitlement before wiring queues into a design, and remember R2 event notifications deliver INTO a queue, so they inherit this gate too.
+Cloudflare has historically gated Queues behind the Workers Paid plan. On a free account the create call fails at the API, not at validation — budget the entitlement before wiring queues into a design, and remember R2 event notifications deliver INTO a queue, so they inherit this gate too.

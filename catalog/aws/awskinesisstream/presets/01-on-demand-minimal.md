@@ -20,4 +20,4 @@ The simplest possible Kinesis stream for development, prototyping, or variable-t
 
 ## Cost
 
-Pay-per-use: ~$0.08/GB written + ~$0.04/GB read. No idle cost when no data is flowing.
+Pay-per-use: ON_DEMAND streams bill per GB written and per GB read, with writes the pricier of the two. No idle cost when no data is flowing. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awskinesisstream.yaml` — computed from the pinned price book, never hand-typed here.

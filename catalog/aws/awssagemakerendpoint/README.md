@@ -13,7 +13,7 @@ resource.
 
 - **An endpoint** plus its **endpoint configuration** — variants are
   [serverless](https://docs.aws.amazon.com/sagemaker/latest/dg/serverless-endpoints.html)
-  ($0 idle, billed per inference) or instance-backed, never both on
+  (no idle charge, billed per inference) or instance-backed, never both on
   one variant.
 - **Production variants** (1–10) splitting traffic by weight, and
   optional **shadow variants** receiving a copy of production traffic

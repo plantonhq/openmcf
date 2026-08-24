@@ -57,7 +57,7 @@ spec:
 planton apply -f azure-express-route-gateway.yaml
 ```
 
-The gateway bills ~$0.42/hr per scale unit from creation, and ARM takes roughly 30 minutes to provision one.
+The gateway bills hourly per scale unit from creation, and ARM takes roughly 30 minutes to provision one.
 
 ### InfraChart
 

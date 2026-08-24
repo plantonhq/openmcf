@@ -32,5 +32,7 @@ This is the most common CloudWatch alarm pattern — a single-metric alarm that 
 
 ## Cost
 
-- **CloudWatch alarms**: $0.10/alarm/month (standard resolution)
+- **CloudWatch alarms**: billed per alarm-month; standard resolution is the cheaper alarm tier
 - **SNS**: first 1M notifications/month free
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awscloudwatchalarm.yaml` — computed from the pinned price book, never hand-typed here.

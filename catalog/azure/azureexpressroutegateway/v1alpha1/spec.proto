@@ -14,9 +14,10 @@ import "shared/options/options.proto";
 // ExpressRoute circuit PEERING to the hub, so branches and spokes across
 // the WAN reach the private circuit.
 //
-// **Cost and time**: the gateway bills per scale unit (~$0.42/hr per
-// unit) from creation, and ARM takes roughly 30 minutes to provision
-// one. Each scale unit adds ~2 Gbps of circuit-to-WAN throughput.
+// **Cost and time**: the gateway bills hourly per scale unit from
+// creation (every unit added scales the bill linearly), and ARM takes
+// roughly 30 minutes to provision one. Each scale unit adds ~2 Gbps of
+// circuit-to-WAN throughput.
 //
 // **Connections need a PROVISIONED circuit**: an ExpressRoute
 // connection references a circuit peering, and ARM accepts it only when

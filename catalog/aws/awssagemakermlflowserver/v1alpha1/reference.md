@@ -15,7 +15,8 @@ hour while it runs. The server's AWS name derives from metadata.name.
 
 Operational facts worth planning around: creation takes ~25 minutes
 and deletion is similar (AWS provisions dedicated capacity), and the
-server bills hourly from Created onward - Small is ~$0.6/hour. For
+server bills hourly from Created onward, whether or not anyone is
+tracking - the size ladder scales the hourly rate. For
 the serverless successor product, see AwsSagemakerMlflowApp.
 
 ## Example

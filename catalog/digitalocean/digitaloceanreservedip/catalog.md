@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### DigitalOcean Account
 
-- Billing awareness: an UNASSIGNED reserved IPv4 accrues ~$5/month (prorated hourly); assigned ones are free, and IPv6 is free either way.
+- Billing awareness: an UNASSIGNED reserved IPv4 accrues a monthly charge (prorated hourly); assigned ones are free, and IPv6 is free either way.
 
 ## After You Deploy
 

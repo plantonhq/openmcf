@@ -37,7 +37,7 @@ Deploy with either provisioner; both produce identical resources and outputs.
 
 ## Behavior worth knowing
 
-- **An UNASSIGNED reserved IPv4 bills (~$5/month, prorated hourly); an assigned one is free.** IPv6 reservations are free either way. An idle, forgotten reservation is the expensive state.
+- **An UNASSIGNED reserved IPv4 bills monthly (prorated hourly); an assigned one is free.** IPv6 reservations are free either way. An idle, forgotten reservation is the expensive state.
 - **The address is permanent for the reservation's lifetime and unrecoverable after destroy.** A recreated reservation gets a different address -- update DNS deliberately.
 - **v4 and v6 assign differently under the hood** (v4 inline and mutable; v6 through a separate assignment resource because its inline argument is dead upstream) -- the modules absorb this; the spec is identical either way.
 

@@ -29,4 +29,4 @@ Pair this preset with CloudWatch alarms on:
 
 ## Cost
 
-Variable (ON_DEMAND): ~$0.08/GB written + ~$0.04/GB read + extended retention + enhanced monitoring per shard.
+Variable (ON_DEMAND): billed per GB written and per GB read, plus the 7-day extended retention and the enhanced shard-level monitoring (billed per shard). The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awskinesisstream.yaml` — computed from the pinned price book, never hand-typed here.

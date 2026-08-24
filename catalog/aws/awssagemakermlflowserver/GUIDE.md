@@ -35,10 +35,12 @@ running managed MLflow in production.
   operation, not user-configurable) — plan replacements as
   half-hour-plus events, and remember role and version changes ARE
   replacements.
-- **The meter runs from Created onward.** Small is ~$0.6/hour
-  (~$430/month) whether anyone logs a run or not. If the team tracks
-  intermittently, the serverless `AwsSagemakerMlflowApp` at $0 idle is
-  the better fit.
+- **The meter runs from Created onward.** The server bills hourly
+  around the clock whether anyone logs a run or not — size sets the
+  rate. If the team tracks intermittently, the serverless
+  `AwsSagemakerMlflowApp`, which charges nothing while idle, is the
+  better fit. Verified per-size figures live in the generated estimate
+  at `catalog/_pricing/estimates/awssagemakermlflowserver.yaml`.
 - **Start Small; resize in place.** Size upgrades are a
   maintenance-window style operation, not a replacement — there is no
   penalty for starting at ~25 users and growing.

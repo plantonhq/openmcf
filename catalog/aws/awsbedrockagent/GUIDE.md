@@ -75,4 +75,7 @@ in production.
 
 Creating, preparing, and deleting agents is free. Costs start when
 aliases serve traffic: per-invocation model tokens (plus knowledge-base
-retrieval and guardrail evaluation when attached). Idle agents cost $0.
+retrieval and guardrail evaluation when attached). Idle agents cost
+nothing. Verified per-preset figures live in the generated estimate at
+`catalog/_pricing/estimates/awsbedrockagent.yaml`, computed from the
+pinned, source-dated price book.

@@ -40,7 +40,8 @@ type AwsSagemakerNotebookInstanceSpec struct {
 	// Example: "us-west-2", "us-east-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
-	// cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+	// cheapest current-generation choice; the instance bills hourly
+	// whether or not a notebook is open). AWS's accepted
 	// set grows with every release - the value passes through to the API,
 	// which rejects unknown types.
 	InstanceType string `protobuf:"bytes,2,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`

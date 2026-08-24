@@ -184,7 +184,8 @@ type AwsSagemakerEndpointVariant struct {
 	// traffic while keeping the variant deployed.
 	InitialVariantWeight *float32 `protobuf:"fixed32,5,opt,name=initial_variant_weight,json=initialVariantWeight,proto3,oneof" json:"initial_variant_weight,omitempty"`
 	// Serverless compute instead of dedicated instances: SageMaker scales
-	// capacity with traffic and bills per inference ($0 idle). Excludes
+	// capacity with traffic and bills per inference (nothing while idle).
+	// Excludes
 	// every instance-based setting on this variant.
 	Serverless *AwsSagemakerEndpointServerlessConfig `protobuf:"bytes,6,opt,name=serverless,proto3" json:"serverless,omitempty"`
 	// Endpoint-managed instance range (min/max autoscaling handled by

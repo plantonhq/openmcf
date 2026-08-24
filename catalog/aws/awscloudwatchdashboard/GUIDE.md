@@ -16,4 +16,4 @@ A metric widget charting a non-existent metric renders an empty graph, never an 
 
 ## Cost
 
-The first three dashboards per account are free; beyond that ~$3/month each, prorated hourly. Minutes-lived test dashboards cost effectively nothing.
+The first three dashboards per account are free; each dashboard beyond the free tier bills a flat monthly rate, prorated hourly. Minutes-lived test dashboards cost effectively nothing. The verified figure lives in the generated estimate at `catalog/_pricing/estimates/awscloudwatchdashboard.yaml`, computed from the pinned, source-dated price book.

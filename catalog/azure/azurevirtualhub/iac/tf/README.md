@@ -75,7 +75,7 @@ module "hub_eastus" {
 
 ## Behavior Notes
 
-- A Standard hub bills (~$0.25/hr class) from creation; ARM takes
+- A Standard hub bills hourly from creation; ARM takes
   15-30 minutes to bring the router to a Provisioned routing state.
 - Routing intent and per-connection route-table customization are
   mutually exclusive on ARM's side.

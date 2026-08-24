@@ -22,7 +22,7 @@ Hybrid DNS between AWS and everywhere else: inbound endpoints let on-prem resolv
 ## After You Deploy
 
 - The endpoint reaches OPERATIONAL in a few minutes (ENI provisioning). Inbound: point on-prem conditional forwarders at the `ip_addresses` output. Outbound: queries for each rule's domain start forwarding from every associated VPC.
-- Endpoint ENIs bill per hour (about $0.125 each) — the endpoint is the family's one always-on cost.
+- Endpoint ENIs bill per hour whether or not queries flow — the endpoint is the family's one always-on cost.
 
 ## Common Changes
 

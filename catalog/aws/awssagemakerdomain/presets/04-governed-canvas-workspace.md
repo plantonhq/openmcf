@@ -24,9 +24,11 @@ hidden from the UI.
 
 ## Cost Estimate
 
-- Canvas sessions: ~$1.90/hour per active user (Canvas workspace pricing)
+- Canvas sessions: billed hourly per active user (Canvas workspace pricing) — the dominant line
 - Model building: billed per training cell/AutoML job
-- Domain infrastructure: ~$0.30/GB-month for EFS storage
+- Domain infrastructure: EFS storage, billed per GB-month
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awssagemakerdomain.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

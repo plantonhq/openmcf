@@ -31,8 +31,7 @@ This preset uses `valueFrom` references to compose with:
 
 ## Cost Estimate
 
-Approximately $1.40/hr for 6 x kafka.m7g.xlarge brokers (~$1,000/month) plus 6 TB EBS storage
-and tiered storage S3 costs (significantly lower than equivalent local-only storage).
+The cost drivers are the six kafka.m7g.xlarge brokers (billed hourly, the dominant line) plus the 6 TB of EBS storage and the tiered-storage S3 tier — significantly cheaper per GB than keeping everything on local EBS. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awsmskcluster.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

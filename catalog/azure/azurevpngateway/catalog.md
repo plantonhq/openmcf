@@ -1,6 +1,6 @@
 # Azure VPN Gateway
 
-Deploys a Virtual WAN VPN Gateway -- the managed site-to-site VPN terminator inside a virtual hub (ARM allows one per hub). Branch sites connect to it through VPN Gateway Connections; capacity is bought in scale units (500 Mbps each) across an active-active instance pair Azure manages. **The gateway bills from creation (~$0.36/hr per scale unit class) and takes 30-45 minutes to create** -- plan lifecycle around both. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Virtual WAN VPN Gateway -- the managed site-to-site VPN terminator inside a virtual hub (ARM allows one per hub). Branch sites connect to it through VPN Gateway Connections; capacity is bought in scale units (500 Mbps each) across an active-active instance pair Azure manages. **The gateway bills hourly per scale unit from creation and takes 30-45 minutes to create** -- plan lifecycle around both. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 

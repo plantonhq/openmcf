@@ -8,7 +8,7 @@ Module facts worth knowing before editing:
 - **Create and delete each take ~25 minutes** — the provider's own
   timeouts are 45m per operation and are not user-configurable; budget
   accordingly.
-- **The server bills hourly from Created onward** (Small ~$0.6/hour).
+- **The server bills hourly from Created onward** — size sets the rate.
 - **`automatic_model_registration` cannot be turned back off** — a
   true-to-false change is silently not transmitted (an upstream
   update-guard gap taught on the spec field); the module always

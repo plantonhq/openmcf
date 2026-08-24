@@ -1,8 +1,8 @@
 # Serverless Experiment Tracking
 
 This preset is MLflow with no meter running: a serverless MLflow 3.x
-app storing artifacts in your S3 bucket, billed per use and $0 when
-idle — the successor to the hourly-billed tracking server.
+app storing artifacts in your S3 bucket, billed per use with no
+charge when idle — the successor to the hourly-billed tracking server.
 
 ## When to Use
 

@@ -19,4 +19,6 @@ This is the most common pattern — a zero-configuration EIP that provides a sta
 ## Cost
 
 - **Free** when associated with a running resource (EC2, NLB, NAT Gateway)
-- **$0.005/hour** (~$3.60/month) when idle (not associated)
+- **Billed hourly** when idle (not associated) — leaving the address unattached is the only thing that costs money here
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awselasticip.yaml` — computed from the pinned price book, never hand-typed here.

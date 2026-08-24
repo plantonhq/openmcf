@@ -1,6 +1,6 @@
 # Standby Failover IP
 
-This preset reserves an IPv4 address WITHOUT assigning it -- capacity held for a failover or migration you have not executed yet. Be deliberate: this exact shape is the one that bills (~$5/month, prorated hourly) until assigned or destroyed.
+This preset reserves an IPv4 address WITHOUT assigning it -- capacity held for a failover or migration you have not executed yet. Be deliberate: this exact shape is the one that bills — a monthly charge, prorated hourly — until assigned or destroyed.
 
 ## When to Use
 

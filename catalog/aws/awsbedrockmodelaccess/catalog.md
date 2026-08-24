@@ -7,7 +7,7 @@ Anthropic use-case form handled where required.
 ## What Gets Created
 
 - A foundation-model agreement accepting the model's public offer
-  (typically $0 subscription; invocations bill per token).
+  (typically no subscription charge; invocations bill per token).
 - Optionally, the account's use-case form — the once-per-account
   prerequisite for Anthropic model agreements.
 

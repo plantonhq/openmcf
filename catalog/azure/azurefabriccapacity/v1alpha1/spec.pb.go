@@ -34,8 +34,9 @@ const (
 // `fabric` Terraform provider, the Fabric portal, or its APIs -- not
 // through ARM.
 //
-// A running capacity bills PER HOUR from the moment it exists
-// (F2 ~= $0.36/hour pay-as-you-go; F2048 is a thousand times that).
+// A running capacity bills PER HOUR from the moment it exists, and the
+// SKU ladder spans three orders of magnitude (F2048 bills a thousand
+// times F2's hourly rate).
 // The capacity's SKU scales up and down in place -- start small.
 type AzureFabricCapacitySpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`

@@ -132,7 +132,8 @@ message AwsSagemakerEndpointVariant {
   optional float initial_variant_weight = 5 [(buf.validate.field).float.gte = 0];
 
   // Serverless compute instead of dedicated instances: SageMaker scales
-  // capacity with traffic and bills per inference ($0 idle). Excludes
+  // capacity with traffic and bills per inference (nothing while idle).
+  // Excludes
   // every instance-based setting on this variant.
   AwsSagemakerEndpointServerlessConfig serverless = 6;
 

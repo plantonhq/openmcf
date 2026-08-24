@@ -23,7 +23,7 @@ Connections are NOT created here -- each AzureVirtualNetworkGatewayConnection is
 
 - **A "GatewaySubnet"** -- ARM requires the gateway's subnet to be named EXACTLY `GatewaySubnet` (/27 or larger recommended, no other workloads, no NSG). Create it as an AzureSubnet and reference its id.
 - **A Standard static public IP** per ip configuration for VPN gateways (ExpressRoute gateways must NOT carry one -- Azure manages their addressing). A gateway binds its address exclusively.
-- **Time and cost awareness** -- gateways take 25-45 minutes to create, 10-20 to delete, and bill hourly per SKU from the moment they provision (VpnGw1AZ is in the ~$0.2-0.4/hour class).
+- **Time and cost awareness** -- gateways take 25-45 minutes to create, 10-20 to delete, and bill hourly per SKU from the moment they provision.
 
 ## Deploy
 

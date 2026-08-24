@@ -1388,8 +1388,8 @@ enum CloudResourceKind {
   }];
 
   // The classic hourly-billed managed MLflow tracking server (~25 min
-  // to provision; Small ~$0.6/hour). The serverless successor is
-  // AwsSagemakerMlflowApp.
+  // to provision; billed hourly from creation whether or not anyone is
+  // tracking). The serverless successor is AwsSagemakerMlflowApp.
   AwsSagemakerMlflowServer = 1227 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"

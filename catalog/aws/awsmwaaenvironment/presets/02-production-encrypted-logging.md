@@ -35,9 +35,7 @@ This preset uses `valueFrom` references to compose with:
 
 ## Cost Estimate
 
-Approximately **$0.98/hr** for mw1.medium (~$710/month) base environment cost plus
-worker scaling (each additional mw1.medium worker adds ~$0.10/hr) and CloudWatch Logs
-ingestion/storage costs.
+The cost drivers are the mw1.medium base environment (billed hourly around the clock, the dominant line), worker scaling — each additional mw1.medium worker adds its own hourly charge while running — and CloudWatch Logs ingestion/storage for the five enabled logging modules. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awsmwaaenvironment.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

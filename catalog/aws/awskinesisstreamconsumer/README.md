@@ -19,7 +19,7 @@ Use an AwsKinesisStreamConsumer when you need:
 | Delivery | Pull (polling) | Push (HTTP/2) |
 | Latency | ~200ms | ~70ms |
 | Max consumers | 5 per stream (soft) | 20 per stream (soft) |
-| Cost | Included with stream | ~$0.015/consumer-shard-hour + $0.013/GB |
+| Cost | Included with stream | Billed per consumer-shard-hour plus per GB retrieved |
 
 **Choose enhanced fan-out** when you have 3+ consumers on the same stream, need sub-100ms latency, or want guaranteed throughput per consumer. **Choose standard** when cost is a priority, you have 1-2 consumers, and 200ms latency is acceptable.
 

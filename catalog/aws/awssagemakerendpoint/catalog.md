@@ -11,8 +11,8 @@ deployments.
 - An endpoint plus its endpoint configuration — the modules roll
   name-suffixed configurations on every capacity change and repoint
   the endpoint, so updates never break the running fleet.
-- 1–10 production variants, each serverless ($0 idle, per-inference
-  billing) or instance-backed with managed instance scaling, routing
+- 1–10 production variants, each serverless (no idle charge,
+  per-inference billing) or instance-backed with managed instance scaling, routing
   strategy, and startup/download timeouts; optional shadow variants
   for mirror-traffic testing.
 - Optional: data capture to S3, async inference with S3 delivery and
