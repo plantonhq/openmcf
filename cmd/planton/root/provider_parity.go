@@ -231,6 +231,16 @@ func printAccountingSummary(acc providerparity.Accounting) {
 	fmt.Printf("Provider parity (%s catalog vs %s@%s): %d/%d kinds at total accounting\n",
 		acc.CloudProvider, acc.GASchema, acc.GASchemaVersion, accounted, len(acc.Kinds))
 
+	if pc := acc.ProviderConfig; pc != nil {
+		verdict := "AT TOTAL ACCOUNTING"
+		if !pc.Accounted() {
+			verdict = fmt.Sprintf("IN DEBT (unaccounted=%d uncovered=%d unjudged-module=%d stale=%d)",
+				len(pc.UnaccountedArgs), len(pc.UncoveredConfigFields), len(pc.UnjudgedModuleArgs), len(pc.ManifestStale))
+		}
+		fmt.Printf("Provider block: %d args = %d matched + %d mapped + %d module-owned + %d excluded -- %s\n",
+			pc.TotalArgs, pc.MatchedArgs, pc.MappedArgs, pc.ModuleOwnedArgs, pc.ExcludedArgs, verdict)
+	}
+
 	fmt.Println("\nBreadth dispositions:")
 	classes := make([]string, 0, len(acc.DispositionTotals))
 	for class := range acc.DispositionTotals {

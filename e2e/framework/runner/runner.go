@@ -263,9 +263,16 @@ func runValidate(tc *provider.ComponentTestContext) error {
 		return errors.New("manifest path is empty")
 	}
 
+	// The opt-in per-component provider-config fixture (nil for the default
+	// ambient-credential posture) -- one resolution serving both engines.
+	providerConfig, err := LoadProviderConfigFixture(tc.ModuleDir, tc.ManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "validation failed: provider-config fixture")
+	}
+
 	switch tc.Engine {
 	case "pulumi":
-		stackInputPath, err := BuildStackInput(tc.ManifestPath, tc.ModuleDir)
+		stackInputPath, err := BuildStackInput(tc.ManifestPath, tc.ModuleDir, providerConfig)
 		if err != nil {
 			return errors.Wrap(err, "validation failed: cannot build stack input from manifest")
 		}
@@ -279,7 +286,7 @@ func runValidate(tc *provider.ComponentTestContext) error {
 		tc.TerraformWorkDir = workDir
 		tc.TerraformCleanup = cleanup
 
-		input, err := BuildTerraformInput(tc.ManifestPath, workDir)
+		input, err := BuildTerraformInput(tc.ManifestPath, workDir, providerConfig)
 		if err != nil {
 			cleanup()
 			return errors.Wrap(err, "validation failed: cannot build terraform input from manifest")

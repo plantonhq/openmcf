@@ -83,6 +83,93 @@ message AwsProviderConfig {
   // and secret_access_key are left empty in this mode. Exactly one of {static keys,
   // web_identity} is populated; if neither is set the provider is built with region only.
   AwsWebIdentityProviderConfig web_identity = 6;
+
+  // Ordered STS role-assumption chain applied AFTER the base credentials resolve
+  // (static keys, web-identity exchange, or the ambient chain) -- each hop assumes
+  // the next role using the previous hop's credentials, mirroring the Terraform AWS
+  // provider's repeated assume_role blocks (chained evaluation, provider >= 5.0).
+  // Composes with every base-credential mode: an enterprise whose deploy role is
+  // reachable only through an intermediate role expresses the full path here.
+  // On OpenTofu this rides the generated provider-override file (assume_role has no
+  // environment-variable form); on Pulumi it maps to the classic provider's
+  // assumeRoles list. The pulumi-aws-native provider supports at most ONE hop and
+  // fails loudly on longer chains rather than silently truncating the identity path.
+  repeated AwsAssumeRole assume_role_chain = 7;
+
+  // Provider-level default tags applied to every taggable resource the module
+  // creates (merged with, and overridden by, each resource's own tags). Maps to the
+  // Terraform provider's default_tags block and the Pulumi providers' defaultTags.
+  // The enterprise tagging-policy answer: cost-center/ownership tags land on every
+  // resource without any module or spec cooperation.
+  AwsDefaultTags default_tags = 8;
+
+  // Per-service endpoint overrides keyed by the Terraform provider's endpoints-block
+  // attribute name (e.g. "sts", "s3", "dynamodb"), each value a base URL. Used for
+  // private interface endpoints, FIPS endpoints, and API-compatible substitutes.
+  // An unknown service key fails loudly at provider configuration on both engines --
+  // never silently ignored, since a mis-keyed endpoint override would silently send
+  // traffic to the public endpoint instead.
+  map<string, string> endpoints = 9;
+
+  // Maximum number of retries for AWS API calls. Explicit presence: unset means the
+  // provider default (25); zero is a meaningful value disabling retries entirely.
+  optional int32 max_retries = 10;
+
+  // Retry mode for AWS API calls: "standard" or "adaptive" (empty = provider
+  // default). Maps to the Terraform provider's retry_mode / AWS_RETRY_MODE. The
+  // pulumi-aws-native provider has no retry-mode surface and fails loudly when this
+  // is set rather than deploying with silently different retry semantics.
+  string retry_mode = 11 [(buf.validate.field).cel = {
+    id: "spec.aws.retry_mode"
+    message: "retry_mode must be 'standard' or 'adaptive' (or empty for the provider default)"
+    expression: "this == '' || this == 'standard' || this == 'adaptive'"
+  }];
+}
+
+// AwsAssumeRole models one hop of an STS role-assumption chain -- the full
+// configurable surface of the Terraform AWS provider's assume_role block at the
+// pinned provider version. Hops are evaluated in declaration order; each assumes
+// its role with the credentials produced by the previous hop (the first hop uses
+// the provider's base credentials).
+message AwsAssumeRole {
+  // ARN of the IAM role to assume. Required on every hop.
+  string role_arn = 1 [(buf.validate.field).required = true];
+
+  // Session name recorded on the STS session (visible in CloudTrail). Provider
+  // default applies when empty.
+  string session_name = 2;
+
+  // External ID required by the role's trust policy (the confused-deputy guard
+  // third parties commonly mandate). Omitted when empty.
+  string external_id = 3;
+
+  // Session duration string (e.g. "1h", "30m"). Provider default applies when empty.
+  string duration = 4;
+
+  // IAM policy JSON further restricting the session's permissions (session policy).
+  string policy = 5;
+
+  // ARNs of managed policies to attach as session policies.
+  repeated string policy_arns = 6;
+
+  // Session tags passed to STS AssumeRole.
+  map<string, string> tags = 7;
+
+  // Keys of session tags that persist across subsequent hops in the chain
+  // (transitive session tags).
+  repeated string transitive_tag_keys = 8;
+
+  // Source identity recorded on the session (sts:SourceIdentity), for tracing the
+  // original caller through the chain.
+  string source_identity = 9;
+}
+
+// AwsDefaultTags mirrors the Terraform AWS provider's default_tags block: tags the
+// provider applies to every taggable resource, merged beneath each resource's own
+// tags (resource tags win on key conflicts).
+message AwsDefaultTags {
+  // The tags applied to every taggable resource.
+  map<string, string> tags = 1;
 }
 
 // AwsWebIdentityProviderConfig holds the inputs for keyless OIDC federation: the caller mints

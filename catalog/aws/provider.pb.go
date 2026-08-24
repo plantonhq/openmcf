@@ -65,7 +65,39 @@ type AwsProviderConfig struct {
 	// via STS AssumeRoleWithWebIdentity instead of static access keys -- so access_key_id
 	// and secret_access_key are left empty in this mode. Exactly one of {static keys,
 	// web_identity} is populated; if neither is set the provider is built with region only.
-	WebIdentity   *AwsWebIdentityProviderConfig `protobuf:"bytes,6,opt,name=web_identity,json=webIdentity,proto3" json:"web_identity,omitempty"`
+	WebIdentity *AwsWebIdentityProviderConfig `protobuf:"bytes,6,opt,name=web_identity,json=webIdentity,proto3" json:"web_identity,omitempty"`
+	// Ordered STS role-assumption chain applied AFTER the base credentials resolve
+	// (static keys, web-identity exchange, or the ambient chain) -- each hop assumes
+	// the next role using the previous hop's credentials, mirroring the Terraform AWS
+	// provider's repeated assume_role blocks (chained evaluation, provider >= 5.0).
+	// Composes with every base-credential mode: an enterprise whose deploy role is
+	// reachable only through an intermediate role expresses the full path here.
+	// On OpenTofu this rides the generated provider-override file (assume_role has no
+	// environment-variable form); on Pulumi it maps to the classic provider's
+	// assumeRoles list. The pulumi-aws-native provider supports at most ONE hop and
+	// fails loudly on longer chains rather than silently truncating the identity path.
+	AssumeRoleChain []*AwsAssumeRole `protobuf:"bytes,7,rep,name=assume_role_chain,json=assumeRoleChain,proto3" json:"assume_role_chain,omitempty"`
+	// Provider-level default tags applied to every taggable resource the module
+	// creates (merged with, and overridden by, each resource's own tags). Maps to the
+	// Terraform provider's default_tags block and the Pulumi providers' defaultTags.
+	// The enterprise tagging-policy answer: cost-center/ownership tags land on every
+	// resource without any module or spec cooperation.
+	DefaultTags *AwsDefaultTags `protobuf:"bytes,8,opt,name=default_tags,json=defaultTags,proto3" json:"default_tags,omitempty"`
+	// Per-service endpoint overrides keyed by the Terraform provider's endpoints-block
+	// attribute name (e.g. "sts", "s3", "dynamodb"), each value a base URL. Used for
+	// private interface endpoints, FIPS endpoints, and API-compatible substitutes.
+	// An unknown service key fails loudly at provider configuration on both engines --
+	// never silently ignored, since a mis-keyed endpoint override would silently send
+	// traffic to the public endpoint instead.
+	Endpoints map[string]string `protobuf:"bytes,9,rep,name=endpoints,proto3" json:"endpoints,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Maximum number of retries for AWS API calls. Explicit presence: unset means the
+	// provider default (25); zero is a meaningful value disabling retries entirely.
+	MaxRetries *int32 `protobuf:"varint,10,opt,name=max_retries,json=maxRetries,proto3,oneof" json:"max_retries,omitempty"`
+	// Retry mode for AWS API calls: "standard" or "adaptive" (empty = provider
+	// default). Maps to the Terraform provider's retry_mode / AWS_RETRY_MODE. The
+	// pulumi-aws-native provider has no retry-mode surface and fails loudly when this
+	// is set rather than deploying with silently different retry semantics.
+	RetryMode     string `protobuf:"bytes,11,opt,name=retry_mode,json=retryMode,proto3" json:"retry_mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -142,6 +174,215 @@ func (x *AwsProviderConfig) GetWebIdentity() *AwsWebIdentityProviderConfig {
 	return nil
 }
 
+func (x *AwsProviderConfig) GetAssumeRoleChain() []*AwsAssumeRole {
+	if x != nil {
+		return x.AssumeRoleChain
+	}
+	return nil
+}
+
+func (x *AwsProviderConfig) GetDefaultTags() *AwsDefaultTags {
+	if x != nil {
+		return x.DefaultTags
+	}
+	return nil
+}
+
+func (x *AwsProviderConfig) GetEndpoints() map[string]string {
+	if x != nil {
+		return x.Endpoints
+	}
+	return nil
+}
+
+func (x *AwsProviderConfig) GetMaxRetries() int32 {
+	if x != nil && x.MaxRetries != nil {
+		return *x.MaxRetries
+	}
+	return 0
+}
+
+func (x *AwsProviderConfig) GetRetryMode() string {
+	if x != nil {
+		return x.RetryMode
+	}
+	return ""
+}
+
+// AwsAssumeRole models one hop of an STS role-assumption chain -- the full
+// configurable surface of the Terraform AWS provider's assume_role block at the
+// pinned provider version. Hops are evaluated in declaration order; each assumes
+// its role with the credentials produced by the previous hop (the first hop uses
+// the provider's base credentials).
+type AwsAssumeRole struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ARN of the IAM role to assume. Required on every hop.
+	RoleArn string `protobuf:"bytes,1,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	// Session name recorded on the STS session (visible in CloudTrail). Provider
+	// default applies when empty.
+	SessionName string `protobuf:"bytes,2,opt,name=session_name,json=sessionName,proto3" json:"session_name,omitempty"`
+	// External ID required by the role's trust policy (the confused-deputy guard
+	// third parties commonly mandate). Omitted when empty.
+	ExternalId string `protobuf:"bytes,3,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	// Session duration string (e.g. "1h", "30m"). Provider default applies when empty.
+	Duration string `protobuf:"bytes,4,opt,name=duration,proto3" json:"duration,omitempty"`
+	// IAM policy JSON further restricting the session's permissions (session policy).
+	Policy string `protobuf:"bytes,5,opt,name=policy,proto3" json:"policy,omitempty"`
+	// ARNs of managed policies to attach as session policies.
+	PolicyArns []string `protobuf:"bytes,6,rep,name=policy_arns,json=policyArns,proto3" json:"policy_arns,omitempty"`
+	// Session tags passed to STS AssumeRole.
+	Tags map[string]string `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Keys of session tags that persist across subsequent hops in the chain
+	// (transitive session tags).
+	TransitiveTagKeys []string `protobuf:"bytes,8,rep,name=transitive_tag_keys,json=transitiveTagKeys,proto3" json:"transitive_tag_keys,omitempty"`
+	// Source identity recorded on the session (sts:SourceIdentity), for tracing the
+	// original caller through the chain.
+	SourceIdentity string `protobuf:"bytes,9,opt,name=source_identity,json=sourceIdentity,proto3" json:"source_identity,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsAssumeRole) Reset() {
+	*x = AwsAssumeRole{}
+	mi := &file_catalog_aws_provider_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAssumeRole) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAssumeRole) ProtoMessage() {}
+
+func (x *AwsAssumeRole) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_provider_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAssumeRole.ProtoReflect.Descriptor instead.
+func (*AwsAssumeRole) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_provider_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsAssumeRole) GetRoleArn() string {
+	if x != nil {
+		return x.RoleArn
+	}
+	return ""
+}
+
+func (x *AwsAssumeRole) GetSessionName() string {
+	if x != nil {
+		return x.SessionName
+	}
+	return ""
+}
+
+func (x *AwsAssumeRole) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *AwsAssumeRole) GetDuration() string {
+	if x != nil {
+		return x.Duration
+	}
+	return ""
+}
+
+func (x *AwsAssumeRole) GetPolicy() string {
+	if x != nil {
+		return x.Policy
+	}
+	return ""
+}
+
+func (x *AwsAssumeRole) GetPolicyArns() []string {
+	if x != nil {
+		return x.PolicyArns
+	}
+	return nil
+}
+
+func (x *AwsAssumeRole) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *AwsAssumeRole) GetTransitiveTagKeys() []string {
+	if x != nil {
+		return x.TransitiveTagKeys
+	}
+	return nil
+}
+
+func (x *AwsAssumeRole) GetSourceIdentity() string {
+	if x != nil {
+		return x.SourceIdentity
+	}
+	return ""
+}
+
+// AwsDefaultTags mirrors the Terraform AWS provider's default_tags block: tags the
+// provider applies to every taggable resource, merged beneath each resource's own
+// tags (resource tags win on key conflicts).
+type AwsDefaultTags struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The tags applied to every taggable resource.
+	Tags          map[string]string `protobuf:"bytes,1,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsDefaultTags) Reset() {
+	*x = AwsDefaultTags{}
+	mi := &file_catalog_aws_provider_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsDefaultTags) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsDefaultTags) ProtoMessage() {}
+
+func (x *AwsDefaultTags) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_provider_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsDefaultTags.ProtoReflect.Descriptor instead.
+func (*AwsDefaultTags) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_provider_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsDefaultTags) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // AwsWebIdentityProviderConfig holds the inputs for keyless OIDC federation: the caller mints
 // a short-lived OIDC JWT from an issuer it controls, and the AWS provider exchanges it for
 // credentials via STS AssumeRoleWithWebIdentity into the target role. The token is opaque to
@@ -177,7 +418,7 @@ type AwsWebIdentityProviderConfig struct {
 
 func (x *AwsWebIdentityProviderConfig) Reset() {
 	*x = AwsWebIdentityProviderConfig{}
-	mi := &file_catalog_aws_provider_proto_msgTypes[1]
+	mi := &file_catalog_aws_provider_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -189,7 +430,7 @@ func (x *AwsWebIdentityProviderConfig) String() string {
 func (*AwsWebIdentityProviderConfig) ProtoMessage() {}
 
 func (x *AwsWebIdentityProviderConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_provider_proto_msgTypes[1]
+	mi := &file_catalog_aws_provider_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -202,7 +443,7 @@ func (x *AwsWebIdentityProviderConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsWebIdentityProviderConfig.ProtoReflect.Descriptor instead.
 func (*AwsWebIdentityProviderConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_provider_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_provider_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsWebIdentityProviderConfig) GetWebIdentityToken() string {
@@ -237,7 +478,7 @@ var File_catalog_aws_provider_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x1acatalog/aws/provider.proto\x12\x0fdev.planton.aws\x1a\x1bbuf/validate/validate.proto\"\xba\a\n" +
+	"\x1acatalog/aws/provider.proto\x12\x0fdev.planton.aws\x1a\x1bbuf/validate/validate.proto\"\xd8\v\n" +
 	"\x11AwsProviderConfig\x12w\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tBX\xbaHU\xba\x01O\n" +
@@ -249,7 +490,40 @@ const file_catalog_aws_provider_proto_rawDesc = "" +
 	"\x1aspec.aws.secret_access_key\x12\xdb\x01The provided AWS Secret Access Key is invalid. It must contain exactly 40 characters consisting of numbers, lowercase and uppercase letters, slashes (/), and plus signs (+). Please double-check your input and try again.\x1a#this.matches('^[0-9a-zA-Z/+]{40}$')\xd8\x01\x01r\x03\x98\x01(R\x0fsecretAccessKey\x12\x1e\n" +
 	"\x06region\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12#\n" +
 	"\rsession_token\x18\x05 \x01(\tR\fsessionToken\x12P\n" +
-	"\fweb_identity\x18\x06 \x01(\v2-.dev.planton.aws.AwsWebIdentityProviderConfigR\vwebIdentity\"\xd2\x01\n" +
+	"\fweb_identity\x18\x06 \x01(\v2-.dev.planton.aws.AwsWebIdentityProviderConfigR\vwebIdentity\x12J\n" +
+	"\x11assume_role_chain\x18\a \x03(\v2\x1e.dev.planton.aws.AwsAssumeRoleR\x0fassumeRoleChain\x12B\n" +
+	"\fdefault_tags\x18\b \x01(\v2\x1f.dev.planton.aws.AwsDefaultTagsR\vdefaultTags\x12O\n" +
+	"\tendpoints\x18\t \x03(\v21.dev.planton.aws.AwsProviderConfig.EndpointsEntryR\tendpoints\x12$\n" +
+	"\vmax_retries\x18\n" +
+	" \x01(\x05H\x00R\n" +
+	"maxRetries\x88\x01\x01\x12\xc6\x01\n" +
+	"\n" +
+	"retry_mode\x18\v \x01(\tB\xa6\x01\xbaH\xa2\x01\xba\x01\x9e\x01\n" +
+	"\x13spec.aws.retry_mode\x12Oretry_mode must be 'standard' or 'adaptive' (or empty for the provider default)\x1a6this == '' || this == 'standard' || this == 'adaptive'R\tretryMode\x1a<\n" +
+	"\x0eEndpointsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
+	"\f_max_retries\"\x9b\x03\n" +
+	"\rAwsAssumeRole\x12!\n" +
+	"\brole_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aroleArn\x12!\n" +
+	"\fsession_name\x18\x02 \x01(\tR\vsessionName\x12\x1f\n" +
+	"\vexternal_id\x18\x03 \x01(\tR\n" +
+	"externalId\x12\x1a\n" +
+	"\bduration\x18\x04 \x01(\tR\bduration\x12\x16\n" +
+	"\x06policy\x18\x05 \x01(\tR\x06policy\x12\x1f\n" +
+	"\vpolicy_arns\x18\x06 \x03(\tR\n" +
+	"policyArns\x12<\n" +
+	"\x04tags\x18\a \x03(\v2(.dev.planton.aws.AwsAssumeRole.TagsEntryR\x04tags\x12.\n" +
+	"\x13transitive_tag_keys\x18\b \x03(\tR\x11transitiveTagKeys\x12'\n" +
+	"\x0fsource_identity\x18\t \x01(\tR\x0esourceIdentity\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x88\x01\n" +
+	"\x0eAwsDefaultTags\x12=\n" +
+	"\x04tags\x18\x01 \x03(\v2).dev.planton.aws.AwsDefaultTags.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd2\x01\n" +
 	"\x1cAwsWebIdentityProviderConfig\x124\n" +
 	"\x12web_identity_token\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10webIdentityToken\x12!\n" +
 	"\brole_arn\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aroleArn\x12!\n" +
@@ -269,18 +543,28 @@ func file_catalog_aws_provider_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_provider_proto_rawDescData
 }
 
-var file_catalog_aws_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_catalog_aws_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_aws_provider_proto_goTypes = []any{
 	(*AwsProviderConfig)(nil),            // 0: dev.planton.aws.AwsProviderConfig
-	(*AwsWebIdentityProviderConfig)(nil), // 1: dev.planton.aws.AwsWebIdentityProviderConfig
+	(*AwsAssumeRole)(nil),                // 1: dev.planton.aws.AwsAssumeRole
+	(*AwsDefaultTags)(nil),               // 2: dev.planton.aws.AwsDefaultTags
+	(*AwsWebIdentityProviderConfig)(nil), // 3: dev.planton.aws.AwsWebIdentityProviderConfig
+	nil,                                  // 4: dev.planton.aws.AwsProviderConfig.EndpointsEntry
+	nil,                                  // 5: dev.planton.aws.AwsAssumeRole.TagsEntry
+	nil,                                  // 6: dev.planton.aws.AwsDefaultTags.TagsEntry
 }
 var file_catalog_aws_provider_proto_depIdxs = []int32{
-	1, // 0: dev.planton.aws.AwsProviderConfig.web_identity:type_name -> dev.planton.aws.AwsWebIdentityProviderConfig
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 0: dev.planton.aws.AwsProviderConfig.web_identity:type_name -> dev.planton.aws.AwsWebIdentityProviderConfig
+	1, // 1: dev.planton.aws.AwsProviderConfig.assume_role_chain:type_name -> dev.planton.aws.AwsAssumeRole
+	2, // 2: dev.planton.aws.AwsProviderConfig.default_tags:type_name -> dev.planton.aws.AwsDefaultTags
+	4, // 3: dev.planton.aws.AwsProviderConfig.endpoints:type_name -> dev.planton.aws.AwsProviderConfig.EndpointsEntry
+	5, // 4: dev.planton.aws.AwsAssumeRole.tags:type_name -> dev.planton.aws.AwsAssumeRole.TagsEntry
+	6, // 5: dev.planton.aws.AwsDefaultTags.tags:type_name -> dev.planton.aws.AwsDefaultTags.TagsEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_provider_proto_init() }
@@ -288,13 +572,14 @@ func file_catalog_aws_provider_proto_init() {
 	if File_catalog_aws_provider_proto != nil {
 		return
 	}
+	file_catalog_aws_provider_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_provider_proto_rawDesc), len(file_catalog_aws_provider_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

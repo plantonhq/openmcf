@@ -42,6 +42,18 @@
 // pkg/anatomy / pkg/secretcoverage grain, surfaced by the `planton
 // provider-parity` developer command and the lint.provider-parity CI lane.
 //
+// The same total-accounting rule covers the PROVIDER BLOCK itself
+// (provider_config_accounting.go): the provider's own configuration
+// arguments -- credentials, role-assumption chains, default tags, endpoint
+// overrides, retry tuning -- are accounted against the provider-config proto
+// (catalog/<provider>/provider.proto, censused in
+// provider_config_census.go) under a provider-level manifest
+// (provider_config_manifest.go -- catalog/<provider>/provider-config-parity.yaml),
+// and arguments set inside catalog modules' own provider blocks (found by
+// the module census's HCL walk) must carry recorded judgment too. Enrollment
+// is manifest presence; findings ride the same baseline under the
+// "provider:<cloud>" key class.
+//
 // The accounting also renders the PUBLIC parity report (publicreport.go +
 // e2eproof.go): a committed, drift-tested markdown page per provider at
 // catalog/<provider>/terraform-parity.md, carried onto the docs site by the

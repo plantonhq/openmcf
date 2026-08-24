@@ -9,8 +9,10 @@ import (
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/stackinput"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/providerenvvars"
+	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/planton/pkg/iac/tofu/tfoverride"
 	"github.com/plantonhq/planton/shared/iac/terraform"
 )
 
@@ -25,10 +27,14 @@ type TerraformInput struct {
 
 // BuildTerraformInput prepares a Terraform module working directory for E2E testing.
 // It loads the manifest, generates a tfvars file, writes the backend configuration,
-// and extracts provider environment variables.
+// writes the provider-override file when the component's provider-config fixture
+// carries provider-block arguments, and extracts provider environment variables.
 //
 // The workDir must already contain the TF module files (copied by PrepareWorkDir).
-func BuildTerraformInput(manifestPath, workDir string) (*TerraformInput, error) {
+// providerConfig is nil for the harness's default posture (ambient credentials,
+// empty provider block); see LoadProviderConfigFixture.
+func BuildTerraformInput(manifestPath, workDir string,
+	providerConfig *stackinputproviderconfig.ProviderConfig) (*TerraformInput, error) {
 	manifestObject, err := manifest.LoadManifest(manifestPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load manifest from %s", manifestPath)
@@ -50,9 +56,18 @@ func BuildTerraformInput(manifestPath, workDir string) (*TerraformInput, error) 
 	// Build stack-input YAML to extract provider environment variables.
 	// For Kubernetes on kind, this produces KUBECONFIG.
 	// For cloud providers, this produces AWS_ACCESS_KEY_ID, GOOGLE_CREDENTIALS, etc.
-	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, nil)
+	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build stack-input YAML for provider env var extraction")
+	}
+
+	// Provider-block arguments (assume-role chain, default tags, ...) cannot
+	// ride env vars; they reach the module through the generated override
+	// file -- the same seam the CLI and the platform runner use. A no-op when
+	// the fixture carries none (or there is no fixture); workDir is a
+	// disposable per-test copy, so no cleanup is needed.
+	if _, err := tfoverride.WriteProviderOverrideFile(workDir, stackInputYaml); err != nil {
+		return nil, errors.Wrap(err, "failed to write provider override file")
 	}
 
 	providerEnvVarMap, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{})

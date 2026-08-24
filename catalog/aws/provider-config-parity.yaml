@@ -1,0 +1,96 @@
+# Provider-config parity manifest for the AWS provider block: the recorded
+# judgment joining `provider "aws" {}` arguments (hashicorp/aws at the pinned
+# version) to AwsProviderConfig fields. File presence enrolls this provider
+# for provider-block accounting; every argument below either reaches a config
+# field, is deliberately excluded with its reason, or is module-owned.
+#
+# Arguments with no entry here match their config field by name (region,
+# max_retries, retry_mode, default_tags.tags).
+
+mappings:
+  # Credential fields carry Planton's explicit names; the provider block
+  # abbreviates them.
+  - config: config.access_key_id
+    arg: access_key
+  - config: config.secret_access_key
+    arg: secret_key
+  - config: config.session_token
+    arg: token
+  # The role-assumption chain: Terraform's repeated assume_role blocks
+  # (chained evaluation) are the assume_role_chain list; hop fields match by
+  # name below the subtree.
+  - config: config.assume_role_chain
+    arg: assume_role
+  # Keyless web identity: the provider block's assume_role_with_web_identity
+  # is the web_identity message; role_arn/session_name/duration/
+  # web_identity_token match by name below the subtree.
+  - config: config.web_identity
+    arg: assume_role_with_web_identity
+  # The per-service endpoints block (one attribute per AWS service, ~330 of
+  # them) folds onto the ONE endpoints map field, keyed by the block's own
+  # attribute names.
+  - config: config.endpoints
+    arg: endpoints
+    collapse: true
+
+exclusions:
+  - arg: assume_role_with_web_identity.policy
+    reason: session policies on the web-identity hop are not modeled -- the target role's own policy set is the least-privilege boundary Planton teaches; the assume_role_chain hops carry policy/policy_arns for the chained case
+  - arg: assume_role_with_web_identity.policy_arns
+    reason: session policies on the web-identity hop are not modeled -- the target role's own policy set is the least-privilege boundary Planton teaches; the assume_role_chain hops carry policy/policy_arns for the chained case
+  - arg: assume_role_with_web_identity.web_identity_token_file
+    reason: the minted OIDC JWT is carried in memory (web_identity_token) and never written to disk -- a token file would violate the just-in-time credential discipline
+  - arg: profile
+    reason: the runner selects the connection's ambient AWS_PROFILE at execution time (runner-mode connections); a config-carried profile would bypass that per-connection selection
+  - arg: shared_config_files
+    reason: ambient shared-config files are the runner environment's concern; execution-time-injected credentials never read them
+  - arg: shared_credentials_files
+    reason: ambient shared-credentials files are the runner environment's concern; execution-time-injected credentials never read them
+  - arg: allowed_account_ids
+    reason: the platform validates the target account through the connection's account_id before any run; a provider-level allow list would duplicate that control with weaker reporting
+  - arg: forbidden_account_ids
+    reason: the platform validates the target account through the connection's account_id before any run; a provider-level deny list would duplicate that control with weaker reporting
+  - arg: skip_credentials_validation
+    reason: provider validation toggle for non-AWS or test endpoints; runs against real AWS keep validation on
+  - arg: skip_metadata_api_check
+    reason: provider validation toggle for non-AWS or test endpoints; runs against real AWS keep validation on
+  - arg: skip_region_validation
+    reason: provider validation toggle for non-AWS or test endpoints; runs against real AWS keep validation on
+  - arg: skip_requesting_account_id
+    reason: provider validation toggle for non-AWS or test endpoints; runs against real AWS keep validation on
+  - arg: s3_use_path_style
+    reason: S3-compatible-storage addressing concern; Planton's S3-compatible backends (R2, MinIO) configure it on the state backend, never on the AWS provider
+  - arg: s3_us_east_1_regional_endpoint
+    reason: S3 legacy-endpoint selection for us-east-1; the SDK default is correct for real AWS and no catalog surface depends on the legacy global endpoint
+  - arg: custom_ca_bundle
+    reason: private-CA trust for API interception proxies rides the runner environment's trust store; demand-driven as config surface
+  - arg: ec2_metadata_service_endpoint
+    reason: IMDS tuning belongs to the runner environment where the metadata service lives, not to a portable connection config
+  - arg: ec2_metadata_service_endpoint_mode
+    reason: IMDS tuning belongs to the runner environment where the metadata service lives, not to a portable connection config
+  - arg: http_proxy
+    reason: egress proxying is the runner environment's network posture, not a portable connection config
+  - arg: https_proxy
+    reason: egress proxying is the runner environment's network posture, not a portable connection config
+  - arg: no_proxy
+    reason: egress proxying is the runner environment's network posture, not a portable connection config
+  - arg: insecure
+    reason: deliberately never offered -- disabling TLS verification through configuration is the credential-leak class the platform refuses by design
+  - arg: sts_region
+    reason: regional STS routing beyond the endpoints override is demand-driven; endpoints.sts already carries the private-endpoint case
+  - arg: token_bucket_rate_limiter_capacity
+    reason: SDK client rate-limiter internals; retry behavior is expressed through max_retries/retry_mode
+  - arg: use_dualstack_endpoint
+    reason: dual-stack endpoint selection is demand-driven; no adopter posture requires it yet
+  - arg: use_fips_endpoint
+    reason: FIPS endpoint selection is demand-driven; no adopter posture requires it yet
+  - arg: user_agent
+    reason: SDK user-agent decoration is client plumbing, not deployment configuration
+  - arg: tag_policy_compliance
+    reason: organizations tag-policy pre-validation is demand-driven; default_tags carries the enterprise tagging surface
+  - arg: ignore_tags
+    reason: provider-level tag ignoring hides externally-managed tags from state -- the catalog's per-resource tag modeling owns tag truth; demand-driven if an adopter's tag-governance tooling requires it
+
+configExclusions:
+  - field: config.account_id
+    reason: platform identity concept -- the control plane validates the connection's target account and stamps it into the config; the provider block carries no account identity argument (allowed/forbidden_account_ids are deliberately excluded above)

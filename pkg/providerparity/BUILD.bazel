@@ -11,6 +11,9 @@ go_library(
         "enrollment.go",
         "manifest.go",
         "module_census.go",
+        "provider_config_accounting.go",
+        "provider_config_census.go",
+        "provider_config_manifest.go",
         "publicreport.go",
         "report.go",
         "schema.go",
@@ -21,9 +24,12 @@ go_library(
     deps = [
         "//pkg/crkreflect",
         "//pkg/e2e/profile",
+        "//pkg/iac/stackinput/providerdetect",
         "//qa/componente2eprofile/v1:componente2eprofile",
         "//shared",
         "//shared/cloudresourcekind",
+        "@com_github_hashicorp_hcl_v2//hclparse",
+        "@com_github_hashicorp_hcl_v2//hclsyntax",
         "@com_github_pkg_errors//:errors",
         "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_google_protobuf//reflect/protoreflect",
@@ -37,6 +43,7 @@ go_test(
         "enrollment_test.go",
         "manifest_test.go",
         "module_census_test.go",
+        "provider_config_test.go",
         "publicreport_test.go",
         "report_test.go",
         "schema_test.go",
@@ -46,5 +53,6 @@ go_test(
     deps = [
         "//pkg/crkreflect",
         "//shared/cloudresourcekind",
+        "@in_gopkg_yaml_v3//:yaml_v3",
     ],
 )

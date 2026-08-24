@@ -33,7 +33,10 @@ reads it. Three independent censuses feed the measurement:
    **every** `*.tf` file of each kind's `iac/tf/` module for resource
    declarations and provider pins — never `main.tf` alone, because modules
    may split resources across sibling files and a partial scan undercounts
-   silently.
+   silently. It also HCL-parses each `provider "<name>" {}` block's body
+   (real parsing, not regex — the bodies nest) so arguments a module sets on
+   its own provider are census facts the provider-block accounting can hold
+   to judgment.
 
 `report.go` joins the three into the single aggregation every consumer
 renders from (CLI output, CI gate, the public parity report generator), so
@@ -116,20 +119,40 @@ kind mixing schema-served and external resources keeps the reverse walk;
 its external-fed spec fields carry `specExclusions` naming the external
 resource.
 
-**Externally specified resources.** `external` is `internal`'s mirror: where
-internal says "module plumbing below the spec", external says "the kind's
-primary surface, whose contract is pinned OUTSIDE every loaded provider
-schema" — a raw-API resource (e.g. azapi's `azapi_resource`) admitted per
-kind by a recorded decision naming an exact `type@api-version`. No argument
-walk is possible (there is no schema to walk), and a kind consuming only
-external/internal resources runs no reverse spec walk either: its spec's
-depth is accounted against the external contract, where the admission
-records it. The judgment ratchets toward native support: the moment a
-loaded schema serves the resource at the pin, the external entry becomes a
-staleness finding — the exit-to-native migration's mechanical reminder. A
-kind mixing schema-served and external resources keeps the reverse walk;
-its external-fed spec fields carry `specExclusions` naming the external
-resource.
+**The provider block (per provider).** The same total-accounting rule covers
+the provider's OWN configuration block — credentials, the role-assumption
+chain, default tags, per-service endpoint overrides, retry tuning. The
+schema artifacts carry the provider block (`Schema.ProviderConfig`), the
+contract side is the provider-config proto censused from descriptors
+(`provider_config_census.go`, paths rooted `config.`), and the judgment
+lives in a provider-level manifest —
+`catalog/<provider>/provider-config-parity.yaml`, file presence IS
+enrollment (`provider_config_manifest.go`):
+
+```yaml
+mappings:                     # renames; exact matching resumes below a
+  - config: config.api_token  # mapped subtree; collapse folds a per-service
+    arg: token                # block onto one map leaf (aws endpoints)
+exclusions:                   # not expressible by decision, reason mandatory
+  - arg: insecure
+    reason: disabling TLS verification is never offered
+exclusionPatterns:            # an argument CLASS by regex -- one judgment for
+  - pattern: _custom_endpoint$  # a family the provider stamps per service
+    reason: per-service endpoint overrides join with demand
+moduleOwned:                  # set inside module provider blocks by judgment
+  - arg: user_project_override
+    reason: quota-project attribution, owned by the consuming kinds' modules
+configExclusions:             # config fields with no provider-block twin
+  - field: config.account_id
+    reason: platform identity concept, validated control-plane-side
+```
+
+Both directions hold, and a third does too: the module census HCL-parses
+every module's `provider "<name>" {}` body, and every argument found set
+there must carry recorded judgment (`moduleOwned`, a mapping the wiring
+carries through, or an exclusion) — a behavior flag hand-placed in a module
+can never be an invisible leak. Findings ride the shared baseline under the
+`provider:<cloud>` key class.
 
 **Breadth (per GA resource).** Every GA resource carries exactly one
 disposition. Two classes are computed — `modeled` (the module census proves

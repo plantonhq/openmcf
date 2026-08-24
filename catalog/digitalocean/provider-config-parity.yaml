@@ -1,0 +1,35 @@
+# Provider-config parity manifest for the DigitalOcean provider block: the
+# recorded judgment joining `provider "digitalocean" {}` arguments
+# (digitalocean/digitalocean at the pinned version) to
+# DigitalOceanProviderConfig fields. File presence enrolls this provider for
+# provider-block accounting.
+#
+# DigitalOcean is the catalog's one TF_VAR-wired cloud: modules declare
+# variables and their provider blocks reference them (token =
+# var.digitalocean_token), so the module census sees these arguments set in
+# every module -- the mappings below are the judgment that the wiring carries
+# config fields through, not module-owned behavior.
+#
+# spaces_access_id and spaces_secret_key match their config fields by name.
+
+mappings:
+  - config: config.api_token
+    arg: token
+
+exclusions:
+  - arg: api_endpoint
+    reason: API endpoint override for DigitalOcean-API-compatible gateways is demand-driven; no adopter posture fronts the DO API today
+  - arg: spaces_endpoint
+    reason: the Spaces endpoint derives from each resource's region; an override for S3-compatible substitutes is demand-driven
+  - arg: http_retry_max
+    reason: client retry tuning is engine plumbing with provider-recommended defaults, not deployment configuration
+  - arg: http_retry_wait_max
+    reason: client retry tuning is engine plumbing with provider-recommended defaults, not deployment configuration
+  - arg: http_retry_wait_min
+    reason: client retry tuning is engine plumbing with provider-recommended defaults, not deployment configuration
+  - arg: requests_per_second
+    reason: client rate limiting is engine plumbing with provider-recommended defaults, not deployment configuration
+
+configExclusions:
+  - field: config.default_region
+    reason: consumed by the modules as the variable default for per-resource regions (the TF_VAR wiring); the DigitalOcean provider block has no region argument

@@ -82,7 +82,9 @@ func DeploySuite(t testing.TB, repoRoot, provider string, suite *mappingeval.Loa
 			cleanup()
 			return deployed, nil, errors.Wrapf(err, "resolving references for %s %q", member.Component, member.Name)
 		}
-		input, err := runner.BuildTerraformInput(resolvedPath, workDir)
+		// Mapping-eval members deploy with the harness's default posture; the
+		// provider-config fixture belongs to the component E2E lane only.
+		input, err := runner.BuildTerraformInput(resolvedPath, workDir, nil)
 		if err != nil {
 			cleanup()
 			return deployed, nil, errors.Wrapf(err, "building terraform input for %s %q", member.Component, member.Name)

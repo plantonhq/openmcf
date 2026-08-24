@@ -29,6 +29,7 @@ go_library(
         "//pkg/iac/tofu/backendconfig",
         "//pkg/iac/tofu/generators",
         "//pkg/iac/tofu/tfbackend",
+        "//pkg/iac/tofu/tfoverride",
         "//pkg/iac/tofu/tofuzip",
         "//shared/cloudresourcekind",
         "//shared/iac/terraform",

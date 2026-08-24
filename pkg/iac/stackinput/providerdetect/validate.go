@@ -12,6 +12,7 @@ import (
 	awsprovider "github.com/plantonhq/planton/catalog/aws"
 	azureprovider "github.com/plantonhq/planton/catalog/azure"
 	cloudflareprovider "github.com/plantonhq/planton/catalog/cloudflare"
+	digitaloceanprovider "github.com/plantonhq/planton/catalog/digitalocean"
 	gcpprovider "github.com/plantonhq/planton/catalog/gcp"
 	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
 	openfgaprovider "github.com/plantonhq/planton/catalog/openfga"
@@ -27,7 +28,7 @@ func ValidateProviderConfig(providerConfigPath string, provider cloudresourcekin
 	}
 
 	// Get the proto message for this provider
-	protoMsg, err := getProviderConfigProto(provider)
+	protoMsg, err := ProviderConfigProto(provider)
 	if err != nil {
 		return err
 	}
@@ -40,8 +41,11 @@ func ValidateProviderConfig(providerConfigPath string, provider cloudresourcekin
 	return nil
 }
 
-// getProviderConfigProto returns a new proto message for the given provider.
-func getProviderConfigProto(provider cloudresourcekind.CloudResourceProvider) (proto.Message, error) {
+// ProviderConfigProto returns a new provider-config proto message for the
+// given provider -- the one provider->config-type map (the parity tooling's
+// provider-config census and the `-p` validation both read it, so the two
+// can never disagree on which type a provider's config is).
+func ProviderConfigProto(provider cloudresourcekind.CloudResourceProvider) (proto.Message, error) {
 	switch provider {
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return new(auth0provider.Auth0ProviderConfig), nil
@@ -51,6 +55,8 @@ func getProviderConfigProto(provider cloudresourcekind.CloudResourceProvider) (p
 		return new(azureprovider.AzureProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return new(cloudflareprovider.CloudflareProviderConfig), nil
+	case cloudresourcekind.CloudResourceProvider_digital_ocean:
+		return new(digitaloceanprovider.DigitalOceanProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_gcp:
 		return new(gcpprovider.GcpProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_kubernetes:

@@ -1,0 +1,20 @@
+# Provider-config parity manifest for the Cloudflare provider block: the
+# recorded judgment joining `provider "cloudflare" {}` arguments
+# (cloudflare/cloudflare at the pinned version) to CloudflareProviderConfig
+# fields. File presence enrolls this provider for provider-block accounting.
+#
+# api_token, api_key, and email match their config fields by name.
+
+exclusions:
+  - arg: api_user_service_key
+    reason: the Origin CA service key authorizes only origin-certificate issuance -- a separate credential no catalog kind consumes; demand-driven with the first origin-CA kind
+  - arg: base_url
+    reason: API endpoint override for Cloudflare-API-compatible gateways is demand-driven; no adopter posture fronts the Cloudflare API today
+  - arg: user_agent_operator_suffix
+    reason: SDK user-agent decoration is client plumbing, not deployment configuration
+
+configExclusions:
+  - field: config.auth_scheme
+    reason: platform-side selector deciding WHICH credential pair the config presents (api_token vs legacy api_key+email, enforced by the config's own CEL rules); the provider block has no scheme argument -- presence of the chosen credential IS the scheme
+  - field: config.r2
+    reason: R2's S3-compatible credentials are consumed by the state backend and object-storage surfaces through the S3 protocol, never by the Cloudflare Terraform provider block

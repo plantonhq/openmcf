@@ -3,6 +3,8 @@ package tofumodule
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/cli/workspace"
@@ -12,6 +14,7 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/backendconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tfbackend"
+	"github.com/plantonhq/planton/pkg/iac/tofu/tfoverride"
 	"github.com/plantonhq/planton/shared/iac/terraform"
 	log "github.com/sirupsen/logrus"
 )
@@ -103,6 +106,24 @@ func RunCommand(
 	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
 		return errors.Wrap(err, "failed to build stack input yaml")
+	}
+
+	// Write (or remove) the provider-override file carrying the provider-block
+	// arguments that cannot ride env vars (assume-role chain, endpoints, ...).
+	// Deferred removal keeps module directories that outlive this run clean --
+	// two of the three GetModulePath modes return a non-disposable directory
+	// (the user's own checkout, the zip cache), where a leftover override would
+	// silently apply this run's provider settings to a later run.
+	wroteOverride, err := tfoverride.WriteProviderOverrideFile(modulePath, stackInputYaml)
+	if err != nil {
+		return errors.Wrap(err, "failed to write provider override file")
+	}
+	if wroteOverride {
+		defer func() {
+			if removeErr := os.Remove(filepath.Join(modulePath, tfoverride.OverrideFileName)); removeErr != nil && !os.IsNotExist(removeErr) {
+				fmt.Printf("Warning: failed to remove %s: %v\n", tfoverride.OverrideFileName, removeErr)
+			}
+		}()
 	}
 
 	workspaceDir, err := workspace.GetWorkspaceDir()

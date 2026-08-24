@@ -116,10 +116,11 @@ func main() {
 			fatal("lock file carries no resolved version for source %q", p.source)
 		}
 		schema := &providerparity.Schema{
-			Provider:  p.name,
-			Source:    p.source,
-			Version:   version,
-			Resources: map[string]*providerparity.Block{},
+			Provider:       p.name,
+			Source:         p.source,
+			Version:        version,
+			ProviderConfig: distillBlock(body.Provider.Block),
+			Resources:      map[string]*providerparity.Block{},
 		}
 		for name, rs := range body.ResourceSchemas {
 			schema.Resources[name] = distillBlock(rs.Block)
@@ -173,8 +174,8 @@ func resolvedVersions(lockPath string) (map[string]string, error) {
 }
 
 // rawSchemas mirrors the slice of `providers schema -json` output the
-// distillation reads. Everything else (descriptions, data sources, provider
-// config, functions) is deliberately not modeled.
+// distillation reads. Everything else (descriptions, data sources, functions)
+// is deliberately not modeled.
 type rawSchemas struct {
 	ProviderSchemas map[string]*rawProviderBody `json:"provider_schemas"`
 }
@@ -189,6 +190,10 @@ func (r rawSchemas) forSource(source string) *rawProviderBody {
 }
 
 type rawProviderBody struct {
+	// Provider is the provider's own configuration block -- the arguments a
+	// `provider "<name>" {}` block accepts. Part of the parity surface: the
+	// provider-config accounting reads it exactly like resource blocks.
+	Provider        rawResourceSchema            `json:"provider"`
 	ResourceSchemas map[string]rawResourceSchema `json:"resource_schemas"`
 }
 

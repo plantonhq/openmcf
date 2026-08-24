@@ -90,8 +90,9 @@ var ledgerDispositions = map[string]bool{
 // burn-down baseline by BaselineKey, so the baseline reads as a work list
 // (one line per kind or resource), not a field dump.
 type Finding struct {
-	// BaselineKey is "kind:<Kind>" (depth accounting) or
-	// "resource:<name>" (breadth disposition).
+	// BaselineKey is "kind:<Kind>" (depth accounting), "resource:<name>"
+	// (breadth disposition), or "provider:<cloud>" (provider-block
+	// accounting).
 	BaselineKey string `json:"baselineKey"`
 	// Detail names the exact gap and, where possible, the fix.
 	Detail string `json:"detail"`
@@ -171,6 +172,11 @@ type Accounting struct {
 	// DispositionTotals counts resources per disposition ("" counts the
 	// undispositioned).
 	DispositionTotals map[string]int `json:"dispositionTotals"`
+	// ProviderConfig is the provider-block accounting -- present exactly when
+	// the provider ships a provider-config manifest (enrollment by file
+	// presence, the per-kind manifests' convention). Its findings ride the
+	// same Findings slice under the "provider:<cloud>" baseline-key class.
+	ProviderConfig *ProviderConfigAccounting `json:"providerConfig,omitempty"`
 	// Findings is every gap, sorted by baseline key then detail.
 	Findings []Finding `json:"findings,omitempty"`
 }
@@ -206,7 +212,44 @@ func BuildAccounting(repoRoot string, provider cloudresourcekind.CloudResourcePr
 	if err != nil {
 		return Accounting{}, err
 	}
-	return buildAccounting(crkreflect.ProviderDirName(provider), spec, modules, schemas, gaSchema, manifests, ledger), nil
+	acc := buildAccounting(crkreflect.ProviderDirName(provider), spec, modules, schemas, gaSchema, manifests, ledger)
+
+	// Provider-block accounting, enrolled by manifest presence. Composed here
+	// (the I/O boundary) rather than inside the pure join so the existing
+	// hermetic accounting tests keep their surface; the provider-config join
+	// itself is pure and hermetic-testable on its own.
+	pcManifest, err := LoadProviderConfigManifest(repoRoot, provider)
+	if err != nil {
+		return Accounting{}, err
+	}
+	if pcManifest != nil {
+		if schemas[gaSchema].ProviderConfig == nil {
+			return Accounting{}, errors.Errorf(
+				"provider %s is enrolled for provider-config accounting but schema artifact %s@%s carries no provider block -- regenerate the artifacts",
+				acc.CloudProvider, gaSchema, schemas[gaSchema].Version)
+		}
+		configPaths, err := ProviderConfigCensus(provider)
+		if err != nil {
+			return Accounting{}, err
+		}
+		moduleSetArgs := map[string][]string{}
+		for _, m := range modules {
+			for _, arg := range m.ProviderBlockArgs[gaSchema] {
+				moduleSetArgs[arg] = append(moduleSetArgs[arg], m.Kind)
+			}
+		}
+		pc, findings := buildProviderConfigAccounting(acc.CloudProvider, configPaths,
+			schemas[gaSchema].ProviderConfig, pcManifest, moduleSetArgs)
+		acc.ProviderConfig = &pc
+		acc.Findings = append(acc.Findings, findings...)
+		sort.Slice(acc.Findings, func(i, j int) bool {
+			if acc.Findings[i].BaselineKey != acc.Findings[j].BaselineKey {
+				return acc.Findings[i].BaselineKey < acc.Findings[j].BaselineKey
+			}
+			return acc.Findings[i].Detail < acc.Findings[j].Detail
+		})
+	}
+	return acc, nil
 }
 
 // buildAccounting is the pure join -- everything I/O-free so the hermetic
