@@ -145,6 +145,24 @@ func entryProblems(bundle *Bundle) []string {
 			problems = append(problems, fmt.Sprintf(
 				"%s: its catalog entry names no official IaC module directory for any engine", kindName))
 		}
+		// The entry's service group must agree with the compiled registry in
+		// both directions -- a mismatch means the bundle was built from a
+		// different registry than this consumer's (stale bundle), the same
+		// class deprecationProblems guards.
+		wantServiceGroup := ""
+		if group, err := crkreflect.ServiceGroup(kind); err == nil &&
+			group != cloudresourcekind.CloudProviderServiceGroup_cloud_provider_service_group_unspecified {
+			wantServiceGroup = group.String()
+		}
+		if entry.ServiceGroup != wantServiceGroup {
+			if wantServiceGroup == "" {
+				problems = append(problems, fmt.Sprintf(
+					"%s: its catalog entry carries service group %q but the compiled registry gives its provider no service taxonomy", kindName, entry.ServiceGroup))
+			} else {
+				problems = append(problems, fmt.Sprintf(
+					"%s: its catalog entry carries service group %q but the compiled registry says %q -- the bundle disagrees with this consumer's registry", kindName, entry.ServiceGroup, wantServiceGroup))
+			}
+		}
 	}
 	for kindName := range entryByKind {
 		if !userFacing[kindName] {

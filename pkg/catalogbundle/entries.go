@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // Catalog entries are the bundle's display-and-deploy-coordinates cargo: one
@@ -55,6 +56,12 @@ type CatalogEntry struct {
 	// (AwsS3Bucket -> aws-s3-bucket). Derived uniformly from the kind name
 	// with the provider kept atomic; unique across the catalog.
 	Slug string `json:"slug"`
+	// ServiceGroup is the provider-console service group the component is
+	// browsed under, as the registry's enum value name (e.g. "aws_compute");
+	// display labels resolve from the group's own metadata. Absent when the
+	// kind's provider has no service taxonomy (managed-service providers) --
+	// an honest absence mirroring the registry, never a guess.
+	ServiceGroup string `json:"serviceGroup,omitempty"`
 	// LogoUrl is the component's own logo at the versionless key the release
 	// lane publishes it to.
 	LogoUrl string `json:"logoUrl"`
@@ -180,6 +187,14 @@ func projectEntries(catalogDir string, cargo map[string]*componentCargo) (map[st
 
 		title, description := readCatalogPage(filepath.Join(componentDir, "catalog.md"), kindName)
 		entry := buildCatalogEntry(kindName, providerDir, kindDir, versionDir, title, description)
+
+		serviceGroup, err := crkreflect.ServiceGroup(kind)
+		if err != nil {
+			return nil, fmt.Errorf("resolving the %s service group: %w", kindName, err)
+		}
+		if serviceGroup != cloudresourcekind.CloudProviderServiceGroup_cloud_provider_service_group_unspecified {
+			entry.ServiceGroup = serviceGroup.String()
+		}
 
 		if c := cargo[providerDir+"/"+kindDir]; c != nil {
 			if err := applyCargoSummaries(&entry, c); err != nil {

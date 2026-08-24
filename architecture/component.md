@@ -183,6 +183,7 @@ The following sections define the complete, ideal state of any component. This s
   - `provider` - Correct provider enum value
   - `version` - The served API version (e.g. `v1alpha1`; never bare `v1`)
   - `id_prefix` - Short, descriptive prefix (3-7 characters)
+  - `service_group` - The provider-console service group the component is browsed under (a `CloudProviderServiceGroup` value belonging to the kind's own provider). REQUIRED for grouped providers (aws, azure, gcp, kubernetes, cloudflare, digital_ocean) and prohibited for providers without a service taxonomy — registry tests enforce both directions
 - [ ] **Optional Metadata (when applicable)** - `kind_meta` may also include:
   - `prerequisites` - Other `CloudResourceKind`s that must exist first (e.g. an operator or CRD-installer like `KubernetesGatewayApiCrds`); drives resource-graph and infra-chart ordering
   - `is_service_kind` - Whether this kind is a Service Hub deployment target
@@ -196,6 +197,7 @@ GcpCertManagerCert = 3016 [(kind_meta) = {
   provider: gcp
   version: "v1alpha1"
   id_prefix: "gcpcert"
+  service_group: gcp_security
 }];
 ```
 
