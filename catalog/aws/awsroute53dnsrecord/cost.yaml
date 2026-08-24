@@ -11,7 +11,7 @@ spec:
     - field_path: routing_policy
       sku_meter: DNS queries
       pricing_unit: queries
-      impact: Picks which rung of the query-rate ladder this record's answers bill on -- weighted, failover, and multivalue answer bill as standard queries; latency routing bills a higher per-million rate; geolocation and geoproximity higher still; CIDR (IP-based) routing the highest. The meter itself lives on the hosted zone.
+      impact: Picks which step of the query-rate ladder this record's answers bill on -- weighted, failover, and multivalue answer bill as standard queries; latency routing bills a higher per-million rate; geolocation and geoproximity higher still; CIDR (IP-based) routing the highest. The meter itself lives on the hosted zone.
     - field_path: alias_target
       sku_meter: DNS queries
       pricing_unit: queries

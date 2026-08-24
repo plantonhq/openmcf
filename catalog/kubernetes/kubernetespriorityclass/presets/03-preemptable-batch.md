@@ -1,6 +1,6 @@
 # Preemptable Batch
 
-This preset creates the bottom rung of the ladder: a negative-value, non-preempting class for work that should run only on spare capacity. Pods of this class yield to everything — including unmarked pods at priority 0 — and, because preemption is disabled, they never evict anything already running even when they queue ahead of other pending work. This is the honest expression of "opportunistic": take idle capacity, give it back under pressure, disturb nothing.
+This preset creates the bottom step of the ladder: a negative-value, non-preempting class for work that should run only on spare capacity. Pods of this class yield to everything — including unmarked pods at priority 0 — and, because preemption is disabled, they never evict anything already running even when they queue ahead of other pending work. This is the honest expression of "opportunistic": take idle capacity, give it back under pressure, disturb nothing.
 
 ## When to Use
 
@@ -21,5 +21,5 @@ None — this preset is deployable as-is. Adjust `value` only if your ladder use
 
 ## Related Presets
 
-- **01-critical-services** — the top rung whose pods may evict this tier
-- **02-standard-default** — the default rung; its value 1000 is what makes this tier's negative value meaningful
+- **01-critical-services** — the top step whose pods may evict this tier
+- **02-standard-default** — the default step; its value 1000 is what makes this tier's negative value meaningful

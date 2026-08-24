@@ -1003,6 +1003,7 @@ To complete missing items, consider running these forge rules in sequence:
   "PARITY WITH PULUMI" section is the reconciliation procedure)
 - **Rule 014** - cloud_resource_kind.proto entry (if enum missing)
 - **Rule 018** - Presets (if presets/ directory is missing or empty)
+- **Rule 020** - catalog.md (if the catalog page is missing or below the catalog page standard)
 - **Rule 019** - GUIDE.md (if authored judgment is warranted but missing)
 
 For a parity divergence specifically (Category 5b ⚠️/❌), prefer `@fix-planton-component`:

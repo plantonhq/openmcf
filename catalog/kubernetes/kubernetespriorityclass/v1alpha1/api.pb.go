@@ -25,7 +25,7 @@ const (
 
 // *
 // **KubernetesPriorityClass** defines a Kubernetes PriorityClass resource
-// following the Kubernetes Resource Model (KRM). A PriorityClass is one rung
+// following the Kubernetes Resource Model (KRM). A PriorityClass is one step
 // of the cluster's workload importance ladder: pods referencing it schedule
 // (and optionally preempt) according to its integer value.
 type KubernetesPriorityClass struct {

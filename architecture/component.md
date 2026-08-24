@@ -737,13 +737,25 @@ variable "alternate_domain_names" {
 
 **Location:** `catalog.md` (component root)
 
-**Purpose:** THE catalog page -- rendered by the public site and the console
+**Purpose:** THE catalog page -- the user-facing landing page rendered by the console's public catalog; the page a person or AI agent lands on when searching for this software
 
 **Requirements:**
 
 - [ ] **File Exists** - `catalog.md` is present at the component root (enforced by the anatomy gate)
-- [ ] **Follows the Catalog Page Standard** - Structure, tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`
+- [ ] **Head-Shape Contract** - The `# H1` is the human display name and the first sentence stands alone as the one-line description -- the catalog bundle machine-parses both for the kind's display metadata
+- [ ] **Follows the Catalog Page Standard** - The mandatory section structure (What Gets Created / Before You Deploy / Deploy with Console + CLI + InfraChart arms / Key Configuration / Outputs and Dependencies / Common Patterns / Works With), tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`
+- [ ] **Judgment-First Configuration** - `Key Configuration` teaches decisions and consequences; the exhaustive field list belongs to the generated `v1alpha1/reference.md`, never duplicated here
+- [ ] **Source-Verified** - Every manifest validates against `spec.proto`, every output exists in `outputs.proto`, every What Gets Created bullet matches the IaC module
 - [ ] **Current** - Field references and examples match the current `spec.proto`
+
+**NOT Included:**
+- Exhaustive field tables (that's the generated `v1alpha1/reference.md`)
+- Deep operational judgment for architects (that's `GUIDE.md`)
+- External URLs, marketing language, or research prose (banned by the standard)
+
+**Tone:**
+- Senior documentation writer: precise, earned, trusts the reader
+- Written for three readers at once: the evaluating developer, the 2 AM engineer, and the AI agent grounding a deployment plan
 
 ---
 

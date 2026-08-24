@@ -8,7 +8,7 @@
    style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
    xmlns="http://www.w3.org/2000/svg">
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
-       PriorityClass is distinguished by the ladder-rung glyph: three bars
+       PriorityClass is distinguished by the ladder-step glyph: three bars
        of ascending height with a chevron above the tallest - the workload
        importance ladder where higher schedules (and preempts) first. -->
   <g
@@ -23,11 +23,11 @@
   </g>
   <!-- The importance ladder: ascending bars + a chevron over the tallest. -->
   <g inkscape:label="priorityclass" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <!-- Ascending rungs. -->
+    <!-- Ascending steps. -->
     <path d="M264 452 L264 396" style="fill:none;stroke:#ffffff;stroke-width:26;stroke-linecap:round" />
     <path d="M340 452 L340 348" style="fill:none;stroke:#ffffff;stroke-width:26;stroke-linecap:round" />
     <path d="M416 452 L416 300" style="fill:none;stroke:#ffffff;stroke-width:26;stroke-linecap:round" />
-    <!-- The preemption chevron above the tallest rung. -->
+    <!-- The preemption chevron above the tallest step. -->
     <path d="M388 262 L416 232 L444 262" style="fill:none;stroke:#ffffff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round" />
   </g>
 </svg>

@@ -199,7 +199,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 ## Execution Sequence
 
-The following 19 rules execute in order. Each rule is atomic and can be run individually if needed.
+The following 20 rules execute in order. Each rule is atomic and can be run individually if needed. Rule numbers are stable identities, not execution positions — Phase 2 runs rules 014-015 and Phase 9 runs rule 020 before rule 019.
 
 ### Phase 1: Proto API Definitions (Rules 001-006)
 
@@ -447,9 +447,17 @@ are gated from this commit on.
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
 
-### Phase 9: Guide + Reference Regeneration (Rule 019)
+### Phase 9: Catalog Page + Guide + Reference Regeneration (Rules 020, 019)
 
-19. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
+19. **020-catalog-md** - Write the component's `catalog.md` (THE catalog page, at the
+    component root) following `_rules/docs/write-planton-component-catalog-md.mdc`:
+    the head-shape machine contract (the bundle parses the H1 and first sentence as
+    the kind's display name and description), the mandatory section structure, the
+    three Deploy arms, judgment-first Key Configuration, and patterns naming the
+    presets from rule 018. Runs FIRST in this phase — the guide grounds its claims
+    partly on the catalog page. The anatomy gate requires this file at the component
+    root.
+20. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
     component root) from what this forging session learned -- internal conventions,
     judgment calls, operational recipes, parity accounting, diagram impact -- following
     `_rules/docs/write-planton-component-guide.mdc`.

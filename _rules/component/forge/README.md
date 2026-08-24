@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Forge** is the rule system for bootstrapping **complete, production-ready components** in Planton. It orchestrates 19 atomic rules that create everything from proto definitions to IaC modules to documentation and presets.
+**Forge** is the rule system for bootstrapping **complete, production-ready components** in Planton. It orchestrates 20 atomic rules that create everything from proto definitions to IaC modules to documentation and presets.
 
 **Key principle:** Forge creates components that match **95-100% of the ideal state** defined in `architecture/component.md`, and whose file layout passes the machine-enforced anatomy gate (`pkg/anatomy`, CI lane `lint.component-anatomy.yaml`).
 
@@ -118,9 +118,9 @@ Forge will interview you to gather:
 - Credential requirements
 - Best practices and gotchas
 
-## The 19-Rule Workflow
+## The 20-Rule Workflow
 
-Forge orchestrates 19 rules in 9 phases. (E2E execution is handled separately via
+Forge orchestrates 20 rules in 9 phases. (E2E execution is handled separately via
 component e2e profiles, not the forge pipeline.)
 
 ### Phase 1: Proto API Definitions
@@ -157,8 +157,11 @@ component e2e profiles, not the forge pipeline.)
 17. `016-build-validation` - Compile all Go code (recursive component build + release-equivalent entrypoint build)
 18. `017-test-validation` - Run all tests
 
-### Phase 9: Guide + Reference Regeneration
-19. `019-guide` - Seed the component-root `GUIDE.md` (authored wisdom), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
+### Phase 9: Catalog Page + Guide + Reference Regeneration
+19. `020-catalog-md` - Write the component-root `catalog.md` (THE catalog page) per the catalog page standard — runs first in this phase because the guide grounds its claims partly on the catalog page
+20. `019-guide` - Seed the component-root `GUIDE.md` (authored wisdom), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
+
+Rule numbers are stable identities, not execution positions — `020` executes before `019` here, just as `014`/`015` execute in Phase 2.
 
 ## Progress Tracking
 
@@ -168,41 +171,42 @@ Forge provides real-time progress updates:
 🔨 Forge: Creating CloudflareD1Database
 
 Phase 1: Proto API Definitions
-[1/19] ✅ Generated spec.proto
-[2/19] ✅ Added buf.validate rules
-[3/19] ✅ Generated and ran spec tests
-[4/19] ✅ Generated outputs.proto
-[5/19] ✅ Generated api.proto
-[6/19] ✅ Generated input.proto
+[1/20] ✅ Generated spec.proto
+[2/20] ✅ Added buf.validate rules
+[3/20] ✅ Generated and ran spec tests
+[4/20] ✅ Generated outputs.proto
+[5/20] ✅ Generated api.proto
+[6/20] ✅ Generated input.proto
 
 Phase 2: Registration
-[7/19] ✅ Registered CloudflareD1Database = 7005 in cloud_resource_kind.proto
-[8/19] ✅ Generated proto stubs (make protos)
+[7/20] ✅ Registered CloudflareD1Database = 7005 in cloud_resource_kind.proto
+[8/20] ✅ Generated proto stubs (make protos)
 
 Phase 3: Documentation
-[9/19] ✅ Generated component-root README.md
+[9/20] ✅ Generated component-root README.md
 
 Phase 4: Test Infrastructure
-[10/19] ✅ Generated e2e/manifest.yaml
+[10/20] ✅ Generated e2e/manifest.yaml
 
 Phase 5: Pulumi Implementation
-[11/19] ✅ Generated Pulumi module
-[12/19] ✅ Generated Pulumi entrypoint
-[13/19] ✅ Generated Pulumi docs
+[11/20] ✅ Generated Pulumi module
+[12/20] ✅ Generated Pulumi entrypoint
+[13/20] ✅ Generated Pulumi docs
 
 Phase 6: Terraform Implementation
-[14/19] ✅ Generated Terraform module
-[15/19] ✅ Generated Terraform docs
+[14/20] ✅ Generated Terraform module
+[15/20] ✅ Generated Terraform docs
 
 Phase 7: Presets
-[16/19] ✅ Generated initial presets
+[16/20] ✅ Generated initial presets
 
 Phase 8: Final Validation
-[17/19] ✅ Build validation passed (go build ./catalog/<provider>/<kind>/...)
-[18/19] ✅ Component tests passed (go test -v ./catalog/<provider>/<kind>/v1alpha1/)
+[17/20] ✅ Build validation passed (go build ./catalog/<provider>/<kind>/...)
+[18/20] ✅ Component tests passed (go test -v ./catalog/<provider>/<kind>/v1alpha1/)
 
-Phase 9: Guide + Reference
-[19/19] ✅ Seeded GUIDE.md and regenerated the reference
+Phase 9: Catalog Page + Guide + Reference
+[19/20] ✅ Wrote catalog.md (the catalog page)
+[20/20] ✅ Seeded GUIDE.md and regenerated the reference
 
 🎉 Component creation complete!
 

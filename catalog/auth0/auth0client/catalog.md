@@ -1,6 +1,6 @@
 # Auth0 Application (Client)
 
-Deploys an Auth0 Application with configurable OAuth flows, token settings, and optional API access grants. Supports native, SPA, regular web, and machine-to-machine application types. Integrates with Planton's Auth0 Provider Connection for credential management and ValueFromRef for wiring connection and resource server dependencies.
+Deploys an Auth0 Application (Client) -- the OAuth 2.0 client that users and services authenticate through -- with configurable grant types, token settings, and optional API access grants. Supports all four application types: `spa` and `native` are public clients that authenticate with PKCE and never receive a secret, while `regular_web` and `non_interactive` (machine-to-machine) are confidential clients that hold a client secret. API access is granted separately from authentication: an M2M client without an `apiGrants` entry can obtain tokens but cannot call any API.
 
 ## What Gets Created
 
@@ -18,42 +18,46 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Auth0 Account
 
-- **An Auth0 tenant** with sufficient application quota.
-- **An Auth0 Resource Server** if configuring `apiGrants` to authorize this client for API access. Provide the audience directly or reference an Auth0ResourceServer Cloud Resource via ValueFromRef.
-- **An Auth0 Connection** if restricting the client to specific identity providers via `enabledConnections`. Provide the connection name directly or reference an Auth0Connection Cloud Resource via ValueFromRef.
+- **An Auth0 Resource Server** (only for `apiGrants`) -- each grant's audience must identify an existing API. Provide the audience directly or reference an Auth0ResourceServer Cloud Resource via ValueFromRef.
+- **An Auth0 Connection** (only for `enabledConnections`) -- restricting the client to specific identity providers requires the connections to exist. Provide connection names directly or reference Auth0Connection Cloud Resources via ValueFromRef.
+- **M2M token quota** (only for `non_interactive` clients) -- client-credentials tokens count against the tenant's monthly M2M token quota (1,000/month on the free plan); the application object itself is free.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Auth0 Application (Client)**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and spec fields.
+Open the deployment store, find **Auth0 Application (Client)**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the application type, and the OAuth, token, and API grant settings.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Client
 metadata:
-  name: my-spa
+  name: acme-web-spa
   org: acme-corp
   env: prod
 spec:
   applicationType: spa
+  oidcConformant: true
   callbacks:
-    - https://app.example.com/callback
+    - https://app.acme.com/callback
   allowedLogoutUrls:
-    - https://app.example.com
+    - https://app.acme.com
   webOrigins:
-    - https://app.example.com
+    - https://app.acme.com
+  grantTypes:
+    - authorization_code
+    - refresh_token
 ```
 
 ```shell
 planton apply -f auth0-client.yaml
 ```
 
-This creates a Single Page Application in Auth0 with OIDC-conformant defaults. No API grants or connection restrictions are configured. A Stack Job tracks the provisioning in real time.
+This creates an OIDC-conformant Single Page Application in Auth0 -- a public client with no client secret, restricted to the registered callback and logout URLs. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -82,15 +86,15 @@ The InfraPipeline resolves the dependency graph, deploys the connection and reso
 
 These are the most important decisions when configuring an Auth0 Application. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Application type** -- The `applicationType` field determines which OAuth flows and security settings Auth0 applies. Use `spa` for browser-based JavaScript apps, `regular_web` for server-rendered apps that can store secrets, `native` for mobile or desktop apps, and `non_interactive` for backend M2M communication using client credentials.
+**Application type** -- Choose `applicationType` by where the credential can live, not by what the app looks like. `spa` and `native` run in environments that cannot keep a secret, so they get PKCE and no `client_secret`; `regular_web` and `non_interactive` run server-side and receive one. Registering a browser app as `regular_web` ships a secret you cannot protect; registering a backend as `spa` leaves it unable to use the client-credentials flow.
 
-**Grant types** -- The `grantTypes` field controls which OAuth flows the application can use. If omitted, Auth0 assigns defaults based on `applicationType`. Override explicitly when you need refresh tokens (`refresh_token`) or device authorization flows.
+**API grants vs grant types** -- `grantTypes` only enables OAuth flows; `apiGrants` is what authorizes APIs. An M2M application with `client_credentials` in `grantTypes` but no `apiGrants` entry authenticates successfully and can call nothing. Each grant pairs an audience (resource server identifier) with the scopes to allow.
 
-**JWT signing algorithm** -- The `jwtConfiguration.alg` field sets the token signing method. RS256 (asymmetric) is recommended for most applications. Use HS256 only when the consumer can securely store the client secret.
+**JWT signing algorithm** -- Leave `jwtConfiguration.alg` at RS256 (the module's default when `jwtConfiguration` is set). JWKS-verifying consumers -- NextAuth and most OIDC libraries -- reject an HS256 id_token because they cannot fetch a symmetric key from the JWKS endpoint. Use HS256 only when every token consumer can securely hold the client secret.
 
-**Refresh token rotation** -- The `refreshToken.rotationType` field controls whether a new refresh token is issued on each use. Set to `rotating` for production to limit the impact of token theft. Pair with `expirationType: expiring` and explicit lifetimes for time-bounded sessions.
+**Refresh token rotation** -- Auth0's default is `non-rotating`, a legacy behavior. Set `refreshToken.rotationType: rotating` for production so each use invalidates the previous token, bounding the blast radius of a stolen refresh token. Pair it with `expirationType: expiring` and explicit `tokenLifetime`/`idleTokenLifetime` for time-bounded sessions.
 
-**API grants** -- The `apiGrants` array authorizes this client to call specific APIs. Each entry pairs an audience (resource server identifier) with a list of scopes. Required for M2M applications that need API access beyond authentication.
+**Enabled connections** -- Leaving `enabledConnections` empty makes every connection in the tenant available to this application; listing any restricts the application to exactly that list. This is the mirror image of the connection side, where an empty `enabledClients` list means no application can use the connection.
 
 ## Outputs and Dependencies
 
@@ -107,20 +111,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `id` | Internal Auth0 identifier for the client | Auth0 API operations |
-| `client_id` | OAuth 2.0 client identifier (public) | Auth0Connection `enabledClients`, application config |
-| `client_secret` | OAuth 2.0 client secret (confidential clients only) | Backend service authentication |
-| `name` | Application name derived from metadata | Audit logs, monitoring dashboards |
-| `application_type` | Configured application type | Downstream validation logic |
-| `signing_keys` | RS256 signing keys with cert and thumbprint | JWT signature verification in backend services |
-| `callback_url_template` | Whether callback URL templating is enabled | Application URL configuration |
-| `allowed_clients` | Clients allowed to perform delegation | Legacy delegation flows |
-| `global` | Whether this is the tenant's default client | Tenant identification |
-| `token_endpoint_auth_method` | Authentication method for the token endpoint | OAuth integration configuration |
+| `client_id` | OAuth 2.0 client identifier (public) | Auth0Connection `enabledClients`, application OAuth configuration |
+| `client_secret` | OAuth 2.0 client secret -- confidential clients (`regular_web`, `non_interactive`) only | Backend and M2M service credentials |
+| `signing_keys` | Signing certificates for this client's RS256 tokens | Pinned JWT signature verification in backend services |
+| `token_endpoint_auth_method` | How the client authenticates to the token endpoint | OAuth client library configuration |
 
 ## Common Patterns
 
-No presets are available yet. Configure directly using the fields documented in the [API Explorer](#api-explorer) tab.
+**Single-page application** -- `applicationType: spa` with `callbacks`, `webOrigins`, and `allowedLogoutUrls` covering every environment the app runs in, and `grantTypes` of `authorization_code` plus `refresh_token`. There is no secret to manage; pair with rotating refresh tokens since the browser is the least trusted place a long-lived credential can live.
+
+**Machine-to-machine service** -- `applicationType: non_interactive` with `grantTypes: [client_credentials]` and at least one `apiGrants` entry. The grant, not the application type, is what confers API access -- scope it to the minimum the service calls. Each token issued counts against the tenant's M2M token quota.
+
+**Regular web application** -- `applicationType: regular_web` for server-rendered apps that can hold the `client_secret`. The secret enables confidential-client authentication at the token endpoint; the trade is that it becomes a credential you must store and rotate server-side.
 
 ## Works With
 

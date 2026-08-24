@@ -1,6 +1,6 @@
 # Kubernetes PriorityClass
 
-Deploys a cluster-scoped Kubernetes PriorityClass — one rung of the workload importance ladder. Pods reference the class by name; the scheduler places higher-priority pods first when capacity is scarce and, unless preemption is disabled, evicts lower-priority pods to make room. Manages scheduling policy declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a cluster-scoped Kubernetes PriorityClass — one step of the workload importance ladder. Pods reference the class by name; the scheduler places higher-priority pods first when capacity is scarce and, unless preemption is disabled, evicts lower-priority pods to make room. Manages scheduling policy declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
 
 ## What Gets Created
 
@@ -54,7 +54,7 @@ This creates a preempting class at value 1,000,000 that pods opt into via `prior
 
 These are the most important decisions when configuring a Kubernetes PriorityClass. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**The value is the ladder position** -- Higher schedules (and preempts) ahead of lower; only the ORDER matters, so leave generous gaps between rungs. User classes stay at or below 1,000,000,000 (the range above belongs to Kubernetes system classes); negative values make an always-preemptable tier. The value is immutable -- changing it replaces the class.
+**The value is the ladder position** -- Higher schedules (and preempts) ahead of lower; only the ORDER matters, so leave generous gaps between steps. User classes stay at or below 1,000,000,000 (the range above belongs to Kubernetes system classes); negative values make an always-preemptable tier. The value is immutable -- changing it replaces the class.
 
 **Preemption policy** -- The default (preempt lower priority) is what critical service tiers want: pending pods evict lower-priority pods to fit. **Never Preempt** keeps the queue-jumping benefit without evicting anything running -- the right policy for high-priority batch work.
 
@@ -81,7 +81,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**The three-rung ladder** -- `critical` (1,000,000, preempting) for revenue-path services, `standard` (1,000, the global default) for everything unmarked, and `batch` (-100, never-preempt) for interruptible work. Start from the **Critical Services**, **Standard Default**, and **Preemptable Batch** presets.
+**The three-step ladder** -- `critical` (1,000,000, preempting) for revenue-path services, `standard` (1,000, the global default) for everything unmarked, and `batch` (-100, never-preempt) for interruptible work. Start from the **Critical Services**, **Standard Default**, and **Preemptable Batch** presets.
 
 ## Works With
 

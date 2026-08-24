@@ -1,6 +1,6 @@
 # KubernetesManifest Guide
 
-The judgment this guide carries: raw YAML is the catalog's bottom rung —
+The judgment this guide carries: raw YAML is the catalog's bottom step —
 below first-class kinds, below verified alternatives, below even a chart
 install. Run the search-first workflow in the
 [catalog guide](../../_docs/GUIDE.md) before declaring anything here.

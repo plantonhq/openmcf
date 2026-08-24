@@ -19,7 +19,7 @@ spec:
     - field_path: objects.storage_class
       sku_meter: object storage
       pricing_unit: GB-months
-      impact: Picks each object's rung on the storage ladder -- and the trap for declaratively managed objects is the minimum-duration charge. STANDARD_IA and ONEZONE_IA bill a 30-day minimum (and a 128 KB minimum object size), GLACIER_IR and GLACIER 90 days, DEEP_ARCHIVE 180 days; an object this set overwrites or deletes early still bills the remainder. Objects that redeploy often belong in STANDARD.
+      impact: Picks each object's step on the storage ladder -- and the trap for declaratively managed objects is the minimum-duration charge. STANDARD_IA and ONEZONE_IA bill a 30-day minimum (and a 128 KB minimum object size), GLACIER_IR and GLACIER 90 days, DEEP_ARCHIVE 180 days; an object this set overwrites or deletes early still bills the remainder. Objects that redeploy often belong in STANDARD.
     - field_path: objects.server_side_encryption
       sku_meter: KMS requests
       pricing_unit: requests

@@ -634,7 +634,7 @@ sessions, keep a ledger in a shared issue or a location outside the catalog.
 
 - **Missing Terraform?** +4.44% (run forge rules 012-013)
 - **Missing guide?** +13.34% (run forge rule 019)
-- **Thin catalog page?** +6.66% (improve catalog.md against the standard)
+- **Thin catalog page?** +6.66% (run forge rule 020, or upgrade the page per `_rules/docs/write-planton-component-catalog-md.mdc`)
 
 ## Troubleshooting
 
