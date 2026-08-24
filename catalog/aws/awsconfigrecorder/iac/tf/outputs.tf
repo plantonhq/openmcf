@@ -12,3 +12,8 @@ output "recording_enabled" {
   description = "Whether the recorder is running after apply (the folded recorder-status truth)"
   value       = aws_config_configuration_recorder_status.this.is_enabled
 }
+
+output "region" {
+  description = "The AWS region the recording posture lives in (Config singletons are addressed by region + the literal name)"
+  value       = aws_config_configuration_recorder.this.region
+}

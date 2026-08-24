@@ -1038,6 +1038,14 @@ spec:
       pulumi_type: aws:cfg/rule:Rule
       id_format: "{rule_name}"
       cloud_control_type_name: AWS::Config::ConfigRule
+      # The provider's import populates the rule from DescribeConfigRules
+      # only and never calls GetCustomRulePolicy, so a custom-policy
+      # rule's Guard text imports EMPTY and the first post-import plan
+      # re-sends the same text (a server-side no-op; live-caught by the
+      # blind round-trip). Scoped to the policy-text leaf so real drift
+      # in the rule's source (owner, identifier) still fails the gate.
+      write_normalized_attributes:
+        - source.custom_policy_details.policy_text
     - terraform_type: aws_config_organization_managed_rule
       pulumi_type: aws:cfg/organizationManagedRule:OrganizationManagedRule
       id_format: "{rule_name}"

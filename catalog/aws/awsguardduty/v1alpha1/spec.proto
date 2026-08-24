@@ -162,7 +162,12 @@ message AwsGuardDutyFeature {
   optional bool enabled = 2;
 
   // Sub-toggles within the plan (agent management for RUNTIME_
-  // MONITORING and friends).
+  // MONITORING and friends). Declare only the sub-toggles you enable:
+  // AWS materializes a feature's FULL sub-toggle family server-side
+  // (undeclared members read back DISABLED), and the modules mirror
+  // that contract by always sending the complete family - a declared
+  // member carries your value, an undeclared member an explicit
+  // DISABLED (live-verified 2026-08-25).
   repeated AwsGuardDutyFeatureAdditionalConfiguration additional_configuration = 3;
 
   // Sub-toggle names are patch keys within the feature.
@@ -339,7 +344,13 @@ message AwsGuardDutyThreatIntelSet {
 // Note: changing tags on this resource forces replacement in the
 // provider, one reason the component keeps tags off this satellite.
 message AwsGuardDutyPublishingDestination {
-  // The destination bucket's ARN.
+  // The destination bucket's ARN. GuardDuty validates the export
+  // write at EXACTLY the ARN it is given: a literal value may append
+  // a key prefix (arn:aws:s3:::bucket/prefix) and scope the bucket
+  // policy's s3:PutObject grant to that prefix, but the reference
+  // path composes the BARE bucket ARN, so the grant must then cover
+  // the whole bucket - a narrower prefix grant fails
+  // CreatePublishingDestination at create time (live-verified).
   dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,

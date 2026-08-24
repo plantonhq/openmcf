@@ -4,6 +4,8 @@ CloudTrail Lake: a queryable, immutable database of AWS activity
 events you interrogate with SQL — security investigations and audits
 without shipping logs to S3 or standing up a SIEM.
 
+> **Availability:** AWS has closed CloudTrail Lake to new customers — `CreateEventDataStore` is rejected on any account that has never created an event data store ("CloudTrail Lake is no longer accepting new customers"). Deploy this component only on an account already using Lake; on other accounts, use AWS CloudTrail's trail delivery instead.
+
 ## What Gets Managed
 
 - The event data store: pricing mode, queryable retention window

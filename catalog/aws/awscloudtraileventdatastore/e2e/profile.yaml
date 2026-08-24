@@ -33,9 +33,22 @@ spec:
   #     transition needs a mutation scenario. Unblock: the proof lane's
   #     mutation vocabulary.
   #
-  # pending_proof: forged this session to the full offline bar -- Q40
-  # proves it live.
+  # ENVIRONMENT-DEFERRED (2026-08-25): CreateEventDataStore is 400
+  # InvalidParameterException on this account -- "CloudTrail Lake is no
+  # longer accepting new customers. Existing customers can continue to
+  # use their event data stores." AWS closed CloudTrail Lake to new
+  # customers; the test account (859666865785) has never created a
+  # store, so the first CreateEventDataStore call is the wall. Both
+  # engines, same 400 (Pulumi RequestID
+  # 0083145d-94bd-4b84-8802-f345e41ab755; Terraform RequestID
+  # a5dd7772-63e7-4d56-81c4-6dfd0bdbc30d). Not a module or spec defect:
+  # the request was well-formed and the scenario deploys nothing else
+  # (fixture-free). The Bedrock Agents Classic precedent, CloudTrail
+  # edition. Unblock: run the lanes on an account grandfathered into
+  # CloudTrail Lake (one with an existing event data store), or AWS
+  # reopening the service to new customers.
   tier: 1
-  status: pending_proof
+  status: deferred
+  deferred_reason: "environment-deferred 2026-08-25: CloudTrail Lake closed to new customers -- CreateEventDataStore 400 on accounts without existing stores (test account 859666865785 has none; no exception process known). Unblock: a grandfathered account, then run both engines' lanes."
   validated_provisioners: []
   timeout_minutes: 15

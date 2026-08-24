@@ -11,4 +11,10 @@ message AwsConfigConformancePackStackOutputs {
   // The pack's ARN (the account-scope or organization-scope ARN,
   // whichever this instance deployed).
   string pack_arn = 2;
+
+  // The AWS region the pack lives in. Conformance packs are
+  // region-scoped and addressed by region + name, so any consumer (or
+  // verifier) reaching the pack off the ambient region needs this
+  // alongside pack_name.
+  string region = 3;
 }

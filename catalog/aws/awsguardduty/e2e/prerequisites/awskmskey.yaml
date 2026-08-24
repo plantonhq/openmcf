@@ -7,7 +7,10 @@
 # The root statement needs the account id a committed fixture cannot
 # carry honestly -- the lane exports it as PLANTON_E2E_AWS_ACCOUNT_ID
 # (`aws sts get-caller-identity --query Account --output text`) and
-# the harness expands the ${E2E_ENV:} token at deploy time.
+# the harness expands the E2E_ENV token in the policy below at deploy
+# time. NOTE: the token expander scans the WHOLE file, comments
+# included -- never write the token syntax with an empty variable name
+# in a comment (it fails the manifest as an invalid token; live-caught).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:

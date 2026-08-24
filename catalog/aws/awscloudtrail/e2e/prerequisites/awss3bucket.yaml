@@ -21,6 +21,12 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
+  # CloudTrail writes zero-byte AWSLogs/ prefix markers into the bucket
+  # at CreateTrail time (before any event is ever delivered), and both
+  # the markers and delivered log files survive the trail's delete --
+  # so the fixture bucket must force-destroy or its teardown fails
+  # BucketNotEmpty (live-caught; the service-written-canary class).
+  forceDestroy: true
   policy:
     Version: "2012-10-17"
     Statement:

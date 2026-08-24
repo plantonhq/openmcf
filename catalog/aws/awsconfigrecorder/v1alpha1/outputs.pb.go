@@ -34,8 +34,13 @@ type AwsConfigRecorderStackOutputs struct {
 	// Whether the recorder is running after apply (the folded
 	// recorder-status truth, echoed for chart consumers).
 	RecordingEnabled bool `protobuf:"varint,3,opt,name=recording_enabled,json=recordingEnabled,proto3" json:"recording_enabled,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The AWS region the recording posture lives in. Config's
+	// singletons are addressed by REGION + the literal name "default",
+	// so any consumer (or verifier) reaching the recorder off the
+	// ambient region needs this alongside recorder_name.
+	Region        string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsConfigRecorderStackOutputs) Reset() {
@@ -89,15 +94,23 @@ func (x *AwsConfigRecorderStackOutputs) GetRecordingEnabled() bool {
 	return false
 }
 
+func (x *AwsConfigRecorderStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 var File_catalog_aws_awsconfigrecorder_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsconfigrecorder_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awsconfigrecorder/v1alpha1/outputs.proto\x12*dev.planton.aws.awsconfigrecorder.v1alpha1\"\xa5\x01\n" +
+	"4catalog/aws/awsconfigrecorder/v1alpha1/outputs.proto\x12*dev.planton.aws.awsconfigrecorder.v1alpha1\"\xbd\x01\n" +
 	"\x1dAwsConfigRecorderStackOutputs\x12#\n" +
 	"\rrecorder_name\x18\x01 \x01(\tR\frecorderName\x122\n" +
 	"\x15delivery_channel_name\x18\x02 \x01(\tR\x13deliveryChannelName\x12+\n" +
-	"\x11recording_enabled\x18\x03 \x01(\bR\x10recordingEnabledB\xea\x02\n" +
+	"\x11recording_enabled\x18\x03 \x01(\bR\x10recordingEnabled\x12\x16\n" +
+	"\x06region\x18\x04 \x01(\tR\x06regionB\xea\x02\n" +
 	".com.dev.planton.aws.awsconfigrecorder.v1alpha1B\fOutputsProtoP\x01Z]github.com/plantonhq/planton/catalog/aws/awsconfigrecorder/v1alpha1;awsconfigrecorderv1alpha1\xa2\x02\x04DPAA\xaa\x02*Dev.Planton.Aws.Awsconfigrecorder.V1alpha1\xca\x02*Dev\\Planton\\Aws\\Awsconfigrecorder\\V1alpha1\xe2\x026Dev\\Planton\\Aws\\Awsconfigrecorder\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Aws::Awsconfigrecorder::V1alpha1b\x06proto3"
 
 var (

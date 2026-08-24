@@ -47,11 +47,14 @@ resource "aws_guardduty_detector_feature" "this" {
   name        = each.value.name
   status      = each.value.enabled == null ? "ENABLED" : (each.value.enabled ? "ENABLED" : "DISABLED")
 
+  # The full sub-toggle family, always sent (see locals.tf -- AWS
+  # materializes undeclared members as DISABLED, and a partial send
+  # breaks post-apply plan idempotency).
   dynamic "additional_configuration" {
-    for_each = each.value.additional_configuration
+    for_each = local.feature_additional_configurations[each.key]
     content {
       name   = additional_configuration.value.name
-      status = additional_configuration.value.enabled == null ? "ENABLED" : (additional_configuration.value.enabled ? "ENABLED" : "DISABLED")
+      status = additional_configuration.value.status
     }
   }
 }

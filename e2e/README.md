@@ -1330,9 +1330,66 @@ Bedrock invocation logging is the canonical case (live-caught
 policy by writing `amazon-bedrock-logs-permission-check` objects under
 EVERY configured S3 prefix (archive AND CloudWatch large-data spillover)
 with zero model invocations ever made, and deleting the configuration
-does not remove them. Any bucket fixture a service configuration ever
+does not remove them. Second instance (2026-08-25): CreateTrail writes
+zero-byte `AWSLogs/` prefix markers into the trail's delivery bucket
+before any event is ever delivered, and they survive the trail's
+delete. Any bucket fixture a service configuration ever
 points at must ship `forceDestroy: true` or its DEPENDENCIES-DOWN fails
 BucketNotEmpty — that failure is this class, not a leaked lane resource.
+
+**Some AWS APIs MASK not-found as AccessDeniedException — a verifier's
+absent-check must learn the service's real gone-signal.** AWS Backup's
+DescribeBackupVault is the canonical case (live-probed 2026-08-25): a
+deleted (or never-existing) vault name answers 403 "Insufficient
+privileges to perform this action", never ResourceNotFoundException —
+under credentials that describe an EXISTING vault fine. A verify-absent
+that only accepts ResourceNotFound fails every clean teardown of such a
+kind. Accepting the masked signal is safe when VerifyExists uses the
+SAME call earlier in the lane: real permission loss fails loudly there.
+Probe the pair (describe an existing resource, then a nonexistent name)
+before writing the verifier's absent arm for a new AWS service.
+
+**The `${E2E_ENV:...}` token expander scans the WHOLE manifest —
+comments included.** A fixture comment that quotes the token syntax
+with an empty variable name (writing the literal token shape as prose)
+fails the manifest at deploy with "invalid environment token"
+(live-caught 2026-08-25 on the GuardDuty KMS fixture's own
+documentation comment). Name the token in prose; never write the
+`${...}` shape in a comment unless it is a complete, valid token.
+
+**A kind whose manifests can deploy OFF the ambient region must export
+`region` in its stack outputs — the harness verifies where the outputs
+say, not where the scenario deployed.** The harness's VerifyDeployed
+resolves the verifier's region from `outputs["region"]`; when the
+output is absent the SDK falls back to the ambient region, and a
+fixture or scenario deployed elsewhere fails verification with
+misleading errors (NoSuchConfigurationRecorder for a healthy us-east-2
+recorder; NoSuchConformancePack for a healthy us-east-2 pack —
+live-caught 2026-08-25, twice in one session). Any regional
+settings-singleton or fixture-serving kind that region-isolated lanes
+compose off-ambient needs the output; the kind's own same-region lane
+passing proves nothing about this gap.
+
+**Server-side MATERIALIZED FAMILIES break post-apply plan idempotency —
+send what AWS materializes, or declare what it fills in.** Three shapes
+of one class, all live-caught 2026-08-25 under the armed idempotency
+gate: (1) GuardDuty materializes a detector feature's FULL sub-toggle
+family (RUNTIME_MONITORING's trio) with undeclared members DISABLED —
+the modules now always send the complete family, declared values over
+explicit DISABLED (the fix lives in the module because the family is a
+small pinned enum). (2) AWS Backup region settings echo the region's
+FULL resource-type opt-in map — the provider owns the whole map, so the
+only idempotent manifest declares every type (the fix lives in the
+MANIFEST because the map is the spec surface; the spec comment teaches
+it). (3) Backup Audit Manager materializes a scope-less resource
+control's default all-supported-types scope, and the pinned provider
+ships no diff suppression — scenarios declare the scope explicitly
+(upstream's own acceptance tests only exercise the scoped form; the
+default list grows with AWS, so hardcoding it in a module would freeze
+semantics — upstream gap recorded). Choose the fix shape by where the
+truth lives: pinned enum → module always-send; spec-surface map →
+manifest completeness; growing service default → explicit declaration
+plus teaching.
 
 **Cross-region satellites deleted ASYNCHRONOUSLY by the service are an
 orphan class the primary-region check never sees.** Secrets Manager is the

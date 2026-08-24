@@ -217,7 +217,12 @@ type AwsGuardDutyFeature struct {
 	// you want it); set false to explicitly turn a plan off.
 	Enabled *bool `protobuf:"varint,2,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// Sub-toggles within the plan (agent management for RUNTIME_
-	// MONITORING and friends).
+	// MONITORING and friends). Declare only the sub-toggles you enable:
+	// AWS materializes a feature's FULL sub-toggle family server-side
+	// (undeclared members read back DISABLED), and the modules mirror
+	// that contract by always sending the complete family - a declared
+	// member carries your value, an undeclared member an explicit
+	// DISABLED (live-verified 2026-08-25).
 	AdditionalConfiguration []*AwsGuardDutyFeatureAdditionalConfiguration `protobuf:"bytes,3,rep,name=additional_configuration,json=additionalConfiguration,proto3" json:"additional_configuration,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
@@ -699,7 +704,13 @@ func (x *AwsGuardDutyThreatIntelSet) GetActivate() bool {
 // provider, one reason the component keeps tags off this satellite.
 type AwsGuardDutyPublishingDestination struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The destination bucket's ARN.
+	// The destination bucket's ARN. GuardDuty validates the export
+	// write at EXACTLY the ARN it is given: a literal value may append
+	// a key prefix (arn:aws:s3:::bucket/prefix) and scope the bucket
+	// policy's s3:PutObject grant to that prefix, but the reference
+	// path composes the BARE bucket ARN, so the grant must then cover
+	// the whole bucket - a narrower prefix grant fails
+	// CreatePublishingDestination at create time (live-verified).
 	BucketArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bucket_arn,json=bucketArn,proto3" json:"bucket_arn,omitempty"`
 	// The KMS key GuardDuty encrypts exported findings with. REQUIRED
 	// by AWS for findings export.

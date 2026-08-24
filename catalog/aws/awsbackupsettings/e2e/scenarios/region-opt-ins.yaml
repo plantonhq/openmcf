@@ -1,11 +1,20 @@
 # The settings singleton's honest lane: the REGION arm only, asserting
-# opt-ins that match AWS's own defaults (EBS/EC2 true) so the
-# no-op-delete persistence leaves the shared test account exactly as
-# AWS ships it. The GLOBAL arm (cross-account backup) is a recorded
-# deferral: it is an organizations-level control on the shared
-# account, and destroy would NOT revert it. Both arms' deletes are
-# provider no-ops -- the verifier's absent phase asserts the object
-# still answers, never disappearance.
+# the FULL opt-in map at AWS's own defaults (every supported type
+# true) so the no-op-delete persistence leaves the shared test account
+# exactly as AWS ships it. The map is COMPLETE by necessity, not
+# choice: UpdateRegionSettings patches only the keys you send, but the
+# pinned provider's state owns the region's whole map -- Describe
+# echoes every supported type, so a partial manifest makes every later
+# plan propose stripping the undeclared keys (live-caught by the
+# post-apply idempotency re-plan on both engines). When AWS adds a new
+# supported type this lane will diff on the new key -- extend the map
+# to match `aws backup describe-region-settings`.
+#
+# The GLOBAL arm (cross-account backup) is a recorded deferral: it is
+# an organizations-level control on the shared account, and destroy
+# would NOT revert it. Both arms' deletes are provider no-ops -- the
+# verifier's absent phase asserts the object still answers, never
+# disappearance.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBackupSettings
 metadata:
@@ -24,5 +33,22 @@ spec:
   region: us-west-2
   regionSettings:
     resourceTypeOptInPreference:
+      Aurora: true
+      CloudFormation: true
+      DSQL: true
+      DocumentDB: true
+      DynamoDB: true
       EBS: true
       EC2: true
+      EFS: true
+      EKS: true
+      FSx: true
+      Neptune: true
+      RDS: true
+      Redshift: true
+      "Redshift Serverless": true
+      S3: true
+      "SAP HANA on Amazon EC2": true
+      "Storage Gateway": true
+      Timestream: true
+      VirtualMachine: true

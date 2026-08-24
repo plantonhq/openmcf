@@ -5,16 +5,27 @@ metadata:
 spec:
   region: <aws-region>
   regionSettings:
+    # The COMPLETE type map, deliberately: AWS returns every supported
+    # type on read and the provider owns the full map, so a key left
+    # out shows as a perpetual difference in plans. Extend this list
+    # when AWS adds a type (`aws backup describe-region-settings`).
     resourceTypeOptInPreference:
       Aurora: true
+      CloudFormation: false
+      DSQL: false
       DocumentDB: false
       DynamoDB: true
       EBS: true
       EC2: true
       EFS: true
+      EKS: false
       FSx: true
       Neptune: false
       RDS: true
+      Redshift: false
+      "Redshift Serverless": false
       S3: true
-      Storage Gateway: false
+      "SAP HANA on Amazon EC2": false
+      "Storage Gateway": false
+      Timestream: false
       VirtualMachine: false

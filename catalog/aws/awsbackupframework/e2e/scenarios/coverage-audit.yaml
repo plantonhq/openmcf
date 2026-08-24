@@ -1,13 +1,20 @@
-# The framework's cost-floored surface: one parameterless coverage
-# control plus one parameterized retention control. The lane lives in
+# The framework's cost-floored surface: one scoped coverage control
+# plus one parameterized retention control. The lane lives in
 # us-east-1 BY DESIGN: framework evaluation needs the region's
 # one-per-region Config recorder singleton (the annotation-declared
-# fixture chain below), and us-west-2's recorder belongs to the Q39
-# Config lanes while us-east-2's belongs to Q40's conformance-pack
-# fixture -- a third region makes cross-queue overlap structurally
-# impossible (the session-061 region-isolation lesson). Config bills
-# per recorded configuration item and per rule evaluation; the
-# recorder fixture records only S3 buckets and the lane creates none.
+# fixture chain below), and the us-west-2 and us-east-2 recorder
+# singletons belong to the Config kinds' own lanes and the
+# conformance-pack fixture -- a third region makes overlap
+# structurally impossible. Config bills per recorded configuration
+# item and per rule evaluation; the recorder fixture records only S3
+# buckets and the lane creates none.
+#
+# The coverage control declares its scope EXPLICITLY: a scope-less
+# resource control is valid at AWS, but AWS materializes its default
+# all-supported-types scope server-side and the pinned provider ships
+# no diff suppression, so every later plan proposes stripping it
+# (live-caught by the post-apply idempotency re-plan; the provider's
+# own acceptance tests only ever exercise the scoped form).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBackupFramework
 metadata:
@@ -29,6 +36,9 @@ spec:
   description: Planton E2E coverage and retention audit
   controls:
     - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+      scope:
+        complianceResourceTypes:
+          - EBS
     - name: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
       inputParameters:
         - name: requiredRetentionDays

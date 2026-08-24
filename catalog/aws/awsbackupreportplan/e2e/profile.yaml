@@ -18,10 +18,7 @@ spec:
   #     probe if the proof lane wants delivery evidence.
   #   - report_template replacement (ForceNew inside the block) --
   #     mutation vocabulary. Unblock: the proof lane's mutation phase.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q41
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

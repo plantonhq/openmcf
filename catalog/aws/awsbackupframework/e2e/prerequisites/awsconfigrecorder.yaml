@@ -2,8 +2,8 @@
 # evaluations run on AWS Config and land FAILED without an ACTIVE
 # recorder in the region. Scoped to the cheapest possible recording
 # surface, and placed in us-east-1 so it can never collide with the
-# us-west-2 (Q39) or us-east-2 (Q40 conformance pack) recorder
-# singletons.
+# recorder singletons the Config kinds' own lanes manage in us-west-2
+# or the conformance-pack fixture holds in us-east-2.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsConfigRecorder
 metadata:
@@ -16,6 +16,10 @@ metadata:
     e2e-component: awsconfigrecorder
   annotations:
     planton.dev/e2e: "true"
+    # This install manifest composes the history bucket its delivery
+    # channel writes to; declaring the kind here schedules the bucket
+    # BEFORE this recorder so the value_from reference below resolves.
+    planton.dev/e2e-prerequisites: "AwsS3Bucket"
   tags:
     - planton-e2e
 spec:
