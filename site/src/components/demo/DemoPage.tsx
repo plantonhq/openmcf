@@ -91,7 +91,7 @@ const itConsultingFlow: DemoScreen[] = [
   'deploy-logs',                  // Watch deployment
   // Planton open source journey (4 screens)
   'planton-intro',        // Open-source framework intro
-  'planton-components',   // 500+ components catalog
+  'planton-components',   // 700+ components catalog
   'planton-terraform',    // Terraform modules
   'planton-cli',          // CLI + YAML deployment
   // Infra Charts Journey (4 focused screens)

@@ -194,7 +194,7 @@ export const VALUE_MATRIX: MatrixCategory[] = [
     rows: [
       {
         feature: 'Multi-Cloud Component Catalog',
-        description: '380+ components across AWS, GCP, Azure, Kubernetes, and more',
+        description: '700+ components across AWS, GCP, Azure, Kubernetes, and more',
         cells: everywhere,
       },
       { feature: 'Guided Deployment Wizards', cells: everywhere },

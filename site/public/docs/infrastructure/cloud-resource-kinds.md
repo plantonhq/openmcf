@@ -11,7 +11,7 @@ tags:
 
 # Cloud Resource Kinds
 
-Planton supports over 600 types of infrastructure across 8 cloud providers. Each type — an AWS VPC, a GCP Cloud SQL instance, a Kubernetes deployment, a Cloudflare DNS zone — is a Cloud Resource Kind. When you browse the Deployment Component catalog in the web console, you are browsing Cloud Resource Kinds with their descriptions, icons, and provider information.
+Planton supports over 700 types of infrastructure across 8 cloud providers. Each type — an AWS VPC, a GCP Cloud SQL instance, a Kubernetes deployment, a Cloudflare DNS zone — is a Cloud Resource Kind. When you browse the Deployment Component catalog in the web console, you are browsing Cloud Resource Kinds with their descriptions, icons, and provider information.
 
 ## Why a Unified Catalog
 

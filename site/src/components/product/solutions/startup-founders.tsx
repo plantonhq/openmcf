@@ -85,7 +85,7 @@ const valueProps = [
   {
     title: 'Enterprise-Ready When You Get There',
     description:
-      'Start with the free tier. When you raise your Series A and need SOC 2, RBAC, and audit trails — Planton already has them.',
+      'Start with the free tier. When you raise your Series A and need RBAC, audit trails, and control-posture evidence — Planton already has them.',
     icon: <ShieldIcon />,
   },
 ];
