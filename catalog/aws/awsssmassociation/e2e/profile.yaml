@@ -20,10 +20,7 @@ spec:
   #     the wait always times out (config-only in the import map).
   #     Unblock: a managed-instance fixture (the standing
   #     no-instances-in-lanes class).
-  #
-  # pending_proof: forged this session to the full offline bar -- Q42
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

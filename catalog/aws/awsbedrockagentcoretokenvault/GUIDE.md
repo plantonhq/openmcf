@@ -26,6 +26,8 @@ know before putting agent credentials under your own key.
   an APPLY with `ServiceManagedKey`. Concretely: never schedule the
   KMS key's deletion while the vault still points at it, or every
   stored agent credential becomes unreadable.
+- **The revert itself needs the OLD key alive (live-caught).** `SetTokenVaultCMK` validates the previous key's state on every write — a vault pointing at a disabled or pending-deletion key refuses even the revert to `ServiceManagedKey` with `Old KMS Key validation failed ... expected KeyState:ENABLED`. Always revert FIRST, retire the key SECOND.
+- **Wedged anyway? The deletion window is your way out.** While the key is still in its 7–30 day deletion window: `aws kms cancel-key-deletion --key-id <id>`, then `aws kms enable-key --key-id <id>`, apply `ServiceManagedKey` (or run `aws bedrock-agentcore-control set-token-vault-cmk --token-vault-id default --kms-configuration keyType=ServiceManagedKey`), and only then re-schedule the key's deletion. Once the key is truly gone, only AWS Support can help.
 - **Key revocation is an agent outage.** AgentCore reads the vault on
   every credential fetch; revoking the key's grants or disabling the
   key locks every agent out of its OAuth tokens and API keys at once.

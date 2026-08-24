@@ -475,7 +475,14 @@ message AwsAppSyncGraphqlType {
   }];
 
   // The type definition - SDL (format SDL) or introspection JSON
-  // (format JSON).
+  // (format JSON). The text is CREATE-TIME: AWS rewrites it
+  // server-side into its own whitespace form (indentation stripped,
+  // braces re-placed, blank lines injected), so both engines ignore
+  // the textual echo to keep plans converging. Editing the definition
+  // body in place therefore does NOT propagate - to change a managed
+  // type's definition, remove the entry, apply, and re-add it with
+  // the new text (the same replace-the-entry choreography the format
+  // field requires).
   string definition = 2 [(buf.validate.field).string.min_len = 1];
 
   // The definition's format. Fixed for life at AWS: the provider

@@ -393,9 +393,17 @@ type AwsSsmMaintenanceWindowTaskEntry struct {
 	// (CANCEL_TASK). Unset = CONTINUE_TASK (AWS's default).
 	CutoffBehavior string `protobuf:"bytes,9,opt,name=cutoff_behavior,json=cutoffBehavior,proto3" json:"cutoff_behavior,omitempty"`
 	// What the task runs on: registered window targets (key
-	// "WindowTargetIds" with target IDs from the target_ids output) or
-	// ad-hoc selectors when the window allows unassociated targets.
-	// Unset = an untargeted task (no rate controls).
+	// "WindowTargetIds") or ad-hoc selectors when the window allows
+	// unassociated targets. A "WindowTargetIds" value may be the NAME of
+	// a target entry declared in this spec - the modules resolve it to
+	// the registration's cloud-generated ID at deploy (the name-based
+	// join); values naming no in-spec entry pass through unchanged for
+	// externally registered target IDs. Unset = an untargeted task (no
+	// rate controls) - legal ONLY for Automation, Lambda, and Step
+	// Functions tasks: AWS rejects an untargeted RUN_COMMAND task
+	// server-side ("you must specify at least one resource as the
+	// target"), so RUN_COMMAND tasks must carry instance IDs or window
+	// target IDs.
 	Targets []*AwsSsmMaintenanceWindowTargetSelector `protobuf:"bytes,10,rep,name=targets,proto3" json:"targets,omitempty"`
 	// Type-specific invocation parameters. Unset = the task runs with
 	// the document's/function's own defaults.

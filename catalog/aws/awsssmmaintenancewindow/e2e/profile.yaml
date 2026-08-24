@@ -5,28 +5,27 @@ metadata:
 spec:
   # A maintenance window under live E2E, created DISABLED (the
   # presence-typed explicit-false enabled - its live proof) with one
-  # tag target matching nothing, an untargeted run-command task, and
-  # an automation task - nothing ever executes and the lane bills
-  # nothing (windows/targets/tasks are free).
+  # tag target matching nothing, a run-command task bound to that
+  # target BY NAME with rate controls, and an untargeted automation
+  # task - nothing ever executes and the lane bills nothing
+  # (windows/targets/tasks are free).
+  #
+  # Live-caught (proof session): RUN_COMMAND tasks REQUIRE targets
+  # server-side (400 "you must specify at least one resource as the
+  # target"); only Automation/Lambda/Step Functions tasks may run
+  # untargeted. The former registered-target deferral is CLOSED by the
+  # modules' name-based join: a WindowTargetIds value naming an in-spec
+  # target entry resolves to the cloud-generated registration ID.
   #
   # Deliberately not exercised live:
   #   - LAMBDA / STEP_FUNCTIONS task arms -- each needs a real function
   #     or state machine fixture as its task_arn. Unblock: AwsLambda /
   #     AwsStepFunction fixtures via scenario annotations.
-  #   - a task targeting a REGISTERED window target (key
-  #     WindowTargetIds) -- the target registration ID is
-  #     cloud-generated, so the scenario cannot carry it statically.
-  #     Unblock: a harness cross-resource-output token, or the import
-  #     round-trip (which walks target_ids/task_ids and proves the
-  #     composite identities regardless).
   #   - run-command S3/CloudWatch/SNS delivery -- output nothing ever
   #     writes; needs bucket/log-group/topic fixtures. Unblock:
   #     fixtures via scenario annotations when the proof queue wants
   #     the delivery path.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q42
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

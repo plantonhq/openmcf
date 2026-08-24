@@ -10,6 +10,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
+	kmstypes "github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3vectors"
@@ -203,4 +205,102 @@ func isS3BucketExists(err error) bool {
 	var owned *s3types.BucketAlreadyOwnedByYou
 	var exists *s3types.BucketAlreadyExists
 	return errors.As(err, &owned) || errors.As(err, &exists)
+}
+
+// Standing KMS key fixture for the AgentCore token-vault lanes. The
+// vault's revert path carries a server contract no per-lane fixture can
+// satisfy: SetTokenVaultCMK validates the PREVIOUS key's state on every
+// write ("Old KMS Key validation failed ... expected KeyState:ENABLED"),
+// so reverting a CustomerManagedKey vault to ServiceManagedKey requires
+// the OLD customer key to still be ENABLED. A chain-deployed key dies
+// into its deletion window at the CMK lane's fixture teardown, wedging
+// the vault before the revert lane runs (live-caught). The standing key
+// stays ENABLED across lanes and runs, so the CMK lane binds it and the
+// service-managed lane's revert always finds it alive.
+//
+// The fixture is a STANDING account fixture (the S3 Vectors class): one
+// symmetric key costs USD 1/month at rest, and the alias makes the
+// ensure idempotent (KMS keys are unnamed -- the alias is the findable
+// handle). It is intentionally NOT torn down per run; the account
+// janitor policy governs it like the other seeded fixtures. The ensure
+// self-heals a key found disabled or inside its deletion window
+// (cancel + re-enable) -- the same rescue recipe the kind's GUIDE
+// teaches for a wedged vault.
+const (
+	// TokenVaultKMSKeyArnEnvVar is the ${E2E_ENV:...} token variable the
+	// token-vault CMK scenario references for the standing key's ARN.
+	TokenVaultKMSKeyArnEnvVar = "PLANTON_E2E_ACETV_KMS_KEY_ARN"
+
+	tokenVaultKMSKeyFixtureAlias = "alias/planton-e2e-acetv"
+)
+
+// EnsureTokenVaultKMSKeyFixture idempotently creates (or revives) the
+// standing token-vault KMS key and exports TokenVaultKMSKeyArnEnvVar for
+// scenario token expansion. Call it from the token-vault test entrypoint
+// BEFORE running scenarios.
+func EnsureTokenVaultKMSKeyFixture(ctx context.Context) error {
+	if os.Getenv(TokenVaultKMSKeyArnEnvVar) != "" {
+		return nil
+	}
+
+	region := firstNonEmpty(os.Getenv("E2E_AWS_REGION"), os.Getenv("AWS_REGION"), defaultRegion)
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return errors.Wrap(err, "failed to load AWS config for the token-vault KMS fixture")
+	}
+	client := kms.NewFromConfig(cfg)
+
+	var keyArn string
+	describe, err := client.DescribeKey(ctx, &kms.DescribeKeyInput{
+		KeyId: aws.String(tokenVaultKMSKeyFixtureAlias),
+	})
+	switch {
+	case err == nil:
+		meta := describe.KeyMetadata
+		keyArn = aws.ToString(meta.Arn)
+		// Self-heal: a prior teardown may have scheduled deletion or
+		// disabled the key -- the vault contract needs ENABLED.
+		if meta.KeyState == kmstypes.KeyStatePendingDeletion {
+			if _, err := client.CancelKeyDeletion(ctx, &kms.CancelKeyDeletionInput{KeyId: meta.KeyId}); err != nil {
+				return errors.Wrap(err, "cancel the standing key's scheduled deletion")
+			}
+		}
+		if meta.KeyState != kmstypes.KeyStateEnabled {
+			if _, err := client.EnableKey(ctx, &kms.EnableKeyInput{KeyId: meta.KeyId}); err != nil {
+				return errors.Wrap(err, "re-enable the standing key")
+			}
+		}
+	case isKMSNotFound(err):
+		created, err := client.CreateKey(ctx, &kms.CreateKeyInput{
+			Description: aws.String("Planton E2E standing key for AgentCore token-vault lanes"),
+			Tags: []kmstypes.Tag{
+				{TagKey: aws.String("managed-by"), TagValue: aws.String("planton-e2e")},
+			},
+		})
+		if err != nil {
+			return errors.Wrap(err, "create the standing token-vault key")
+		}
+		keyArn = aws.ToString(created.KeyMetadata.Arn)
+		if _, err := client.CreateAlias(ctx, &kms.CreateAliasInput{
+			AliasName:   aws.String(tokenVaultKMSKeyFixtureAlias),
+			TargetKeyId: created.KeyMetadata.KeyId,
+		}); err != nil {
+			return errors.Wrapf(err, "alias the standing key as %s", tokenVaultKMSKeyFixtureAlias)
+		}
+	default:
+		return errors.Wrapf(err, "describe %s", tokenVaultKMSKeyFixtureAlias)
+	}
+
+	if err := os.Setenv(TokenVaultKMSKeyArnEnvVar, keyArn); err != nil {
+		return errors.Wrap(err, "export the standing key ARN")
+	}
+	fmt.Printf("  [aws] token-vault KMS key fixture ready: %s\n", keyArn)
+	return nil
+}
+
+// isKMSNotFound matches the alias-not-found class of the describe
+// (idempotent ensure; a missing alias means create key + alias).
+func isKMSNotFound(err error) bool {
+	var notFound *kmstypes.NotFoundException
+	return errors.As(err, &notFound)
 }

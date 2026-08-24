@@ -1267,6 +1267,14 @@ spec:
       # parameter always shows it false.
       config_only_attributes:
         - overwrite
+      # The provider's import populates the sensitive `value` attribute
+      # only, never its plaintext twin `insecure_value` -- a config
+      # authored on the insecure_value render path re-sends the same
+      # content on the first post-import plan (a server-side no-op;
+      # live-caught by the blind round-trip). `value` itself stays
+      # undeclared so real content drift still fails the gate.
+      write_normalized_attributes:
+        - insecure_value
       notes: >-
         The parameter's name including any hierarchical path (`aws ssm
         describe-parameters` shows Name); a full parameter ARN imports

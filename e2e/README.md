@@ -1307,6 +1307,33 @@ a zero value plants that value permanently on the name — expect
 "unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
 manager, not the service default.
 
+**Settings whose revert path validates the PREVIOUS state need that old
+dependency ALIVE at revert time — a per-lane fixture cannot carry them.**
+The AgentCore token vault is the canonical case (live-caught 2026-08-24):
+SetTokenVaultCMK validates the OLD key's state on EVERY write, so
+reverting a CustomerManagedKey vault to ServiceManagedKey fails with "Old
+KMS Key validation failed ... expected KeyState:ENABLED" once the old key
+is disabled or in its deletion window. A chain-deployed KMS fixture dies
+into exactly that window at the CMK lane's DEPENDENCIES-DOWN, wedging the
+shared account's vault before the revert lane runs. The lane shape for
+this class is a STANDING fixture (the S3 Vectors seam):
+`aa_e2e.EnsureTokenVaultKMSKeyFixture` keeps one alias-addressed key
+(`alias/planton-e2e-acetv`, ~USD 1/month) ENABLED across lanes and runs,
+self-healing a key found mid-deletion (cancel + re-enable — the same
+recipe that un-wedges a stranded vault: cancel-key-deletion, enable-key,
+apply ServiceManagedKey, re-schedule).
+
+**Services WRITE zero-byte permission-check canaries into policy-granted
+buckets at CONFIGURE time — and the canaries outlive the configuration.**
+Bedrock invocation logging is the canonical case (live-caught
+2026-08-24): PutModelInvocationLoggingConfiguration validates the bucket
+policy by writing `amazon-bedrock-logs-permission-check` objects under
+EVERY configured S3 prefix (archive AND CloudWatch large-data spillover)
+with zero model invocations ever made, and deleting the configuration
+does not remove them. Any bucket fixture a service configuration ever
+points at must ship `forceDestroy: true` or its DEPENDENCIES-DOWN fails
+BucketNotEmpty — that failure is this class, not a leaked lane resource.
+
 **Cross-region satellites deleted ASYNCHRONOUSLY by the service are an
 orphan class the primary-region check never sees.** Secrets Manager is the
 canonical case (live-caught 2026-08-13): RemoveRegionsFromReplication only

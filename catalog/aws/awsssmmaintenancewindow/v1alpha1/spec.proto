@@ -286,9 +286,17 @@ message AwsSsmMaintenanceWindowTaskEntry {
   ];
 
   // What the task runs on: registered window targets (key
-  // "WindowTargetIds" with target IDs from the target_ids output) or
-  // ad-hoc selectors when the window allows unassociated targets.
-  // Unset = an untargeted task (no rate controls).
+  // "WindowTargetIds") or ad-hoc selectors when the window allows
+  // unassociated targets. A "WindowTargetIds" value may be the NAME of
+  // a target entry declared in this spec - the modules resolve it to
+  // the registration's cloud-generated ID at deploy (the name-based
+  // join); values naming no in-spec entry pass through unchanged for
+  // externally registered target IDs. Unset = an untargeted task (no
+  // rate controls) - legal ONLY for Automation, Lambda, and Step
+  // Functions tasks: AWS rejects an untargeted RUN_COMMAND task
+  // server-side ("you must specify at least one resource as the
+  // target"), so RUN_COMMAND tasks must carry instance IDs or window
+  // target IDs.
   repeated AwsSsmMaintenanceWindowTargetSelector targets = 10 [(buf.validate.field).repeated.max_items = 5];
 
   // Type-specific invocation parameters. Unset = the task runs with
