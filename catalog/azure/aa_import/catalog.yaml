@@ -529,30 +529,22 @@ spec:
     - terraform_type: azurerm_mongo_cluster
       pulumi_type: azure:mongocluster/mongoCluster:MongoCluster
       id_format: "{mongo_cluster_id}"
-      # The provider's Read never reads either value back -- it echoes prior
-      # state (mongo_cluster_resource.go: "API doesn't return the value of
-      # administrator_password" / "... of create_mode"), so a blind import
-      # holds both empty and the config re-asserts them as an in-place
-      # update; the provider's CustomizeDiff waives create_mode's ForceNew
-      # for exactly the import case (old value empty). create_mode is a
-      # create-time discriminator with no cloud-side existence
-      # (config-only); the password is the never-read-back secret class
-      # (the account_key/client_secret/shared_key precedent).
-      config_only_attributes: [create_mode]
-      write_normalized_attributes: [administrator_password]
       # The ARM API never returns create_mode (the provider's Read echoes
-      # prior state -- azure-rest-api-specs#31266), so an imported state
-      # cannot carry it and a config that sets any mode plans a one-time
-      # in-place update after import. The provider's own CustomizeDiff
-      # deliberately skips ForceNew when the old value is empty (the
-      # import case), so the update is safe convergence, never a replace.
+      # prior state -- mongo_cluster_resource.go: "API doesn't return the
+      # value of create_mode"; azure-rest-api-specs#31266), so an imported
+      # state cannot carry it and a config that sets any mode plans a
+      # one-time in-place update after import. The provider's own
+      # CustomizeDiff deliberately skips ForceNew when the old value is
+      # empty (the import case), so the update is safe convergence, never
+      # a replace -- create_mode is a create-time discriminator with no
+      # cloud-side existence (config-only).
       config_only_attributes: [create_mode]
       # The admin password is write-only (the API never returns it; Read
       # echoes prior state), so a blind import holds it empty and the
       # first post-adoption apply re-asserts the configured value -- an
       # in-place update. Rotation stays a real update, so this is the
-      # write-normalized secret class (the account_key/client_secret
-      # precedent), never ignore_changes.
+      # write-normalized secret class (the account_key/client_secret/
+      # shared_key precedent), never ignore_changes.
       write_normalized_attributes: [administrator_password]
     # Composed into AzureMongoCluster: one rule per firewall_rules
     # entry, addressed under the cluster

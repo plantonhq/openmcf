@@ -15,10 +15,30 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	yamlv3 "gopkg.in/yaml.v3"
 
 	componentv1 "github.com/plantonhq/planton/iac/componentimportmap/v1"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
+
+// requireStrictYAML fails the test when a file does not survive a strict YAML
+// parse -- most importantly, when a mapping carries the same key twice. The
+// production loader (pkg/protobufyaml -> sigs.k8s.io/yaml) silently keeps the
+// LAST duplicate key, so a duplicated key passes this repo's own loading while
+// strict downstream parsers of the SAME files (the platform console's
+// catalog-data bundler) refuse the whole document. yaml.v3 rejects duplicate
+// keys by default, naming both lines.
+func requireStrictYAML(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", path, err)
+	}
+	var doc any
+	if err := yamlv3.Unmarshal(data, &doc); err != nil {
+		t.Errorf("%s: strict YAML parse failed (duplicate keys break strict downstream parsers even when the lenient loader tolerates them): %v", path, err)
+	}
+}
 
 var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"([A-Za-z0-9_-]+)"`)
 
@@ -61,6 +81,7 @@ func TestImportMapConformance(t *testing.T) {
 	}
 
 	for provider, components := range mappedKinds {
+		requireStrictYAML(t, ProviderCatalogPath(root, provider))
 		catalog, err := LoadProviderCatalog(root, provider)
 		if err != nil {
 			t.Fatalf("provider catalog for %s: %v", provider, err)
@@ -145,6 +166,7 @@ func TestImportMapConformance(t *testing.T) {
 				if err != nil {
 					t.Fatalf("component import map path: %v", err)
 				}
+				requireStrictYAML(t, filepath.Join(root, mapRelPath))
 
 				declaredValues := map[string]*componentv1.ImportValue{}
 				for _, v := range m.GetSpec().GetValues() {
