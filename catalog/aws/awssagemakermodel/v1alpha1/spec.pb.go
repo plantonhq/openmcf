@@ -151,10 +151,17 @@ type AwsSagemakerModelContainer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// ECR registry path of the inference image (max 255 characters, no
 	// whitespace). Example:
-	// "746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+	// "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
 	// (AWS-owned per-region registries host the built-in framework
-	// images). At least one of `image` and `model_package_arn` is
-	// required.
+	// images). NOTE the registry ACCOUNT differs per region for AWS's
+	// prebuilt images (us-west-2 is 246618743249 for the
+	// scikit-learn/XGBoost library; us-west-1 is 746614075791) - a
+	// wrong-region account fails CreateModel with a MISLEADING 400
+	// claiming the repository "does not grant ... to
+	// sagemaker.amazonaws.com service principal" (live-caught
+	// 2026-08-25). Derive accounts from the sagemaker-python-sdk
+	// image_uri_config files, never from another region's example. At
+	// least one of `image` and `model_package_arn` is required.
 	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
 	// Deploy from a versioned model package in the model registry instead
 	// of a raw image (an "arn:aws:sagemaker:...:model-package/..." ARN).

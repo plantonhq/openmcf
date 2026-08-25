@@ -33,4 +33,4 @@ spec:
       fieldPath: status.outputs.role_arn
   size: Small
   automaticModelRegistration: true
-  weeklyMaintenanceWindowStart: TUE:03:30
+  weeklyMaintenanceWindowStart: Tue:03:30

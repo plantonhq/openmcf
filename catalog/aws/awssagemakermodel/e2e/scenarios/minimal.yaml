@@ -1,8 +1,12 @@
 # AwsSagemakerModel minimal scenario: a single container serving the
 # AWS-owned us-west-2 scikit-learn image (the prebuilt-registry path -
 # no fixture, no ECR dependency; upstream's own tests resolve the same
-# registry). Proves the create -> describable lifecycle both engines
-# share. Models are free - only endpoints deploying them bill.
+# registry). The registry ACCOUNT is per-region: us-west-2 is
+# 246618743249 (the scikit-learn/XGBoost library account) - the
+# us-west-1 account 746614075791 fails CreateModel with a misleading
+# service-principal-grant 400 (live-caught 2026-08-25). Proves the
+# create -> describable lifecycle both engines share. Models are free -
+# only endpoints deploying them bill.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerModel
 metadata:
@@ -26,4 +30,4 @@ spec:
       name: planton-oss-e2e-sagemaker-execution-role
       fieldPath: status.outputs.role_arn
   primaryContainer:
-    image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+    image: 246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1

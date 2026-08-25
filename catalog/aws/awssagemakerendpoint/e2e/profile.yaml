@@ -7,10 +7,13 @@ spec:
   # config-rolling fold (immutable configuration + repointable
   # endpoint). The minimal lane is a SERVERLESS variant ($0 idle -
   # bills per inference, never invoked; InService in ~2-5 min). The
-  # full-surface lane is ONE instance-backed ml.m5.large variant
-  # (~$0.115/hour for the lane's minutes; InService ~5-10 min) with
+  # full-surface lane is ONE instance-backed ml.t2.medium variant
+  # (~$0.056/hour for the lane's minutes; InService ~5-10 min) with
   # routing, capture to the shared bucket fixture, and a rolling
-  # deployment policy. Verification is DescribeEndpoint keyed on
+  # deployment policy. ml.t2.medium deliberately: the only x86 family
+  # whose endpoint quota defaults above zero on fresh accounts
+  # (default 2 - most types, ml.m5.large included, default to 0).
+  # Verification is DescribeEndpoint keyed on
   # endpoint_name (status InService) plus the configuration echo.
   #
   # Deliberately not exercised live: async inference (a distinct
@@ -24,6 +27,8 @@ spec:
   # pending_proof: forged this session to the full offline bar -- Q36
   # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 45

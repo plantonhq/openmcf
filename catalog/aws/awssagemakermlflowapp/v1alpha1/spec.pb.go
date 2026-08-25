@@ -58,8 +58,12 @@ type AwsSagemakerMlflowAppSpec struct {
 	// Registry: "AutoModelRegistrationEnabled" or
 	// "AutoModelRegistrationDisabled". Omitted = AWS default (disabled).
 	ModelRegistrationMode string `protobuf:"bytes,6,opt,name=model_registration_mode,json=modelRegistrationMode,proto3" json:"model_registration_mode,omitempty"`
-	// Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
-	// "SUN:03:00"). Omitted = AWS picks.
+	// Weekly maintenance window start, UTC 24-hour "Ddd:HH:MM" (e.g.
+	// "Sun:03:00"). The day token is MIXED-CASE by AWS's server-side
+	// contract - the MLflow APIs reject "SUN:03:00" with a
+	// ValidationException naming the exact regex
+	// (Mon|Tue|Wed|Thu|Fri|Sat|Sun), live-caught 2026-08-25 on the
+	// sibling tracking-server kind. Omitted = AWS picks.
 	WeeklyMaintenanceWindowStart string `protobuf:"bytes,7,opt,name=weekly_maintenance_window_start,json=weeklyMaintenanceWindowStart,proto3" json:"weekly_maintenance_window_start,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
@@ -156,7 +160,7 @@ const file_catalog_aws_awssagemakermlflowapp_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16account_default_status\x18\x04 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aENABLEDR\bDISABLEDR\x14accountDefaultStatus\x12\x83\x01\n" +
 	"\x12default_domain_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xae\b\x92\xd4a\x18status.outputs.domain_idR\x10defaultDomainIds\x12}\n" +
 	"\x17model_registration_mode\x18\x06 \x01(\tBE\xbaHB\xd8\x01\x01r=R\x1cAutoModelRegistrationEnabledR\x1dAutoModelRegistrationDisabledR\x15modelRegistrationMode\x12\x88\x01\n" +
-	"\x1fweekly_maintenance_window_start\x18\a \x01(\tBA\xbaH>\xd8\x01\x01r927^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$R\x1cweeklyMaintenanceWindowStartB\x83\x03\n" +
+	"\x1fweekly_maintenance_window_start\x18\a \x01(\tBA\xbaH>\xd8\x01\x01r927^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\\d|2[0-3]):[0-5]\\d$R\x1cweeklyMaintenanceWindowStartB\x83\x03\n" +
 	"2com.dev.planton.aws.awssagemakermlflowapp.v1alpha1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/catalog/aws/awssagemakermlflowapp/v1alpha1;awssagemakermlflowappv1alpha1\xa2\x02\x04DPAA\xaa\x02.Dev.Planton.Aws.Awssagemakermlflowapp.V1alpha1\xca\x02.Dev\\Planton\\Aws\\Awssagemakermlflowapp\\V1alpha1\xe2\x02:Dev\\Planton\\Aws\\Awssagemakermlflowapp\\V1alpha1\\GPBMetadata\xea\x022Dev::Planton::Aws::Awssagemakermlflowapp::V1alpha1b\x06proto3"
 
 var (

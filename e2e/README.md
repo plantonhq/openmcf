@@ -1193,6 +1193,50 @@ NAT gateway is the same order; an NLB scenario ~6 min per engine (create
 import round-trip when `PLANTON_E2E_IMPORT_ROUNDTRIP=1` is set (it re-imports
 and re-plans every resource, roughly doubling a component's Terraform lane).
 
+**Probe Service Quotas BEFORE any instance-backed SageMaker lane — most
+endpoint instance quotas default to ZERO on every account.** The per-type
+`... for endpoint usage` quota is 0 by AWS DEFAULT for nearly every
+instance family (ml.m5.large and ml.c6i.large included — verified against
+`get-aws-default-service-quota`, 2026-08-25): CreateEndpoint fails with
+ResourceLimitExceeded and no module or fixture change can fix it. The
+entry-level exceptions whose default is 2 are ml.t2.\* (x86) and
+ml.m6g.large (Graviton — only for arm64 images); serverless needs no
+per-type quota (defaults: 5 endpoints / 10 concurrency per region), and
+notebook `ml.t3.medium` defaults healthy. A scenario that is supposed to
+run on any fresh account must therefore ride a default-quota type — a
+quota-blocked type in a canonical scenario is an authoring defect, not an
+environment deferral (the endpoint full-surface scenario was re-pointed
+ml.m5.large → ml.t2.medium on exactly this). Probe with
+`aws service-quotas list-service-quotas --service-code sagemaker` and
+check the DEFAULT (not just the applied value) before concluding a type
+is portable: an applied nonzero value can be an account-specific grant.
+
+**When a ValidationException NAMES a regex, the spec's pattern must MIRROR
+it exactly — never re-derive the character class from convention.** AWS's
+maintenance-window day tokens looked like the uppercase `DDD:HH:MM`
+convention siblings use (EKS, ElastiCache accept `sun:23:00`/`mon:...`
+lowercase), but SageMaker's MLflow APIs reject `TUE:03:30` with a 400
+naming their exact contract: `(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\d|2[0-3]):([0-5]\d)`
+— MIXED-case days (live hit 2026-08-25; the kind's own CEL had taught the
+uppercase form, so every manifest obeying the spec failed at create). When
+a create error quotes the service regex, copy it into the spec pattern
+verbatim and add the rejected casing as an explicit invalid-case spec
+test; casing conventions do not transfer across AWS service families.
+
+**A CreateModel 400 naming the sagemaker.amazonaws.com service-principal
+grant means WRONG REGISTRY ACCOUNT, not a fixable policy.** AWS's prebuilt
+framework images live in per-region registry ACCOUNTS (scikit-learn/
+XGBoost library: us-west-2 = 246618743249, us-west-1 = 746614075791), and
+a cross-region transposition fails CreateModel with "The repository of
+your image ... does not grant ecr:GetDownloadUrlForLayer, ecr:BatchGetImage,
+ecr:BatchCheckLayerAvailability permission to sagemaker.amazonaws.com
+service principal" — which reads like a repo-policy problem on a repo you
+could never edit anyway (live hit 2026-08-25, identical 400 both engines).
+The fix is the scenario/manifest literal; derive accounts from the pinned
+provider's `prebuilt_ecr_image_data_source.go` region maps or the
+sagemaker-python-sdk image_uri_config files, never from another region's
+example.
+
 **Server-side-only AWS contracts: budget one live probe before a module
 debugging spiral.** Some AWS create/update contracts appear in no provider
 schema, validator, or CustomizeDiff — they live only in the service (the
@@ -1207,7 +1251,22 @@ mappings on rule-mode domains, and CreateRoutingRule rejects everything
 but REST-protocol targets ("Only the REST protocol type is supported" —
 that one IS in the provider's website doc, three times, while the schema
 types api_id as a plain string: read the resource's DOC page during
-design, not only its schema); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
+design, not only its schema); on SageMaker endpoints, CreateEndpoint
+rejects a RollingUpdatePolicy DeploymentConfig when the fleet is a single
+instance ("Cannot update endpoint with single instance using
+RollingUpdatePolicy ... use BlueGreenUpdatePolicy or removing
+DeploymentConfig" — 2026-08-25; the kind's CEL now front-loads the
+single-variant case), and an endpoint whose model has NO artifacts parks
+at Failed after ~20 minutes ("Unable to successfully stand up your model
+within the allotted 180 second timeout" — an artifact-less framework
+container passes CreateModel but can never answer ping health checks, so
+an ENDPOINT fixture model must be SERVABLE: the harness stages a
+~650-byte XGBoost booster via the endpoint's consumer-scoped object-set
+override), and note the failed-create endpoint STRANDS cloud-side outside
+the engine's state (Pulumi never registered it, the stack destroy missed
+it, and the sibling engine's same-name create then 409s "Cannot create
+already existing endpoint" — delete the Failed endpoint explicitly before
+any relaunch); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
 validate that the associated role's trust policy allows rds.amazonaws.com
 to assume it and 400 InvalidParameterValue otherwise ("IAM role ARN value
 is invalid or does not include the required permissions") — a composed
@@ -1336,6 +1395,21 @@ before any event is ever delivered, and they survive the trail's
 delete. Any bucket fixture a service configuration ever
 points at must ship `forceDestroy: true` or its DEPENDENCIES-DOWN fails
 BucketNotEmpty — that failure is this class, not a leaked lane resource.
+
+**Services ASSUME the manifest's execution role at CREATE time and
+probe bucket ACL verbs — role fixtures need the service's own
+managed-policy verb set, not just object read/write.** SageMaker
+Feature Store is the canonical case (live-caught 2026-08-25, Q36):
+CreateFeatureGroup assumes the spec's role_arn and calls
+s3:GetBucketAcl on the offline-store bucket before creating anything
+(writes also carry s3:PutObjectAcl — the exact pair AWS's
+AmazonSageMakerFeatureStoreAccess managed policy grants). A role
+fixture granting only object verbs plus GetBucketLocation fails the
+create on BOTH engines with ValidationException "Invalid S3Uri"
+wrapping the S3 AccessDenied — the bucket exists and the URI is fine;
+the words are misdirection. When a lane's create names a role AND a
+bucket, read the service's own managed policy for that feature and
+grant the fixture role that verb set verbatim.
 
 **Some AWS APIs MASK not-found as AccessDeniedException — a verifier's
 absent-check must learn the service's real gone-signal.** AWS Backup's

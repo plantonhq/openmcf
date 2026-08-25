@@ -38,6 +38,20 @@ running real-time inference in production.
   costs nothing idle and needs no capacity math; move to
   instance-backed variants when latency floors, GPU needs, or
   provisioned-concurrency costs say so.
+- **Request instance quotas BEFORE the first instance-backed deploy.**
+  On a fresh AWS account, the per-type "for endpoint usage" Service
+  Quota defaults to ZERO for nearly every instance family — ml.m5.large
+  and ml.c6i.large included — and `CreateEndpoint` fails with
+  ResourceLimitExceeded until Service Quotas grants an increase
+  (minutes to days). The entry-level exceptions with a default of 2 are
+  ml.t2.* (x86) and ml.m6g.large (Graviton — your container image must
+  be arm64). Serverless variants need no per-type quota (defaults: 5
+  serverless endpoints, 10 total concurrency per region) — which is
+  half the reason to start serverless. Probe first:
+  `aws service-quotas list-service-quotas --service-code sagemaker`.
+  Size the quota for rollouts, not steady state: a rolling deploy
+  transiently runs old + new batches together, and blue/green doubles
+  the whole fleet.
 - **Shape the crossing before you need it.** Configuration rolls are
   routine (every capacity change is one) — give production endpoints a
   `deployment` policy with `auto_rollback_alarm_names` so a bad model
@@ -57,6 +71,19 @@ running real-time inference in production.
   `termination_wait_seconds` after the shift); rolling replaces
   batches in place with no parallel-fleet cost — pick by budget and
   blast radius.
+- **Rolling needs a fleet.** AWS rejects a rolling policy on a
+  single-instance endpoint at create AND update ("Cannot update
+  endpoint with single instance using RollingUpdatePolicy" —
+  live-verified; the spec front-loads the single-variant case). A
+  one-instance endpoint uses blue/green or omits `deployment`.
+- **An endpoint is only as healthy as its model's artifacts.** A model
+  whose container has nothing to load (no `model_data_url` /
+  `model_data_source`) passes CreateModel but can never answer the
+  endpoint's ping health checks — the endpoint parks at `Failed`
+  ("Unable to successfully stand up your model within the allotted
+  180 second timeout", live-verified on a serverless variant). And a
+  FAILED create can strand the endpoint object outside your IaC state:
+  delete it explicitly before retrying the same name.
 
 ---
 

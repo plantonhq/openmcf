@@ -30,4 +30,4 @@ spec:
       name: planton-oss-e2e-sagemaker-execution-role
       fieldPath: status.outputs.role_arn
   modelRegistrationMode: AutoModelRegistrationEnabled
-  weeklyMaintenanceWindowStart: SUN:03:00
+  weeklyMaintenanceWindowStart: Sun:03:00

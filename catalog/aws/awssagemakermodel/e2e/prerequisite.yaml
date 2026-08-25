@@ -1,9 +1,13 @@
 # AwsSagemakerModel install profile used as a prerequisite by the
 # AwsSagemakerEndpoint lanes (a variant cannot exist without a model).
-# The smallest deployable model: the AWS-owned us-west-2 scikit-learn
-# image on the family's shared execution role - free, instant, and
-# fully self-contained (the role fixture is this manifest's own
-# prerequisite).
+# The smallest SERVABLE model: the AWS-owned us-west-2 XGBoost library
+# image serving a ~650-byte staged booster artifact. Servability is
+# load-bearing - a model WITHOUT artifacts passes CreateModel but can
+# never pass an endpoint's ping health checks (the endpoint parks at
+# Failed, live-caught 2026-08-25), so an endpoint fixture model must
+# carry something its container can actually load. The artifact is
+# staged by the consumer-scoped AwsS3ObjectSet override; the role
+# fixture's S3 statement covers the artifact read.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerModel
 metadata:
@@ -16,7 +20,7 @@ metadata:
     e2e-component: awssagemakermodel
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "AwsIamRole"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3ObjectSet"
   tags:
     - planton-e2e
 spec:
@@ -27,4 +31,5 @@ spec:
       name: planton-oss-e2e-sagemaker-execution-role
       fieldPath: status.outputs.role_arn
   primaryContainer:
-    image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+    image: 246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.7-1
+    modelDataUrl: s3://planton-oss-e2e-awss3bucket-prereq/e2e/sagemaker-xgboost-model.tar.gz

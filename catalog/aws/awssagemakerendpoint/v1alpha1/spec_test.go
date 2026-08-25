@@ -166,6 +166,26 @@ var _ = ginkgo.Describe("AwsSagemakerEndpointSpec validations", func() {
 
 	ginkgo.Describe("When invalid input is passed", func() {
 
+		ginkgo.Context("with a rolling policy on a single-instance fleet", func() {
+			ginkgo.It("should return a validation error (AWS rejects RollingUpdatePolicy on one instance, live-caught)", func() {
+				spec := &AwsSagemakerEndpointSpec{
+					Region:             "us-west-2",
+					ProductionVariants: []*AwsSagemakerEndpointVariant{instanceVariant("solo")},
+					Deployment: &AwsSagemakerEndpointDeployment{
+						Rolling: &AwsSagemakerEndpointRollingPolicy{
+							MaximumBatchSize: &AwsSagemakerEndpointCapacitySize{
+								Type:  "CAPACITY_PERCENT",
+								Value: 50,
+							},
+							WaitIntervalSeconds: 60,
+						},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with no production variants", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalEndpoint()
