@@ -7,13 +7,20 @@ spec:
   connection:
     name: partner-api
     description: Partner ingestion API (api-key auth)
+    # Every credential-bearing field on this kind is sensitive: the
+    # backend accepts ONLY $secret/<slug> org-secret references here,
+    # never plaintext. Create the named org secret first (or pick an
+    # existing one in the wizard).
     apiKey:
       key: x-api-key
-      value: replace-with-real-key
+      value: $secret/partner-api-key
     invocationHttpParameters:
+      # AWS masks every connection http-parameter value on read, so
+      # the spec secret-types them ALL - even a static routing header
+      # value must be a $secret reference in this kind.
       header:
         - key: x-source
-          value: eventbridge
+          value: $secret/partner-webhook-source-header
   destination:
     name: partner-webhook
     description: Partner order-events webhook

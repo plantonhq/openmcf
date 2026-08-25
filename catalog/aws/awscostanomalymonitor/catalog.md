@@ -25,6 +25,11 @@ hears, how often, and above what impact.
 - Cost Explorer must be enabled (first visit to the console enables
   it; data appears within 24 hours).
 - Anomaly detection is free.
+- One services (DIMENSIONAL) monitor per account — and AWS auto-creates
+  it (`Default-Services-Monitor`) on accounts that enabled Cost
+  Explorer on or after 2023-03-27. If it exists, import it rather than
+  creating (a second create fails); CUSTOM monitors have no such limit
+  (up to 500).
 
 ## Deploy
 

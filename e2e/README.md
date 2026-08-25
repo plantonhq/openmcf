@@ -1479,6 +1479,47 @@ settings-singleton or fixture-serving kind that region-isolated lanes
 compose off-ambient needs the output; the kind's own same-region lane
 passing proves nothing about this gap.
 
+**AWS can PRE-OCCUPY an account singleton — census the occupant before
+designing a create lane, because the collision is unavoidable, not
+schedulable.** The known account-singleton classes (one
+FIELD_INDEX_POLICY per region, one Config recorder, one default DLM
+policy per type) are collision risks BETWEEN lanes — serialization
+fixes them. A distinct sub-class exists where AWS ITSELF creates the
+singleton occupant: every account that enabled Cost Explorer on or
+after 2023-03-27 carries an auto-created DIMENSIONAL/SERVICE anomaly
+monitor ("Default-Services-Monitor"), so CreateAnomalyMonitor for that
+shape fails with "ValidationException: Limit exceeded on dimensional
+spend monitor creation" on effectively EVERY modern account, ours
+included (live-caught 2026-08-25, identical on both engines). No
+serialization or re-run helps; a canonical scenario riding such a
+shape is an authoring defect (the zero-default-quota class, cost
+edition). The fix is scenario-level: ride a non-singleton arm (the
+CUSTOM monitor), record the pre-occupied arm as deliberately
+unexercised with its unblock in the profile, and teach adopters to
+IMPORT the auto-created occupant (the kinds' import maps already
+derive it). Census probe: `aws ce get-anomaly-monitors` — an occupant
+created near the account's Cost Explorer enablement date is AWS's,
+not an orphan; never sweep it.
+
+**Raw-JSON Expression documents must be authored in the provider's
+CANONICAL STORED form — copy the upstream test's document byte shape
+verbatim, nulls and all.** Two normalizations compose on `ce:`
+Expression strings (anomaly monitors' monitor_specification; expect
+the same on sibling ce: surfaces), each alone enough to fail the
+idempotency gate with a proposed replacement (both live-caught
+2026-08-25 in one lane): (1) the provider re-marshals the SDK's
+Expression struct on read, emitting EVERY member with `null` for
+unused ones — and null-vs-absent is not JSON-equivalent to
+`SuppressEquivalentJSONDiffs`, so a sparse document (only the members
+you use) never matches state; (2) CE echoes user cost-allocation tag
+keys back `user:`-prefixed (`aws:` for AWS-generated), so an
+unprefixed key never matches either. The upstream acceptance test
+spells the fully-populated document with `user:CostCenter` for exactly
+these reasons — deviating from the tested form to "clean it up" is how
+this class ships. The general rule for any raw-JSON-string attribute:
+the canonical form is whatever the provider's READ path re-marshals,
+not the minimal document AWS accepts at create.
+
 **Server-side MATERIALIZED FAMILIES break post-apply plan idempotency —
 send what AWS materializes, or declare what it fills in.** Three shapes
 of one class, all live-caught 2026-08-25 under the armed idempotency
@@ -1495,7 +1536,11 @@ control's default all-supported-types scope, and the pinned provider
 ships no diff suppression — scenarios declare the scope explicitly
 (upstream's own acceptance tests only exercise the scoped form; the
 default list grows with AWS, so hardcoding it in a module would freeze
-semantics — upstream gap recorded). Choose the fix shape by where the
+semantics — upstream gap recorded). A fourth instance (2026-08-25,
+Q43): Cost Explorer materializes a cost category rule's `type` as
+`REGULAR` when omitted — both modules now always send it, declared
+value over the REGULAR default (a single pinned enum value: the
+module-always-send shape). Choose the fix shape by where the
 truth lives: pinned enum → module always-send; spec-surface map →
 manifest completeness; growing service default → explicit declaration
 plus teaching.

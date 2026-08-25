@@ -21,9 +21,10 @@ spec:
   #     the import catalog (AWS never returns secret values) -- the
   #     blind import round-trip tolerates exactly auth_parameters.
   #
-  # pending_proof: forged this session to the full offline bar -- Q45
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q45): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under
+  # the armed apply-idempotency gate.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

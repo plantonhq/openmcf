@@ -157,6 +157,16 @@ The monitor's shape. DIMENSIONAL segments spend by one built-in
 dimension; CUSTOM watches a Cost Explorer expression's slice.
 Changing the shape replaces the monitor.
 
+DIMENSIONAL is an account SINGLETON: AWS permits exactly one
+services monitor per account, and AUTO-CREATES it
+("Default-Services-Monitor") for every account that enabled Cost
+Explorer on or after 2023-03-27 - so on most accounts creating a
+DIMENSIONAL monitor fails at apply with "ValidationException:
+Limit exceeded on dimensional spend monitor creation"
+(server-verified 2026-08-25). If your account already carries the
+default monitor, import it instead of creating, or use CUSTOM
+(up to 500 custom monitors per account).
+
 - rule: {"string":{"in":["DIMENSIONAL","CUSTOM"]}}
 
 ### spec.monitorDimension
@@ -165,7 +175,10 @@ Changing the shape replaces the monitor.
 
 For DIMENSIONAL monitors: the segmentation dimension. SERVICE is
 AWS's recommended default posture (one anomaly stream per
-service). Create-only.
+service) - and exactly the shape AWS auto-provisions as
+"Default-Services-Monitor" on post-2023 Cost Explorer accounts
+(see monitor_type: one per account, import rather than create
+when it already exists). Create-only.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SERVICE","LINKED_ACCOUNT","TAG","COST_CATEGORY"]}}
 
@@ -177,6 +190,19 @@ For CUSTOM monitors: the Cost Explorer Expression (as free-form
 JSON, the AWS Expression document verbatim) selecting the spend
 slice to watch - e.g. {"Dimensions": {"Key": "LINKED_ACCOUNT",
 "Values": ["123456789012"]}}. Create-only.
+
+Author the document in its CANONICAL stored form or every
+subsequent plan proposes a replacement (both contracts
+server-verified 2026-08-25): (1) every root member present -
+And, CostCategories, Dimensions, Not, Or, Tags - with unused
+ones explicitly null (the provider re-marshals the SDK's
+Expression struct on read, emitting ALL members; null-vs-absent
+is not JSON-equivalent to its diff suppression); (2) tag keys
+carry Cost Explorer's canonical prefix - "user:<key>" for
+user-defined cost-allocation tags (e.g. "user:team"),
+"aws:<key>" for AWS-generated ones - because CE accepts an
+unprefixed key at create but echoes it back prefixed. The
+upstream provider's own tests spell exactly this form.
 
 ### spec.subscriptions
 

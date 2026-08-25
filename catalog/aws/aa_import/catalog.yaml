@@ -1771,12 +1771,18 @@ spec:
       pulumi_type: aws:ec2/vpcPeeringConnection:VpcPeeringConnection
       id_format: "{peering_connection_id}"
       cloud_control_type_name: AWS::EC2::VPCPeeringConnection
+      # auto_accept is the provider's accept-after-create INSTRUCTION,
+      # not a peering property - AWS stores nothing for it, so a blind
+      # import re-plans it (live-caught 2026-08-25).
+      config_only_attributes: [auto_accept]
     - terraform_type: aws_vpc_peering_connection_accepter
       pulumi_type: aws:ec2/vpcPeeringConnectionAccepter:VpcPeeringConnectionAccepter
       id_format: "{peering_connection_id}"
+      config_only_attributes: [auto_accept]
       notes: >-
         The same pcx- id as the connection (the accepter adopts it from
-        the accepter side).
+        the accepter side). auto_accept is config-only, as on the
+        connection itself.
 
     # --- Network ACLs --------------------------------------------------------------
     - terraform_type: aws_network_acl
