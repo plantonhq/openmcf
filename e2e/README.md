@@ -1059,6 +1059,41 @@ asking "should editing this field replace the resource?" -- no
 (immutable creation history) means ignore_changes; yes (rotatable
 secret) means the annotation.
 
+### Echo maps built from resource state are PARTIAL mid-import -- eager indexing kills the import
+
+Terraform modules that export import-derivation echo maps (for_each keys
+-> resource ids) typically build them FROM the resource instances
+(`{ for p, r in aws_x.this : p => r.id }`). At plan/apply the map is
+total -- every instance is in the graph -- but during a blind round-trip
+`tofu import` adds instances ONE AT A TIME, and evaluating a local that
+eagerly indexes the partial map for every config key hard-errors the
+import with "Invalid index" (live-caught on the REST gateway's path
+tree: importing `/health` evaluated the echo map's `/orders` entry
+before `/orders` was imported). The remedy is `try(map[key], null)` at
+the echo-map CONSUMPTION sites with a comment teaching why the try() is
+load-bearing -- the null entries heal as the remaining imports land, and
+the key can never be genuinely missing at plan time because map and
+consumer derive from the same spec. Resource-config references to the
+same maps are safe without try() (imports evaluate the target resource's
+config against the planned graph, not state); only locals-fed OUTPUTS
+evaluate against partial state.
+
+### Engine-side trigger arguments make a resource honestly not-importable even when an importer ships
+
+A resource whose behavior-bearing argument is ENGINE-side metadata the
+cloud never stores (the API Gateway deployment's `triggers` redeploy
+hash is the live-caught case; upstream's own docs say "the `triggers`
+argument cannot be imported") can never survive a blind round-trip: the
+import holds null, the config supplies the hash, and `triggers` forces
+replacement -- a guaranteed replace no tolerance may cover. The honest
+declaration is `not_importable_upstream_reason` (skip-and-recreate) even
+though an importer EXISTS upstream: the adopter's contract is that the
+first reconcile-apply mints a fresh instance from the adopted definition
+(for deployments, a behavioral no-op that repoints the stage). State the
+importer-exists-but nuance in the reason text -- the field name says
+"upstream" but the class is "cannot round-trip by construction", and the
+next reader deserves the distinction.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

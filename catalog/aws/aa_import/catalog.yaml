@@ -700,6 +700,12 @@ spec:
       # relevance_score) can widen on the import path the same way the
       # bedrockagent prompt variant floats do -- prune them from the
       # blind round-trip until upstream applies Float32 semantics.
+      # memory/memory_actual: AWS auto-provisions a managed memory for a
+      # memory-less harness; import reads BOTH the configured view and
+      # the computed actual (memory_actual, new in provider 6.59.0), so
+      # the post-import plan re-asserts the config's omission -- a
+      # server-side no-op (the auto-memory stays; memory_actual echoes
+      # it).
       config_only_attributes: [timeouts]
       write_normalized_attributes:
         - model.bedrock_model_config.temperature
@@ -708,6 +714,8 @@ spec:
         - model.gemini_model_config.top_p
         - model.openai_model_config.temperature
         - model.openai_model_config.top_p
+        - memory
+        - memory_actual
         - truncation.config.summarization.summary_ratio
         - memory.agentcore_memory_configuration.retrieval_config.relevance_score
     - terraform_type: aws_bedrockagentcore_online_evaluation_config
@@ -770,9 +778,16 @@ spec:
         Same composite as the method response.
     - terraform_type: aws_api_gateway_deployment
       pulumi_type: aws:apigateway/deployment:Deployment
-      id_format: "{rest_api_id}/{deployment_id}"
-      notes: >-
-        REST API id and deployment id separated by a slash.
+      not_importable_upstream_reason: >-
+        The upstream importer exists but cannot recover the `triggers`
+        argument (upstream-documented), and the module's
+        redeploy-on-change contract lives in that trigger hash -- a
+        blind import always replans a replace (triggers forces
+        replacement). The adopter's contract is skip-and-recreate: the
+        first apply mints a fresh deployment from the adopted
+        definition and repoints the stage, a behavioral no-op when the
+        definition matches (the prior deployment remains as API
+        deployment history until the API is deleted).
     - terraform_type: aws_api_gateway_stage
       pulumi_type: aws:apigateway/stage:Stage
       id_format: "{rest_api_id}/{stage_name}"

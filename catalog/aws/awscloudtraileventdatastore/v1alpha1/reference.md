@@ -25,6 +25,12 @@ purge. The delete is REFUSED while termination protection is on -
 set termination_protection_enabled to false and apply before
 destroying.
 
+AVAILABILITY: AWS has closed CloudTrail Lake to NEW customers -
+CreateEventDataStore fails with "CloudTrail Lake is no longer
+accepting new customers" on any account that has never created an
+event data store (live-verified 2026-08-25). Deploy only on an
+account already using Lake; there is no known exception process.
+
 ## Example
 
 ```yaml

@@ -14,9 +14,10 @@ spec:
   # value is the recommended path; supplying one is a secret-rotation
   # concern), and Marketplace product_code (needs a Marketplace listing).
   #
-  # pending_proof: forged this session to the full offline bar -- Q37
-  # proves it live.
+  # Proven live 2026-08-25: full-surface green on both engines first
+  # pass with the blind round-trip (plan + attached key + API key
+  # re-imported at no real change).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

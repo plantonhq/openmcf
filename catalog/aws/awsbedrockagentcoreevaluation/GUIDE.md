@@ -43,10 +43,9 @@ scoring agents in production.
 - **Start with a code evaluator.** Create does not invoke the Lambda,
   so the first evaluator is fixture-cheap and independent of Bedrock
   model access.
-- **LLM judges need model access.** A create that validates the
-  judge's model will fail in accounts that have not enabled that
-  foundation model — the same payment-instrument class as other
-  Bedrock kinds.
+- **Give the judge an inference-profile model id.** CreateEvaluator validates the judge model against the region's INFERENCE set — a bare on-demand foundation-model id fails with "not available in region" even when that model is regionally listed, while the cross-region profile form (`us.amazon.nova-2-lite-v1:0`) creates cleanly. The harness's model field has no such create-time gate (it validated nothing at create in live runs); its model is exercised only when a run executes.
+- **Judge instructions must embed the level's placeholders.** Each evaluator level requires at least one of its allowed single-brace placeholders in the instructions — for SESSION the set is `{available_tools}`, `{context}`, `{actual_tool_trajectory}`, `{expected_tool_trajectory}`, `{assertions}` — and CreateEvaluator rejects a plain-prose prompt naming the set. The spec front-loads the SESSION contract as a CEL.
+- **A memory-less harness still has a memory.** AWS auto-provisions a managed memory when `memory` is omitted (as it does the runtime environment). Import reads that auto-memory back, so the first plan after adopting an existing harness shows a memory diff that reconciles as a server-side no-op — declared import-normalized in the catalog, not drift.
 - **Online configs sample production, they do not create it.** Point
   them at log groups AgentCore observability actually writes to;
   sampling an empty group scores nothing and still bills the config's

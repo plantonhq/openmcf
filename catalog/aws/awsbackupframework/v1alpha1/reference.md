@@ -145,8 +145,17 @@ The parameter's value.
 
 `AwsBackupFrameworkControlScope`
 
-Which resources the control evaluates. Omit to evaluate
-everything the control applies to.
+Which resources the control evaluates. PREFER DECLARING THIS
+EXPLICITLY on resource-scoped controls (e.g.
+BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN): omitting it is valid
+at AWS - the control then evaluates everything it applies to -
+but AWS materializes its default all-supported-types scope
+server-side, and the pinned Terraform provider ships no diff
+suppression for that echo, so a scope-less control makes every
+later plan propose stripping a scope AWS will re-materialize
+(live-verified 2026-08-25; the provider's own acceptance tests
+only exercise the scoped form). Parameter-only checks (e.g. the
+minimum-retention check) take no scope and are unaffected.
 
 ### spec.controls[].scope.complianceResourceIds
 
@@ -184,6 +193,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsBackupFramewo
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.framework_arn` | `string` | The framework's ARN - what report plans reference. |
+| `status.outputs.region` | `string` | The AWS region the framework lives in. Frameworks are region-scoped and addressed by region + name, so any consumer (or verifier) reaching the framework off the ambient region needs this alongside the ARN. |
 
 ## Referenced By
 

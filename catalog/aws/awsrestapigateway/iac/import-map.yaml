@@ -100,9 +100,3 @@ spec:
       where_to_find: >-
         `aws apigateway get-client-certificates` (clientCertificateId)
         when stage.client_certificate.generate is true.
-    - name: deployment_id
-      derivations:
-        - from_stack_output: deployment_id
-      where_to_find: >-
-        `aws apigateway get-deployments --rest-api-id <id>` (id) -- the
-        deployment the stage currently serves.

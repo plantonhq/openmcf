@@ -315,6 +315,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsConfigRecorde
 | `status.outputs.recorder_name` | `string` | The recorder's name - AWS's regional singleton convention ("default"); also the provider's import ID for the recorder. |
 | `status.outputs.delivery_channel_name` | `string` | The delivery channel's name ("default"); set only when spec.delivery_channel is configured. |
 | `status.outputs.recording_enabled` | `bool` | Whether the recorder is running after apply (the folded recorder-status truth, echoed for chart consumers). |
+| `status.outputs.region` | `string` | The AWS region the recording posture lives in. Config's singletons are addressed by REGION + the literal name "default", so any consumer (or verifier) reaching the recorder off the ambient region needs this alongside recorder_name. |
 
 ## References
 

@@ -44,7 +44,7 @@ spec:
   defaultDomainIds:
     - value: d-abcdef123456
   modelRegistrationMode: AutoModelRegistrationEnabled
-  weeklyMaintenanceWindowStart: SUN:03:00
+  weeklyMaintenanceWindowStart: Sun:03:00
 ```
 
 ## Spec Fields
@@ -126,10 +126,14 @@ Registry: "AutoModelRegistrationEnabled" or
 
 `string`
 
-Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
-"SUN:03:00"). Omitted = AWS picks.
+Weekly maintenance window start, UTC 24-hour "Ddd:HH:MM" (e.g.
+"Sun:03:00"). The day token is MIXED-CASE by AWS's server-side
+contract - the MLflow APIs reject "SUN:03:00" with a
+ValidationException naming the exact regex
+(Mon|Tue|Wed|Thu|Fri|Sat|Sun), live-caught 2026-08-25 on the
+sibling tracking-server kind. Omitted = AWS picks.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\\d|2[0-3]):[0-5]\\d$"}}
 
 ## Outputs
 

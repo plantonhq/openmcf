@@ -20,9 +20,11 @@ spec:
   # (the domain exists independently of any record pointing at it) --
   # all offline-proven via e2e/manifest.yaml / spec tests.
   #
-  # pending_proof: forged this session to the full offline bar -- Q37
-  # proves it live.
+  # Proven live 2026-08-25: mapped-domain green on both engines first
+  # pass (~2.5 min each) with the blind round-trip (domain + root
+  # base-path mapping re-imported at no real change); no
+  # stage-propagation flake.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

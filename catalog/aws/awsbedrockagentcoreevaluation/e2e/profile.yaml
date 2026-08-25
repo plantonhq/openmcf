@@ -17,13 +17,20 @@ spec:
   # to -- unblock: compose AwsCloudwatchLogGroup), Gemini/OpenAI
   # harness vendors (need Secrets Manager API keys), and the explicit
   # runtime-environment arm (the omitted path is the computed default)
-  # -- all offline-proven via e2e/manifest.yaml. Whether LLM-judge /
-  # harness create validates Bedrock model access rides the Q37
-  # watch-list (the standing model-access payment-instrument deferral).
+  # -- all offline-proven via e2e/manifest.yaml.
   #
-  # pending_proof: forged this session to the full offline bar -- Q37
-  # proves it live.
+  # Proven live 2026-08-25: minimal + full-surface green on both
+  # engines with blind round-trips (evaluator/harness by bare id at no
+  # real change; harness memory/memory_actual declared
+  # import-normalized -- AWS auto-provisions a memory). The model-access
+  # question SETTLED: CreateEvaluator validates the judge model against
+  # the region's INFERENCE set (bare on-demand FM ids fail "not
+  # available in region"; the us. profile form creates) -- the
+  # payment-instrument wall was never reached, and the Nova judge
+  # avoids Marketplace entirely. Three server contracts front-loaded
+  # from this proof: harness-name regex, SESSION instruction
+  # placeholders, the judge-model teaching.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30
