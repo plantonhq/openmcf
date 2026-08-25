@@ -90,8 +90,18 @@ resource "aws_prometheus_query_logging_configuration" "this" {
 resource "aws_prometheus_resource_policy" "this" {
   count = var.spec.resource_policy != null ? 1 : 0
 
-  workspace_id    = aws_prometheus_workspace.this.id
-  policy_document = jsonencode(var.spec.resource_policy)
+  workspace_id = aws_prometheus_workspace.this.id
+  # AMP requires every statement's Resource to be exactly this
+  # workspace's own ARN - PutResourcePolicy rejects anything else with
+  # "Resource in policy does not match workspace resource ARN" (server
+  # contract) - so the module composes it and manifest documents never
+  # carry Resource.
+  policy_document = jsonencode(merge(var.spec.resource_policy, {
+    Statement = [
+      for statement in try(var.spec.resource_policy.Statement, []) :
+      merge(statement, { Resource = aws_prometheus_workspace.this.arn })
+    ]
+  }))
 }
 
 resource "aws_prometheus_anomaly_detector" "this" {

@@ -1577,8 +1577,13 @@ spec:
       id_format: "{canary_name}"
       # delete_lambda is delete-time engine behavior (whether teardown
       # also removes the Synthetics-managed Lambda), never a canary
-      # property AWS returns.
-      config_only_attributes: [delete_lambda]
+      # property AWS returns. The code-source family (s3_bucket/s3_key/
+      # s3_version/zip_file) and start_canary are create/update-time
+      # inputs the provider's Read never populates - GetCanary echoes
+      # only the staged copy's source_location_arn, and the run toggle
+      # echoes as status, not as the attribute (live-caught by the
+      # blind round-trip re-planning all of them after import).
+      config_only_attributes: [delete_lambda, s3_bucket, s3_key, s3_version, zip_file, start_canary]
       notes: >-
         The canary's name (`aws synthetics describe-canaries` shows
         Name).
@@ -1704,6 +1709,19 @@ spec:
     - terraform_type: aws_prometheus_resource_policy
       pulumi_type: aws:amp/resourcePolicy:ResourcePolicy
       id_format: "{workspace_id}"
+      # AMP re-marshals the stored document in its own member order
+      # (Version first; Effect/Principal/Action/Resource inside each
+      # statement) while the modules compose theirs with jsonencode's
+      # alphabetical order - the two are structurally identical but can
+      # never byte-match, and the provider's IAMPolicy semantic equality
+      # does not suppress the order-only re-plan after import
+      # (live-caught: the round-trip's plan showed "# whitespace
+      # changes" with zero structural diff). The declaration tolerates
+      # exactly this attribute post-import; the first post-import apply
+      # re-sends the module's form (a server-side no-op - AMP stores
+      # the same structural policy) and the lifecycle is clean from
+      # then on.
+      write_normalized_attributes: [policy_document]
       notes: >-
         The owning workspace's ID (one resource policy per workspace).
     - terraform_type: aws_prometheus_anomaly_detector

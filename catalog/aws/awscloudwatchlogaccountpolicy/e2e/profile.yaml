@@ -3,10 +3,13 @@ kind: ComponentE2EProfile
 metadata:
   name: awscloudwatchlogaccountpolicy
 spec:
-  # An account-wide FIELD_INDEX_POLICY narrowed to an absent E2E prefix
-  # (free, zero blast radius). The account allows ONE policy per type
-  # per region - the lane collides with any concurrent same-type lane
-  # (the account-global collision class); Q44 runs it serially.
+  # An account-wide FIELD_INDEX_POLICY (free; a field index only
+  # declares indexed field names - it changes no log group's behavior).
+  # AWS accepts selection criteria only on SUBSCRIPTION_FILTER_POLICY
+  # (live-probed), so the field-index lane applies account-wide by
+  # design. The account allows ONE policy per type per region - the
+  # lane collides with any concurrent same-type lane (the
+  # account-global collision class); proof runs it serially.
   #
   # Deliberately not exercised live:
   #   - the other four policy types -- one type proves the per-(name,
@@ -16,9 +19,13 @@ spec:
   #     same resource lifecycle. Unblock: dedicated lanes when the
   #     proof queue wants per-type evidence.
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Live catch fixed at the bar: AWS
+  # accepts selection_criteria only on SUBSCRIPTION_FILTER_POLICY
+  # (five-variant probe) - the criteria arm moved to a CEL rule and
+  # the field-index lane applies account-wide by design.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

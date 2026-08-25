@@ -1,9 +1,11 @@
-# An account-wide field-index policy live, narrowed by selection
-# criteria to an E2E prefix so it never touches real log groups. Field
-# index policies are free; the account allows one policy per type, so
-# this lane must never run concurrently with another FIELD_INDEX_POLICY
-# lane in the region (run-scoped criteria keep the blast radius zero
-# either way).
+# An account-wide field-index policy live. AWS accepts selection
+# criteria ONLY on subscription-filter policies (probed live - every
+# criteria grammar 400s on FIELD_INDEX), so this policy applies
+# account-wide BY DESIGN: a field index only declares which field
+# names Logs Insights indexes, changes no log group's behavior, and
+# is free. The account allows one policy per type, so this lane must
+# never run concurrently with another FIELD_INDEX_POLICY lane in the
+# region.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogAccountPolicy
 metadata:
@@ -26,4 +28,3 @@ spec:
     Fields:
       - requestId
       - sourceIp
-  selectionCriteria: LogGroupNamePrefix IN ["/planton-e2e/absent"]

@@ -465,7 +465,7 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	// Dependencies deploy with the harness's default posture (ambient
 	// credentials, empty provider block) -- the provider-config fixture is
 	// the component under test's, never its prerequisites'.
-	stackInputPath, err := BuildStackInput(dep.ManifestPath, moduleDir, nil)
+	stackInputPath, err := BuildStackInput(dep.ManifestPath, nil)
 	if err != nil {
 		return DependencyState{}, errors.Wrapf(err, "failed to build stack input for dependency %q", dep.KindSlug)
 	}

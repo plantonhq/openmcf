@@ -8,9 +8,12 @@ spec:
   # Minutes-lived, ~$0 (the monthly dashboard charge prorates to
   # nothing).
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Live catch fixed at the bar: the
+  # widget key "y" must be QUOTED in YAML manifests (YAML 1.1 parses
+  # bare y as boolean true - the body reached AWS with "true" keys).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

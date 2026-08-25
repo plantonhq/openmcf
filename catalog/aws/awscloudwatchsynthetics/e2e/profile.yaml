@@ -20,9 +20,14 @@ spec:
   #     encryption path. Unblock: an AwsKmsKey fixture via scenario
   #     annotations.
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Two catches fixed at the bar: the
+  # harness verifier learned GetCanary's untyped not-found (the SDK
+  # surfaces it as a generic API error), and the never-read-back
+  # code-source family (s3_bucket/s3_key/s3_version/zip_file) +
+  # start_canary are declared config-only in the import catalog.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -21,9 +21,15 @@ spec:
   #     offline-proven. Unblock: a CloudFront-source lane (its field
   #     set is documented).
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines, both scenarios,
+  # through the full six-phase runner + the Terraform blind import
+  # round-trips under the armed apply-idempotency gate. Live catches
+  # fixed at the bar: PutDestinationPolicy requires AWS principals as
+  # BARE account ids (the root-ARN form is rejected server-side) AND
+  # the id must stay a quoted STRING in YAML (an unquoted id parses as
+  # a number and IAM's grammar rejects it). The vended arm's MANAGED-KB
+  # fixture chain ran clean (~40s DEPENDENCIES-UP per lane).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

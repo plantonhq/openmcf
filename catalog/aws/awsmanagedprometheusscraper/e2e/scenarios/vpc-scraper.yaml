@@ -25,10 +25,16 @@ spec:
   region: us-west-2
   alias: planton-oss-e2e-awsamps-vpc
   sourceVpc:
+    # CreateScraper requires at least two subnets (server contract) -
+    # the shared chain's two-AZ pair satisfies it.
     subnetIds:
       - valueFrom:
           kind: AwsSubnet
           name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
           fieldPath: status.outputs.subnet_id
     securityGroupIds:
       - valueFrom:

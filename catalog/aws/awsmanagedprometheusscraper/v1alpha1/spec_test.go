@@ -25,7 +25,7 @@ func eksScraper() *AwsManagedPrometheusScraperSpec {
 		Region: "us-east-1",
 		SourceEks: &AwsManagedPrometheusScraperEksSource{
 			ClusterArn: svr("arn:aws:eks:us-east-1:123456789012:cluster/platform"),
-			SubnetIds:  []*foreignkeyv1.StringValueOrRef{svr("subnet-0abc")},
+			SubnetIds:  []*foreignkeyv1.StringValueOrRef{svr("subnet-0abc"), svr("subnet-0def")},
 		},
 		AmpWorkspaceArn: svr("arn:aws:aps:us-east-1:123456789012:workspace/ws-abc"),
 	}
@@ -35,7 +35,7 @@ func vpcScraper() *AwsManagedPrometheusScraperSpec {
 	return &AwsManagedPrometheusScraperSpec{
 		Region: "us-east-1",
 		SourceVpc: &AwsManagedPrometheusScraperVpcSource{
-			SubnetIds:        []*foreignkeyv1.StringValueOrRef{svr("subnet-0abc")},
+			SubnetIds:        []*foreignkeyv1.StringValueOrRef{svr("subnet-0abc"), svr("subnet-0def")},
 			SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{svr("sg-0abc")},
 		},
 		CloudwatchDatasetArn: svr("arn:aws:cloudwatch:us-east-1:123456789012:dataset/prom"),
@@ -80,6 +80,16 @@ var _ = ginkgo.Describe("AwsManagedPrometheusScraperSpec validations", func() {
 			spec := eksScraper()
 			spec.SourceVpc = vpcScraper().SourceVpc
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a single subnet (CreateScraper requires at least two)", func() {
+			spec := vpcScraper()
+			spec.SourceVpc.SubnetIds = spec.SourceVpc.SubnetIds[:1]
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+
+			eks := eksScraper()
+			eks.SourceEks.SubnetIds = eks.SourceEks.SubnetIds[:1]
+			gomega.Expect(protovalidate.Validate(eks)).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a spec with no source", func() {

@@ -23,9 +23,15 @@ spec:
   #   - role_configuration -- cross-account scraping needs a second
   #     account (none exists today).
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Live durations: create ~16-19 min,
+  # destroy drain ~11-14 min per engine (~67 min for the dual-engine
+  # cycle - inside the 120m budget). Live catch fixed at the bar:
+  # CreateScraper requires at least TWO subnets ("Number of subnets
+  # must be at least 2") - the spec's min_items now mirrors it and the
+  # lane rides the shared chain's two-AZ pair.
   tier: 2
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 120

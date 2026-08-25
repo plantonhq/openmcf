@@ -125,13 +125,23 @@ func workspace(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 	}
 
 	if spec.ResourcePolicy != nil {
-		policyJson, err := json.Marshal(spec.ResourcePolicy.AsMap())
-		if err != nil {
-			return errors.Wrap(err, "marshal resource policy")
-		}
+		// AMP requires every statement's Resource to be exactly this
+		// workspace's own ARN - PutResourcePolicy rejects anything else
+		// with "Resource in policy does not match workspace resource
+		// ARN" (server contract) - so the module composes it and
+		// manifest documents never carry Resource. The ARN exists only
+		// after the workspace create, hence the Apply.
+		policyMap := spec.ResourcePolicy.AsMap()
+		policyJson := createdWorkspace.Arn.ApplyT(func(workspaceArn string) (string, error) {
+			marshaled, err := json.Marshal(injectWorkspaceResource(policyMap, workspaceArn))
+			if err != nil {
+				return "", errors.Wrap(err, "marshal resource policy")
+			}
+			return string(marshaled), nil
+		}).(pulumi.StringOutput)
 		if _, err := amp.NewResourcePolicy(ctx, "resource_policy", &amp.ResourcePolicyArgs{
 			WorkspaceId:    createdWorkspace.ID(),
-			PolicyDocument: pulumi.String(string(policyJson)),
+			PolicyDocument: policyJson,
 		}, pulumi.Provider(provider)); err != nil {
 			return errors.Wrap(err, "create resource policy")
 		}
@@ -210,4 +220,36 @@ func workspace(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 	ctx.Export(OpAnomalyDetectorIds, detectorIds)
 	ctx.Export(OpAnomalyDetectorArns, detectorArns)
 	return nil
+}
+
+// injectWorkspaceResource returns the policy document with every
+// statement's Resource replaced by the workspace's own ARN. AMP's
+// PutResourcePolicy accepts no other Resource value, so the module
+// owns the field entirely - an author-supplied Resource is replaced,
+// never merged.
+func injectWorkspaceResource(policy map[string]any, workspaceArn string) map[string]any {
+	statements, ok := policy["Statement"].([]any)
+	if !ok {
+		return policy
+	}
+	injected := make([]any, len(statements))
+	for i, entry := range statements {
+		statement, ok := entry.(map[string]any)
+		if !ok {
+			injected[i] = entry
+			continue
+		}
+		withResource := make(map[string]any, len(statement)+1)
+		for key, value := range statement {
+			withResource[key] = value
+		}
+		withResource["Resource"] = workspaceArn
+		injected[i] = withResource
+	}
+	out := make(map[string]any, len(policy))
+	for key, value := range policy {
+		out[key] = value
+	}
+	out["Statement"] = injected
+	return out
 }

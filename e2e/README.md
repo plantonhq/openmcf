@@ -1337,7 +1337,29 @@ foundation-model source whose model supports only INFERENCE_PROFILE
 invocation ("The provided foundation model does not support On Demand
 inference" — the Nova family and most 2025+ models; probe a model's arms
 with `list-foundation-models --by-inference-type ON_DEMAND` before
-fixing a scenario source). When a lane fails with a 4xx the offline
+fixing a scenario source); on CloudWatch Logs account policies,
+PutAccountPolicy accepts `selectionCriteria` ONLY for
+SUBSCRIPTION_FILTER_POLICY in the one grammar `LogGroupName NOT IN
+["..."]` — every criteria string on the other four types fails
+"Invalid selection criteria provided" (2026-08-25; a five-variant $0
+probe settled it — the prefix form some AWS material shows is
+rejected too, so the other types are account-wide, period); on
+CloudWatch Logs cross-account destinations, PutDestinationPolicy
+requires AWS principals as BARE ACCOUNT IDs — the usual
+`arn:aws:iam::<id>:root` spelling fails "Principal section of policy
+contains ARN instead of account ID" (2026-08-25, identical both
+engines; upstream's own test spells `"000000000000"`) — and the bare
+id must stay a STRING: an unquoted YAML id parses as a number and the
+service then fails "Error occurred while parsing accessPolicy ...
+using IAM grammar" (quote it, the sibling of the y-key class); on
+Managed Prometheus scrapers, CreateScraper requires at least TWO
+subnets ("Number of subnets must be at least 2" — 2026-08-25; the
+spec's min_items now mirrors it); and on Managed Prometheus resource
+policies, PutResourcePolicy requires every statement's Resource to be
+exactly the workspace's own ARN ("Resource in policy does not match
+workspace resource ARN" — 2026-08-25; the AgentCore-runtime fix shape
+applies: both modules compose the ARN after create and manifests
+never carry Resource). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -1466,6 +1488,23 @@ fails the manifest at deploy with "invalid environment token"
 documentation comment). Name the token in prose; never write the
 `${...}` shape in a comment unless it is a complete, valid token.
 
+**Manifests parse under YAML 1.1 rules — a bare `y` KEY inside a
+raw-JSON Struct field silently becomes the key `"true"`.** The
+manifest loader's YAML-to-JSON step resolves the YAML 1.1 boolean
+tokens (`y`, `n`, `yes`, `no`, `on`, `off`) even in KEY position, so a
+CloudWatch dashboard widget authored `y: 2` reaches AWS as `"true": 2`
+and PutDashboard 400s with the misdirecting "Should have property y
+when property x is present" — while `x`, `width`, `height` survive
+untouched (live-caught 2026-08-25, identical on both engines; the
+engine's own plan shows `+ true = 2`, which is the fastest diagnosis).
+The class is ANY Struct-typed field whose open schema uses a
+YAML-boolean token as a key or expects one as a string value — the
+Norway problem, key edition. Fix shape: QUOTE the ambiguous scalar in
+every authored surface (scenario, canonical manifest, presets) and
+teach it on the spec field; pasted JSON is immune (JSON keys are
+quoted by definition). A loader-level fix (YAML 1.2 semantics) is a
+platform-wide decision, not a lane fix.
+
 **A kind whose manifests can deploy OFF the ambient region must export
 `region` in its stack outputs — the harness verifies where the outputs
 say, not where the scenario deployed.** The harness's VerifyDeployed
@@ -1516,7 +1555,12 @@ keys back `user:`-prefixed (`aws:` for AWS-generated), so an
 unprefixed key never matches either. The upstream acceptance test
 spells the fully-populated document with `user:CostCenter` for exactly
 these reasons — deviating from the tested form to "clean it up" is how
-this class ships. The general rule for any raw-JSON-string attribute:
+this class ships. Second family (2026-08-25): AMP's resource-policy
+stored form collapses a single-element `Action` array to the scalar
+string — an IAM-shaped document authored `"Action": ["aps:RemoteWrite"]`
+re-imports as `"Action": "aps:RemoteWrite"` and the round-trip plans an
+update the semantic-equality type does not suppress; author the string
+form. The general rule for any raw-JSON-string attribute:
 the canonical form is whatever the provider's READ path re-marshals,
 not the minimal document AWS accepts at create.
 

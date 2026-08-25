@@ -1,6 +1,8 @@
 # Canonical AwsCloudwatchLogAccountPolicy example (hack/dev manifest
-# and refgen Example source): an account-wide field-index policy
-# narrowed to one log-group prefix.
+# and refgen Example source): an account-wide field-index policy.
+# Field-index policies always apply account-wide - AWS accepts
+# selection criteria only on SUBSCRIPTION_FILTER_POLICY, as an
+# exact-name exclusion list (LogGroupName NOT IN [...]).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogAccountPolicy
 metadata:
@@ -16,4 +18,3 @@ spec:
     Fields:
       - requestId
       - sourceIp
-  selectionCriteria: LogGroupNamePrefix IN ["/app/api"]

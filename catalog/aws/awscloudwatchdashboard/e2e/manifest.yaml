@@ -1,6 +1,9 @@
 # Canonical AwsCloudwatchDashboard example (hack/dev manifest and
 # refgen Example source): a two-widget service dashboard (a markdown
-# header and a Lambda-errors metric graph).
+# header and a Lambda-errors metric graph). The widget position key
+# "y" is QUOTED - manifests parse under YAML 1.1 rules where a bare y
+# is the boolean true, and AWS rejects a body whose widgets carry x
+# without y.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchDashboard
 metadata:
@@ -15,14 +18,14 @@ spec:
     widgets:
       - type: text
         x: 0
-        y: 0
+        "y": 0
         width: 24
         height: 2
         properties:
           markdown: "# Service health"
       - type: metric
         x: 0
-        y: 2
+        "y": 2
         width: 12
         height: 6
         properties:
