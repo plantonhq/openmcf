@@ -11,7 +11,12 @@ spec:
   # deploy time.
   region: eastus
   # The storage account whose blob/queue events become subscribable.
+  # The kind and fieldPath are explicit because source_resource_id is
+  # deliberately un-annotated (any ARM resource can back a system
+  # topic), so a name-only reference cannot resolve.
   sourceResourceId:
     valueFrom:
+      kind: AzureStorageAccount
       name: <your-storage-account>
+      fieldPath: status.outputs.storage_account_id
   topicType: Microsoft.Storage.StorageAccounts

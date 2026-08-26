@@ -303,6 +303,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureExpressRouteCircuitPeering | `spec.expressRouteCircuitName` | `status.outputs.express_route_circuit_name` |
+| AzureVirtualNetworkGatewayConnection | `spec.expressRouteCircuitId` | `status.outputs.express_route_circuit_id` |
 
 ## See Also
 

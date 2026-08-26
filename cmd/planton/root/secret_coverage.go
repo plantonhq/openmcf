@@ -25,8 +25,10 @@ Default output is a human-readable coverage report. Use --output json to emit a
 machine-readable report (overall + per-provider summary + gap list) for downstream
 surfaces such as the Planton OS secret-coverage audit tile. Use --check in CI to
 fail on any new gap (one not in the baseline), any stale baseline entry, or a
-self-contradictory annotation. Use --write-baseline to record the current accepted
-gaps after an annotation pass.`,
+non-baselined annotation violation (a contradictory annotation pair, or a sensitive
+field carrying a value-content validation rule no secret reference can satisfy).
+Use --write-baseline to record the current accepted gaps and violations after an
+annotation pass.`,
 	Run: secretCoverageHandler,
 }
 
@@ -46,7 +48,8 @@ func secretCoverageHandler(cmd *cobra.Command, _ []string) {
 			cliprint.PrintError(fmt.Sprintf("failed to write baseline: %v", err))
 			os.Exit(1)
 		}
-		cliprint.PrintSuccess(fmt.Sprintf("wrote %d accepted gaps to %s", len(secretcoverage.GapIDs(findings)), baselinePath))
+		cliprint.PrintSuccess(fmt.Sprintf("wrote %d accepted gaps and %d accepted violations to %s",
+			len(secretcoverage.GapIDs(findings)), len(secretcoverage.ViolationIDs(findings)), baselinePath))
 		return
 	}
 
@@ -94,6 +97,9 @@ func runCheck(findings []secretcoverage.Finding, baselinePath string) {
 		for _, v := range f.Violations {
 			cliprint.PrintError(fmt.Sprintf("%s:%s -- %s", f.Kind, f.Path, v))
 		}
+	}
+	for _, id := range res.StaleViolationEntries {
+		cliprint.PrintError(fmt.Sprintf("stale baseline violation entry (no longer violating): %s -- remove it from %s", id, baselinePath))
 	}
 	os.Exit(1)
 }

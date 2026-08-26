@@ -311,7 +311,17 @@ entries the chain already deploys are skipped. Manifest-path entries deploy
 in listed order after the kind-driven chain, each preceded by any of its own
 transitive prerequisites not already deployed -- and always deploy, because
 they exist precisely to add another instance; a path entry never substitutes
-for the kind's install profile. The resolver also honors the same annotation
+for the kind's install profile. The ONE exception: a path entry naming the
+very FILE the kind-driven chain already resolved (the typical slip:
+annotating the consumer-scoped override of a registry prerequisite) is
+skipped, because an identical manifest is never a meaningful extra
+instance -- before the resolver deduped this, the duplicate deployed one
+stack twice and BROKE the Pulumi teardown (the second destroy retries
+against a stack the first destroy removed, "no stack named ... found"
+through the whole ladder; live-caught 2026-08-26 on a DLM role fixture).
+The Terraform path MASKS the class -- destroying an already-empty state
+succeeds -- so a duplicate that passes offline TF proofs still fails its
+first live Pulumi lane. The resolver also honors the same annotation
 (kind names only) on each prerequisite's OWN install manifest, ordering the
 fixtures an install profile's `value_from` references compose BEFORE the
 declaring kind -- recursively and cycle-checked. All fixtures join the same
@@ -940,12 +950,29 @@ integration endpoint -- do not use documentation placeholder domains.
 Some services validate the URI server-side at create and reject blocked
 domains outright: Azure Monitor action groups return 400
 `WebhookServiceUriBlocked` for webhook receivers on `example.com`, on
-both engines, while every offline gate passes (the schema only checks
-the http/https scheme). Use a real domain the fixture plausibly owns
+both engines, while every offline gate passes (the receiver URL fields
+are sensitive-annotated and deliberately carry no value rules, so the
+schema cannot screen domains). Use a real domain the fixture plausibly owns
 (the project's own domain works; the service does not probe the URL at
 create, it only screens the domain). Presets and hack manifests should
 carry a domain-you-own shape (e.g. `hooks.yourcompany.com`) so users
 never copy a blocked placeholder.
+
+### A stale local `az` CLI silently drops new API surface (false-negative evidence)
+
+When a lane captures evidence with `az` on a NEWLY-modeled field and the
+field reads back ABSENT while its same-wave siblings are present, verify
+the CLI's own API model knows the field before treating the absence as a
+module or provider defect. The installed CLI's bundled service models lag
+new provider surface, and unknown response members are silently
+discarded -- a false negative that pattern-matches an engine silent-drop
+bug and burns diagnosis time (the AWS section's CloudFront
+`CacheTagConfig` incident is the worked example, with the skeleton-probe
+technique). Prefer evidence readers whose model is pinned WITH the repo:
+the engine's own refresh/plan diff, or a probe through the repo's pinned
+Azure SDK. The class is the sibling of the stale-installed-`planton`
+binary lesson -- stale local tooling produces false readings in both
+directions.
 
 ### Vendor-constant casing: an SDK constant's Go identifier is not its wire value
 
@@ -1480,6 +1507,21 @@ SAME call earlier in the lane: real permission loss fails loudly there.
 Probe the pair (describe an existing resource, then a nonexistent name)
 before writing the verifier's absent arm for a new AWS service.
 
+**S3 Express wraps a deleted directory bucket's not-found inside a
+CREDENTIAL error — `errors.As` never reaches it.** Every S3 Express
+(directory bucket) operation acquires session credentials via
+CreateSession first, so HeadBucket on a deleted bucket fails as
+"get identity: get credentials: operation error S3: CreateSession,
+... 404 ... NoSuchBucket" (live-caught 2026-08-26, identical both
+engines — the destroy had fully succeeded). The credential-acquisition
+wrapper chain does not unwrap to a `smithy.APIError`, so the typed
+match that works for a standard bucket's 404 silently misses; the
+verifier must ALSO match the gone-code textually (`strings.Contains`
+on "NoSuchBucket" — the same fallback the bedrock and backup verifiers
+use). This is the unmodeled-not-found class's third face: typed
+exception missing (Synthetics GetCanary), masked as AccessDenied
+(Backup), and wrapped in a credential path (S3 Express).
+
 **The `${E2E_ENV:...}` token expander scans the WHOLE manifest —
 comments included.** A fixture comment that quotes the token syntax
 with an empty variable name (writing the literal token shape as prose)
@@ -1680,7 +1722,15 @@ waiting out the window but making the class impossible: put
 is globally fresh. S3 is the recorded exception to the
 names-stay-stable token guidance — its cloud identifier IS the metadata
 name (the module derives the bucket name from it) — legitimate only for
-scenarios no prerequisite chain references by name.
+scenarios no prerequisite chain references by name. **S3 Tables has the
+same class with a sharper signature**: a just-deleted table bucket's
+name answers CreateTableBucket with 409 ConflictException "The bucket
+is in a transitional state because of a previous deletion attempt"
+(live-caught 2026-08-26 — the second engine's create collided with the
+first engine's teardown seconds earlier; the run id's engine suffix is
+exactly what makes the run-scoped name immune). Directory buckets do
+NOT hold the window — a back-to-back same-name recreate succeeded live
+— and vector buckets were not observed either way.
 
 **Fixed-name shared fixtures collide across CONCURRENT sessions on one
 account.** IAM roles are account-global and the shared install profiles

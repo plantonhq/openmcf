@@ -832,9 +832,13 @@ message AzureFunctionAppConnectionString {
     (buf.validate.field).enum.defined_only = true
   ];
 
-  // The connection string value. This is a sensitive credential.
-  // Can be a literal value or a reference to a secrets manager.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [(buf.validate.field).required = true];
+  // The connection string value. This is a sensitive credential (the
+  // provider marks it Sensitive): supply a managed-secret reference, a
+  // sibling resource's output reference, or a literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
 }
 
 // The connection-string service type vocabulary, mirroring Azure's own.

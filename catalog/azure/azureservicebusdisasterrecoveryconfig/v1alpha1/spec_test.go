@@ -101,6 +101,38 @@ var _ = ginkgo.Describe("AzureServiceBusDisasterRecoveryConfigSpec Validation Te
 				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 			})
 
+			ginkgo.It("should reject an alias name under 6 characters", func() {
+				input := minimalPairing()
+				input.Spec.AliasName = "bus1"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an alias name starting with a number", func() {
+				input := minimalPairing()
+				input.Spec.AliasName = "1myapp-bus-alias"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an alias name ending with a hyphen", func() {
+				input := minimalPairing()
+				input.Spec.AliasName = "myapp-bus-alias-"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an alias name with characters outside the namespace grammar", func() {
+				input := minimalPairing()
+				input.Spec.AliasName = "myapp_bus.alias"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an alias name ending in a reserved suffix", func() {
+				input := minimalPairing()
+				input.Spec.AliasName = "myapp-alias-sb"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+				input.Spec.AliasName = "myapp-alias-mgmt"
+				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+			})
+
 			ginkgo.It("should reject a missing primary namespace", func() {
 				input := minimalPairing()
 				input.Spec.PrimaryNamespaceId = nil

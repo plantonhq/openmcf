@@ -144,6 +144,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.resourceGroup` | AzureResourceGroup | `status.outputs.resource_group_name` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureRecoveryServicesVault | `spec.resourceGuardId` | `status.outputs.resource_guard_id` |
+
 ## See Also
 
 - [Overview](../README.md)

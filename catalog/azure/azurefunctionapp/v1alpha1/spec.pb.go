@@ -2130,8 +2130,9 @@ type AzureFunctionAppConnectionString struct {
 	// exposes the value under (e.g. SQLAZURECONNSTR_, MYSQLCONNSTR_,
 	// CUSTOMCONNSTR_).
 	Type AzureFunctionAppConnectionStringType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.azure.azurefunctionapp.v1alpha1.AzureFunctionAppConnectionStringType" json:"type,omitempty"`
-	// The connection string value. This is a sensitive credential.
-	// Can be a literal value or a reference to a secrets manager.
+	// The connection string value. This is a sensitive credential (the
+	// provider marks it Sensitive): supply a managed-secret reference, a
+	// sibling resource's output reference, or a literal.
 	Value         *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4099,12 +4100,13 @@ const file_catalog_azure_azurefunctionapp_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18AzureFunctionAppIdentity\x12j\n" +
 	"\x04type\x18\x01 \x01(\x0e2I.dev.planton.azure.azurefunctionapp.v1alpha1.AzureFunctionAppIdentityTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12z\n" +
 	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\xf3\x01\xbaH\xef\x01\x1a\xec\x01\n" +
-	"!function_app_identity_ids_pairing\x12`identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED\x1ae(this.type == 1 && this.identity_ids.size() == 0) || (this.type != 1 && this.identity_ids.size() > 0)\"\x88\x02\n" +
+	"!function_app_identity_ids_pairing\x12`identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED\x1ae(this.type == 1 && this.identity_ids.size() == 0) || (this.type != 1 && this.identity_ids.size() > 0)\"\x8c\x02\n" +
 	" AzureFunctionAppConnectionString\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12r\n" +
-	"\x04type\x18\x02 \x01(\x0e2Q.dev.planton.azure.azurefunctionapp.v1alpha1.AzureFunctionAppConnectionStringTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12P\n" +
-	"\x05value\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xd4\x03\n" +
+	"\x04type\x18\x02 \x01(\x0e2Q.dev.planton.azure.azurefunctionapp.v1alpha1.AzureFunctionAppConnectionStringTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12T\n" +
+	"\x05value\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05value\"\xd4\x03\n" +
 	"\x1eAzureFunctionAppStickySettings\x128\n" +
 	"\x11app_setting_names\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fappSettingNames\x12\x9d\x01\n" +
 	"\x17connection_string_names\x18\x02 \x03(\tBe\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01\xaa\xa6\x1dUCarries the NAMES of connection strings pinned during slot swaps, never their values.R\x15connectionStringNames:\xd7\x01\xbaH\xd3\x01\x1a\xd0\x01\n" +

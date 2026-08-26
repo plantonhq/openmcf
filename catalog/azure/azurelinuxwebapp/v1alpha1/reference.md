@@ -259,7 +259,7 @@ spec:
 | `spec.connectionStrings` | `[]AzureLinuxWebAppConnectionString` |  |  |  |
 | `spec.connectionStrings[].name` | `string` | yes |  |  |
 | `spec.connectionStrings[].type` | `enum` | yes |  |  |
-| `spec.connectionStrings[].value` | `string \| valueFrom` | yes |  |  |
+| `spec.connectionStrings[].value` | `string \| valueFrom` (sensitive) | yes |  |  |
 | `spec.stickySettings` | `AzureLinuxWebAppStickySettings` |  |  |  |
 | `spec.stickySettings.appSettingNames` | `[]string` |  |  |  |
 | `spec.stickySettings.connectionStringNames` | `[]string` |  |  |  |
@@ -1465,10 +1465,11 @@ Allowed values (use exactly as shown):
 
 ### spec.connectionStrings[].value
 
-`string | valueFrom` · required
+`string | valueFrom` · required · sensitive
 
-The connection string value. This is a sensitive credential.
-Can be a literal value or a reference to a secrets manager.
+The connection string value. This is a sensitive credential (the
+provider marks it Sensitive): supply a managed-secret reference, a
+sibling resource's output reference, or a literal.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse

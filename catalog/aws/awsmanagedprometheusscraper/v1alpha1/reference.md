@@ -122,10 +122,11 @@ output or pass a literal ARN.
 
 Subnets the scraper's collectors place into (the cluster's
 subnets). Reference AwsSubnet subnet_id outputs or pass literal
-IDs.
+IDs. CreateScraper requires at least two subnets (server
+contract: "Number of subnets must be at least 2").
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
-- rule: {"repeated":{"minItems":"1"}}
+- rule: {"repeated":{"minItems":"2"}}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
 
 ### spec.sourceEks.securityGroupIds
@@ -150,10 +151,12 @@ anything here replaces the scraper.
 `[]string | valueFrom` · required
 
 Subnets the scraper's collectors place into. Reference AwsSubnet
-subnet_id outputs or pass literal IDs.
+subnet_id outputs or pass literal IDs. CreateScraper requires at
+least two subnets (server contract: "Number of subnets must be at
+least 2", live-verified on a single-subnet create).
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
-- rule: {"repeated":{"minItems":"1"}}
+- rule: {"repeated":{"minItems":"2"}}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
 
 ### spec.sourceVpc.securityGroupIds

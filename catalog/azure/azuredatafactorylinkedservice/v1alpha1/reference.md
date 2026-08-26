@@ -1418,9 +1418,10 @@ The secret's name inside the vault.
 
 The SSH private key, base64-encoded
 (SshPublicKey/MultiFactor). SECRET. Prefer
-key_vault_private_key_content_base64.
-
-- rule: private_key_content_base64 must be base64-encoded
+key_vault_private_key_content_base64. The base64 framing is taught
+here rather than enforced by a validation rule, because sensitive
+fields hold a managed-secret reference on consuming platforms and a
+content-shape rule would reject every reference.
 
 ### spec.sftp.keyVaultPrivateKeyContentBase64
 

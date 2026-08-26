@@ -52,7 +52,12 @@ type AzureServiceBusDisasterRecoveryConfigSpec struct {
 	// The alias name -- becomes the failover-stable DNS name
 	// `{alias_name}.servicebus.windows.net`, so it shares the namespace
 	// name rules and uniqueness scope (globally unique; it cannot collide
-	// with any existing namespace name either).
+	// with any existing namespace name either): 6-50 characters of
+	// letters, numbers, and hyphens, starting with a letter and ending
+	// with a letter or number, and never ending in Azure's reserved
+	// "-sb" / "-mgmt" suffixes. The rules below transcribe the namespace
+	// kind's own name contract so a bad alias fails at authoring time,
+	// not at Azure apply time.
 	//
 	// **ForceNew**: changing the alias replaces the pairing.
 	AliasName string `protobuf:"bytes,1,opt,name=alias_name,json=aliasName,proto3" json:"alias_name,omitempty"`
@@ -138,10 +143,12 @@ var File_catalog_azure_azureservicebusdisasterrecoveryconfig_v1alpha1_spec_proto
 
 const file_catalog_azure_azureservicebusdisasterrecoveryconfig_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gcatalog/azure/azureservicebusdisasterrecoveryconfig/v1alpha1/spec.proto\x12@dev.planton.azure.azureservicebusdisasterrecoveryconfig.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa5\x04\n" +
-	")AzureServiceBusDisasterRecoveryConfigSpec\x12+\n" +
+	"Gcatalog/azure/azureservicebusdisasterrecoveryconfig/v1alpha1/spec.proto\x12@dev.planton.azure.azureservicebusdisasterrecoveryconfig.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xfa\a\n" +
+	")AzureServiceBusDisasterRecoveryConfigSpec\x12\xff\x03\n" +
 	"\n" +
-	"alias_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x182R\taliasName\x12\x90\x01\n" +
+	"alias_name\x18\x01 \x01(\tB\xdf\x03\xbaH\xdb\x03\xba\x01\x81\x02\n" +
+	" service_bus_dr_alias_name_format\x12\xa3\x01alias_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number (it shares the namespace name rules)\x1a7this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')\xba\x01\xc9\x01\n" +
+	")service_bus_dr_alias_name_reserved_suffix\x12jalias_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints\x1a0!this.endsWith('-sb') && !this.endsWith('-mgmt')\xc8\x01\x01r\x04\x10\x06\x182R\taliasName\x12\x90\x01\n" +
 	"\x14primary_namespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_idR\x12primaryNamespaceId\x12\x94\x01\n" +
 	"\x14partner_namespace_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x10\x92\xd4a\x1bstatus.outputs.namespace_id\x98\xd4a\x01R\x12partnerNamespaceId\x12\xa0\x01\n" +
 	"\x1balias_authorization_rule_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\x9b\x10\x92\xd4a$status.outputs.authorization_rule_idR\x18aliasAuthorizationRuleIdB\x80\x04\n" +

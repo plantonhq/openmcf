@@ -217,20 +217,22 @@ func Resources(ctx *pulumi.Context, stackInput *azurefunctionappflexconsumptionv
 
 	// The site-level publishing credential -- grants deploy access while
 	// basic-auth publishing is enabled; treat the password like an admin
-	// password.
-	ctx.Export(OpSiteCredentialName, functionApp.SiteCredentials.ApplyT(func(creds []appservice.AppFlexConsumptionSiteCredential) string {
+	// password. Both halves are exported as explicit secrets (the name is
+	// half of a working credential), matching the outputs proto's
+	// sensitive annotations.
+	ctx.Export(OpSiteCredentialName, pulumi.ToSecret(functionApp.SiteCredentials.ApplyT(func(creds []appservice.AppFlexConsumptionSiteCredential) string {
 		if len(creds) > 0 && creds[0].Name != nil {
 			return *creds[0].Name
 		}
 		return ""
-	}).(pulumi.StringOutput))
+	}).(pulumi.StringOutput)))
 
-	ctx.Export(OpSiteCredentialPassword, functionApp.SiteCredentials.ApplyT(func(creds []appservice.AppFlexConsumptionSiteCredential) string {
+	ctx.Export(OpSiteCredentialPassword, pulumi.ToSecret(functionApp.SiteCredentials.ApplyT(func(creds []appservice.AppFlexConsumptionSiteCredential) string {
 		if len(creds) > 0 && creds[0].Password != nil {
 			return *creds[0].Password
 		}
 		return ""
-	}).(pulumi.StringOutput))
+	}).(pulumi.StringOutput)))
 
 	return nil
 }
