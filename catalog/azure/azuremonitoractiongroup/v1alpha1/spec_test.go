@@ -166,14 +166,15 @@ var _ = ginkgo.Describe("AzureMonitorActionGroupSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject a webhook receiver with a non-http URI", func() {
+		ginkgo.It("should accept a managed-secret reference as a webhook URI", func() {
+			// The receiver URLs are sensitive (they embed their credential), so
+			// consuming platforms store a secret reference in them -- the
+			// http(s) shape is taught in the field comment, never rule-enforced.
 			input := buildValidActionGroup()
 			input.Spec.WebhookReceivers = []*AzureMonitorActionGroupWebhookReceiver{
-				{Name: "pager", ServiceUri: "ftp://events.example.com/hook"},
+				{Name: "pager", ServiceUri: "${secrets-group/alerting/pagerduty-webhook-url}"},
 			}
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).NotTo(gomega.BeNil())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("http"))
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject webhook Entra auth with a non-UUID object id", func() {
@@ -216,17 +217,19 @@ var _ = ginkgo.Describe("AzureMonitorActionGroupSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject a function receiver with a non-http trigger URL", func() {
+		ginkgo.It("should accept a managed-secret reference as a function trigger URL", func() {
+			// The trigger URL's code parameter IS the function key, so the field
+			// is sensitive and platforms store a secret reference in it.
 			input := buildValidActionGroup()
 			input.Spec.AzureFunctionReceivers = []*AzureMonitorActionGroupAzureFunctionReceiver{
 				{
 					Name:                  "func",
 					FunctionAppResourceId: literal("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Web/sites/fn"),
 					FunctionName:          "HandleAlert",
-					HttpTriggerUrl:        "not-a-url",
+					HttpTriggerUrl:        "${secrets-group/alerting/handle-alert-trigger-url}",
 				},
 			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("should reject an ARM role receiver without a role", func() {

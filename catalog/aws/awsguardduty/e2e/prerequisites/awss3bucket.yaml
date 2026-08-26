@@ -18,6 +18,13 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
+  # GuardDuty's publishing destination can write findings-export
+  # objects into the bucket (and the list-file fixture uploads live
+  # under lists/), and service-written objects survive the detector's
+  # delete -- so the fixture bucket must force-destroy or its teardown
+  # fails BucketNotEmpty (the service-written-canary class, live-caught
+  # on the CloudTrail sibling).
+  forceDestroy: true
   policy:
     Version: "2012-10-17"
     Statement:
@@ -33,9 +40,14 @@ spec:
           Service: guardduty.amazonaws.com
         Action: s3:GetBucketLocation
         Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket
+      # GuardDuty validates the export write at the EXACT destination
+      # ARN it is given -- the kind's ref path composes the bare bucket
+      # ARN (no prefix), so the PutObject grant must cover the whole
+      # bucket, not a prefix (a findings/* scope fails
+      # CreatePublishingDestination's permission check; live-caught).
       - Sid: AllowGuardDutyFindingsExport
         Effect: Allow
         Principal:
           Service: guardduty.amazonaws.com
         Action: s3:PutObject
-        Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket/findings/*
+        Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket/*

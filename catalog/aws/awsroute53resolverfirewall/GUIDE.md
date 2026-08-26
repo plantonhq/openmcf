@@ -25,3 +25,7 @@ List contents push through a separate update after create; a partially failed im
 ## The managed lists need an ID lookup
 
 AWS-managed lists (malware, aggregate threat) have account/region-specific IDs and no data source at the pin — resolve the ID once (`aws route53resolver list-firewall-domain-lists`) and pass it as the rule's external list ID.
+
+## Every domain is stored dotted — the modules keep you honest
+
+AWS stores firewall domains (list entries AND the OVERRIDE record's value) as trailing-dot FQDNs and echoes that form on read, and the upstream provider does not suppress the difference — a bare-authored `sinkhole.example.com` would re-plan forever (proven live). Both modules append the dot when it's absent, so write whichever form you like; the deployed form is always canonical.

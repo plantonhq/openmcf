@@ -72,6 +72,19 @@ resource "aws_acmpca_certificate_authority" "this" {
   }
 
   tags = local.aws_tags
+
+  # The restore window is an ENGINE-SIDE delete-time instruction: AWS
+  # stores nothing (DeleteCertificateAuthority alone consumes it), so
+  # an import stuffs the provider default back and a window-only
+  # change composes an EMPTY UpdateCertificateAuthority the API
+  # rejects 400 ("Either RevocationConfiguration or Status should be
+  # present" - provider gap at ~> 6.58, live-caught). The window is
+  # therefore fixed at create: delete uses the create-time value from
+  # state, and post-create edits are ignored rather than failing
+  # every subsequent apply.
+  lifecycle {
+    ignore_changes = [permanent_deletion_time_in_days]
+  }
 }
 
 # ROOT self-activation: issue the CA's own CSR against itself with the
@@ -88,6 +101,24 @@ resource "aws_acmpca_certificate" "root_ca" {
     type  = var.spec.root_ca_validity != null ? var.spec.root_ca_validity.type : "YEARS"
     value = var.spec.root_ca_validity != null ? var.spec.root_ca_validity.value : "10"
   }
+
+  # The issue request is the certificate's birth certificate: all five
+  # request arguments are create-only and NO AWS read API ever returns
+  # them (the provider's own import test ignores the full set). They
+  # are also replace-forcing, so without this ignore an IMPORT plans a
+  # destructive re-issue of the CA's own trust anchor - a certificate
+  # adopters' trust stores pin by fingerprint. Post-create changes are
+  # therefore ignored; reissuing a CA certificate is an operational
+  # act (ACM PCA console/API), never a manifest edit.
+  lifecycle {
+    ignore_changes = [
+      certificate_signing_request,
+      signing_algorithm,
+      template_arn,
+      validity,
+      api_passthrough,
+    ]
+  }
 }
 
 # SUBORDINATE activation: the parent CA signs this CA's CSR with a
@@ -103,6 +134,17 @@ resource "aws_acmpca_certificate" "subordinate_ca" {
   validity {
     type  = var.spec.subordinate_activation.validity.type
     value = var.spec.subordinate_activation.validity.value
+  }
+
+  # Birth-certificate contract - see the root_ca resource's comment.
+  lifecycle {
+    ignore_changes = [
+      certificate_signing_request,
+      signing_algorithm,
+      template_arn,
+      validity,
+      api_passthrough,
+    ]
   }
 }
 
@@ -132,6 +174,20 @@ resource "aws_acmpca_certificate" "issued" {
   }
 
   depends_on = [aws_acmpca_certificate_authority_certificate.this]
+
+  # Birth-certificate contract - see the root_ca resource's comment.
+  # To reissue with different parameters, add a NEW entry (a new name
+  # keys a new certificate); editing an existing entry's request
+  # fields deliberately does nothing.
+  lifecycle {
+    ignore_changes = [
+      certificate_signing_request,
+      signing_algorithm,
+      template_arn,
+      validity,
+      api_passthrough,
+    ]
+  }
 }
 
 # The ACM auto-renewal grant - all three actions, per AWS's documented

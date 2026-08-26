@@ -10,6 +10,15 @@ through a canary batch guarded by an alarm.
 - Production endpoints where a bad model version must back itself out
 - A/B testing model versions on live traffic with a controlled split
 
+## Before You Deploy
+
+- Request the `ml.m5.large for endpoint usage` Service Quota first: it
+  defaults to ZERO on fresh AWS accounts (as do nearly all instance
+  endpoint quotas), so this preset fails with ResourceLimitExceeded
+  until the increase is granted. Size it for rollouts, not steady
+  state — blue/green transiently doubles the fleet, so two variants
+  need a quota of 4.
+
 ## What You Get
 
 - Two `ml.m5.large` variants splitting traffic 90/10 by weight, routed

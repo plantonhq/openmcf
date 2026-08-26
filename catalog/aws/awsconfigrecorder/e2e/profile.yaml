@@ -33,10 +33,7 @@ spec:
   #   - s3_kms_key_arn / sns_topic_arn on the channel + recording_mode
   #     overrides -- proven arm-for-arm offline; fold into the
   #     scenario when the proof lane wants them.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q39
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

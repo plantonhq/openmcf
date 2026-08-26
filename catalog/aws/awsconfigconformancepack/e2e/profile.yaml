@@ -26,10 +26,7 @@ spec:
   #     delivery arm is proven arm-for-arm offline (results stay
   #     queryable through the Config APIs without it). Unblock: fold
   #     into the scenario when the proof lane wants it.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q40
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

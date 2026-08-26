@@ -16,9 +16,10 @@ spec:
   #     tree are the canonical forms. Unblock: a second scenario when
   #     the proof queue wants the datapoints.
   #
-  # pending_proof: forged this session to the full offline bar -- Q43
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q43): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under
+  # the armed apply-idempotency gate.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -6,10 +6,15 @@ spec:
   region: us-east-1
   alias: vpc-scraper
   sourceVpc:
+    # AWS requires at least two subnets for a scraper's collectors.
     subnetIds:
       - valueFrom:
           kind: AwsSubnet
           name: private-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-b
           fieldPath: status.outputs.subnet_id
     securityGroupIds:
       - valueFrom:

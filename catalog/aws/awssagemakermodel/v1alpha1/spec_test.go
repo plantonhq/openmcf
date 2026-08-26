@@ -27,7 +27,7 @@ func minimalModel() *AwsSagemakerModelSpec {
 		Region:           "us-west-2",
 		ExecutionRoleArn: svr("arn:aws:iam::123456789012:role/sagemaker-execution"),
 		PrimaryContainer: &AwsSagemakerModelContainer{
-			Image: "746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1",
+			Image: "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1",
 		},
 	}
 }

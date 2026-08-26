@@ -20,10 +20,7 @@ spec:
   #   - control evaluation RESULTS -- evaluations take hours to first
   #     findings. Unblock: none needed; deployment status COMPLETED is
   #     the create-path proof, results are AWS's async pipeline.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q41
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 25

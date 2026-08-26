@@ -16,7 +16,10 @@ alert subscriptions.
   by ONE built-in dimension — SERVICE is AWS's recommended posture) or
   **CUSTOM** (watch the slice a Cost Explorer expression selects,
   supplied as the AWS Expression JSON verbatim). Both shape arms are
-  create-only.
+  create-only. DIMENSIONAL is an account singleton AWS auto-creates on
+  post-2023 Cost Explorer accounts — import the existing
+  `Default-Services-Monitor` rather than creating a second (see
+  GUIDE.md).
 - **Subscriptions** — the folded satellites: who hears about
   anomalies, how often (IMMEDIATE individual alerts via SNS;
   DAILY/WEEKLY summaries via email — AWS pairs channel with

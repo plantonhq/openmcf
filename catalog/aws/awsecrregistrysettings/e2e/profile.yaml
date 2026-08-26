@@ -31,9 +31,15 @@ spec:
   #     ecr-pullthroughcache/ prefix. Unblock: an owner-provisioned
   #     credential, the e2e-required-env pattern.
   #
-  # pending_proof: forged this session to the full offline bar -- Q48
-  # proves it live.
+  # PROVEN 2026-08-26: both engines green through the full lifecycle
+  # plus the TF blind round-trip (singletons by account id +
+  # collections by address keys re-imported at no real change). The
+  # verifier's RESET-posture absent check held: after destroy the
+  # cache rule, creation template, and exclusion were gone while the
+  # AWS_NATIVE account setting persisted (pinned to AWS's own default
+  # by design, so the shared account is left unchanged). Zero
+  # catches.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

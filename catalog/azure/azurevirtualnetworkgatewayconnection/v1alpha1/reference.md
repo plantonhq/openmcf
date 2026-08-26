@@ -85,7 +85,7 @@ spec:
 | `spec.virtualNetworkGatewayId` | `string \| valueFrom` | yes |  | AzureVirtualNetworkGateway (`status.outputs.virtual_network_gateway_id`) |
 | `spec.localNetworkGatewayId` | `string \| valueFrom` |  |  | AzureLocalNetworkGateway (`status.outputs.local_network_gateway_id`) |
 | `spec.peerVirtualNetworkGatewayId` | `string \| valueFrom` |  |  | AzureVirtualNetworkGateway (`status.outputs.virtual_network_gateway_id`) |
-| `spec.expressRouteCircuitId` | `string \| valueFrom` |  |  |  |
+| `spec.expressRouteCircuitId` | `string \| valueFrom` |  |  | AzureExpressRouteCircuit (`status.outputs.express_route_circuit_id`) |
 | `spec.sharedKey` | `string \| valueFrom` (sensitive) |  |  |  |
 | `spec.authorizationKey` | `string \| valueFrom` (sensitive) |  |  |  |
 | `spec.bgpEnabled` | `bool` |  |  |  |
@@ -204,11 +204,12 @@ same shared_key. Fixed at creation.
 
 `string | valueFrom`
 
-EXPRESS_ROUTE connections: the circuit's ARM id. A bare reference:
-supply the id as a literal or an explicit kind/fieldPath reference.
-Fixed at creation.
+EXPRESS_ROUTE connections: the circuit's ARM id. References an
+AzureExpressRouteCircuit's ARM-id output (or a literal ARM ID for a
+circuit outside the catalog). Fixed at creation.
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AzureExpressRouteCircuit (`status.outputs.express_route_circuit_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureExpressRouteCircuit, name: <that resource's name>, fieldPath: status.outputs.express_route_circuit_id}} -- a bare string does not parse
 
 ### spec.sharedKey
 
@@ -510,6 +511,7 @@ Fields that can point at another resource's outputs:
 | `spec.virtualNetworkGatewayId` | AzureVirtualNetworkGateway | `status.outputs.virtual_network_gateway_id` |
 | `spec.localNetworkGatewayId` | AzureLocalNetworkGateway | `status.outputs.local_network_gateway_id` |
 | `spec.peerVirtualNetworkGatewayId` | AzureVirtualNetworkGateway | `status.outputs.virtual_network_gateway_id` |
+| `spec.expressRouteCircuitId` | AzureExpressRouteCircuit | `status.outputs.express_route_circuit_id` |
 
 ## See Also
 

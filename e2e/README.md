@@ -311,7 +311,17 @@ entries the chain already deploys are skipped. Manifest-path entries deploy
 in listed order after the kind-driven chain, each preceded by any of its own
 transitive prerequisites not already deployed -- and always deploy, because
 they exist precisely to add another instance; a path entry never substitutes
-for the kind's install profile. The resolver also honors the same annotation
+for the kind's install profile. The ONE exception: a path entry naming the
+very FILE the kind-driven chain already resolved (the typical slip:
+annotating the consumer-scoped override of a registry prerequisite) is
+skipped, because an identical manifest is never a meaningful extra
+instance -- before the resolver deduped this, the duplicate deployed one
+stack twice and BROKE the Pulumi teardown (the second destroy retries
+against a stack the first destroy removed, "no stack named ... found"
+through the whole ladder; live-caught 2026-08-26 on a DLM role fixture).
+The Terraform path MASKS the class -- destroying an already-empty state
+succeeds -- so a duplicate that passes offline TF proofs still fails its
+first live Pulumi lane. The resolver also honors the same annotation
 (kind names only) on each prerequisite's OWN install manifest, ordering the
 fixtures an install profile's `value_from` references compose BEFORE the
 declaring kind -- recursively and cycle-checked. All fixtures join the same
@@ -864,6 +874,14 @@ The remedy is environmental, never a module edit: delete the fixture
 resource group explicitly, re-probe after the resurface window, re-run
 the failed lane. Both occurrences' re-runs passed with zero changes.
 
+The trigger is NOT resolver-specific: the same signature (teardown
+reports every dependency destroyed, the fixture RG later answers
+`az group list` again, the next lane's fixture create collides) fired
+after a plain Container App Environment chain teardown whose
+DEPENDENCIES-DOWN passed cleanly. Treat it as a general Azure
+delete-side class on fixture resource groups; the remedy is identical
+and the explicit group delete has cleared it first-try every time.
+
 ### Bare `ServiceUnavailable` on an ARM create LRO: transient, retry the lane once
 
 Some ARM operations fail their create's long-running poll with a bare
@@ -940,12 +958,29 @@ integration endpoint -- do not use documentation placeholder domains.
 Some services validate the URI server-side at create and reject blocked
 domains outright: Azure Monitor action groups return 400
 `WebhookServiceUriBlocked` for webhook receivers on `example.com`, on
-both engines, while every offline gate passes (the schema only checks
-the http/https scheme). Use a real domain the fixture plausibly owns
+both engines, while every offline gate passes (the receiver URL fields
+are sensitive-annotated and deliberately carry no value rules, so the
+schema cannot screen domains). Use a real domain the fixture plausibly owns
 (the project's own domain works; the service does not probe the URL at
 create, it only screens the domain). Presets and hack manifests should
 carry a domain-you-own shape (e.g. `hooks.yourcompany.com`) so users
 never copy a blocked placeholder.
+
+### A stale local `az` CLI silently drops new API surface (false-negative evidence)
+
+When a lane captures evidence with `az` on a NEWLY-modeled field and the
+field reads back ABSENT while its same-wave siblings are present, verify
+the CLI's own API model knows the field before treating the absence as a
+module or provider defect. The installed CLI's bundled service models lag
+new provider surface, and unknown response members are silently
+discarded -- a false negative that pattern-matches an engine silent-drop
+bug and burns diagnosis time (the AWS section's CloudFront
+`CacheTagConfig` incident is the worked example, with the skeleton-probe
+technique). Prefer evidence readers whose model is pinned WITH the repo:
+the engine's own refresh/plan diff, or a probe through the repo's pinned
+Azure SDK. The class is the sibling of the stale-installed-`planton`
+binary lesson -- stale local tooling produces false readings in both
+directions.
 
 ### Vendor-constant casing: an SDK constant's Go identifier is not its wire value
 
@@ -1043,7 +1078,16 @@ kinds (snapshots, images) this is also the safer contract: a ForceNew
 source edit would silently DELETE the artifact and recapture from
 current state. Check the provider's Read function (does it `d.Set` the
 field?) the moment a round-trip reports a replace on a create-only
-argument.
+argument. Second AWS instance: `aws_acmpca_certificate`'s five
+issue-request arguments (csr, signing_algorithm, template_arn,
+validity, api_passthrough — upstream's own import test ignores the
+full set). The stakes are maximal there: the blind round-trip planned
+a delete+create on the CA's own ACTIVATION certificate — re-issuing a
+trust anchor adopters pin by fingerprint — and the install resource
+cascaded. Note a `config_only_attributes` declaration CANNOT absorb
+this class (tolerances cover in-place diffs; these fields force
+replaces) — the module-side ignore is the only honest fix, after which
+the tolerance is dead weight and gets retired.
 
 The SECRET sub-class takes the OPPOSITE remedy. When the never-read-back
 ForceNew field is a write-only SECRET (first live case: a container
@@ -1059,6 +1103,41 @@ asking "should editing this field replace the resource?" -- no
 (immutable creation history) means ignore_changes; yes (rotatable
 secret) means the annotation.
 
+### Echo maps built from resource state are PARTIAL mid-import -- eager indexing kills the import
+
+Terraform modules that export import-derivation echo maps (for_each keys
+-> resource ids) typically build them FROM the resource instances
+(`{ for p, r in aws_x.this : p => r.id }`). At plan/apply the map is
+total -- every instance is in the graph -- but during a blind round-trip
+`tofu import` adds instances ONE AT A TIME, and evaluating a local that
+eagerly indexes the partial map for every config key hard-errors the
+import with "Invalid index" (live-caught on the REST gateway's path
+tree: importing `/health` evaluated the echo map's `/orders` entry
+before `/orders` was imported). The remedy is `try(map[key], null)` at
+the echo-map CONSUMPTION sites with a comment teaching why the try() is
+load-bearing -- the null entries heal as the remaining imports land, and
+the key can never be genuinely missing at plan time because map and
+consumer derive from the same spec. Resource-config references to the
+same maps are safe without try() (imports evaluate the target resource's
+config against the planned graph, not state); only locals-fed OUTPUTS
+evaluate against partial state.
+
+### Engine-side trigger arguments make a resource honestly not-importable even when an importer ships
+
+A resource whose behavior-bearing argument is ENGINE-side metadata the
+cloud never stores (the API Gateway deployment's `triggers` redeploy
+hash is the live-caught case; upstream's own docs say "the `triggers`
+argument cannot be imported") can never survive a blind round-trip: the
+import holds null, the config supplies the hash, and `triggers` forces
+replacement -- a guaranteed replace no tolerance may cover. The honest
+declaration is `not_importable_upstream_reason` (skip-and-recreate) even
+though an importer EXISTS upstream: the adopter's contract is that the
+first reconcile-apply mints a fresh instance from the adopted definition
+(for deployments, a behavioral no-op that repoints the stage). State the
+importer-exists-but nuance in the reason text -- the field name says
+"upstream" but the class is "cannot round-trip by construction", and the
+next reader deserves the distinction.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for
@@ -1073,7 +1152,13 @@ anything that disturbs temp storage on the host. Diagnose by the
 signature: SEVERAL stacks of the same scenario reporting "no stack named"
 at once -- including ones that already deployed and verified cleanly (a
 real per-stack failure never spreads to unrelated stacks) -- and an
-identical re-run passing end to end.
+identical re-run passing end to end. On a SINGLE-fixture chain the
+"several stacks" half of the signature collapses to one: the fixture's
+`pulumi up` succeeds and the output read seconds later reports "no stack
+named" for that same stack (seen live on the runner appliance's RG-only
+chain; the identical re-run passed end to end). The exposure is worst on
+a shared workstation -- another program's suite churning host temp
+storage is exactly the disturbance this class feeds on.
 
 Recovery: the stackless fixtures' destroys were skipped, so sweep the
 cloud for the failed run's fixtures before re-running. A same-named
@@ -1193,6 +1278,50 @@ NAT gateway is the same order; an NLB scenario ~6 min per engine (create
 import round-trip when `PLANTON_E2E_IMPORT_ROUNDTRIP=1` is set (it re-imports
 and re-plans every resource, roughly doubling a component's Terraform lane).
 
+**Probe Service Quotas BEFORE any instance-backed SageMaker lane — most
+endpoint instance quotas default to ZERO on every account.** The per-type
+`... for endpoint usage` quota is 0 by AWS DEFAULT for nearly every
+instance family (ml.m5.large and ml.c6i.large included — verified against
+`get-aws-default-service-quota`, 2026-08-25): CreateEndpoint fails with
+ResourceLimitExceeded and no module or fixture change can fix it. The
+entry-level exceptions whose default is 2 are ml.t2.\* (x86) and
+ml.m6g.large (Graviton — only for arm64 images); serverless needs no
+per-type quota (defaults: 5 endpoints / 10 concurrency per region), and
+notebook `ml.t3.medium` defaults healthy. A scenario that is supposed to
+run on any fresh account must therefore ride a default-quota type — a
+quota-blocked type in a canonical scenario is an authoring defect, not an
+environment deferral (the endpoint full-surface scenario was re-pointed
+ml.m5.large → ml.t2.medium on exactly this). Probe with
+`aws service-quotas list-service-quotas --service-code sagemaker` and
+check the DEFAULT (not just the applied value) before concluding a type
+is portable: an applied nonzero value can be an account-specific grant.
+
+**When a ValidationException NAMES a regex, the spec's pattern must MIRROR
+it exactly — never re-derive the character class from convention.** AWS's
+maintenance-window day tokens looked like the uppercase `DDD:HH:MM`
+convention siblings use (EKS, ElastiCache accept `sun:23:00`/`mon:...`
+lowercase), but SageMaker's MLflow APIs reject `TUE:03:30` with a 400
+naming their exact contract: `(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\d|2[0-3]):([0-5]\d)`
+— MIXED-case days (live hit 2026-08-25; the kind's own CEL had taught the
+uppercase form, so every manifest obeying the spec failed at create). When
+a create error quotes the service regex, copy it into the spec pattern
+verbatim and add the rejected casing as an explicit invalid-case spec
+test; casing conventions do not transfer across AWS service families.
+
+**A CreateModel 400 naming the sagemaker.amazonaws.com service-principal
+grant means WRONG REGISTRY ACCOUNT, not a fixable policy.** AWS's prebuilt
+framework images live in per-region registry ACCOUNTS (scikit-learn/
+XGBoost library: us-west-2 = 246618743249, us-west-1 = 746614075791), and
+a cross-region transposition fails CreateModel with "The repository of
+your image ... does not grant ecr:GetDownloadUrlForLayer, ecr:BatchGetImage,
+ecr:BatchCheckLayerAvailability permission to sagemaker.amazonaws.com
+service principal" — which reads like a repo-policy problem on a repo you
+could never edit anyway (live hit 2026-08-25, identical 400 both engines).
+The fix is the scenario/manifest literal; derive accounts from the pinned
+provider's `prebuilt_ecr_image_data_source.go` region maps or the
+sagemaker-python-sdk image_uri_config files, never from another region's
+example.
+
 **Server-side-only AWS contracts: budget one live probe before a module
 debugging spiral.** Some AWS create/update contracts appear in no provider
 schema, validator, or CustomizeDiff — they live only in the service (the
@@ -1207,7 +1336,22 @@ mappings on rule-mode domains, and CreateRoutingRule rejects everything
 but REST-protocol targets ("Only the REST protocol type is supported" —
 that one IS in the provider's website doc, three times, while the schema
 types api_id as a plain string: read the resource's DOC page during
-design, not only its schema); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
+design, not only its schema); on SageMaker endpoints, CreateEndpoint
+rejects a RollingUpdatePolicy DeploymentConfig when the fleet is a single
+instance ("Cannot update endpoint with single instance using
+RollingUpdatePolicy ... use BlueGreenUpdatePolicy or removing
+DeploymentConfig" — 2026-08-25; the kind's CEL now front-loads the
+single-variant case), and an endpoint whose model has NO artifacts parks
+at Failed after ~20 minutes ("Unable to successfully stand up your model
+within the allotted 180 second timeout" — an artifact-less framework
+container passes CreateModel but can never answer ping health checks, so
+an ENDPOINT fixture model must be SERVABLE: the harness stages a
+~650-byte XGBoost booster via the endpoint's consumer-scoped object-set
+override), and note the failed-create endpoint STRANDS cloud-side outside
+the engine's state (Pulumi never registered it, the stack destroy missed
+it, and the sibling engine's same-name create then 409s "Cannot create
+already existing endpoint" — delete the Failed endpoint explicitly before
+any relaunch); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
 validate that the associated role's trust policy allows rds.amazonaws.com
 to assume it and 400 InvalidParameterValue otherwise ("IAM role ARN value
 is invalid or does not include the required permissions") — a composed
@@ -1243,7 +1387,29 @@ foundation-model source whose model supports only INFERENCE_PROFILE
 invocation ("The provided foundation model does not support On Demand
 inference" — the Nova family and most 2025+ models; probe a model's arms
 with `list-foundation-models --by-inference-type ON_DEMAND` before
-fixing a scenario source). When a lane fails with a 4xx the offline
+fixing a scenario source); on CloudWatch Logs account policies,
+PutAccountPolicy accepts `selectionCriteria` ONLY for
+SUBSCRIPTION_FILTER_POLICY in the one grammar `LogGroupName NOT IN
+["..."]` — every criteria string on the other four types fails
+"Invalid selection criteria provided" (2026-08-25; a five-variant $0
+probe settled it — the prefix form some AWS material shows is
+rejected too, so the other types are account-wide, period); on
+CloudWatch Logs cross-account destinations, PutDestinationPolicy
+requires AWS principals as BARE ACCOUNT IDs — the usual
+`arn:aws:iam::<id>:root` spelling fails "Principal section of policy
+contains ARN instead of account ID" (2026-08-25, identical both
+engines; upstream's own test spells `"000000000000"`) — and the bare
+id must stay a STRING: an unquoted YAML id parses as a number and the
+service then fails "Error occurred while parsing accessPolicy ...
+using IAM grammar" (quote it, the sibling of the y-key class); on
+Managed Prometheus scrapers, CreateScraper requires at least TWO
+subnets ("Number of subnets must be at least 2" — 2026-08-25; the
+spec's min_items now mirrors it); and on Managed Prometheus resource
+policies, PutResourcePolicy requires every statement's Resource to be
+exactly the workspace's own ARN ("Resource in policy does not match
+workspace resource ARN" — 2026-08-25; the AgentCore-runtime fix shape
+applies: both modules compose the ARN after create and manifests
+never carry Resource). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -1306,6 +1472,197 @@ history-dependent; (2) a provider whose attribute-satellite delete writes
 a zero value plants that value permanently on the name — expect
 "unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
 manager, not the service default.
+
+**Settings whose revert path validates the PREVIOUS state need that old
+dependency ALIVE at revert time — a per-lane fixture cannot carry them.**
+The AgentCore token vault is the canonical case (live-caught 2026-08-24):
+SetTokenVaultCMK validates the OLD key's state on EVERY write, so
+reverting a CustomerManagedKey vault to ServiceManagedKey fails with "Old
+KMS Key validation failed ... expected KeyState:ENABLED" once the old key
+is disabled or in its deletion window. A chain-deployed KMS fixture dies
+into exactly that window at the CMK lane's DEPENDENCIES-DOWN, wedging the
+shared account's vault before the revert lane runs. The lane shape for
+this class is a STANDING fixture (the S3 Vectors seam):
+`aa_e2e.EnsureTokenVaultKMSKeyFixture` keeps one alias-addressed key
+(`alias/planton-e2e-acetv`, ~USD 1/month) ENABLED across lanes and runs,
+self-healing a key found mid-deletion (cancel + re-enable — the same
+recipe that un-wedges a stranded vault: cancel-key-deletion, enable-key,
+apply ServiceManagedKey, re-schedule).
+
+**Services WRITE zero-byte permission-check canaries into policy-granted
+buckets at CONFIGURE time — and the canaries outlive the configuration.**
+Bedrock invocation logging is the canonical case (live-caught
+2026-08-24): PutModelInvocationLoggingConfiguration validates the bucket
+policy by writing `amazon-bedrock-logs-permission-check` objects under
+EVERY configured S3 prefix (archive AND CloudWatch large-data spillover)
+with zero model invocations ever made, and deleting the configuration
+does not remove them. Second instance (2026-08-25): CreateTrail writes
+zero-byte `AWSLogs/` prefix markers into the trail's delivery bucket
+before any event is ever delivered, and they survive the trail's
+delete. Any bucket fixture a service configuration ever
+points at must ship `forceDestroy: true` or its DEPENDENCIES-DOWN fails
+BucketNotEmpty — that failure is this class, not a leaked lane resource.
+
+**Services ASSUME the manifest's execution role at CREATE time and
+probe bucket ACL verbs — role fixtures need the service's own
+managed-policy verb set, not just object read/write.** SageMaker
+Feature Store is the canonical case (live-caught 2026-08-25, Q36):
+CreateFeatureGroup assumes the spec's role_arn and calls
+s3:GetBucketAcl on the offline-store bucket before creating anything
+(writes also carry s3:PutObjectAcl — the exact pair AWS's
+AmazonSageMakerFeatureStoreAccess managed policy grants). A role
+fixture granting only object verbs plus GetBucketLocation fails the
+create on BOTH engines with ValidationException "Invalid S3Uri"
+wrapping the S3 AccessDenied — the bucket exists and the URI is fine;
+the words are misdirection. When a lane's create names a role AND a
+bucket, read the service's own managed policy for that feature and
+grant the fixture role that verb set verbatim.
+
+**Some AWS APIs MASK not-found as AccessDeniedException — a verifier's
+absent-check must learn the service's real gone-signal.** AWS Backup's
+DescribeBackupVault is the canonical case (live-probed 2026-08-25): a
+deleted (or never-existing) vault name answers 403 "Insufficient
+privileges to perform this action", never ResourceNotFoundException —
+under credentials that describe an EXISTING vault fine. A verify-absent
+that only accepts ResourceNotFound fails every clean teardown of such a
+kind. Accepting the masked signal is safe when VerifyExists uses the
+SAME call earlier in the lane: real permission loss fails loudly there.
+Probe the pair (describe an existing resource, then a nonexistent name)
+before writing the verifier's absent arm for a new AWS service.
+
+**Cloud Map-linked Route 53 health checks are undeletable drain, not
+orphans.** Health checks Cloud Map creates for health-checked
+instances carry `LinkedService: servicediscovery.amazonaws.com`, and
+DeleteHealthCheck refuses them with AccessDenied naming the owning
+service — even after that service is deleted (live-probed
+2026-08-26). AWS's own cleanup sweeps them minutes after the parents
+die. A zero-orphan sweep treats lingering linked checks like the FSR
+"disabling" reads and KMS scheduled deletions: verify every check is
+LinkedService-owned and its parent is gone, then move on.
+
+**S3 Express wraps a deleted directory bucket's not-found inside a
+CREDENTIAL error — `errors.As` never reaches it.** Every S3 Express
+(directory bucket) operation acquires session credentials via
+CreateSession first, so HeadBucket on a deleted bucket fails as
+"get identity: get credentials: operation error S3: CreateSession,
+... 404 ... NoSuchBucket" (live-caught 2026-08-26, identical both
+engines — the destroy had fully succeeded). The credential-acquisition
+wrapper chain does not unwrap to a `smithy.APIError`, so the typed
+match that works for a standard bucket's 404 silently misses; the
+verifier must ALSO match the gone-code textually (`strings.Contains`
+on "NoSuchBucket" — the same fallback the bedrock and backup verifiers
+use). This is the unmodeled-not-found class's third face: typed
+exception missing (Synthetics GetCanary), masked as AccessDenied
+(Backup), and wrapped in a credential path (S3 Express).
+
+**The `${E2E_ENV:...}` token expander scans the WHOLE manifest —
+comments included.** A fixture comment that quotes the token syntax
+with an empty variable name (writing the literal token shape as prose)
+fails the manifest at deploy with "invalid environment token"
+(live-caught 2026-08-25 on the GuardDuty KMS fixture's own
+documentation comment). Name the token in prose; never write the
+`${...}` shape in a comment unless it is a complete, valid token.
+
+**Manifests parse under YAML 1.1 rules — a bare `y` KEY inside a
+raw-JSON Struct field silently becomes the key `"true"`.** The
+manifest loader's YAML-to-JSON step resolves the YAML 1.1 boolean
+tokens (`y`, `n`, `yes`, `no`, `on`, `off`) even in KEY position, so a
+CloudWatch dashboard widget authored `y: 2` reaches AWS as `"true": 2`
+and PutDashboard 400s with the misdirecting "Should have property y
+when property x is present" — while `x`, `width`, `height` survive
+untouched (live-caught 2026-08-25, identical on both engines; the
+engine's own plan shows `+ true = 2`, which is the fastest diagnosis).
+The class is ANY Struct-typed field whose open schema uses a
+YAML-boolean token as a key or expects one as a string value — the
+Norway problem, key edition. Fix shape: QUOTE the ambiguous scalar in
+every authored surface (scenario, canonical manifest, presets) and
+teach it on the spec field; pasted JSON is immune (JSON keys are
+quoted by definition). A loader-level fix (YAML 1.2 semantics) is a
+platform-wide decision, not a lane fix.
+
+**A kind whose manifests can deploy OFF the ambient region must export
+`region` in its stack outputs — the harness verifies where the outputs
+say, not where the scenario deployed.** The harness's VerifyDeployed
+resolves the verifier's region from `outputs["region"]`; when the
+output is absent the SDK falls back to the ambient region, and a
+fixture or scenario deployed elsewhere fails verification with
+misleading errors (NoSuchConfigurationRecorder for a healthy us-east-2
+recorder; NoSuchConformancePack for a healthy us-east-2 pack —
+live-caught 2026-08-25, twice in one session). Any regional
+settings-singleton or fixture-serving kind that region-isolated lanes
+compose off-ambient needs the output; the kind's own same-region lane
+passing proves nothing about this gap.
+
+**AWS can PRE-OCCUPY an account singleton — census the occupant before
+designing a create lane, because the collision is unavoidable, not
+schedulable.** The known account-singleton classes (one
+FIELD_INDEX_POLICY per region, one Config recorder, one default DLM
+policy per type) are collision risks BETWEEN lanes — serialization
+fixes them. A distinct sub-class exists where AWS ITSELF creates the
+singleton occupant: every account that enabled Cost Explorer on or
+after 2023-03-27 carries an auto-created DIMENSIONAL/SERVICE anomaly
+monitor ("Default-Services-Monitor"), so CreateAnomalyMonitor for that
+shape fails with "ValidationException: Limit exceeded on dimensional
+spend monitor creation" on effectively EVERY modern account, ours
+included (live-caught 2026-08-25, identical on both engines). No
+serialization or re-run helps; a canonical scenario riding such a
+shape is an authoring defect (the zero-default-quota class, cost
+edition). The fix is scenario-level: ride a non-singleton arm (the
+CUSTOM monitor), record the pre-occupied arm as deliberately
+unexercised with its unblock in the profile, and teach adopters to
+IMPORT the auto-created occupant (the kinds' import maps already
+derive it). Census probe: `aws ce get-anomaly-monitors` — an occupant
+created near the account's Cost Explorer enablement date is AWS's,
+not an orphan; never sweep it.
+
+**Raw-JSON Expression documents must be authored in the provider's
+CANONICAL STORED form — copy the upstream test's document byte shape
+verbatim, nulls and all.** Two normalizations compose on `ce:`
+Expression strings (anomaly monitors' monitor_specification; expect
+the same on sibling ce: surfaces), each alone enough to fail the
+idempotency gate with a proposed replacement (both live-caught
+2026-08-25 in one lane): (1) the provider re-marshals the SDK's
+Expression struct on read, emitting EVERY member with `null` for
+unused ones — and null-vs-absent is not JSON-equivalent to
+`SuppressEquivalentJSONDiffs`, so a sparse document (only the members
+you use) never matches state; (2) CE echoes user cost-allocation tag
+keys back `user:`-prefixed (`aws:` for AWS-generated), so an
+unprefixed key never matches either. The upstream acceptance test
+spells the fully-populated document with `user:CostCenter` for exactly
+these reasons — deviating from the tested form to "clean it up" is how
+this class ships. Second family (2026-08-25): AMP's resource-policy
+stored form collapses a single-element `Action` array to the scalar
+string — an IAM-shaped document authored `"Action": ["aps:RemoteWrite"]`
+re-imports as `"Action": "aps:RemoteWrite"` and the round-trip plans an
+update the semantic-equality type does not suppress; author the string
+form. The general rule for any raw-JSON-string attribute:
+the canonical form is whatever the provider's READ path re-marshals,
+not the minimal document AWS accepts at create.
+
+**Server-side MATERIALIZED FAMILIES break post-apply plan idempotency —
+send what AWS materializes, or declare what it fills in.** Three shapes
+of one class, all live-caught 2026-08-25 under the armed idempotency
+gate: (1) GuardDuty materializes a detector feature's FULL sub-toggle
+family (RUNTIME_MONITORING's trio) with undeclared members DISABLED —
+the modules now always send the complete family, declared values over
+explicit DISABLED (the fix lives in the module because the family is a
+small pinned enum). (2) AWS Backup region settings echo the region's
+FULL resource-type opt-in map — the provider owns the whole map, so the
+only idempotent manifest declares every type (the fix lives in the
+MANIFEST because the map is the spec surface; the spec comment teaches
+it). (3) Backup Audit Manager materializes a scope-less resource
+control's default all-supported-types scope, and the pinned provider
+ships no diff suppression — scenarios declare the scope explicitly
+(upstream's own acceptance tests only exercise the scoped form; the
+default list grows with AWS, so hardcoding it in a module would freeze
+semantics — upstream gap recorded). A fourth instance (2026-08-25,
+Q43): Cost Explorer materializes a cost category rule's `type` as
+`REGULAR` when omitted — both modules now always send it, declared
+value over the REGULAR default (a single pinned enum value: the
+module-always-send shape). Choose the fix shape by where the
+truth lives: pinned enum → module always-send; spec-surface map →
+manifest completeness; growing service default → explicit declaration
+plus teaching.
 
 **Cross-region satellites deleted ASYNCHRONOUSLY by the service are an
 orphan class the primary-region check never sees.** Secrets Manager is the
@@ -1398,7 +1755,15 @@ waiting out the window but making the class impossible: put
 is globally fresh. S3 is the recorded exception to the
 names-stay-stable token guidance — its cloud identifier IS the metadata
 name (the module derives the bucket name from it) — legitimate only for
-scenarios no prerequisite chain references by name.
+scenarios no prerequisite chain references by name. **S3 Tables has the
+same class with a sharper signature**: a just-deleted table bucket's
+name answers CreateTableBucket with 409 ConflictException "The bucket
+is in a transitional state because of a previous deletion attempt"
+(live-caught 2026-08-26 — the second engine's create collided with the
+first engine's teardown seconds earlier; the run id's engine suffix is
+exactly what makes the run-scoped name immune). Directory buckets do
+NOT hold the window — a back-to-back same-name recreate succeeded live
+— and vector buckets were not observed either way.
 
 **Fixed-name shared fixtures collide across CONCURRENT sessions on one
 account.** IAM roles are account-global and the shared install profiles
@@ -1755,6 +2120,13 @@ kind exists; that is design, not a defect). Pre-existing findings live in
 `fixture_integrity_baseline.yaml` and only ever burn down; a new finding is
 a manifest fix, never a new baseline entry. Run it with
 `go test ./e2e/framework/runner/ -run TestCatalogFixtureIntegrity`.
+Components whose profile records `status: deferred` are skipped by the
+catalog walk: a deferral is the kind's own record that its lanes cannot run
+(some wall-class prerequisites are structurally unshippable — e.g. an AWS
+Organization fixture would mutate the shared account irreversibly), so the
+gate asserts only what the kind's records claim. It re-arms automatically
+when the profile leaves `deferred` — exactly when the chain must work. A
+missing or unreadable profile never earns the skip.
 
 **Inherited fixture orphans 409 the whole chain — sweep the fixture
 families, not just the kinds' own objects:** prerequisite fixtures use

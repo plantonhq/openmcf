@@ -247,7 +247,16 @@ then the spec-level execution_role_arn is required.
 Instance type for dedicated capacity (an "ml.*" type, e.g.
 "ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
 release - the value passes through to the API, which rejects
-unknown types. Required unless `serverless` is set.
+unknown types. Required unless `serverless` is set. NOTE the
+per-type "for endpoint usage" Service Quota: on a fresh AWS
+account it defaults to ZERO for nearly every instance family
+(ml.m5.large and ml.c6i.large included) - CreateEndpoint fails
+with ResourceLimitExceeded until a quota increase is granted. The
+entry-level exceptions whose default is 2 are ml.t2.* (x86) and
+ml.m6g.large (Graviton - the container image must be arm64);
+`serverless` needs no per-type quota (default: 5 endpoints per
+region). Check with: aws service-quotas list-service-quotas
+--service-code sagemaker.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"}}
 
@@ -485,7 +494,16 @@ then the spec-level execution_role_arn is required.
 Instance type for dedicated capacity (an "ml.*" type, e.g.
 "ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
 release - the value passes through to the API, which rejects
-unknown types. Required unless `serverless` is set.
+unknown types. Required unless `serverless` is set. NOTE the
+per-type "for endpoint usage" Service Quota: on a fresh AWS
+account it defaults to ZERO for nearly every instance family
+(ml.m5.large and ml.c6i.large included) - CreateEndpoint fails
+with ResourceLimitExceeded until a quota increase is granted. The
+entry-level exceptions whose default is 2 are ml.t2.* (x86) and
+ml.m6g.large (Graviton - the container image must be arm64);
+`serverless` needs no per-type quota (default: 5 endpoints per
+region). Check with: aws service-quotas list-service-quotas
+--service-code sagemaker.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"}}
 
@@ -848,7 +866,12 @@ KMS key encrypting captured data in S3.
 
 How UpdateEndpoint rolls new capacity: blue/green with traffic
 shifting (AWS default when omitted) or rolling batches, plus
-CloudWatch-alarm auto-rollback.
+CloudWatch-alarm auto-rollback. NOTE: AWS rejects a ROLLING policy
+on a single-instance fleet at Create/UpdateEndpoint ("Cannot update
+endpoint with single instance using RollingUpdatePolicy",
+live-caught 2026-08-25) - a one-instance endpoint uses blue/green
+or omits deployment; the CEL below front-loads the confirmed
+single-variant case.
 
 - rule: exactly one of blue_green and rolling must be set
 
@@ -1030,6 +1053,7 @@ rolls the endpoint back (1-10 alarm names).
 - `variant_names_unique`: variant names must be unique across production_variants and shadow_variants
 - `shadow_one_each_side`: shadow testing requires exactly one production variant and one shadow variant
 - `role_required_without_models`: execution_role_arn is required when any variant omits model
+- `rolling_requires_multi_instance_fleet`: a rolling deployment policy cannot manage a single-instance endpoint - use two or more instances, a blue_green policy, or omit deployment
 
 ## Outputs
 

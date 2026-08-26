@@ -19,10 +19,7 @@ spec:
   #     (storing a syntactically valid unreachable repo is safe).
   #   - available_security_updates_compliance_status -- Windows Server
   #     managed nodes only, per AWS. Unblock: a WINDOWS-baseline lane.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q42
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

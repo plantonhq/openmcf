@@ -2,12 +2,31 @@ package module
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/route53"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+// canonicalFqdn appends the trailing dot AWS stores on every firewall
+// domain, so the state matches the read-back echo whichever form the
+// manifest authored.
+func canonicalFqdn(domain string) string {
+	if strings.HasSuffix(domain, ".") {
+		return domain
+	}
+	return domain + "."
+}
+
+func canonicalFqdns(domains []string) []string {
+	out := make([]string, len(domains))
+	for i, d := range domains {
+		out[i] = canonicalFqdn(d)
+	}
+	return out
+}
 
 // firewall creates the rule group, its domain lists, rules, and VPC
 // associations, and exports outputs.
@@ -37,7 +56,12 @@ func firewall(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 		return errors.Wrap(err, "create rule group")
 	}
 
-	// Owned domain lists, keyed by list name.
+	// Owned domain lists, keyed by list name. AWS stores every firewall
+	// domain as a trailing-dot FQDN and echoes that form on read, with
+	// no provider-side diff suppression - the modules compose the
+	// canonical form so a bare-authored domain never re-plans forever
+	// (live-caught 2026-08-26 on block_override_domain; same storage
+	// rule here).
 	createdDomainLists := map[string]*route53.ResolverFirewallDomainList{}
 	domainListIds := pulumi.StringMap{}
 	for _, domainList := range spec.DomainLists {
@@ -46,7 +70,7 @@ func firewall(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 			Tags: pulumi.ToStringMap(locals.AwsTags),
 		}
 		if len(domainList.Domains) > 0 {
-			args.Domains = pulumi.ToStringArray(domainList.Domains)
+			args.Domains = pulumi.ToStringArray(canonicalFqdns(domainList.Domains))
 		}
 
 		createdDomainList, err := route53.NewResolverFirewallDomainList(ctx,
@@ -85,8 +109,13 @@ func firewall(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 		if rule.BlockResponse != "" {
 			args.BlockResponse = pulumi.String(rule.BlockResponse)
 		}
+		// AWS stores the override domain as a trailing-dot FQDN and
+		// echoes it back, so a bare-authored value re-plans forever -
+		// compose the canonical form (live-caught 2026-08-26; upstream
+		// has no diff suppression). PARITY: the Terraform module
+		// normalizes identically.
 		if rule.BlockOverrideDomain != "" {
-			args.BlockOverrideDomain = pulumi.String(rule.BlockOverrideDomain)
+			args.BlockOverrideDomain = pulumi.String(canonicalFqdn(rule.BlockOverrideDomain))
 		}
 		if rule.BlockOverrideTtl != nil {
 			args.BlockOverrideTtl = pulumi.Int(int(*rule.BlockOverrideTtl))

@@ -17,10 +17,7 @@ spec:
   #   - an explicit customer-managed key_id -- the KMS reference is
   #     conditional and the default aws/ssm key proves the encryption
   #     path. Unblock: an AwsKmsKey fixture via scenario annotations.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q42
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

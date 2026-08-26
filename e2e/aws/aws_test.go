@@ -1305,11 +1305,26 @@ func TestAwsBedrockInvocationLogging_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbedrockinvocationlogging", "terraform")
 }
 
+// --- AWS Bedrock AgentCore Token Vault (the CMK lane binds the standing
+// KMS key the harness ensures below -- SetTokenVaultCMK validates the
+// PREVIOUS key is ENABLED on every write, so a chain-deployed key whose
+// teardown precedes the service-managed revert wedges the vault; see
+// aa_e2e.EnsureTokenVaultKMSKeyFixture) ---
+
+func ensureTokenVaultKMSKeyFixture(t *testing.T) {
+	t.Helper()
+	if err := awse2e.EnsureTokenVaultKMSKeyFixture(context.Background()); err != nil {
+		t.Fatalf("token-vault KMS key fixture: %v", err)
+	}
+}
+
 func TestAwsBedrockAgentCoreTokenVault_Pulumi(t *testing.T) {
+	ensureTokenVaultKMSKeyFixture(t)
 	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "pulumi")
 }
 
 func TestAwsBedrockAgentCoreTokenVault_Terraform(t *testing.T) {
+	ensureTokenVaultKMSKeyFixture(t)
 	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "terraform")
 }
 

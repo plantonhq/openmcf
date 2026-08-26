@@ -19,10 +19,7 @@ spec:
   #   - a live cross-account data flow (a REAL source account
   #     authorizing THIS aggregator and its recorder data arriving) --
   #     needs a second live account. Unblock: the same account pair.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q40
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

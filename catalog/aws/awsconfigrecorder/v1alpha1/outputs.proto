@@ -16,4 +16,10 @@ message AwsConfigRecorderStackOutputs {
   // Whether the recorder is running after apply (the folded
   // recorder-status truth, echoed for chart consumers).
   bool recording_enabled = 3;
+
+  // The AWS region the recording posture lives in. Config's
+  // singletons are addressed by REGION + the literal name "default",
+  // so any consumer (or verifier) reaching the recorder off the
+  // ambient region needs this alongside recorder_name.
+  string region = 4;
 }

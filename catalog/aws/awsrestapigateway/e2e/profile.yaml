@@ -20,9 +20,13 @@ spec:
   # generated client certificates, and documentation publishing --
   # all offline-proven via e2e/manifest.yaml.
   #
-  # pending_proof: forged this session to the full offline bar -- Q37
-  # proves it live.
+  # Proven live 2026-08-25: minimal + full-surface green on both engines
+  # with blind import round-trips (12 resources full-surface / 7 minimal
+  # re-imported at no real change; the deployment declared
+  # skip-and-recreate -- its trigger hash never round-trips). The
+  # definition-hash redeploy contract evidenced per engine by $0
+  # two-apply probes (new deployment minted, stage repointed).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

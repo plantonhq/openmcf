@@ -92,7 +92,7 @@ spec:
 | `spec.monitoring.alertsForAllReplicationIssuesEnabled` | `bool` |  |  |  |
 | `spec.monitoring.alertsForCriticalOperationFailuresEnabled` | `bool` |  | `true` |  |
 | `spec.monitoring.emailNotificationsForSiteRecoveryEnabled` | `bool` |  |  |  |
-| `spec.resourceGuardId` | `string \| valueFrom` |  |  |  |
+| `spec.resourceGuardId` | `string \| valueFrom` |  |  | AzureDataProtectionResourceGuard (`status.outputs.resource_guard_id`) |
 | `spec.classicVmwareReplicationEnabled` | `bool` |  |  |  |
 | `spec.tags` | `map<string, string>` |  |  |  |
 
@@ -366,10 +366,13 @@ The ARM ID of a Resource Guard to associate with the vault --
 Multi-User Authorization: privileged vault operations (disabling
 soft delete, reducing retention) then require an approval through
 the guard, which typically lives in a DIFFERENT administrator's
-scope. The guard is a Data Protection family resource; reference
-it by its ARM ID. Fixed at creation of the association.
+scope. References an AzureDataProtectionResourceGuard's ARM-id
+output (or a literal ARM ID for a guard outside the catalog, e.g.
+in another administrator's subscription). Fixed at creation of the
+association.
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AzureDataProtectionResourceGuard (`status.outputs.resource_guard_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataProtectionResourceGuard, name: <that resource's name>, fieldPath: status.outputs.resource_guard_id}} -- a bare string does not parse
 
 ### spec.classicVmwareReplicationEnabled
 
@@ -413,6 +416,7 @@ Fields that can point at another resource's outputs:
 | `spec.identity.identityIds` | AzureUserAssignedIdentity | `status.outputs.identity_id` |
 | `spec.encryption.keyId` | AzureKeyVaultKey | `status.outputs.versionless_id` |
 | `spec.encryption.userAssignedIdentityId` | AzureUserAssignedIdentity | `status.outputs.identity_id` |
+| `spec.resourceGuardId` | AzureDataProtectionResourceGuard | `status.outputs.resource_guard_id` |
 
 ## Referenced By
 

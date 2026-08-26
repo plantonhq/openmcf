@@ -62,7 +62,14 @@ func detector(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 		return errors.Wrap(err, "create detector")
 	}
 
-	// Protection plans, patch-keyed by feature name.
+	// Protection plans, patch-keyed by feature name. The full
+	// sub-toggle family is always sent: AWS materializes a feature's
+	// undeclared sub-toggles as DISABLED server-side, so a partial
+	// send leaves refreshed state carrying blocks the config lacks and
+	// every later plan proposes stripping sub-toggles AWS will
+	// re-materialize (live-caught by the post-apply idempotency
+	// re-plan on the Terraform twin; sent identically here for
+	// cross-engine parity).
 	for _, f := range sortedByName(spec.Features, func(f *awsguarddutyv1alpha1.AwsGuardDutyFeature) string { return f.Name }) {
 		featureArgs := &guardduty.DetectorFeatureArgs{
 			DetectorId: createdDetector.ID(),
@@ -70,10 +77,10 @@ func detector(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 			Status:     pulumi.String(enabledStatus(f.Enabled)),
 		}
 		var additional guardduty.DetectorFeatureAdditionalConfigurationArray
-		for _, c := range f.AdditionalConfiguration {
+		for _, c := range expandAdditionalConfigurationFamily(f) {
 			additional = append(additional, &guardduty.DetectorFeatureAdditionalConfigurationArgs{
-				Name:   pulumi.String(c.Name),
-				Status: pulumi.String(enabledStatus(c.Enabled)),
+				Name:   pulumi.String(c.name),
+				Status: pulumi.String(c.status),
 			})
 		}
 		if len(additional) > 0 {
@@ -334,6 +341,51 @@ func enabledStatus(enabled *bool) string {
 		return "DISABLED"
 	}
 	return "ENABLED"
+}
+
+// runtimeMonitoringSubtoggles is RUNTIME_MONITORING's complete
+// additional-configuration family at the pinned provider. AWS
+// materializes every undeclared member as DISABLED server-side, so the
+// module sends the whole family explicitly (see the feature loop).
+var runtimeMonitoringSubtoggles = []string{
+	"EC2_AGENT_MANAGEMENT",
+	"ECS_FARGATE_AGENT_MANAGEMENT",
+	"EKS_ADDON_MANAGEMENT",
+}
+
+// resolvedAdditionalConfiguration is one sub-toggle with its status
+// resolved from the spec's tri-state (declared members) or AWS's
+// materialization default (undeclared members: DISABLED).
+type resolvedAdditionalConfiguration struct {
+	name   string
+	status string
+}
+
+// expandAdditionalConfigurationFamily returns the feature's complete
+// sub-toggle family: for RUNTIME_MONITORING, declared members carry
+// their declared value and undeclared members an explicit DISABLED;
+// other features pass their declared list through unchanged.
+func expandAdditionalConfigurationFamily(f *awsguarddutyv1alpha1.AwsGuardDutyFeature) []resolvedAdditionalConfiguration {
+	if f.Name != "RUNTIME_MONITORING" {
+		var out []resolvedAdditionalConfiguration
+		for _, c := range f.AdditionalConfiguration {
+			out = append(out, resolvedAdditionalConfiguration{name: c.Name, status: enabledStatus(c.Enabled)})
+		}
+		return out
+	}
+	declared := map[string]string{}
+	for _, c := range f.AdditionalConfiguration {
+		declared[c.Name] = enabledStatus(c.Enabled)
+	}
+	out := make([]resolvedAdditionalConfiguration, 0, len(runtimeMonitoringSubtoggles))
+	for _, sub := range runtimeMonitoringSubtoggles {
+		status, ok := declared[sub]
+		if !ok {
+			status = "DISABLED"
+		}
+		out = append(out, resolvedAdditionalConfiguration{name: sub, status: status})
+	}
+	return out
 }
 
 // sortedByName returns a name-sorted copy for deterministic previews.

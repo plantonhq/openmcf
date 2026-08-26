@@ -10,4 +10,4 @@ spec:
   size: Medium
   mlflowVersion: "3.0"
   automaticModelRegistration: true
-  weeklyMaintenanceWindowStart: SUN:03:00
+  weeklyMaintenanceWindowStart: Sun:03:00

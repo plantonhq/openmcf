@@ -74,5 +74,5 @@ spec:
       field_path: weekly_maintenance_window_start
       evidence:
         type: spec_default
-        reference: AWS applies maintenance to the managed app on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
-      notes: MLflow version upgrades are automatic and in-place on this serverless app (the launch post names automatic upgrades; MLflow 3.4 at launch) -- unlike the sibling tracking server there is no version pin, so currency is provider-managed, not a drift risk this manifest carries. The 02-studio-default-mlflow preset pins SUN:03:00.
+        reference: AWS applies maintenance to the managed app on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "Ddd:HH:MM", mixed-case day token) schedules when the maintenance disruption lands.
+      notes: MLflow version upgrades are automatic and in-place on this serverless app (the launch post names automatic upgrades; MLflow 3.4 at launch) -- unlike the sibling tracking server there is no version pin, so currency is provider-managed, not a drift risk this manifest carries. The 02-studio-default-mlflow preset pins Sun:03:00.

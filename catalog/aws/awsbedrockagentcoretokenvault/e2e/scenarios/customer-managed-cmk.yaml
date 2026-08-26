@@ -1,5 +1,11 @@
 # Full surface: the default vault encrypted with a customer-managed
-# KMS key (consumer-scoped fixture at e2e/prerequisites/awskmskey.yaml).
+# KMS key. The key is the harness's STANDING fixture (alias
+# planton-e2e-acetv, ensured by the test entrypoint and exported as the
+# E2E_ENV token below), NOT a chain-deployed prerequisite: AWS validates
+# the PREVIOUS key is ENABLED on every SetTokenVaultCMK write, so the
+# service-managed revert only succeeds while this key still lives -- a
+# per-lane key dying into its deletion window at fixture teardown wedges
+# the vault (live-caught).
 # Run BEFORE the service-managed scenario -- that one doubles as the
 # revert that returns the vault to AWS-owned encryption (destroy alone
 # is a no-op at AWS).
@@ -15,14 +21,10 @@ metadata:
     e2e-component: awsbedrockagentcoretokenvault
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "AwsKmsKey"
   tags:
     - planton-e2e
 spec:
   region: us-west-2
   keyType: CustomerManagedKey
   kmsKeyArn:
-    valueFrom:
-      kind: AwsKmsKey
-      name: planton-oss-e2e-acetv-key
-      fieldPath: status.outputs.key_arn
+    value: ${E2E_ENV:PLANTON_E2E_ACETV_KMS_KEY_ARN}

@@ -2112,7 +2112,10 @@ type AzureDataFactoryLinkedServiceSftp struct {
 	KeyVaultPassword *AzureDataFactoryLinkedServiceKeyVaultSecretRef `protobuf:"bytes,6,opt,name=key_vault_password,json=keyVaultPassword,proto3" json:"key_vault_password,omitempty"`
 	// The SSH private key, base64-encoded
 	// (SshPublicKey/MultiFactor). SECRET. Prefer
-	// key_vault_private_key_content_base64.
+	// key_vault_private_key_content_base64. The base64 framing is taught
+	// here rather than enforced by a validation rule, because sensitive
+	// fields hold a managed-secret reference on consuming platforms and a
+	// content-shape rule would reject every reference.
 	PrivateKeyContentBase64 string `protobuf:"bytes,7,opt,name=private_key_content_base64,json=privateKeyContentBase64,proto3" json:"private_key_content_base64,omitempty"`
 	// Holds the base64 private key in Key Vault instead of
 	// private_key_content_base64.
@@ -2842,16 +2845,15 @@ const file_catalog_azure_azuredatafactorylinkedservice_v1alpha1_spec_proto_rawDe
 	"\x14basic_authentication\x18\x02 \x01(\v2`.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceBasicAuthR\x13basicAuthentication\"b\n" +
 	"'AzureDataFactoryLinkedServicePostgresql\x127\n" +
 	"\x11connection_string\x18\x01 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x10connectionString\"\xf6\x14\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x10connectionString\"\xbc\x13\n" +
 	"!AzureDataFactoryLinkedServiceSftp\x12[\n" +
 	"\x13authentication_type\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"R\x05BasicR\vMultiFactorR\fSshPublicKeyR\x12authenticationType\x12\x1a\n" +
 	"\x04host\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12\x1a\n" +
 	"\x04port\x18\x03 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\x04port\x12\"\n" +
 	"\busername\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12 \n" +
 	"\bpassword\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x12\x96\x01\n" +
-	"\x12key_vault_password\x18\x06 \x01(\v2h.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceKeyVaultSecretRefR\x10keyVaultPassword\x12\xfa\x01\n" +
-	"\x1aprivate_key_content_base64\x18\a \x01(\tB\xbc\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
-	"+data_factory_linked_service_sftp_key_base64\x121private_key_content_base64 must be base64-encoded\x1aNthis == '' || (this.size() % 4 == 0 && this.matches('^[A-Za-z0-9+/]*={0,2}$'))\xa0\xa6\x1d\x01R\x17privateKeyContentBase64\x12\xb7\x01\n" +
+	"\x12key_vault_password\x18\x06 \x01(\v2h.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceKeyVaultSecretRefR\x10keyVaultPassword\x12A\n" +
+	"\x1aprivate_key_content_base64\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\x17privateKeyContentBase64\x12\xb7\x01\n" +
 	"$key_vault_private_key_content_base64\x18\b \x01(\v2h.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceKeyVaultSecretRefR\x1fkeyVaultPrivateKeyContentBase64\x12(\n" +
 	"\x10private_key_path\x18\t \x01(\tR\x0eprivateKeyPath\x12:\n" +
 	"\x16private_key_passphrase\x18\n" +

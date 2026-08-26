@@ -17,9 +17,13 @@ spec:
   #     load-bearing guard. Unblock: an AwsKmsKey fixture scenario
   #     when demand shows.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate (~65s per engine). Clean first-pass -
+  # the 1024/cosine index with non-filterable keys reached ACTIVE and
+  # the bucket + address-keyed index ARNs re-imported blind at zero
+  # diff.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

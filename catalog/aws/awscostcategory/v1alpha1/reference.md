@@ -46,13 +46,15 @@ spec:
   categoryName: Cost Center
   defaultValue: shared
   rules:
+    # Rules take SERVICE_CODE (service codes like "AmazonEC2"), never
+    # the SERVICE display-name dimension other CE surfaces accept.
     - value: platform
       rule:
         or:
           - dimension:
-              key: SERVICE
+              key: SERVICE_CODE
               values:
-                - Amazon Elastic Compute Cloud - Compute
+                - AmazonEC2
           - tag:
               key: team
               values:
@@ -348,9 +350,18 @@ A dimension leaf (service, region, account, ...).
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.dimension.matchOptions
 
@@ -446,9 +457,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.and[].dimension.matchOptions
 
@@ -543,9 +563,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.and[].and[].dimension.matchOptions
 
@@ -640,9 +669,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.and[].or[].dimension.matchOptions
 
@@ -737,9 +775,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.and[].not.dimension.matchOptions
 
@@ -834,9 +881,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.or[].dimension.matchOptions
 
@@ -931,9 +987,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.or[].and[].dimension.matchOptions
 
@@ -1028,9 +1093,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.or[].or[].dimension.matchOptions
 
@@ -1125,9 +1199,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.or[].not.dimension.matchOptions
 
@@ -1222,9 +1305,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.not.dimension.matchOptions
 
@@ -1319,9 +1411,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.not.and[].dimension.matchOptions
 
@@ -1416,9 +1517,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.not.or[].dimension.matchOptions
 
@@ -1513,9 +1623,18 @@ A dimension leaf.
 
 `string`
 
-The dimension to filter on.
+The dimension to filter on. Cost category rules accept exactly
+this server-enforced subset of Cost Explorer dimensions - NOT the
+full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+by-service intent uses SERVICE_CODE with service CODES
+("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+dimension ("Amazon Simple Storage Service") that budgets and
+anomaly monitors accept.
 
-- rule: {"string":{"in":["AZ","INSTANCE_TYPE","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","OPERATION","PURCHASE_TYPE","REGION","SERVICE","SERVICE_CODE","USAGE_TYPE","USAGE_TYPE_GROUP","RECORD_TYPE","OPERATING_SYSTEM","TENANCY","SCOPE","PLATFORM","SUBSCRIPTION_ID","LEGAL_ENTITY_NAME","INVOICING_ENTITY","DEPLOYMENT_OPTION","DATABASE_ENGINE","CACHE_ENGINE","INSTANCE_TYPE_FAMILY","BILLING_ENTITY","RESERVATION_ID","RESOURCE_ID","RIGHTSIZING_TYPE","SAVINGS_PLANS_TYPE","SAVINGS_PLAN_ARN","PAYMENT_OPTION","AGREEMENT_END_DATE_TIME_AFTER","AGREEMENT_END_DATE_TIME_BEFORE","PAYER_ACCOUNT","ANOMALY_TOTAL_IMPACT_ABSOLUTE","ANOMALY_TOTAL_IMPACT_PERCENTAGE"]}}
+- rule: {"string":{"in":["BILLING_ENTITY","LINKED_ACCOUNT","LINKED_ACCOUNT_NAME","RECORD_TYPE","REGION","SERVICE_CODE","USAGE_TYPE"]}}
 
 ### spec.rules[].rule.not.not.dimension.matchOptions
 

@@ -17,11 +17,21 @@ spec:
   # fixture on demand), Iceberg table format and provisioned throughput
   # (billing) - all offline-proven via e2e/manifest.yaml. The offline
   # store's S3 objects survive group deletion by AWS design (the lane
-  # writes none; the sweep tolerates the fixture-bucket prefix).
+  # writes none; the sweep tolerates the fixture-bucket prefix), and so
+  # does the auto-created Glue table in the sagemaker_featurestore
+  # database (live-verified 2026-08-25) - the sweep deletes those
+  # tables (and the database when empty) by hand.
   #
-  # pending_proof: forged this session to the full offline bar -- Q36
-  # proves it live.
+  # Proven live 2026-08-25 (session 074, Q36): both engines, both
+  # scenarios, blind import round-trips green. One live catch fixed at
+  # the full bar: CreateFeatureGroup assumes the execution role and
+  # calls s3:GetBucketAcl on the offline-store bucket at create (writes
+  # carry s3:PutObjectAcl) - the shared execution-role fixture gained
+  # both ACL verbs; spec role_arn comment, GUIDE, and the harness
+  # manual teach the class.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30

@@ -1,6 +1,11 @@
+# The resource's own `id` attribute is deprecated at the provider
+# (the pin's plans warn on it); the caller-identity data source is the
+# canonical account-id read and returns the same 12-digit value.
+data "aws_caller_identity" "this" {}
+
 output "account_id" {
   description = "The 12-digit AWS account ID the settings belong to (also the provider's import ID)"
-  value       = aws_api_gateway_account.this.id
+  value       = data.aws_caller_identity.this.account_id
 }
 
 output "api_key_version" {

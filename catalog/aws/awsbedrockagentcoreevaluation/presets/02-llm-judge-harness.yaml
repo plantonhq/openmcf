@@ -9,9 +9,13 @@ spec:
       description: Scores whether the agent was helpful
       level: SESSION
       llmAsAJudge:
-        instructions: Score how helpful the agent's response was.
+        # SESSION-level instructions must embed one of the level's
+        # single-brace placeholders ({context} here).
+        instructions: Score how helpful the agent's response was given the {context}.
+        # Judge models resolve through the region's inference set; the
+        # inference-profile id form is what CreateEvaluator accepts.
         model:
-          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          modelId: us.amazon.nova-2-lite-v1:0
           inference:
             temperature: 0
         ratingScale:
@@ -21,7 +25,8 @@ spec:
             - label: fail
               definition: The agent was not helpful
   harnesses:
-    - name: support-bench
+    # Harness names take letters/digits/underscores only (no hyphens).
+    - name: support_bench
       executionRoleArn:
         valueFrom:
           kind: AwsIamRole

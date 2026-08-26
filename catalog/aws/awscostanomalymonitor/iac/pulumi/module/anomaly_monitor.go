@@ -20,14 +20,25 @@ import (
 //     replacement (only the display name updates in place);
 //   - the spec's CUSTOM-arm Struct renders as the provider's raw
 //     Expression JSON string (the provider takes the AWS document
-//     verbatim, not typed blocks);
+//     verbatim, not typed blocks) - the AUTHOR owns the canonical
+//     form (server-verified 2026-08-25): all root members present
+//     (unused ones null, matching the provider's re-marshaled READ
+//     form) and tag keys "user:"-prefixed (CE echoes them back
+//     prefixed). A sparser or unprefixed document is a perpetual
+//     replace, not a module defect;
 //   - each subscription is one aws_ce_anomaly_subscription bound to
 //     THIS monitor's ARN, keyed by its spec name (the for_each key
 //     and the outputs-map key);
 //   - the threshold expression is leveled (root -> leaf) to the exact
 //     nesting AWS accepts on subscriptions; the conversion below is
 //     1:1 with no depth checks because the spec shape cannot express
-//     an illegal tree.
+//     an illegal tree;
+//   - a DIMENSIONAL monitor is an account SINGLETON that AWS
+//     auto-creates ("Default-Services-Monitor") on post-2023 Cost
+//     Explorer accounts - CreateAnomalyMonitor then fails with
+//     "Limit exceeded on dimensional spend monitor creation"
+//     (server-verified 2026-08-25). Not a module defect: import the
+//     existing monitor or use the CUSTOM arm.
 func anomalyMonitor(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource) error {
 	spec := locals.Spec
 

@@ -19,6 +19,8 @@ spec:
   # pending_proof: forged this session to the full offline bar -- Q36
   # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

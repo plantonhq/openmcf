@@ -35,6 +35,10 @@ func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *api
 	definitionResources = append(definitionResources, satellites.gatewayResponses...)
 	definitionResources = append(definitionResources, apiExtras...)
 
+	// The trigger hash is engine-side change-detection metadata AWS
+	// never stores, so a deployment can never be adopted by import --
+	// the import catalog declares it skip-and-recreate (the first
+	// reconcile mints a fresh deployment and repoints the stage).
 	deploymentArgs := &apigateway.DeploymentArgs{
 		RestApi: api.ID(),
 		Triggers: pulumi.StringMap{

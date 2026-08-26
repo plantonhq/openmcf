@@ -14,13 +14,15 @@ spec:
   categoryName: Cost Center
   defaultValue: shared
   rules:
+    # Rules take SERVICE_CODE (service codes like "AmazonEC2"), never
+    # the SERVICE display-name dimension other CE surfaces accept.
     - value: platform
       rule:
         or:
           - dimension:
-              key: SERVICE
+              key: SERVICE_CODE
               values:
-                - Amazon Elastic Compute Cloud - Compute
+                - AmazonEC2
           - tag:
               key: team
               values:

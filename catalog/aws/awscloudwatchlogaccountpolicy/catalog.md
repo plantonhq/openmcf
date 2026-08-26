@@ -4,7 +4,7 @@ Set a logging rule once, account-wide: mask PII in every log group, forward ever
 
 ## What Gets Managed
 
-- One account-level policy per (name, type) pair: its type (data protection, subscription filter, field index, transformer, or metric extraction), its type-specific document, and the selection criteria narrowing which log groups it covers.
+- One account-level policy per (name, type) pair: its type (data protection, subscription filter, field index, transformer, or metric extraction), its type-specific document, and — for subscription-filter policies only — the selection criteria excluding named log groups.
 
 ## Before You Deploy
 
@@ -15,7 +15,7 @@ Set a logging rule once, account-wide: mask PII in every log group, forward ever
 
 ### Blast Radius
 
-Account policies apply to EVERY log group in the region unless `selection_criteria` narrows them. Start narrowed (a prefix selection), widen deliberately.
+Account policies apply to EVERY log group in the region — that is the point of the resource, and for four of the five types AWS offers no narrowing at all. Only a subscription-filter policy can carve out exceptions, as an exact-name exclusion list (`LogGroupName NOT IN ["..."]`). Weigh the account-wide effect per type before deploying: masking and forwarding change what readers and destinations see; field indexing and metric extraction only add derived data.
 
 ## After You Deploy
 
@@ -24,4 +24,4 @@ Account policies apply to EVERY log group in the region unless `selection_criter
 
 ## Common Changes
 
-- Document edits apply in place; name, type, and selection criteria replace the policy.
+- Document edits apply in place; name, type, and selection criteria (subscription-filter only) replace the policy.

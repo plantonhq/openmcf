@@ -88,6 +88,18 @@ var _ = ginkgo.Describe("AzureExpressRouteGatewaySpec Validation Tests", func() 
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
+			ginkgo.It("should accept a managed-secret reference in the authorization key", func() {
+				// Sensitive fields carry secret references on consuming
+				// platforms -- the UUID shape is taught in the field comment,
+				// never enforced on the stored value.
+				input := validResource()
+				connection := validConnection("partner-dc")
+				connection.AuthorizationKey = "${secrets-group/partner-circuit/authorization-key}"
+				input.Spec.Connections = []*AzureExpressRouteGatewayConnection{connection}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should accept a fully-tuned connection", func() {
 				input := validResource()
 				connection := validConnection("dc-primary")
@@ -173,15 +185,6 @@ var _ = ginkgo.Describe("AzureExpressRouteGatewaySpec Validation Tests", func() 
 				input := validResource()
 				connection := validConnection("dc")
 				connection.ExpressRouteCircuitPeeringId = nil
-				input.Spec.Connections = []*AzureExpressRouteGatewayConnection{connection}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error for a malformed authorization key", func() {
-				input := validResource()
-				connection := validConnection("dc")
-				connection.AuthorizationKey = "not-a-uuid"
 				input.Spec.Connections = []*AzureExpressRouteGatewayConnection{connection}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())

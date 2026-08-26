@@ -2,10 +2,16 @@
 # Route 53 health checks (health_check_config) and WEIGHTED routing.
 # Creating the namespace requires no domain ownership (the zone is not
 # delegated); Route 53 zones deleted within 12 hours are not billed.
+#
+# The domain rides the .test TLD: Route 53 REFUSES public hosted zones
+# for example.com and its subdomains ("reserved by AWS",
+# CANNOT_CREATE_HOSTED_ZONE - live-proven here AND on the
+# AwsRoute53Zone public-zone scenario), while .test names are
+# accepted. Private namespaces are exempt (no public zone involved).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudMapNamespace
 metadata:
-  name: planton-oss-e2e-cmns-pub.example.com
+  name: planton-oss-e2e-cmns-pub.planton.test
   id: planton-oss-e2e-awscmns-pub
   org: planton-oss
   env: e2e
@@ -33,4 +39,15 @@ spec:
         failureThreshold: 2
       instances:
         - instanceId: edge-1
-          ip: 192.0.2.10
+          # A stable public anycast address: Route 53 REJECTS
+          # reserved/documentation IPs for health-checked instances
+          # (RegisterInstance 400 "IPv4 address ... is forbidden for
+          # healthChecks" - live-proven; TEST-NET included, same rule
+          # CreateHealthCheck enforces). The probe simply fails against
+          # this endpoint, which is fine - the lane asserts the
+          # registration exists, never that it is healthy.
+          ip: 8.8.8.8
+          # Health-checked instances must carry the port the probe
+          # targets (RegisterInstance 400 "A port must be supplied" -
+          # live-proven).
+          port: 443

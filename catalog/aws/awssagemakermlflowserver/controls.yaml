@@ -74,5 +74,5 @@ spec:
       field_path: weekly_maintenance_window_start
       evidence:
         type: spec_default
-        reference: AWS applies maintenance to the managed server on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
-      notes: The 02-regulated-experiment-tracking preset pins SUN:03:00. mlflow_version pins the major.minor MLflow line (omitted = AWS picks the latest); moving lines replaces the server, so version currency is a deliberate change, not silent drift.
+        reference: AWS applies maintenance to the managed server on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "Ddd:HH:MM", mixed-case day token) schedules when the maintenance disruption lands.
+      notes: The 02-regulated-experiment-tracking preset pins Sun:03:00. mlflow_version pins the major.minor MLflow line (omitted = AWS picks the latest); moving lines replaces the server, so version currency is a deliberate change, not silent drift.

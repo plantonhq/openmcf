@@ -56,6 +56,41 @@ func TestResolveDependencies_ConsumerScopedPrerequisiteWins(t *testing.T) {
 	}
 }
 
+// An annotation naming the SAME file the kind-driven chain already resolved
+// (the typical slip: annotating the consumer-scoped override of a registry
+// prerequisite) is skipped, not deployed as an extra instance -- the
+// duplicate would deploy one stack twice and break teardown, because the
+// second destroy finds no stack (live-caught 2026-08-26 on a DLM role
+// fixture; the Terraform path masks the class since destroying an empty
+// state succeeds).
+func TestResolveDependencies_DuplicateConsumerScopedPathEntrySkipped(t *testing.T) {
+	repoRoot := t.TempDir()
+	consumerPrereqRel := "catalog/gcp/gcpservicenetworkingconnection/e2e/prerequisites/gcpglobaladdress.yaml"
+	consumerPrereq := filepath.Join(repoRoot, consumerPrereqRel)
+	if err := os.MkdirAll(filepath.Dir(consumerPrereq), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// The file must carry a real kind: path entries resolve their kind from
+	// the manifest before the duplicate check runs.
+	if err := os.WriteFile(consumerPrereq, []byte("apiVersion: gcp.planton.dev/v1alpha1\nkind: GcpGlobalAddress\nmetadata:\n  name: consumer-scoped\n"), 0o600); err != nil {
+		t.Fatalf("write consumer prereq: %v", err)
+	}
+	writeManifest(t, repoRoot, "catalog/gcp/gcpglobaladdress/e2e/prerequisite.yaml")
+	writeManifest(t, repoRoot, "catalog/gcp/gcpvpcnetwork/e2e/prerequisite.yaml")
+	scenario := writeAzureScenario(t, repoRoot, "scenario.yaml", "GcpServiceNetworkingConnection", consumerPrereqRel)
+
+	deps, err := ResolveDependencies(repoRoot, "gcp", "gcpservicenetworkingconnection", scenario)
+	if err != nil {
+		t.Fatalf("ResolveDependencies: %v", err)
+	}
+	if len(deps) != 2 {
+		t.Fatalf("expected the duplicate path entry to be skipped (2 dependencies), got %d: %+v", len(deps), deps)
+	}
+	if deps[1].ManifestPath != consumerPrereq {
+		t.Errorf("gcpglobaladdress manifest = %q, want consumer override %q", deps[1].ManifestPath, consumerPrereq)
+	}
+}
+
 func TestResolveDependencies_RegistryPrerequisite(t *testing.T) {
 	repoRoot := t.TempDir()
 	want := writeManifest(t, repoRoot, gwCrdsPrereqRel)

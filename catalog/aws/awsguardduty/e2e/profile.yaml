@@ -31,10 +31,7 @@ spec:
   #     lane pair.
   #   - enable: false -- the suspended posture is a plain
   #     UpdateDetector the running lane's arms already exercise.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q39
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 25

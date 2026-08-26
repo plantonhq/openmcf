@@ -43,10 +43,7 @@ spec:
   #   - VTL mapping templates and sync_config - the JS runtime and
   #     unversioned data sources prove the machinery (unblock: a
   #     versioned-DynamoDB scenario).
-  #
-  # pending_proof: forged this session to the full offline bar -- Q49
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

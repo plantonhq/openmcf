@@ -4,25 +4,30 @@ metadata:
   name: awsbedrockagentcoretokenvault
 spec:
   # A settings singleton under live E2E with the class's NO-OP DELETE
-  # contract: the customer-managed lane composes a consumer-scoped KMS
-  # key, sets it on the default vault, verifies GetTokenVault echoes
-  # CustomerManagedKey + the ARN, then destroys -- BUT destroy is a
-  # no-op at AWS, so the last-applied setting REMAINS. Verify-absent
-  # asserts the vault still exists (never "gone"); the service-managed
-  # lane is both the minimal proof AND the revert mechanism (apply
-  # ServiceManagedKey to return the vault to AWS-owned encryption --
-  # the lanes run customer first, service-managed second, leaving the
-  # account in the default posture; this ORDERING is the zero-orphan
-  # sweep for this kind). Free (a setting; KMS key ~$1/mo prorated to
-  # minutes).
+  # contract: the customer-managed lane binds the harness's STANDING
+  # KMS key (alias planton-e2e-acetv, ensured by the test entrypoint,
+  # ~$1/mo at rest), sets it on the default vault, verifies
+  # GetTokenVault echoes CustomerManagedKey + the ARN, then destroys --
+  # BUT destroy is a no-op at AWS, so the last-applied setting REMAINS.
+  # Verify-absent asserts the vault still exists (never "gone"); the
+  # service-managed lane is both the minimal proof AND the revert
+  # mechanism (apply ServiceManagedKey to return the vault to AWS-owned
+  # encryption -- the lanes run customer first, service-managed second,
+  # leaving the account in the default posture; this ORDERING is the
+  # zero-orphan sweep for this kind).
+  #
+  # The key is STANDING, never chain-deployed (live-caught): AWS
+  # validates the PREVIOUS key is ENABLED on every SetTokenVaultCMK
+  # write, so a per-lane key that dies into its deletion window at
+  # fixture teardown wedges the vault -- the revert then fails "Old KMS
+  # Key validation failed ... expected KeyState:ENABLED". Rescue recipe
+  # (also in the GUIDE): cancel-key-deletion + enable-key, apply
+  # ServiceManagedKey, re-schedule deletion.
   #
   # Singleton collision class: one default vault per account+region --
   # lanes run sequentially within a session, and concurrent sessions
   # must not run this kind's lanes in the same region simultaneously.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q38
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

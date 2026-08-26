@@ -6,7 +6,7 @@ One S3 table bucket (S3 Tables — managed Apache Iceberg storage) with its full
 
 - **A data lake as one resource**: the bucket, its logical databases (namespaces), and their Iceberg tables with schemas — declared together, the way charts want analytics storage.
 - **AWS maintains the tables**: compaction, snapshot expiry, and unreferenced-file cleanup run continuously per the spec's dials — the ops work that makes self-managed Iceberg painful, gone.
-- **Create-only schema, honestly taught**: the Iceberg schema is create-time input the provider never reads back; evolution happens through query engines (ALTER TABLE) — taught on the field and declared write-normalized for imports.
+- **Create-only schema, honestly taught**: the Iceberg schema is create-time input the provider never reads back; evolution happens through query engines (ALTER TABLE) — taught on the field, and both modules ignore post-create schema edits so imported tables plan zero-diff and a manifest edit can never destructively replace a data-bearing table.
 - **The untyped-object caveat carried for you**: the provider's encryption/maintenance arguments are untyped at the pin (plugin protocol v6 pending) — the typed spec is the load-bearing validation, and both modules always send complete, correctly-shaped objects.
 
 ## Both Engines

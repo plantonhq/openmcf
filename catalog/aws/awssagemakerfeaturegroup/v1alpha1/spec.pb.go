@@ -50,7 +50,13 @@ type AwsSagemakerFeatureGroupSpec struct {
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// IAM role used to persist data into the offline store's S3 location.
 	// The role must trust sagemaker.amazonaws.com and be able to write
-	// the bucket.
+	// the bucket. When offline_store is configured, CreateFeatureGroup
+	// validates the role AGAINST THE BUCKET at create time - it assumes
+	// the role and calls s3:GetBucketAcl, and writes carry
+	// s3:PutObjectAcl (the verbs AWS's own AmazonSageMakerFeatureStoreAccess
+	// managed policy grants). A role that can only read/write objects
+	// fails the create with ValidationException "Invalid S3Uri" wrapping
+	// the S3 AccessDenied (live-verified 2026-08-25).
 	RoleArn *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
 	// The group's schema: every feature records may carry (1-2500).
 	FeatureDefinitions []*AwsSagemakerFeatureGroupFeature `protobuf:"bytes,6,rep,name=feature_definitions,json=featureDefinitions,proto3" json:"feature_definitions,omitempty"`

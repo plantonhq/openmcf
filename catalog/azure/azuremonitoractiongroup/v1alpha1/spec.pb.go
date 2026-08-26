@@ -428,7 +428,13 @@ type AzureMonitorActionGroupWebhookReceiver struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The receiver's name, unique within the action group.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The endpoint to POST the alert payload to (http:// or https://).
+	// The endpoint to POST the alert payload to -- an http:// or https://
+	// URL. SECRET-BEARING: webhook URLs commonly embed the credential
+	// itself (a token query parameter, a signed path), so the whole value
+	// is treated as a secret. The URL shape is taught here rather than
+	// enforced by a validation rule, because sensitive fields hold a
+	// managed-secret reference on consuming platforms and a scheme rule
+	// would reject every reference.
 	ServiceUri string `protobuf:"bytes,2,opt,name=service_uri,json=serviceUri,proto3" json:"service_uri,omitempty"`
 	// Whether to send the common alert schema payload (recommended for
 	// anything parsed by software).
@@ -635,7 +641,11 @@ type AzureMonitorActionGroupAutomationRunbookReceiver struct {
 	// Whether the runbook is a global runbook (true) or a user runbook
 	// (false). Azure requires this to be stated explicitly.
 	IsGlobalRunbook bool `protobuf:"varint,5,opt,name=is_global_runbook,json=isGlobalRunbook,proto3" json:"is_global_runbook,omitempty"`
-	// The webhook's invocation URI.
+	// The webhook's invocation URI -- an http:// or https:// URL.
+	// SECRET-BEARING: Automation webhook URIs embed their token in the
+	// URL, so the whole value is treated as a secret (the URL shape is
+	// taught, never rule-enforced -- a stored secret reference would fail
+	// any scheme rule).
 	ServiceUri string `protobuf:"bytes,6,opt,name=service_uri,json=serviceUri,proto3" json:"service_uri,omitempty"`
 	// Whether to send the common alert schema payload.
 	UseCommonAlertSchema bool `protobuf:"varint,7,opt,name=use_common_alert_schema,json=useCommonAlertSchema,proto3" json:"use_common_alert_schema,omitempty"`
@@ -730,7 +740,11 @@ type AzureMonitorActionGroupLogicAppReceiver struct {
 	// The ARM ID of the Logic App workflow.
 	ResourceId string `protobuf:"bytes,2,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
 	// The Logic App trigger's callback URL (from the workflow's HTTP
-	// request trigger).
+	// request trigger) -- an http:// or https:// URL. SECRET-BEARING: the
+	// callback URL embeds the workflow's shared access signature, so the
+	// whole value is treated as a secret (the URL shape is taught, never
+	// rule-enforced -- a stored secret reference would fail any scheme
+	// rule).
 	CallbackUrl string `protobuf:"bytes,3,opt,name=callback_url,json=callbackUrl,proto3" json:"callback_url,omitempty"`
 	// Whether to send the common alert schema payload.
 	UseCommonAlertSchema bool `protobuf:"varint,4,opt,name=use_common_alert_schema,json=useCommonAlertSchema,proto3" json:"use_common_alert_schema,omitempty"`
@@ -806,8 +820,12 @@ type AzureMonitorActionGroupAzureFunctionReceiver struct {
 	FunctionAppResourceId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=function_app_resource_id,json=functionAppResourceId,proto3" json:"function_app_resource_id,omitempty"`
 	// The name of the function within the app.
 	FunctionName string `protobuf:"bytes,3,opt,name=function_name,json=functionName,proto3" json:"function_name,omitempty"`
-	// The function's HTTP trigger URL (including its code parameter when the
-	// function uses key-based auth).
+	// The function's HTTP trigger URL (including its code parameter when
+	// the function uses key-based auth) -- an http:// or https:// URL.
+	// SECRET-BEARING: the code parameter IS the function key, so the whole
+	// value is treated as a secret (the URL shape is taught, never
+	// rule-enforced -- a stored secret reference would fail any scheme
+	// rule).
 	HttpTriggerUrl string `protobuf:"bytes,4,opt,name=http_trigger_url,json=httpTriggerUrl,proto3" json:"http_trigger_url,omitempty"`
 	// Whether to send the common alert schema payload.
 	UseCommonAlertSchema bool `protobuf:"varint,5,opt,name=use_common_alert_schema,json=useCommonAlertSchema,proto3" json:"use_common_alert_schema,omitempty"`
@@ -1178,12 +1196,12 @@ const file_catalog_azure_azuremonitoractiongroup_v1alpha1_spec_proto_rawDesc = "
 	"\fcountry_code\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vcountryCode\x12-\n" +
 	"\fphone_number\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vphoneNumber\"\xbd\x03\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vphoneNumber\"\xa2\x02\n" +
 	"&AzureMonitorActionGroupWebhookReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\xc5\x01\n" +
-	"\vservice_uri\x18\x02 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x98\x01\n" +
-	"\x1faction_group_webhook_uri_scheme\x12:the webhook service_uri must be an http:// or https:// URL\x1a9this.startsWith('http://') || this.startsWith('https://')\xc8\x01\x01R\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12+\n" +
+	"\vservice_uri\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\n" +
 	"serviceUri\x125\n" +
 	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\x12t\n" +
 	"\baad_auth\x18\x04 \x01(\v2Y.dev.planton.azure.azuremonitoractiongroup.v1alpha1.AzureMonitorActionGroupWebhookAadAuthR\aaadAuth\"\xf0\x02\n" +
@@ -1196,7 +1214,7 @@ const file_catalog_azure_azuremonitoractiongroup_v1alpha1_spec_proto_rawDesc = "
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12/\n" +
 	"\remail_address\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\femailAddress\"\xa8\x04\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\femailAddress\"\x8d\x03\n" +
 	"0AzureMonitorActionGroupAutomationRunbookReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12>\n" +
@@ -1206,28 +1224,28 @@ const file_catalog_azure_azuremonitoractiongroup_v1alpha1_spec_proto_rawDesc = "
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vrunbookName\x12:\n" +
 	"\x13webhook_resource_id\x18\x04 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x11webhookResourceId\x12*\n" +
-	"\x11is_global_runbook\x18\x05 \x01(\bR\x0fisGlobalRunbook\x12\xc5\x01\n" +
-	"\vservice_uri\x18\x06 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x98\x01\n" +
-	"\x1faction_group_runbook_uri_scheme\x12:the runbook service_uri must be an http:// or https:// URL\x1a9this.startsWith('http://') || this.startsWith('https://')\xc8\x01\x01R\n" +
+	"\x11is_global_runbook\x18\x05 \x01(\bR\x0fisGlobalRunbook\x12+\n" +
+	"\vservice_uri\x18\x06 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\n" +
 	"serviceUri\x125\n" +
-	"\x17use_common_alert_schema\x18\a \x01(\bR\x14useCommonAlertSchema\"\xfc\x02\n" +
+	"\x17use_common_alert_schema\x18\a \x01(\bR\x14useCommonAlertSchema\"\xdc\x01\n" +
 	"'AzureMonitorActionGroupLogicAppReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12+\n" +
 	"\vresource_id\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\n" +
-	"resourceId\x12\xcc\x01\n" +
-	"\fcallback_url\x18\x03 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01\x9d\x01\n" +
-	"!action_group_logic_app_url_scheme\x12=the Logic App callback_url must be an http:// or https:// URL\x1a9this.startsWith('http://') || this.startsWith('https://')\xc8\x01\x01R\vcallbackUrl\x125\n" +
-	"\x17use_common_alert_schema\x18\x04 \x01(\bR\x14useCommonAlertSchema\"\xab\x04\n" +
+	"resourceId\x12-\n" +
+	"\fcallback_url\x18\x03 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\vcallbackUrl\x125\n" +
+	"\x17use_common_alert_schema\x18\x04 \x01(\bR\x14useCommonAlertSchema\"\x89\x03\n" +
 	",AzureMonitorActionGroupAzureFunctionReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x9a\x01\n" +
 	"\x18function_app_resource_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xfb\x0f\x92\xd4a\x1estatus.outputs.function_app_idR\x15functionAppResourceId\x12/\n" +
 	"\rfunction_name\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\ffunctionName\x12\xd5\x01\n" +
-	"\x10http_trigger_url\x18\x04 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\x9f\x01\n" +
-	" action_group_function_url_scheme\x12@the function http_trigger_url must be an http:// or https:// URL\x1a9this.startsWith('http://') || this.startsWith('https://')\xc8\x01\x01R\x0ehttpTriggerUrl\x125\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\ffunctionName\x124\n" +
+	"\x10http_trigger_url\x18\x04 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0ehttpTriggerUrl\x125\n" +
 	"\x17use_common_alert_schema\x18\x05 \x01(\bR\x14useCommonAlertSchema\"\x80\x02\n" +
 	"&AzureMonitorActionGroupArmRoleReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +

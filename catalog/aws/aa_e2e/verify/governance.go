@@ -133,13 +133,16 @@ func (*configRecorderVerifier) VerifyExists(ctx context.Context, cfg aws.Config,
 	if len(channels.DeliveryChannels) == 0 {
 		return errors.Errorf("delivery channel for recorder (%s) not found after deploy", id)
 	}
-	retention, err := client.DescribeRetentionConfigurations(ctx, &configservice.DescribeRetentionConfigurationsInput{})
-	if err != nil {
-		return errors.Wrap(err, "DescribeRetentionConfigurations")
-	}
-	if len(retention.RetentionConfigurations) == 0 {
-		return errors.Errorf("retention configuration for recorder (%s) not found after deploy", id)
-	}
+	// Retention is deliberately NOT asserted here: it is an optional arm
+	// (the modules deploy aws_config_retention_configuration only when
+	// spec.retention_period_in_days is set) and the kind's outputs carry
+	// no retention key this verifier could condition on -- an
+	// unconditional presence assert fails every legitimate
+	// retention-less manifest, which is exactly how fixture deployments
+	// of this kind compose it (live-caught). The retention posture is
+	// proven by the scenario that declares it: its import round-trip
+	// re-imports the retention singleton at a no-op plan, and
+	// VerifyAbsent below asserts it gone after destroy.
 	return nil
 }
 

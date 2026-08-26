@@ -22,7 +22,10 @@ spec:
       threshold: 80
       thresholdType: PERCENTAGE
       subscriberEmailAddresses:
-        - <platform-team@your-company.com>
+        # Placeholder - replace with your real list. Spelled as a
+        # VALID address (no angle brackets): the spec validates email
+        # format, so the bracketed placeholder convention fails here.
+        - platform-team@your-company.com
   actions:
     - name: freeze-sandbox
       actionType: APPLY_IAM_POLICY

@@ -33,13 +33,28 @@ message AzureServiceBusDisasterRecoveryConfigSpec {
   // The alias name -- becomes the failover-stable DNS name
   // `{alias_name}.servicebus.windows.net`, so it shares the namespace
   // name rules and uniqueness scope (globally unique; it cannot collide
-  // with any existing namespace name either).
+  // with any existing namespace name either): 6-50 characters of
+  // letters, numbers, and hyphens, starting with a letter and ending
+  // with a letter or number, and never ending in Azure's reserved
+  // "-sb" / "-mgmt" suffixes. The rules below transcribe the namespace
+  // kind's own name contract so a bad alias fails at authoring time,
+  // not at Azure apply time.
   //
   // **ForceNew**: changing the alias replaces the pairing.
   string alias_name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 50
+    (buf.validate.field).string.min_len = 6,
+    (buf.validate.field).string.max_len = 50,
+    (buf.validate.field).cel = {
+      id: "service_bus_dr_alias_name_format"
+      message: "alias_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number (it shares the namespace name rules)"
+      expression: "this.matches('^[a-zA-Z][-a-zA-Z0-9]{4,48}[a-zA-Z0-9]$')"
+    },
+    (buf.validate.field).cel = {
+      id: "service_bus_dr_alias_name_reserved_suffix"
+      message: "alias_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints"
+      expression: "!this.endsWith('-sb') && !this.endsWith('-mgmt')"
+    }
   ];
 
   // The PRIMARY namespace -- the one clients actively use, by ARM ID.

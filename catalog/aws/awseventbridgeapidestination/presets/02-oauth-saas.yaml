@@ -7,17 +7,25 @@ spec:
   connection:
     name: crm-oauth
     description: CRM events API (OAuth client credentials)
+    # Every credential-bearing field on this kind is sensitive: the
+    # backend accepts ONLY $secret/<slug> org-secret references here,
+    # never plaintext. Create the named org secrets first (or pick
+    # existing ones in the wizard).
     oauth:
       authorizationEndpoint: https://auth.crm.example.com/oauth2/token
       httpMethod: POST
       clientId: planton-events
-      clientSecret: replace-with-real-secret
+      clientSecret: $secret/crm-oauth-client-secret
+      # AWS masks every connection http-parameter value on read, so
+      # the spec secret-types them ALL - even conventionally
+      # non-secret token-request values (grant_type, scope) must be
+      # $secret references in this kind.
       oauthHttpParameters:
         body:
           - key: grant_type
-            value: client_credentials
+            value: $secret/crm-oauth-grant-type
           - key: scope
-            value: events:write
+            value: $secret/crm-oauth-scope
   destination:
     name: crm-events
     description: CRM activity-stream endpoint

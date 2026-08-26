@@ -21,8 +21,12 @@ spec:
       description: Experience episodes with reflection
       namespaceTemplates:
         - /episodes/{actorId}
+      # Reflection namespaces must equal, or be a whole-segment prefix
+      # of, a namespaceTemplates entry (AWS rejects the mismatch with a
+      # 400) - "/episodes" consolidates reflections across all actors'
+      # episode namespaces.
       reflectionNamespaceTemplates:
-        - /reflections/{actorId}
+        - /episodes
   kinesisDelivery:
     dataStreamArn:
       valueFrom:

@@ -26,10 +26,13 @@ spec:
               key: team
               values:
                 - platform
+          # Cost category rules take SERVICE_CODE (the service's code,
+          # not its display name) - the SERVICE dimension other Cost
+          # Explorer surfaces accept is rejected here.
           - dimension:
-              key: SERVICE
+              key: SERVICE_CODE
               values:
-                - AWS Support (Business)
+                - AWSSupportBusiness
   splitChargeRules:
     - source: platform
       targets:

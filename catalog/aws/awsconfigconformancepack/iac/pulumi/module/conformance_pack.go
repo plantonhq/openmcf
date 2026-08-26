@@ -65,6 +65,10 @@ func conformancePack(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 
 		ctx.Export(OpPackName, createdPack.Name)
 		ctx.Export(OpPackArn, createdPack.Arn)
+		// Packs are addressed by region + name; consumers (and the
+		// harness verifier) reaching the pack off the ambient region
+		// need the resolved region alongside pack_name.
+		ctx.Export(OpRegion, createdPack.Region)
 		return nil
 	}
 
@@ -103,5 +107,7 @@ func conformancePack(ctx *pulumi.Context, locals *Locals, provider *aws.Provider
 
 	ctx.Export(OpPackName, createdPack.Name)
 	ctx.Export(OpPackArn, createdPack.Arn)
+	// Same addressing note as the organization arm above.
+	ctx.Export(OpRegion, createdPack.Region)
 	return nil
 }

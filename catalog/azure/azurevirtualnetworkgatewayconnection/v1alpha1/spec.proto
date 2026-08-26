@@ -89,10 +89,13 @@ message AzureVirtualNetworkGatewayConnectionSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_gateway_id"
   ];
 
-  // EXPRESS_ROUTE connections: the circuit's ARM id. A bare reference:
-  // supply the id as a literal or an explicit kind/fieldPath reference.
-  // Fixed at creation.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef express_route_circuit_id = 8;
+  // EXPRESS_ROUTE connections: the circuit's ARM id. References an
+  // AzureExpressRouteCircuit's ARM-id output (or a literal ARM ID for a
+  // circuit outside the catalog). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef express_route_circuit_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureExpressRouteCircuit,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.express_route_circuit_id"
+  ];
 
   // The IPsec pre-shared key both tunnel ends must agree on (IPSEC and
   // VNET_TO_VNET connections). Reference a secret rather than embedding

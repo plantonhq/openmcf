@@ -11,9 +11,10 @@ spec:
   # verify-destroyed on both provisioners. Creating the link is free;
   # NLB charges apply to the balancer it fronts.
   #
-  # pending_proof: forged this session to the full offline bar -- Q37
-  # proves it live.
+  # Proven live 2026-08-25: nlb-link green on both engines first pass
+  # (~12 min each -- the NLB chain + AVAILABLE wait) with the blind
+  # round-trip (name-passthrough re-import at no real change).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 25

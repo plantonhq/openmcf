@@ -13,9 +13,10 @@ spec:
   #     an AwsCloudwatchLogGroup fixture via scenario annotations when
   #     the proof queue wants the ARN-shaped-identity datapoint.
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate; first-pass green, zero defects.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

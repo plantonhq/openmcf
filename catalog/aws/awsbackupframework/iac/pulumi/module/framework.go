@@ -62,5 +62,9 @@ func framework(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 	}
 
 	ctx.Export(OpFrameworkArn, createdFramework.Arn)
+	// Frameworks are addressed by region + name; consumers (and the
+	// harness verifier) reaching the framework off the ambient region
+	// need the resolved region alongside the ARN.
+	ctx.Export(OpRegion, createdFramework.Region)
 	return nil
 }

@@ -272,7 +272,7 @@ func runValidate(tc *provider.ComponentTestContext) error {
 
 	switch tc.Engine {
 	case "pulumi":
-		stackInputPath, err := BuildStackInput(tc.ManifestPath, tc.ModuleDir, providerConfig)
+		stackInputPath, err := BuildStackInput(tc.ManifestPath, providerConfig)
 		if err != nil {
 			return errors.Wrap(err, "validation failed: cannot build stack input from manifest")
 		}

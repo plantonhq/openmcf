@@ -15,13 +15,7 @@ spec:
   # Fargate service) and clean teardown without live credentials. The
   # prerequisite subnets ride the VPC main route table (no internet
   # route), so no task ever pulls the image or starts.
-  #
-  # pending_proof: the enrollment contract moved from a platform-minted
-  # identity document to the runner token (secret renamed token-honest,
-  # env contract PLANTON_RUNNER_TOKEN/_NAME/_ENDPOINT, no EXECUTION_MODE)
-  # -- the lanes last passed against the previous contract and re-prove
-  # against this one before the profile flips back to green.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

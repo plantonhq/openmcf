@@ -52,9 +52,13 @@ spec:
       description: Scores whether the agent was helpful
       level: SESSION
       llmAsAJudge:
-        instructions: Score how helpful the agent's response was.
+        # SESSION-level instructions must embed one of the level's
+        # single-brace placeholders ({context} here).
+        instructions: Score how helpful the agent's response was given the {context}.
+        # Judge models resolve through the region's inference set; the
+        # inference-profile id form is what CreateEvaluator accepts.
         model:
-          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          modelId: us.amazon.nova-2-lite-v1:0
           inference:
             temperature: 0
             maxTokens: 256
@@ -74,7 +78,8 @@ spec:
           value: arn:aws:lambda:us-west-2:123456789012:function:score-trace
         timeoutSeconds: 60
   harnesses:
-    - name: support-bench
+    # Harness names take letters/digits/underscores only (no hyphens).
+    - name: support_bench
       executionRoleArn:
         value: arn:aws:iam::123456789012:role/agentcore-eval-role
       model:
@@ -301,6 +306,7 @@ Example: "us-west-2", "us-east-1"
 Scoring definitions: LLM-as-a-judge or Lambda-backed evaluators.
 
 - rule: evaluator must set exactly one of llm_as_a_judge or code_based
+- rule: SESSION-level llm_as_a_judge instructions must embed at least one placeholder: {available_tools}, {context}, {actual_tool_trajectory}, {expected_tool_trajectory}, {assertions}
 
 ### spec.evaluators[].name
 
@@ -352,8 +358,13 @@ A Bedrock model judges against instructions and a rating scale.
 `string` · required · sensitive
 
 The judge prompt - what to assess and how to decide the score.
-Treated as sensitive: prompts routinely embed proprietary evaluation
-criteria.
+AWS substitutes single-brace placeholders (e.g. "{context}") with
+run data, and each evaluator level REQUIRES at least one of its
+allowed placeholders: for SESSION the set is {available_tools},
+{context}, {actual_tool_trajectory}, {expected_tool_trajectory},
+{assertions} (CreateEvaluator names the level's set when it
+rejects). Treated as sensitive: prompts routinely embed
+proprietary evaluation criteria.
 
 - rule: {"required":true}
 
@@ -369,10 +380,13 @@ The Bedrock model that judges.
 
 `string` · required
 
-Bedrock model identifier the judge runs on. Accepts a foundation
-model ID ("anthropic.claude-3-5-sonnet-20241022-v2:0"), an inference
-profile ID, or a model ARN. The account must have access to the
-model in this region.
+Bedrock model identifier the judge runs on. Prefer a cross-region
+inference profile ID ("us.amazon.nova-2-lite-v1:0") - CreateEvaluator
+validates the judge model against the region's INFERENCE set and
+rejects models it cannot invoke there with "not available in region",
+even when the bare foundation-model ID is regionally listed (the
+harness model field has no such create-time gate). A model ARN also
+works; the account must have access to the model.
 
 - rule: {"string":{"minLen":"1"}}
 
@@ -524,11 +538,13 @@ Agent test benches evaluation runs execute against.
 
 `string` · required
 
-Harness name in AWS (1-40 characters). The for_each key on both
-engines and the key in the `harness_ids` output map. AWS exposes no
-rename - changing it replaces the harness.
+Harness name in AWS (a letter, then up to 39 letters/digits/
+underscores - hyphens are rejected; CreateHarness names this exact
+regex server-side). The for_each key on both engines and the key in
+the `harness_ids` output map. AWS exposes no rename - changing it
+replaces the harness.
 
-- rule: {"string":{"minLen":"1","maxLen":"40"}}
+- rule: {"string":{"minLen":"1","pattern":"^[a-zA-Z][a-zA-Z0-9_]{0,39}$"}}
 
 ### spec.harnesses[].executionRoleArn
 
@@ -916,7 +932,9 @@ Skill bundle paths loaded into the harness.
 
 `AwsBedrockAgentCoreHarnessMemory`
 
-AgentCore memory the harness reads/writes during runs.
+AgentCore memory the harness reads/writes during runs. Omitted =
+AWS auto-provisions a managed memory for the harness (the common
+case) - the harness still HAS a memory, it is just AWS-owned.
 
 ### spec.harnesses[].memory.memoryArn
 

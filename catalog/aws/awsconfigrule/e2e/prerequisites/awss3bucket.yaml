@@ -17,6 +17,13 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
+  # The fixture recorder's delivery channel writes configuration
+  # history/snapshot objects into the bucket while the rule lanes run,
+  # and they survive the recorder's delete -- so the fixture bucket
+  # must force-destroy or its teardown fails BucketNotEmpty (the
+  # service-written-canary class, live-caught on the CloudTrail
+  # sibling).
+  forceDestroy: true
   policy:
     Version: "2012-10-17"
     Statement:

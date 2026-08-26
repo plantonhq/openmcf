@@ -18,6 +18,12 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
+  # AWS Backup delivers report objects into the bucket on its own
+  # cadence, and delivered objects survive the report plan's delete --
+  # so the fixture bucket must force-destroy or its teardown fails
+  # BucketNotEmpty (the service-written-canary class, live-caught on
+  # the CloudTrail sibling).
+  forceDestroy: true
   policy:
     Version: "2012-10-17"
     Statement:

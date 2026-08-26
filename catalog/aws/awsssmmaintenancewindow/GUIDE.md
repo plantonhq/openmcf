@@ -37,11 +37,12 @@ operating windows in production.
 - **Priority 0 is highest and also AWS's default** — an unset priority
   competes at the front. Tasks sharing a priority run in parallel.
 - **Untargeted tasks run once per window execution** regardless of
-  fleet size — pair them with runbooks that manage their own scope.
+  fleet size — pair them with runbooks that manage their own scope. Untargeted is legal ONLY for Automation, Lambda, and Step Functions tasks: AWS rejects an untargeted RUN_COMMAND task at registration ("you must specify at least one resource as the target" — live-caught), so every run-command task must name instance IDs or window target IDs.
 - **Targeting registered targets from a task uses the
-  `WindowTargetIds` key** with IDs from the `target_ids` output — the
-  registration ID is cloud-generated, so cross-component consumers
-  read the output, never guess.
+  `WindowTargetIds` key** — inside one spec, just write the target
+  entry's NAME as the value and the modules resolve it to the
+  cloud-generated registration ID (the name-based join);
+  cross-component consumers read the `target_ids` output, never guess.
 - **A target's name, description, and resource type force
   re-registration** (a new target ID) — task references via
   WindowTargetIds must follow, which the outputs do automatically.

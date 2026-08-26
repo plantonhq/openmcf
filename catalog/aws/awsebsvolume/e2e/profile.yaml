@@ -22,9 +22,14 @@ spec:
   #     destroy. Unblock: a post-destroy DescribeSnapshots probe in
   #     the verifier.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Clean first-pass - the us-west-2a
+  # AZ-pinned attachment to the t3.micro path fixture deployed,
+  # detached stop-free, and the attachment's
+  # {device}:{volume}:{instance} composite re-imported blind at zero
+  # diff (~4 min per engine including the VPC/subnet/instance chain).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

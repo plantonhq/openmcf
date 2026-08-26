@@ -30,5 +30,10 @@ output "service_arns" {
 
 output "instance_service_ids" {
   description = "Each registration's owning service ID keyed by service_name//instance_id (the first half of the instance's composite import ID)"
-  value       = { for key, entry in local.service_instances_by_key : key => aws_service_discovery_service.this[entry.service_name].id }
+  # try(): during an import round-trip the state holds a PARTIAL echo
+  # (services import one at a time), and an eager index on a
+  # not-yet-imported service name hard-errors the whole plan instead
+  # of deferring - the documented import-time partial-echo class. The
+  # tolerated null disappears once every service is in state.
+  value = { for key, entry in local.service_instances_by_key : key => try(aws_service_discovery_service.this[entry.service_name].id, null) }
 }

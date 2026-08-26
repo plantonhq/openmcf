@@ -4,9 +4,21 @@ This preset creates AWS's recommended baseline: one dimensional
 monitor segmenting spend by SERVICE, with a daily email summary for
 anomalies whose absolute impact reaches $100.
 
+## Check first: your account probably already has this monitor
+
+AWS permits exactly ONE services monitor per account, and it
+auto-creates one (named `Default-Services-Monitor`) for every account
+that enabled Cost Explorer on or after 2023-03-27. If yours exists
+(`aws ce get-anomaly-monitors` shows it), creating this preset fails
+with "Limit exceeded on dimensional spend monitor creation" — import
+the existing monitor into this kind instead (the import map derives it
+from the monitor ARN), or start from the custom-slice preset, which
+has no singleton limit.
+
 ## When to Use
 
-- The first anomaly monitor every account should carry
+- Accounts WITHOUT the auto-created default monitor (Cost Explorer
+  enabled before 2023-03-27, or the default was deleted)
 - Accounts where per-service anomaly streams (an EC2 spike vs an S3
   spike) are the right granularity
 

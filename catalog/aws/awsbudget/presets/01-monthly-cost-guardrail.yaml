@@ -16,10 +16,16 @@ spec:
       threshold: 80
       thresholdType: PERCENTAGE
       subscriberEmailAddresses:
-        - <finops-team@your-company.com>
+        # Placeholder - replace with your real list. Spelled as a
+        # VALID address (no angle brackets): the spec validates email
+        # format, so the bracketed placeholder convention fails here.
+        - finops-team@your-company.com
     - comparisonOperator: GREATER_THAN
       notificationType: FORECASTED
       threshold: 100
       thresholdType: PERCENTAGE
       subscriberEmailAddresses:
-        - <finops-team@your-company.com>
+        # Placeholder - replace with your real list. Spelled as a
+        # VALID address (no angle brackets): the spec validates email
+        # format, so the bracketed placeholder convention fails here.
+        - finops-team@your-company.com

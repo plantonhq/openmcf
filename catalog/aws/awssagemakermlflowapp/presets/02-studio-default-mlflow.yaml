@@ -10,4 +10,4 @@ spec:
   defaultDomainIds:
     - value: d-abcdef123456
   modelRegistrationMode: AutoModelRegistrationEnabled
-  weeklyMaintenanceWindowStart: SUN:03:00
+  weeklyMaintenanceWindowStart: Sun:03:00

@@ -47,15 +47,17 @@ spec:
       - logGroupArn:
           value: arn:aws:logs:us-west-2:123456789012:log-group:/amp/queries
         qspThreshold: 10000
+  # Statements carry no Resource member: the modules compose the
+  # workspace's own ARN (AMP accepts no other Resource value). A single
+  # action is authored as a string - AMP's stored form collapses
+  # one-element Action arrays to the scalar.
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
       - Effect: Allow
         Principal:
           AWS: arn:aws:iam::210987654321:root
-        Action:
-          - aps:RemoteWrite
-        Resource: "*"
+        Action: aps:RemoteWrite
   anomalyDetectors:
     - alias: request-rate
       query: sum(rate(http_requests_total[5m]))

@@ -96,9 +96,10 @@ message AwsManagedPrometheusScraperEksSource {
 
   // Subnets the scraper's collectors place into (the cluster's
   // subnets). Reference AwsSubnet subnet_id outputs or pass literal
-  // IDs.
+  // IDs. CreateScraper requires at least two subnets (server
+  // contract: "Number of subnets must be at least 2").
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
-    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.min_items = 2,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
@@ -115,9 +116,11 @@ message AwsManagedPrometheusScraperEksSource {
 // without an EKS cluster.
 message AwsManagedPrometheusScraperVpcSource {
   // Subnets the scraper's collectors place into. Reference AwsSubnet
-  // subnet_id outputs or pass literal IDs.
+  // subnet_id outputs or pass literal IDs. CreateScraper requires at
+  // least two subnets (server contract: "Number of subnets must be at
+  // least 2", live-verified on a single-subnet create).
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
-    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.min_items = 2,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];

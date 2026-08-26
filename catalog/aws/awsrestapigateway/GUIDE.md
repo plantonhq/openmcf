@@ -62,6 +62,7 @@ running REST APIs in production.
   `minimum_compression_size` is set, unsetting it keeps compression on
   (AWS treats absent as "no change"). Set it to `-1` to explicitly
   disable compression again.
+- **Adopting an existing API re-deploys it once.** The deployment's redeploy-on-change trigger is engine-side metadata AWS never stores, so an import cannot recover it (upstream documents this). The first reconcile after adopting an existing REST API therefore mints a fresh deployment from the adopted definition and repoints the stage — a behavioral no-op when the definitions match. The prior deployment stays in the API's deployment history until the API is deleted.
 
 ---
 

@@ -7,12 +7,23 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/synthetics"
 	syntheticstypes "github.com/aws/aws-sdk-go-v2/service/synthetics/types"
+	"github.com/aws/smithy-go"
 	pkgerrors "github.com/pkg/errors"
 )
 
+// isSyntheticsNotFound matches both signal shapes: the typed exception
+// (operations that model it) AND the generic smithy API error carrying
+// the ResourceNotFoundException code - GetCanary does not model the
+// not-found error, so the SDK surfaces a deleted canary's 404 as a
+// GenericAPIError the typed errors.As never matches (live-caught: a
+// clean destroy failed verify-absent on exactly that mismatch).
 func isSyntheticsNotFound(err error) bool {
 	var notFound *syntheticstypes.ResourceNotFoundException
-	return pkgerrors.As(err, &notFound)
+	if pkgerrors.As(err, &notFound) {
+		return true
+	}
+	var apiErr smithy.APIError
+	return pkgerrors.As(err, &apiErr) && apiErr.ErrorCode() == "ResourceNotFoundException"
 }
 
 // syntheticsVerifier verifies an AwsCloudwatchSynthetics instance: the

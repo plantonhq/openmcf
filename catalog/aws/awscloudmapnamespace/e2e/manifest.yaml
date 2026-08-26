@@ -31,6 +31,9 @@ spec:
         records:
           - type: CNAME
             ttl: 30
+        # CNAME requires the explicit WEIGHTED policy - AWS rejects
+        # CNAME under the default MULTIVALUE.
+        routingPolicy: WEIGHTED
       instances:
         - instanceId: primary
           cname: mydb.cluster-abc.us-west-2.rds.amazonaws.com

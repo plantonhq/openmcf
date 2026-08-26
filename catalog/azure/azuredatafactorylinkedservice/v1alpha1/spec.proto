@@ -886,15 +886,11 @@ message AzureDataFactoryLinkedServiceSftp {
 
   // The SSH private key, base64-encoded
   // (SshPublicKey/MultiFactor). SECRET. Prefer
-  // key_vault_private_key_content_base64.
-  string private_key_content_base64 = 7 [
-    (dev.planton.shared.options.sensitive) = true,
-    (buf.validate.field).cel = {
-      id: "data_factory_linked_service_sftp_key_base64"
-      message: "private_key_content_base64 must be base64-encoded"
-      expression: "this == '' || (this.size() % 4 == 0 && this.matches('^[A-Za-z0-9+/]*={0,2}$'))"
-    }
-  ];
+  // key_vault_private_key_content_base64. The base64 framing is taught
+  // here rather than enforced by a validation rule, because sensitive
+  // fields hold a managed-secret reference on consuming platforms and a
+  // content-shape rule would reject every reference.
+  string private_key_content_base64 = 7 [(dev.planton.shared.options.sensitive) = true];
 
   // Holds the base64 private key in Key Vault instead of
   // private_key_content_base64.

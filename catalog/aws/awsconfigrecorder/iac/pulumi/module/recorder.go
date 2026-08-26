@@ -162,5 +162,10 @@ func recorder(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 		ctx.Export(OpDeliveryChannelName, pulumi.String(""))
 	}
 	ctx.Export(OpRecordingEnabled, createdStatus.IsEnabled)
+	// Config's singletons are addressed by REGION + the literal name
+	// "default"; consumers (and the harness verifier) reaching the
+	// recorder off the ambient region need the resolved region
+	// alongside recorder_name.
+	ctx.Export(OpRegion, createdRecorder.Region)
 	return nil
 }

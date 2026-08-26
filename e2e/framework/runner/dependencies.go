@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -173,6 +174,17 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		slug, err := manifestKindSlug(full)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s annotation entry %q", scenarioPrerequisitesAnnotation, entry)
+		}
+		// An "extra instance" is only meaningful when it is a DIFFERENT
+		// manifest. When an annotation names the same file the kind-driven
+		// chain already resolved (the typical slip: annotating the
+		// consumer-scoped override of a registry prerequisite), the
+		// duplicate deploys the same stack twice and breaks teardown -- the
+		// second destroy finds no stack (live-caught 2026-08-26 on a DLM
+		// role fixture; the Terraform path masks it because destroying an
+		// empty state succeeds). Skip the duplicate instead.
+		if slices.ContainsFunc(deps, func(d Dependency) bool { return d.ManifestPath == full }) {
+			continue
 		}
 		entryKind := crkreflect.KindFromString(slug)
 		pre, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, crkreflect.Prerequisites(entryKind), visited)
@@ -465,7 +477,7 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	// Dependencies deploy with the harness's default posture (ambient
 	// credentials, empty provider block) -- the provider-config fixture is
 	// the component under test's, never its prerequisites'.
-	stackInputPath, err := BuildStackInput(dep.ManifestPath, moduleDir, nil)
+	stackInputPath, err := BuildStackInput(dep.ManifestPath, nil)
 	if err != nil {
 		return DependencyState{}, errors.Wrapf(err, "failed to build stack input for dependency %q", dep.KindSlug)
 	}

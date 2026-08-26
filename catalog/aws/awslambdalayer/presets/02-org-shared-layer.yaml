@@ -11,7 +11,10 @@ spec:
         name: build-artifacts
         fieldPath: status.outputs.bucket_id
     key: layers/org-runtime.zip
-  sourceCodeHash: REPLACE_WITH_BASE64_SHA256_OF_ZIP
+  # sourceCodeHash is deliberately omitted: empty means a new version
+  # publishes whenever the S3 key or object version changes - the right
+  # starter behavior. Pipelines that want content-addressed republishes
+  # set it to base64(sha256(zip)) at build time.
   description: Organization-wide custom runtime layer
   compatibleRuntimes:
     - provided.al2023
@@ -19,4 +22,9 @@ spec:
   permissions:
     - statementId: org-wide
       principal: "*"
-      organizationId: o-REPLACE12345
+      # Placeholder - replace with your organization's real o-... id
+      # (AWS Organizations console). Spelled as a VALID id (lowercase
+      # letters and digits only): the spec validates the o- pattern, so
+      # an uppercase REPLACE-style placeholder fails validation as
+      # shipped.
+      organizationId: o-replaceme0000
