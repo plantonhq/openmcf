@@ -4,6 +4,7 @@ go_library(
     name = "runner",
     srcs = [
         "dependencies.go",
+        "failuremode.go",
         "fixtureintegrity.go",
         "import_roundtrip.go",
         "outputs_verifier.go",
@@ -52,6 +53,7 @@ go_test(
     name = "runner_test",
     srcs = [
         "dependencies_test.go",
+        "failuremode_test.go",
         "fixture_integrity_test.go",
         "import_roundtrip_test.go",
         "outputs_verifier_test.go",
@@ -72,6 +74,7 @@ go_test(
         "//e2e/framework/provider",
         "//internal/manifest",
         "//shared/cloudresourcekind",
+        "@com_github_pkg_errors//:errors",
         "@io_k8s_sigs_yaml//:yaml",
     ],
 )

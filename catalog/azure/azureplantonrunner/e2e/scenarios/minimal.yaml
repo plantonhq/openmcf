@@ -16,6 +16,10 @@ metadata:
     e2e-component: azureplantonrunner
   annotations:
     planton.dev/e2e: "true"
+    # The fake token's replica crash-loop is DESIGNED -- the lane additionally
+    # pins the failure as far as ARM sees it: the revision provisioned (the
+    # image pulled; create validates pullability) while running-and-failing.
+    planton.dev/e2e-expected-runtime-failure: refused-join
   tags:
     - planton-e2e
 spec:

@@ -26,6 +26,14 @@ type Verifier interface {
 	VerifyAbsent(ctx context.Context, cred azcore.TokenCredential, subscriptionID, id string) error
 }
 
+// RuntimeCauseVerifier is the optional capability a verifier implements when
+// its kind's scenario deploys a workload DESIGNED to fail (the framework's
+// expected-runtime-failure lane): it must pin the failure to the expected
+// cause with ARM's own evidence, never merely tolerate "some failure".
+type RuntimeCauseVerifier interface {
+	VerifyRuntimeFailureCause(ctx context.Context, cred azcore.TokenCredential, subscriptionID, id, cause string) error
+}
+
 // verifiers maps a component name to its verifier. New Azure components register
 // here as they are forged.
 var verifiers = map[string]Verifier{

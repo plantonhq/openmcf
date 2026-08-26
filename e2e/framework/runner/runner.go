@@ -27,6 +27,13 @@ const (
 	PhaseDestroy     Phase = "DESTROY"
 	PhaseVerifyCln   Phase = "VERIFY-CLN"
 	PhaseDepsDn      Phase = "DEPENDENCIES-DOWN"
+
+	// Failure-mode phases (see failuremode.go): DEPLOY-EXPECT-FAIL replaces
+	// DEPLOY when the scenario expects the deploy itself to fail;
+	// VERIFY-CAUSE follows VERIFY-RES when the scenario's workload fails by
+	// design and the failure's cause must be pinned.
+	PhaseExpectFail  Phase = "DEPLOY-EXPECT-FAIL"
+	PhaseVerifyCause Phase = "VERIFY-CAUSE"
 )
 
 // PhaseResult captures the outcome of a single lifecycle phase.
@@ -173,40 +180,83 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 	}
 
+	// Failure-mode annotations (see failuremode.go). Mutually exclusive: one
+	// says the deploy itself must fail, the other presupposes it succeeds.
+	expectDeployFailure, _ := ManifestAnnotation(tc.ManifestPath, ExpectDeployFailureAnnotation)
+	expectedRuntimeCause, _ := ManifestAnnotation(tc.ManifestPath, ExpectedRuntimeFailureAnnotation)
+	if expectDeployFailure != "" && expectedRuntimeCause != "" {
+		result.Passed = false
+		result.Phases = append(result.Phases, PhaseResult{
+			Phase:  PhaseValidate,
+			Passed: false,
+			Error: errors.Errorf("scenario carries both %s and %s -- they are mutually exclusive",
+				ExpectDeployFailureAnnotation, ExpectedRuntimeFailureAnnotation),
+		})
+		if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+			result.Phases = append(result.Phases, PhaseResult{Phase: PhaseDepsDn, Passed: false, Error: tdErr})
+		}
+		result.Duration = time.Since(start)
+		return result
+	}
+
 	// Phases 1-6 (7 with the opt-in import round-trip): standard lifecycle.
 	type lifecyclePhase struct {
 		phase Phase
 		fn    func() error
 	}
-	phases := []lifecyclePhase{
-		{PhaseValidate, func() error { return runValidate(tc) }},
-		{PhaseDeploy, func() error { return runDeploy(tc) }},
+	var phases []lifecyclePhase
+	if expectDeployFailure != "" {
+		// The expected-deploy-failure lifecycle: the deploy MUST fail, the
+		// harness pins the cause post-mortem (before destroy, while the
+		// partially-created resource is inspectable), then the tainted stack
+		// is destroyed and absence verified. Idempotency, output and resource
+		// verification, and import round-trips all presuppose a successful
+		// deploy and are structurally excluded.
+		phases = []lifecyclePhase{
+			{PhaseValidate, func() error { return runValidate(tc) }},
+			{PhaseExpectFail, func() error { return runExpectDeployFailure(verifyCtx, tc, harness, expectDeployFailure) }},
+			{PhaseDestroy, func() error { return runDestroy(tc) }},
+			{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
+		}
+	} else {
+		phases = []lifecyclePhase{
+			{PhaseValidate, func() error { return runValidate(tc) }},
+			{PhaseDeploy, func() error { return runDeploy(tc) }},
+		}
+		// The idempotency gate re-plans the configuration DEPLOY just applied and
+		// fails on any pending change: a dirty second plan means the module and
+		// the provider disagree about the applied state (the send-omitted-value /
+		// Optional+Computed echo defect classes), which users would meet as a
+		// perpetual diff on every re-apply. Provider profiles arm it via
+		// assert_apply_idempotency; prerequisite fixtures are deliberately outside
+		// its scope (they belong to other kinds' contracts).
+		if tc.AssertApplyIdempotency {
+			phases = append(phases, lifecyclePhase{PhaseIdempotency, func() error { return runIdempotency(tc) }})
+		}
+		phases = append(phases,
+			lifecyclePhase{PhaseVerifyOut, func() error { return runVerifyOutputs(tc) }},
+			lifecyclePhase{PhaseVerifyRes, func() error { return runVerifyResources(verifyCtx, tc, harness) }},
+		)
+		// VERIFY-CAUSE slots right after VERIFY-RES: the workload's designed
+		// failure needs the deployed resource live, and its evidence (states,
+		// logs) must be read before anything tears down.
+		if expectedRuntimeCause != "" {
+			phases = append(phases, lifecyclePhase{PhaseVerifyCause, func() error {
+				return runVerifyRuntimeCause(verifyCtx, tc, harness, expectedRuntimeCause)
+			}})
+		}
+		// The import round-trip slots between VERIFY-RES and DESTROY: it needs the
+		// deployed fixture live (imports read the real cloud) and the destroy that
+		// follows tears down through the re-imported state -- itself part of the
+		// proof that the blind import fully owns the resources.
+		if importRoundTripEnabled(tc) {
+			phases = append(phases, lifecyclePhase{PhaseImportRT, func() error { return runImportRoundTrip(tc) }})
+		}
+		phases = append(phases,
+			lifecyclePhase{PhaseDestroy, func() error { return runDestroy(tc) }},
+			lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
+		)
 	}
-	// The idempotency gate re-plans the configuration DEPLOY just applied and
-	// fails on any pending change: a dirty second plan means the module and
-	// the provider disagree about the applied state (the send-omitted-value /
-	// Optional+Computed echo defect classes), which users would meet as a
-	// perpetual diff on every re-apply. Provider profiles arm it via
-	// assert_apply_idempotency; prerequisite fixtures are deliberately outside
-	// its scope (they belong to other kinds' contracts).
-	if tc.AssertApplyIdempotency {
-		phases = append(phases, lifecyclePhase{PhaseIdempotency, func() error { return runIdempotency(tc) }})
-	}
-	phases = append(phases,
-		lifecyclePhase{PhaseVerifyOut, func() error { return runVerifyOutputs(tc) }},
-		lifecyclePhase{PhaseVerifyRes, func() error { return runVerifyResources(verifyCtx, tc, harness) }},
-	)
-	// The import round-trip slots between VERIFY-RES and DESTROY: it needs the
-	// deployed fixture live (imports read the real cloud) and the destroy that
-	// follows tears down through the re-imported state -- itself part of the
-	// proof that the blind import fully owns the resources.
-	if importRoundTripEnabled(tc) {
-		phases = append(phases, lifecyclePhase{PhaseImportRT, func() error { return runImportRoundTrip(tc) }})
-	}
-	phases = append(phases,
-		lifecyclePhase{PhaseDestroy, func() error { return runDestroy(tc) }},
-		lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
-	)
 
 	for _, p := range phases {
 		phaseStart := time.Now()
@@ -221,7 +271,11 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 
 		if err != nil {
 			result.Passed = false
-			if p.phase == PhaseDeploy || p.phase == PhaseIdempotency || p.phase == PhaseVerifyOut || p.phase == PhaseVerifyRes || p.phase == PhaseImportRT {
+			switch p.phase {
+			case PhaseDeploy, PhaseIdempotency, PhaseVerifyOut, PhaseVerifyRes, PhaseVerifyCause, PhaseImportRT, PhaseExpectFail:
+				// A failed DEPLOY-EXPECT-FAIL needs the cleanup destroy on BOTH
+				// branches: an unexpected deploy success leaves live resources,
+				// and a failed post-mortem leaves the tainted partial stack.
 				cleanupErr := runDestroy(tc)
 				if cleanupErr != nil {
 					fmt.Printf("  [WARN] cleanup destroy also failed: %v\n", cleanupErr)

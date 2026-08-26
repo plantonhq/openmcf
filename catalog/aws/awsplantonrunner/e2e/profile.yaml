@@ -3,18 +3,20 @@ kind: ComponentE2EProfile
 metadata:
   name: awsplantonrunner
 spec:
-  # A runner appliance under live E2E: the harness deploys the VPC and
-  # two-AZ subnet prerequisites, then runs deploy -> DescribeServices
-  # verify (ACTIVE) -> destroy -> verify-inactive on both provisioners.
-  # The scenario supplies an obviously-fake runner token, so the container
-  # never joins any control plane -- deliberately: verification is
-  # service-level (ECS reports ACTIVE independently of task health, and
-  # the modules do not gate on steady state), which proves the full
-  # provisioning surface (token secret, both IAM roles, log group,
-  # outbound-only security group, dedicated cluster, task definition,
-  # Fargate service) and clean teardown without live credentials. The
-  # prerequisite subnets ride the VPC main route table (no internet
-  # route), so no task ever pulls the image or starts.
+  # A runner appliance under live E2E: the harness deploys the VPC,
+  # internet gateway, and two-AZ ROUTED subnet prerequisites (the
+  # consumer-scoped override -- a Fargate task needs real egress to fetch
+  # the token secret and pull the image before its container ever
+  # starts), then runs deploy -> DescribeServices verify (ACTIVE) ->
+  # VERIFY-CAUSE -> destroy -> verify-inactive on both provisioners. The
+  # scenario supplies an obviously-fake runner token, so the container's
+  # join is refused -- deliberately: beyond the service-level ACTIVE
+  # check (ECS reports ACTIVE independently of task health), the lane's
+  # VERIFY-CAUSE phase pins the designed failure with AWS's own evidence
+  # (a stopped task that RAN and exited non-zero with no pull failure,
+  # plus the runner's join-step error in the CloudWatch log group) so a
+  # pull error, a secret-fetch failure, or an argv defect fails the lane
+  # instead of hiding behind the crash-loop.
   tier: 1
   status: green
   validated_provisioners: [pulumi, terraform]

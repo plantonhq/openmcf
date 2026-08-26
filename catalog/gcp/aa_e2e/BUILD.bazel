@@ -9,6 +9,7 @@ go_library(
         "//catalog/gcp/aa_e2e/verify",
         "//e2e/framework/provider",
         "@com_github_pkg_errors//:errors",
+        "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_api//alloydb/v1:alloydb",
         "@org_golang_google_api//artifactregistry/v1:artifactregistry",
         "@org_golang_google_api//bigquery/v2:bigquery",

@@ -343,6 +343,26 @@ func (h *Harness) VerifyDeployed(ctx context.Context, component string, outputs 
 	return verifier.VerifyExists(ctx, h.kubeconfigPath)
 }
 
+// VerifyRuntimeFailureCause implements the framework's optional
+// RuntimeCauseVerifier capability (expected-runtime-failure lanes): it
+// dispatches to the kind's verifier, which must itself opt in via the local
+// verify.RuntimeCauseVerifier interface.
+func (h *Harness) VerifyRuntimeFailureCause(ctx context.Context, tc *provider.ComponentTestContext, cause string) error {
+	manifestPath, _ := ctx.Value(provider.ManifestPathKey{}).(string)
+	if manifestPath == "" {
+		manifestPath = tc.ManifestPath
+	}
+	verifier, err := verify.GetVerifierFromManifest(manifestPath)
+	if err != nil {
+		return err
+	}
+	rcv, ok := verifier.(verify.RuntimeCauseVerifier)
+	if !ok {
+		return errors.Errorf("component %q's verifier does not implement verify.RuntimeCauseVerifier -- the scenario expects a runtime failure cause (%s) it cannot pin", tc.Component, cause)
+	}
+	return rcv.VerifyRuntimeFailureCause(ctx, h.kubeconfigPath, cause)
+}
+
 // VerifyDestroyed confirms that resources have been removed after destroy.
 func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 	manifestPath, _ := ctx.Value(provider.ManifestPathKey{}).(string)

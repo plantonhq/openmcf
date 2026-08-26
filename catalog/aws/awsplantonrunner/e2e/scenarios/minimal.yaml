@@ -1,8 +1,14 @@
-# Minimal AwsPlantonRunner scenario: the appliance on the two-AZ subnet
-# pair with an obviously-fake runner token (the container never joins any
-# control plane; see ../profile.yaml for why service-level verification
-# makes that the right lane shape). Full metadata is supplied for
-# tagging/orphan cleanup.
+# Minimal AwsPlantonRunner scenario: the appliance on a two-AZ ROUTED
+# subnet pair with an obviously-fake runner token. The task needs real
+# egress before any designed failure can even happen -- Fargate fetches
+# the token from Secrets Manager and pulls the image before the container
+# starts, and the shared bare subnets have no route out (proven live:
+# ResourceInitializationError before one container start). The
+# consumer-scoped prerequisites/awssubnet.yaml shadows the shared names
+# with internet-routed versions (each pulling the internet gateway into
+# the chain ahead of itself via its own annotation), and assignPublicIp
+# gives the tasks addresses the routes can carry. Full metadata is
+# supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
@@ -15,6 +21,11 @@ metadata:
     e2e-component: awsplantonrunner
   annotations:
     planton.dev/e2e: "true"
+    # The fake token's task crash-loop is DESIGNED -- the lane pins the
+    # failure to the refused control-plane join (a stopped task that ran and
+    # exited non-zero with no pull failure, plus the join-step error in the
+    # CloudWatch log group) and would fail on any other cause.
+    planton.dev/e2e-expected-runtime-failure: refused-join
   tags:
     - planton-e2e
 spec:
@@ -28,4 +39,5 @@ spec:
         kind: AwsSubnet
         name: planton-oss-e2e-awssubnet-prereq-b
         fieldPath: status.outputs.subnet_id
+  assignPublicIp: true
   token: prt_FAKE_E2E_PLACEHOLDER

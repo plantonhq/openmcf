@@ -15,6 +15,10 @@ metadata:
     e2e-component: kubernetesplantonrunner
   annotations:
     planton.dev/e2e: "true"
+    # The fake token's crash-loop is DESIGNED -- the lane pins the failure to
+    # the refused control-plane join (image pulled, container ran, the join
+    # error in the pod's own log) and would fail on any other cause.
+    planton.dev/e2e-expected-runtime-failure: refused-join
   tags:
     - planton-e2e
 spec:

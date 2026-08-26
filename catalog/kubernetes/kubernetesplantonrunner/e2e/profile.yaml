@@ -6,14 +6,17 @@ spec:
   # A runner under live E2E on the kind cluster: deploy -> verify the
   # release's install surface (the Deployment with replicas 1 and the
   # Recreate strategy, the module-created token Secret, the enrollment env
-  # wiring on the pod template) -> destroy -> verify-absent, on both
-  # provisioners. The scenario supplies an obviously-fake runner token,
-  # so the pod's join is refused and it restarts -- deliberately: the
-  # module installs with no Helm wait (the runner's readiness contract is
-  # its work queue, not pod liveness), so install-level verification
-  # proves the full chart contract and clean teardown without a reachable
-  # control plane.
+  # wiring on the pod template) -> verify the RUNTIME CAUSE -> destroy ->
+  # verify-absent, on both provisioners. The scenario supplies an
+  # obviously-fake runner token, so the pod's join is refused and it
+  # restarts -- deliberately: the module installs with no Helm wait (the
+  # runner's readiness contract is its work queue, not pod liveness), and
+  # the lane's VERIFY-CAUSE phase pins the designed failure with the
+  # cluster's own evidence (image pulled, container ran, the join-step
+  # error in the pod's log) so any OTHER failure -- a pull error, an
+  # argv/entrypoint defect -- fails the lane instead of hiding behind the
+  # crash-loop.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30
