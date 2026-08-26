@@ -17,9 +17,14 @@ spec:
   # rotation scenario may 403 at apply; if it does, record the defect and
   # defer the rotation arm with the reason rather than switching credentials.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: minimal + rotation on both engines, full
+  # lifecycle including rotation-at-create (client_secret_version: 2 accepted
+  # on a fresh token). The upstream tests' universal API-token blanking did
+  # not reproduce under an account-owned token -- no 403 anywhere. Blind
+  # import round-trips pass with the two catalog-declared write-only
+  # tolerances (client_secret_version, previous_client_secret_expires_at);
+  # client_secret itself is unrecoverable after import by API design.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
   cost_class: cheap_ephemeral

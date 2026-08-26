@@ -1049,6 +1049,43 @@ application `auto_redirect_to_identity`/`enable_binding_cookie`/
 list is the map: check it during the PRE-LANE pass and declare from
 measurement, never blanket-tolerate.
 
+### Computed attributes without state-preserving plan modifiers: the perpetual re-plan class
+
+Some auto-generated resources ship Computed (and Computed+Optional)
+attributes with NO `UseStateForUnknown`-style plan modifiers, and pair that
+with an API that echoes only the fields you sent. The combination is a
+resource that CANNOT pass a refresh-inclusive idempotent plan on any
+configuration shape: null computed members re-plan as "(known after apply)"
+forever, and the first one inside a config-provided nested object turns
+every plan into an in-place update. Know the two non-fixes before burning a
+lane on them (both measured live 2026-08-26): sending the field explicitly
+does not converge (the API accepts-and-drops the write, and the create
+path's computed decode nulls it right back), and `lifecycle.ignore_changes`
+cannot help (it filters the CONFIG merge, while this unknown is planned by
+the PROVIDER afterward). Diagnose with three probes -- config shape absent /
+empty-object / populated, plus a direct API POST-then-GET to see the sparse
+echo -- and if all drift, the honest outcome is a DEFERRAL on the upstream
+defect, never a weakened idempotency gate. First measured user:
+`cloudflare_zero_trust_gateway_policy` at v5.23.0 (upstream issue #7106;
+every shape drifts via `rule_settings.ignore_cname_category_matches` and
+friends). Contrast with the decode-over-prior-state class above: that one is
+import-only and tolerable by declaration; this one breaks the NORMAL
+lifecycle and no catalog declaration can absorb an idempotency failure.
+
+### Terraform outputs: never null-guard a partially-sensitive object
+
+An output expression like `x.scim_config != null ? x.scim_config.base_url :
+null` fails at APPLY time with "Output refers to sensitive values" whenever
+ANY member of the object is schema-sensitive: comparing the whole object
+yields a sensitive boolean, and a sensitive condition taints the entire
+conditional -- even though the selected leaf is not sensitive. Plan does not
+evaluate output sensitivity, so the offline bar cannot catch it; it fires on
+the first live apply. Write `try(x.scim_config.base_url, null)` instead --
+direct leaf access carries only the leaf's own sensitivity and degrades to
+null when the object is absent. First measured user (live 2026-08-26): the
+Cloudflare Access identity provider's `scim_base_url` output (`scim_config`
+carries the sensitive `secret` member).
+
 ### The round-trip's plan echo prints sensitive output VALUES to the local test log
 
 The IMPORT-RT phase's oracle plan runs through terratest's default

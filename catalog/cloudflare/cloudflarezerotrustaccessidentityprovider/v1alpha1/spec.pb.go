@@ -48,9 +48,12 @@ type CloudflareZeroTrustAccessIdentityProviderSpec struct {
 	// The identity provider type. IMMUTABLE at Cloudflare: changing it replaces
 	// the provider (new provider ID), invalidating policy rules that reference
 	// the old one. The value set and casing are Cloudflare's own (azureAD and
-	// google-apps are spelled exactly so). "onetimepin" needs no config at all;
-	// OAuth types (github, google, facebook, linkedin, yandex) need client_id +
-	// client_secret; oidc/saml need their endpoint fields.
+	// google-apps are spelled exactly so). "onetimepin" needs no config at all
+	// and is an ACCOUNT SINGLETON: Cloudflare refuses a second onetimepin
+	// provider with 409 "a onetimepin connection already exists" (measured live
+	// 2026-08-26) -- adopt the existing one by import instead of creating
+	// another. OAuth types (github, google, facebook, linkedin, yandex) need
+	// client_id + client_secret; oidc/saml need their endpoint fields.
 	Type string `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 	// The provider connection parameters. Which fields apply depends on `type`
 	// (the message-level rules above enforce the pairing). Omit entirely for

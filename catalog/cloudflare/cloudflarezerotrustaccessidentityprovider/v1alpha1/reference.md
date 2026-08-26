@@ -121,9 +121,12 @@ The name of the identity provider, shown to users on the Access login page.
 The identity provider type. IMMUTABLE at Cloudflare: changing it replaces
 the provider (new provider ID), invalidating policy rules that reference
 the old one. The value set and casing are Cloudflare's own (azureAD and
-google-apps are spelled exactly so). "onetimepin" needs no config at all;
-OAuth types (github, google, facebook, linkedin, yandex) need client_id +
-client_secret; oidc/saml need their endpoint fields.
+google-apps are spelled exactly so). "onetimepin" needs no config at all
+and is an ACCOUNT SINGLETON: Cloudflare refuses a second onetimepin
+provider with 409 "a onetimepin connection already exists" (measured live
+2026-08-26) -- adopt the existing one by import instead of creating
+another. OAuth types (github, google, facebook, linkedin, yandex) need
+client_id + client_secret; oidc/saml need their endpoint fields.
 
 - rule: {"required":true,"string":{"in":["onetimepin","azureAD","saml","centrify","facebook","github","google-apps","google","linkedin","oidc","okta","onelogin","pingone","yandex","cloudflare"]}}
 

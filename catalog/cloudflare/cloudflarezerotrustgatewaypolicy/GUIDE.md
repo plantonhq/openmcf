@@ -1,6 +1,10 @@
 # CloudflareZeroTrustGatewayPolicy guide
 
-The judgment this guide protects you from: a policy without `enabled: true` deploys and filters nothing, and two `rule_settings` fields drift on first apply even when you did everything right.
+The judgment this guide protects you from: a policy without `enabled: true` deploys and filters nothing, and the current Terraform provider re-plans every policy forever even when you did everything right.
+
+## Known upstream blocker: the plan never converges
+
+At provider v5.23.0 (and v5.24.0 -- the newest release), every `cloudflare_zero_trust_gateway_policy` shows a pending in-place update on every refreshed plan, forever: the resource's computed attributes ship without state-preserving plan modifiers ([upstream issue #7106](https://github.com/cloudflare/terraform-provider-cloudflare/issues/7106)), and Cloudflare's Gateway API echoes only the `rule_settings` fields you sent, so the provider re-plans the rest as "(known after apply)" on every run. Measured live 2026-08-26 on every configuration shape -- `rule_settings` absent, empty, and populated. Applies succeed and the repeated update is a no-op write, so the policy WORKS; but plan-gated pipelines will see a permanent diff, and no configuration or `ignore_changes` incantation clears it (both measured). Pulumi surfaces the same drift only under `pulumi refresh`. Until a provider release fixes #7106, treat the perpetual diff as upstream noise, not configuration error.
 
 ## Enabled defaults to false
 

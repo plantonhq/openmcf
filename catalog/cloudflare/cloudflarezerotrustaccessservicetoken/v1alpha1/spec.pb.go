@@ -58,7 +58,10 @@ type CloudflareZeroTrustAccessServiceTokenSpec struct {
 	// ROTATION: Cloudflare mints a new secret (returned once in the
 	// client_secret stack output) and keeps accepting the previous secret until
 	// previous_client_secret_expires_at. Leave unset until the first rotation
-	// (Cloudflare treats the initial secret as version 1).
+	// (Cloudflare treats the initial secret as version 1). Creating a token
+	// with a higher version directly also works (measured live 2026-08-26);
+	// the version only triggers a rotation when it increases past the token's
+	// current one, so re-asserting an equal version is a no-op.
 	ClientSecretVersion *int32 `protobuf:"varint,5,opt,name=client_secret_version,json=clientSecretVersion,proto3,oneof" json:"client_secret_version,omitempty"`
 	// When the PREVIOUS client secret stops being accepted after a rotation, as an
 	// RFC3339 timestamp (e.g. "2026-09-01T00:00:00Z"). Extend it into the future

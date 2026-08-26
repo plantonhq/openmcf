@@ -15,9 +15,11 @@ spec:
   # design authority. Watch item: the list TYPE is immutable (RequiresReplace)
   # -- type changes replace the list and break referencing policies.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: domain-minimal + ip-items on both engines, full
+  # lifecycle, all first-run; the blind import round-trip passed with ZERO
+  # declared tolerances. The upstream tests' API-token blanking did not
+  # reproduce under an account-owned token -- no 403 anywhere.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
   cost_class: cheap_ephemeral

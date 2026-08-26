@@ -163,6 +163,15 @@ This is identified in rule 001 and applied in rule 002. The ratcheting gate
 forged component is not done until the gate is green. Authority: the option comments in
 `shared/options/options.proto`.
 
+Terraform outputs corollary: when a provider object contains ANY sensitive member, never
+null-guard the whole object in an output expression (`x.obj != null ? x.obj.leaf : null`) --
+comparing a partially-sensitive object yields a sensitive condition that taints the entire
+conditional, and `tofu apply` refuses the unmarked output ("Output refers to sensitive
+values"). The offline plan gate cannot catch this (output sensitivity is enforced only at
+apply). Use direct leaf access with `try(x.obj.leaf, null)` instead: it carries only the
+leaf's own sensitivity and degrades to null when the object is absent. Truly sensitive leaf
+outputs additionally carry `sensitive = true` as always.
+
 FOREIGN-KEY FIELD-PATH FORMAT (verify against the CONSUMING API)
 When wiring `default_kind_field_path` for a network/resource reference, verify which
 address format the consuming API accepts -- GCP APIs are inconsistent. Compute-family

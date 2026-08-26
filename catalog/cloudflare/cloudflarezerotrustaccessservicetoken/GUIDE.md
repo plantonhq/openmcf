@@ -24,7 +24,11 @@ Do not destroy-and-recreate to rotate. That mints a new token ID and every polic
 
 ## API-token auth on the rotation path
 
-The provider's own rotation acceptance tests unset `CLOUDFLARE_API_TOKEN` -- "the Access service does not yet support API tokens" for that path. Planton's Cloudflare harness authenticates with an API token. Create of a non-rotating token is the well-trodden path; a rotation apply may 403. If it does, record the defect and keep rotation as an offline-proven shape until the endpoint accepts tokens. Do not switch the harness to a legacy key to paper over it.
+The provider's own rotation acceptance tests unset `CLOUDFLARE_API_TOKEN` -- "the Access service does not yet support API tokens" for that path. Measured live 2026-08-26 with an account-owned token (`cfat_`): create, rotation-at-create, destroy, and import all worked with no 403 -- the upstream caveat did not reproduce. If a 403 ever appears on a rotation apply, record the defect rather than switching the harness to a legacy key.
+
+## Adopting an existing token (import)
+
+Import (`accounts/{account_id}/{service_token_id}`) restores the token's identity, name, and duration -- but never `client_secret`: Cloudflare returns it only at create and rotation, so an adopted token's secret is unrecoverable by design. If you need a usable credential after adoption, rotate (increment `client_secret_version` with a `previous_client_secret_expires_at`) and capture the fresh secret from the stack output. The first post-import apply re-asserts `client_secret_version` (and the expiry, if set) from configuration -- a no-op write, since rotation only triggers when the version increases past the token's real one (measured live 2026-08-26).
 
 ## Pairs well with
 

@@ -36,7 +36,7 @@ spec:
 planton apply -f identity-provider.yaml
 ```
 
-Users see a one-time PIN option on the Access login page. No IdP application is required.
+Users see a one-time PIN option on the Access login page. No IdP application is required. One caveat: Cloudflare allows exactly one `onetimepin` provider per account -- if yours already has one, a second create is refused with 409 "a onetimepin connection already exists"; adopt the existing provider by import instead (see the GUIDE).
 
 ## Configuration Reference
 

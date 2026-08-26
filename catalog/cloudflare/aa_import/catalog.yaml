@@ -310,9 +310,31 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_identity_provider
       pulumi_type: cloudflare:index/zeroTrustAccessIdentityProvider:ZeroTrustAccessIdentityProvider
       id_format: "accounts/{account_id}/{identity_provider_id}"
+      # The OAuth client secret is write-only (the provider's own import test
+      # ignores exactly config.client_secret at v5.23.0, and its Read rescues
+      # the value from prior state -- a rescue ImportState never performs), so
+      # a blind import lands with a null secret and the first post-adoption
+      # apply re-asserts it from configuration. The dotted form prunes only
+      # that leaf; any sibling drift inside config still fails the oracle.
+      write_normalized_attributes:
+        - config.client_secret
     - terraform_type: cloudflare_zero_trust_access_service_token
       pulumi_type: cloudflare:index/zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken
       id_format: "accounts/{account_id}/{service_token_id}"
+      # Two write-only attributes (measured live 2026-08-26): the
+      # previous-secret expiry is never returned by the API (every one of the
+      # provider's 11 import steps ignores it at v5.23.0), and the token GET
+      # omits client_secret_version too, so both import as null and the first
+      # post-adoption apply re-asserts them from configuration (or the
+      # schema's default version 1). That write is a no-op against the API's
+      # real state: rotation triggers only when the version INCREASES past
+      # the token's actual version, never on an equal re-assert.
+      # client_secret needs no declaration: it is an output, never
+      # configuration, so the round-trip oracle never sees it -- and it is
+      # UNRECOVERABLE after import (returned only at create/rotation).
+      write_normalized_attributes:
+        - previous_client_secret_expires_at
+        - client_secret_version
     # The organization is a singleton upsert: import adopts whatever the
     # account carries. ACCOUNT SCOPE ONLY -- the provider's importer never
     # populates zone_id, so a zone-scoped organization cannot be imported
@@ -348,6 +370,12 @@ spec:
     - terraform_type: cloudflare_zero_trust_gateway_policy
       pulumi_type: cloudflare:index/zeroTrustGatewayPolicy:ZeroTrustGatewayPolicy
       id_format: "{account_id}/{policy_id}"
+      notes: >-
+        The importer works, but at provider v5.23.0 the post-import plan (like
+        every refreshed plan on this resource) never converges -- computed
+        attributes re-plan forever (upstream issue #7106, measured live
+        2026-08-26 on every configuration shape). Applies are no-op writes;
+        plan-gated pipelines see a permanent diff until upstream fixes it.
     - terraform_type: cloudflare_zero_trust_list
       pulumi_type: cloudflare:index/zeroTrustList:ZeroTrustList
       id_format: "{account_id}/{list_id}"

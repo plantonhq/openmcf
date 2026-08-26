@@ -13,9 +13,19 @@ import (
 // object when the spec configures nothing -- because the provider's own test
 // fixtures do exactly that to prevent API drift.
 //
-// KNOWN UPSTREAM DRIFT at v5.23.0: policies carrying add_headers or
-// override_ips show computed-field drift even on first apply (the provider's
-// own migration tests expect a non-empty plan for them).
+// KNOWN UPSTREAM DEFECT at v5.23.0 (unfixed through v5.24.0 and provider
+// main; upstream issue #7106): the resource's Computed attributes ship no
+// UseStateForUnknown plan modifiers, so refresh-inclusive plans NEVER
+// converge -- measured live 2026-08-26 on every configuration shape
+// (rule_settings absent, empty object, and populated all re-plan an in-place
+// update forever; the visible driver is
+// rule_settings.ignore_cname_category_matches, which Cloudflare's API never
+// echoes back). Module-side remedies were measured non-fixing: an explicit
+// send is accepted-and-dropped by the API, and IgnoreChanges cannot suppress
+// a provider-planned unknown. Pulumi previews do not refresh, so the drift
+// surfaces only under `pulumi refresh`; applies succeed and the repeated
+// update is a no-op write. The earlier-known add_headers/override_ips
+// first-apply drift is the same family.
 func gatewayPolicy(
 	ctx *pulumi.Context,
 	locals *Locals,
