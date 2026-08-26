@@ -72,6 +72,30 @@ listener to protect. Never add ingress to "check on" the runner; its
 observability path is the control plane (`planton runner list`) and the
 app's console logs, not an HTTP endpoint.
 
+## The image pull is part of the create (proven live)
+
+Container Apps validates the container image's manifest while
+provisioning the app's first revision, DURING the create: an image
+reference the registry cannot serve fails the whole deployment in
+seconds with `ContainerAppOperationError ... MANIFEST_UNKNOWN` on both
+engines -- there is no half-created app to inspect. Once the pull
+succeeds, the boundary flips: the app provisions independently of
+replica health (a container that starts and crash-loops -- say, a
+runner whose join is refused -- still leaves the app provisioned and
+manageable; measured creates ~36-61s). Two operational consequences:
+
+- A create failing with `MANIFEST_UNKNOWN` is a REGISTRY problem
+  (unpublished tag, wrong repository, single-platform image missing
+  linux/amd64 -- Container Apps runs amd64), never a spec or module
+  problem. Check the reference with
+  `docker buildx imagetools inspect <image>` before touching anything
+  else.
+- The default `image_repository` resolves the official image's
+  `latest` tag, which every runner release moves. If you override it
+  to a mirror, keeping the mirror's tags populated -- for BOTH
+  platforms -- becomes your responsibility, and this create-time
+  validation is where a stale mirror announces itself.
+
 ## The singleton is a law, not a default
 
 Exactly one replica, single-revision mode. A runner's identity is minted

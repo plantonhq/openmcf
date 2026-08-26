@@ -874,6 +874,14 @@ The remedy is environmental, never a module edit: delete the fixture
 resource group explicitly, re-probe after the resurface window, re-run
 the failed lane. Both occurrences' re-runs passed with zero changes.
 
+The trigger is NOT resolver-specific: the same signature (teardown
+reports every dependency destroyed, the fixture RG later answers
+`az group list` again, the next lane's fixture create collides) fired
+after a plain Container App Environment chain teardown whose
+DEPENDENCIES-DOWN passed cleanly. Treat it as a general Azure
+delete-side class on fixture resource groups; the remedy is identical
+and the explicit group delete has cleared it first-try every time.
+
 ### Bare `ServiceUnavailable` on an ARM create LRO: transient, retry the lane once
 
 Some ARM operations fail their create's long-running poll with a bare
@@ -1135,7 +1143,13 @@ anything that disturbs temp storage on the host. Diagnose by the
 signature: SEVERAL stacks of the same scenario reporting "no stack named"
 at once -- including ones that already deployed and verified cleanly (a
 real per-stack failure never spreads to unrelated stacks) -- and an
-identical re-run passing end to end.
+identical re-run passing end to end. On a SINGLE-fixture chain the
+"several stacks" half of the signature collapses to one: the fixture's
+`pulumi up` succeeds and the output read seconds later reports "no stack
+named" for that same stack (seen live on the runner appliance's RG-only
+chain; the identical re-run passed end to end). The exposure is worst on
+a shared workstation -- another program's suite churning host temp
+storage is exactly the disturbance this class feeds on.
 
 Recovery: the stackless fixtures' destroys were skipped, so sweep the
 cloud for the failed run's fixtures before re-running. A same-named
@@ -1506,6 +1520,16 @@ kind. Accepting the masked signal is safe when VerifyExists uses the
 SAME call earlier in the lane: real permission loss fails loudly there.
 Probe the pair (describe an existing resource, then a nonexistent name)
 before writing the verifier's absent arm for a new AWS service.
+
+**Cloud Map-linked Route 53 health checks are undeletable drain, not
+orphans.** Health checks Cloud Map creates for health-checked
+instances carry `LinkedService: servicediscovery.amazonaws.com`, and
+DeleteHealthCheck refuses them with AccessDenied naming the owning
+service — even after that service is deleted (live-probed
+2026-08-26). AWS's own cleanup sweeps them minutes after the parents
+die. A zero-orphan sweep treats lingering linked checks like the FSR
+"disabling" reads and KMS scheduled deletions: verify every check is
+LinkedService-owned and its parent is gone, then move on.
 
 **S3 Express wraps a deleted directory bucket's not-found inside a
 CREDENTIAL error — `errors.As` never reaches it.** Every S3 Express
