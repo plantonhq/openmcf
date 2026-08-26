@@ -40,7 +40,7 @@ metadata:
 spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   name: ops-slack
-  url: "https://hooks.slack.com/services/T00000000/B00000000/a1b2c3d4e5f6g7h8i9j0k1l2"
+  url: "https://hooks.slack.com/services/your-workspace/your-incoming-webhook"
 ```
 
 ```shell
