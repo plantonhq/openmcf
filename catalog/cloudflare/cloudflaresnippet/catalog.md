@@ -1,23 +1,35 @@
 # Cloudflare Snippet
 
-A small JavaScript module at the zone's edge, invoked by snippet rules. The snippet name is the identity: create is an upsert, so a name collision silently overwrites the existing snippet. Code travels inline; `mainModule` must name one of the files.
+Deploys a Cloudflare Snippet: a small JavaScript module at the zone's edge, invoked on requests that match snippet rules managed by the separate Cloudflare Snippet Rules kind. Snippets are the lightweight sibling of Workers — same runtime, no bindings, sized for header rewrites, redirects, and request/response touch-ups, with code capped at 32 KB per snippet. The snippet name is the identity, and Cloudflare's create call is an upsert: deploying a name that already exists in the zone silently adopts and overwrites it, with no "already exists" error to catch the collision.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Snippet** -- one `cloudflare_snippet` on the zone, with inline files and a `metadata.main_module` entry point
+- **Snippet** -- one `cloudflare_snippet` on the zone, with the inline source files and a `metadata.main_module` entry point. The snippet does nothing until a snippet rule invokes it by name
 
-## Prerequisites
+## Before You Deploy
 
-- **A Cloudflare zone** -- typically a CloudflareDnsZone whose `zone_id` output this resource references
-- **A Cloudflare API token** with Zone → Snippets → Edit
-- **A unique `snippetName`** -- deploying a name that already exists in the zone silently overwrites it
-- **Headroom under the plan's snippet-count limit** -- free plans allow a small number; the API enforces the cap at create
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Snippets Edit on the target zone. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-A 302 redirect snippet two rules can share:
+### Cloudflare Account
+
+- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a DNS Zone on Cloudflare resource by reference.
+- **A unique `snippetName`** -- because create is an upsert, a name that already exists in the zone is silently overwritten. Coordinate names across teams the way you coordinate Worker script names.
+- **Headroom under the plan's snippet-count limit** -- free plans allow a small number of snippets per zone; the cap is Cloudflare's, checked at create.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Snippet**, and click **Deploy**. The creation wizard walks you through the zone, the snippet name, the inline source files, and the entry module. Start from the **Redirect snippet** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -32,7 +44,7 @@ spec:
   snippetName: redirect_legacy
   files:
     - name: main.js
-      content: "export default { async fetch(request) { return Response.redirect(\"https://www.example.com\", 302); } };"
+      content: "export default { async fetch(request) { return Response.redirect(\"https://www.acme.com\", 302); } };"
   mainModule: main.js
 ```
 
@@ -40,57 +52,69 @@ spec:
 planton apply -f snippet.yaml
 ```
 
-Reference `status.outputs.snippet_name` from a `CloudflareSnippetRules` rule. The snippet does nothing until a rule invokes it.
+This deploys a single-file snippet that returns a 302 — inert until a Cloudflare Snippet Rules entry invokes `redirect_legacy` by name. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneId` | StringValueOrRef | The zone the snippet is deployed to. Can reference a CloudflareDnsZone via `valueFrom` (defaults to `status.outputs.zone_id`). | Required. |
-| `snippetName` | string | Identity within the zone. Changing it replaces the snippet. | Required. Letters, numbers, and underscores only. |
-| `files` | object[] | Source files. Most snippets are a single file. | At least one. Each entry needs `name` and `content`. `mainModule` must name one of them. |
-| `mainModule` | string | The entry file's name. The provider argument is `metadata`. | Required. Must equal one of `files[].name`. |
-
-### Optional Fields
-
-None. Content must be byte-stable -- Cloudflare rebuilds stored source from a multipart read, and gratuitous formatting differences read back as drift.
-
-## Examples
-
-### Legacy-path redirect
+When deploying as part of a multi-resource environment, wire the zone to a DNS zone managed in the same InfraPipeline:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareSnippet
-metadata:
-  name: redirect-legacy
-  org: acme-corp
-  env: prod
 spec:
   zoneId:
-    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: acme-com
+      fieldPath: status.outputs.zone_id
   snippetName: redirect_legacy
-  files:
-    - name: main.js
-      content: "export default { async fetch(request) { return Response.redirect(\"https://www.example.com\", 302); } };"
-  mainModule: main.js
 ```
 
-## Destroy Semantics
+The InfraPipeline resolves the dependency graph, deploys the zone first, then provisions the snippet against it.
 
-Destroy is a real delete. The snippet is removed from the zone. Rules that referenced `snippetName` keep pointing at that name and start invoking nothing. Create is an upsert -- a second manifest with the same `snippetName` on the same zone silently overwrites the first.
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a snippet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `snippet_name` | string | The snippet's name -- its identity within the zone, and what snippet rules reference |
-| `zone_id` | string | The zone the snippet is deployed to |
+**Name is identity, and create is an upsert.** `snippetName` is how Cloudflare addresses the snippet — the create call adopts whatever already lives under that name and overwrites its files. Two teams, two manifests, one name: the last apply wins and the first team's code is gone. Letters, numbers, and underscores only (hyphens are rejected); pick names unique in the zone, stable, and never recycled.
 
-## Related Components
+**Renaming does not carry rules along.** Changing `snippetName` replaces the resource under a new identity, and any snippet rule referencing the old name keeps pointing at whatever the old name holds — the rules do not follow the rename.
 
-- [Cloudflare Snippet Rules](/docs/catalog/cloudflare/cloudflaresnippetrules) -- the zone's routing table that invokes this snippet by name
-- [Cloudflare Worker](/docs/catalog/cloudflare/cloudflareworker) -- the full Worker when you need bindings, cron, or a custom domain
-- [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- `zoneId` foreign key
+**`mainModule` must name a file.** It is the entry module whose default export handles the request, and validation rejects a dangling entry point. Most snippets are a single `main.js`; multi-file snippets import siblings by name via ES module imports.
+
+**Content must be byte-stable.** The provider refetches stored content on refresh, rebuilt from the API's multipart response — server-side normalization, or a trailing newline your editor added, reads back as configuration drift. Consistent line endings, no trailing-whitespace churn, no pretty-print-on-save the API will not echo.
+
+**Snippet or Worker?** Snippets have no bindings, no cron, no custom domain, and a 32 KB code cap. The moment the logic needs state, secrets, or scheduling, reach for the Worker kind instead.
+
+**Destroy is a real delete.** Rules that referenced `snippetName` keep pointing at that name and start invoking nothing. Update or delete those rules first, or accept a window where matching requests hit a missing snippet.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `snippet_name` | The snippet's name — its identity in the zone | Referenced by Cloudflare Snippet Rules entries, wired instead of repeating the literal |
+| `zone_id` | The zone the snippet is deployed to | Keeping the snippet-rules manifest on the same zone without a second literal |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Legacy-path redirect** -- A single-file 302 snippet too small to justify a Worker, invoked by one or more rules that match the legacy paths. Start from the **Redirect snippet** preset.
+
+**Shared snippet, many rules** -- One snippet invoked by several rules with different match expressions — the rules carry the routing judgment while the snippet stays a single, testable module.
+
+**Header touch-up at the edge** -- A snippet that adds, strips, or rewrites headers on matched traffic; the classic case for a snippet over a Worker because there is no state and no binding, just a transform.
+
+## Works With
+
+- [**Cloudflare Snippet Rules**](/cloud-catalog/cloudflare-snippet-rules) -- the zone's routing table that invokes this snippet by name; nothing runs without it.
+- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the full Worker for logic that needs bindings, cron, or a custom domain.
+- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.

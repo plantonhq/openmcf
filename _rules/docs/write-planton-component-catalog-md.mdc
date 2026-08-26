@@ -181,6 +181,8 @@ Read before writing (version dir shown as `v1alpha1/`; use the component's actua
 
 ## Verification Protocol
 
+The structural half of this protocol is machine-enforced: the `pkg/catalogpage` gate (`go test ./pkg/catalogpage/`, CI lane `lint.catalog-page.yaml`) checks the head shape, the H2/H3 skeleton, the InfraChart-arm law, and every embedded manifest's validity against a shrink-only baseline — run it after writing, and never add a baseline entry for a new page. The judgment half below is yours.
+
 Before marking the page complete, verify all six:
 
 1. **Head Shape** — H1 is the display name; the first sentence stands alone as the description.

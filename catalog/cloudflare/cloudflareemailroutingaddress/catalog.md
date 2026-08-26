@@ -1,6 +1,6 @@
 # Email Routing Address on Cloudflare
 
-Registers a verified destination address for Cloudflare Email Routing -- an account-scoped mailbox that routing rules and zone catch-alls forward to. Creating it sends a verification email to the mailbox; the address cannot receive forwarded mail until its owner clicks the link. Because addresses are account-scoped, you register a teammate's inbox once and reference it from any routing rule or zone catch-all in the account. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Registers a verified destination address for Cloudflare Email Routing -- an account-scoped mailbox that routing rules and zone catch-alls forward to. Creating it sends a verification email to the mailbox; the address cannot receive forwarded mail until its owner clicks the link, and Cloudflare rejects any rule that forwards to an unverified address. Because addresses are account-scoped, you register a teammate's inbox once and reference it from any routing rule or zone catch-all in the account.
 
 ## What Gets Created
 
@@ -19,20 +19,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Cloudflare Account
 
 - **Account-level access** -- destination addresses are created at the account level, so the API token must be scoped to the account.
-- **Mailbox access** -- the owner of the destination mailbox must be able to click the verification link Cloudflare sends.
+- **Mailbox access** -- the owner of the destination mailbox must be able to click the verification link Cloudflare sends. This is a human step by design; there is no API shortcut around it.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Email Routing Address on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and the destination email. Both are fixed at creation -- changing either replaces the address.
+Open the deployment store, find **Email Routing Address on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and the destination email. Both are fixed at creation -- changing either replaces the address. Start from the **Destination Address** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareEmailRoutingAddress
 metadata:
   name: ops-mailbox
@@ -53,17 +53,19 @@ This registers `ops@example.com` as a destination. A Stack Job tracks the provis
 
 These are the most important decisions when configuring a destination address. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Destination Email (`email`)** -- The real mailbox forwarded mail is delivered to. Immutable -- changing it replaces the address, and the new mailbox must be re-verified.
+**Verification gates everything downstream** -- until the mailbox owner clicks the emailed link, the `verified` output stays empty and no rule or catch-all can forward to the address (Cloudflare rejects the configuration). Sequence rollouts as: create addresses, have owners verify, then wire rules.
 
-**Account (`accountId`)** -- The owning Cloudflare account. Immutable, and must match the account of the rules and zones that forward here.
+**Destination Email (`email`)** -- the real mailbox forwarded mail is delivered to. Immutable -- changing it replaces the address, and the new mailbox must be re-verified. Cloudflare enforces uniqueness per account, so registering the same email as a second resource in one account fails on create: model each real mailbox once and share it.
 
-**Verification Override (`status`)** -- Normally leave empty: verification happens through the emailed link. Cloudflare permits non-admin callers only to flip a verified address back to `unverified` (setting `verified` requires account admin privileges).
+**Account (`accountId`)** -- the owning Cloudflare account. Immutable, and must match the account of the rules and zones that forward here.
+
+**Verification Override (`status`)** -- normally leave empty. It exists for one real operation: flipping a verified address back to `unverified` (e.g. after a mailbox changes hands) to cut forwarding without deleting the address. Setting `verified` requires account admin privileges -- it is not a verification shortcut. The Pulumi engine cannot send this field yet; use the Terraform engine when the override matters.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-Nothing -- a destination address is a leaf resource.
+This component has no foreign key dependencies -- a destination address is a leaf resource identified by the `accountId` string and the literal email.
 
 ### What This Component Provides
 
@@ -71,18 +73,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `address_id` | The Cloudflare-assigned identifier of the address | Verification, dashboards |
-| `email` | The destination email (echoed) | Referenced by a `CloudflareEmailRoutingRule` action or a `CloudflareEmailRoutingZone` catch-all (`forwardTo`) |
-| `verified` | RFC3339 timestamp once verified, empty until then | Gate forwarding readiness |
-| `created` | Provisioning timestamp | Auditing |
+| `email` | The destination email address | Referenced by a `CloudflareEmailRoutingRule` forward action or a `CloudflareEmailRoutingZone` catch-all (`forwardTo`) |
+| `verified` | RFC3339 timestamp once verified, empty until then | Gating rule deployment on forwarding readiness |
+| `address_id` | The Cloudflare-assigned identifier of the address | Verification tooling and imports |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Shared team inbox** -- register `support@acme.com` once, then reference it from routing rules across every zone in the account; account-level scoping makes the single registration reusable. Start from the **Destination Address** preset.
 
-**Shared team inbox** -- register `support@acme.com` once, then reference it from several routing rules across zones.
+**Personal forwarding target** -- register a personal mailbox, verify it, then point a custom-domain alias at it through a routing rule.
 
-**Personal forwarding target** -- register a personal mailbox to forward a custom-domain alias to it.
+**Verify-first rollout** -- in a chart that also deploys rules, create the address in an early wave and hold the rules until `verified` is non-empty; wiring both in one shot fails when the human step has not happened yet.
 
 ## Works With
 

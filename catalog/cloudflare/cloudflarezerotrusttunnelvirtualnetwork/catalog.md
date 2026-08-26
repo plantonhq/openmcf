@@ -1,13 +1,12 @@
 # Zero Trust Tunnel Virtual Network on Cloudflare
 
-Provisions a Cloudflare Tunnel virtual network: an isolated routing segment that lets the same private CIDR (for example `10.0.0.0/8`) be connected through more than one tunnel without collision. Routes (`CloudflareZeroTrustTunnelRoute`) attach a private network to a tunnel within one virtual network, and WARP clients select which virtual network to reach. A virtual network is account-scoped and outlives any individual tunnel. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Provisions a Cloudflare Tunnel virtual network: an isolated routing segment that lets the same private CIDR (for example `10.0.0.0/8`) be connected through more than one tunnel without collision. Routes (`CloudflareZeroTrustTunnelRoute`) attach a private network to a tunnel within one virtual network, and WARP clients select which virtual network to reach. A virtual network is account-scoped and outlives any individual tunnel.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Virtual Network** -- a named, account-scoped routing segment
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -24,14 +23,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Tunnel Virtual Network on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account, a name, an optional comment, and whether this virtual network is the account default.
+Open the deployment store, find **Zero Trust Tunnel Virtual Network on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account, a name, an optional comment, and whether this virtual network is the account default. Start from the **Isolated routing segment** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustTunnelVirtualNetwork
 metadata:
   name: prod-overlay
@@ -64,24 +63,25 @@ These are the most important decisions when configuring a virtual network. Explo
 
 ### What This Component Consumes
 
-Nothing -- a virtual network is a self-contained, account-scoped leaf.
+This component has no foreign key dependencies -- a virtual network is a self-contained, account-scoped leaf.
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `virtual_network_id` | The Cloudflare-assigned UUID | Referenced by `CloudflareZeroTrustTunnelRoute` |
-| `virtual_network_name` | The virtual network name | Auditing, grouping |
+| `virtual_network_id` | The Cloudflare-assigned UUID | Referenced by a CloudflareZeroTrustTunnelRoute's `virtualNetworkId` to bind a private network to this segment |
+
+`status.outputs` also echoes `virtual_network_name` back from the spec.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Isolated segment** -- a named virtual network keeps a site's overlapping CIDRs separate from other sites.
+**Isolated segment** -- a named virtual network keeps a site's overlapping CIDRs separate from other sites. Start from the **Isolated routing segment** preset.
 
-**Default network** -- mark one virtual network as the account default for the common single-overlay case.
+**Default network** -- mark one virtual network as the account default for the common single-overlay case. Start from the **Account default virtual network** preset.
 
 ## Works With
 

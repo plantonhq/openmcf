@@ -1,14 +1,18 @@
 # R2 Bucket on Cloudflare
 
-Deploys an R2 object storage bucket on Cloudflare with configurable location hints, public access controls, and optional custom domain serving. R2 provides S3-compatible storage with zero egress fees. Integrates with Planton's Provider Connections for Cloudflare credential management and supports ValueFromRef wiring to DNS zones for custom domain configuration.
+Deploys an R2 object storage bucket on Cloudflare with configurable location hints, public access controls, and optional custom domain serving. R2 provides S3-compatible storage with zero egress fees. The bucket's full configuration surface travels with it: custom domains, CORS, object lifecycle, object lock retention, and event notifications that push object events to Cloudflare Queues.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **R2 Bucket** -- an object storage bucket in the specified Cloudflare account with the configured location hint (auto, WNAM, ENAM, WEUR, EEUR, APAC, or OC)
-- **R2 Custom Domain** -- created only when `customDomain.enabled` is `true`; configures a custom hostname (e.g., media.example.com) for bucket access using the referenced Cloudflare zone
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
+- **R2 Bucket** -- an object storage bucket in the specified Cloudflare account with the configured location hint, jurisdiction, and default storage class
+- **Managed Public Domain (r2.dev)** -- created only when `publicAccess` is `true`; its URL is published as the `public_url` output
+- **R2 Custom Domains** -- one per enabled entry in `customDomains`; each serves the bucket at a hostname in the referenced Cloudflare zone
+- **CORS Configuration** -- created only when `cors` rules are declared
+- **Lifecycle Rules** -- created only when `lifecycle` rules are declared (storage-class transitions, expiration, multipart-upload cleanup)
+- **Object Lock Rules** -- created only when `lock` rules are declared (compliance retention)
+- **Event Notifications** -- one per `eventNotifications` entry, pushing matching object events to a Cloudflare Queue
 
 ## Before You Deploy
 
@@ -26,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **R2 Bucket on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
+Open the deployment store, find **R2 Bucket on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private R2 Bucket** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareR2Bucket
 metadata:
   name: app-assets
@@ -58,14 +62,14 @@ When using a custom domain, use ValueFromRef to wire the bucket to a DNS zone de
 
 ```yaml
 spec:
-  customDomain:
-    enabled: true
-    zoneId:
-      valueFrom:
-        kind: CloudflareDnsZone
-        name: example-zone
-        fieldPath: status.outputs.zone_id
-    domain: media.example.com
+  customDomains:
+    - enabled: true
+      zoneId:
+        valueFrom:
+          kind: CloudflareDnsZone
+          name: example-zone
+          fieldPath: status.outputs.zone_id
+      domain: media.example.com
 ```
 
 The InfraPipeline resolves the dependency graph, deploys the DNS zone first, then provisions the R2 bucket with the custom domain configured on the resolved zone.
@@ -74,13 +78,17 @@ The InfraPipeline resolves the dependency graph, deploys the DNS zone first, the
 
 These are the most important decisions when configuring an R2 bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Location hint** -- The `location` field specifies where Cloudflare stores bucket data. Use `auto` (default) to let Cloudflare choose the optimal region, or select a specific region (`WNAM`, `ENAM`, `WEUR`, `EEUR`, `APAC`, `OC`) to pin data to a geographic area for latency or compliance requirements. The location is immutable after bucket creation.
+**Location hint** -- The `location` field influences where Cloudflare initially places bucket data. Use `auto` (default) to let Cloudflare choose, or hint a region (`wnam`, `enam`, `weur`, `eeur`, `apac`, `oc`) to keep data near your users. The hint is honored only at creation and is best-effort, not a residency guarantee -- for a guarantee, use `jurisdiction`.
 
-**Public access** -- Set `publicAccess: false` (default) to restrict access to Workers, API tokens, and the Cloudflare dashboard. Set `publicAccess: true` to enable the r2.dev public URL for direct HTTP access. Even for public content, consider using a custom domain for branded URLs.
+**Jurisdiction** -- `default`, `eu`, or `fedramp`. This is a one-way door: the jurisdiction is fixed at creation and is part of the bucket's identity, and every bucket-scoped sub-resource is created inside it. Changing it means a new bucket and a data migration.
 
-**Custom domain** -- Enable `customDomain` to serve bucket content from a branded hostname (e.g., `media.example.com`). Requires a Cloudflare DNS zone for the domain. The custom domain provides a clean URL and inherits Cloudflare's CDN and caching benefits.
+**Public access** -- Leave `publicAccess: false` (default) to restrict access to Workers, API tokens, and the Cloudflare dashboard. Setting it `true` enables the managed `r2.dev` URL, which is rate-limited and intended for development -- custom domains are the production-grade public path.
 
-**Bucket naming** -- The `bucketName` must be DNS-compatible: 3-63 characters, lowercase alphanumeric and hyphens, starting and ending with alphanumeric. Choose a name that reflects the environment and purpose (e.g., `app-assets-prod`, `backup-staging`).
+**Custom domains** -- Add entries to `customDomains` to serve bucket content from branded hostnames (e.g., `media.example.com`). Each requires a zone on the same account and inherits Cloudflare's CDN and caching; `minTls` defaults to 1.0, so raise it if your compliance baseline demands modern TLS.
+
+**Storage class and lifecycle** -- `storageClass: InfrequentAccess` lowers storage cost but adds retrieval fees, so it only pays off for data you rarely read. Lifecycle rules automate the same transition by age or date and can expire objects outright -- an expiration rule with the wrong prefix deletes data you meant to keep.
+
+**Object lock** -- Lock rules prevent matching objects from being deleted or overwritten for a period or indefinitely. An `Indefinite` rule retains objects forever -- there is no undo, so scope lock rules to precise prefixes.
 
 ## Outputs and Dependencies
 
@@ -88,7 +96,8 @@ These are the most important decisions when configuring an R2 bucket. Explore th
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **CloudflareDnsZone** (optional) | `customDomain.zoneId` | `status.outputs.zone_id` |
+| **CloudflareDnsZone** (optional) | `customDomains[].zoneId` | `status.outputs.zone_id` |
+| **CloudflareQueue** (optional) | `eventNotifications[].queue` | `status.outputs.queue_id` |
 
 ### What This Component Provides
 
@@ -96,18 +105,24 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `bucket_name` | The name of the R2 bucket | Worker script bundle references, application configuration |
-| `bucket_url` | The accessible bucket URL (R2 public endpoint or S3 API URL) | Application asset URLs, SDK endpoint configuration |
-| `custom_domain_url` | The custom domain URL if configured (e.g., https://media.example.com) | Frontend asset references, public download URLs |
+| `bucket_name` | The name of the R2 bucket | Referenced by a Worker's or Pages project's `r2Buckets` binding |
+| `bucket_url` | The S3-compatible API URL for the bucket | SDK endpoint configuration for S3-compatible clients |
+| `custom_domain_urls` | One URL per enabled custom domain (e.g., `https://media.example.com`) | Frontend asset references, public download URLs |
+| `public_url` | The managed `r2.dev` URL when `publicAccess` is enabled; empty otherwise | Development and testing access before a custom domain exists |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private bucket** -- No public access, automatic location. Access via Workers or API tokens only. Suitable for backups, logs, CI/CD artifacts, and internal data. Start from the **Private** preset.
+**Private bucket** -- No public access, automatic location. Access via Workers or API tokens only. Suitable for backups, logs, CI/CD artifacts, and internal data. Start from the **Private R2 Bucket** preset.
 
-**Public CDN bucket** -- Public access enabled with a custom domain for branded content delivery. Combines R2's zero-egress pricing with Cloudflare's CDN for static assets, images, and media files. Start from the **Public CDN** preset.
+**Public CDN bucket** -- A custom domain for branded content delivery. Combines R2's zero-egress pricing with Cloudflare's CDN for static assets, images, and media files. Start from the **Public R2 Bucket with Custom Domain** preset.
+
+**Lifecycle-managed archive** -- A private bucket that transitions aging objects to Infrequent Access, expires them on schedule, and locks compliance-critical prefixes against deletion. Start from the **Private R2 Bucket with Lifecycle and Retention** preset.
 
 ## Works With
 
 - [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID for custom domain configuration
+- [**Queue on Cloudflare**](/cloud-catalog/cloudflare-queue) -- receives this bucket's event notifications for downstream processing
+- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- binds the bucket through an `r2Buckets` binding for object reads and writes
+- [**Pages Project on Cloudflare**](/cloud-catalog/cloudflare-pages-project) -- binds the bucket to Pages Functions the same way

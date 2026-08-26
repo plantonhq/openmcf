@@ -1,13 +1,12 @@
 # Load Balancer Pool on Cloudflare
 
-Deploys a reusable Cloudflare Load Balancing origin pool. A pool groups origin servers, health-checks them via a referenced monitor, and is selected by one or more zone-scoped load balancers as default, fallback, or geo-routed pools. Pools are account-scoped, reusable, and have an independent lifecycle, and integrate with Planton's Provider Connections and ValueFromRef wiring for cross-resource dependency resolution.
+Deploys a reusable Cloudflare Load Balancing origin pool. A pool groups origin servers, health-checks them via a referenced monitor, and is selected by one or more zone-scoped load balancers as default, fallback, or geo-routed pools. Pools are account-scoped and have an independent lifecycle, so one pool can serve several load balancers at once.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Load Balancer Pool** -- a pool containing the declared origins (with per-origin weight, port, host-header, and enabled state), linked to a health monitor, with optional check-region restriction, load shedding, origin steering, and notification filters
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -33,7 +32,7 @@ Open the deployment store, find **Load Balancer Pool on Cloudflare**, and click 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancerPool
 metadata:
   name: web-pool
@@ -109,7 +108,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `pool_id` | The Cloudflare-assigned identifier of the pool | Referenced by a CloudflareLoadBalancer's `default_pools`, `fallback_pool`, or geo-pool maps |
-| `pool_name` | The pool name (echoed for convenience) | Verification, dashboards |
+
+`status.outputs` also echoes `pool_name` back, but it is the value you set in the spec -- downstream resources reference pools by `pool_id`.
 
 ## Common Patterns
 

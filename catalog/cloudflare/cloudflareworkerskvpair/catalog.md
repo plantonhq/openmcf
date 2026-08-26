@@ -1,13 +1,12 @@
 # Workers KV Pair on Cloudflare
 
-Deploys a single key-value entry inside a Cloudflare Workers KV namespace, managed and versioned as infrastructure. It exists as a first-class Cloud Resource so configuration keys can be seeded and reviewed in code (and reference other resources' outputs) -- distinct from the high-churn application data a Worker writes at runtime. Each entry belongs to a KV namespace and is account-scoped; it integrates with Planton's Provider Connections for Cloudflare credential management.
+Deploys a single key-value entry inside a Cloudflare Workers KV namespace, managed and versioned as infrastructure. It exists as a first-class Cloud Resource so configuration keys can be seeded and reviewed in code (and reference other resources' outputs) -- distinct from the high-churn application data a Worker writes at runtime. Each entry belongs to a KV namespace and is account-scoped.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **KV Entry** -- a single key/value pair (with optional JSON metadata) written into the referenced namespace
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -25,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Workers KV Pair on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and parent namespace (a searchable selector lists live namespaces in the account), then the key, value, and optional JSON metadata. A connection diagram shows the Namespace -> Entry edge.
+Open the deployment store, find **Workers KV Pair on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and parent namespace (a searchable selector lists live namespaces in the account), then the key, value, and optional JSON metadata. A connection diagram shows the Namespace -> Entry edge. Start from the **Standard KV Entry** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareWorkersKvPair
 metadata:
   name: new-checkout-flag
@@ -56,6 +55,21 @@ planton apply -f cloudflare-workers-kv-pair.yaml
 
 This writes a `feature-flags/new-checkout` key into the `app-config` namespace. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+Deploy the namespace and its seeded entries together, wiring each entry with ValueFromRef:
+
+```yaml
+spec:
+  namespaceId:
+    valueFrom:
+      kind: CloudflareKvNamespace
+      name: app-config
+      fieldPath: status.outputs.namespace_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the namespace first, then writes the entry into the resolved namespace ID.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a KV pair. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -72,22 +86,21 @@ These are the most important decisions when configuring a KV pair. Explore the f
 
 ### What This Component Consumes
 
-This component references a **CloudflareKvNamespace** (via `namespaceId`) -- the namespace its entry is written into. It accepts a literal namespace ID or a ValueFromRef.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareKvNamespace** | `namespaceId` | `status.outputs.namespace_id` |
+
+The field accepts a literal namespace ID or a ValueFromRef.
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `key_name` | The entry's key name | Verification, dashboards |
-| `namespace_id` | The namespace the entry was written to | Verification, dashboards |
+This component has no consumable outputs: `status.outputs` only echoes `key_name` and `namespace_id` back from the spec. Workers read the entry at runtime through their KV binding to the parent namespace, not through this resource's outputs.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Feature flags** -- A small set of KV pairs holding flag state a Worker reads at the edge, versioned in code so flips are reviewable and auditable.
+**Feature flags** -- A small set of KV pairs holding flag state a Worker reads at the edge, versioned in code so flips are reviewable and auditable. Start from the **Standard KV Entry** preset.
 
 **Seeded configuration** -- Bootstrap configuration keys (routing tables, allowlists, copy strings) a Worker depends on, kept in infrastructure rather than written ad hoc at runtime.
 

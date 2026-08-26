@@ -1,68 +1,138 @@
 # Cloudflare Ruleset
 
-Provision a Cloudflare Ruleset — an ordered collection of rules evaluated
-during a specific phase of Cloudflare's HTTP request pipeline. Rulesets are
-the unified engine behind WAF custom and managed rules, rate limiting,
-cache rules, origin rules, redirects, transforms, and configuration rules:
-one component covers every phase.
+Deploys a Cloudflare Ruleset: an ordered collection of rules evaluated during one phase of Cloudflare's HTTP request pipeline — the unified engine behind WAF custom and managed rules, rate limiting, cache rules, origin rules, redirects, transforms, and configuration rules, so one component covers every phase. Each rule pairs a wirefilter match expression with an action (block, challenge, execute, redirect, rewrite, route, set cache settings, skip, and more) and that action's parameters. Rulesets live at zone scope (most common) or account scope — exactly one — and Cloudflare allows one custom ruleset per scope-and-phase pair.
 
 ## What Gets Created
 
-- A `cloudflare_ruleset` at zone scope (most common) or account scope,
-  bound to one processing phase (for example
-  `http_request_firewall_custom` for WAF custom rules,
-  `http_ratelimit` for rate limiting, or
-  `http_request_dynamic_redirect` for redirects).
-- The ruleset's ordered rules: each pairs a wirefilter match expression
-  with an action (block, skip, execute, redirect, rewrite, set cache
-  settings, log, and more) and that action's parameters. Rate-limiting
-  rules carry their counting characteristics; WAF rules can enable
-  exposed-credential checks and per-rule logging overrides.
+When you deploy this Cloud Resource, the IaC module provisions:
 
-## Prerequisites
+- **Ruleset** -- one `cloudflare_ruleset` at zone or account scope, bound to one processing phase (for example `http_request_firewall_custom` for WAF custom rules, `http_ratelimit` for rate limiting, `http_request_dynamic_redirect` for redirects) and carrying the entire ordered rule list — rate-limiting rules with their counting characteristics, WAF rules with optional exposed-credential checks and per-rule logging overrides
 
-- A Cloudflare zone (reference a `CloudflareDnsZone` or pass a literal
-  zone ID) for zone-level rulesets, or an account ID for account-level
-  (`custom`/`root`) rulesets — exactly one of the two scopes.
-- Rules that reference reusable Lists (for example
-  `ip.src in $my_list`) need the `CloudflareList` to exist first.
+## Before You Deploy
 
-## Configuration Reference
+### Planton Setup
 
-**Required**
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that can edit the relevant zone or account rulesets. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-- `phase` — when the ruleset runs in the pipeline (immutable; one ruleset
-  per phase per scope).
-- `rules` — the ordered rule list; each rule needs an `expression` and an
-  `action`.
-- `zoneId` or `accountId` — exactly one (the ruleset's scope).
+### Cloudflare Account
 
-**Optional**
+- **A zone or an account scope** -- a Cloudflare zone (wire `zoneId` to a DNS Zone on Cloudflare resource or pass a literal) for zone-level rulesets, or `accountId` for account-level `custom`/`root` rulesets. Exactly one of the two.
+- **A plan carrying the phase** (only for paid phases) -- custom firewall rules (`http_request_firewall_custom`) work on the free plan; executing managed WAF rulesets (`http_request_firewall_managed`) and rate limiting (`http_ratelimit`) are paid-plan features. A deploy into a gated phase on a free-plan zone fails at the API, not at validation.
+- **The backing List** (only for `fromList` redirects) -- a Bulk Redirect rule that resolves targets from a reusable list needs the List on Cloudflare resource to exist first, and rules whose expressions use `$list_name` references need those lists too.
 
-- `rulesetKind` — `zone` (default), `custom` (reusable, invoked via the
-  `execute` action), `managed`, or `root`.
-- `name`, `description` — identity and documentation.
-- Per rule: `actionParameters` (action-specific configuration — redirect
-  targets, cache settings, managed-ruleset overrides, header rewrites),
-  `ratelimit` (counting characteristics, period, mitigation),
-  `exposedCredentialCheck`, `logging`, `enabled`.
+## Deploy
 
-Not every action is valid in every phase — Cloudflare enforces the
-pairing at the API, and the component's validation mirrors the common
-contracts before anything reaches a deploy.
+### Console
 
-## Stack Outputs
+Open the deployment store, find **Cloudflare Ruleset**, and click **Deploy**. The creation wizard walks you through the scope, the phase, and an ordered rule builder — expression, action, and the action's parameters per rule. Start from the **Managed WAF — Cloudflare + OWASP Rulesets** preset in the [Presets](#presets) tab.
 
-| Output | Description |
-|---|---|
-| `ruleset_id` | The Cloudflare-assigned ruleset ID |
-| `version` | The ruleset version (increments on each update) |
-| `zone_id` | Pass-through zone scope for downstream references |
-| `phase` | Pass-through phase for infra-chart conditionals |
-| `last_updated` | RFC3339 timestamp of the last change |
+### CLI
 
-## Related Components
+Create a manifest and apply it:
 
-- CloudflareDnsZone
-- CloudflareList / CloudflareListItem
-- CloudflareWorker
+```yaml
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareRuleset
+metadata:
+  name: waf-custom-rules
+  org: acme-corp
+  env: prod
+spec:
+  zoneId:
+    value: "023e105f4ecef8ad9ca31a8372d0c353"
+  rulesetKind: zone
+  phase: http_request_firewall_custom
+  name: WAF custom rules
+  rules:
+    - ref: block-admin-outside-office
+      expression: 'http.request.uri.path starts_with "/admin" and not ip.src in {203.0.113.0/24}'
+      action: block
+      description: Block the admin panel outside the office range
+    - ref: challenge-no-user-agent
+      expression: 'http.user_agent eq ""'
+      action: managed_challenge
+      description: Challenge requests with no user agent
+```
+
+```shell
+planton apply -f ruleset.yaml
+```
+
+This creates a zone-level WAF custom ruleset (a free-plan phase) with two ordered rules: a block on the admin panel for traffic outside the office range, then a managed challenge for user-agent-less requests. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the zone — and, for Bulk Redirects, the backing list — to resources managed in the same InfraPipeline:
+
+```yaml
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: acme-com
+      fieldPath: status.outputs.zone_id
+  phase: http_request_firewall_custom
+  name: WAF custom rules
+```
+
+The InfraPipeline resolves the dependency graph, deploys the zone (and any referenced lists) first, then provisions the ruleset against them.
+
+## Key Configuration
+
+These are the most important decisions when configuring a ruleset. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**One ruleset per scope per phase.** Cloudflare allows exactly one custom ruleset per `{scope, phase}` pair. Deploying a second resource for the same zone and phase does not add rules — it fights the first for the same underlying ruleset. Keep each phase's rules in one manifest and let list order express precedence.
+
+**The phase is the ruleset's identity.** `phase` decides when in the pipeline the rules run and which actions make sense there — `route` belongs to `http_request_origin`, `set_config` to `http_config_settings`, `set_cache_settings` to the cache phases. Not every action is valid in every phase; Cloudflare enforces the pairing at the API.
+
+**Give rules a stable `ref`.** The per-rule `ref` is what stops a rule from being destroyed and recreated when its position in the list changes. Set it on every rule from the start — retrofitting refs after reorders is how rules churn.
+
+**The skip grains, narrowest first.** The `skip` action has five surfaces: the `rules` map (ruleset ID to rule IDs) surgically exempts individual rules inside another ruleset — the right tool for managed-WAF false positives, because the rest of the ruleset keeps protecting; `ruleset` skips one whole ruleset (`"current"` skips the remainder of this one); `rulesets` skips several; `phases` and `products` are the bluntest grain and easy to over-exempt. Both IDs in the `rules` map are 32-character hex from the API and environment-specific — parameterize them per environment rather than hardcoding one environment's IDs into a shared manifest.
+
+**Expressions fail at deploy, not at validation.** Rule expressions are Cloudflare's wirefilter language, parsed server-side — a typo deploys nothing, because the API rejects the whole ruleset. Test complicated expressions in the dashboard's expression editor first, and prefer several narrow rules over one giant expression: per-rule `enabled` flags then give you a kill switch per behavior.
+
+**`rulesetKind` is almost always the default.** `zone` (the default) covers zone-phase rulesets; `custom` builds a reusable collection invoked from another ruleset via `execute`; `root` is the account-level entry point for a phase; `managed` is Cloudflare-maintained. Reach past `zone` only when you are deliberately building the account-level composition.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+| **CloudflareList** | `rules[].actionParameters.fromList.name` | `status.outputs.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `ruleset_id` | The Cloudflare-assigned ruleset ID | `skip` parameters in other rulesets; `execute` invocations of a `custom` ruleset |
+| `version` | The ruleset version, incrementing on each update | Change auditing and rollback investigation |
+| `phase` | The phase the ruleset executes in | InfraChart conditionals that branch on the phase |
+| `last_updated` | RFC3339 timestamp of the last change | Change auditing |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Managed WAF** -- Two `execute` rules in `http_request_firewall_managed`: the Cloudflare Managed Ruleset, then the OWASP Core Ruleset with a sensitivity override. Start from the **Managed WAF — Cloudflare + OWASP Rulesets** preset.
+
+**Origin routing** -- `route` rules in `http_request_origin` that send application paths to one origin while the DNS-configured default serves everything else. Start from the **Origin Rule — Split Traffic Between Origins** preset.
+
+**Cache policy** -- `set_cache_settings` rules with aggressive TTLs for static assets and explicit bypass for dynamic API endpoints; the advanced variant takes full control of the cache key and Cache Reserve. Start from the **Cache Settings — Static Assets + API Bypass** preset, or **Advanced cache key and Cache Reserve** for the cache-key work.
+
+**Rate limiting** -- `http_ratelimit` rules counting requests per characteristics (buckets) over a period, applying the action when the threshold trips. Start from the **Rate limiting rules** preset.
+
+**Bulk redirects from a list** -- An account-level redirect ruleset consulting a reusable Bulk Redirect list, with the source-to-target entries managed independently as list items. Start from the **Bulk Redirect — Redirect From a List** preset.
+
+**Surgical WAF exemption** -- A `skip` rule whose `rules` map exempts one path from the specific managed-WAF rules that false-positive on its payloads, leaving every other protection in place. Start from the **Skip Specific Rules in Another Ruleset** preset.
+
+## Works With
+
+- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope for zone-level rulesets; wire `zoneId` via ValueFromRef.
+- [**List on Cloudflare**](/cloud-catalog/cloudflare-list) -- backs Bulk Redirect rules via `fromList` and `$list` references in expressions.
+- [**List Item on Cloudflare**](/cloud-catalog/cloudflare-list-item) -- the individual source-to-target entries inside a Bulk Redirect list.
+- [**Cloudflare Snippet Rules**](/cloud-catalog/cloudflare-snippet-rules) -- the other expression table on the zone: same Rules language, routing requests to snippets instead of taking ruleset actions.

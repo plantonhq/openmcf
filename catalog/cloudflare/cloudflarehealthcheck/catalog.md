@@ -1,22 +1,36 @@
 # Cloudflare Health Check
 
-A standalone origin probe with healthy/unhealthy status. No load balancer required. Health checks are a paid zone feature (Pro+); the API enforces the plan gate at create. `type` is `HTTP`, `HTTPS`, or `TCP` -- `httpConfig` only for HTTP/HTTPS, `tcpConfig` only for TCP.
+Deploys a standalone Cloudflare health check: a scheduled probe against an origin address that records healthy/unhealthy status, with no load balancer required. It is the monitoring-only sibling of the load-balancer monitor — use Cloudflare Load Balancer Monitor when a pool consumes the result to drive failover, and this kind to watch an origin. Health checks are a paid zone feature (Pro plans and above include a small allotment), with the plan gate enforced by the API at create. The probe protocol is `HTTP`, `HTTPS`, or `TCP`, and the matching config block is validated against it.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Health check** -- one `cloudflare_healthcheck` on the zone, with either `http_config` or `tcp_config` depending on `type`
+- **Health Check** — one `cloudflare_healthcheck` on the zone, carrying the probe target, protocol, regions, thresholds, and exactly one of `http_config` or `tcp_config` depending on `type`. The unused block is never sent — both are computed upstream, and sending the wrong one reads back as drift.
 
-## Prerequisites
+Destroy is a real delete: the probe stops and its history is removed. Set `suspended: true` to pause probing without losing the ID.
 
-- **A Cloudflare zone on a Pro plan or above** -- free zones are rejected at the API
-- **A Cloudflare API token** with Zone → Health Checks → Edit. Prefer the API token over the global API key; some upstream provider tests blank `CLOUDFLARE_API_TOKEN` and that class of auth defect is real
-- **An origin that can be reached from Cloudflare's probe regions** -- the check is created even if the origin never answers; status will sit unhealthy
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
 
-An HTTP probe against `example.com/health`:
+- **Cloudflare Provider Connection** — an active connection in the Connect module whose API token carries **Zone → Health Checks → Edit**. Prefer a scoped API token over the global API key and do not mix the two in one process — a token-only environment can fail with an opaque 403 rather than "wrong credential type".
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credential authentication.
+
+### Cloudflare Account
+
+- **A zone on a Pro plan or above** for `zoneId` — free zones are rejected at the API (402/403). Checks beyond the plan's allotment are a zone-plan/add-on decision billed on the zone.
+- **An origin reachable from Cloudflare's probe regions** — the check is created even if the origin never answers; its status just sits unhealthy.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Health Check**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the target zone, the probe address and protocol, thresholds and regions, and the protocol-specific probe settings. Start from the **HTTP origin probe** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -29,7 +43,7 @@ spec:
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   name: origin-http
-  address: example.com
+  address: acme.com
   type: HTTP
   httpConfig:
     path: /health
@@ -41,92 +55,72 @@ spec:
 planton apply -f healthcheck.yaml
 ```
 
-Do not attach this to a load balancer -- that is `CloudflareLoadBalancerMonitor`. This kind watches an origin.
+This probes `acme.com/health` over HTTP every 60 seconds (Cloudflare's default interval) and marks the origin unhealthy after one failed probe. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneId` | StringValueOrRef | The zone the health check belongs to. Can reference a CloudflareDnsZone via `valueFrom` (defaults to `status.outputs.zone_id`). | Required. |
-| `name` | string | Short name shown in the dashboard and alerts. | Required, min length 1. |
-| `address` | string | Origin hostname or IP. | Required. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `type` | string | `HTTP` | `HTTP`, `HTTPS`, or `TCP`. A deliberate tightening -- the provider accepts any string. |
-| `checkRegions` | string[] | Cloudflare default region | One of `WNAM`, `ENAM`, `WEU`, `EEU`, `NSAM`, `SSAM`, `OC`, `ME`, `NAF`, `SAF`, `IN`, `SEAS`, `NEAS`, `ALL_REGIONS` (Enterprise). |
-| `consecutiveFails` | int32 | unset (API: 1) | Failed probes before unhealthy. |
-| `consecutiveSuccesses` | int32 | unset (API: 1) | Successful probes before healthy again. |
-| `interval` | int32 | unset (API: 60) | Seconds between probes. |
-| `retries` | int32 | unset (API: 2) | Immediate retries on timeout. |
-| `timeout` | int32 | unset (API: 5) | Probe timeout in seconds. |
-| `suspended` | bool | unset | Pause probing without deleting the check. |
-| `httpConfig` | object | unset | HTTP/HTTPS only. `method` (GET/HEAD), `path`, `port`, `expectedCodes`, `expectedBody`, `followRedirects`, `allowInsecure`, `headers` (map of name → `{values}`). The provider argument is `header`. |
-| `tcpConfig` | object | unset | TCP only. `method` (`connection_established`), `port`. |
-
-`httpConfig` on a TCP check (or `tcpConfig` on HTTP/HTTPS) is rejected at validation.
-
-## Examples
-
-### HTTP origin probe
+When the zone is deployed in the same InfraPipeline, wire the reference with ValueFromRef:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareHealthcheck
-metadata:
-  name: origin-http
-  org: acme-corp
-  env: prod
-spec:
-  zoneId:
-    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: origin-http
-  address: example.com
-  type: HTTP
-  httpConfig:
-    path: /health
-    expectedCodes:
-      - "200"
-```
-
-### TCP port probe
-
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareHealthcheck
-metadata:
-  name: origin-tcp
-  org: acme-corp
-  env: prod
 spec:
   zoneId:
     valueFrom:
       kind: CloudflareDnsZone
-      name: example-zone
+      name: acme-zone
       fieldPath: status.outputs.zone_id
   name: origin-tcp
-  address: origin.example.com
+  address: origin.acme.com
   type: TCP
   tcpConfig:
     port: 5432
 ```
 
-## Destroy Semantics
+The InfraPipeline resolves the dependency graph, deploys the zone first, then creates the health check on the resolved zone ID.
 
-Destroy is a real delete. The probe stops and its history is removed. Set `suspended: true` to pause without losing the ID.
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a health check. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `healthcheck_id` | string | The created health check's ID |
-| `zone_id` | string | The zone the health check belongs to |
+**This is not a load-balancer monitor** — standalone health checks and load-balancer monitors do not share IDs, APIs, or import formats. If you are about to paste this component's ID into a load-balancer pool, you are on the wrong kind — that is Cloudflare Load Balancer Monitor.
 
-## Related Components
+**The config block must match the type** — `httpConfig` is only valid on HTTP/HTTPS, `tcpConfig` only on TCP, and the spec rejects the wrong pairing at validation instead of letting it surface as apply failure or refresh drift. The `type` wall itself (HTTP, HTTPS, TCP) is a deliberate tightening — Cloudflare's schema accepts any string and rejects bad values only at the API.
 
-- [Cloudflare Load Balancer Monitor](/docs/catalog/cloudflare/cloudflareloadbalancermonitor) -- the account-scoped monitor a pool consumes; do not mix the two
-- [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- `zoneId` foreign key; the zone plan gates create
+**HTTPS needs an explicit port** — Cloudflare's default probe port is 80 even when `type` is HTTPS. Set `httpConfig.port: 443` explicitly for HTTPS checks on the standard port. Use `allowInsecure` only for self-signed origins, and pair HTTPS probing with an origin that presents a resolvable chain otherwise.
+
+**Detection speed versus origin load** — `interval` (default 60s), `consecutiveFails`, and `consecutiveSuccesses` (both default 1) trade detection latency against probe traffic and flappiness. A single failed probe marking the origin unhealthy is aggressive; raise `consecutiveFails` for origins with occasional slow responses. Plan limits govern the minimum interval.
+
+**Host headers for virtual hosts** — `httpConfig.headers` maps header names to `{values: [...]}` lists; set a `Host` header when the origin serves name-based virtual hosts, or the probe hits the default site. The User-Agent header cannot be overridden.
+
+**Suspend instead of delete** — `suspended: true` pauses probing while keeping the check's configuration, ID, and history. Destroy removes all three.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `healthcheck_id` | The created health check's ID | Wiring health-check status alerts in a Cloudflare Notification Policy |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**HTTP origin probe** — a GET against a dedicated `/health` path expecting `200`, on an origin that is not behind a Cloudflare load balancer. Start from the **HTTP origin probe** preset.
+
+**TCP port probe** — `type: TCP` with `tcpConfig.port` against a database or non-HTTP service; a successful TCP handshake counts as healthy. The right shape when there is no HTTP endpoint to ask.
+
+**Alert-wired check** — pair the check with a Cloudflare Notification Policy on health-check status changes, so an unhealthy origin pages someone instead of just coloring a dashboard.
+
+## Works With
+
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) — the zone the check belongs to; its plan gates create
+- [**Cloudflare Load Balancer Monitor**](/cloud-catalog/cloudflare-load-balancer-monitor) — the other health-check family, consumed by load-balancer pools to drive failover
+- [**Cloudflare Notification Policy**](/cloud-catalog/cloudflare-notification-policy) — alerting on the check's healthy/unhealthy transitions

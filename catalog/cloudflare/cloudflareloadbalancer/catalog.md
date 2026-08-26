@@ -1,6 +1,6 @@
 # Load Balancer on Cloudflare
 
-Deploys a zone-scoped Cloudflare Load Balancer that attaches a DNS hostname to account-scoped origin pools and steers traffic across them with health-aware failover, geo-routing, weighted distribution, session affinity, and per-request traffic rules. Integrates with Planton's Provider Connections for Cloudflare credential management and supports ValueFromRef wiring to DNS zones and pools for cross-resource dependency resolution in InfraPipelines.
+Deploys a zone-scoped Cloudflare Load Balancer that attaches a DNS hostname to account-scoped origin pools and steers traffic across them with health-aware failover, geo-routing, weighted distribution, session affinity, and per-request traffic rules. Its zone and pool references wire to CloudflareDnsZone and CloudflareLoadBalancerPool resources via ValueFromRef, so the whole traffic path resolves as one dependency graph in an InfraPipeline.
 
 ## What Gets Created
 

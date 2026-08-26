@@ -1,20 +1,35 @@
 # Cloudflare Zero Trust Access Infrastructure Target
 
-An infrastructure target: a server (hostname + private IP) that Access infrastructure applications broker SSH access to. Targets are the inventory; applications select them by hostname or IP.
+Registers an infrastructure target: a server, identified by hostname and private IP, that Access infrastructure applications broker short-lived SSH access to through the account's tunnels. Targets are the inventory layer — applications select them by hostname or IP, which makes the hostname itself the access-control surface. A target is a plain CRUD object (real create, update, delete), unlike the Zero Trust settings singletons.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Infrastructure target** -- one `cloudflare_zero_trust_access_infrastructure_target`
+- **Infrastructure Target** — one target on the account binding `hostname` to its IPv4 and/or IPv6 address, each inside a virtual network
 
-## Prerequisites
+## Before You Deploy
 
-- **Zero Trust enabled on the account** (the team-name onboarding step)
-- **A Cloudflare API token** with Account → Zero Trust → Edit
-- **A tunnel path to the server** (a `CloudflareZeroTrustTunnel` routing its network) for live SSH brokering
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with an API token holding Account → Zero Trust → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credential authentication.
+
+### Cloudflare Account
+
+- **Zero Trust enabled on the account** — the organization (team name) onboarding step must be done (a CloudflareZeroTrustOrganization Cloud Resource).
+- **A tunnel path to the server** (for live SSH brokering) — a CloudflareZeroTrustTunnel whose CloudflareZeroTrustTunnelRoute covers the target's address, in the same virtual network. Registration alone does not make the target reachable.
+- **A virtual network** (only for overlapping CIDRs) — a CloudflareZeroTrustTunnelVirtualNetwork per network segment when two sites reuse the same private ranges.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Zero Trust Access Infrastructure Target**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the account, the hostname, and the per-family addressing. Start from the **IPv4 target in the default virtual network** preset in the [Presets](#presets) tab to pre-populate the everyday shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -35,35 +50,69 @@ spec:
 planton apply -f target.yaml
 ```
 
-## Configuration Reference
+This registers `prod-db-1` at `10.0.10.5` in the account's default virtual network — inventory only; SSH reachability still needs a tunnel route covering the address. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | The Cloudflare account. | Required, 32-hex; replaces on change. |
-| `hostname` | string | The target's hostname. | ≤255 chars; letters/digits/dashes/periods; alphanumeric ends. |
-| `ip` | object | The target's addressing. | At least one family declared. |
+When the virtual network is deployed in the same InfraPipeline, wire `virtualNetworkId` with ValueFromRef:
 
-### The ip block
+```yaml
+spec:
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  hostname: prod-db-1
+  ip:
+    ipv4:
+      ipAddr: 10.0.10.5
+      virtualNetworkId:
+        valueFrom:
+          kind: CloudflareZeroTrustTunnelVirtualNetwork
+          name: dc-east
+          fieldPath: status.outputs.virtual_network_id
+```
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `ipv4.ipAddr` / `ipv6.ipAddr` | string | The address for that family. | Required within a declared family. |
-| `ipv4.virtualNetworkId` / `ipv6.virtualNetworkId` | string/ref | The virtual network the address lives in. | Omit for the account's default virtual network. |
+The InfraPipeline resolves the dependency graph, deploys the virtual network first, then registers the target inside it.
 
-## Destroy Semantics
+## Key Configuration
 
-Real delete: the target leaves the inventory immediately.
+These are the most important decisions when configuring an infrastructure target. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**The hostname is the permission scheme** — infrastructure applications grant access by hostname pattern (`prod-db-*`), so a target named casually (`box7`) either falls outside every pattern and is unreachable, or inside the wrong one and is over-granted. Decide the naming scheme first — environment-role-index (`prod-db-1`) works — and register every target inside it. Hostnames allow letters, digits, dashes, and periods, up to 255 characters, starting and ending alphanumeric.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `target_id` | string | The Cloudflare-assigned UUID of the target |
+**The default virtual network is a real choice** — omitting `virtualNetworkId` places the address in the account's default virtual network: fine for a flat estate, wrong for overlapping CIDRs. If two datacenters both use 10.0.10.0/24, each needs its own CloudflareZeroTrustTunnelVirtualNetwork, and every target must say which one it means. An omitted virtual network never drifts the plan — silence is stable, but it is still a choice.
 
-## Related Components
+**Inventory, not connectivity** — registering a target does not make it reachable. SSH sessions ride the account's tunnels, and a tunnel must route the target's network in the same virtual network. Register the target, route its network, then point an infrastructure application at it — three resources, one path.
 
-- [Cloudflare Zero Trust Tunnel Virtual Network](/docs/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork) -- network segments for overlapping CIDRs
-- [Cloudflare Zero Trust Access Application](/docs/catalog/cloudflare/cloudflarezerotrustaccessapplication) -- selects targets by hostname/IP
-- [Cloudflare Zero Trust Tunnel](/docs/catalog/cloudflare/cloudflarezerotrusttunnel) -- the data path
+**Address families** — declare the IPv4 arm, the IPv6 arm, or both; each binds one address inside one virtual network, and a declared family must carry its address. Destroy is a real delete: the target leaves the inventory immediately.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareZeroTrustTunnelVirtualNetwork** (optional, per family) | `ip.ipv4.virtualNetworkId` / `ip.ipv6.virtualNetworkId` | `status.outputs.virtual_network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `target_id` | The Cloudflare-assigned UUID of the target | Target lookups in the Access API and import recipes |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Single server, default network** — one hostname, one private IPv4 address, default virtual network by omission; the everyday shape for a flat estate. Start from the **IPv4 target in the default virtual network** preset.
+
+**Overlapping CIDRs, isolated networks** — both address families pinned into a specific virtual network so two sites reusing 10.0.10.0/24 stay unambiguous. Start from the **Dual-stack target in an isolated virtual network** preset.
+
+**Fleet registration by scheme** — one manifest per server, all following the same hostname scheme, so a single infrastructure application pattern (`prod-db-*`) grants exactly the intended set.
+
+## Works With
+
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) — the segment the address lives in; disambiguates overlapping CIDRs
+- [**Cloudflare Zero Trust Tunnel Route**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) — the route that makes the target reachable
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) — the data path SSH sessions ride
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) — the infrastructure application that selects targets and grants SSH

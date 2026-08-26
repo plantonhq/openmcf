@@ -13,17 +13,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/plantonhq/planton/internal/manifest"
-)
-
-var (
-	yamlBlock  = regexp.MustCompile("(?s)```yaml\n(.*?)```")
-	apiVersion = regexp.MustCompile(`(?m)^apiVersion:`)
-	kindLine   = regexp.MustCompile(`(?m)^kind:`)
+	"github.com/plantonhq/planton/pkg/catalogpage"
 )
 
 func main() {
@@ -45,14 +39,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		var docs []string
-		for _, block := range yamlBlock.FindAllStringSubmatch(string(raw), -1) {
-			for _, doc := range strings.Split(block[1], "\n---\n") {
-				if apiVersion.MatchString(doc) && kindLine.MatchString(doc) {
-					docs = append(docs, doc)
-				}
-			}
-		}
+		// Manifest extraction is shared with the CI gate (pkg/catalogpage),
+		// so the report and the gate can never disagree on what a complete
+		// manifest is.
+		docs := catalogpage.ExtractManifests(raw)
 		if len(docs) == 0 {
 			continue
 		}

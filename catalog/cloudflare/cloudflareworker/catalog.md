@@ -29,9 +29,11 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Worker on Cloudflare**, and click **Deploy**. Start from the **Minimal** preset for an inline hello-world, or **API with Custom Domain** for a production-shaped Worker.
+Open the deployment store, find **Worker on Cloudflare**, and click **Deploy**. The creation wizard walks through the account and script source, bindings, routing, and runtime settings. Start from the **Minimal Worker** preset in the [Presets](#presets) tab for an inline hello-world, or **Edge API with Custom Domain** for a production-shaped Worker.
 
 ### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -53,6 +55,8 @@ spec:
 planton apply -f cloudflare-worker.yaml
 ```
 
+This deploys an inline hello-world Worker reachable on its `workers.dev` subdomain. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
 Wire a Worker to a KV namespace deployed in the same pipeline:
@@ -68,7 +72,11 @@ spec:
           fieldPath: status.outputs.namespace_id
 ```
 
+The InfraPipeline resolves the dependency graph, provisions the KV namespace first, then deploys the Worker with the resolved namespace ID bound.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a Worker. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Script source** -- `content` for inline ES modules, `r2Bundle` for a CI-built artifact (`bucket` is a CloudflareR2Bucket reference or a literal name), `assets` for a static site or full-stack app.
 
@@ -95,24 +103,28 @@ spec:
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `script_id` | The Cloudflare-assigned identifier of the deployed Worker | Worker management |
-| `script_name` | The script name | Service bindings and tail consumers on other Workers |
-| `custom_domain_hostnames` | Managed hostnames attached to this Worker | DNS verification |
-| `route_patterns` | Route patterns mapped to this Worker | Application endpoint configuration |
+| `script_name` | The script name | Service bindings, tail consumers, and Durable Object bindings on other Workers; a CloudflareQueue's worker consumer; a Pages project's service binding |
+
+`status.outputs` also carries `script_id`, the attached `custom_domain_hostnames` and `route_patterns`, and the ID maps (`custom_domain_ids`, `route_ids`, `route_zone_ids`) that make the routes and domains importable.
 
 ## Common Patterns
 
-**API with custom domain** -- CI-built bundle in R2, KV + D1 by reference, managed custom domain. Start from the **API with Custom Domain** preset.
+**API with custom domain** -- CI-built bundle in R2, KV + D1 by reference, managed custom domain. Start from the **Edge API with Custom Domain** preset.
 
-**Minimal worker** -- inline content, workers.dev only. Start from the **Minimal** preset.
+**Minimal worker** -- inline content, workers.dev only. Start from the **Minimal Worker** preset.
 
-**Static site / full-stack** -- `assets` alone, or `assets` plus a script. Start from the **Static Site** or **Full-stack App** presets.
+**Static site / full-stack** -- `assets` alone, or `assets` plus a script whose `runWorkerFirst` rules route dynamic paths through code. Start from the **Static Site (Workers Static Assets)** or **Full-Stack App (script + Static Assets)** presets.
 
 ## Works With
 
-- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace)
-- [**D1 Database on Cloudflare**](/cloud-catalog/cloudflare-d1-database)
-- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket)
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone)
+- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace) -- bound for edge key-value reads and writes
+- [**D1 Database on Cloudflare**](/cloud-catalog/cloudflare-d1-database) -- bound for serverless SQL access
+- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket) -- bound for object storage, or holds the CI-built script bundle (`r2Bundle`)
+- [**Queue on Cloudflare**](/cloud-catalog/cloudflare-queue) -- the Worker produces to it via a `queues` binding, or consumes it as the queue's worker consumer
+- [**Hyperdrive Config on Cloudflare**](/cloud-catalog/cloudflare-hyperdrive-config) -- bound for pooled access to a regional SQL database
+- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- hosts the Worker's custom domains and route patterns
+- [**Zero Trust Tunnel on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- bound through `vpcNetworks` so the Worker reaches private networks

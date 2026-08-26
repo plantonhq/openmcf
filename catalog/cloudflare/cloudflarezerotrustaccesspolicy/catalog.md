@@ -1,13 +1,12 @@
 # Zero Trust Access Policy on Cloudflare
 
-Deploys a reusable Cloudflare Zero Trust Access policy: a decision (allow / deny / non-identity / bypass) plus the include / exclude / require rules that decide which requests it applies to, with optional approval, browser-isolation, purpose-justification, RDP, and MFA controls. Policies are attached to Access applications by referencing their `policy_id` output, and integrate with Planton's Provider Connections and ValueFromRef wiring for cross-resource dependency resolution.
+Deploys a reusable Cloudflare Zero Trust Access policy: a decision (allow / deny / non-identity / bypass) plus the include / exclude / require rules that decide which requests it applies to, with optional approval, browser-isolation, purpose-justification, RDP, and MFA controls. Policies are standalone and account-scoped: one policy can guard many Access applications, which attach it by referencing its `policy_id` output, so its rules evolve in one place.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Access Policy** -- a reusable policy with a decision, three rule lists (`include`/`exclude`/`require`) of the 26 Cloudflare rule criteria, an optional session duration, approval workflow, browser-isolation and purpose-justification flags, RDP connection rules, and per-policy MFA
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -25,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Access Policy on Cloudflare**, and click **Deploy**. The creation wizard walks you through identity and decision, the include / exclude / require rule builders, the governance controls, and the connection/MFA options. Start from a preset in the [Presets](#presets) tab.
+Open the deployment store, find **Zero Trust Access Policy on Cloudflare**, and click **Deploy**. The creation wizard walks you through identity and decision, the include / exclude / require rule builders, the governance controls, and the connection/MFA options. Start from the **Allow staff** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustAccessPolicy
 metadata:
   name: engineering-allow
@@ -108,9 +107,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Allow a team** -- decision `allow`, include a `group` rule referencing an Access group.
+**Allow a team** -- decision `allow`, include a `group` rule referencing an Access group. Start from the **Allow staff** preset.
 
-**Break-glass with approval** -- decision `allow`, require approval with a security approval group.
+**Break-glass with approval** -- decision `allow`, require approval with a security approval group and per-policy MFA. Start from the **Admins with approval and MFA** preset.
 
 **Health-check bypass** -- decision `bypass`, include an IP rule for your monitoring range.
 

@@ -742,8 +742,8 @@ variable "alternate_domain_names" {
 **Requirements:**
 
 - [ ] **File Exists** - `catalog.md` is present at the component root (enforced by the anatomy gate)
-- [ ] **Head-Shape Contract** - The `# H1` is the human display name and the first sentence stands alone as the one-line description -- the catalog bundle machine-parses both for the kind's display metadata
-- [ ] **Follows the Catalog Page Standard** - The mandatory section structure (What Gets Created / Before You Deploy / Deploy with Console + CLI + InfraChart arms / Key Configuration / Outputs and Dependencies / Common Patterns / Works With), tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`
+- [ ] **Head-Shape Contract** - The `# H1` is the human display name and the first sentence stands alone as the one-line description -- the catalog bundle machine-parses both for the kind's display metadata (and the bundle deliberately falls back rather than fail on a malformed head, which is why the shape is gated below)
+- [ ] **Follows the Catalog Page Standard** - The mandatory section structure (What Gets Created / Before You Deploy / Deploy with Console + CLI + InfraChart arms / Key Configuration / Outputs and Dependencies / Common Patterns / Works With), tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`. The structural half is machine-enforced: the `pkg/catalogpage` gate (CI lane `.github/workflows/lint.catalog-page.yaml`) checks the head shape, the H2/H3 skeleton, the InfraChart-arm law, and the validity of every embedded manifest against a shrink-only baseline -- a new page ships at the bar or fails the PR
 - [ ] **Judgment-First Configuration** - `Key Configuration` teaches decisions and consequences; the exhaustive field list belongs to the generated `v1alpha1/reference.md`, never duplicated here
 - [ ] **Source-Verified** - Every manifest validates against `spec.proto`, every output exists in `outputs.proto`, every What Gets Created bullet matches the IaC module
 - [ ] **Current** - Field references and examples match the current `spec.proto`

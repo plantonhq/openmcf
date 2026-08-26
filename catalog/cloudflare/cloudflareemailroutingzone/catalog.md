@@ -1,14 +1,14 @@
 # Email Routing Zone on Cloudflare
 
-Enables Cloudflare Email Routing on a DNS zone -- the anchor of the Email Routing family. Enabling provisions the records inbound mail needs (MX, SPF, DKIM) automatically and configures the single per-zone catch-all rule that decides what happens to mail no other routing rule matched: leave Cloudflare's default (drop), forward to verified destinations, or hand it to an Email Worker. Individual routing rules and destination addresses are separate Cloud Resources that build on top of an enabled zone. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Enables Cloudflare Email Routing on a DNS zone -- the anchor of the Email Routing family. Enabling provisions the records inbound mail needs (MX, SPF, DKIM) automatically and configures the single per-zone catch-all rule that decides what happens to mail no other routing rule matched: leave Cloudflare's default (drop), forward to verified destinations, or hand it to an Email Worker. Enabling replaces the zone's existing mail delivery path, so never enable it on a domain whose mail another system (Google Workspace, O365) must keep handling. Individual routing rules and destination addresses are separate Cloud Resources that build on top of an enabled zone.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Email Routing enablement** -- turns Email Routing on for the zone
-- **DNS records** -- the required MX, SPF, and DKIM records, created automatically (optionally locked against out-of-band edits)
-- **Catch-all rule** (optional) -- the single per-zone rule for unmatched mail: drop, forward to addresses, or send to an Email Worker
+- **Email Routing enablement** -- turns Email Routing on for the zone; destroying it disables routing (a toggle, not a deletion)
+- **DNS records** -- the required MX, SPF, and DKIM records, created automatically on enable; with `lockDnsRecords` the module manages them explicitly so they cannot be edited out-of-band
+- **Catch-all rule** -- created only when `catchAll` is set; the single per-zone rule for unmatched mail: drop, forward to addresses, or send to an Email Worker
 
 ## Before You Deploy
 
@@ -20,20 +20,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Cloudflare Account
 
 - **An active zone** -- the domain must already exist as a Cloudflare zone (manage it with a `CloudflareDnsZone`, or reference an externally-managed zone ID).
-- **Verified destinations** -- a forwarding catch-all can only deliver to verified `CloudflareEmailRoutingAddress` mailboxes.
+- **No competing mail system** -- enabling rewrites the zone's MX/SPF/DKIM records and takes over inbound delivery for the domain.
+- **Verified destinations (only for a forwarding catch-all)** -- a forwarding catch-all can only deliver to verified `CloudflareEmailRoutingAddress` mailboxes.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Email Routing Zone on Cloudflare**, and click **Deploy**. The creation wizard captures the zone, whether the auto-created DNS records are locked, and the optional catch-all action. Leave the catch-all as **None** to keep Cloudflare's default (drop, disabled).
+Open the deployment store, find **Email Routing Zone on Cloudflare**, and click **Deploy**. The creation wizard captures the zone, whether the auto-created DNS records are locked, and the optional catch-all action. Leave the catch-all as **None** to keep Cloudflare's default (drop, disabled). Start from the **Forward-All Email Routing** or **Drop Catch-All Email Routing** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareEmailRoutingZone
 metadata:
   name: acme-com-email-routing
@@ -59,43 +60,75 @@ planton apply -f cloudflare-email-routing-zone.yaml
 
 This enables Email Routing on the `acme-com` zone and forwards all otherwise-unmatched mail to a catch-all mailbox. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the zone and the catch-all's destination address are deployed in the same InfraPipeline, wire both with ValueFromRef:
+
+```yaml
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: acme-com
+      fieldPath: status.outputs.zone_id
+  catchAll:
+    enabled: true
+    actions:
+      - type: forward
+        forwardTo:
+          - valueFrom:
+              kind: CloudflareEmailRoutingAddress
+              name: catch-all-mailbox
+              fieldPath: status.outputs.email
+```
+
+The InfraPipeline resolves the dependency graph, creates the zone and address first, then enables routing -- the address still needs its human verification click before Cloudflare accepts the forward.
+
 ## Key Configuration
 
 These are the most important decisions when enabling Email Routing. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Zone (`zoneId`)** -- The zone to enable Email Routing on. Immutable -- changing it replaces the resource. Reference a `CloudflareDnsZone` to keep the dependency in the graph.
+**Zone (`zoneId`)** -- the zone to enable Email Routing on. Immutable -- changing it replaces the resource. Enabling is the takeover moment: Cloudflare rewrites the zone's mail records and starts accepting inbound mail.
 
-**Catch-all Actions (`catchAll.actions`)** -- What happens to unmatched mail, as a list of actions applied in order: `drop` discards it silently (Cloudflare's default), `forward` delivers it to `forwardTo` destinations, `worker` hands it to an Email Worker -- and one catch-all can forward AND invoke a Worker. Omit `catchAll` to leave the default.
+**Catch-all Actions (`catchAll.actions`)** -- what happens to unmatched mail, as a list applied in order: `drop` discards it silently (Cloudflare's default), `forward` delivers to `forwardTo` destinations, `worker` hands it to an Email Worker -- and one catch-all can forward AND invoke a Worker. Omit `catchAll` to leave the default.
 
-**Lock DNS Records (`lockDnsRecords`)** -- Manage the auto-created MX/SPF/DKIM records explicitly so they cannot be edited out-of-band. With `dnsName`, the managed records target a subdomain of the zone (subdomain email routing) instead of the apex.
+**Catch-all deletion is a no-op on Cloudflare's side** -- destroying the resource (or removing `catchAll` and re-applying) leaves the zone's last catch-all configuration in place. To actually neutralize a catch-all without disabling routing, set it to a disabled drop (`enabled: false`, `actions: [{type: drop}]`) rather than deleting it.
+
+**Lock DNS Records (`lockDnsRecords`)** -- manage the auto-created MX/SPF/DKIM records explicitly so they cannot be edited out-of-band. Destroying the managed-DNS resource removes those records.
+
+**Subdomain routing (`dnsName`)** -- targets the managed records at a subdomain (`mail.example.com`) instead of the apex, making Cloudflare route mail addressed to `*@mail.example.com`. It requires `lockDnsRecords: true` -- the subdomain choice lives on the managed-DNS resource, and the spec rejects `dnsName` without it.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-The zone references a **CloudflareDnsZone** (via `zoneId`). A forwarding catch-all action references **CloudflareEmailRoutingAddress** mailboxes (via `actions[].forwardTo`); a worker action references a **CloudflareWorker** (via `actions[].worker`).
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+| **CloudflareEmailRoutingAddress** (per forwarding catch-all action) | `catchAll.actions[].forwardTo[]` | `status.outputs.email` |
+| **CloudflareWorker** (worker catch-all actions) | `catchAll.actions[].worker` | `status.outputs.script_name` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `zone_id` | The zone Email Routing was enabled on | Referenced by `CloudflareEmailRoutingRule`s for the same zone |
-| `enabled` | Whether Email Routing is enabled | Health checks |
-| `status` | The Email Routing configuration status (ready / unconfigured / misconfigured) | Diagnostics |
-| `name` | The zone's domain name | Dashboards |
+| `enabled` | Whether Email Routing is enabled | Gating rule deployment on the zone being ready to route |
+| `status` | The Email Routing configuration status (`ready`, `unconfigured`, `misconfigured`) | Diagnosing a zone that accepts but misroutes mail |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Forward-all** -- a forwarding catch-all funnels every inbound message to one or more real mailboxes; add specific rules later for per-address routing. Start from the **Forward-All Email Routing** preset.
 
-**Forward-all** -- a forwarding catch-all funnels every inbound message to one or more real mailboxes; add specific rules later for per-address routing.
+**Strict routing** -- keep the catch-all at drop and rely on explicit `CloudflareEmailRoutingRule`s, so only addresses you deliberately route are accepted. Start from the **Drop Catch-All Email Routing** preset.
 
-**Strict routing** -- leave the catch-all at drop and rely on explicit `CloudflareEmailRoutingRule`s, so only addresses you route are accepted.
+**Full mail setup, in order** -- register a `CloudflareEmailRoutingAddress` for each real mailbox (owners click the verification links), then this kind to enable routing with the catch-all as fallback policy, then a `CloudflareEmailRoutingRule` per address you route explicitly -- rules always run before the catch-all regardless of creation order.
 
 ## Works With
 
 - [**Email Routing Rule on Cloudflare**](/cloud-catalog/cloudflare-email-routing-rule) -- per-recipient rules that take precedence over the catch-all
 - [**Email Routing Address on Cloudflare**](/cloud-catalog/cloudflare-email-routing-address) -- the verified mailboxes a forwarding catch-all delivers to
+- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the Email Worker a worker catch-all hands unmatched mail to
 - [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone Email Routing is enabled on
