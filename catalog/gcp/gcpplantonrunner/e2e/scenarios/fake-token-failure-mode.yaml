@@ -1,0 +1,29 @@
+# Failure-mode GcpPlantonRunner scenario: the appliance with an
+# obviously-fake runner token, EXPECTING the deploy to fail. Cloud Run v2
+# gates service creation on the first revision becoming ready, and a
+# runner whose join is refused exits -- so on this substrate the fake
+# token's designed failure surfaces at CREATE, not at runtime. The lane
+# proves the failure is exactly that: the engine error carries the
+# revision-readiness class, the service object survives with the full
+# authored template (token as a secret reference, single-instance
+# scaling), and Cloud Logging holds the runner's own join-step error.
+# This scenario needs NO secret and runs forever in CI; the sibling
+# `minimal` scenario (fenced on a real token) proves the ready-state half.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: planton-oss-e2e-gcp-runner-fm
+  id: planton-oss-e2e-gcp-runner-fm
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-expect-deploy-failure: revision-readiness
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  token: prt_FAKE_E2E_PLACEHOLDER

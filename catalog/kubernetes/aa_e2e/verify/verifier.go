@@ -11,6 +11,15 @@ type ResourceVerifier interface {
 	VerifyAbsent(ctx context.Context, kubeconfig string) error
 }
 
+// RuntimeCauseVerifier is the optional capability a verifier implements when
+// its kind's scenario deploys a workload DESIGNED to fail (the framework's
+// expected-runtime-failure lane): it must pin the failure to exactly the
+// expected cause with the cluster's own evidence -- pod states and pod logs --
+// never merely tolerate "some failure".
+type RuntimeCauseVerifier interface {
+	VerifyRuntimeFailureCause(ctx context.Context, kubeconfig, cause string) error
+}
+
 // operatorKinds lists manifest kind values (lowercased) for operator/controller
 // components. Operators install CRD controllers that watch resources but typically
 // do not expose a Kubernetes Service. Verification checks namespace + running

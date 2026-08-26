@@ -16,7 +16,11 @@ spec:
   # and fails the whole deployment on MANIFEST_UNKNOWN (proven live, both
   # boundaries) -- so this lane also proves the published :latest image
   # serves linux/amd64. Measured lanes ~11-12 min/engine, dominated by the
-  # fixture environment's ~8 min teardown.
+  # fixture environment's ~8 min teardown. The lane's VERIFY-CAUSE phase
+  # additionally attests the replica RAN and is failing by design (ARM
+  # marks the crash-looping revision provisioningState=Failed /
+  # healthState=Unhealthy); the join-refusal specificity is pinned by the
+  # Kubernetes and Cloud Run lanes running the same binary and image.
   tier: 1
   status: green
   validated_provisioners: [pulumi, terraform]

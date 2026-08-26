@@ -111,6 +111,19 @@ type Verifier interface {
 	VerifyAbsent(ctx context.Context, svc *Services, outputs map[string]string) error
 }
 
+// DeployFailureVerifier is the optional capability a verifier implements when
+// its kind's scenario EXPECTS the deploy to fail (the framework's
+// expected-deploy-failure lane, for substrates that gate resource creation on
+// workload health — Cloud Run gates service creation on first-revision
+// readiness). Stack outputs do not exist when this runs: identity arrives as
+// the manifest-derived service name and region. Implementations must classify
+// the engine's error, assert the partially-created resource's state with the
+// provider's own APIs, and pin the workload's failure cause from its logs —
+// never merely tolerate "some failure".
+type DeployFailureVerifier interface {
+	VerifyExpectedDeployFailure(ctx context.Context, svc *Services, serviceName, region, expectation string, deployErr error) error
+}
+
 // verifiers maps a component name to its verifier. New GCP components register
 // here as they are forged.
 var verifiers = map[string]Verifier{

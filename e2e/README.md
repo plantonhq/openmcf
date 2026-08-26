@@ -393,6 +393,52 @@ Rules that keep the seam honest:
   that uses `[MLmodel]=` as an array key dies as "unbound variable"
   before any fetch (live-caught on the first SETUP-phase lane).
 
+### Failure-mode lanes: a deliberate failure as machine-verified evidence
+
+Some scenarios PROVE by failing: a component deployed with a credential a
+real service rejects (the canonical case: a Planton runner appliance with a
+fake enrollment token). The framework carries two annotation-activated
+shapes, both dispatching to optional harness capabilities
+(`provider.DeployFailureVerifier` / `provider.RuntimeCauseVerifier`,
+implemented per kind through each provider's verify registry):
+
+- **`planton.dev/e2e-expect-deploy-failure: <class>`** for substrates that
+  gate resource creation on workload health (Cloud Run gates service
+  creation on first-revision readiness). The lifecycle becomes VALIDATE ->
+  DEPLOY-EXPECT-FAIL -> DESTROY -> VERIFY-CLN: the deploy MUST fail, the
+  harness classifies the engine error and runs post-mortem assertions
+  against the partially-created resource BEFORE destroy, and a deploy that
+  unexpectedly SUCCEEDS fails the phase (with the cleanup destroy).
+- **`planton.dev/e2e-expected-runtime-failure: <cause>`** for substrates
+  that accept the deploy and fail asynchronously (ECS tasks, Container Apps
+  replicas, Kubernetes pods). The standard lifecycle gains a VERIFY-CAUSE
+  phase after VERIFY-RES.
+
+The evidence bar is CAUSE-PINNING with the provider's own APIs -- "everything
+worked except exactly the thing the scenario sabotaged", never a bare
+tolerance of any failure. The runner appliance's lanes are the worked
+example on all four substrates, and their first runs justified the bar
+loudly: the arm caught a reserved `PORT` env rejected by Cloud Run, a
+Cloud-Run `command` field silently REPLACING the image entrypoint
+("Application exec likely failed" with zero container logs), an image
+entrypoint that baked the subcommand and broke every consumer's argv, and a
+Fargate fixture topology with no egress (ResourceInitializationError before
+the container ever starts) -- every one invisible to provisioning-level
+verification. Two authoring rules earned there: an expected-deploy-failure
+harness implementation must STORE the manifest-derived identity after its
+post-mortem (VERIFY-CLN has no VerifyDeployed state to reuse), and
+runtime-cause classifiers should fail IMMEDIATELY on recognizable
+wrong-cause states (pull failures) rather than polling them into a timeout.
+
+### A kind node caches `:latest` -- a re-pushed tag needs the cache cleared
+
+The local kind cluster persists across suite runs and its containerd keeps
+pulled images. When a lane's image rides a MOVING tag (the runner's
+`:latest`) and the tag is re-pushed mid-session, the next lane silently
+runs the STALE cached image (recognize it by a suspiciously fast DEPLOY);
+`docker exec <kind-node> crictl rmi <image:tag>` clears it, and the re-run
+pulls fresh. Real clouds resolve tags at create and are not exposed.
+
 ### Bare polymorphic references need an explicit `kind:` in scenario valueFrom
 
 Reference resolution determines the referenced kind from the `valueFrom.kind`
