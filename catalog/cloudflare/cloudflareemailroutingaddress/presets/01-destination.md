@@ -1,4 +1,4 @@
-# Preset: Destination Address
+# Destination Address
 
 Register a destination mailbox that Email Routing rules and catch-alls can forward
 to. A verification email is sent to the address on creation.

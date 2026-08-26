@@ -81,7 +81,7 @@ Add `planton.ai/git-branch` to the `metadata.labels` section of an overlay's ser
 
 ```yaml
 # _kustomize/overlays/dev/service.yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service

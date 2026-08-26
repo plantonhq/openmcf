@@ -1,4 +1,4 @@
-# Preset: Advanced Certificate (TXT validation)
+# Advanced Certificate (TXT validation)
 
 The recommended default: an advanced certificate pack covering the zone apex and a
 wildcard, issued by Google Trust Services and validated via TXT. For a zone on

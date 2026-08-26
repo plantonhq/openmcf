@@ -1,4 +1,4 @@
-# Preset: IP List Entry
+# IP List Entry
 
 Add a single IP/CIDR to an `ip`-kind `CloudflareList`, wired to the list by
 reference so it composes in an infra chart.

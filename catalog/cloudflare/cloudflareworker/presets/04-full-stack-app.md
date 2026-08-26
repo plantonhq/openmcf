@@ -1,4 +1,4 @@
-# Preset: Full-Stack App (script + Static Assets)
+# Full-Stack App (script + Static Assets)
 
 A full-stack application: a Worker script serves dynamic API routes while static
 assets serve the front end — all from one deployable at the edge. This pairs

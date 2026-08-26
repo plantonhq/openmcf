@@ -15,7 +15,7 @@ import { AnimatedTerminal, ScrollReveal } from '@/components/product/shared';
 import type { TerminalLine } from '@/components/product/shared';
 
 const heroLines: TerminalLine[] = [
-  { text: '▶ Resolving secrets for GcpCloudSqlInstance/production-db', className: 'text-[#b0b0b0]' },
+  { text: '▶ Resolving secrets for GcpCloudSql/production-db', className: 'text-[#b0b0b0]' },
   { text: '' },
   { text: '  db-password  → gcp-secret-manager  ✓', className: 'text-[#10b981]' },
   { text: '  api-key      → aws-secrets-manager  ✓', className: 'text-[#10b981]' },

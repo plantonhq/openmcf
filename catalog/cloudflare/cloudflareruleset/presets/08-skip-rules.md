@@ -1,4 +1,4 @@
-# Preset: Skip Specific Rules in Another Ruleset
+# Skip Specific Rules in Another Ruleset
 
 Surgically exempt a path from individual rules inside another ruleset (typically noisy managed WAF rules that false-positive on your payloads) without turning off the whole ruleset or product.
 

@@ -1,4 +1,4 @@
-# Preset: Queue with an HTTP (pull) consumer
+# Queue with an HTTP (pull) consumer
 
 A queue consumed by external clients that pull and acknowledge messages over the
 REST API, rather than by a Worker. Use this when the consumer lives outside

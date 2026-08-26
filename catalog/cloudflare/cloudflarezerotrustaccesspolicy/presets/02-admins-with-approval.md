@@ -1,4 +1,4 @@
-# Preset: Admins with approval and MFA
+# Admins with approval and MFA
 
 An `allow` policy for privileged access: it references a reusable admins group,
 requires explicit approval and a purpose justification, enforces hardware-key MFA,

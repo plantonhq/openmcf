@@ -41,7 +41,7 @@ const onboardingSteps: FlowStep[] = [
 const deployTerminalLines: TerminalLine[] = [
   { text: '$ planton apply -f postgres.yaml', className: 'text-white' },
   { text: '' },
-  { text: '▶ Applying GcpCloudSqlInstance/my-postgres', className: 'text-[#b0b0b0]' },
+  { text: '▶ Applying GcpCloudSql/my-postgres', className: 'text-[#b0b0b0]' },
   { text: '  Organization: my-startup', className: 'text-[#666]' },
   { text: '  Environment:  production', className: 'text-[#666]' },
   { text: '' },

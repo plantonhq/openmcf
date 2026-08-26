@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Cloudflare D1 Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare D1 Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard D1 Database** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -80,7 +80,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Common Patterns
 
-**Standard database** -- a single-primary D1 database with an optional region hint, backing a Worker or lightweight relational workload. Start from the **Standard** preset.
+**Standard database** -- a single-primary D1 database with an optional region hint, backing a Worker or lightweight relational workload. Start from the **Standard D1 Database** preset.
 
 **Residency-pinned database** -- set `jurisdiction: eu` (or `fedramp`) instead of a region when compliance dictates where data lives; leave the exact placement to Cloudflare inside that boundary.
 

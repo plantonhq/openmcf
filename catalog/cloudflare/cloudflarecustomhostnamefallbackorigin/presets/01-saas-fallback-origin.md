@@ -1,4 +1,4 @@
-# Preset: SaaS Fallback Origin
+# SaaS Fallback Origin
 
 The single per-zone fallback origin every Cloudflare for SaaS zone needs before
 custom hostnames can serve traffic. Point it at your application's backend.

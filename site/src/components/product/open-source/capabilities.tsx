@@ -44,7 +44,7 @@ const metrics: MetricItem[] = [
 const openSourceTabs: CodeTab[] = [
   {
     label: 'Protobuf Spec',
-    code: `message GcpCloudSqlInstanceSpec {
+    code: `message GcpCloudSqlSpec {
   string gcp_project_id = 1;
   string database_version = 2;
   string tier = 3;
@@ -54,8 +54,8 @@ const openSourceTabs: CodeTab[] = [
   },
   {
     label: 'YAML Manifest',
-    code: `apiVersion: gcp.planton.dev/v1
-kind: GcpCloudSqlInstance
+    code: `apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
 metadata:
   name: my-postgres
   labels:
@@ -73,7 +73,7 @@ spec:
     code: `$ planton apply -f my-postgres.yaml
 ✓ Spec validated against protobuf schema
 ⏳ Provisioning via Pulumi module...
-✓ GcpCloudSqlInstance created
+✓ GcpCloudSql created
 
 # Export from Planton console
 # Version in Git
@@ -290,7 +290,7 @@ export const OpenSourceCapabilities = () => (
        - A grid of component cards with provider icons, names, and descriptions
        - Filter/search functionality active
        - One component expanded showing its presets tab with ranked configurations
-       Value: Proves the "600+ resource types" claim visually with a real, browsable catalog.
+       Value: Proves the "700+ resource types" claim visually with a real, browsable catalog.
        Suggested: 16:9 aspect ratio, dark theme.
        Placement: Could be embedded in the FeatureBentoSection near the "Portable Manifests" or "Infra Charts" cards.
     */}

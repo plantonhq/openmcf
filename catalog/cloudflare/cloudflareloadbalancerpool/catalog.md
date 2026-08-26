@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Cloudflare Load Balancer Pool**, and click **Deploy**. The creation wizard walks you through account and name, the origins builder, the monitor reference and check regions, and optional advanced tuning. Start from the **Web pool** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Load Balancer Pool**, and click **Deploy**. The creation wizard walks you through account and name, the origins builder, the monitor reference and check regions, and optional advanced tuning. Start from the **Web pool with two origins** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -115,9 +115,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Web pool with two origins** -- Two interchangeable web origins health-checked by an HTTPS monitor, ready to attach to a load balancer's default pools. Use for standard balanced backends. Start from the **Web pool** preset.
+**Web pool with two origins** -- Two interchangeable web origins health-checked by an HTTPS monitor, ready to attach to a load balancer's default pools. Use for standard balanced backends. Start from the **Web pool with two origins** preset.
 
-**Geo-located pool** -- A regional pool tagged with latitude/longitude and a least-connections origin policy, for proximity or geo steering across regional backends. Start from the **Geo-located pool** preset.
+**Geo-located pool** -- A regional pool tagged with latitude/longitude and a least-connections origin policy, for proximity or geo steering across regional backends. Start from the **Geo-located pool (proximity steering)** preset.
 
 ## Works With
 

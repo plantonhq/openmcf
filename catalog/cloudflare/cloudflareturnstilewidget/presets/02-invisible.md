@@ -1,4 +1,4 @@
-# Preset: Invisible Widget
+# Invisible Widget
 
 An `invisible` Turnstile widget that runs without any visible challenge UI for
 most users — ideal when you want frictionless protection on high-traffic flows.

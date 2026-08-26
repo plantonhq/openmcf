@@ -1,4 +1,4 @@
-# Preset: Drop Catch-All Email Routing
+# Drop Catch-All Email Routing
 
 Enable Email Routing and drop all mail that no explicit rule matched. Use with
 per-address `CloudflareEmailRoutingRule`s that forward only the addresses you

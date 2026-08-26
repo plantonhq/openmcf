@@ -1,4 +1,4 @@
-# Preset: Private-network connector (for WARP access)
+# Private-network connector (for WARP access)
 
 A tunnel with no public hostnames, used purely to make private IP ranges reachable to
 WARP clients via routes.

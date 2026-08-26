@@ -1,4 +1,4 @@
-# Preset: Pre-Registration Domain Allowlist
+# Pre-Registration Domain Allowlist
 
 ## Pattern
 

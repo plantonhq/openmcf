@@ -1,4 +1,4 @@
-# Preset: PostgreSQL Hyperdrive over a Workers VPC Service
+# PostgreSQL Hyperdrive over a Workers VPC Service
 
 A Hyperdrive config that reaches a private PostgreSQL origin by egressing through
 a Workers VPC Service, rather than dialing a publicly reachable host.

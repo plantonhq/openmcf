@@ -1,4 +1,4 @@
-# Preset: PostgreSQL Hyperdrive with mTLS
+# PostgreSQL Hyperdrive with mTLS
 
 A Hyperdrive config that connects to a PostgreSQL origin requiring mutual TLS,
 verifying both the CA and the server hostname.

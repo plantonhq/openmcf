@@ -15,7 +15,7 @@ export default function DeploymentStoreForm() {
     idleTimeout: '60',
   });
 
-  const yamlPreview = `apiVersion: aws.planton.dev/v1
+  const yamlPreview = `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   env: ${formData.env}

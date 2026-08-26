@@ -1,4 +1,4 @@
-# Preset: Standard KV Entry
+# Standard KV Entry
 
 Seed a single configuration key into a Workers KV namespace, wired to the
 namespace by reference so it composes in an infra chart.

@@ -1,4 +1,4 @@
-# Preset: Bring Your Own CSR
+# Bring Your Own CSR
 
 For teams that already manage their own key material. You supply a PEM-encoded CSR;
 the module requests the certificate for that exact CSR and generates no key, so your

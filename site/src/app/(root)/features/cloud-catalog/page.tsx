@@ -5,7 +5,7 @@ import { CloudCatalogHero, CloudCatalogCapabilities, CloudCatalogCTA } from '@/c
 export const metadata: Metadata = {
   title: 'Cloud Catalog | Planton',
   description:
-    'Browse 600+ pre-built deployment modules across 8 cloud providers. Filter by provider, preview YAML configurations, and deploy to your cloud in minutes.',
+    'Browse 700+ pre-built deployment modules across 8 cloud providers. Filter by provider, preview YAML configurations, and deploy to your cloud in minutes.',
 };
 
 export default function CloudCatalogPage() {

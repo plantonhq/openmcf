@@ -1,4 +1,4 @@
-# Preset: Role with Permissions
+# Role with Permissions
 
 ## Pattern
 

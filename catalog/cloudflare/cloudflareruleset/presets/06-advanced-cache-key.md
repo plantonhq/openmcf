@@ -1,4 +1,4 @@
-# Preset: Advanced cache key and Cache Reserve
+# Advanced cache key and Cache Reserve
 
 Take full control of the cache key with the `http_request_cache_settings` phase:
 include only the query parameters, cookies, headers, and user attributes that should

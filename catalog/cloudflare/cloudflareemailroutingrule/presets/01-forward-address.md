@@ -1,4 +1,4 @@
-# Preset: Forward an Address
+# Forward an Address
 
 Forward mail sent to a specific recipient (e.g. `support@`) to one or more
 verified destination mailboxes.

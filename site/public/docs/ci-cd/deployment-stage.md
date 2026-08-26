@@ -64,7 +64,7 @@ resources:
 
 ```yaml
 # _kustomize/base/service.yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service
@@ -110,7 +110,7 @@ patches:
 
 ```yaml
 # _kustomize/overlays/production/service.yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service

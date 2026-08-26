@@ -1,4 +1,4 @@
-# Preset: Bulk Redirect Entry
+# Bulk Redirect Entry
 
 Add a single source→target redirect to a `redirect`-kind `CloudflareList`. A
 redirect ruleset resolves the list with `from_list`.

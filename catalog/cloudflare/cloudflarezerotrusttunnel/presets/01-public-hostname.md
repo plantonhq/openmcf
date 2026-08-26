@@ -1,4 +1,4 @@
-# Preset: Publish a private app on a public hostname
+# Publish a private app on a public hostname
 
 Expose a single private web app at a public hostname through the tunnel — the most common
 Cloudflare Tunnel setup.

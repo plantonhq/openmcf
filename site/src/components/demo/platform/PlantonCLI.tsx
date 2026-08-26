@@ -17,7 +17,7 @@ planton status
 # View outputs
 planton outputs`;
 
-  const yamlExample = `apiVersion: aws.planton.dev/v1
+  const yamlExample = `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   env: dev

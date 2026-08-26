@@ -1,4 +1,4 @@
-# Preset: IdP group with MFA login method
+# IdP group with MFA login method
 
 An account-scoped group that matches an Okta group (federated through a configured
 identity provider) and additionally requires a hardware-key authentication method.

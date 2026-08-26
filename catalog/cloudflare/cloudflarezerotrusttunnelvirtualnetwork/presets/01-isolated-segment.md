@@ -1,4 +1,4 @@
-# Preset: Isolated routing segment
+# Isolated routing segment
 
 A standard, non-default virtual network used to isolate a set of routes (and the
 overlapping private CIDRs behind them) from other segments in the account.

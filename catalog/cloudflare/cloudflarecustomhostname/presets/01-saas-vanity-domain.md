@@ -1,4 +1,4 @@
-# Preset: SaaS Vanity Domain (recommended)
+# SaaS Vanity Domain (recommended)
 
 The recommended default: onboard a customer's hostname with a Cloudflare-issued DV
 certificate validated over TXT. The customer adds a CNAME and the ownership TXT

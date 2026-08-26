@@ -1,4 +1,4 @@
-# Preset: Direct-Upload Site
+# Direct-Upload Site
 
 A Pages project with no git connection. You build the site in your own CI and
 push it with `wrangler pages deploy`, while the project, its bindings, and its

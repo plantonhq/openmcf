@@ -50,8 +50,8 @@ const metrics: MetricItem[] = [
 const cloudResourceTabs: CodeTab[] = [
   {
     label: 'GCP',
-    code: `apiVersion: gcp.planton.dev/v1
-kind: GcpCloudSqlInstance
+    code: `apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
 metadata:
   name: my-postgres
 spec:
@@ -63,7 +63,7 @@ spec:
   },
   {
     label: 'AWS',
-    code: `apiVersion: aws.planton.dev/v1
+    code: `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: my-postgres
@@ -77,8 +77,8 @@ spec:
   },
   {
     label: 'Azure',
-    code: `apiVersion: azure.planton.dev/v1
-kind: AzurePostgresFlexible
+    code: `apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePostgresqlFlexibleServer
 metadata:
   name: my-postgres
 spec:
@@ -121,7 +121,7 @@ spec:
   },
   {
     label: 'templates/compute.yaml',
-    code: `apiVersion: aws.planton.dev/v1
+    code: `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsCluster
 metadata:
   name: "{{ values.service_name }}-ecs-cluster"
@@ -146,7 +146,7 @@ const stackJobLines: TerminalLine[] = [
   { text: '' },
   { text: '▶ Stack Job: sjb-abc123', className: 'text-[#b0b0b0]' },
   { text: '  Operation: update', className: 'text-[#666]' },
-  { text: '  Resource: my-postgres (GcpCloudSqlInstance)', className: 'text-[#666]' },
+  { text: '  Resource: my-postgres (GcpCloudSql)', className: 'text-[#666]' },
   { text: '  Triggered by: alice@company.com', className: 'text-[#666]' },
   { text: '  Commit: "Enable HA for production DB"', className: 'text-[#666]' },
   { text: '' },

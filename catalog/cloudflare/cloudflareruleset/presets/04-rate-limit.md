@@ -1,4 +1,4 @@
-# Preset: Rate limiting rules
+# Rate limiting rules
 
 Throttle abusive traffic with the `http_ratelimit` phase. Each rule counts requests
 per a set of characteristics (buckets) over a period and applies its action when the

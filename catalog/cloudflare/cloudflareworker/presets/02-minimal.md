@@ -1,4 +1,4 @@
-# Preset: Minimal Worker
+# Minimal Worker
 
 The smallest deployable Worker: an inline script exposed on a workers.dev
 subdomain. No external bindings or custom domains.

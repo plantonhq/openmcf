@@ -1,4 +1,4 @@
-# Preset: Self-hosted web application
+# Self-hosted web application
 
 A self-hosted web app behind Cloudflare Access, protecting `dashboard.example.com`
 with a referenced Access policy and a 24-hour session.

@@ -1,4 +1,4 @@
-# Preset: Bring Your Own Certificate (Enterprise)
+# Bring Your Own Certificate (Enterprise)
 
 For Enterprise accounts that upload their own certificate and key for the custom
 hostname instead of using a Cloudflare-issued DV certificate, and route it to a

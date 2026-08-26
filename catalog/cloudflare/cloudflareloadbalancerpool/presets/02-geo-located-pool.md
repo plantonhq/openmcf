@@ -1,4 +1,4 @@
-# Preset: Geo-located pool (proximity steering)
+# Geo-located pool (proximity steering)
 
 A regional pool tagged with latitude/longitude and a least-connections origin
 policy, for use with a load balancer's `proximity` or `geo` steering.

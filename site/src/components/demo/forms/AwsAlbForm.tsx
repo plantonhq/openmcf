@@ -127,7 +127,7 @@ const AwsAlbFormContent = React.forwardRef<
   }, [jsonData, startAnimation]);
 
   const [formData, setFormData] = useState<AwsAlb>({
-    apiVersion: 'aws.planton.dev/v1',
+    apiVersion: 'aws.planton.dev/v1alpha1',
     kind: 'AwsAlb',
     metadata: {
       name: initialData?.metadata?.name || '',

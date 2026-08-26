@@ -88,9 +88,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Role with permissions** -- A named access tier backed by a focused set of scopes on one API. Start from the **Role with Permissions** preset.
 
-**Administrator across APIs** -- A role that grants scopes spanning multiple Resource Servers. Start from the **Admin Role Multi-API** preset.
+**Administrator across APIs** -- A role that grants scopes spanning multiple Resource Servers. Start from the **Administrator Role (Multiple APIs)** preset.
 
-**Empty role** -- A role created without permissions, to be populated later or assigned as a placeholder tier. Start from the **Role without Permissions** preset.
+**Empty role** -- A role created without permissions, to be populated later or assigned as a placeholder tier. Start from the **Role Without Permissions** preset.
 
 ## Works With
 

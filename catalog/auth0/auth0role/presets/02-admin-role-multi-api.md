@@ -1,4 +1,4 @@
-# Preset: Administrator Role (Multiple APIs)
+# Administrator Role (Multiple APIs)
 
 ## Pattern
 
