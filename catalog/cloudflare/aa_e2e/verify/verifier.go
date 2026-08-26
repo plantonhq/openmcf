@@ -249,9 +249,13 @@ var verifiers = map[string]Verifier{
 		accountScoped: true,
 	},
 	// Email Routing is a zone singleton: the GET returns the zone's routing
-	// settings object rather than 404ing for a zone that never enabled it, so
-	// the absent-check may need a value-aware probe (read `enabled`) once
-	// measured live -- the existence probe is the honest starting point.
+	// settings object rather than 404ing for a zone that never enabled it.
+	// MEASURED 2026-08-26 via the REST API: after a disable the GET still
+	// answers 200 with enabled=false, so when this kind's lanes unblock (its
+	// profile records the upstream provider defect deferring them), the
+	// absent-check MUST become a value-aware probe reading `enabled` -- the
+	// plain existence probe below would fail verify-absent against a
+	// perfectly clean teardown.
 	"cloudflareemailroutingzone": &apiPathVerifier{
 		component:  "cloudflareemailroutingzone",
 		pathFormat: "zones/%s/email/routing",

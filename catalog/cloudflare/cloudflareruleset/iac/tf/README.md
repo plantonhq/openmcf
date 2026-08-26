@@ -34,7 +34,7 @@ module "origin_rule" {
     rules = [
       {
         ref        = "route-app-to-k8s"
-        expression = "not http.request.uri.path starts_with \"/docs\""
+        expression = "not starts_with(http.request.uri.path, \"/docs\")"
         action     = "route"
         action_parameters = {
           host_header = "planton.ai"

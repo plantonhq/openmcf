@@ -469,7 +469,12 @@ type CloudflareRulesetRule struct {
 	Ref string `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`
 	// Cloudflare wirefilter expression that determines when this rule matches.
 	// Examples: "true" (match all), "http.request.uri.path eq \"/api\"",
-	// "ip.src ne 1.1.1.1", "not http.request.uri.path starts_with \"/static\"".
+	// "ip.src ne 1.1.1.1", "not starts_with(http.request.uri.path, \"/static\")".
+	// Write prefix/suffix matches in the FUNCTION form (starts_with(field,
+	// "value")): the bare starts_with/ends_with OPERATORS are a paid-plan
+	// grammar extension -- on free-plan zones the API rejects them with 400
+	// code 20127 "expected ComparisonOp" (measured live 2026-08-26), while the
+	// function form parses on every plan.
 	Expression string `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
 	// The action to perform when the expression matches.
 	Action CloudflareRulesetRule_Action `protobuf:"varint,3,opt,name=action,proto3,enum=dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetRule_Action" json:"action,omitempty"`

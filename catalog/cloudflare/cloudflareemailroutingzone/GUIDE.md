@@ -2,6 +2,10 @@
 
 Operational judgment for running Email Routing well. The README covers what each field is; this covers how the pieces interact.
 
+## Known upstream blocker: deploys currently fail on both engines
+
+The Cloudflare Terraform provider shipped a defect in v5.23.0 that is still present in v5.24.0 (the latest release as of 2026-08-26): the `cloudflare_email_routing_settings` resource fails EVERY create and refresh with "Value Conversion Error ... support_subaddress" because the provider's internal model and schema disagree ([issue #7301](https://github.com/cloudflare/terraform-provider-cloudflare/issues/7301), fix pending in [PR #7302](https://github.com/cloudflare/terraform-provider-cloudflare/pull/7302)). The Pulumi provider bridges the same broken code. Nothing in your manifest causes or avoids this, and a plan/preview looks clean — the failure only appears at apply. Until a provider release carries the fix, this component cannot deploy; the manifests you write today are valid and will work unchanged once the fix ships.
+
 ## Enabling rewrites the zone's mail records
 
 Creating this resource is the enable: Cloudflare provisions the zone's MX/SPF/DKIM records and starts accepting inbound mail for routing. If the domain already receives mail elsewhere (Google Workspace, O365), enabling Email Routing replaces that delivery path — never enable it on a zone whose mail another system must keep handling.

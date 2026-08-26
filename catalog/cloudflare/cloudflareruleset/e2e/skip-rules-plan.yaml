@@ -16,7 +16,7 @@ spec:
   name: "Test skip specific rules"
   rules:
     - ref: "skip-managed-rules-for-webhooks"
-      expression: 'http.request.uri.path starts_with "/webhooks"'
+      expression: 'starts_with(http.request.uri.path, "/webhooks")'
       action: skip
       description: "Skip two noisy managed rules for the webhook path"
       enabled: true

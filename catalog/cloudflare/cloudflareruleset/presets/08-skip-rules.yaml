@@ -10,7 +10,7 @@ spec:
   name: "Skip noisy managed rules for trusted paths"
   rules:
     - ref: "skip-for-webhooks"
-      expression: 'http.request.uri.path starts_with "/webhooks"'
+      expression: 'starts_with(http.request.uri.path, "/webhooks")'
       action: skip
       description: "Skip two specific managed rules that false-positive on webhook payloads"
       enabled: true

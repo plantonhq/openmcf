@@ -13,10 +13,10 @@ spec:
       expression: >-
         not (
           http.request.uri.path eq "/" or
-          http.request.uri.path starts_with "/docs" or
-          http.request.uri.path starts_with "/features" or
-          http.request.uri.path starts_with "/pricing" or
-          http.request.uri.path starts_with "/_site"
+          starts_with(http.request.uri.path, "/docs") or
+          starts_with(http.request.uri.path, "/features") or
+          starts_with(http.request.uri.path, "/pricing") or
+          starts_with(http.request.uri.path, "/_site")
         )
       action: route
       description: "Route application paths to backend origin"

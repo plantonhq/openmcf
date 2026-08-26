@@ -3,6 +3,11 @@
 # registered -- the verification email goes nowhere, no third party is
 # touched), and the address stays unverified, which does not block the
 # create/verify/destroy lifecycle. The account comes from the harness env.
+# The destroy-retry opt-in below exists because Cloudflare refuses deleting
+# a destination address for ~10 minutes after create (400 code 2032;
+# measured 2026-08-26: refused at 9m14s, accepted at 10m15s) -- the lane
+# reaches destroy in under a minute, so the phase retries until the guard
+# window passes.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareEmailRoutingAddress
 metadata:
@@ -15,6 +20,10 @@ metadata:
     e2e-component: cloudflareemailroutingaddress
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-destroy-retry: >-
+      Cloudflare guards destination-address deletes for ~10 minutes after
+      create (400 code 2032 "created too recently"); destroy retries until
+      the window passes.
   tags:
     - planton-e2e
 spec:

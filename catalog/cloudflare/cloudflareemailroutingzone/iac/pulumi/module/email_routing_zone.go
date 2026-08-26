@@ -22,6 +22,14 @@ func emailRoutingZone(
 		zoneId = spec.ZoneId.GetValue()
 	}
 
+	// UPSTREAM DEFECT (open at pulumi-cloudflare v6.19.0, which bridges the
+	// broken terraform provider v5.23.x; measured live 2026-08-26): every
+	// create of this resource fails with "Value Conversion Error ... Struct
+	// defines fields not found in object: support_subaddress" -- the
+	// provider's model gained support_subaddress but its schema never did
+	// (terraform-provider-cloudflare issue #7301, fix PR #7302). No program
+	// change works around a schema/model mismatch inside the plugin. When an
+	// SDK release bridges the fixed provider, this module works unchanged.
 	settings, err := cloudflare.NewEmailRoutingSettings(
 		ctx,
 		"email-routing-settings",

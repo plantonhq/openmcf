@@ -11,9 +11,9 @@ spec:
   rules:
     - ref: "cache-static-assets"
       expression: >-
-        http.request.uri.path starts_with "/assets" or
-        http.request.uri.path starts_with "/_next/static" or
-        http.request.uri.path starts_with "/_site"
+        starts_with(http.request.uri.path, "/assets") or
+        starts_with(http.request.uri.path, "/_next/static") or
+        starts_with(http.request.uri.path, "/_site")
       action: set_cache_settings
       description: "Aggressively cache static assets at edge for 24 hours"
       enabled: true
@@ -26,7 +26,7 @@ spec:
           mode: "override_origin"
           default_ttl: 3600
     - ref: "bypass-api-cache"
-      expression: 'http.request.uri.path starts_with "/api"'
+      expression: 'starts_with(http.request.uri.path, "/api")'
       action: set_cache_settings
       description: "Never cache API responses"
       enabled: true

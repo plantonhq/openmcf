@@ -15,10 +15,18 @@ spec:
   # VERIFIED address back to unverified, and no lane can click the emailed
   # link to produce one; the send path is offline-plan-proven (and is a
   # documented Pulumi PARITY-EXCEPTION until the SDK carries the field).
-  # Objects create in seconds at zero cost.
+  # Objects create in seconds at zero cost, but DESTROY WAITS: Cloudflare
+  # refuses deleting an address for ~10 minutes after create (400 code 2032,
+  # measured 2026-08-26), so the scenario opts into the runner's
+  # destroy-retry and the timeout budget covers the guard window.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
-  timeout_minutes: 10
+  # Proven live 2026-08-26: both engines ran minimal through the full
+  # lifecycle (deploy -> REST-API verify -> destroy -> verify-absent) with
+  # the apply-idempotency re-plan green, plus the blind import round-trip
+  # ({account_id}/{address_id}) on the Terraform lane. The DESTROY phase
+  # rode the runner's scenario-declared destroy-retry through Cloudflare's
+  # ~10-minute delete guard (400 code 2032) on both engines -- 10m08s and
+  # 10m07s measured -- and verify-absent answered an honest 404 after.
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 20

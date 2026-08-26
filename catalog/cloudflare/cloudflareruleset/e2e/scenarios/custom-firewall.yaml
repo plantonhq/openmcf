@@ -5,6 +5,13 @@
 # enable flags. The zone_id resolves from the CloudflareDnsZone
 # prerequisite's outputs; ruleset names need no run-scoping (rulesets are
 # zone-local and the fixture zone is already run-scoped).
+#
+# Expression grammar is plan-gated at Cloudflare: the OPERATOR form
+# (`http.request.uri.path starts_with "/x"`) is rejected on free-plan zones
+# with 400 code 20127 "expected ComparisonOp" -- the free-plan filter parser
+# simply lacks the operator (measured live 2026-08-26). The FUNCTION form
+# (`starts_with(http.request.uri.path, "/x")`) parses and deploys on the
+# free plan (measured the same day), so these expressions use it.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareRuleset
 metadata:
@@ -30,12 +37,12 @@ spec:
   name: planton-e2e-custom-firewall
   rules:
     - ref: block-marker-path
-      expression: 'http.request.uri.path starts_with "/planton-e2e-block"'
+      expression: 'starts_with(http.request.uri.path, "/planton-e2e-block")'
       action: block
       description: planton e2e block rule
       enabled: true
     - ref: challenge-marker-path
-      expression: 'http.request.uri.path starts_with "/planton-e2e-challenge"'
+      expression: 'starts_with(http.request.uri.path, "/planton-e2e-challenge")'
       action: managed_challenge
       description: planton e2e managed-challenge rule
       enabled: true

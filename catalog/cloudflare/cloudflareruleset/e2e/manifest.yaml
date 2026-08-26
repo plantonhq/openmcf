@@ -10,7 +10,7 @@ spec:
   name: "Test origin routing"
   rules:
     - ref: "route-app-to-k8s"
-      expression: 'not http.request.uri.path starts_with "/docs"'
+      expression: 'not starts_with(http.request.uri.path, "/docs")'
       action: route
       description: "Route non-docs traffic to K8s"
       enabled: true

@@ -1,5 +1,14 @@
 # Enabling Email Routing on the zone. Creating this resource turns Email Routing
 # on and provisions the zone's required MX/SPF/DKIM records automatically.
+#
+# UPSTREAM DEFECT (open at provider v5.23.0 AND v5.24.0, measured live
+# 2026-08-26): every create/refresh of this resource fails with "Value
+# Conversion Error ... Struct defines fields not found in object:
+# support_subaddress" -- the provider's model gained support_subaddress in
+# v5.23.0 but its schema never did (terraform-provider-cloudflare issue
+# #7301, fix PR #7302). No configuration works around a schema/model
+# mismatch; `plan` stays green because plan never runs the conversion. When
+# a release carries the fix, this module works unchanged.
 resource "cloudflare_email_routing_settings" "main" {
   zone_id = var.spec.zone_id
 }

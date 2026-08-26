@@ -3,23 +3,29 @@ kind: ComponentE2EProfile
 metadata:
   name: cloudflareemailroutingrule
 spec:
-  # An Email Routing rule under live E2E: the harness installs the
-  # prerequisite chain -- the run-scoped pending fixture zone, then
-  # CloudflareEmailRoutingZone enabling Email Routing on it (rules are only
-  # accepted on a routing-enabled zone) -- resolves zone_id, then runs deploy
-  # -> GET zones/{zone_id}/email/routing/rules/{rule_id} verify -> destroy ->
-  # verify-destroyed on both provisioners. The literal-drop scenario proves
-  # the rule lifecycle with a literal recipient matcher and a drop action --
-  # the one action type needing no verified destination address or deployed
-  # Email Worker. Forward and worker actions (including the multi-action
-  # list, this kind's widened surface) share the same typed-action send path,
-  # proven by the offline plan (the e2e manifest carries a forward+worker
-  # rule) and spec tests. Watch: whether a PENDING (undelegated) zone accepts
-  # Email Routing enablement + rules is unverified offline. Objects create in
-  # seconds at zero cost.
+  # An Email Routing rule under live E2E: the harness deploys the run-scoped
+  # pending fixture zone (the kind's one registry prerequisite), resolves
+  # zone_id, then runs deploy -> GET
+  # zones/{zone_id}/email/routing/rules/{rule_id} verify -> destroy ->
+  # verify-destroyed on both provisioners. CloudflareEmailRoutingZone is
+  # deliberately NOT in the chain: the API accepts rule creation on a zone
+  # whose Email Routing was never enabled (measured live 2026-08-26 on a
+  # pending zone) -- enablement gates mail flow, not rule lifecycle. The
+  # literal-drop scenario proves the rule lifecycle with a literal recipient
+  # matcher and a drop action -- the one action type needing no verified
+  # destination address or deployed Email Worker. Forward and worker actions
+  # (including the multi-action list, this kind's widened surface) share the
+  # same typed-action send path, proven by the offline plan (the e2e manifest
+  # carries a forward+worker rule) and spec tests. Objects create in seconds
+  # at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran literal-drop through the full
+  # lifecycle (deploy -> REST-API verify -> destroy -> verify-absent) with
+  # the apply-idempotency re-plan green, plus the blind import round-trip
+  # ({zone_id}/{rule_id}) on the Terraform lane. Rules confirmed to deploy
+  # on a PENDING zone whose Email Routing was never enabled -- the measured
+  # truth that removed CloudflareEmailRoutingZone from this kind's registry
+  # prerequisites.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

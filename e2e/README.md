@@ -175,6 +175,30 @@ service networking connection chain):
   state would otherwise make a later `up` a silent no-op while the actual
   cloud resource is gone.
 
+The SCENARIO's own DESTROY phase (distinct from the fixture-chain teardown
+above) is single-attempt by default — a destroy failure is usually a real
+module or provider bug and must fail loudly. A scenario whose resource class
+carries a CLOUD-SIDE delete guard (the provider's DELETE is refused for a
+bounded window no matter how correct the module is) opts into bounded destroy
+retries with the reason-carrying `planton.dev/e2e-destroy-retry` annotation
+on the scenario manifest ([runner.go](framework/runner/runner.go): full
+destroy re-runs 60s apart under a 15-minute budget, each retry printing the
+declared reason into the lane log). First user: Cloudflare email-routing
+destination addresses, whose delete answers 400 code 2032 "created too
+recently" until ~10 minutes after create (measured 2026-08-26: refused at
+9m14s, accepted at 10m15s). An empty annotation value does not opt in —
+state the guard, its error signature, and the measured window.
+
+**Run ONE live-lane process at a time per provider account.** Two `go test`
+processes hammering the same provider API concurrently can push a create into
+the retry path of the provider's HTTP client: the first POST lands
+server-side but the client sees a transient error, the automatic retry POSTs
+again, and a non-idempotent create answers "already exists" (Cloudflare zone
+error 1061, live-caught 2026-08-26 when two engine lanes ran as parallel
+processes) — the lane then fails its OWN fixture create against its own
+run-scoped name, which looks impossible from the log. Engine lanes within one
+process are already sequential; keep processes sequential too.
+
 Verifiers that read a resource through a *different* API than the one that
 created it should poll briefly before declaring it absent (see the
 service-networking-connection verifier: the peering is created via the

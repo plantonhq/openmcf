@@ -14,15 +14,32 @@ spec:
   # link no lane can click; both send paths are offline-plan-proven), the
   # dns_name subdomain arm and lock_dns_records (offline-plan-proven; the
   # managed-DNS resource on a pending zone is an unverified interaction), and
-  # the address status override. Watch: whether Cloudflare accepts enabling
-  # Email Routing on a PENDING (undelegated) zone is unverified offline; the
-  # settings GET may answer 200 with enabled=false after destroy (the
-  # settings-singleton revert class), which would need a value-aware
-  # absent-check under proof-lane design authority. Objects create in seconds
-  # at zero cost.
+  # the address status override. Two live measurements from 2026-08-26 for
+  # the session that unblocks this kind: (1) on a PENDING (undelegated) zone
+  # the plain enable endpoint answers success but the zone stays
+  # enabled=false with status "unconfigured" -- expect the enable lifecycle
+  # to be only fully provable on an ACTIVE zone (the env-gated
+  # PLANTON_E2E_CLOUDFLARE_ZONE_ID arm is the designed escape hatch); (2)
+  # the settings GET answers 200 with enabled=false after disable (the
+  # settings-singleton revert class), so verify-absent needs the
+  # value-aware probe the verifier comment describes. Objects create in
+  # seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Blocked by an upstream provider defect, measured live on BOTH engines
+    2026-08-26: cloudflare_email_routing_settings fails EVERY create/refresh
+    with "Value Conversion Error ... Struct defines fields not found in
+    object: support_subaddress" -- the v5.23.0 model gained
+    support_subaddress but ResourceSchema() never did
+    (terraform-provider-cloudflare issue #7301, open fix PR #7302; v5.24.0
+    verified still broken at source, and pulumi-cloudflare v6.19.0 -- the
+    newest -- bridges the broken code). No module or config change can work
+    around a schema/model mismatch. Offline plans stay green because plan
+    never invokes the conversion. Unblock: a provider release carrying the
+    schema fix, plus the pulumi-cloudflare release that bridges it; then run
+    both lanes unchanged. Note for that session: the settings GET answers
+    200 with enabled=false after disable (measured via the REST API
+    2026-08-26), so verify-absent needs the value-aware probe the verifier
+    comment describes.
   timeout_minutes: 10

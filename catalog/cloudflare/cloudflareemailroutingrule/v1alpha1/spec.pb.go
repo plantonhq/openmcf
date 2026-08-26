@@ -267,8 +267,10 @@ func (x *CloudflareEmailRoutingRuleMatcher) GetValue() string {
 
 // CloudflareEmailRoutingRuleSpec declares a single Email Routing rule for a zone:
 // match incoming mail (by recipient or all) and drop it, forward it to verified
-// destinations, or hand it to an Email Worker. Requires Email Routing to be
-// enabled on the zone (CloudflareEmailRoutingZone).
+// destinations, or hand it to an Email Worker. The API accepts rules on any
+// zone (measured live 2026-08-26 -- enablement is not a create-time
+// requirement), but rules only take effect once the zone's Email Routing is
+// enabled (CloudflareEmailRoutingZone); pair the two in any real setup.
 type CloudflareEmailRoutingRuleSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The zone this rule belongs to. A literal zone ID or a reference to a
