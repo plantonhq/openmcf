@@ -25,7 +25,7 @@
        transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
   </g>
   <!-- UDP datagrams in flight: two rows of dashes (packets) ending in
-       arrowheads -- connectionless, same-direction forwarding. -->
+       arrowheads — connectionless, same-direction forwarding. -->
   <g inkscape:label="udp-route" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
     <!-- Upper datagram stream. -->
     <rect x="256" y="314" width="28" height="12" rx="6" style="fill:#ffffff" />

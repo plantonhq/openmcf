@@ -1,0 +1,52 @@
+# =============================================================================
+# Catalog Logo Guard
+# =============================================================================
+# Fails the PR when any component's logo.svg is not a browser-renderable SVG
+# document. Browsers parse image/svg+xml strictly: a missing <svg> root, a
+# raw control byte (even inside a comment), an illegal "--" comment sequence,
+# or a duplicate attribute makes the ENTIRE image render as a broken glyph --
+# and every one of those defect classes has shipped in this tree. Nothing
+# else parses these files: pkg/anatomy checks the file EXISTS, the release
+# lane uploads whatever bytes are present, and the catalog bundle formats
+# the logo URL without ever reading the file.
+#
+# The gate lives in pkg/cataloglogo (registry-keyed walk, the anatomy
+# pattern). There is no baseline: the tree was brought to zero violations
+# when the gate was introduced, and it must stay there.
+# =============================================================================
+
+name: lint.catalog-logo
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**/logo.svg'
+      - 'pkg/cataloglogo/**'
+      - 'shared/cloudresourcekind/**'
+      - '.github/workflows/lint.catalog-logo.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**/logo.svg'
+      - 'pkg/cataloglogo/**'
+      - 'shared/cloudresourcekind/**'
+      - '.github/workflows/lint.catalog-logo.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-logo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run catalog-logo gate
+        run: go test ./pkg/cataloglogo/

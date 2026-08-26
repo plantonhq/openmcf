@@ -9,7 +9,7 @@
    xmlns="http://www.w3.org/2000/svg">
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
        Cilium is distinguished by the honeycomb glyph: three linked hexagonal
-       cells (the eBPF datapath hexagon motif)  the CNI weaving node
+       cells (the eBPF datapath hexagon motif) — the CNI weaving node
        networking together. Distinct from the Ingress fan-out and the
        Gateway API family marks. -->
   <g

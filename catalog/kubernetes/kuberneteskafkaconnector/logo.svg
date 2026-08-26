@@ -9,7 +9,7 @@
    xmlns="http://www.w3.org/2000/svg">
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
        KafkaConnector is distinguished by the data-pipe glyph: an inlet,
-       a shaft with a flow arrow, and an outlet  the connector instance
+       a shaft with a flow arrow, and an outlet — the connector instance
        that moves records between an external system and Kafka (or the
        reverse for sinks). Distinct from the Topic mark (partitioned
        logs) and the User mark (credential key). -->

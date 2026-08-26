@@ -9,7 +9,7 @@
    xmlns="http://www.w3.org/2000/svg">
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
        Karapace is distinguished by the schema-registry glyph: a
-       document whose body carries version braces  schemas stored as
+       document whose body carries version braces — schemas stored as
        versioned records in a Kafka-backed registry. -->
   <g
      inkscape:label="base"

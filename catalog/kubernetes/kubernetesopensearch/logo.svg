@@ -9,7 +9,7 @@
    xmlns="http://www.w3.org/2000/svg">
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
        OpenSearch is distinguished by the search-lens glyph: a magnifier
-       over index bars  the search-and-analytics engine over stored
+       over index bars — the search-and-analytics engine over stored
        documents. -->
   <g
      inkscape:label="base"
