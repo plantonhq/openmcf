@@ -21,3 +21,7 @@ Cloudflare refuses to delete a policy with a non-zero application count. Detach 
 ## Approval flows change the login experience
 
 `approval_required` with approval groups turns login into a request: the user waits until an approver in the configured group says yes (per session, or once when `purpose_justification` collects a reason). Reserve it for genuinely sensitive targets — it adds a human to every session establishment.
+
+## Adopting an existing policy: the first apply re-asserts three flags
+
+Cloudflare's read API omits `approval_required`, `isolation_required`, and `purpose_justification_required`, so an import cannot restore them — the first plan after adopting an existing policy shows an in-place update on exactly those attributes (measured live at provider v5.23.0). The apply is a no-op against Cloudflare's real state: it writes your declared values into local state. Expected, harmless, once.

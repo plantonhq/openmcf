@@ -1024,6 +1024,43 @@ notifications -- the per-queue PUT MERGES rules instead of replacing
 them, so an identical re-put answers 400 code 11020 "rules have invalid
 overlap".
 
+### The Stainless decode-over-prior-state asymmetry: import-only diffs in BOTH directions
+
+Auto-generated (Stainless-style) providers decode API responses OVER the
+prior model, so an attribute the GET omits keeps whatever the state
+already held. On the create path that means the configured value
+survives every refresh -- the IDEMPOTENCY re-plan stays clean and
+nothing looks wrong. On the import path there IS no prior value, so the
+same attribute lands null, and the post-import plan shows an in-place
+update the normal lifecycle never produces. The MIRROR direction also
+exists: an attribute the GET ECHOES (a server default like `false`)
+gets restored on import where a guarded module deliberately omitted it,
+and the plan proposes "unsetting" it. Both directions are the
+import-restore gap class: no module fix is right (the writes are no-ops
+against the cloud's real state), the remedy is a
+`write_normalized_attributes` declaration on the provider catalog row
+citing the upstream import test's own `ImportStateVerifyIgnore` list,
+plus a GUIDE note teaching adopters the one-time first-apply update.
+First measured users (Cloudflare v5.23.0, live 2026-08-26): Access group
+`is_default` and Access policy `approval_required`/`isolation_required`/
+`purpose_justification_required` (omitted-by-GET direction); Access
+application `auto_redirect_to_identity`/`enable_binding_cookie`/
+`options_preflight_bypass` (echoed-by-GET direction). The upstream ignore
+list is the map: check it during the PRE-LANE pass and declare from
+measurement, never blanket-tolerate.
+
+### The round-trip's plan echo prints sensitive output VALUES to the local test log
+
+The IMPORT-RT phase's oracle plan runs through terratest's default
+logger, and `tofu show -json` exposes sensitive outputs in plaintext
+(`prior_state`/`planned_values` carry the real values -- only the
+`sensitive` flag marks them). Run-scoped throwaway credentials (tunnel
+run tokens and the like) die with their objects at DESTROY, so the local
+log exposure is inert for lanes built on run-scoped fixtures -- but
+never point a round-trip-enabled lane at a long-lived credential
+expecting log hygiene, and treat captured lane logs as
+credential-bearing until the run's objects are destroyed.
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

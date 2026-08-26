@@ -21,3 +21,7 @@ An account-scoped group is reusable by every application in the account; a zone-
 ## IdP-backed rules need the IdP first
 
 Rules like `azure_ad`, `okta`, `gsuite`, and `saml` reference an identity-provider integration by ID — the IdP must already be configured in Zero Trust or evaluation fails closed. Self-contained rules (email, email_domain, ip, geo, certificate) have no such dependency and are the right building blocks early in an account's life.
+
+## Adopting an existing group: the first apply re-asserts `is_default`
+
+Cloudflare's read API omits `is_default`, so an import cannot restore it — the first plan after adopting an existing group shows an in-place update on exactly that attribute (measured live at provider v5.23.0). The apply is a no-op against Cloudflare's real state: it simply writes your declared value into local state. Expected, harmless, once.

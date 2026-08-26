@@ -18,8 +18,12 @@ spec:
   # reasoning recorded in the proof-queue entry). Objects create in seconds
   # at zero cost (part of Zero Trust Free).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal + remote-ingress through
+  # the full lifecycle (deploy -> REST-API verify -> destroy -> verify-absent
+  # via the deleted_at soft-delete probe, live-confirmed) with the
+  # apply-idempotency re-plan green, plus blind import round-trips on the
+  # Terraform lanes -- including the two-resource single-identity import
+  # (tunnel + config, remote-ingress) at a clean no-op plan.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

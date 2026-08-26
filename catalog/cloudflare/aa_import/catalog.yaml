@@ -262,12 +262,45 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_application
       pulumi_type: cloudflare:index/zeroTrustAccessApplication:ZeroTrustAccessApplication
       id_format: "accounts/{account_id}/{application_id}"
+      # The inverse of the group/policy import gap: the app GET ECHOES these
+      # toggles as false for types that support them, so ImportState restores
+      # false where a modules-authored config deliberately omits them (they
+      # are sent only when true -- the API rejects them on incompatible app
+      # types). A blind re-import therefore plans an in-place update that
+      # "unsets" them -- a no-op against the API's real state (measured live
+      # on a self_hosted app; upstream's own import tests ignore this same
+      # set, plus service_auth_401_redirect which our arms never saw echo).
+      write_normalized_attributes:
+        - auto_redirect_to_identity
+        - enable_binding_cookie
+        - options_preflight_bypass
     - terraform_type: cloudflare_zero_trust_access_group
       pulumi_type: cloudflare:index/zeroTrustAccessGroup:ZeroTrustAccessGroup
       id_format: "accounts/{account_id}/{group_id}"
+      # The group GET omits is_default, so ImportState leaves it null while a
+      # created state keeps the configured value (the Stainless read decodes
+      # over prior state, and there is none on import). Upstream's own import
+      # tests ignore exactly this attribute (resource_test.go
+      # ImportStateVerifyIgnore: is_default at v5.23.0), and the gap was
+      # measured live: a blind re-import plans an in-place update on
+      # is_default alone. The first post-adoption apply re-asserts it -- a
+      # no-op write against the API's real state.
+      write_normalized_attributes:
+        - is_default
     - terraform_type: cloudflare_zero_trust_access_policy
       pulumi_type: cloudflare:index/zeroTrustAccessPolicy:ZeroTrustAccessPolicy
       id_format: "{account_id}/{policy_id}"
+      # Same import-restore gap class as the group's is_default: the policy
+      # GET omits these three booleans, so ImportState leaves them null while
+      # a created state keeps the configured values. Upstream's own import
+      # test ignores exactly these attributes (resource_test.go
+      # ImportStateVerifyIgnore: approval_required, isolation_required,
+      # purpose_justification_required at v5.23.0). The first post-adoption
+      # apply re-asserts them -- a no-op write against the API's real state.
+      write_normalized_attributes:
+        - approval_required
+        - isolation_required
+        - purpose_justification_required
     # Identity providers and service tokens are dual-scope like applications
     # and groups: the documented import ID carries a literal scope prefix
     # ("{accounts|zones}/{account_id|zone_id}/{id}"). Live scenarios are
@@ -344,6 +377,11 @@ spec:
     - terraform_type: cloudflare_zero_trust_tunnel_cloudflared
       pulumi_type: cloudflare:index/zeroTrustTunnelCloudflared:ZeroTrustTunnelCloudflared
       id_format: "{account_id}/{tunnel_id}"
+      # Upstream ships NO import acceptance test for this resource at
+      # v5.23.0 -- the importer's first systematic exercise was ours, and it
+      # measured a FULL-body restore (name, config_src, computed fields; the
+      # write-only tunnel_secret stays null on both paths): a blind
+      # re-import plans a clean no-op with zero tolerances.
     - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_config
       pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredConfig:ZeroTrustTunnelCloudflaredConfig
       id_format: "{account_id}/{tunnel_id}"
