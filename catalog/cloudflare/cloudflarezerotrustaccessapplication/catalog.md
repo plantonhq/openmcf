@@ -1,4 +1,4 @@
-# Zero Trust App on Cloudflare
+# Cloudflare Zero Trust Access Application
 
 Deploys a Cloudflare Zero Trust Access application: the protected resource -- a self-hosted web app, a SaaS app, an SSH/VNC/RDP target, an app launcher, or an MCP endpoint -- that Cloudflare Access guards. The application binds one or more standalone Access policies (referenced by ID) to the resource and configures how users reach and authenticate to it: session lifetime, identity providers, cookie posture, CORS, and -- for SaaS types -- the SAML or OIDC federation Cloudflare provides. An application is account-scoped or zone-scoped (exactly one of `accountId` or `zoneId`); account scope is the common case and lets the app reuse account-level policies and groups.
 
@@ -27,7 +27,7 @@ Policies themselves are separate resources -- this component attaches existing C
 
 ### Console
 
-Open the deployment store, find **Zero Trust App on Cloudflare**, and click **Deploy**. The creation wizard captures the scope (account or zone), the application type and protected domain, the attached policies, and session settings. Start from the **Self-hosted web application** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Access Application**, and click **Deploy**. The creation wizard captures the scope (account or zone), the application type and protected domain, the attached policies, and session settings. Start from the **Self-hosted web application** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -130,8 +130,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Zero Trust Access Policy on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- attached via `policies[]` to decide who is admitted
-- [**Zero Trust Access Group on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-group) -- reusable identity groups the attached policies reference
+- [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- attached via `policies[]` to decide who is admitted
+- [**Cloudflare Zero Trust Access Group**](/cloud-catalog/cloudflare-zero-trust-access-group) -- reusable identity groups the attached policies reference
 - [**Zero Trust Access Identity Provider on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-identity-provider) -- the IdPs `allowedIdps` restricts sign-in to
-- [**Zero Trust Tunnel on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- publishes the private origin a self-hosted application protects
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- scopes a zone-level application and hosts the protected hostname
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- publishes the private origin a self-hosted application protects
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- scopes a zone-level application and hosts the protected hostname

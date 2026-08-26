@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a DNS Zone on Cloudflare resource by reference.
+- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a Cloudflare DNS Zone resource by reference.
 - **The snippets the rules invoke** -- each rule's `snippetName` must exist in the zone; a missing name fails at apply, not at validation. Create the Cloudflare Snippet resources first.
 - **Sole ownership of the zone's snippet-rule table** -- a second manifest, a dashboard edit, or another team's rules against the same zone will be silently overwritten by this manifest's next apply.
 
@@ -117,4 +117,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**Cloudflare Snippet**](/cloud-catalog/cloudflare-snippet) -- the code this table invokes by name; create the snippet first.
 - [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- the other expression table on the zone (WAF, cache, redirects), same Rules language, different engine.
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.

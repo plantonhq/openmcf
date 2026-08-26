@@ -1,4 +1,4 @@
-# List on Cloudflare
+# Cloudflare List
 
 Deploys a reusable, named Cloudflare List -- a collection you reference from rule expressions such as a WAF rule's `ip.src in $office_ips` or a Bulk Redirect ruleset's `from_list`. A list fixes a single entry shape at creation (IP/CIDR, redirect, hostname, or ASN); its entries are managed independently as List Item Cloud Resources, so one list can hold a handful of curated values or a large, separately-owned set. Lists are account-scoped, and an empty list is a valid, referenceable object -- the right shape for a container you fill later.
 
@@ -23,7 +23,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **List on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account, the list type, an expression-friendly name, and an optional description. Start from the **IP Allowlist** preset in the [Presets](#presets) tab for a typical firewall list.
+Open the deployment store, find **Cloudflare List**, and click **Deploy**. The creation wizard captures the owning account, the list type, an expression-friendly name, and an optional description. Start from the **IP Allowlist** preset in the [Presets](#presets) tab for a typical firewall list.
 
 ### CLI
 
@@ -84,5 +84,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**List Item on Cloudflare**](/cloud-catalog/cloudflare-list-item) -- adds entries to this list (via `listId`), one independently-managed entry at a time
+- [**Cloudflare List Item**](/cloud-catalog/cloudflare-list-item) -- adds entries to this list (via `listId`), one independently-managed entry at a time
 - [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- a Bulk Redirect rule references a redirect list by name (via `from_list`); WAF custom rules match against `$name`

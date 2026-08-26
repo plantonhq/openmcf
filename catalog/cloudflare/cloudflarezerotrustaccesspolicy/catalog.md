@@ -1,4 +1,4 @@
-# Zero Trust Access Policy on Cloudflare
+# Cloudflare Zero Trust Access Policy
 
 Deploys a reusable Cloudflare Zero Trust Access policy: a decision (allow / deny / non-identity / bypass) plus the include / exclude / require rules that decide which requests it applies to, with optional approval, browser-isolation, purpose-justification, RDP, and MFA controls. Policies are standalone and account-scoped: one policy can guard many Access applications, which attach it by referencing its `policy_id` output, so its rules evolve in one place.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Access Policy on Cloudflare**, and click **Deploy**. The creation wizard walks you through identity and decision, the include / exclude / require rule builders, the governance controls, and the connection/MFA options. Start from the **Allow staff** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Access Policy**, and click **Deploy**. The creation wizard walks you through identity and decision, the include / exclude / require rule builders, the governance controls, and the connection/MFA options. Start from the **Allow staff** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -115,5 +115,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Zero Trust Access Group on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-group) -- referenced by this policy's `group` rule
+- [**Cloudflare Zero Trust Access Group**](/cloud-catalog/cloudflare-zero-trust-access-group) -- referenced by this policy's `group` rule
 - [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches this policy via its policies list

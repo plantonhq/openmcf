@@ -1,4 +1,4 @@
-# Zero Trust Tunnel on Cloudflare
+# Cloudflare Zero Trust Tunnel
 
 Provisions a Cloudflare Tunnel (cloudflared): a secure, outbound-only connection from a private network to Cloudflare's edge. A tunnel exposes private HTTP/TCP/SSH/RDP services via public hostnames (ingress rules) and makes private IP ranges reachable to WARP clients (via `CloudflareZeroTrustTunnelRoute`) -- without opening a single inbound firewall port. The connector authenticates with the run token exported in the stack outputs.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Tunnel on Cloudflare**, and click **Deploy**. The creation wizard captures the tunnel identity (account, name, configuration source, and an optional managed-secret run secret), the public-hostname ingress rules, and the tunnel-level origin connection defaults (including a Cloudflare Access block). Start from the **Publish a private app on a public hostname** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Tunnel**, and click **Deploy**. The creation wizard captures the tunnel identity (account, name, configuration source, and an optional managed-secret run secret), the public-hostname ingress rules, and the tunnel-level origin connection defaults (including a Cloudflare Access block). Start from the **Publish a private app on a public hostname** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -119,7 +119,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Zero Trust Tunnel Route on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- advertises private CIDRs through this tunnel
-- [**Zero Trust Tunnel Virtual Network on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment a route belongs to
+- [**Cloudflare Zero Trust Tunnel Route**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- advertises private CIDRs through this tunnel
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment a route belongs to
 - [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- the Access apps an ingress Access block references
-- [**DNS Record on Cloudflare**](/cloud-catalog/cloudflare-dns-record) -- the CNAME that points a public hostname at the tunnel
+- [**Cloudflare DNS Record**](/cloud-catalog/cloudflare-dns-record) -- the CNAME that points a public hostname at the tunnel

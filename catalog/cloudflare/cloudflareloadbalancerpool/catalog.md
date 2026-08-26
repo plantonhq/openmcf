@@ -1,4 +1,4 @@
-# Load Balancer Pool on Cloudflare
+# Cloudflare Load Balancer Pool
 
 Deploys a reusable Cloudflare Load Balancing origin pool. A pool groups origin servers, health-checks them via a referenced monitor, and is selected by one or more zone-scoped load balancers as default, fallback, or geo-routed pools. Pools are account-scoped and have an independent lifecycle, so one pool can serve several load balancers at once.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Load Balancer Pool on Cloudflare**, and click **Deploy**. The creation wizard walks you through account and name, the origins builder, the monitor reference and check regions, and optional advanced tuning. Start from the **Web pool** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Load Balancer Pool**, and click **Deploy**. The creation wizard walks you through account and name, the origins builder, the monitor reference and check regions, and optional advanced tuning. Start from the **Web pool** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -121,5 +121,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Load Balancer Monitor on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-monitor) -- health-checks this pool's origins
-- [**Load Balancer on Cloudflare**](/cloud-catalog/cloudflare-load-balancer) -- references this pool as a default, fallback, or geo-routed pool
+- [**Cloudflare Load Balancer Monitor**](/cloud-catalog/cloudflare-load-balancer-monitor) -- health-checks this pool's origins
+- [**Cloudflare Load Balancer**](/cloud-catalog/cloudflare-load-balancer) -- references this pool as a default, fallback, or geo-routed pool

@@ -1,4 +1,4 @@
-# Email Routing Zone on Cloudflare
+# Cloudflare Email Routing Zone
 
 Enables Cloudflare Email Routing on a DNS zone -- the anchor of the Email Routing family. Enabling provisions the records inbound mail needs (MX, SPF, DKIM) automatically and configures the single per-zone catch-all rule that decides what happens to mail no other routing rule matched: leave Cloudflare's default (drop), forward to verified destinations, or hand it to an Email Worker. Enabling replaces the zone's existing mail delivery path, so never enable it on a domain whose mail another system (Google Workspace, O365) must keep handling. Individual routing rules and destination addresses are separate Cloud Resources that build on top of an enabled zone.
 
@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Email Routing Zone on Cloudflare**, and click **Deploy**. The creation wizard captures the zone, whether the auto-created DNS records are locked, and the optional catch-all action. Leave the catch-all as **None** to keep Cloudflare's default (drop, disabled). Start from the **Forward-All Email Routing** or **Drop Catch-All Email Routing** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Email Routing Zone**, and click **Deploy**. The creation wizard captures the zone, whether the auto-created DNS records are locked, and the optional catch-all action. Leave the catch-all as **None** to keep Cloudflare's default (drop, disabled). Start from the **Forward-All Email Routing** or **Drop Catch-All Email Routing** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -128,7 +128,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Email Routing Rule on Cloudflare**](/cloud-catalog/cloudflare-email-routing-rule) -- per-recipient rules that take precedence over the catch-all
-- [**Email Routing Address on Cloudflare**](/cloud-catalog/cloudflare-email-routing-address) -- the verified mailboxes a forwarding catch-all delivers to
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the Email Worker a worker catch-all hands unmatched mail to
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone Email Routing is enabled on
+- [**Cloudflare Email Routing Rule**](/cloud-catalog/cloudflare-email-routing-rule) -- per-recipient rules that take precedence over the catch-all
+- [**Cloudflare Email Routing Address**](/cloud-catalog/cloudflare-email-routing-address) -- the verified mailboxes a forwarding catch-all delivers to
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- the Email Worker a worker catch-all hands unmatched mail to
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone Email Routing is enabled on

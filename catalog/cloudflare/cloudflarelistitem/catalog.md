@@ -1,4 +1,4 @@
-# List Item on Cloudflare
+# Cloudflare List Item
 
 Adds a single entry to a Cloudflare List. Items have independent lifecycles, so a list can grow or shrink one entry at a time without rewriting the whole set -- ideal when entries are owned by different teams or pipelines. The entry's shape (an IP/CIDR, an ASN, a hostname, or a redirect rule) must match the parent list's kind, and item values are immutable in the provider: changing a value replaces the item with a new identifier.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **List Item on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and parent list (with a live connection diagram), then the entry value via a type-aware editor. Start from the **IP List Entry** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare List Item**, and click **Deploy**. The creation wizard captures the owning account and parent list (with a live connection diagram), then the entry value via a type-aware editor. Start from the **IP List Entry** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -110,4 +110,4 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**List on Cloudflare**](/cloud-catalog/cloudflare-list) -- the parent container this entry is written into (via `listId`)
+- [**Cloudflare List**](/cloud-catalog/cloudflare-list) -- the parent container this entry is written into (via `listId`)

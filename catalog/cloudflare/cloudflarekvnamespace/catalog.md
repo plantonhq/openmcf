@@ -1,4 +1,4 @@
-# KV Namespace on Cloudflare
+# Cloudflare KV Namespace
 
 Deploys a Workers KV namespace on Cloudflare for globally replicated, eventually consistent key-value storage at the edge. The namespace is the container: Workers bind it for low-latency reads across Cloudflare's network, and individual entries are seeded as `CloudflareWorkersKvPair` resources or written by the application at runtime. Writes can take up to about 60 seconds to become visible from every edge location, which makes KV right for read-heavy configuration and content and wrong for counters, locks, or read-after-write workloads.
 
@@ -23,7 +23,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **KV Namespace on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard KV Namespace** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare KV Namespace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard KV Namespace** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -81,5 +81,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- binds the namespace (via `namespace_id`) for edge reads and runtime writes
-- [**Workers KV Pair on Cloudflare**](/cloud-catalog/cloudflare-workers-kv-pair) -- seeds individual entries into this namespace as declarative resources
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- binds the namespace (via `namespace_id`) for edge reads and runtime writes
+- [**Cloudflare Workers KV Pair**](/cloud-catalog/cloudflare-workers-kv-pair) -- seeds individual entries into this namespace as declarative resources

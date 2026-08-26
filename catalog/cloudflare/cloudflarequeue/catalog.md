@@ -1,4 +1,4 @@
-# Queue on Cloudflare
+# Cloudflare Queue
 
 Deploys a Cloudflare Queue -- a managed, guaranteed-delivery message queue for Cloudflare Workers. Producers (a Worker's `queues` binding or an R2 bucket's event notifications) write messages; a single consumer reads them, decoupling the two so a slow or offline consumer never drops a producer's message. The consumer is modeled inline: leave it unset to start with producers only, or attach a push (Worker) or HTTP-pull consumer. Queues are account-scoped, and a queue has exactly one consumer at a time.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Queue on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and queue name, optional delivery settings (delay, pause, retention), and an optional consumer. Leave the consumer as **None** to provision a producer-only queue you can wire a consumer to later. Start from the **Queue with a Worker (push) consumer** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Queue**, and click **Deploy**. The creation wizard captures the owning account and queue name, optional delivery settings (delay, pause, retention), and an optional consumer. Leave the consumer as **None** to provision a producer-only queue you can wire a consumer to later. Start from the **Queue with a Worker (push) consumer** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -120,5 +120,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- produces to a queue (a `queues` binding) and/or consumes one (as the queue's worker consumer)
-- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket) -- emits event notifications to a queue
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- produces to a queue (a `queues` binding) and/or consumes one (as the queue's worker consumer)
+- [**Cloudflare R2 Bucket**](/cloud-catalog/cloudflare-r2-bucket) -- emits event notifications to a queue

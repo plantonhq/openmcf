@@ -1,4 +1,4 @@
-# Email Routing Rule on Cloudflare
+# Cloudflare Email Routing Rule
 
 Defines a single Cloudflare Email Routing rule for a zone: match inbound mail -- by a specific recipient or all messages -- and then drop it, forward it to verified destinations, or hand it to an Email Worker. Rules require Email Routing to be enabled on the zone (a `CloudflareEmailRoutingZone`) and every forwarding destination must be a verified `CloudflareEmailRoutingAddress` -- the API rejects the rule otherwise. Rules are evaluated in priority order, so specific rules can take precedence over broad ones.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Email Routing Rule on Cloudflare**, and click **Deploy**. The creation wizard captures the zone and rule metadata (name, enabled, priority), at least one matcher (a specific recipient or all messages), and the ordered actions (drop / forward / Email Worker -- combinable in one rule). Start from the **Forward an Address** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Email Routing Rule**, and click **Deploy**. The creation wizard captures the zone and rule metadata (name, enabled, priority), at least one matcher (a specific recipient or all messages), and the ordered actions (drop / forward / Email Worker -- combinable in one rule). Start from the **Forward an Address** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -127,7 +127,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Email Routing Zone on Cloudflare**](/cloud-catalog/cloudflare-email-routing-zone) -- enables Email Routing on the zone this rule belongs to
-- [**Email Routing Address on Cloudflare**](/cloud-catalog/cloudflare-email-routing-address) -- the verified mailboxes a forwarding rule delivers to
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the Email Worker a worker rule hands matched mail to
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose inbound mail is filtered; `zoneId` references its output
+- [**Cloudflare Email Routing Zone**](/cloud-catalog/cloudflare-email-routing-zone) -- enables Email Routing on the zone this rule belongs to
+- [**Cloudflare Email Routing Address**](/cloud-catalog/cloudflare-email-routing-address) -- the verified mailboxes a forwarding rule delivers to
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- the Email Worker a worker rule hands matched mail to
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose inbound mail is filtered; `zoneId` references its output

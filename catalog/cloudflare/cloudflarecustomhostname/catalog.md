@@ -1,4 +1,4 @@
-# Custom Hostname on Cloudflare
+# Cloudflare Custom Hostname
 
 Attaches a customer's own domain to a Cloudflare-for-SaaS zone. It extends Cloudflare's edge -- TLS termination, caching, WAF -- onto a hostname your customer owns (e.g. `support.acme.com`), with a per-customer certificate that Cloudflare provisions and auto-renews. Onboarding alone does not make the hostname live: the customer must CNAME their hostname to the SaaS zone and prove control using the ownership-verification records exported in the stack outputs, and the hostname sits in `pending` or `pending_validation` until they do.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Custom Hostname on Cloudflare**, and click **Deploy**. The creation wizard captures the SaaS zone and hostname, an optional per-hostname origin override (with a live connection diagram), and an optional TLS/SSL block. Start from the **SaaS Vanity Domain (recommended)** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Custom Hostname**, and click **Deploy**. The creation wizard captures the SaaS zone and hostname, an optional per-hostname origin override (with a live connection diagram), and an optional TLS/SSL block. Start from the **SaaS Vanity Domain (recommended)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -120,6 +120,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the SaaS zone the hostname is added to; `zoneId` references its output
-- [**Custom Hostname Fallback Origin on Cloudflare**](/cloud-catalog/cloudflare-custom-hostname-fallback-origin) -- the zone-level default backend this hostname routes to when no override is set
-- [**Load Balancer on Cloudflare**](/cloud-catalog/cloudflare-load-balancer) -- a common `customOriginServer` target for customers with dedicated backends
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the SaaS zone the hostname is added to; `zoneId` references its output
+- [**Cloudflare Custom Hostname Fallback Origin**](/cloud-catalog/cloudflare-custom-hostname-fallback-origin) -- the zone-level default backend this hostname routes to when no override is set
+- [**Cloudflare Load Balancer**](/cloud-catalog/cloudflare-load-balancer) -- a common `customOriginServer` target for customers with dedicated backends

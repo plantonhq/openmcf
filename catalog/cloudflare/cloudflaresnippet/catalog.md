@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a DNS Zone on Cloudflare resource by reference.
+- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a Cloudflare DNS Zone resource by reference.
 - **A unique `snippetName`** -- because create is an upsert, a name that already exists in the zone is silently overwritten. Coordinate names across teams the way you coordinate Worker script names.
 - **Headroom under the plan's snippet-count limit** -- free plans allow a small number of snippets per zone; the cap is Cloudflare's, checked at create.
 
@@ -116,5 +116,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Cloudflare Snippet Rules**](/cloud-catalog/cloudflare-snippet-rules) -- the zone's routing table that invokes this snippet by name; nothing runs without it.
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the full Worker for logic that needs bindings, cron, or a custom domain.
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- the full Worker for logic that needs bindings, cron, or a custom domain.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.

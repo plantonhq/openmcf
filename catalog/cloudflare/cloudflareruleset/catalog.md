@@ -17,9 +17,9 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **A zone or an account scope** -- a Cloudflare zone (wire `zoneId` to a DNS Zone on Cloudflare resource or pass a literal) for zone-level rulesets, or `accountId` for account-level `custom`/`root` rulesets. Exactly one of the two.
+- **A zone or an account scope** -- a Cloudflare zone (wire `zoneId` to a Cloudflare DNS Zone resource or pass a literal) for zone-level rulesets, or `accountId` for account-level `custom`/`root` rulesets. Exactly one of the two.
 - **A plan carrying the phase** (only for paid phases) -- custom firewall rules (`http_request_firewall_custom`) work on the free plan; executing managed WAF rulesets (`http_request_firewall_managed`) and rate limiting (`http_ratelimit`) are paid-plan features. A deploy into a gated phase on a free-plan zone fails at the API, not at validation.
-- **The backing List** (only for `fromList` redirects) -- a Bulk Redirect rule that resolves targets from a reusable list needs the List on Cloudflare resource to exist first, and rules whose expressions use `$list_name` references need those lists too.
+- **The backing List** (only for `fromList` redirects) -- a Bulk Redirect rule that resolves targets from a reusable list needs the Cloudflare List resource to exist first, and rules whose expressions use `$list_name` references need those lists too.
 
 ## Deploy
 
@@ -132,7 +132,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope for zone-level rulesets; wire `zoneId` via ValueFromRef.
-- [**List on Cloudflare**](/cloud-catalog/cloudflare-list) -- backs Bulk Redirect rules via `fromList` and `$list` references in expressions.
-- [**List Item on Cloudflare**](/cloud-catalog/cloudflare-list-item) -- the individual source-to-target entries inside a Bulk Redirect list.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope for zone-level rulesets; wire `zoneId` via ValueFromRef.
+- [**Cloudflare List**](/cloud-catalog/cloudflare-list) -- backs Bulk Redirect rules via `fromList` and `$list` references in expressions.
+- [**Cloudflare List Item**](/cloud-catalog/cloudflare-list-item) -- the individual source-to-target entries inside a Bulk Redirect list.
 - [**Cloudflare Snippet Rules**](/cloud-catalog/cloudflare-snippet-rules) -- the other expression table on the zone: same Rules language, routing requests to snippets instead of taking ruleset actions.

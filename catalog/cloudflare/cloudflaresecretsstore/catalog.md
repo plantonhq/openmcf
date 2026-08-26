@@ -84,5 +84,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Cloudflare Secrets Store Secret**](/cloud-catalog/cloudflare-secrets-store-secret) -- the secrets inside this store, each a separate resource wired to `store_id`.
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- secrets-store bindings that read secrets from this vault at runtime.
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- secrets-store bindings that read secrets from this vault at runtime.
 - [**Cloudflare AI Gateway**](/cloud-catalog/cloudflare-ai-gateway) -- BYO-keys authentication backed by secrets in this store.

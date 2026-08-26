@@ -1,4 +1,4 @@
-# Email Routing Address on Cloudflare
+# Cloudflare Email Routing Address
 
 Registers a verified destination address for Cloudflare Email Routing -- an account-scoped mailbox that routing rules and zone catch-alls forward to. Creating it sends a verification email to the mailbox; the address cannot receive forwarded mail until its owner clicks the link, and Cloudflare rejects any rule that forwards to an unverified address. Because addresses are account-scoped, you register a teammate's inbox once and reference it from any routing rule or zone catch-all in the account.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Email Routing Address on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and the destination email. Both are fixed at creation -- changing either replaces the address. Start from the **Destination Address** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Email Routing Address**, and click **Deploy**. The creation wizard captures the owning account and the destination email. Both are fixed at creation -- changing either replaces the address. Start from the **Destination Address** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -87,5 +87,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Email Routing Rule on Cloudflare**](/cloud-catalog/cloudflare-email-routing-rule) -- forwards matched mail to this address
-- [**Email Routing Zone on Cloudflare**](/cloud-catalog/cloudflare-email-routing-zone) -- a forwarding catch-all delivers unmatched mail to this address
+- [**Cloudflare Email Routing Rule**](/cloud-catalog/cloudflare-email-routing-rule) -- forwards matched mail to this address
+- [**Cloudflare Email Routing Zone**](/cloud-catalog/cloudflare-email-routing-zone) -- a forwarding catch-all delivers unmatched mail to this address

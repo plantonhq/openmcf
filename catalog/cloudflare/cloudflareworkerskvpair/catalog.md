@@ -1,4 +1,4 @@
-# Workers KV Pair on Cloudflare
+# Cloudflare Workers KV Pair
 
 Deploys a single key-value entry inside a Cloudflare Workers KV namespace, managed and versioned as infrastructure. It exists as a first-class Cloud Resource so configuration keys can be seeded and reviewed in code (and reference other resources' outputs) -- distinct from the high-churn application data a Worker writes at runtime. Each entry belongs to a KV namespace and is account-scoped.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Workers KV Pair on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and parent namespace (a searchable selector lists live namespaces in the account), then the key, value, and optional JSON metadata. A connection diagram shows the Namespace -> Entry edge. Start from the **Standard KV Entry** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Workers KV Pair**, and click **Deploy**. The creation wizard captures the owning account and parent namespace (a searchable selector lists live namespaces in the account), then the key, value, and optional JSON metadata. A connection diagram shows the Namespace -> Entry edge. Start from the **Standard KV Entry** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -106,5 +106,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace) -- the namespace this entry is written into (via `namespaceId`)
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- reads this entry at runtime through a `kv` binding to the namespace
+- [**Cloudflare KV Namespace**](/cloud-catalog/cloudflare-kv-namespace) -- the namespace this entry is written into (via `namespaceId`)
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- reads this entry at runtime through a `kv` binding to the namespace

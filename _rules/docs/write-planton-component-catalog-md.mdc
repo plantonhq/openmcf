@@ -38,6 +38,8 @@ The catalog bundle derives every kind's display metadata from this file's head:
 
 Therefore: the H1 is the human display name ("AWS S3 Bucket", never `AwsS3Bucket`), and the opening paragraph begins with a complete, self-sufficient sentence — that sentence stands alone on cards, in search results, and in agent tool output.
 
+**Display-name grammar: provider-first, spelled out.** The display name leads with the provider and matches the vendor's own product-name grammar — "Cloudflare Worker", "AWS S3 Bucket", "Auth0 Role" — never the suffix form ("Worker on Cloudflare"), and never abbreviated ("Zero Trust Access Application", not "Zero Trust App"). Provider-first is what users search (vendors name their products that way), and one grammar across the catalog is what makes card grids and search results scan. The display name is a contract: every cross-page mention (Works With links, the Console arm's "find **{Display Name}**" line) uses it verbatim.
+
 ---
 
 ## The Persona You Must Assume

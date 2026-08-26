@@ -1,4 +1,4 @@
-# Pages Project on Cloudflare
+# Cloudflare Pages Project
 
 Provisions a Cloudflare Pages project: a managed site host that builds and serves a static site or full-stack app (static assets plus Pages Functions) from Cloudflare's edge. This manages the durable **project** -- its build configuration, optional git connection, per-environment runtime configuration (bindings, env vars, compatibility), and custom domains. Deployments themselves are produced out-of-band (a git push for connected projects, or `wrangler pages deploy` for direct upload).
 
@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Pages Project on Cloudflare**, and click **Deploy**. The creation wizard captures the account, project name, build configuration, optional git source, the production and preview deployment configs (bindings, variables, secrets), and custom domains. Start from the **Git-Connected Site** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Pages Project**, and click **Deploy**. The creation wizard captures the account, project name, build configuration, optional git source, the production and preview deployment configs (bindings, variables, secrets), and custom domains. Start from the **Git-Connected Site** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -146,9 +146,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace) -- bound to Functions for edge key-value storage
-- [**D1 Database on Cloudflare**](/cloud-catalog/cloudflare-d1-database) -- bound to Functions for serverless SQL
-- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket) -- bound to Functions for object storage
-- [**Queue on Cloudflare**](/cloud-catalog/cloudflare-queue) -- bound to Functions as a producer
-- [**Hyperdrive Config on Cloudflare**](/cloud-catalog/cloudflare-hyperdrive-config) -- bound to Functions for pooled SQL access
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- bound to Functions for service-to-service calls
+- [**Cloudflare KV Namespace**](/cloud-catalog/cloudflare-kv-namespace) -- bound to Functions for edge key-value storage
+- [**Cloudflare D1 Database**](/cloud-catalog/cloudflare-d1-database) -- bound to Functions for serverless SQL
+- [**Cloudflare R2 Bucket**](/cloud-catalog/cloudflare-r2-bucket) -- bound to Functions for object storage
+- [**Cloudflare Queue**](/cloud-catalog/cloudflare-queue) -- bound to Functions as a producer
+- [**Cloudflare Hyperdrive Config**](/cloud-catalog/cloudflare-hyperdrive-config) -- bound to Functions for pooled SQL access
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- bound to Functions for service-to-service calls

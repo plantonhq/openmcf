@@ -1,4 +1,4 @@
-# DNS Record on Cloudflare
+# Cloudflare DNS Record
 
 Deploys a single DNS record within a Cloudflare zone, covering both simple types (A, AAAA, CNAME, MX, TXT, NS, PTR, OPENPGPKEY) whose value is one `content` string and structured types (SRV, CAA, HTTPS, SVCB, TLSA, DS, DNSKEY, CERT, LOC, NAPTR, SMIMEA, SSHFP, URI) whose fields travel in a typed `data` block. Proxy status, TTL, MX priority, comments, tags, and per-record serving settings are all configurable, and the manifest is validated so the value representation always matches the record type.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Record on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Proxied A Record** preset in the [Presets](#presets) tab to pre-populate a proxied web-facing record.
+Open the deployment store, find **Cloudflare DNS Record**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Proxied A Record** preset in the [Presets](#presets) tab to pre-populate a proxied web-facing record.
 
 ### CLI
 
@@ -120,5 +120,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID where this DNS record is created
-- [**Custom Hostname Fallback Origin on Cloudflare**](/cloud-catalog/cloudflare-custom-hostname-fallback-origin) -- SaaS zones need an in-zone record backing the fallback origin hostname; this component creates it
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID where this DNS record is created
+- [**Cloudflare Custom Hostname Fallback Origin**](/cloud-catalog/cloudflare-custom-hostname-fallback-origin) -- SaaS zones need an in-zone record backing the fallback origin hostname; this component creates it

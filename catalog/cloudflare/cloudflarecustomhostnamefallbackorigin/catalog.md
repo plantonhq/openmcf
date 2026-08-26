@@ -1,4 +1,4 @@
-# Custom Hostname Fallback Origin on Cloudflare
+# Cloudflare Custom Hostname Fallback Origin
 
 Sets the default origin for a Cloudflare-for-SaaS zone: the backend that all of the zone's custom hostnames route to unless an individual hostname overrides it. It is a zone-level singleton (one per zone) and a prerequisite for serving traffic to any custom hostname in the zone. The fallback origin has no resource ID of its own -- its API identity is the zone -- so two manifests targeting the same zone are the same object, and the second apply overwrites the first.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Custom Hostname Fallback Origin on Cloudflare**, and click **Deploy**. The creation wizard captures the zone and the default backend origin. Start from the **SaaS Fallback Origin** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Custom Hostname Fallback Origin**, and click **Deploy**. The creation wizard captures the zone and the default backend origin. Start from the **SaaS Fallback Origin** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -108,6 +108,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the SaaS zone this origin serves; `zoneId` references its output
-- [**DNS Record on Cloudflare**](/cloud-catalog/cloudflare-dns-record) -- creates the in-zone record the origin hostname must resolve to
-- [**Custom Hostname on Cloudflare**](/cloud-catalog/cloudflare-custom-hostname) -- the per-customer hostnames that route to this fallback origin
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the SaaS zone this origin serves; `zoneId` references its output
+- [**Cloudflare DNS Record**](/cloud-catalog/cloudflare-dns-record) -- creates the in-zone record the origin hostname must resolve to
+- [**Cloudflare Custom Hostname**](/cloud-catalog/cloudflare-custom-hostname) -- the per-customer hostnames that route to this fallback origin

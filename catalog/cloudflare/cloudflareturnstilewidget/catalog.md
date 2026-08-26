@@ -1,4 +1,4 @@
-# Turnstile Widget on Cloudflare
+# Cloudflare Turnstile Widget
 
 Provisions a Cloudflare Turnstile widget: a privacy-preserving CAPTCHA alternative that protects forms and endpoints from bots without the friction of traditional CAPTCHAs. A widget yields a public **site key** you embed in your page and a sensitive **secret key** your backend uses to verify tokens via the `/siteverify` endpoint.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Turnstile Widget on Cloudflare**, and click **Deploy**. The creation wizard captures the account, name, served domains, challenge mode, and region. Start from the **Managed Widget** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Turnstile Widget**, and click **Deploy**. The creation wizard captures the account, name, served domains, challenge mode, and region. Start from the **Managed Widget** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -93,4 +93,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- verifies Turnstile tokens server-side by referencing the widget's `secret` output as a secret binding
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- verifies Turnstile tokens server-side by referencing the widget's `secret` output as a secret binding

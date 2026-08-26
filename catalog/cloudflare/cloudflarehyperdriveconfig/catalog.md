@@ -1,4 +1,4 @@
-# Hyperdrive Config on Cloudflare
+# Cloudflare Hyperdrive Config
 
 Deploys a Cloudflare Hyperdrive -- a connection pooler and global query cache that lets a Worker reach a regional SQL database (PostgreSQL or MySQL) with low latency. A Worker binds to this config and queries the origin without paying the full connection-setup round trip on every request; Hyperdrive reuses warm, pooled connections and can cache read-query results at the edge. Hyperdrive configs are account-scoped, and creation is a live connection test: Cloudflare dials the origin when the config is created, so an unreachable host or wrong credentials fail the deploy, not the first query.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Hyperdrive Config on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account and name, the required origin connection (engine, host, port, database, user, and the reference-only password secret), and optional caching, tuning, and mTLS settings. Start from the **Basic PostgreSQL Hyperdrive** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Hyperdrive Config**, and click **Deploy**. The creation wizard captures the owning account and name, the required origin connection (engine, host, port, database, user, and the reference-only password secret), and optional caching, tuning, and mTLS settings. Start from the **Basic PostgreSQL Hyperdrive** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -98,4 +98,4 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- binds this config (a `hyperdrive` binding) to query the origin database with pooled, cached connections
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- binds this config (a `hyperdrive` binding) to query the origin database with pooled, cached connections

@@ -1,4 +1,4 @@
-# Certificate Pack on Cloudflare
+# Cloudflare Certificate Pack
 
 Orders an advanced edge certificate for a zone: a publicly-trusted (browser-trusted) TLS certificate, provisioned and auto-renewed by Cloudflare, that covers the hostnames you list beyond the free Universal SSL certificate. Use it when you need a specific certificate authority, multiple or longer-lived certificates, or coverage for hostnames Universal SSL does not include. A pack is an order, not a document you edit: changing hosts, CA, validation method, or validity replaces the pack and starts a new validation cycle.
 
@@ -23,7 +23,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Certificate Pack on Cloudflare**, and click **Deploy**. The creation wizard captures the zone, the certificate authority, validation method, validity, and the covered hosts. Start from the **Advanced Certificate (TXT validation)** or **Let's Encrypt, Apex-Only, Annual** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Certificate Pack**, and click **Deploy**. The creation wizard captures the zone, the certificate authority, validation method, validity, and the covered hosts. Start from the **Advanced Certificate (TXT validation)** or **Let's Encrypt, Apex-Only, Annual** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -121,5 +121,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone the certificate is ordered for; `zoneId` references its output
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone the certificate is ordered for; `zoneId` references its output
 - [**Cloudflare Zone TLS Settings**](/cloud-catalog/cloudflare-zone-tls-settings) -- controls the TLS posture (minimum version, ciphers) the certificate is served with

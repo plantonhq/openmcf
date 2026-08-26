@@ -1,4 +1,4 @@
-# Worker on Cloudflare
+# Cloudflare Worker
 
 Deploys a Cloudflare Worker — a script that runs on Cloudflare's edge — with its bindings, routing, schedules, and runtime settings. Bindings are grouped by type (the wrangler.toml grain) and each cross-resource binding accepts a literal or a reference to the producing resource, so a Worker composes as a real node in the resource graph.
 
@@ -29,7 +29,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Worker on Cloudflare**, and click **Deploy**. The creation wizard walks through the account and script source, bindings, routing, and runtime settings. Start from the **Minimal Worker** preset in the [Presets](#presets) tab for an inline hello-world, or **Edge API with Custom Domain** for a production-shaped Worker.
+Open the deployment store, find **Cloudflare Worker**, and click **Deploy**. The creation wizard walks through the account and script source, bindings, routing, and runtime settings. Start from the **Minimal Worker** preset in the [Presets](#presets) tab for an inline hello-world, or **Edge API with Custom Domain** for a production-shaped Worker.
 
 ### CLI
 
@@ -121,10 +121,10 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**KV Namespace on Cloudflare**](/cloud-catalog/cloudflare-kv-namespace) -- bound for edge key-value reads and writes
-- [**D1 Database on Cloudflare**](/cloud-catalog/cloudflare-d1-database) -- bound for serverless SQL access
-- [**R2 Bucket on Cloudflare**](/cloud-catalog/cloudflare-r2-bucket) -- bound for object storage, or holds the CI-built script bundle (`r2Bundle`)
-- [**Queue on Cloudflare**](/cloud-catalog/cloudflare-queue) -- the Worker produces to it via a `queues` binding, or consumes it as the queue's worker consumer
-- [**Hyperdrive Config on Cloudflare**](/cloud-catalog/cloudflare-hyperdrive-config) -- bound for pooled access to a regional SQL database
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- hosts the Worker's custom domains and route patterns
-- [**Zero Trust Tunnel on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- bound through `vpcNetworks` so the Worker reaches private networks
+- [**Cloudflare KV Namespace**](/cloud-catalog/cloudflare-kv-namespace) -- bound for edge key-value reads and writes
+- [**Cloudflare D1 Database**](/cloud-catalog/cloudflare-d1-database) -- bound for serverless SQL access
+- [**Cloudflare R2 Bucket**](/cloud-catalog/cloudflare-r2-bucket) -- bound for object storage, or holds the CI-built script bundle (`r2Bundle`)
+- [**Cloudflare Queue**](/cloud-catalog/cloudflare-queue) -- the Worker produces to it via a `queues` binding, or consumes it as the queue's worker consumer
+- [**Cloudflare Hyperdrive Config**](/cloud-catalog/cloudflare-hyperdrive-config) -- bound for pooled access to a regional SQL database
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- hosts the Worker's custom domains and route patterns
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- bound through `vpcNetworks` so the Worker reaches private networks

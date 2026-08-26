@@ -1,4 +1,4 @@
-# D1 Database on Cloudflare
+# Cloudflare D1 Database
 
 Deploys a Cloudflare D1 serverless SQLite database with configurable region placement and optional read replication. The database is the container a Worker queries through a `d1` binding; schema (tables, indexes, migrations) is managed by the application via Wrangler, not at this layer. Placement is a creation-time decision: changing the region hint or jurisdiction later replaces the database and destroys its data.
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **D1 Database on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare D1 Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -88,4 +88,4 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- the primary consumer; a Worker's `d1` binding references the `database_id` output
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- the primary consumer; a Worker's `d1` binding references the `database_id` output

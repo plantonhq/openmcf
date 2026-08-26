@@ -1,4 +1,4 @@
-# Load Balancer Monitor on Cloudflare
+# Cloudflare Load Balancer Monitor
 
 Deploys a reusable Cloudflare Load Balancing health monitor. A monitor probes the origins inside a load balancer pool and decides whether each origin (and the pool) is healthy. Monitors are account-scoped and reusable -- many pools can reference the same monitor -- and a monitor has no knowledge of the pools that use it, so its lifecycle is deliberately independent of theirs.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Load Balancer Monitor on Cloudflare**, and click **Deploy**. The creation wizard walks you through account and protocol selection, the protocol-specific probe configuration, and the timing thresholds. Start from the **HTTPS web health check** preset in the [Presets](#presets) tab for an application-layer check.
+Open the deployment store, find **Cloudflare Load Balancer Monitor**, and click **Deploy**. The creation wizard walks you through account and protocol selection, the protocol-specific probe configuration, and the timing thresholds. Start from the **HTTPS web health check** preset in the [Presets](#presets) tab for an application-layer check.
 
 ### CLI
 
@@ -94,5 +94,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Load Balancer Pool on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-pool) -- references this monitor (via `monitor`) to health-check its origins
-- [**Load Balancer on Cloudflare**](/cloud-catalog/cloudflare-load-balancer) -- steers traffic across the pools this monitor keeps honest
+- [**Cloudflare Load Balancer Pool**](/cloud-catalog/cloudflare-load-balancer-pool) -- references this monitor (via `monitor`) to health-check its origins
+- [**Cloudflare Load Balancer**](/cloud-catalog/cloudflare-load-balancer) -- steers traffic across the pools this monitor keeps honest

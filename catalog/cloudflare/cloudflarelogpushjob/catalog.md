@@ -119,6 +119,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the scope for every zone dataset; wire `zoneId` via ValueFromRef.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the scope for every zone dataset; wire `zoneId` via ValueFromRef.
 - [**Cloudflare R2 Bucket**](/cloud-catalog/cloudflare-r2-bucket) -- the usual same-account destination, and the only kind that skips the ownership handshake.
 - [**Cloudflare Notification Policy**](/cloud-catalog/cloudflare-notification-policy) -- alerts when a job starts failing or gets disabled, closing the silent-delete gap.

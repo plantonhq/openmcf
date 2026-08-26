@@ -1,4 +1,4 @@
-# Zero Trust Access Group on Cloudflare
+# Cloudflare Zero Trust Access Group
 
 Deploys a reusable Cloudflare Zero Trust Access group: a named bundle of membership rules (an engineering team, a set of corporate email domains, a country allow-list) that many Access policies and other groups can reference. Factoring shared membership criteria into a group keeps policies small and lets the criteria evolve in one place. Groups are account- or zone-scoped and have an independent lifecycle, so one group can serve every policy that needs the same audience.
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Access Group on Cloudflare**, and click **Deploy**. The creation wizard walks you through scope (account or zone) and name, then the include / exclude / require rule builders. Start from the **Engineering team group** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Access Group**, and click **Deploy**. The creation wizard walks you through scope (account or zone) and name, then the include / exclude / require rule builders. Start from the **Engineering team group** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -114,5 +114,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Zero Trust Access Policy on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- references this group via its `group` rule
+- [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- references this group via its `group` rule
 - [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches policies that reference this group

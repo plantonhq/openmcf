@@ -1,4 +1,4 @@
-# Zero Trust Tunnel Virtual Network on Cloudflare
+# Cloudflare Zero Trust Tunnel Virtual Network
 
 Provisions a Cloudflare Tunnel virtual network: an isolated routing segment that lets the same private CIDR (for example `10.0.0.0/8`) be connected through more than one tunnel without collision. Routes (`CloudflareZeroTrustTunnelRoute`) attach a private network to a tunnel within one virtual network, and WARP clients select which virtual network to reach. A virtual network is account-scoped and outlives any individual tunnel.
 
@@ -23,7 +23,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Tunnel Virtual Network on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account, a name, an optional comment, and whether this virtual network is the account default. Start from the **Isolated routing segment** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Tunnel Virtual Network**, and click **Deploy**. The creation wizard captures the owning account, a name, an optional comment, and whether this virtual network is the account default. Start from the **Isolated routing segment** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -85,5 +85,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Zero Trust Tunnel Route on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- routes advertise CIDRs within this virtual network
-- [**Zero Trust Tunnel on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- the tunnel a route binds a network to
+- [**Cloudflare Zero Trust Tunnel Route**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- routes advertise CIDRs within this virtual network
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- the tunnel a route binds a network to

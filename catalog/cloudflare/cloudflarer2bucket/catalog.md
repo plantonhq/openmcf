@@ -1,4 +1,4 @@
-# R2 Bucket on Cloudflare
+# Cloudflare R2 Bucket
 
 Deploys an R2 object storage bucket on Cloudflare with configurable location hints, public access controls, and optional custom domain serving. R2 provides S3-compatible storage with zero egress fees. The bucket's full configuration surface travels with it: custom domains, CORS, object lifecycle, object lock retention, and event notifications that push object events to Cloudflare Queues.
 
@@ -30,7 +30,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **R2 Bucket on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private R2 Bucket** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
+Open the deployment store, find **Cloudflare R2 Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private R2 Bucket** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
 
 ### CLI
 
@@ -122,7 +122,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID for custom domain configuration
-- [**Queue on Cloudflare**](/cloud-catalog/cloudflare-queue) -- receives this bucket's event notifications for downstream processing
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- binds the bucket through an `r2Buckets` binding for object reads and writes
-- [**Pages Project on Cloudflare**](/cloud-catalog/cloudflare-pages-project) -- binds the bucket to Pages Functions the same way
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID for custom domain configuration
+- [**Cloudflare Queue**](/cloud-catalog/cloudflare-queue) -- receives this bucket's event notifications for downstream processing
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- binds the bucket through an `r2Buckets` binding for object reads and writes
+- [**Cloudflare Pages Project**](/cloud-catalog/cloudflare-pages-project) -- binds the bucket to Pages Functions the same way

@@ -97,4 +97,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**Cloudflare Zone TLS Settings**](/cloud-catalog/cloudflare-zone-tls-settings) -- the CA hostname associations that scope an uploaded CA to specific hostnames.
 - [**Cloudflare Authenticated Origin Pulls**](/cloud-catalog/cloudflare-authenticated-origin-pulls) -- the zone-level enablement this CA validates client certificates for.
-- [**Worker on Cloudflare**](/cloud-catalog/cloudflare-worker) -- mTLS bindings that present leaf uploads from this store.
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- mTLS bindings that present leaf uploads from this store.
