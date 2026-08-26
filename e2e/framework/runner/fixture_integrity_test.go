@@ -180,6 +180,46 @@ spec:
 	}
 }
 
+// A component whose profile records `status: deferred` is skipped by the
+// CATALOG walk: its deferral is the record that its lanes cannot run, so an
+// unresolvable chain is not a finding. Any other status keeps the check
+// armed -- the same broken chain must fail the moment the deferral lifts.
+func TestFixtureIntegrity_DeferredProfileSkipsCatalogCheck(t *testing.T) {
+	profileYAML := func(status string) string {
+		return `apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpsubnetwork
+spec:
+  tier: 1
+  status: ` + status + `
+`
+	}
+	// The scenario's vpc prerequisite has no install manifest anywhere --
+	// exactly the chain-resolution failure the org-wall class produces.
+	brokenScenario := fakeSubnetworkScenario("fake-vpc-prereq")
+
+	for _, tc := range []struct {
+		status       string
+		wantFindings int
+	}{
+		{"deferred", 0},
+		{"pending_proof", 1},
+	} {
+		repoRoot := t.TempDir()
+		writeKindManifest(t, repoRoot, "catalog/gcp/gcpsubnetwork/e2e/scenarios/minimal.yaml", brokenScenario)
+		writeKindManifest(t, repoRoot, "catalog/gcp/gcpsubnetwork/e2e/profile.yaml", profileYAML(tc.status))
+
+		findings, err := CheckCatalogFixtureIntegrity(repoRoot)
+		if err != nil {
+			t.Fatalf("CheckCatalogFixtureIntegrity (status %s): %v", tc.status, err)
+		}
+		if len(findings) != tc.wantFindings {
+			t.Errorf("status %s: got %d findings (%v), want %d", tc.status, len(findings), findings, tc.wantFindings)
+		}
+	}
+}
+
 // A chain that cannot resolve at all (a prerequisite with no install
 // manifest) is reported as a finding, not swallowed.
 func TestFixtureIntegrity_ChainResolutionFailureIsAFinding(t *testing.T) {

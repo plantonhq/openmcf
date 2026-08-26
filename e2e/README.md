@@ -1078,7 +1078,16 @@ kinds (snapshots, images) this is also the safer contract: a ForceNew
 source edit would silently DELETE the artifact and recapture from
 current state. Check the provider's Read function (does it `d.Set` the
 field?) the moment a round-trip reports a replace on a create-only
-argument.
+argument. Second AWS instance: `aws_acmpca_certificate`'s five
+issue-request arguments (csr, signing_algorithm, template_arn,
+validity, api_passthrough — upstream's own import test ignores the
+full set). The stakes are maximal there: the blind round-trip planned
+a delete+create on the CA's own ACTIVATION certificate — re-issuing a
+trust anchor adopters pin by fingerprint — and the install resource
+cascaded. Note a `config_only_attributes` declaration CANNOT absorb
+this class (tolerances cover in-place diffs; these fields force
+replaces) — the module-side ignore is the only honest fix, after which
+the tolerance is dead weight and gets retired.
 
 The SECRET sub-class takes the OPPOSITE remedy. When the never-read-back
 ForceNew field is a write-only SECRET (first live case: a container
@@ -2111,6 +2120,13 @@ kind exists; that is design, not a defect). Pre-existing findings live in
 `fixture_integrity_baseline.yaml` and only ever burn down; a new finding is
 a manifest fix, never a new baseline entry. Run it with
 `go test ./e2e/framework/runner/ -run TestCatalogFixtureIntegrity`.
+Components whose profile records `status: deferred` are skipped by the
+catalog walk: a deferral is the kind's own record that its lanes cannot run
+(some wall-class prerequisites are structurally unshippable — e.g. an AWS
+Organization fixture would mutate the shared account irreversibly), so the
+gate asserts only what the kind's records claim. It re-arms automatically
+when the profile leaves `deferred` — exactly when the chain must work. A
+missing or unreadable profile never earns the skip.
 
 **Inherited fixture orphans 409 the whole chain — sweep the fixture
 families, not just the kinds' own objects:** prerequisite fixtures use

@@ -24,9 +24,18 @@ spec:
   #   - SQLSERVER/MYSQL engine families (one family proves the render;
   #     the family is a pass-through vocabulary).
   #
-  # pending_proof: forged this session to the full offline bar -- Q48
-  # proves it live.
+  # PROVEN 2026-08-26: both engines green through the full lifecycle
+  # plus the TF blind round-trip - 4 resources re-imported blind at
+  # ZERO tolerances, including the four-part
+  # {proxy}/{tg}/{type}/{resource_id} target composite (the catalog's
+  # deepest). DescribeDBProxies echoed available with IAMAuth REQUIRED
+  # and RequireTLS true per engine window; the READ_ONLY endpoint on a
+  # plain INSTANCE target DID reach available (settled live - reader
+  # endpoints are not Aurora-only), taking ~9-11 min to provision per
+  # engine (the lane's second wall-clock driver after the RDS
+  # instance fixture; TF DEPLOY 16m35s total, DESTROY ~6m). Zero
+  # catches.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

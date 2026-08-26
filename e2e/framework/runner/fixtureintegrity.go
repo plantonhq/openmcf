@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/e2e/profile"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -209,6 +211,15 @@ func checkRefResolvable(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.Strin
 // CheckCatalogFixtureIntegrity runs the scenario check across every component
 // scenario in the repository's catalog and returns all findings, keeping one
 // component's defect from hiding another's.
+//
+// Components whose E2E profile records `status: deferred` are skipped: a
+// deferral is the kind's own record that its lanes cannot run (a wall-class
+// prerequisite may be structurally unshippable — e.g. a fixture that would
+// mutate the shared account irreversibly), so demanding a deployable fixture
+// chain from it asserts a contract nobody holds. The gate re-arms the moment
+// the profile leaves `deferred` — which is exactly when the chain must work.
+// A missing or unreadable profile never skips: absence of a record is not a
+// deferral.
 func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, error) {
 	catalogDir := filepath.Join(repoRoot, "catalog")
 	providers, err := os.ReadDir(catalogDir)
@@ -230,6 +241,9 @@ func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, e
 			if !component.IsDir() {
 				continue
 			}
+			if componentProfileDeferred(repoRoot, provider.Name(), component.Name()) {
+				continue
+			}
 			scenariosDir := filepath.Join(providerDir, component.Name(), "e2e", "scenarios")
 			scenarios, err := os.ReadDir(scenariosDir)
 			if err != nil {
@@ -249,4 +263,16 @@ func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, e
 		}
 	}
 	return findings, nil
+}
+
+// componentProfileDeferred reports whether a component's E2E profile records
+// `status: deferred`. Any load failure (no profile, unreadable, unregistered
+// directory name) returns false so the gate still checks the component --
+// only an explicit deferral record earns the skip.
+func componentProfileDeferred(repoRoot, provider, component string) bool {
+	p, err := profile.LoadComponentProfile(repoRoot, provider, component)
+	if err != nil {
+		return false
+	}
+	return p.GetSpec().GetStatus() == componentv1.ComponentE2EProfileSpec_deferred
 }

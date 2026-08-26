@@ -2171,20 +2171,27 @@ spec:
     - terraform_type: aws_acmpca_certificate_authority
       pulumi_type: aws:acmpca/certificateAuthority:CertificateAuthority
       id_format: "{certificate_authority_arn}"
-      # The restore window is never returned by the API - the provider
-      # stuffs its default back on import.
-      config_only_attributes: [permanent_deletion_time_in_days]
+      # The restore window is an engine-side delete-time instruction AWS
+      # never stores; import stuffs the provider default back AND a
+      # window-only update composes an empty UpdateCertificateAuthority
+      # the API rejects 400 (provider gap at ~> 6.58) - so a tolerance
+      # cannot cover it (the tolerated diff is UNAPPLIABLE). Both
+      # modules ignore post-create changes instead; imports are
+      # zero-diff on this attribute.
       notes: >-
         The CA's ARN (`aws acm-pca list-certificate-authorities` shows
         Arn).
     - terraform_type: aws_acmpca_certificate
       pulumi_type: aws:acmpca/certificate:Certificate
       id_format: "{issued_certificate_arn}"
-      # The issue-request arguments are never returned by the API - an
-      # import carries only the issued PEM, so the request fields are
-      # config-only by upstream design (the provider's own import test
-      # ignores all four).
-      config_only_attributes: [certificate_signing_request, signing_algorithm, template_arn, validity]
+      # The five issue-request arguments (csr, signing_algorithm,
+      # template_arn, validity, api_passthrough) are create-only,
+      # REPLACE-FORCING, and never returned by any read API - a
+      # config-only tolerance cannot absorb the replace they'd force
+      # after import, so both modules IGNORE post-create changes to
+      # them (live-proven: the blind round-trip planned a destructive
+      # re-issue of the CA's own trust anchor before the ignore).
+      # Imports are genuinely zero-diff; no tolerance needed.
       notes: >-
         The certificate's full ARN
         (arn:...:certificate-authority/{ca_id}/certificate/{cert_id}).

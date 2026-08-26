@@ -9,6 +9,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// certificateBirthCertificateFields are aws_acmpca_certificate's five
+// issue-request properties: create-only, replace-forcing, and never
+// returned by any AWS read API (the provider's own import test ignores
+// the full set). Every Certificate resource in this module ignores
+// post-create changes to them so an import is genuinely zero-diff and
+// a manifest edit can never plan a destructive re-issue.
+var certificateBirthCertificateFields = []string{
+	"certificateSigningRequest",
+	"signingAlgorithm",
+	"templateArn",
+	"validity",
+	"apiPassthrough",
+}
+
 // certificateAuthority creates the CA, composes its activation,
 // issues certificates, grants the ACM renewal permission, attaches
 // the resource policy, and exports outputs.
@@ -114,7 +128,14 @@ func certificateAuthority(ctx *pulumi.Context, locals *Locals, provider *aws.Pro
 		caArgs.RevocationConfiguration = revocationArgs
 	}
 
-	createdCa, err := acmpca.NewCertificateAuthority(ctx, "certificate-authority", caArgs, pulumi.Provider(provider))
+	// The restore window is an ENGINE-SIDE delete-time instruction: AWS
+	// stores nothing (DeleteCertificateAuthority alone consumes it), and
+	// a window-only change composes an EMPTY UpdateCertificateAuthority
+	// the API rejects 400 (provider gap at the current pin,
+	// live-caught). Fixed at create; post-create edits are ignored
+	// rather than failing every subsequent apply.
+	createdCa, err := acmpca.NewCertificateAuthority(ctx, "certificate-authority", caArgs,
+		pulumi.Provider(provider), pulumi.IgnoreChanges([]string{"permanentDeletionTimeInDays"}))
 	if err != nil {
 		return errors.Wrap(err, "create certificate authority")
 	}
@@ -131,6 +152,14 @@ func certificateAuthority(ctx *pulumi.Context, locals *Locals, provider *aws.Pro
 		if spec.RootCaValidity != nil {
 			validityType, validityValue = spec.RootCaValidity.Type, spec.RootCaValidity.Value
 		}
+		// The issue request is the certificate's birth certificate: all
+		// five request arguments are create-only, replace-forcing, and NO
+		// AWS read API ever returns them (the provider's own import test
+		// ignores the full set). Without the ignore, an import/refresh
+		// plans a destructive re-issue of the CA's own trust anchor -
+		// the certificate adopters' trust stores pin by fingerprint.
+		// Post-create changes are ignored; reissuing a CA certificate is
+		// an operational act, never a manifest edit.
 		createdRootCertificate, err := acmpca.NewCertificate(ctx, "root-ca-certificate", &acmpca.CertificateArgs{
 			CertificateAuthorityArn:   createdCa.Arn,
 			CertificateSigningRequest: createdCa.CertificateSigningRequest,
@@ -140,7 +169,7 @@ func certificateAuthority(ctx *pulumi.Context, locals *Locals, provider *aws.Pro
 				Type:  pulumi.String(validityType),
 				Value: pulumi.String(validityValue),
 			},
-		}, pulumi.Provider(provider))
+		}, pulumi.Provider(provider), pulumi.IgnoreChanges(certificateBirthCertificateFields))
 		if err != nil {
 			return errors.Wrap(err, "self-sign root certificate")
 		}
@@ -169,7 +198,8 @@ func certificateAuthority(ctx *pulumi.Context, locals *Locals, provider *aws.Pro
 				Type:  pulumi.String(activation.Validity.Type),
 				Value: pulumi.String(activation.Validity.Value),
 			},
-		}, pulumi.Provider(provider))
+			// Birth-certificate contract - see the root certificate above.
+		}, pulumi.Provider(provider), pulumi.IgnoreChanges(certificateBirthCertificateFields))
 		if err != nil {
 			return errors.Wrap(err, "issue subordinate certificate from parent")
 		}
@@ -215,7 +245,11 @@ func certificateAuthority(ctx *pulumi.Context, locals *Locals, provider *aws.Pro
 		if certificate.ApiPassthrough != "" {
 			certificateArgs.ApiPassthrough = pulumi.String(certificate.ApiPassthrough)
 		}
-		options := []pulumi.ResourceOption{pulumi.Provider(provider)}
+		// Birth-certificate contract - see the root certificate above. To
+		// reissue with different parameters, add a NEW entry (a new name
+		// keys a new certificate); editing an existing entry's request
+		// fields deliberately does nothing.
+		options := []pulumi.ResourceOption{pulumi.Provider(provider), pulumi.IgnoreChanges(certificateBirthCertificateFields)}
 		if activationDependency != nil {
 			// Issuing needs the CA ACTIVE, which activation makes it.
 			options = append(options, pulumi.DependsOn([]pulumi.Resource{activationDependency}))

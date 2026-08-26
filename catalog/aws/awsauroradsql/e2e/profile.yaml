@@ -23,9 +23,15 @@ spec:
   #   - a customer-managed KMS key (the AWS-owned default proves the
   #     encryption path; the key swap is an in-place update).
   #
-  # pending_proof: forged this session to the full offline bar -- Q48
-  # proves it live.
+  # PROVEN 2026-08-26: both engines green through the full lifecycle
+  # plus the TF blind round-trip (re-imported by the AWS-generated
+  # identifier at a no-op plan). The derived
+  # "{identifier}.dsql.{region}.on.aws" endpoint output matched AWS's
+  # real connection host byte-for-byte, ACTIVE arrived well inside
+  # the waiter budget (Pulumi create 13.5s, TF 2m14s), destroy parked
+  # the record DELETING/DELETED per the verifier's absent contract.
+  # Zero catches.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

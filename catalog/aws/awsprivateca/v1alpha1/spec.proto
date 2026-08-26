@@ -150,7 +150,12 @@ message AwsPrivateCaSpec {
   AwsPrivateCaRevocation revocation = 8;
 
   // The validity of a ROOT CA's self-signed certificate. Unset means
-  // 10 years (the console's default posture). ROOT only.
+  // 10 years (the console's default posture). ROOT only. Read at
+  // activation time ONLY: the issue request is the certificate's
+  // birth certificate (AWS never returns it), so both engines ignore
+  // later edits - changing this after activation does nothing.
+  // Reissuing a CA certificate is an operational act via ACM PCA,
+  // never a manifest edit.
   AwsPrivateCaValidity root_ca_validity = 9;
 
   // Activate a SUBORDINATE CA from a parent AwsPrivateCa in this
@@ -188,7 +193,11 @@ message AwsPrivateCaSpec {
   // Days the deleted CA stays restorable, 7-30. Unset means 30 (the
   // provider default). Billing stops at delete either way; a shorter
   // window frees the CA's name-and-subject slot sooner. E2E and
-  // ephemeral environments should use 7.
+  // ephemeral environments should use 7. FIXED AT CREATE: AWS stores
+  // nothing (only the delete call consumes it) and the provider
+  // cannot apply a window-only change (an empty update the API
+  // rejects), so both engines read this at create and ignore later
+  // edits - the delete uses the create-time window.
   int64 permanent_deletion_time_in_days = 14 [(buf.validate.field).cel = {
     id: "spec.permanent_deletion_window_range"
     message: "permanent_deletion_time_in_days must be between 7 and 30 (unset defaults to 30)"
@@ -386,12 +395,21 @@ message AwsPrivateCaSubordinateActivation {
   }];
 
   // The subordinate CA certificate's validity. Must end before the
-  // parent's own certificate expires.
+  // parent's own certificate expires. Read at activation time ONLY
+  // (the birth-certificate contract - see root_ca_validity): both
+  // engines ignore later edits.
   AwsPrivateCaValidity validity = 3 [(buf.validate.field).required = true];
 }
 
 // AwsPrivateCaIssuedCertificate is one certificate issued from this
-// CA at apply time.
+// CA at apply time. The request fields (csr, signing_algorithm,
+// validity, template_arn, api_passthrough) are the certificate's
+// BIRTH CERTIFICATE: AWS reads them once at issue and never returns
+// them, so both engines ignore later edits - changing them on an
+// existing entry deliberately does nothing. To reissue with different
+// parameters, add a NEW entry (the name keys the certificate; a new
+// name issues a new certificate) and drop the old one when its
+// consumers have moved.
 message AwsPrivateCaIssuedCertificate {
   // The certificate's name - the for_each key on both engines and
   // the key in the issued_certificate_arns output map.

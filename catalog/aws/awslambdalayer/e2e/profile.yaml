@@ -18,9 +18,15 @@ spec:
   #   - skip_destroy (leaves dormant versions to sweep manually --
   #     the lane proves the default full-cleanup path instead).
   #
-  # pending_proof: forged this session to the full offline bar -- Q48
-  # proves it live.
+  # PROVEN 2026-08-26: both engines green through the full lifecycle
+  # plus the TF blind round-trip (version ARN + the
+  # "{layer_arn},{version}" comma composite re-imported at no real
+  # change - the version string-to-int bridge held live, and the
+  # verifier proved the self-account grant via GetLayerVersionPolicy).
+  # Layer version numbers continue across recreates (the Pulumi lane
+  # published v1, the TF lane v2 of the same name - the Batch-style
+  # monotonic-revision class, harmless). Zero catches.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15
