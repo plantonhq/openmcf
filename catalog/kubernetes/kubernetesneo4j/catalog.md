@@ -1,19 +1,19 @@
-# Neo4j on Kubernetes
+# Neo4j
 
-Deploys a Neo4j graph database — the standard engine for knowledge graphs, GraphRAG and agent-memory architectures — on any Kubernetes cluster from the official `neo4j` Helm chart (helm.neo4j.com/neo4j). One release is one Neo4j server: a StatefulSet of exactly one pod, the chart's own grain. Community edition (the default) is single-instance by license; Enterprise clustering is built by installing multiple KubernetesNeo4j resources that share a `cluster_name` — each member a first-class resource, never a replicas knob.
+Deploys a Neo4j graph database — the standard engine for knowledge graphs, GraphRAG and agent-memory architectures — on any Kubernetes cluster from the official `neo4j` Helm chart (helm.neo4j.com/neo4j). One release is one Neo4j server: a StatefulSet of exactly one pod, the chart's own grain. Community edition (the default) is single-instance by license; Enterprise clustering is built by installing multiple KubernetesNeo4j resources that share a `clusterName` — each member a first-class resource, never a replicas knob.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Kubernetes Namespace** — created (with the standard Planton governance labels) only when `create_namespace` is `true`; otherwise the namespace must already exist
-- **Neo4j Helm Release** — the official chart at the pinned `chart_version`, which creates:
+- **Kubernetes Namespace** — created (with the standard Planton governance labels) only when `createNamespace` is `true`; otherwise the namespace must already exist
+- **Neo4j Helm Release** — the official chart at the pinned `chartVersion`, which creates:
   - a StatefulSet with a single Neo4j pod, your CPU/memory resources, and the memory split rendered into `neo4j.conf`
   - the always-created **default Service** (named after the resource) carrying bolt 7687, http 7474 and https 7473 — what in-cluster clients use, and what the exported endpoints point at
   - the **exposure Service** `<name>-lb-neo4j`, ClusterIP by this component's deliberate default (the chart's own default is LoadBalancer)
   - a PersistentVolumeClaim for the data volume (10Gi on the cluster's default StorageClass unless configured)
 - **Auth Secret** — when a password is declared, the module materializes it as the `<name>-auth` Secret (key `NEO4J_AUTH`, the chart's contract); the password never lands in rendered Helm values
-- **ServiceMonitor** — only when `service_monitor_enabled` is `true` (requires the Prometheus Operator CRDs on the cluster)
+- **ServiceMonitor** — only when `serviceMonitorEnabled` is `true` (requires the Prometheus Operator CRDs on the cluster)
 
 ## Before You Deploy
 
@@ -26,20 +26,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **A StorageClass** capable of dynamic PV provisioning for the data volume. Graph workloads reward fast (SSD-backed) storage — page-cache misses become disk reads.
 - **Prometheus Operator CRDs** — only when enabling the ServiceMonitor; without them the install fails on the unknown resource type.
-- **An existing `NEO4J_AUTH` Secret** — only when using `auth.existing_secret`; the chart reads it at template time, so it must exist before the first install.
+- **An existing `NEO4J_AUTH` Secret** — only when using `auth.existingSecret`; the chart reads it at template time, so it must exist before the first install.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Neo4j on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev single instance** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Neo4j**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev single instance preset** in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNeo4j
 metadata:
   name: knowledge-graph
@@ -48,9 +48,9 @@ metadata:
 spec:
   namespace:
     value: neo4j
-  create_namespace: true
+  createNamespace: true
   auth:
-    existing_secret: neo4j-auth
+    existingSecret: neo4j-auth
   resources:
     requests:
       cpu: "2"
@@ -59,10 +59,10 @@ spec:
       cpu: "4"
       memory: 8Gi
   memory:
-    heap_initial: 3G
-    heap_max: 3G
-    page_cache: 3G
-  data_volume:
+    heapInitial: 3G
+    heapMax: 3G
+    pageCache: 3G
+  dataVolume:
     size: 100Gi
 ```
 
@@ -70,7 +70,7 @@ spec:
 planton apply -f neo4j.yaml
 ```
 
-This creates one production-shaped Neo4j server: credentials referenced from a pre-existing Secret, an explicit heap/page-cache split sized to the 8Gi container, and a 100Gi data volume. Create the `neo4j-auth` Secret (key `NEO4J_AUTH`, value `neo4j/<password>`) before applying.
+This creates one production-shaped Neo4j server: credentials referenced from a pre-existing Secret, an explicit heap/page-cache split sized to the 8Gi container, and a 100Gi data volume. Create the `neo4j-auth` Secret (key `NEO4J_AUTH`, value `neo4j/<password>`) before applying. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -83,7 +83,7 @@ spec:
       kind: KubernetesNamespace
       name: neo4j-namespace
       fieldPath: spec.name
-  create_namespace: false
+  createNamespace: false
 ```
 
 The InfraPipeline deploys the namespace first, then provisions the Neo4j server into it.
@@ -92,19 +92,19 @@ The InfraPipeline deploys the namespace first, then provisions the Neo4j server 
 
 These are the most important decisions when configuring Neo4j. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Edition and clustering** — `edition` defaults to `community` (GPLv3, single-instance **by license** — no replicas, no failover; availability is the StatefulSet rescheduling the pod and the PVC surviving it). `enterprise` requires `accept_license_agreement: true` and a valid commercial license, and unlocks clustering: multiple KubernetesNeo4j resources sharing a `cluster_name` form one cluster. `cluster_name` on community fails validation.
+**Edition and clustering** — `edition` defaults to `community` (GPLv3, single-instance **by license** — no replicas, no failover; availability is the StatefulSet rescheduling the pod and the PVC surviving it). `enterprise` requires `acceptLicenseAgreement: true` and a valid commercial license, and unlocks clustering: multiple KubernetesNeo4j resources sharing a `clusterName` form one cluster. `clusterName` on community fails validation.
 
-**Admin credentials** — the `auth` block takes at most one arm: `password` (declared, sensitive; materialized as the `<name>-auth` Secret) or `existing_secret` (a Secret already carrying `NEO4J_AUTH: neo4j/<password>`, existing before the install). Empty means the chart generates a random password and logs it once at first startup — fine for experiments, declare a credential for anything real.
+**Admin credentials** — the `auth` block takes at most one arm: `password` (declared, sensitive; materialized as the `<name>-auth` Secret) or `existingSecret` (a Secret already carrying `NEO4J_AUTH: neo4j/<password>`, existing before the install). Empty means the chart generates a random password and logs it once at first startup — fine for experiments, declare a credential for anything real.
 
 **Sizing** — the chart's own minimum is **500m CPU / 2Gi memory, and it rejects installs below that floor**. The `memory` block renders an explicit heap/page-cache split into `neo4j.conf`; empty lets Neo4j auto-compute from the container memory (usually right — set it explicitly on shared or memory-tight nodes). Keep initial heap = max heap; give the page cache what remains after heap and OS overhead.
 
-**Data volume** — `data_volume.size` defaults to 10Gi on the cluster's default StorageClass; `data_volume.storage_class` accepts a literal class name or a KubernetesStorageClass reference. Growing a PVC later depends on the class allowing expansion.
+**Data volume** — `dataVolume.size` defaults to 10Gi on the cluster's default StorageClass; `dataVolume.storageClass` accepts a literal class name or a KubernetesStorageClass reference. Growing a PVC later depends on the class allowing expansion.
 
 **Exposure** — `service.type` defaults to ClusterIP, a deliberate override of the chart's LoadBalancer default: exposure composes from first-class kinds (KubernetesIngress, Gateway API) over the exported service handle. For a direct cloud load balancer, set `type: LoadBalancer` and ride the provider recipe on `service.annotations`. This block shapes only the exposure Service `<name>-lb-neo4j`; in-cluster clients use the default Service — the endpoints in the stack outputs.
 
 **TLS** — `ssl.bolt` / `ssl.https` each reference an existing certificate Secret (a KubernetesCertificate reference resolves to its Secret name). Note the key-name bridge: the chart expects `private.key`/`public.crt` while cert-manager Secrets carry `tls.key`/`tls.crt` — see the component docs for the bridge.
 
-**Escape hatch** — `helm_values` merges LAST over everything the typed fields render (Helm `-f` semantics, identical on both engines). It is for the chart surface beyond the typed fields — log4j XML, additional volumes/mounts, LDAP secrets, the operations sidecar, probes, PDB, per-service splits, the `NEO4J_PLUGINS` env key that activates APOC — never a substitute for them, and never a place for secrets.
+**Escape hatch** — `helmValues` merges LAST over everything the typed fields render (Helm `-f` semantics, identical on both engines). It is for the chart surface beyond the typed fields — log4j XML, additional volumes/mounts, LDAP secrets, the operations sidecar, probes, PDB, per-service splits, the `NEO4J_PLUGINS` env key that activates APOC — never a substitute for them, and never a place for secrets.
 
 ## Outputs and Dependencies
 
@@ -113,7 +113,7 @@ These are the most important decisions when configuring Neo4j. Explore the full 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesStorageClass** | `data_volume.storage_class` | `status.outputs.storage_class_name` |
+| **KubernetesStorageClass** | `dataVolume.storageClass` | `status.outputs.storage_class_name` |
 | **KubernetesCertificate** | `ssl.bolt.secret`, `ssl.https.secret` | `status.outputs.secret_name` |
 
 ### What This Component Provides
@@ -134,15 +134,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dev single instance** — the smallest declarable Neo4j: community edition, a declared password, resources at the chart's own floor (500m / 2Gi — there is no smaller Neo4j), a 10Gi volume. Start from the **Dev single instance** preset.
+**Dev single instance** — the smallest declarable Neo4j: community edition, a declared password, resources at the chart's own floor (500m / 2Gi — there is no smaller Neo4j), a 10Gi volume. Start from the **Dev single instance preset**.
 
-**Production single server** — an existing-Secret credential, an explicit memory split sized to the container, 100Gi on fast storage, transaction-timeout and telemetry settings in `config`, node-selector scheduling. Start from the **Production** preset.
+**Production single server** — an existing-Secret credential, an explicit memory split sized to the container, 100Gi on fast storage, transaction-timeout and telemetry settings in `config`, node-selector scheduling. Start from the **Production preset**.
 
-**GraphRAG with APOC** — the APOC procedure library activated at startup (it ships inside the official image), file/trigger arms enabled in `apoc_config`, the procedure sandbox opened exactly to `apoc.*`, a page-cache-weighted memory split, and heap dumps on OOM. Start from the **GraphRAG APOC** preset.
+**GraphRAG with APOC** — the APOC procedure library activated at startup (it ships inside the official image), file/trigger arms enabled in `apocConfig`, the procedure sandbox opened exactly to `apoc.*`, a page-cache-weighted memory split, and heap dumps on OOM. Start from the **GraphRAG APOC preset**.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace for the server
-- [**Kubernetes Storage Class**](/cloud-catalog/kubernetes-storage-class) — fast storage for the data volume
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) — cert-manager-issued TLS Secrets for the bolt/https listeners (mind the key-name bridge)
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) — fast storage for the data volume
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) — cert-manager-issued TLS Secrets for the bolt/https listeners (mind the key-name bridge)
 - [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) — composes exposure over the exported service handle instead of a direct LoadBalancer

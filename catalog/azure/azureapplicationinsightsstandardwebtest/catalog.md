@@ -1,6 +1,6 @@
 # Azure Application Insights Standard Web Test
 
-Deploys an Application Insights Standard Web Test -- a synthetic availability monitor that issues an HTTP request to a URL from one or more Azure test-agent locations on a schedule and records whether the endpoint responded correctly. It is how you prove an endpoint is reachable and healthy from the OUTSIDE -- and, paired with a Monitor metric alert on the test's availability, how you get paged when it is not. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and Application Insights components.
+Deploys an Application Insights Standard Web Test -- a synthetic availability monitor that issues an HTTP request to a URL from one or more Azure test-agent locations on a schedule and records whether the endpoint responded correctly. It is how you prove an endpoint is reachable and healthy from the OUTSIDE -- and, paired with a Monitor metric alert on the test's availability, how you get paged when it is not. The spec covers the probe request, the response assertions (status code, SSL certificate lifetime, body content), the schedule, and the Azure test-agent locations the probe runs from.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Application Insights Standard Web Test**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **endpoint-availability** preset in the [Presets](#presets) tab to pre-populate a multi-region availability probe.
+Open the deployment store, find **Azure Application Insights Standard Web Test**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Multi-Region Endpoint Availability** preset in the [Presets](#presets) tab to pre-populate a multi-region availability probe.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationInsightsStandardWebTest
 metadata:
   name: checkout-availability
@@ -45,7 +45,8 @@ spec:
   name: checkout-api-availability
   region: eastus
   applicationInsightsId:
-    value: "/subscriptions/.../components/checkout-api-insights"
+    valueFrom:
+      name: checkout-api-insights
   request:
     url: https://api.example.com/healthz
   geoLocations:
@@ -58,7 +59,7 @@ spec:
 planton apply -f web-test.yaml
 ```
 
-This creates a web test on Azure's defaults: a GET probe every 5 minutes from the three listed locations, a 30-second timeout, and any 200 response passing.
+This creates a web test on Azure's defaults: a GET probe every 5 minutes from the three listed locations, a 30-second timeout, and any 200 response passing. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -115,9 +116,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Multi-region availability probe** -- a GET against a health endpoint every 5 minutes from three continents, with retry on and the SSL lifetime floor set. The standard outside-in check for anything customer-facing. Start from the **endpoint-availability** preset.
+**Multi-region availability probe** -- a GET against a health endpoint every 5 minutes from three continents, with retry on and the SSL lifetime floor set. The standard outside-in check for anything customer-facing. Start from the **Multi-Region Endpoint Availability** preset.
 
-**Content check** -- a single-location probe asserting the response body carries a healthy marker (`"status":"ok"`), catching the error page that still ships a 200. Start from the **content-check** preset.
+**Content check** -- a single-location probe asserting the response body carries a healthy marker (`"status":"ok"`), catching the error page that still ships a 200. Start from the **Response-Content Health Check** preset.
 
 ## Works With
 

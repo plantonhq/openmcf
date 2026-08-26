@@ -1,6 +1,6 @@
-# StatefulSet on Kubernetes
+# Kubernetes StatefulSet
 
-Deploys a stateful application on any Kubernetes cluster as an apps/v1 StatefulSet: every replica gets a stable name (`{name}-0`, `{name}-1`, ...), stable per-replica DNS through a headless governing Service, and its own PersistentVolumeClaim stamped from volume claim templates. This is the kind for databases, message brokers, and consensus systems — anything where replicas are NOT interchangeable. Supports the full shared workload surface (sidecars and init containers, all environment variable sources, probes, lifecycle hooks, scheduling, security contexts), plus StatefulSet-specific orchestration: update strategy with canary-by-partition, pod management policy, PVC retention policy, and ordinal numbering. Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
+Deploys a stateful application on any Kubernetes cluster as an apps/v1 StatefulSet: every replica gets a stable name (`{name}-0`, `{name}-1`, ...), stable per-replica DNS through a headless governing Service, and its own PersistentVolumeClaim stamped from volume claim templates. This is the kind for databases, message brokers, and consensus systems — anything where replicas are NOT interchangeable. Supports the full shared workload surface (sidecars and init containers, all environment variable sources, probes, lifecycle hooks, scheduling, security contexts), plus StatefulSet-specific orchestration: update strategy with canary-by-partition, pod management policy, PVC retention policy, and ordinal numbering.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ External exposure is composed, never embedded: this kind exports its governing S
 
 ### Console
 
-Open the deployment store, find **StatefulSet on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Database** preset for a single-replica database with persistent storage, or **HA Quorum Cluster** for a 3-member quorum system, in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes StatefulSet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-Instance Database** preset for a single-replica database with persistent storage, or **Highly Available Quorum Cluster** for a 3-member quorum system, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStatefulSet
 metadata:
   name: cache-cluster
@@ -67,7 +67,7 @@ spec:
 planton apply -f statefulset.yaml
 ```
 
-This creates a 3-replica StatefulSet with a headless service for stable pod DNS and a ClusterIP service on port 6379. No persistent volumes or pod disruption budget are configured — members keep only in-memory state.
+This creates a 3-replica StatefulSet with a headless service for stable pod DNS and a ClusterIP service on port 6379. No persistent volumes or pod disruption budget are configured — members keep only in-memory state. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -107,9 +107,9 @@ These are the most important decisions when configuring a Kubernetes StatefulSet
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesServiceAccount** | `pod.serviceAccount` | `status.outputs.service_account_name` |
-| **KubernetesSecret** | `pod.imagePullSecrets` | `spec.name` |
+| Kubernetes Namespace | `spec.namespace` | `spec.name` |
+| Kubernetes ServiceAccount | `spec.pod.serviceAccount` | `status.outputs.service_account_name` |
+| Kubernetes Secret | `spec.pod.imagePullSecrets` | `spec.name` |
 
 ### What This Component Provides
 
@@ -129,9 +129,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Database** -- A single-replica database: one pod with a stable name, one PersistentVolumeClaim stamped from the `data` template that survives restarts and rescheduling, and TCP probes so the pod only receives connections once the engine accepts them. Start from the **Database** preset.
+**Database** -- A single-replica database: one pod with a stable name, one PersistentVolumeClaim stamped from the `data` template that survives restarts and rescheduling, and TCP probes so the pod only receives connections once the engine accepts them. Start from the **Single-Instance Database** preset.
 
-**HA quorum cluster** -- A 3-member quorum system with per-member storage, a pod disruption budget sized to the quorum, and zone spread. Start from the **HA Quorum Cluster** preset.
+**HA quorum cluster** -- A 3-member quorum system with per-member storage, a pod disruption budget sized to the quorum, and zone spread. Start from the **Highly Available Quorum Cluster** preset.
 
 **Hardened database** -- Passes the Kubernetes restricted Pod Security Standard while running persistent storage: non-root with a pinned UID, read-only root filesystem, all Linux capabilities dropped, the runtime-default seccomp filter, and no API token mount. Start from the **Hardened Database** preset.
 

@@ -1,6 +1,6 @@
 # GCP Spanner Database
 
-Deploys a Cloud Spanner database within an existing Spanner instance, with configurable SQL dialect (GoogleSQL or PostgreSQL), version retention for point-in-time recovery, initial DDL statements, optional CMEK encryption, and API-level drop protection. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, Spanner instances, and KMS keys.
+Deploys a Cloud Spanner database within an existing Spanner instance, with configurable SQL dialect (GoogleSQL or PostgreSQL), version retention for point-in-time recovery, initial DDL statements, optional CMEK encryption, and API-level drop protection. The database name, dialect, encryption posture, and host instance are all immutable — the durable decisions live at creation time, while retention, drop protection, and appended DDL update in place.
 
 ## What Gets Created
 
@@ -10,6 +10,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Initial Schema** -- when `ddl` statements are specified, executes them atomically during database creation (tables, indexes, views)
 - **CMEK Encryption** -- created only when `encryptionConfig` is set; encrypts the database with customer-managed Cloud KMS keys. Exactly one key shape inside: `kmsKeyName` (one key, for databases on regional instance configurations) or `kmsKeyNames` (one key per region of a multi-region configuration)
 - **Drop Protection** -- created only when `enableDropProtection` is set to `true`; prevents deletion of the database and its parent instance through any interface. A second, IaC-side guard — `deletionProtection`, default `true` — makes both engines refuse to destroy the database until it is explicitly set `false`
+- **Spanner API enablement** -- `spanner.googleapis.com` enabled in the target project so a fresh project can host databases (never disabled on destroy)
 
 ## Before You Deploy
 
@@ -35,7 +36,7 @@ Open the deployment store, find **GCP Spanner Database**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerDatabase
 metadata:
   name: app-database
@@ -53,7 +54,7 @@ spec:
 planton apply -f spanner-database.yaml
 ```
 
-This creates a database with the GoogleSQL dialect, 1-hour default version retention, Google-managed encryption, and no drop protection. Schema must be managed separately via migration tools or subsequent DDL updates.
+This creates a database with the GoogleSQL dialect, 1-hour default version retention, Google-managed encryption, and the IaC-side deletion guard on by default. Schema must be managed separately via migration tools or subsequent DDL updates. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -91,7 +92,7 @@ These are the most important decisions when configuring a Spanner database. Expl
 
 **Initial DDL** -- The `ddl` field executes DDL statements atomically with database creation. New statements can be appended after creation, but modifying or removing existing statements forces database recreation. For ongoing schema management, use a migration tool (Liquibase, Flyway).
 
-**Two deletion guards** -- `enableDropProtection` is GCP API-side: while `true`, neither the database nor its parent instance can be deleted through any interface (Console, gcloud, API, or IaC). `deletionProtection` is IaC-side and defaults to `true`: both engines refuse to destroy the database until it is explicitly set `false` — GCP itself would still allow a console delete. Keep the default for production; disable it only for an intentional teardown.
+**Three deletion levers** -- `enableDropProtection` is GCP API-side: while `true`, neither the database nor its parent instance can be deleted through any interface (Console, gcloud, API, or IaC) — reserve it for compliance-grade locks. `deletionProtection` is IaC-side and defaults to `true`: both engines refuse to destroy the database until it is explicitly set `false` — GCP itself would still allow a console delete. `deletionPolicy` decides what a PERMITTED destroy does once both guards allow one: `DELETE` removes the database (backups already taken survive until their retention expires), `PREVENT` fails the destroy, `ABANDON` drops it from management while it keeps billing for storage in GCP.
 
 **CMEK encryption** -- `encryptionConfig` is immutable (the encryption posture is fixed at creation). The key shape follows the parent instance's configuration: `kmsKeyName` for a regional configuration (the key must live in the same location), `kmsKeyNames` for a multi-region configuration (one key per region, each in its region). Omit the message entirely for Google-managed encryption.
 
@@ -101,7 +102,7 @@ These are the most important decisions when configuring a Spanner database. Expl
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 | **GcpSpannerInstance** | `instance` | `status.outputs.instance_name` |
 | **GcpKmsKey** (optional) | `encryptionConfig.kmsKeyName` / `encryptionConfig.kmsKeyNames` | `status.outputs.key_id` |
 
@@ -119,11 +120,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Basic database** -- GoogleSQL dialect with default 1-hour version retention and no CMEK or drop protection. The simplest starting point for any Spanner workload. Start from the **Basic Database** preset.
+**Basic database** -- GoogleSQL dialect with a 24-hour point-in-time recovery window and no CMEK or drop protection. The simplest starting point for any Spanner workload. Start from the **Basic Database** preset.
 
-**PostgreSQL database** -- PostgreSQL-compatible dialect with 7-day version retention. Designed for teams migrating from PostgreSQL or using PostgreSQL-compatible client libraries and tooling. Start from the **PostgreSQL Database** preset.
+**PostgreSQL database** -- PostgreSQL-compatible dialect with 7-day version retention. Designed for teams migrating from PostgreSQL or using PostgreSQL-compatible client libraries and tooling. Start from the **PostgreSQL-Dialect Database** preset.
 
-**CMEK encrypted** -- GoogleSQL dialect with customer-managed encryption, API-level drop protection, 3-day version retention, and explicit UTC time zone. Designed for regulated environments requiring encryption key control and deletion safeguards. Start from the **CMEK Encrypted** preset.
+**CMEK encrypted** -- GoogleSQL dialect with customer-managed encryption, API-level drop protection, 3-day version retention, and explicit UTC time zone. Designed for regulated environments requiring encryption key control and deletion safeguards. Start from the **CMEK-Encrypted Database** preset.
 
 ## Works With
 

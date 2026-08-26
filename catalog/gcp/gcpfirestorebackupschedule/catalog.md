@@ -8,6 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Firestore Backup Schedule** -- a daily or weekly schedule attached to the target database; Firestore takes each backup automatically (you pin only the weekly day — timing within the day is Firestore's)
 - **Backups over time** -- each run produces a backup kept for the retention window; backups already taken OUTLIVE the schedule and age out per their retention
+- **Firestore API enablement** -- `firestore.googleapis.com` enabled in the target project (never disabled on destroy)
 
 The recurrence (daily vs weekly, and the weekly day) is immutable after creation. Retention is the spec's only mutable field — extend or shorten protection in place.
 
@@ -21,13 +22,12 @@ The recurrence (daily vs weekly, and the weekly day) is immutable after creation
 ### GCP Project
 
 - **A Firestore database** in the target project — reference a `GcpFirestoreDatabase` Cloud Resource via ValueFromRef, or use `"(default)"` for the project's primary database.
-- **Firestore API** (`firestore.googleapis.com`) enabled in the target project.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Firestore Backup Schedule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Daily Short Retention** preset in the [Presets](#presets) tab for the bread-and-butter daily protection.
+Open the deployment store, find **GCP Firestore Backup Schedule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Daily Short-Retention Backups** preset in the [Presets](#presets) tab for the bread-and-butter daily protection.
 
 ### CLI
 
@@ -96,16 +96,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `schedule_id` | Server-assigned schedule identifier within the database | Audit, correlation |
+| `schedule_id` | Server-assigned schedule identifier within the database | Firestore Admin API calls addressing the schedule |
 | `database` | The database the schedule protects | Confirms the attachment without dereferencing the spec |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Daily Short Retention** -- Daily backups with one-week retention: cheap, recent restore points for everyday protection. Start from the **Daily Short Retention** preset.
+**Daily Short Retention** -- Daily backups with one-week retention: cheap, recent restore points for everyday protection. Start from the **Daily Short-Retention Backups** preset.
 
-**Weekly Long Retention** -- Weekly Sunday backups at the 14-week maximum retention: the compliance/long-horizon layer, typically deployed BESIDE a daily schedule on the same database. Start from the **Weekly Long Retention** preset.
+**Weekly Long Retention** -- Weekly Sunday backups at the 14-week maximum retention: the compliance/long-horizon layer, typically deployed BESIDE a daily schedule on the same database. Start from the **Weekly Long-Retention Archive** preset.
 
 ## Works With
 

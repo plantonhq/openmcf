@@ -1,11 +1,12 @@
-# SSL Certificate on Google Cloud
+# GCP SSL Certificate
 
-Deploys a self-managed Compute Engine SSL certificate — you bring the PEM chain and private key (your own CA, a commercial purchase, or ACME automation outside GCP) and the load balancer presents it to clients. Choose self-managed when Google-managed certificates cannot do the job: wildcard domains, EV/OV issuance, internal load balancers, or serving TLS before public DNS cutover. Every field is immutable in GCP — rotation is create-before-destroy under a versioned name. Integrates with Planton's Provider Connections for GCP credential management, keeps the private key as a managed-secret reference resolved just-in-time at deploy, and supports ValueFromRef wiring to GCP projects.
+Deploys a self-managed Compute Engine SSL certificate — you bring the PEM chain and private key (your own CA, a commercial purchase, or ACME automation outside GCP) and the load balancer presents it to clients. Choose self-managed when Google-managed certificates cannot do the job: wildcard domains, EV/OV issuance, internal load balancers, or serving TLS before public DNS cutover. Every field is immutable in GCP — rotation is create-before-destroy under a versioned name. The private key travels as a managed-secret reference (`$secret/<slug>`) resolved just-in-time at deploy; the manifest never carries the key.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Compute Engine API enablement** -- the module enables `compute.googleapis.com` on the target project before creating the certificate, so a fresh project works without manual API setup
 - **Compute Engine SSL Certificate** -- global (blank `region`) for global external Application Load Balancer proxies, or regional for regional external and internal ALB proxies
 - **Validated key pair** -- GCP verifies the certificate chain matches the private key at create time and stores the key write-only (it never appears in outputs or the console)
 
@@ -19,15 +20,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the certificate will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the certificate will be created. Provide the project ID directly, reference a GcpProject Cloud Resource via ValueFromRef, or omit `projectId` to use the provider connection's default project. The module enables the Compute Engine API itself — no manual API activation is needed.
 - **The issued certificate chain** -- leaf first, then intermediates (at least one intermediate, at most 5 certificates total), and its unencrypted RSA-2048+/ECDSA P-256 private key.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **SSL Certificate on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the private key goes through the managed-secret picker. Start from the **Imported Cert** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP SSL Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the private key goes through the managed-secret picker. Start from the **Imported CA-Issued Certificate** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -55,7 +55,7 @@ spec:
 planton apply -f ssl-certificate.yaml
 ```
 
-This creates a global certificate ready for a target HTTPS proxy's certificate list. The runner resolves the `$secret/` reference just-in-time — the manifest never carries the key.
+This creates a global certificate ready for a target HTTPS proxy's certificate list. The runner resolves the `$secret/` reference just-in-time — the manifest never carries the key. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -84,6 +84,8 @@ These are the most important decisions when configuring a self-managed SSL certi
 
 **Private key** -- Unencrypted (no passphrase) RSA-2048+ or ECDSA P-256, referenced as `$secret/<slug>`. Write-only in GCP: keep the secret-store copy as the source of truth.
 
+**Deletion policy** -- `DELETE` (the default) already fails rather than dropping TLS while any proxy references the certificate. Set `PREVENT` as a guard rail for a certificate whose replacement is not yet serving, or `ABANDON` to remove it from management while it keeps serving in GCP — the mid-rotation handoff.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -108,11 +110,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Imported commercial certificate** -- A purchased or corporate-CA certificate serving a global external load balancer. Start from the **Imported Cert** preset.
+**Imported commercial certificate** -- A purchased or corporate-CA certificate serving a global external load balancer. Start from the **Imported CA-Issued Certificate** preset.
 
-**Regional internal TLS** -- A certificate for a regional internal ALB proxy — the case Google-managed certificates cannot serve. Start from the **Regional Cert** preset.
+**Regional internal TLS** -- A certificate for a regional internal ALB proxy — the case Google-managed certificates cannot serve. Start from the **Regional ALB Certificate** preset.
 
-**Versioned rotation** -- An explicit `certificateName` decoupled from the resource name demonstrates the create-before-destroy rotation workflow. Start from the **Rotation Versioned Name** preset.
+**Versioned rotation** -- An explicit `certificateName` decoupled from the resource name demonstrates the create-before-destroy rotation workflow. Start from the **Rotation with a Versioned Name** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # Azure Machine Learning Batch Endpoint
 
-Creates a batch endpoint on an Azure Machine Learning workspace -- the stable address batch scoring jobs are submitted to, with Microsoft Entra authentication and a default-deployment pointer that routes submissions. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a batch endpoint on an Azure Machine Learning workspace -- the stable address batch scoring jobs are submitted to, with Microsoft Entra authentication and a default-deployment pointer that routes submissions.
 
 ## What Gets Created
 
@@ -49,11 +49,22 @@ spec:
 planton apply -f azure-machine-learning-batch-endpoint.yaml
 ```
 
-The endpoint creates in minutes and is free at rest; deployments then attach to it by reference.
+This creates an Entra-authenticated batch endpoint on the referenced workspace, free at rest; deployments then attach to it by reference. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → compute cluster → **batch endpoint** → batch deployment(s), each wiring its parent by reference; the endpoint's default-deployment pointer routes submissions by deployment name.
+In an ML-platform chart the order is: workspace → compute cluster → **batch endpoint** → batch deployment(s); the endpoint's default-deployment pointer routes submissions by deployment name. Wire the workspace by reference:
+
+```yaml
+spec:
+  workspaceId:
+    valueFrom:
+      kind: AzureMachineLearningWorkspace
+      name: ml-prod
+      fieldPath: status.outputs.machine_learning_workspace_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the workspace before the endpoint.
 
 ## Key Configuration
 

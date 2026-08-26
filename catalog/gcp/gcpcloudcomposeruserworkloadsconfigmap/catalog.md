@@ -1,6 +1,6 @@
 # GCP Cloud Composer User Workloads ConfigMap
 
-Deploys a Kubernetes ConfigMap inside a Cloud Composer environment's GKE cluster, managed as a first-class resource: DAGs and workers read its entries at runtime, and configuration changes flow through the same declarative review process as everything else — no `kubectl` against the environment's cluster and no drift. The component integrates with Planton's Provider Connections for GCP credential management and composes against the parent environment via ValueFromRef.
+Deploys a Kubernetes ConfigMap into a Cloud Composer environment's GKE cluster, managed as a first-class resource instead of a `kubectl` side channel. DAGs and KubernetesPodOperator tasks read its entries at runtime, and configuration changes flow through the same declarative review process as everything else — no drift against the environment's cluster. The name, environment, region, and project are immutable after creation; `data` is the one field that updates in place.
 
 ## What Gets Created
 
@@ -18,8 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A Cloud Composer environment** (Composer 3, or Composer 2 with user workloads support) in the target project and region — reference a GcpCloudComposerEnvironment Cloud Resource via ValueFromRef.
-- **Cloud Composer API** enabled in the target project.
+- **A Cloud Composer environment** (Composer 3, or Composer 2 with user workloads support) in the target project and region — reference a GcpCloudComposerEnvironment Cloud Resource via ValueFromRef. The Composer API is necessarily already enabled: a ConfigMap cannot exist without an environment, so the module deliberately performs no API enablement of its own.
 
 ## Deploy
 
@@ -32,7 +31,7 @@ Open the deployment store, find **GCP Cloud Composer User Workloads ConfigMap**,
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudComposerUserWorkloadsConfigMap
 metadata:
   name: dag-config
@@ -55,19 +54,37 @@ spec:
 planton apply -f config-map.yaml
 ```
 
-A Stack Job tracks the provisioning in real time.
+This creates a ConfigMap named `dag-config` in the `prod-airflow` environment's cluster, holding two tuning values DAGs read at runtime (`projectId` omitted falls back to the provider's default project). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the environment reference orders the deploy graph automatically: the InfraPipeline provisions the Composer environment first, then creates the ConfigMap inside it.
+When deploying alongside the Composer environment itself, wire the reference with ValueFromRef:
+
+```yaml
+spec:
+  environment:
+    valueFrom:
+      kind: GcpCloudComposerEnvironment
+      name: prod-airflow
+      fieldPath: status.outputs.environment_name
+  configMapName: etl-tuning
+  data:
+    batch_size: "500"
+```
+
+The InfraPipeline resolves the dependency graph, provisions the Composer environment first, then creates the ConfigMap inside it.
 
 ## Key Configuration
 
-**The attachment pair is the identity** -- `environment` + `configMapName` locate the object; both are immutable (pointing the same data at a different environment is a new ConfigMap there). The name follows Kubernetes object-name rules: lowercase letters, numbers, and hyphens, up to 63 characters.
+These are the most important decisions when configuring a user workloads ConfigMap. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Data is the day-2 lever** -- `data` requires at least one entry and updates the Kubernetes object in place; running tasks keep the values they already read, new tasks see the new values.
+**The attachment pair is the identity** -- `environment` + `configMapName` locate the object; both are immutable (pointing the same data at a different environment is a new ConfigMap there). The name follows Kubernetes object-name rules: lowercase letters, numbers, and hyphens, up to 63 characters. Name for the configuration's role (`etl-tuning`, `feature-flags`) — a rename is a new ConfigMap plus a DAG reference update.
 
-**Plain text only** -- ConfigMap values are visible to anyone with cluster read access. Credentials belong in a GcpCloudComposerUserWorkloadsSecret.
+**Data is the day-2 lever** -- `data` requires at least one entry and updates the Kubernetes object in place; running tasks keep the values they already read, new tasks see the new values. Nothing restarts by itself — roll a change by applying it and letting the next scheduled runs pick it up. All values are strings: quote numbers and booleans, or YAML parses them as scalars the ConfigMap rejects.
+
+**Plain text only** -- ConfigMap values are visible to anyone with cluster read access, and that visibility is the point: behavior changes stay reviewable as text. Anything you would not paste into a code review belongs in a GcpCloudComposerUserWorkloadsSecret instead.
+
+**Deletion policy** -- a destroyed ConfigMap fails or silently changes every DAG that reads it, often less visibly than a missing Secret (defaults kick in). Set `deletionPolicy: PREVENT` for configuration live pipelines depend on so a stack teardown cannot take it along; `ABANDON` drops it from management but leaves the object in the cluster for a handover.
 
 ## Outputs and Dependencies
 
@@ -84,16 +101,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `name` | Fully qualified ConfigMap resource name | Composer API handles, audit |
-| `config_map_name` | The short Kubernetes object name | The name DAG code mounts and reads |
+| `name` | Fully qualified resource name (`projects/.../userWorkloadsConfigMaps/...`) | Addressing the ConfigMap in direct Composer API calls |
+| `config_map_name` | The short Kubernetes object name | The name DAG code and KubernetesPodOperator tasks mount and read — consume this output rather than re-typing the literal |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**DAG configuration** -- per-environment tuning values (batch sizes, retry counts, schedule toggles) DAGs read at runtime. Start from the **DAG Configuration** preset.
+**DAG configuration** -- per-environment tuning values (batch sizes, retry counts, endpoints, timezones) DAGs read at runtime instead of hard-coding, so a tuning change is an apply rather than a DAG redeploy. Start from the **DAG Configuration** preset.
 
-**Feature flags** -- boolean-style flags that gate pipeline behavior between dev and prod without code changes. Start from the **Feature Flags** preset.
+**Feature flags** -- boolean-style flags that gate pipeline behavior (incremental load, data-quality checks, `dry_run`) between dev and prod without code changes. Keep the values quoted — unquoted `true`/`false` parse as YAML booleans and ConfigMap values must be strings. Start from the **Feature Flags** preset.
 
 ## Works With
 

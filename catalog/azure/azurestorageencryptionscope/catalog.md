@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Storage Encryption Scope**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Platform-Managed Scope** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Storage Encryption Scope**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Platform-Managed Encryption Scope** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageEncryptionScope
 metadata:
   name: tenant-a-scope
@@ -51,11 +51,29 @@ spec:
 planton apply -f scope.yaml
 ```
 
-This creates a platform-managed scope -- a distinct encryption boundary with zero key management: Azure creates and rotates the key.
+This creates a platform-managed scope -- a distinct encryption boundary with zero key management: Azure creates and rotates the key. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRef above wires the scope to its account: the InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the scope with the resolved ARM ID.
+The customer-managed-key shape is the natural composition: account, Key Vault key, and scope in one InfraChart, with the key referenced versionless so rotation propagates transparently:
+
+```yaml
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: app-storage
+      fieldPath: status.outputs.storage_account_id
+  scopeName: regulatedScope
+  source: MICROSOFT_KEY_VAULT
+  keyVaultKeyId:
+    valueFrom:
+      kind: AzureKeyVaultKey
+      name: regulated-data-key
+      fieldPath: status.outputs.versionless_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the storage account and key first, then provisions the scope with the resolved values.
 
 ## Key Configuration
 
@@ -85,16 +103,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `encryption_scope_name` | The scope's name within the account | AzureStorageContainer `defaultEncryptionScope`, ADLS filesystem `defaultEncryptionScope` -- scopes compose BY NAME |
-| `encryption_scope_id` | Azure Resource Manager ID of the scope | Diagnostics and policy audits |
 | `storage_account_name` | The parent account's name, parsed from the resolved account ID | The account/scope pair without a second reference |
+
+The outputs also carry `encryption_scope_id`, the scope's ARM ID -- consumers compose with the scope by name within the account, so the ID has no ValueFromRef consumer.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Per-tenant key isolation** -- one platform-managed scope per tenant, each tenant's container pinned to its scope with the per-blob override blocked. Start from the **Platform-Managed Scope** preset.
+**Per-tenant key isolation** -- one platform-managed scope per tenant, each tenant's container pinned to its scope with the per-blob override blocked. Start from the **Platform-Managed Encryption Scope** preset.
 
-**Regulated subset under a customer key** -- `source: MICROSOFT_KEY_VAULT` with a versionless key reference; revoking the vault key is the kill switch. Start from the **Customer-Managed-Key Scope** preset.
+**Regulated subset under a customer key** -- `source: MICROSOFT_KEY_VAULT` with a versionless key reference; revoking the vault key is the kill switch. Start from the **Customer-Managed-Key Encryption Scope** preset.
 
 **Double encryption for one data class** -- `infrastructureEncryptionRequired: true` on the scope while the account's own switch stays off. Start from the **Double-Encryption Scope** preset.
 

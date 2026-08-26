@@ -1,6 +1,6 @@
 # Azure Virtual Network Gateway Connection
 
-Deploys a gateway connection -- the tunnel object that joins an AzureVirtualNetworkGateway to its far side: an on-premises VPN device (site-to-site IPsec, described by an AzureLocalNetworkGateway), another virtual network gateway (VNet-to-VNet), or an ExpressRoute circuit's private peering. The connection is deliberately its own resource: one gateway carries many tunnels, and each site's tunnel is added or removed without touching the gateway. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a gateway connection -- the tunnel object that joins an AzureVirtualNetworkGateway to its far side: an on-premises VPN device (site-to-site IPsec, described by an AzureLocalNetworkGateway), another virtual network gateway (VNet-to-VNet), or an ExpressRoute circuit's private peering. The connection is deliberately its own resource: one gateway carries many tunnels, and each site's tunnel is added or removed without touching the gateway.
 
 ## What Gets Created
 
@@ -28,7 +28,7 @@ The gateway, the site description, and the circuit are NOT created here -- they 
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Network Gateway Connection**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Virtual Network Gateway Connection**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site Tunnel** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -48,20 +48,18 @@ spec:
   name: hq-to-azure
   type: IPSEC
   virtualNetworkGatewayId:
-    value: "/subscriptions/.../virtualNetworkGateways/hub-vpn-gateway"
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworkGateways/hub-vpn-gateway
   localNetworkGatewayId:
-    value: "/subscriptions/.../localNetworkGateways/hq-datacenter"
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/localNetworkGateways/hq-datacenter
   sharedKey:
-    valueFrom:
-      kind: Secret
-      name: hq-tunnel-psk
+    value: $secret/hq-tunnel-psk
 ```
 
 ```shell
 planton apply -f azure-gateway-connection.yaml
 ```
 
-This creates the site-to-site tunnel in seconds (the gateway already exists). A Stack Job tracks provisioning in real time.
+This creates the site-to-site tunnel in seconds (the gateway already exists). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -90,7 +88,7 @@ These are the most important decisions when configuring a connection. Explore th
 
 **Type** -- required, and it decides the required far side: IPSEC needs `localNetworkGatewayId`, VNET_TO_VNET needs `peerVirtualNetworkGatewayId` (and a mirror connection on the peer with the same key), EXPRESS_ROUTE needs `expressRouteCircuitId`. All spec-enforced.
 
-**Shared key** -- the IPsec pre-shared key both ends must agree on. Reference a secret; or omit it and Azure generates one (readable back from the connection's shared-key API). Not applicable to ExpressRoute.
+**Shared key** -- the IPsec pre-shared key both ends must agree on. It is a sensitive field: reference a managed secret as `$secret/<slug>` instead of pasting the literal, or omit it and Azure generates one (readable back from the connection's shared-key API). Not applicable to ExpressRoute.
 
 **IPsec policy** -- omit for Azure's default proposal set; pin all six algorithms plus SA bounds when the on-premises device demands exact parameters. `usePolicyBasedTrafficSelectors` (for policy-based devices behind a route-based gateway) requires a pinned policy.
 
@@ -111,20 +109,15 @@ These are the most important decisions when configuring a connection. Explore th
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `connection_id` | Azure Resource Manager ID of the connection | Diagnostics, Azure Monitor alert scoping |
-| `connection_name` | Name of the connection | Operational tooling |
+The connection's `status.outputs` carry only `connection_id` and `connection_name` -- identity echoes of the resource itself. No downstream Cloud Resource consumes them: the connection is a leaf of the site-to-site graph, and the tunnel's live state (Connecting/Connected) is runtime telemetry read from Azure Monitor, not a provisioning output.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Site-to-site tunnel** -- An IPsec connection to a described on-premises site with a secret-referenced pre-shared key. Start from the **Site-to-Site** preset.
+**Site-to-site tunnel** -- An IPsec connection to a described on-premises site with a secret-referenced pre-shared key. Start from the **Site-to-Site Tunnel** preset.
 
-**Pinned-proposal tunnel** -- A site-to-site connection with an explicit IPsec/IKE proposal for devices that demand exact algorithms. Start from the **Custom IPsec Policy** preset.
+**Pinned-proposal tunnel** -- A site-to-site connection with an explicit IPsec/IKE proposal for devices that demand exact algorithms. Start from the **Custom IPsec Policy Tunnel** preset.
 
 ## Works With
 

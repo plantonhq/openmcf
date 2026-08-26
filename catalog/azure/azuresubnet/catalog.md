@@ -1,6 +1,6 @@
 # Azure Subnet
 
-Deploys a standalone Azure Subnet within an existing Virtual Network -- the composition hub of Azure networking. This is the most widely referenced Azure networking resource: downstream consumers include AKS clusters, Container App environments, PostgreSQL/MySQL Flexible Servers, Redis Cache, Application Gateways, Load Balancers, private endpoints, and VMs, all of which deploy INTO a subnet by referencing its ID. The subnet also declares the attachments that make a segment production-grade -- a network security group, a route table, and a NAT gateway -- because that is Azure's own model: one of each serves many subnets. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a standalone Azure Subnet within an existing Virtual Network -- the composition hub of Azure networking. This is the most widely referenced Azure networking resource: downstream consumers include AKS clusters, Container App environments, PostgreSQL/MySQL Flexible Servers, Redis Cache, Application Gateways, Load Balancers, private endpoints, and VMs, all of which deploy INTO a subnet by referencing its ID. The subnet also declares the attachments that make a segment production-grade -- a network security group, a route table, and a NAT gateway -- because that is Azure's own model: one of each serves many subnets.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Subnet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General-Purpose** preset in the [Presets](#presets) tab to pre-populate a /24 subnet with common service endpoints.
+Open the deployment store, find **Azure Subnet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General-Purpose Subnet** preset in the [Presets](#presets) tab to pre-populate a /24 subnet with common service endpoints.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureSubnet
 metadata:
   name: app-subnet
@@ -43,7 +43,7 @@ metadata:
   env: prod
 spec:
   virtualNetworkId:
-    value: "/subscriptions/.../virtualNetworks/prod-vnet"
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/prod-network/providers/Microsoft.Network/virtualNetworks/prod-vnet
   name: app
   addressPrefixes:
     - "10.0.1.0/24"
@@ -108,7 +108,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `subnet_id` | Azure resource ID of the subnet | AKS clusters, Container App environments, PostgreSQL/MySQL Flexible Servers, Redis Cache, Load Balancers, Application Gateways, Private Endpoints, VMs |
-| `subnet_name` | Name of the subnet within the VNet | Network diagnostics, NSG association references |
 | `address_prefixes` | CIDR blocks actually assigned (echoes the spec for self-managed subnets; carries the IPAM-provisioned ranges otherwise) | NSG rules, firewall rules, network planning |
 | `virtual_network_name` | Parent network's name, derived from its ARM ID | Composing sibling resources without re-parsing the ID |
 | `resource_group_name` | Resource group of the subnet and its parent network | Composing sibling resources without re-parsing the ID |
@@ -117,11 +116,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**General-purpose subnet** -- A /24 subnet with service endpoints for Storage, Key Vault, and SQL. No delegation, keeping the subnet flexible for VMs, load balancers, private endpoints, and other resource types. Start from the **General-Purpose** preset.
+**General-purpose subnet** -- A /24 subnet with service endpoints for Storage, Key Vault, and SQL. No delegation, keeping the subnet flexible for VMs, load balancers, private endpoints, and other resource types. Start from the **General-Purpose Subnet** preset.
 
-**PostgreSQL delegated subnet** -- A /28 subnet delegated to `Microsoft.DBforPostgreSQL/flexibleServers` for VNet-integrated PostgreSQL deployments. The delegation makes the subnet exclusive to PostgreSQL Flexible Server. Start from the **Delegated PostgreSQL** preset.
+**PostgreSQL delegated subnet** -- A /28 subnet delegated to `Microsoft.DBforPostgreSQL/flexibleServers` for VNet-integrated PostgreSQL deployments. The delegation makes the subnet exclusive to PostgreSQL Flexible Server. Start from the **PostgreSQL Delegated Subnet** preset.
 
-**Container Apps delegated subnet** -- A /21 subnet delegated to `Microsoft.App/environments` with 2,048 IPs for Container App scale-out. Required for VNet-integrated Container App environments. Start from the **Delegated Container Apps** preset.
+**Container Apps delegated subnet** -- A /21 subnet delegated to `Microsoft.App/environments` with 2,048 IPs for Container App scale-out. Required for VNet-integrated Container App environments. Start from the **Delegated Container Apps Subnet** preset.
 
 ## Works With
 

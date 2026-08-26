@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Cosmos DB Mongo Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **dedicated-collection-throughput** preset in the [Presets](#presets) tab for the common production shape.
+Open the deployment store, find **Azure Cosmos DB Mongo Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dedicated Collection Throughput** preset in the [Presets](#presets) tab for the common production shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbMongoDatabase
 metadata:
   name: catalog-database
@@ -58,6 +58,8 @@ When deploying as part of a multi-resource environment, the account, database, a
 
 ## Key Configuration
 
+These are the most important decisions when configuring a Mongo database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Throughput model** -- The single real decision. Leave both fields unset (the production norm) and each collection provisions its own dedicated throughput; set `throughput` for a fixed shared budget (minimum 400 RU/s, increments of 100); or set `autoscaleMaxThroughput` (minimum 1000 RU/s, increments of 1000) and Azure floats the shared budget between 10% and 100% of it. The two are mutually exclusive. On serverless accounts (the ENABLE_SERVERLESS capability) neither may be set — Azure rejects provisioned throughput at apply.
 
 **Database name** -- Unique within the account, 1-255 characters (Azure's only constraint), and what Mongo drivers address after connecting to the account. Changing the name replaces the database AND everything in it.
@@ -70,10 +72,27 @@ When deploying as part of a multi-resource environment, the account, database, a
 |------------|-------|-------------------|
 | AzureCosmosdbAccount | `cosmosdbAccountId` | `status.outputs.cosmosdb_account_id` |
 
-### What This Component Produces
+### What This Component Provides
 
-| Output | Description | Consumed By |
-|--------|-------------|-------------|
-| `mongo_database_id` | The ARM ID of the database | AzureCosmosdbMongoCollection |
-| `mongo_database_name` | The name Mongo drivers reference | Application configuration |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `mongo_database_id` | The ARM ID of the database | AzureCosmosdbMongoCollection `mongoDatabaseId` |
+| `mongo_database_name` | The name Mongo drivers reference inside the account's connection | Application configuration |
 | `cosmosdb_account_name` | The parent account's name | Connection string composition |
+
+There are deliberately no endpoint or credential outputs here: connectivity and the MongoDB connection strings live on the account (AzureCosmosdbAccount's outputs); the database is addressed inside that connection by name.
+
+## Common Patterns
+
+**Pure namespace, dedicated collection throughput** — leave both throughput fields unset so the database is only a namespace and each collection provisions its own RU/s. Workloads stay isolated: a hot collection throttles itself, never its siblings. The production default. Start from the **Dedicated Collection Throughput** preset.
+
+**Shared autoscale budget for many small collections** — `autoscaleMaxThroughput` gives every collection inside a shared budget that Azure floats between 10% and 100% of the ceiling. Economical for fleets of small collections that would each waste a dedicated 400 RU/s minimum — but shared means coupled: one hot collection can starve its siblings, so give genuinely hot collections their own throughput on the collection instead. The 10% floor always bills, so size the ceiling to real peaks. Start from the **Shared Autoscale Database** preset.
+
+**Serverless namespace** — on an account with the ENABLE_SERVERLESS capability, the database (and its collections) must leave both throughput fields unset; Azure rejects provisioned throughput at apply. Right for intermittent traffic and workloads whose profile is still unknown. Start from the **Serverless Database** preset.
+
+## Works With
+
+- [**Azure Cosmos DB Account**](/cloud-catalog/azure-cosmosdb-account) — the MONGO_DB account (with the ENABLE_MONGO capability) this database lives in, referenced via `cosmosdb_account_id`
+- [**Azure Cosmos DB Mongo Collection**](/cloud-catalog/azure-cosmosdb-mongo-collection) — the collections inside, referencing this database's `mongo_database_id` output

@@ -9,7 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Helm Release** (`cnpg`) -- the CloudNativePG operator Deployment, its mutating/validating webhooks, and its RBAC (ClusterRoles when cluster-wide, namespace-scoped when fenced)
 - **CRDs** -- Cluster, ScheduledBackup, Backup, Pooler, Database, and companions — stamped `helm.sh/resource-policy: keep` unconditionally, so uninstalling the release never cascade-deletes the databases behind them
 - **Barman Cloud plugin** (optional) -- a SECOND Helm release beside the operator (upstream forbids folding them into one) providing object-store backups for every database; its internal TLS is issued by cert-manager
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true (`cnpg-system` is the upstream convention)
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true (`cnpg-system` is the upstream convention)
 
 ## Before You Deploy
 
@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
-### Cluster Prerequisites
+### Kubernetes Cluster
 
 - For the Barman Cloud backup plugin: **cert-manager on the cluster** (a deployed KubernetesCertManager) — the plugin's operator↔sidecar TLS certificates are cert-manager Certificates, and the install fails without it.
 - For the operator PodMonitor: the Prometheus operator CRDs — the release fails to install without them.
@@ -33,7 +33,7 @@ Open the deployment store, find **CloudNativePG Operator**, and click **Deploy**
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCloudNativePgOperator
 metadata:
   name: cnpg
@@ -55,7 +55,25 @@ spec:
 planton apply -f cnpg-operator.yaml
 ```
 
-The operator starts reconciling immediately; declare databases with KubernetesPostgres resources afterwards.
+This creates the `cnpg-system` namespace, installs the operator release plus the Barman Cloud backup plugin, and enables the operator's PodMonitor — the backup-capable production posture. Declare databases with KubernetesPostgres resources afterwards. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, reference the namespace instead of hardcoding it:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: cnpg-namespace
+      fieldPath: spec.name
+  createNamespace: false
+  barmanCloudPlugin:
+    enabled: true
+```
+
+The InfraPipeline creates the namespace first, then installs the operator into it in dependency order.
 
 ## Key Configuration
 
@@ -69,21 +87,21 @@ These are the most important decisions when configuring the operator. Explore th
 
 **The backup plugin is the backup path** -- CloudNativePG's built-in object-store support is deprecated upstream; the Barman Cloud plugin is what makes every KubernetesPostgres backup block function. It installs as its own release, requires cert-manager, and appears as a second release name in the outputs.
 
-**Standbys are not throughput** -- extra operator replicas are leader-elected warm standbys that shorten the operator's own failover; `max_concurrent_reconciles` is the throughput dial for control planes managing many databases.
+**Standbys are not throughput** -- extra operator replicas are leader-elected warm standbys that shorten the operator's own failover; `maxConcurrentReconciles` is the throughput dial for control planes managing many databases.
 
-**The watch fence is silent on the outside** -- a fenced operator (`cluster_wide: false` plus a namespace list) never reconciles a database outside the fence, with no error anywhere. Cluster-wide is the normal posture.
+**The watch fence is silent on the outside** -- a fenced operator (`watch.clusterWide: false` plus a namespace list) never reconciles a database outside the fence, with no error anywhere. Cluster-wide is the normal posture.
 
 **Keep the operator's priority above workloads** -- databases stop failing over without their operator; `system-cluster-critical` is the conventional choice.
 
-**The escape hatch** -- `helm_values` carries additional chart values as a YAML document, merged LAST — never the substitute for typed fields, and never a place for secrets.
+**The escape hatch** -- `helmValues` carries additional chart values as a YAML document, merged LAST — never the substitute for typed fields, and never a place for secrets.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the operator (and the plugin) installs into |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
 
 ### What This Component Provides
 
@@ -105,6 +123,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes Postgres** -- the databases this operator reconciles; each one composes against the CRDs installed here, and their backup blocks depend on the Barman plugin.
-- **Kubernetes Cert Manager** -- the Barman Cloud plugin's TLS issuer; deploy it before enabling the plugin.
-- **Kubernetes Namespace** -- the placement target (`cnpg-system` by convention), permanent while the CRDs are kept.
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the databases this operator reconciles; each one composes against the CRDs installed here, and their backup blocks depend on the Barman plugin.
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- the Barman Cloud plugin's TLS issuer; deploy it before enabling the plugin.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the placement target (`cnpg-system` by convention), permanent while the CRDs are kept.

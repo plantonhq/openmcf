@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Cosmos DB Mongo Collection**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **tenant-sharded** preset in the [Presets](#presets) tab for the multi-tenant production shape.
+Open the deployment store, find **Azure Cosmos DB Mongo Collection**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Tenant-sharded Mongo collection** preset in the [Presets](#presets) tab for the multi-tenant production shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbMongoCollection
 metadata:
   name: tenant-events
@@ -69,6 +69,8 @@ When deploying as part of a multi-resource environment, the account, database, a
 
 ## Key Configuration
 
+These are the most important decisions when configuring a Mongo collection. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Shard key** -- The one decision that cannot change. Pick a document property with high cardinality and even request distribution (tenantId, userId, deviceId). Unset creates an UNSHARDED collection confined to a single physical partition — acceptable only for small, bounded collections.
 
 **Indexes** -- Azure REQUIRES an index on `_id` (declare it with `unique: true`); a collection cannot be created without it. Every other index is a query-performance decision: compound indexes serve queries that filter on their keys in order, and each index taxes every write with extra RU/s. Indexes update in place.
@@ -85,11 +87,28 @@ When deploying as part of a multi-resource environment, the account, database, a
 |------------|-------|-------------------|
 | AzureCosmosdbMongoDatabase | `mongoDatabaseId` | `status.outputs.mongo_database_id` |
 
-### What This Component Produces
+### What This Component Provides
 
-| Output | Description | Consumed By |
-|--------|-------------|-------------|
-| `mongo_collection_id` | The ARM ID of the collection | Audit tooling |
-| `mongo_collection_name` | The name Mongo drivers reference | Application configuration |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `mongo_collection_id` | The ARM ID of the collection | ARM reads, policy targets |
+| `mongo_collection_name` | The name Mongo drivers reference inside the database | Application configuration |
 | `mongo_database_name` | The parent database's name | Application configuration |
 | `cosmosdb_account_name` | The account's name | Connection string composition |
+
+There are deliberately no endpoint or credential outputs here: connectivity and the MongoDB connection strings live on the account (AzureCosmosdbAccount's outputs); the collection is addressed inside that connection by database and collection name.
+
+## Common Patterns
+
+**Tenant-sharded event stream** — shard by `tenantId` with dedicated autoscale throughput, so each tenant's writes land on distinct physical partitions and the RU budget follows the spiky multi-tenant load. The production-default shape for event and audit streams. Start from the **Tenant-sharded Mongo collection** preset.
+
+**Fleet of small collections on a shared budget** — leave both throughput fields unset so the collection draws from the database's shared throughput, while still sharding (e.g. by `userId`) so it scales out across partitions. More economical than per-collection dedication when collections are small and similarly sized; the trade is noisy-neighbor contention inside the shared budget. Start from the **Shared-throughput Mongo collection** preset.
+
+**TTL session store** — `defaultTtlSeconds: 86400` expires every document 24 hours after its last write, so storage stays flat without a cleanup job. Fixed dedicated throughput suits the predictable steady-state load. Start from the **TTL session-store Mongo collection** preset.
+
+## Works With
+
+- [**Azure Cosmos DB Mongo Database**](/cloud-catalog/azure-cosmosdb-mongo-database) — the parent database this collection lives in, referenced via `mongo_database_id`
+- [**Azure Cosmos DB Account**](/cloud-catalog/azure-cosmosdb-account) — the MONGO_DB account that owns connectivity, connection strings, and network posture for everything inside

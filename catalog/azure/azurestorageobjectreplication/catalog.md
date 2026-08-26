@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Storage Object Replication**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Cross-Region DR** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Storage Object Replication**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Cross-Region DR Replication** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageObjectReplication
 metadata:
   name: invoices-dr
@@ -66,11 +66,38 @@ spec:
 planton apply -f replication.yaml
 ```
 
-This bootstraps DR for one container: the whole container backfills once, then new blobs stream asynchronously.
+This bootstraps DR for one container: the whole container backfills once, then new blobs stream asynchronously. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRefs above wire the policy to its accounts and containers: the InfraPipeline resolves the dependency graph and deploys the accounts, then the containers, then the policy.
+When both accounts, both containers, and the policy deploy in the same InfraChart, wire every reference with ValueFromRef:
+
+```yaml
+spec:
+  sourceStorageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: primary-account
+      fieldPath: status.outputs.storage_account_id
+  destinationStorageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: dr-account
+      fieldPath: status.outputs.storage_account_id
+  rules:
+    - sourceContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: invoices-container
+          fieldPath: status.outputs.container_name
+      destinationContainerName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: invoices-replica-container
+          fieldPath: status.outputs.container_name
+```
+
+The InfraPipeline resolves the dependency graph and deploys the accounts, then the containers, then the policy with the resolved values.
 
 ## Key Configuration
 
@@ -97,23 +124,15 @@ These are the most important decisions when configuring a replication policy. Ex
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `policy_id` | The replication policy's GUID, shared by both sides | Correlating the pair in diagnostics |
-| `source_object_replication_id` | ARM ID of the source-side policy resource | Source-account diagnostics |
-| `destination_object_replication_id` | ARM ID of the destination-side (authoritative) policy resource | Destination-account diagnostics |
-
-One policy, TWO ARM resources: Azure materializes it on both accounts, and each side's diagnostics reference their own ID.
+This component has no consumable outputs: nothing downstream composes with a replication policy, so no output has a ValueFromRef consumer. `status.outputs` still carries what operations needs -- `policy_id` (the server-assigned GUID shared by both sides, what `az storage account or-policy show --policy-id` and the monitoring surfaces key on) and the two ARM IDs (`source_object_replication_id`, `destination_object_replication_id`), because one policy materializes as TWO ARM resources, one on each account.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Cross-region DR** -- destination in the paired region, `Everything` backfill on the critical containers; the initial copy runs long, then steady-state replication takes over. Start from the **Cross-Region DR** preset.
+**Cross-region DR** -- destination in the paired region, `Everything` backfill on the critical containers; the initial copy runs long, then steady-state replication takes over. Start from the **Cross-Region DR Replication** preset.
 
-**Prefix-scoped distribution** -- fan out only a name subtree (`reports/2026`) to a read-local copy in each serving geography. Start from the **Prefix-Scoped Distribution** preset.
+**Prefix-scoped distribution** -- fan out only a name subtree (`reports/2026`) to a read-local copy in each serving geography. Start from the **Prefix-Scoped Content Distribution** preset.
 
 ## Works With
 

@@ -8,7 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Helm Release** -- the metrics-server Deployment, Service, and RBAC (the release name is fixed to `metrics-server`), pinned to the chart version you choose
 - **APIService registration** -- the cluster-wide `v1beta1.metrics.k8s.io` APIService that routes resource-metrics queries to this installation
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true (`kube-system` installs leave it false)
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true (`kube-system` installs leave it false)
 
 ## Before You Deploy
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Metrics Server**, and click **Deploy**. The creation wizard walks you through placement, the chart pin, kubelet TLS posture, availability, observability, and scheduling. Start from the **Managed Cloud** preset for EKS/AKS clusters in the [Presets](#presets) tab.
+Open the deployment store, find **Metrics Server**, and click **Deploy**. The creation wizard walks you through placement, the chart pin, kubelet TLS posture, availability, observability, and scheduling. Start from the **Managed Cloud (EKS / AKS)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMetricsServer
 metadata:
   name: metrics-server
@@ -47,7 +47,23 @@ spec:
 planton apply -f metrics-server.yaml
 ```
 
-On a self-signed-kubelet cluster add `kubeletInsecureTls: true`, or the release never turns ready.
+This installs metrics-server into `kube-system` with the chart defaults -- verified kubelet TLS, one replica, the APIService registered. On a self-signed-kubelet cluster add `kubeletInsecureTls: true`, or the release never turns ready. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire metrics-server to a namespace or TLS material managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: metrics-namespace
+      fieldPath: spec.name
+  createNamespace: false
+```
+
+The InfraPipeline deploys the namespace first, then installs metrics-server into it.
 
 ## Key Configuration
 
@@ -59,15 +75,17 @@ These are the most important decisions when configuring metrics-server. Explore 
 
 **Availability vs the drain wedge** -- a PodDisruptionBudget with a single replica wedges node drains (the one pod can never be evicted voluntarily). Raise replicas when enabling the PDB.
 
-**The escape hatch** -- `helm_values` carries additional chart values as a YAML document, merged LAST over everything the typed fields render — for the chart surface beyond the typed fields, never the substitute for them, and never a place for secrets.
+**The escape hatch** -- `helmValues` carries additional chart values as a YAML document, merged LAST over everything the typed fields render — for the chart surface beyond the typed fields, never the substitute for them, and never a place for secrets.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace metrics-server is installed into |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesSecret** | `tls.existingSecretName` | `metadata.name` |
+| **KubernetesIssuer** | `tls.certManagerIssuer.name` | `status.outputs.issuer_name` |
 
 ### What This Component Provides
 
@@ -84,14 +102,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Managed cloud** -- EKS/AKS clusters with verifiable kubelet certificates; chart defaults do the rest. Start from the **Managed Cloud** preset.
+**Managed cloud** -- EKS/AKS clusters with verifiable kubelet certificates; chart defaults do the rest. Start from the **Managed Cloud (EKS / AKS)** preset.
 
-**Self-signed kubelets** -- kind, k3s, and kubeadm clusters accept kubelet TLS without verification — the posture every local-cluster runbook assumes. Start from the **Self-Signed Kubelets** preset.
+**Self-signed kubelets** -- kind, k3s, and kubeadm clusters accept kubelet TLS without verification — the posture every local-cluster runbook assumes. Start from the **Self-Signed Kubelets (kind / k3s / kubeadm / on-prem)** preset.
 
-**HA with verified TLS** -- two replicas, a PodDisruptionBudget, and verified kubelet certificates for production fleets. Start from the **HA Verified TLS** preset.
+**HA with verified TLS** -- two replicas, a PodDisruptionBudget, and verified kubelet certificates for production fleets. Start from the **HA with Verified TLS (production hardening)** preset.
 
 ## Works With
 
-- **Kubernetes Horizontal Pod Autoscaler** -- consumes the resource-metrics API this component registers, with no explicit reference needed.
-- **Kubernetes Deployment / StatefulSet / DaemonSet** -- `kubectl top pod` and `kubectl top node` work the moment the first scrape lands.
-- **Keda** -- complements metrics-server: KEDA covers event-driven and external metrics, metrics-server covers instantaneous CPU/memory.
+- [**Kubernetes HorizontalPodAutoscaler**](/cloud-catalog/kubernetes-horizontal-pod-autoscaler) -- consumes the resource-metrics API this component registers, with no explicit reference needed
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- `kubectl top pod` and `kubectl top node` work for its workloads the moment the first scrape lands
+- [**KEDA**](/cloud-catalog/kubernetes-keda) -- complements metrics-server: KEDA covers event-driven and external metrics, metrics-server covers instantaneous CPU/memory
+- [**Cert Manager Issuer**](/cloud-catalog/kubernetes-issuer) -- signs the serving certificate when the cert-manager TLS arm is chosen

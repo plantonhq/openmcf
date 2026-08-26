@@ -10,7 +10,7 @@
   <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
        ConfigMap is distinguished by the settings-document glyph: a file
        card carrying key-value rows (a short "key" stub and a longer
-       "value" line per row)  configuration as data, mounted or injected.
+       "value" line per row) — configuration as data, mounted or injected.
        Distinct from the Secret mark (which carries a padlock). -->
   <g
      inkscape:label="base"

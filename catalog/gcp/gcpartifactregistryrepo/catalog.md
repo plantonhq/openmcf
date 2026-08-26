@@ -6,6 +6,7 @@ Deploys a Google Cloud Artifact Registry repository — the universal package st
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Artifact Registry API enablement** (`artifactregistry.googleapis.com`) on the target project (never disabled on destroy)
 - **Artifact Registry Repository** -- in the chosen project and location, with the declared format and serving mode
 - **Remote upstream configuration** -- for `REMOTE_REPOSITORY` mode: exactly one upstream (Docker Hub, Maven Central, npmjs, PyPI, an Apt/Yum mirror, or a custom registry URI/AR repository), optionally with authenticated credentials referencing a Secret Manager version
 - **Virtual upstream policies** -- for `VIRTUAL_REPOSITORY` mode: the priority-ordered Artifact Registry repositories the endpoint serves from
@@ -21,7 +22,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **Artifact Registry API** (`artifactregistry.googleapis.com`) enabled in the target project.
 - **Cloud KMS key** (if using CMEK) with `roles/cloudkms.cryptoKeyEncrypterDecrypter` granted to the Artifact Registry service agent.
 - **Secret Manager secret** (if the remote upstream needs credentials) with `roles/secretmanager.secretAccessor` granted to the Artifact Registry service agent — the spec carries only the secret VERSION PATH, never the password.
 

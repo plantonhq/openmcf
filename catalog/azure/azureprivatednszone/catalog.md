@@ -1,6 +1,6 @@
 # Azure Private DNS Zone
 
-Deploys an Azure Private DNS Zone: name resolution inside virtual networks without running a DNS server. The zone is deliberately just the zone — a global record container. Which networks can resolve it is declared through separate **AzurePrivateDnsZoneVirtualNetworkLink** resources referencing this zone's `zone_id` output: one link per network, added and removed without touching the zone. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups.
+Deploys an Azure Private DNS Zone: name resolution inside virtual networks without running a DNS server. The zone is deliberately just the zone — a global record container. Which networks can resolve it is declared through separate **AzurePrivateDnsZoneVirtualNetworkLink** resources referencing this zone's `zone_id` output: one link per network, added and removed without touching the zone.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ A zone with no network links answers nobody: pair every deployment with at least
 
 ### Console
 
-Open the deployment store, find **Azure Private DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the zone's three steps: zone identity (a purpose-driven picker fills exact privatelink FQDNs so long domain names cannot be mistyped), optional SOA customization, and governance tags.
+Open the deployment store, find **Azure Private DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the zone's three steps: zone identity (a purpose-driven picker fills exact privatelink FQDNs so long domain names cannot be mistyped), optional SOA customization, and governance tags. Start from the **Private Link Zone** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateDnsZone
 metadata:
   name: pg-dns
@@ -102,7 +102,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Private Link DNS** -- A zone named for the Azure-defined privatelink FQDN of the target service, paired with a VNet link per network and referenced from each private endpoint's `privateDnsZoneIds`. The endpoint registers its private IP here automatically, so the service's public FQDN resolves privately inside linked networks. Start from the **Private Link Zone** preset.
 
-**Custom internal DNS** -- A zone like `corp.internal` for internal service discovery, with a real DNS-admin contact and a low negative-caching TTL pinned in the SOA. Pair with links whose `registrationEnabled: true` auto-registers VM A-records. Start from the **Internal Zone** preset.
+**Custom internal DNS** -- A zone like `corp.internal` for internal service discovery, with a real DNS-admin contact and a low negative-caching TTL pinned in the SOA. Pair with links whose `registrationEnabled: true` auto-registers VM A-records. Start from the **Custom Internal DNS Zone** preset.
 
 ## Works With
 

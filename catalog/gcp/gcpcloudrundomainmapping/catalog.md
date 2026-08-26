@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Cloud Run Domain Mapping**, and click **Deploy**. Start from the **Custom Domain** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Cloud Run Domain Mapping**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the region, the verified domain, and the target service reference. Start from the **Custom Domain** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -39,6 +39,8 @@ apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRunDomainMapping
 metadata:
   name: app-domain
+  org: acme-corp
+  env: prod
 spec:
   region: us-central1
   domain: app.example.com
@@ -53,7 +55,7 @@ spec:
 planton apply -f mapping.yaml
 ```
 
-The mapping exists immediately; the domain starts serving once the `resource_records` output is published in the domain's DNS zone and the managed certificate issues (minutes after DNS propagates).
+The mapping exists immediately; the domain starts serving once the `resource_records` output is published in the domain's DNS zone and the managed certificate issues (minutes after DNS propagates). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -81,6 +83,8 @@ The InfraPipeline deploys the service first, maps the domain, then publishes the
 
 ## Key Configuration
 
+These are the most important decisions when configuring a domain mapping. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Domain** -- the verified custom domain; it IS the mapping's name in GCP. Immutable, like every field here: the underlying resource is create-only end to end, so any change replaces the mapping (cheap — free object, seconds to re-create, brief serving gap while the certificate re-issues).
 
 **Route** -- the Cloud Run service the domain routes to, by reference or literal name. Must exist, in this same region and project, before the mapping is created.
@@ -102,10 +106,9 @@ The InfraPipeline deploys the service first, maps the domain, then publishes the
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `domain` | The mapped domain | Application configuration, tooling |
-| `region` | GCP region of the mapping | Tooling |
+| `domain` | The mapped domain (the mapping's name in GCP) | The join key consumers and verifiers address the mapping by |
 | `resource_records` | DNS records the zone must publish (`record_type`/`record_name`/`rrdata` each) | GcpDnsRecord entries — the records never leave the graph |
-| `mapped_route_name` | The service the mapping currently points to | Health checks |
+| `mapped_route_name` | The service the mapping currently points to | Verifying the domain routes to the intended service |
 
 ## Common Patterns
 
@@ -113,15 +116,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Custom domain on a service** -- the default shape: managed certificate, DNS records wired into the zone. Start from the **Custom Domain** preset.
 
-**Migration without a certificate gap** -- `certificateMode: NONE` first, publish DNS while the old host still serves, then flip to `AUTOMATIC` (a replacement — seconds).
+**Migration without a certificate gap** -- `certificateMode: NONE` first, publish DNS while the old host still serves, then flip to `AUTOMATIC` (a replacement — seconds). Start from the **Migration Without Certificate** preset.
 
 ## Works With
 
-- [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) — the service being mapped
-- [GcpDnsRecord](/docs/catalog/gcp/gcpdnsrecord) — publishes the emitted records in a Cloud DNS zone
-- [GcpDnsZone](/docs/catalog/gcp/gcpdnszone) — the managed zone those records live in
-- [GcpProject](/docs/catalog/gcp/gcpproject) — provides the project and API enablement
-
----
-
-© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
+- [**GCP Cloud Run**](/cloud-catalog/gcp-cloud-run) — the service being mapped
+- [**GCP DNS Record**](/cloud-catalog/gcp-dns-record) — publishes the emitted records in a Cloud DNS zone
+- [**GCP DNS Zone**](/cloud-catalog/gcp-dns-zone) — the managed zone those records live in
+- [**GCP Project**](/cloud-catalog/gcp-project) — provides the project and API enablement

@@ -1,16 +1,15 @@
-# Jenkins on Kubernetes
+# Jenkins
 
-Deploys a Jenkins automation server on any Kubernetes cluster using the official Jenkins Helm chart. Supports configurable resource allocation, auto-generated admin credentials stored in a Kubernetes Secret, Helm value overrides for plugin and agent configuration, and external access via LoadBalancer ingress. Runs on your existing Kubernetes infrastructure using a Kubernetes Provider Connection for credential delivery.
+Deploys a Jenkins automation server on any Kubernetes cluster using the official Jenkins Helm chart. Supports configurable resource allocation, auto-generated admin credentials stored in a Kubernetes Secret, Helm value overrides for plugin and agent configuration, and optional external exposure through a Gateway API Gateway with a cert-manager-issued TLS certificate.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Namespace** -- created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
-- **Admin Password Secret** -- a Kubernetes Secret containing a generated admin password for the Jenkins controller
-- **Jenkins Helm Release** -- installs the official Jenkins Helm chart with configured CPU/memory resources, admin credentials from the generated secret, and a ClusterIP service for the Jenkins web UI
-- **Kubernetes Service** -- a ClusterIP service for cluster-internal access to the Jenkins controller on port 8080
-- **LoadBalancer Service** -- created only when `ingress.enabled` is `true`; exposes Jenkins on a public IP with external-dns annotations for automatic DNS record creation
+- **Admin Password Secret** -- a Kubernetes Secret containing a generated admin password for the Jenkins controller (never authored in the manifest)
+- **Jenkins Helm Release** -- installs the official Jenkins Helm chart with configured CPU/memory resources, admin credentials from the generated secret, and a ClusterIP service for the Jenkins web UI on port 8080
+- **TLS Certificate, Gateway, and HTTPRoutes** -- created only when `ingress.enabled` is `true`: a cert-manager Certificate for the hostname (issued by the cluster's ClusterIssuer), a Gateway API Gateway using the `istio` GatewayClass in the `istio-ingress` namespace, an HTTP-to-HTTPS redirect route, and the HTTPS route to the Jenkins service
 - **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
 ## Before You Deploy
@@ -23,20 +22,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Kubernetes Cluster
 
 - **A storage class** available for persistent volumes. Jenkins uses persistent storage for job history, plugin data, and configuration. The cluster must support dynamic PV provisioning.
-- **external-dns** running in the cluster (only required when using ingress with a hostname for automatic DNS record creation).
+- **Istio with Gateway API support and cert-manager with a ClusterIssuer** -- only when `ingress.enabled` is `true`: the module creates the Gateway with the `istio` GatewayClass in the `istio-ingress` namespace and requests the TLS certificate from the ClusterIssuer named after the hostname's DNS domain.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Jenkins on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Jenkins** preset in the [Presets](#presets) tab to pre-populate a working configuration with ingress enabled.
+Open the deployment store, find **Jenkins**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Jenkins** preset in the [Presets](#presets) tab to pre-populate a working configuration with ingress enabled.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJenkins
 metadata:
   name: build-jenkins
@@ -82,11 +81,11 @@ The InfraPipeline deploys the namespace first, then provisions Jenkins into it.
 
 ## Key Configuration
 
-These are the most important decisions when configuring Jenkins on Kubernetes. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+These are the most important decisions when configuring Jenkins. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Resource allocation** -- Jenkins is memory-intensive, especially with many plugins and concurrent builds. The default limits of `2000m` CPU and `4Gi` memory accommodate typical CI workloads. Increase for instances running many concurrent pipelines or heavy compilation jobs.
+**Resource allocation** -- Jenkins is memory-intensive, especially with many plugins and concurrent builds. The spec defaults are modest (`1000m` CPU / `1Gi` memory limits, `50m` / `100Mi` requests) -- fine for evaluation, undersized for real CI. Instances running many concurrent pipelines or heavy compilation jobs need explicit limits in the `2000m` / `4Gi` range or beyond.
 
-**External access** -- Set `ingress.enabled: true` with a `hostname` (e.g., `"jenkins.example.com"`) to expose the Jenkins web UI externally. When ingress is disabled, access is limited to within the cluster or via the `port_forward_command` in the outputs.
+**External access rides Istio and cert-manager** -- Set `ingress.enabled: true` with a `hostname` (e.g., `"jenkins.example.com"`) and the module creates a Gateway (class `istio`), an HTTPS-redirect route, and a cert-manager Certificate whose ClusterIssuer is named after the hostname's DNS domain -- that issuer must already exist on the cluster. When ingress is disabled, access is limited to within the cluster or via the `port_forward_command` in the outputs.
 
 **Helm value overrides** -- The `helmValues` map passes additional key-value pairs directly to the Jenkins Helm chart for configuration not covered by the spec, such as JCasC (Jenkins Configuration as Code) settings, plugin installation, agent pod templates, or RBAC configuration. Refer to the Jenkins Helm chart documentation for available options.
 
@@ -124,3 +123,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for Jenkins deployment
+- [**Istio**](/cloud-catalog/kubernetes-istio) -- provides the `istio` GatewayClass the ingress arm's Gateway uses
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- issues the TLS certificate for the ingress hostname via the cluster's ClusterIssuer

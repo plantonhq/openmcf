@@ -1,23 +1,35 @@
 # Cloudflare Waiting Room Event
 
-A scheduled window on a waiting room during which optional overrides temporarily replace the room's settings. Events live on their own cadence -- created and deleted per launch while the room persists. Unset overrides inherit the room. Times are RFC3339; start must be at least one minute before end.
+Deploys a scheduled event on a Cloudflare waiting room: a time window (a product launch, a ticket on-sale) during which the event's override values temporarily replace the room's own settings, with an optional prequeue that gathers early arrivals before the doors open. Every override is null-means-inherit — an unset field leaves the room's value in charge for the window. Events live on their own cadence, created and deleted per launch while the room persists, which is why they are their own kind rather than a field of the room.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Waiting room event** -- one `cloudflare_waiting_room_event` on the named room and zone
+- **Waiting Room Event** — one event on the named room and zone, active between `eventStartTime` and `eventEndTime`, carrying only the override fields the spec sets
 
-## Prerequisites
+## Before You Deploy
 
-- **A CloudflareWaitingRoom** -- this event's `waitingRoomId` foreign key; create the room first
-- **The same zone** the room belongs to -- `zoneId` is required alongside the room id
-- **A Cloudflare API token** with Zone → Waiting Rooms → Edit
-- **A window that satisfies the time rules** -- start ≥ 1 minute before end; prequeue ≥ 5 minutes before start if set
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with an API token holding Zone → Waiting Room → Edit on the target zone. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credential authentication.
 
-A launch window with no overrides -- the room's settings stay in charge:
+### Cloudflare Account
+
+- **A waiting room** — `waitingRoomId` names the room the event runs on; deploy a CloudflareWaitingRoom first and reference its output.
+- **The room's zone** — `zoneId` is required alongside the room ID, and the two must agree; an event on room A in zone B fails at the API.
+- **The Waiting Rooms Advanced add-on** (only for Advanced overrides) — an event's `customPageHtml` fails at apply if the zone lacks the add-on, same as on the room.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Waiting Room Event**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the room and zone references, the event window, and the optional overrides. Start from the **Launch window** preset in the [Presets](#presets) tab to pre-populate a no-override window.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -28,7 +40,7 @@ metadata:
   env: prod
 spec:
   waitingRoomId:
-    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+    value: "699d98642c564d2e855e9661899b7252"
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   name: launch
@@ -40,108 +52,77 @@ spec:
 planton apply -f waiting-room-event.yaml
 ```
 
-The room queues with its own thresholds during this window. Add overrides only when the launch needs different math.
+This creates a four-hour window with no overrides — the room queues with its own thresholds throughout. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `waitingRoomId` | StringValueOrRef | The room the event runs on. Can reference a CloudflareWaitingRoom via `valueFrom` (defaults to `status.outputs.waiting_room_id`). | Required. |
-| `zoneId` | StringValueOrRef | The zone the room belongs to. Can reference a CloudflareDnsZone via `valueFrom` (defaults to `status.outputs.zone_id`). | Required. |
-| `name` | string | Display name. | Required, min length 1. |
-| `eventStartTime` | string | When the window opens. | Required. RFC3339. At least one minute before `eventEndTime`. |
-| `eventEndTime` | string | When the window closes. | Required. RFC3339. |
-
-### Optional Fields
-
-Every override is **null-means-inherit** -- unset leaves the room's value in charge.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `prequeueStartTime` | string | unset (no prequeue) | RFC3339. At least five minutes before start. |
-| `shuffleAtEventStart` | bool | unset | Randomize prequeued users at the door. Requires a prequeue. |
-| `description` | string | unset | Dashboard note. |
-| `suspended` | bool | unset | The window comes and goes with no effect. |
-| `customPageHtml` | string | inherit | Override the room's queue page (Advanced entitlement applies). |
-| `disableSessionRenewal` | bool | inherit | Override the room's session-renewal setting. |
-| `newUsersPerMinute` | int32 | inherit | Override the room's rate. Floor 200. Set together with `totalActiveUsers` (both or neither). |
-| `totalActiveUsers` | int32 | inherit | Override the room's cap. Floor 200. Set together with `newUsersPerMinute`. |
-| `queueingMethod` | string | inherit | `fifo`, `random`, `passthrough`, `reject`. |
-| `sessionDuration` | int32 | inherit | 1–30 minutes. |
-| `turnstileAction` | string | inherit | `log` or `infinite_queue`. |
-| `turnstileMode` | string | inherit | `off`, `invisible`, `visible_non_interactive`, `visible_managed`. |
-
-## Examples
-
-### Launch window, no overrides
+When the room and zone are deployed in the same InfraPipeline, wire both references with ValueFromRef:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareWaitingRoomEvent
-metadata:
-  name: launch
-  org: acme-corp
-  env: prod
 spec:
   waitingRoomId:
     valueFrom:
       kind: CloudflareWaitingRoom
-      name: checkout
+      name: checkout-queue
       fieldPath: status.outputs.waiting_room_id
   zoneId:
     valueFrom:
       kind: CloudflareDnsZone
-      name: example-zone
+      name: acme-com
       fieldPath: status.outputs.zone_id
   name: launch
   eventStartTime: "2026-09-01T10:00:00Z"
   eventEndTime: "2026-09-01T14:00:00Z"
 ```
 
-### Prequeue with a shuffled door and a users-pair override
+The InfraPipeline resolves the dependency graph, deploys the zone and the room first, then provisions the event with the resolved IDs.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareWaitingRoomEvent
-metadata:
-  name: on-sale
-  org: acme-corp
-  env: prod
-spec:
-  waitingRoomId:
-    valueFrom:
-      kind: CloudflareWaitingRoom
-      name: checkout
-      fieldPath: status.outputs.waiting_room_id
-  zoneId:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: example-zone
-      fieldPath: status.outputs.zone_id
-  name: on-sale
-  eventStartTime: "2026-09-01T10:00:00Z"
-  eventEndTime: "2026-09-01T14:00:00Z"
-  prequeueStartTime: "2026-09-01T09:30:00Z"
-  shuffleAtEventStart: true
-  newUsersPerMinute: 400
-  totalActiveUsers: 2000
-```
+## Key Configuration
 
-## Destroy Semantics
+These are the most important decisions when configuring a waiting room event. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-Destroy is a real delete. The event is removed; the room is untouched and returns to its own settings. Set `suspended: true` to cancel a window without losing the ID.
+**Null means inherit** — unset override fields are never sent to Cloudflare, so the room's value stays in charge during the window. Do not set a field to "confirm" the room's value; set only what the launch genuinely changes. The inherit rule covers `customPageHtml`, `disableSessionRenewal`, `queueingMethod`, `sessionDuration`, and both Turnstile fields.
 
-## Stack Outputs
+**The users pair travels together** — `newUsersPerMinute` and `totalActiveUsers` override each other's math, so Cloudflare requires setting both or neither, and each has the same 200 floor as the room. The spec validates the pairing at manifest time.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `event_id` | string | The created event's ID |
-| `waiting_room_id` | string | The room the event runs on |
-| `zone_id` | string | The zone the waiting room belongs to |
+**Time rules are validated up front** — times are RFC3339 (`2026-09-01T10:00:00Z`); `eventStartTime` must be at least one minute before `eventEndTime`, and `prequeueStartTime`, when set, at least five minutes before start. The spec enforces all three so a bad window fails at manifest time instead of as an opaque API error.
 
-## Related Components
+**Prequeue and shuffle** — `prequeueStartTime` opens an early line before the doors open; `shuffleAtEventStart` randomizes that line at the door instead of first-come-first-served, the fairness tool for on-sales where arrival time is a bot advantage. Shuffle requires a prequeue (there is nothing to shuffle otherwise) and only makes sense when the queueing method respects order (`fifo`).
 
-- [Cloudflare Waiting Room](/docs/catalog/cloudflare/cloudflarewaitingroom) -- the room this event overrides; create it first
-- [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- `zoneId` foreign key
+**Cancelling versus deleting** — destroy is a real delete of the event; the room is untouched and returns to its own settings. For a cancelled launch you may reschedule, set `suspended: true` instead — the window comes and goes with no effect while the event's ID survives.
+
+**Delete order matters** — destroying the room first leaves events pointing at a deleted object. Delete the events before the room, or accept the lookup failure.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareWaitingRoom** | `waitingRoomId` | `status.outputs.waiting_room_id` |
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `event_id` | The created event's ID | Dashboard lookup and import recipes |
+| `waiting_room_id` | The room the event runs on | Correlating events to their room in a pipeline |
+| `zone_id` | The zone the room belongs to | Zone-scoped siblings deployed in the same pipeline |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Launch window, no overrides** — a named window that keeps the room's thresholds in charge; useful when the launch just needs visibility in the dashboard's event list. Start from the **Launch window** preset.
+
+**On-sale with a shuffled prequeue** — open a prequeue thirty minutes early, shuffle at the door, and raise the users pair together (`newUsersPerMinute` + `totalActiveUsers`) for the sale window. Delete the event after the date; the room persists.
+
+**Maintenance clamp** — an event that overrides `queueingMethod: reject` for a window where the origin cannot take traffic at all, without touching the room's steady-state configuration.
+
+## Works With
+
+- [**Cloudflare Waiting Room**](/cloud-catalog/cloudflare-waiting-room) — the room this event overrides; create it first and wire `waitingRoomId` from its output
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) — the zone the room belongs to; `zoneId` references its `zone_id` output

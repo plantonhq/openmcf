@@ -1,0 +1,56 @@
+# =============================================================================
+# Manifest Defaults Guard
+# =============================================================================
+# Fails the PR when any registered kind's schema authors a default option
+# that cannot convert to its field's type -- an enum default written as the
+# value's number instead of its name, a non-numeric int default, a
+# non-boolean bool default. Such a default makes every manifest that omits
+# the field fail to load, and nothing else notices: the reference generator
+# deliberately absorbs a broken example into a report, and the buf lint
+# plugin guards presence tracking (the `optional` keyword), not values.
+#
+# The gate lives beside the applier whose converter it exercises
+# (internal/manifest/protodefaults) so the check can never drift from the
+# machinery that applies defaults in production. See the package's
+# registry_defaults_test.go.
+# =============================================================================
+
+name: lint.manifest-defaults
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**/*.proto'
+      - 'catalog/**/*.pb.go'
+      - 'shared/**/*.proto'
+      - 'shared/**/*.pb.go'
+      - 'internal/manifest/**'
+      - '.github/workflows/lint.manifest-defaults.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**/*.proto'
+      - 'catalog/**/*.pb.go'
+      - 'shared/**/*.proto'
+      - 'shared/**/*.pb.go'
+      - 'internal/manifest/**'
+      - '.github/workflows/lint.manifest-defaults.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  manifest-defaults:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run manifest-defaults gate
+        run: go test ./internal/manifest/...

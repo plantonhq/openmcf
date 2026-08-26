@@ -1,4 +1,4 @@
-# UDP Route on Kubernetes
+# Kubernetes UDPRoute
 
 Creates a namespaced Kubernetes Gateway API `UDPRoute` -- a route that forwards **UDP datagrams** arriving on a Gateway listener to one or more backend Services. UDPRoute is a **layer-4, connectionless** route: it has no hostnames, no matches, and no filters -- there is no connection or request structure to match on. Datagrams on the parent listener's port are simply forwarded to the rule's backends. Typical backends are DNS servers, syslog collectors, game servers, and other datagram protocols. This component mirrors the upstream Gateway API `UDPRoute` (GA, `gateway.networking.k8s.io/v1`) spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
@@ -31,14 +31,14 @@ The Gateway controller reconciles the route asynchronously: it reports per-paren
 
 ### Console
 
-Open the deployment store, find **UDP Route on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Gateways** (the `parentRefs` Gateways to attach to), then **Rules** (the route rules and their destination Services and weights). Start from the **DNS Forwarding** or **Game Server** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes UDPRoute**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Gateways** (the `parentRefs` Gateways to attach to), then **Rules** (the route rules and their destination Services and weights). Start from the **UDP DNS Forwarding** or **UDP Game Server** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesUdpRoute
 metadata:
   name: my-udp-route
@@ -48,11 +48,13 @@ spec:
   namespace:
     value: prod-apps
   parentRefs:
-    - name: prod-gateway
+    - name:
+        value: prod-gateway
       sectionName: udp-dns
   rules:
     - backendRefs:
-        - name: coredns
+        - name:
+            value: coredns
           port: 53
 ```
 
@@ -60,7 +62,34 @@ spec:
 planton apply -f udp-route.yaml
 ```
 
-This creates a UDPRoute in `prod-apps` that attaches to the `udp-dns` listener of `prod-gateway` and forwards every datagram arriving on that listener to the `coredns` Service on port 53.
+This creates a UDPRoute in `prod-apps` that attaches to the `udp-dns` listener of `prod-gateway` and forwards every datagram arriving on that listener to the `coredns` Service on port 53. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the Gateway and backend Service are managed in the same InfraChart, wire the route's references with `valueFrom` so the resource graph carries the edges:
+
+```yaml
+spec:
+  namespace:
+    value: prod-apps
+  parentRefs:
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: prod-gateway
+          fieldPath: status.outputs.gateway_name
+      sectionName: udp-dns
+  rules:
+    - backendRefs:
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: coredns
+              fieldPath: status.outputs.service_name
+          port: 53
+```
+
+The InfraPipeline deploys the referenced Gateway and Service first, then provisions the route against them.
 
 ## Key Configuration
 
@@ -76,7 +105,13 @@ These are the most important decisions when configuring a UDPRoute. Explore the 
 
 ### What This Component Consumes
 
-This component takes foreign-key references to a `KubernetesNamespace` (via `spec.namespace`), to `KubernetesGateway` (each `parentRefs` entry's `name`), and to `KubernetesService` (each backend's `name`), so an InfraChart deploys those targets before the route and the resource graph carries the edges. Literal names cover targets created outside Planton; cross-namespace references require a `KubernetesReferenceGrant`.
+| Dependency | Field | ValueFromRef Path |
+|---|---|---|
+| Kubernetes Namespace | `spec.namespace` | `spec.name` |
+| Kubernetes Gateway | `spec.parentRefs[].name` | `status.outputs.gateway_name` |
+| Kubernetes Service | `spec.rules[].backendRefs[].name` | `status.outputs.service_name` |
+
+Literal names (`value:`) cover targets created outside Planton; cross-namespace references additionally require a Reference Grant in the target namespace.
 
 ### What This Component Provides
 
@@ -91,14 +126,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**DNS forwarding** -- Forward datagrams arriving on a Gateway's UDP listener (port 53) to an in-cluster DNS Service. Start from the **DNS Forwarding** preset.
+**DNS forwarding** -- Forward datagrams arriving on a Gateway's UDP listener (port 53) to an in-cluster DNS Service. Start from the **UDP DNS Forwarding** preset.
 
-**Game server** -- Expose a UDP-speaking game server through the Gateway, optionally splitting load across instances by weight. Start from the **Game Server** preset.
+**Game server** -- Expose a UDP-speaking game server through the Gateway, optionally splitting load across instances by weight. Start from the **UDP Game Server** preset.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (v1.6.0+ standard channel carries UDPRoute); deploy first (prerequisite).
-- **KubernetesGateway** -- the Gateway whose UDP listener this route attaches to (`parentRefs`); install first.
-- **KubernetesNamespace** -- the namespace (`spec.namespace`) the route runs in.
-- **KubernetesReferenceGrant** -- authorizes cross-namespace parent or backend references from this route.
-- **KubernetesService** -- the backend workloads (`backendRefs`) that receive forwarded datagrams.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (v1.6.0+ standard channel carries UDPRoute); deploy first.
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- the Gateway whose UDP listener this route attaches to (`parentRefs`); install first.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the namespace (`spec.namespace`) the route runs in.
+- [**Kubernetes ReferenceGrant**](/cloud-catalog/kubernetes-reference-grant) -- authorizes cross-namespace parent or backend references from this route.
+- [**Kubernetes Service**](/cloud-catalog/kubernetes-service) -- the backend workloads (`backendRefs`) that receive forwarded datagrams.

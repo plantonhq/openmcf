@@ -6,26 +6,26 @@ Declares a complete self-hosted Planton platform — control plane, web console,
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **PlantonPlatform CR** -- the one declaration; the OPERATOR then creates the platform from it (workloads, Services, Secrets, volumes — all in the platform's namespace, all named from this resource's name)
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true
+- **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise the namespace must already exist
+- **PlantonPlatform CR** — the one declaration; the OPERATOR then creates the platform from it (workloads, Services, Secrets, volumes — all in the platform's namespace, all named from this resource's name and owner-referenced to the declaration)
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
-### Cluster Prerequisites
+### Kubernetes Cluster
 
-- **The Planton operator** -- a deployed KubernetesPlantonOperator (one per cluster serves every platform).
-- For `ingress`: an ingress controller; for `ingress.tls.issuer`: cert-manager.
-- A default StorageClass that can actually provision volumes (or set `storage.storage_class_name`) — the operator verifies this before deploying and its status explains any storage problem in plain language.
+- **The Planton operator** — a deployed Planton Operator resource (one per cluster serves every platform). Without it the declaration is never reconciled.
+- **A default StorageClass that can actually provision volumes** (or set `storage.storageClassName`) — the operator verifies this before deploying and its status explains any storage problem in plain language.
+- **An ingress controller** (only for `ingress`) and **cert-manager** (only for `ingress.tls.issuer`).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Planton Platform**, and click **Deploy**. The creation wizard walks you through placement, the version, exposure (port-forward vs ingress/TLS), storage, identity and bootstrap seeding, the runner's cloud identity, and the opt-in components. Start from the **Zero Config** preset in the Presets tab.
+Open the deployment store, find **Planton Platform**, and click **Deploy**. The creation wizard walks you through placement, the version, exposure (port-forward vs ingress/TLS), storage, identity and bootstrap seeding, the runner's cloud identity, and the opt-in components. Start from the **Zero Config** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -37,20 +37,89 @@ kind: KubernetesPlantonPlatform
 metadata:
   name: planton
   org: acme-corp
-  env: platform
+  env: prod
 spec:
   namespace:
     value: planton
-  create_namespace: true
+  createNamespace: true
   version: v0.0.40-selfhosted-preview
 ```
 
-```bash
+```shell
 planton apply -f planton.yaml
 ```
 
-Watch it come up (`kubectl get plantonplatforms -A` — phase, version, URL), then use the `port_forward_command` output to open the door and the `setup_code_command` output for the first-visit setup page.
+This declares a full zero-config platform: the operator brings up the control plane, console, identity server, databases, secrets manager, and runner in the `planton` namespace. Watch it come up (`kubectl get plantonplatforms -A` — phase, version, URL), then use the `port_forward_command` output to open the door and the `setup_code_command` output for the first-visit setup page. A Stack Job tracks the provisioning in real time.
 
-## Destroy
+### InfraChart
 
-Deleting the resource tears the whole platform down — databases included. Every operator-created object is owner-referenced to the declaration, so Kubernetes garbage collection completes the teardown even when the operator itself is already gone, and the database layer removes its volumes and credentials together. Build caches and workflow volumes can survive in the namespace; when this resource owned the namespace (`create_namespace: true`), its deletion sweeps them.
+When deploying as part of a multi-resource environment, use ValueFromRef to place the platform in a managed namespace:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: planton
+      fieldPath: spec.name
+  createNamespace: false
+  version: v0.0.40-selfhosted-preview
+```
+
+The InfraPipeline creates the namespace first, then declares the platform into it. The operator itself is a `depends_on` edge declared through `metadata.relationships` — no spec field consumes an operator output. The `planton-on-kubernetes` InfraChart carries namespace + operator + platform as one deployable arm.
+
+## Key Configuration
+
+These are the most important decisions when configuring a Planton Platform. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**`version` is required and never defaulted** — a default that moved with catalog updates would silently upgrade a running platform — databases and all — on an ordinary re-apply. Changing this one field IS the upgrade path, and upgrades of a system holding your data must always be a deliberate act.
+
+**Set the URL before the first sign-in** — the identity server bakes the platform URL into its realm at first boot. For port-forward platforms that URL includes `gateway.localPort` (default 8080; two port-forward platforms on one machine need distinct ports); for ingress platforms it is `ingress.hostname`. Deciding exposure after the first visit means re-doing identity setup. `ingress.tls` requires a hostname (a certificate cannot be issued for an auto-derived address) and takes exactly one of `secretName` or a cert-manager `issuer`.
+
+**The runner's cloud identity is yours, never the platform's** — the platform stores no cloud credentials. Give the runner workload-identity annotations (`runner.serviceAccountAnnotations` — IRSA on EKS, Workload Identity on GKE/AKS) or name a customer-owned Secret in `runner.cloudCredentialsSecretName`; rotate by updating YOUR Secret. Disabling the runner leaves a platform that can model infrastructure but not deploy it.
+
+**One build-enabled platform per cluster** — Tekton allows exactly one cluster-wide build-events sink, so builds can feed only one platform per cluster. When several platforms share a cluster, set `build.enabled: false` on all but one.
+
+**Opting out of the bundled secrets manager needs a replacement** — `vault.enabled: false` is a deliberate opt-out; pair it with a cloud backend in `bootstrap.secretBackend` (e.g. `awsSecretsManager` with its region and KMS key, reached through the control plane's own workload identity) or connection secrets have nowhere to live.
+
+**Storage is one dial with per-component overrides** — `storage.storageClassName` and `storage.size` govern every platform volume unless a component overrides them; one `size` value lifts every volume above a backend's minimum-size floor. On EKS, `storage.storageClassName: gp3` moves the whole platform off the legacy gp2 class in one line.
+
+**Cluster-shared sub-operators are shared on purpose** — `prerequisites` defaults every sub-operator (CloudNativePG, Tekton Pipelines, the Solr operator) to `auto`: installed only when absent, respected when something else manages them, and deliberately left behind on destroy because sibling platforms may ride them.
+
+**Destroy takes the databases with it** — deleting the resource tears the whole platform down; every operator-created object is owner-referenced to the declaration, so garbage collection completes the teardown even when the operator is already gone, and the database layer removes its volumes and credentials together. Build caches and workflow volumes can survive in the namespace; when this resource owned the namespace (`createNamespace: true`), its deletion sweeps them.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef (all derive from the declaration itself — the operator's naming is deterministic per platform name, so they are stable from the first apply):
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `platform_name` | The PlantonPlatform CR name — the prefix of every object the operator creates | kubectl inspection of the platform's workloads |
+| `gateway_service` | The built-in front-door gateway Service (`<name>-gateway`) — console, API, and sign-in on one origin | Composing exposure from Ingress or Gateway API kinds |
+| `setup_code_secret` | The Secret holding the first-run setup code (`<name>-identity-setup-code`) | Granting bootstrap access to the first-visit setup page |
+| `port_forward_command` | The exact command that opens the platform's door on this machine | Workstation access; the Planton desktop app's connect-existing flow |
+| `setup_code_command` | The exact command that reads the first-run setup code | First-visit admin setup |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Zero config** — a version-only platform behind the built-in gateway: one port-forward opens console, API, and sign-in, and the first visitor becomes the admin. The right start on any cluster, including laptops. Start from the **Zero Config** preset.
+
+**Real hostname with in-cluster TLS** — the platform at your own domain through the cluster's ingress controller, with cert-manager issuing and renewing the certificate. Set the hostname before the first sign-in. Start from the **Ingress + TLS** preset.
+
+**EKS-shaped platform** — gp3 storage for every volume, the AWS Load Balancer Controller serving the hostname with an ACM certificate at the edge (no in-cluster `tls` block), and IRSA giving the runner keyless AWS identity. Start from the **EKS** preset.
+
+## Works With
+
+- [**Planton Operator**](/cloud-catalog/kubernetes-planton-operator) — the hard prerequisite: the manager that reconciles this declaration; one per cluster serves every platform
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the platform's namespace when composed in an InfraChart
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) — issues and renews the ingress certificate when `ingress.tls.issuer` is used

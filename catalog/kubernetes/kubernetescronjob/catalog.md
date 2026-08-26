@@ -1,4 +1,4 @@
-# CronJob on Kubernetes
+# Kubernetes CronJob
 
 Runs work on a recurring schedule on any Kubernetes cluster as a batch/v1 CronJob: at each scheduled time the controller creates a Job from the job template, and that Job runs pods to completion. This is the kind for scheduled work — nightly backups, report generation, periodic cleanup. The spec splits cleanly in two: scheduling controls (a 5-field cron expression, an explicit IANA time zone, overlap handling that deliberately defaults SAFER than upstream, history retention) live at the top level, and everything about the work itself lives in the job template, which mirrors the complete KubernetesJob batch surface (parallelism, Indexed mode, per-index retries, pod failure and success policies, sidecars, probes, security contexts). Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **CronJob on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Nightly Backup** preset for the classic 03:00 backup window, or **Frequent Sync** for a tight-interval schedule, in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes CronJob**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Nightly Backup CronJob** preset for the classic 03:00 backup window, or **Frequent Sync CronJob** for a tight-interval schedule, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCronJob
 metadata:
   name: nightly-backup
@@ -60,7 +60,7 @@ spec:
 planton apply -f cronjob.yaml
 ```
 
-This runs the backup daily at 03:00 New York time, skipping a run if the previous one is still going (the Forbid default), with a 90-minute deadline so a hung run can never block the schedule.
+This runs the backup daily at 03:00 New York time, skipping a run if the previous one is still going (the Forbid default), with a 90-minute deadline so a hung run can never block the schedule. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -116,11 +116,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Nightly backup** -- Daily at 03:00 in an explicit time zone, Forbid concurrency untouched, a run deadline so a hung backup can never block the schedule, and failed-run history kept for post-mortems. Start from the **Nightly Backup** preset.
+**Nightly backup** -- Daily at 03:00 in an explicit time zone, Forbid concurrency untouched, a run deadline so a hung backup can never block the schedule, and failed-run history kept for post-mortems. Start from the **Nightly Backup CronJob** preset.
 
-**Frequent sync** -- A tight-interval schedule with a starting deadline (bounding the missed-run counter) and Replace concurrency — only the newest run matters. Start from the **Frequent Sync** preset.
+**Frequent sync** -- A tight-interval schedule with a starting deadline (bounding the missed-run counter) and Replace concurrency — only the newest run matters. Start from the **Frequent Sync CronJob** preset.
 
-**Monthly report** -- A low-frequency schedule with generous history retention and a fan-out template for partitioned report generation. Start from the **Monthly Report** preset.
+**Monthly report** -- A low-frequency schedule with generous history retention and an Indexed fan-out template for partitioned report generation. Start from the **Monthly Report CronJob (Indexed)** preset.
 
 ## Works With
 

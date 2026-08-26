@@ -1,6 +1,6 @@
-# DNS Zone on Cloudflare
+# Cloudflare DNS Zone
 
-Deploys a Cloudflare DNS zone — the root of every zone-scoped Cloudflare resource — with optional inline DNS records at the full record surface, zone-wide DNS settings, DNSSEC signing, a zone hold, and a plan subscription. Integrates with Planton's Provider Connections for Cloudflare credential management and anchors ValueFromRef wiring for records, rulesets, load balancers, custom hostnames, and every other zone-scoped Cloud Resource in InfraPipelines.
+Deploys a Cloudflare DNS zone — the root of every zone-scoped Cloudflare resource — with optional inline DNS records at the full record surface, zone-wide DNS settings, DNSSEC signing, a zone hold, and a plan subscription. Its `zone_id` output anchors ValueFromRef wiring for records, rulesets, load balancers, custom hostnames, and every other zone-scoped Cloud Resource in InfraPipelines.
 
 ## What Gets Created
 
@@ -29,7 +29,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Zone on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -84,7 +84,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `zone_id` | The Cloudflare Zone ID of the created DNS zone | CloudflareDnsRecord, CloudflareRuleset, CloudflareLoadBalancer, CloudflareCustomHostname, CloudflareCertificatePack, CloudflareEmailRouting*, CloudflareR2Bucket custom domains, CloudflareWorker routes/domains |
 | `nameservers` | The nameserver addresses assigned to this zone | Domain registrar NS configuration |
 | `status` | The zone's activation status (`pending` until delegated) | Deployment gating |
-| `dnssec_ds`, `dnssec_digest`, `dnssec_key_tag`, and friends | DS/DNSKEY material when DNSSEC is enabled | Registrar DS record entry |
+| `dnssec_ds`, `dnssec_digest`, `dnssec_digest_type`, `dnssec_algorithm`, `dnssec_key_tag`, `dnssec_public_key` | DS/DNSKEY material, populated only when DNSSEC is enabled | Registrar DS record entry to complete the chain of trust |
 
 ## Common Patterns
 
@@ -92,10 +92,18 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic zone** -- A DNS zone with no inline records; add DNS records separately as CloudflareDnsRecord resources for independent lifecycle management. Start from the **Basic Zone** preset.
 
-**DNSSEC-signed zone** -- A zone with Cloudflare signing enabled and the DS material exported for the registrar. Start from the **DNSSEC Signed** preset.
+**DNSSEC-signed zone** -- A zone with Cloudflare signing enabled and the DS material exported for the registrar. Start from the **DNSSEC-Signed Zone** preset.
 
 **Zone with a record portfolio** -- A zone bootstrapped with its full record set inline: web A/AAAA records, mail MX and SPF/DKIM TXTs, service SRVs, and issuance-controlling CAAs. Start from the **Typed Records** preset.
 
 ## Works With
 
-The zone is the anchor of the Cloudflare resource graph: CloudflareDnsRecord, CloudflareRuleset, CloudflareLoadBalancer, CloudflareCustomHostname, CloudflareCustomHostnameFallbackOrigin, CloudflareCertificatePack, CloudflareEmailRoutingZone, CloudflareEmailRoutingRule, and the Worker route/custom-domain surfaces all reference `zone_id` via ValueFromRef.
+The zone is the anchor of the Cloudflare resource graph — every zone-scoped kind references its `zone_id` output via ValueFromRef:
+
+- [**Cloudflare DNS Record**](/cloud-catalog/cloudflare-dns-record) -- records with lifecycles independent of the zone
+- [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- zone-phase rules (WAF, redirects, transforms)
+- [**Cloudflare Load Balancer**](/cloud-catalog/cloudflare-load-balancer) -- traffic steering on a hostname in the zone
+- [**Cloudflare Certificate Pack**](/cloud-catalog/cloudflare-certificate-pack) -- advanced edge certificates ordered for the zone
+- [**Cloudflare Custom Hostname**](/cloud-catalog/cloudflare-custom-hostname) and [**Cloudflare Custom Hostname Fallback Origin**](/cloud-catalog/cloudflare-custom-hostname-fallback-origin) -- the Cloudflare-for-SaaS surface on the zone
+- [**Cloudflare Email Routing Zone**](/cloud-catalog/cloudflare-email-routing-zone) and [**Cloudflare Email Routing Rule**](/cloud-catalog/cloudflare-email-routing-rule) -- email routing enabled on the zone
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- Worker routes and custom domains bound to the zone

@@ -45,22 +45,40 @@ spec:
     - entryName: www
       hostname: www.example.com
       certificates:
-        - value: projects/my-project/locations/global/certificates/www-cert
+        - value: projects/acme-prod-12345/locations/global/certificates/www-cert
     - entryName: fallback
       matcher: PRIMARY
       certificates:
-        - value: projects/my-project/locations/global/certificates/wildcard-cert
+        - value: projects/acme-prod-12345/locations/global/certificates/wildcard-cert
 ```
 
 ```shell
 planton apply -f certificate-map.yaml
 ```
 
+This creates a map that serves `www.example.com` with its dedicated certificate and every other SNI with the wildcard fallback. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-The multi-domain TLS edge in one chart: GcpCertManagerCert resources per domain, this map binding hostnames to them, and a GcpTargetHttpsProxy consuming the `map_uri` output — add a domain by adding a certificate and an entry.
+The multi-domain TLS edge in one chart: GcpCertManagerCert resources per domain, this map binding hostnames to them, and a GcpTargetHttpsProxy consuming the `map_uri` output — add a domain by adding a certificate and an entry:
+
+```yaml
+spec:
+  entries:
+    - entryName: www
+      hostname: www.example.com
+      certificates:
+        - valueFrom:
+            kind: GcpCertManagerCert
+            name: www-cert
+            fieldPath: status.outputs.certificate_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the certificates first, then binds them into the map.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a certificate map. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **entries** -- the routing table. `hostname` matches the client's SNI (FQDN or wildcard `*.example.com`); `matcher: PRIMARY` is the fallback used when no hostname entry matches — ship one or unmatched handshakes fail.
 
@@ -78,6 +96,8 @@ The multi-domain TLS edge in one chart: GcpCertManagerCert resources per domain,
 | **GcpCertManagerCert** | `entries[].certificates[]` | `status.outputs.certificate_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

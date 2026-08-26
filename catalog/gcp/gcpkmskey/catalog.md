@@ -1,6 +1,6 @@
 # GCP KMS Key
 
-Deploys a Cloud KMS cryptographic key within an existing key ring for symmetric encryption (CMEK), asymmetric signing, asymmetric decryption, or MAC generation. The key supports automatic rotation, configurable protection levels (software or HSM), and scheduled destruction periods. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to key rings managed as separate Cloud Resources.
+Deploys a Cloud KMS cryptographic key within an existing key ring for symmetric encryption (CMEK), asymmetric signing, asymmetric decryption, or MAC generation. The key supports automatic rotation, configurable protection levels (software, HSM, or external key manager), bring-your-own-key import, and scheduled destruction windows. A KMS key can never be deleted from GCP: destroy removes the versions (making data encrypted under them unrecoverable once the recovery window elapses), and the key object remains permanently in the ring — choose names and settings deliberately.
 
 ## What Gets Created
 
@@ -9,6 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **KMS CryptoKey** -- a `kms.CryptoKey` in the specified key ring, configured with the chosen purpose, algorithm, protection level, and rotation schedule
 - **Version Template** -- created only when `versionTemplate` is specified; controls the encryption algorithm and protection level (SOFTWARE, HSM, EXTERNAL, or EXTERNAL_VPC) for new key versions
 - **Automatic Rotation** -- created only when `rotationPeriod` is set; generates a new primary CryptoKeyVersion at the specified interval (minimum 24 hours)
+- **Cloud KMS API enablement** -- `cloudkms.googleapis.com` enabled in the key ring's project (never disabled on destroy — other keys may be actively encrypting production data)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -20,14 +21,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A KMS key ring** where the key will be created. Provide the fully qualified key ring path (`projects/{project}/locations/{location}/keyRings/{name}`) directly or reference a GcpKmsKeyRing Cloud Resource via ValueFromRef.
-- **Cloud KMS API** (`cloudkms.googleapis.com`) enabled in the project that owns the key ring.
+- **A KMS key ring** where the key will be created. Provide the fully qualified key ring path (`projects/{project}/locations/{location}/keyRings/{name}`) directly or reference a GcpKmsKeyRing Cloud Resource via ValueFromRef. The module enables the Cloud KMS API itself.
+- **An EkmConnection** (only for EXTERNAL_VPC protection) — the `cryptoKeyBackend` field names the external key manager connection reached through your VPC.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Symmetric Encryption** preset in the [Presets](#presets) tab to pre-populate a standard CMEK key with 90-day rotation.
+Open the deployment store, find **GCP KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Symmetric CMEK Key** preset in the [Presets](#presets) tab to pre-populate a standard CMEK key with 90-day rotation.
 
 ### CLI
 
@@ -76,13 +77,17 @@ These are the most important decisions when configuring a KMS key. Explore the f
 
 **Protection level** -- Set `versionTemplate.protectionLevel` to SOFTWARE (the default when unset), HSM, EXTERNAL, or EXTERNAL_VPC. HSM keys are protected by Cloud HSM hardware modules certified to FIPS 140-2 Level 3, required for PCI DSS, HIPAA, and FedRAMP compliance. The EXTERNAL levels keep the material in your own external key manager (EXTERNAL_VPC pairs with `cryptoKeyBackend`, the EkmConnection reached through your VPC). The protection level is immutable after creation.
 
-**Bring your own key (BYOK)** -- Set `importOnly: true` (with `skipInitialVersionCreation: true` -- GCP cannot generate versions for an import-only key) when regulation requires that Google never generates the key material. Import versions after deploy with `gcloud kms keys versions import`. Start from the **Import-Only BYOK** preset.
+**Bring your own key (BYOK)** -- Set `importOnly: true` (with `skipInitialVersionCreation: true` -- GCP cannot generate versions for an import-only key) when regulation requires that Google never generates the key material. Import versions after deploy with `gcloud kms keys versions import`. Start from the **Import-Only BYOK Key** preset.
 
 **Labels** -- `labels` attach key-value metadata for inventory filtering and cost attribution across a key fleet; freely mutable.
 
 **Rotation period** -- Set `rotationPeriod` for automatic key version rotation (e.g., `"7776000s"` for 90 days). Only applies to ENCRYPT_DECRYPT keys. Asymmetric keys require manual version management. Omit to disable automatic rotation.
 
 **Destroy scheduled duration** -- `destroyScheduledDuration` controls how long destroyed key versions remain recoverable (default 30 days, minimum 24 hours). Shorter durations reduce the recovery window but limit accidental-destruction protection.
+
+**Deletion policy** -- the key object itself can never be deleted from GCP; `deletionPolicy` governs what destroy does to its VERSIONS. `DELETE` (the default) destroys every version — data encrypted under them becomes unrecoverable once the recovery window elapses. `PREVENT` fails the destroy outright; `ABANDON` removes the key from management with versions intact and data still decryptable. Production CMEK keys warrant `PREVENT` or `ABANDON`.
+
+**Immutability** -- only `rotationPeriod`, `versionTemplate.algorithm`, and `labels` update in place. Every other field — purpose, protection level, `importOnly`, the ring — is immutable, which for an undeletable resource means "abandon and create under a new name".
 
 ## Outputs and Dependencies
 
@@ -107,12 +112,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Symmetric encryption (CMEK)** -- Standard customer-managed encryption key with 90-day rotation and software protection. The most common pattern for encrypting data at rest across GCP services. Start from the **Symmetric Encryption** preset.
+**Symmetric encryption (CMEK)** -- Standard customer-managed encryption key with 90-day rotation and software protection. The most common pattern for encrypting data at rest across GCP services. Start from the **Symmetric CMEK Key** preset.
 
-**HSM-protected symmetric encryption** -- Same CMEK pattern but with HSM protection level for compliance scenarios requiring FIPS 140-2 Level 3 certification (PCI DSS, HIPAA, FedRAMP). Start from the **HSM Symmetric Encryption** preset.
+**HSM-protected symmetric encryption** -- Same CMEK pattern but with HSM protection level for compliance scenarios requiring FIPS 140-2 Level 3 certification (PCI DSS, HIPAA, FedRAMP). Start from the **HSM-Protected Symmetric Key** preset.
 
-**Asymmetric signing** -- ECDSA P-256 key for signing build artifacts, container images, JWTs, or code. No automatic rotation -- key versions are managed manually. Start from the **Asymmetric Signing** preset.
+**Asymmetric signing** -- ECDSA P-256 key for signing build artifacts, container images, JWTs, or code. No automatic rotation -- key versions are managed manually. Start from the **Asymmetric Signing Key** preset.
 
 ## Works With
 
 - [**GCP KMS Key Ring**](/cloud-catalog/gcp-kms-key-ring) -- provides the key ring that contains this cryptographic key
+- [**GCP KMS Key IAM Member**](/cloud-catalog/gcp-kms-key-iam-member) -- grants service agents and workloads permission to use this key (CMEK consumers need `cryptoKeyEncrypterDecrypter`)

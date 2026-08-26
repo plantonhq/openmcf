@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target scope.
 - **Planton Runner** -- required when using Runner-based credential delivery.
 
-### GCP
+### GCP Project
 
 - **IAM**: `roles/logging.configWriter` on the scope (folder/org scopes need it at that level).
 - **CMEK buckets**: grant the Logging service account `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key FIRST, or creation fails.
@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Log Bucket**, and click **Deploy**. Start from the **Compliance Retention** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Log Bucket**, and click **Deploy**. The creation wizard walks you through the scope, retention and one-way switches, indexes, log views, and the linked BigQuery dataset. Start from the **Compliance Retention** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -53,24 +53,34 @@ spec:
 planton apply -f log-bucket.yaml
 ```
 
-A 400-day project bucket with a status-code index — pair it with a GcpLoggingSink routing audit entries in.
+A 400-day project bucket with a status-code index — pair it with a GcpLoggingSink routing audit entries in. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-Storage and routing compose in one chart:
+When wiring CMEK or an explicit project, use ValueFromRef to reference resources deployed in the same InfraPipeline:
 
 ```yaml
-# The sink routes INTO the bucket this kind creates:
 spec:
-  destination:
-    rawUri:
+  scope:
+    projectId:
       valueFrom:
-        kind: GcpLogBucket
-        name: audit-logs
-        fieldPath: status.outputs.bucket_name
+        kind: GcpProject
+        name: logging-project
+        fieldPath: status.outputs.project_id
+  bucketId: audit-logs
+  retentionDays: 400
+  cmekKmsKey:
+    valueFrom:
+      kind: GcpKmsKey
+      name: logging-cmek
+      fieldPath: status.outputs.key_id
 ```
 
+The InfraPipeline resolves the dependency graph, deploys the project and key first, then provisions the bucket with the resolved values.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a log bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **scope** -- omit for a project bucket in the provider's default project (the common case); `folderId` / `organizationId` / `billingAccount` select the other scopes, which are ADOPT-only (the Logging API creates new custom buckets only under projects).
 
@@ -82,6 +92,8 @@ spec:
 
 **linkedBigqueryDataset** -- a read-only BigQuery dataset over the bucket (requires analytics); every field is create-time-only.
 
+**deletionPolicy** -- `DELETE` (the default) removes the bucket and its stored entries on destroy (the built-in `_Default`/`_Required` buckets are undeletable and simply drop out of management); `PREVENT` fails the destroy — the posture for compliance-mandated storage; `ABANDON` keeps the bucket storing logs unmanaged. The policy also covers the bucket's log views and linked dataset.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -92,6 +104,8 @@ spec:
 | **GcpKmsKey** (optional) | `cmekKmsKey`, `scopeSettings.kmsKey` | `status.outputs.key_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

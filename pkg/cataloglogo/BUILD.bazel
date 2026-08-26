@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "cataloglogo",
+    srcs = ["cataloglogo.go"],
+    importpath = "github.com/plantonhq/planton/pkg/cataloglogo",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
+    ],
+)
+
+go_test(
+    name = "cataloglogo_test",
+    srcs = ["cataloglogo_test.go"],
+    embed = [":cataloglogo"],
+)

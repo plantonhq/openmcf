@@ -1,6 +1,6 @@
 # Azure VPN Gateway
 
-Deploys a Virtual WAN VPN Gateway -- the managed site-to-site VPN terminator inside a virtual hub (ARM allows one per hub). Branch sites connect to it through VPN Gateway Connections; capacity is bought in scale units (500 Mbps each) across an active-active instance pair Azure manages. **The gateway bills hourly per scale unit from creation and takes 30-45 minutes to create** -- plan lifecycle around both. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Virtual WAN VPN Gateway -- the managed site-to-site VPN terminator inside a virtual hub (ARM allows one per hub). Branch sites connect to it through VPN Gateway Connections; capacity is bought in scale units (500 Mbps each) across an active-active instance pair Azure manages. **The gateway bills hourly per scale unit from creation and takes 30-45 minutes to create** -- plan lifecycle around both.
 
 ## What Gets Created
 
@@ -40,6 +40,26 @@ metadata:
 spec:
   region: eastus
   resourceGroup:
+    value: network-rg
+  name: hub-vpn-gateway
+  virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+```
+
+```shell
+planton apply -f azure-vpn-gateway.yaml
+```
+
+This creates a one-scale-unit (500 Mbps) gateway inside the referenced hub, with Azure-assigned instance public IPs and the default BGP speaker. Expect the create to run 30-45 minutes (ARM's slow path, not a failure); the gateway bills from the moment it exists. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+In a branch-connectivity chart the order is: WAN → hub → **VPN gateway**, plus one site per branch → one connection per site, each wiring to the previous by reference:
+
+```yaml
+spec:
+  region: eastus
+  resourceGroup:
     valueFrom:
       kind: AzureResourceGroup
       name: network-rg
@@ -52,15 +72,7 @@ spec:
       fieldPath: status.outputs.virtual_hub_id
 ```
 
-```shell
-planton apply -f azure-vpn-gateway.yaml
-```
-
-Expect the create to run 30-45 minutes (ARM's slow path, not a failure). The gateway bills from the moment it exists.
-
-### InfraChart
-
-In a branch-connectivity chart the order is: WAN → hub → **VPN gateway**, plus one site per branch → one connection per site, each wiring to the previous by reference.
+The InfraPipeline resolves the dependency graph, deploys the resource group, WAN, and hub first, then provisions the gateway with the resolved IDs.
 
 ## Key Configuration
 
@@ -88,11 +100,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `vpn_gateway_id` | ARM ID of the gateway | A connection's `vpnGatewayId` |
-| `vpn_gateway_name` | Name of the gateway | Operational tooling |
 | `bgp_asn` | The gateway's BGP ASN (65515 today) | Branch device remote-ASN configuration |
 | `public_ip_addresses` | Each instance's public IPv4 | What branch devices dial |
 | `private_ip_addresses` | Each instance's private IPv4 | Private-peering tunnel endpoints |
 | `nat_rule_ids` | Each NAT rule's ARM ID, keyed by rule name | A connection link's NAT opt-ins (`status.outputs.nat_rule_ids.<rule-name>`) |
+
+The only other output, `vpn_gateway_name`, echoes the gateway's name back; no downstream Cloud Resource consumes it.
 
 ## Common Patterns
 

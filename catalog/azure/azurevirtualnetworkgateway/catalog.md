@@ -1,6 +1,6 @@
 # Azure Virtual Network Gateway
 
-Deploys an Azure virtual network gateway -- the managed appliance that terminates hybrid connectivity (site-to-site IPsec VPN, point-to-site client VPN, VNet-to-VNet tunnels, or an ExpressRoute circuit's private peering) in a virtual network's dedicated "GatewaySubnet". The gateway is one third of the site-to-site story: an AzureLocalNetworkGateway describes each on-premises site, and an AzureVirtualNetworkGatewayConnection ties a site to this gateway as a tunnel. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure virtual network gateway -- the managed appliance that terminates hybrid connectivity (site-to-site IPsec VPN, point-to-site client VPN, VNet-to-VNet tunnels, or an ExpressRoute circuit's private peering) in a virtual network's dedicated "GatewaySubnet". The gateway is one third of the site-to-site story: an AzureLocalNetworkGateway describes each on-premises site, and an AzureVirtualNetworkGatewayConnection ties a site to this gateway as a tunnel.
 
 ## What Gets Created
 
@@ -29,7 +29,7 @@ Connections are NOT created here -- each AzureVirtualNetworkGatewayConnection is
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Network Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site VPN** preset in the [Presets](#presets) tab to pre-populate a route-based VpnGw1AZ gateway.
+Open the deployment store, find **Azure Virtual Network Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site VPN Gateway** preset in the [Presets](#presets) tab to pre-populate a route-based VpnGw1AZ gateway.
 
 ### CLI
 
@@ -62,7 +62,7 @@ spec:
 planton apply -f azure-virtual-network-gateway.yaml
 ```
 
-This creates a route-based VpnGw1AZ VPN gateway with BGP enabled. A Stack Job tracks the 25-45 minute provisioning in real time.
+This creates a route-based VpnGw1AZ VPN gateway with BGP enabled -- expect 25-45 minutes to provision. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -126,18 +126,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `virtual_network_gateway_id` | Azure Resource Manager ID of the gateway | AzureVirtualNetworkGatewayConnection's `virtualNetworkGatewayId` (and `peerVirtualNetworkGatewayId` for VNet-to-VNet) |
-| `virtual_network_gateway_name` | Name of the gateway | Diagnostics and operational tooling |
 | `nat_rule_ids` | ARM ids of the gateway's NAT rules, keyed by rule name | Connections' `egressNatRuleIds`/`ingressNatRuleIds` (supplied as literals) |
+
+The only other output, `virtual_network_gateway_name`, echoes the gateway's name back; no downstream Cloud Resource consumes it. The gateway's public address is not an output here -- it belongs to the referenced AzurePublicIp and surfaces through that kind's outputs.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Site-to-site VPN gateway** -- A route-based VpnGw1AZ gateway with BGP: the standard datacenter-to-Azure anchor. Start from the **Site-to-Site VPN** preset.
+**Site-to-site VPN gateway** -- A route-based VpnGw1AZ gateway with BGP: the standard datacenter-to-Azure anchor. Start from the **Site-to-Site VPN Gateway** preset.
 
-**Active-active zone-redundant gateway** -- Two instances on VpnGw2AZ with per-instance addresses and APIPA BGP: the high-availability posture. Start from the **Active-Active Zone-Redundant** preset.
+**Active-active zone-redundant gateway** -- Two instances on VpnGw2AZ with per-instance addresses and APIPA BGP: the high-availability posture. Start from the **Active-Active Zone-Redundant Gateway** preset.
 
-**Point-to-site with Entra ID** -- A gateway whose VPN clients authenticate with Entra ID over OpenVPN. Start from the **Point-to-Site Entra ID** preset.
+**Point-to-site with Entra ID** -- A gateway whose VPN clients authenticate with Entra ID over OpenVPN. Start from the **Point-to-Site with Entra ID** preset.
 
 ## Works With
 

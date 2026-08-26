@@ -1,6 +1,6 @@
-# Turnstile Widget on Cloudflare
+# Cloudflare Turnstile Widget
 
-Provisions a Cloudflare Turnstile widget: a privacy-preserving CAPTCHA alternative that protects forms and endpoints from bots without the friction of traditional CAPTCHAs. A widget yields a public **site key** you embed in your page and a sensitive **secret key** your backend uses to verify tokens via the `/siteverify` endpoint. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Provisions a Cloudflare Turnstile widget: a privacy-preserving CAPTCHA alternative that protects forms and endpoints from bots without the friction of traditional CAPTCHAs. A widget yields a public **site key** you embed in your page and a sensitive **secret key** your backend uses to verify tokens via the `/siteverify` endpoint.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Turnstile Widget on Cloudflare**, and click **Deploy**. The creation wizard captures the account, name, served domains, challenge mode, and region.
+Open the deployment store, find **Cloudflare Turnstile Widget**, and click **Deploy**. The creation wizard captures the account, name, served domains, challenge mode, and region. Start from the **Managed Widget** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareTurnstileWidget
 metadata:
   name: signup-widget
@@ -56,41 +56,41 @@ This creates a managed-mode widget for the listed domains. A Stack Job tracks th
 
 These are the most important decisions when configuring a Turnstile widget. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Account (`accountId`)** -- The Cloudflare account that owns the widget. Selected from the connection's accounts.
+**Domains (`domains`)** -- The hostnames allowed to serve the widget. Tokens are only issued on listed domains, so a forgotten domain silently breaks the form served there; include `localhost` for local development.
 
-**Domains (`domains`)** -- The hostnames allowed to serve the widget. Tokens are only issued on listed domains; use `localhost` for local development.
+**Mode (`mode`)** -- `managed` (Cloudflare picks the challenge -- recommended), `non-interactive` (visible but never interactive), or `invisible` (no UI). The lower-friction modes trade challenge strength for UX, so pair them with server-side verification you actually enforce.
 
-**Mode (`mode`)** -- `managed` (Cloudflare picks the challenge -- recommended), `non-interactive`, or `invisible`.
+**Clearance Level (`clearanceLevel`)** -- Optional; the clearance granted on a Cloudflare-proxied site (`no_clearance`, `jschallenge`, `managed`, `interactive`). Setting a clearance lets a passed widget also satisfy the zone's challenge rules, so visitors are not challenged twice.
 
-**Clearance Level (`clearanceLevel`)** -- Optional; the clearance granted on a Cloudflare-proxied site (`no_clearance`, `jschallenge`, `managed`, `interactive`).
+**Region (`region`)** -- `world` (default) or `china`. **Immutable** -- changing it replaces the widget, which issues new site and secret keys that every embedding page and verifying backend must pick up.
 
-**Region (`region`)** -- `world` (default) or `china`. **Immutable** -- changing it rotates the site and secret keys.
+**Enterprise flags (`botFightMode`, `ephemeralId`, `offlabel`)** -- All three require a Cloudflare Enterprise plan; enabling them on a non-Enterprise account fails the deployment.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-The widget is account-scoped; it references no other Cloud Resources.
+This component has no foreign key dependencies -- the widget is account-scoped, and its served domains travel as plain strings.
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `sitekey` | The public site key | Embed in the frontend Turnstile widget |
-| `secret` | The sensitive secret key | Server-side token verification via `/siteverify` |
-| `created_on` | Creation timestamp | Auditing |
-| `modified_on` | Last-modified timestamp | Auditing |
+| `secret` | The sensitive secret key | Server-side token verification via `/siteverify`, e.g. a Worker's secret binding |
+
+`status.outputs` also carries `created_on` and `modified_on` timestamps.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Managed challenge** -- the recommended default; Cloudflare adapts the challenge to risk.
+**Managed challenge** -- the recommended default; Cloudflare adapts the challenge to risk. Start from the **Managed Widget** preset.
 
-**Invisible widget** -- zero visible UI for low-friction flows, paired with server-side verification.
+**Invisible widget** -- zero visible UI for low-friction flows, paired with server-side verification. Start from the **Invisible Widget** preset.
 
 ## Works With
 
-- A **Cloudflare Worker** or backend service can reference the widget's `secret` output to verify Turnstile tokens.
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) -- verifies Turnstile tokens server-side by referencing the widget's `secret` output as a secret binding

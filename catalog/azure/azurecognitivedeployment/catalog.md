@@ -1,6 +1,6 @@
 # Azure Cognitive Deployment
 
-Deploys a model onto an Azure AI services account -- which actual model applications call (gpt-4o, text-embedding-3-large, ...), at which throughput class and capacity. The deployment's NAME is the model parameter applications pass to the account's endpoint. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a model onto an Azure AI services account -- which actual model applications call (gpt-4o, text-embedding-3-large, ...), at which throughput class and capacity. The deployment's NAME is the model parameter applications pass to the account's endpoint. The spec carries the model (format, name, optional pinned version), the SKU (throughput class and capacity), the version-upgrade policy, and the responsible-AI policy selection.
 
 ## What Gets Created
 
@@ -56,11 +56,22 @@ spec:
 planton apply -f azure-cognitive-deployment.yaml
 ```
 
-The deployment provisions in seconds to a couple of minutes.
+This creates a pay-per-token GlobalStandard deployment of a mini-class chat model, rate-limited at 50K tokens per minute, callable as `chat` on the referenced account's endpoint. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an AI-platform chart the order is: account → **deployments** (one per model), each wiring to the account by reference; applications consume the account's `endpoint` output plus each deployment's name.
+In an AI-platform chart the order is: account → **deployments** (one per model); applications consume the account's `endpoint` output plus each deployment's name. Wire the account with ValueFromRef so the InfraPipeline deploys it first:
+
+```yaml
+spec:
+  cognitiveAccountId:
+    valueFrom:
+      kind: AzureCognitiveAccount
+      name: openai-prod
+      fieldPath: status.outputs.cognitive_account_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the account first, then creates each deployment with the resolved account ARM ID.
 
 ## Key Configuration
 

@@ -30,7 +30,7 @@ Open the deployment store, find **Karpenter Node Pool**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenterNodePool
 metadata:
   name: general-spot
@@ -59,7 +59,30 @@ spec:
 planton apply -f node-pool.yaml
 ```
 
-Karpenter then launches nodes from this pool whenever pending pods fit its constraints, consolidates under-used nodes per the disruption policy, and recycles nodes at expiry.
+Karpenter then launches nodes from this pool whenever pending pods fit its constraints, consolidates under-used nodes per the disruption policy, and recycles nodes at expiry. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the node class binding from the EC2NodeClass itself so the pair cannot drift apart:
+
+```yaml
+spec:
+  template:
+    nodeClassRef:
+      name:
+        valueFrom:
+          kind: KubernetesKarpenterEc2NodeClass
+          name: default-al2023
+          fieldPath: status.outputs.node_class_name
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values: [on-demand]
+  limits:
+    cpu: "500"
+```
+
+The InfraPipeline deploys the EC2NodeClass first, then declares the pool against it.
 
 ## Key Configuration
 
@@ -69,7 +92,7 @@ These are the most important decisions when configuring a NodePool. Explore the 
 
 **Layer pools by purpose** -- taint dedicated pools (GPU, batch) so only tolerating pods land there; rank overlapping pools with `weight` so Karpenter prefers the cheaper or safer pool first.
 
-**Bound spot churn** -- `min_values` instance diversity keeps spot pools resilient, and disruption budgets bound how much of the fleet can be disrupted at once — a `"0"` budget on a cron schedule freezes voluntary disruption during business hours.
+**Bound spot churn** -- `minValues` instance diversity keeps spot pools resilient, and disruption budgets bound how much of the fleet can be disrupted at once — a `"0"` budget on a cron schedule freezes voluntary disruption during business hours.
 
 **Cap the pool** -- `limits` bound the total CPU/memory the pool may reach so a runaway workload cannot provision unbounded capacity.
 
@@ -79,9 +102,9 @@ These are the most important decisions when configuring a NodePool. Explore the 
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.template.nodeClassRef.name` | KubernetesKarpenterEc2NodeClass (`status.outputs.node_class_name`) | The machine template nodes launch from |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesKarpenterEc2NodeClass** | `template.nodeClassRef.name` | `status.outputs.node_class_name` |
 
 ### What This Component Provides
 
@@ -97,12 +120,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **The first fleet** -- a general-purpose on-demand pool with sane lifetime and consolidation. Start from the **General Purpose On-Demand** preset.
 
-**Spot with diversity** -- capacity-type spot, wide instance diversity via `min_values`, budgets bounding churn. Start from the **Spot Diversified** preset.
+**Spot with diversity** -- capacity-type spot, wide instance diversity via `minValues`, budgets bounding churn. Start from the **Spot Diversified** preset.
 
 **Dedicated GPU pool** -- tainted so only tolerating pods land, accelerated instance families only. Start from the **GPU Dedicated** preset.
 
 ## Works With
 
-- **Karpenter** -- the controller that watches this pool; install it first.
-- **Karpenter EC2 Node Class** -- the machine template this pool references; one class typically serves several pools.
-- **Kubernetes Deployment / StatefulSet / Job** -- pending pods trigger provisioning against the pools whose requirements they fit.
+- [**Karpenter**](/cloud-catalog/kubernetes-karpenter) -- the controller that watches this pool; install it first
+- [**Karpenter EC2 Node Class**](/cloud-catalog/kubernetes-karpenter-ec2-node-class) -- the machine template this pool references; one class typically serves several pools
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- pending pods trigger provisioning against the pools whose requirements they fit (the same holds for StatefulSets and Jobs)

@@ -1,6 +1,6 @@
-# Cilium on Kubernetes
+# Cilium
 
-Installs Cilium -- the eBPF-based networking, network-security, and observability engine -- from the official Helm chart (`cilium` at https://helm.cilium.io). Cilium is the cluster's CNI: it wires pod networking, enforces NetworkPolicy (standard policies plus Cilium's own L7-aware ones), can replace kube-proxy entirely with eBPF service load-balancing, and streams flow-level observability through Hubble. The typed configuration covers the chart's meaningful surface; a merged-last `helm_values` document remains as the escape hatch for the long tail.
+Installs Cilium -- the eBPF-based networking, network-security, and observability engine -- from the official `cilium` Helm chart. Cilium is the cluster's CNI: it wires pod networking, enforces NetworkPolicy (standard policies plus Cilium's own L7-aware ones), can replace kube-proxy entirely with eBPF service load-balancing, and streams flow-level observability through Hubble. The typed configuration covers the chart's meaningful surface; a merged-last `helmValues` document remains as the escape hatch for the long tail.
 
 ## What Gets Created
 
@@ -24,20 +24,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Chaining mode**: the incumbent CNI stays; nothing special is required beyond choosing the right chaining mode (e.g. `aws-cni` on EKS).
 - **Kube-proxy replacement**: create the cluster without kube-proxy (kind: `kubeProxyMode: none`; kubeadm: `--skip-phases=addon/kube-proxy`) and have the API server address at hand.
 - **ServiceMonitors** (Hubble metrics / telemetry): the Prometheus operator CRDs must exist -- the release fails to install without them.
-- **Gateway API support**: the Gateway API CRDs (deploy `KubernetesGatewayApiCrds` first) AND kube-proxy replacement.
+- **Gateway API support**: the Gateway API CRDs (deploy **Kubernetes Gateway API CRDs** first) AND kube-proxy replacement.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Cilium on Kubernetes**, and click **Deploy**. The creation wizard walks the platform engineer's decision sequence: **Namespace** (kube-system convention), **Installation** (pinned chart version, cluster identity), **CNI Mode** (primary vs chaining -- the load-bearing choice), **Kube-Proxy** (eBPF replacement + the API-server address it requires + Gateway API), **IPAM & Routing**, **Cloud Integration** (at most one arm), **Security** (enforcement posture, transparent encryption), **Observability** (Hubble, Prometheus), **Performance**, **Sizing**, and the **Helm Values** escape hatch. Start from the **Kind / Local Dev Cluster** or **EKS Chaining** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Cilium**, and click **Deploy**. The creation wizard walks the platform engineer's decision sequence: **Namespace** (kube-system convention), **Installation** (pinned chart version, cluster identity), **CNI Mode** (primary vs chaining -- the load-bearing choice), **Kube-Proxy** (eBPF replacement + the API-server address it requires + Gateway API), **IPAM & Routing**, **Cloud Integration** (at most one arm), **Security** (enforcement posture, transparent encryption), **Observability** (Hubble, Prometheus), **Performance**, **Sizing**, and the **Helm Values** escape hatch. Start from the **Kind / Local Dev Cluster** or **EKS Chaining (on top of the AWS VPC CNI)** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCilium
 metadata:
   name: cilium
@@ -61,21 +61,37 @@ spec:
 planton apply -f cilium.yaml
 ```
 
-This installs Cilium as the primary CNI on a kind cluster (created with `disableDefaultCNI: true` and `kubeProxyMode: none`), with eBPF service load-balancing and the Hubble service map.
+This installs Cilium as the primary CNI on a kind cluster (created with `disableDefaultCNI: true` and `kubeProxyMode: none`), with eBPF service load-balancing and the Hubble service map. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the namespace to a resource managed by another Cloud Resource:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: cilium-namespace
+      fieldPath: spec.name
+  chartVersion: 1.19.6
+```
+
+The InfraPipeline creates the namespace first, then installs Cilium into it. Most installs use the literal `kube-system` instead — the convention for CNI machinery.
 
 ## Key Configuration
 
 These are the most important decisions when configuring Cilium. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**CNI mode** -- The load-bearing choice. As the PRIMARY CNI, Cilium owns pod networking. With CHAINING (`cni.chaining_mode`: `aws-cni`, `flannel`, `generic-veth`, `portmap`), the incumbent CNI keeps IPAM and routing while Cilium adds eBPF policy, load-balancing, and observability. Chaining forces `cni.exclusive` to false -- the chained CNI's configuration must survive.
+**CNI mode** -- The load-bearing choice. As the PRIMARY CNI, Cilium owns pod networking. With CHAINING (`cni.chainingMode`: `aws-cni`, `flannel`, `generic-veth`, `portmap`), the incumbent CNI keeps IPAM and routing while Cilium adds eBPF policy, load-balancing, and observability. Chaining forces `cni.exclusive` to false -- the chained CNI's configuration must survive.
 
-**Kube-proxy replacement** -- eBPF service load-balancing instead of kube-proxy. Requires `k8s_service_host` (the agent must reach the API server before any service load-balancing exists) and unlocks Gateway API support (`gateway_api` creates the `cilium` GatewayClass).
+**Kube-proxy replacement** -- eBPF service load-balancing instead of kube-proxy. Requires `k8sServiceHost` (the agent must reach the API server before any service load-balancing exists) and unlocks Gateway API support (`gatewayApi` creates the `cilium` GatewayClass).
 
 **IPAM & routing** -- `ipam.mode` mirrors the agent's own vocabulary (`cluster-pool` chart default, `kubernetes` for kind/kubeadm, `eni`/`azure` for cloud addressing, `delegated-plugin` for chaining). `routing.mode` is `tunnel` (works anywhere) or `native` (faster, needs a routable fabric plus the native-routing CIDR).
 
-**Cloud integration** -- At most one arm: `aws_eni` (primary CNI on EKS/EC2), `aks_byocni`, or `gke`. None is correct for kind, self-managed, and all chaining setups.
+**Cloud integration** -- At most one arm: `awsEni` (primary CNI on EKS/EC2), `aksByocni`, or `gke`. None is correct for kind, self-managed, and all chaining setups.
 
-**Security** -- `policy_enforcement_mode` (`default` / `always` / `never`); transparent encryption via WireGuard (automatic keys, node-kernel module required) or IPsec (pre-created key Secret, rotation policies).
+**Security** -- `policyEnforcementMode` (`default` / `always` / `never`); transparent encryption via WireGuard (automatic keys, node-kernel module required) or IPsec (pre-created key Secret, rotation policies).
 
 **Observability** -- Hubble is enabled by default upstream; the relay aggregates flows cluster-wide, the UI serves the service map, `metrics` exports flow-metric families. Cilium's own agent/operator telemetry is separate (`prometheus`).
 
@@ -85,7 +101,11 @@ These are the most important decisions when configuring Cilium. Explore the full
 
 ### What This Component Consumes
 
-`spec.namespace` is a foreign-key reference to a `KubernetesNamespace` (or the literal `kube-system`). Gateway API support additionally expects the Gateway API CRDs on the cluster.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+Most installs pass the literal `kube-system` instead of a reference. Gateway API support additionally expects the Gateway API CRDs on the cluster — a runtime prerequisite, not a manifest reference.
 
 ### What This Component Provides
 
@@ -98,7 +118,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `cluster_name` | Cluster identity in Hubble flows / Cluster Mesh | Multi-cluster naming |
 | `hubble_relay_service_name` | The hubble-relay Service (when relay is enabled) | hubble CLI / UI flow access |
 | `hubble_ui_service_name` | The hubble-ui Service (when UI is enabled) | Port-forward to open the service map |
-| `gateway_class_name` | The GatewayClass Cilium registers (when Gateway API is on) | `KubernetesGateway.gateway_class_name` |
+| `gateway_class_name` | The GatewayClass Cilium registers (when Gateway API is on) | A Gateway resource's `gatewayClassName` field |
 
 ## Common Patterns
 
@@ -106,16 +126,16 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Local development** -- Primary CNI on kind with kube-proxy replacement and the Hubble UI. Start from the **Kind / Local Dev Cluster** preset.
 
-**EKS without rip-and-replace** -- Chain onto the AWS VPC CNI for policy and observability while AWS keeps addressing. Start from the **EKS Chaining** preset.
+**EKS without rip-and-replace** -- Chain onto the AWS VPC CNI for policy and observability while AWS keeps addressing. Start from the **EKS Chaining (on top of the AWS VPC CNI)** preset.
 
 **Self-managed production** -- Primary CNI with kube-proxy replacement on kubeadm-class clusters. Start from the **Self-Managed Primary CNI with Kube-Proxy Replacement** preset.
 
-**Production observability** -- Hubble relay/UI/metrics, Prometheus ServiceMonitors, and WireGuard encryption. Start from the **Production Observability** preset.
+**Production observability** -- Hubble relay/UI/metrics, Prometheus ServiceMonitors, and WireGuard encryption. Start from the **Production Observability (Hubble + Prometheus + WireGuard)** preset.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- prerequisite for Gateway API support; Cilium then registers the `cilium` GatewayClass.
-- **KubernetesGateway** -- consumes the exported GatewayClass for north-south routing.
-- **KubernetesNetworkPolicy** -- the policies Cilium enforces under the chosen enforcement posture.
-- **KubernetesNamespace** -- the namespace (`spec.namespace`) the release installs into.
-- **KubernetesKubePrometheusStack** (or an existing Prometheus operator) -- required for the ServiceMonitor toggles; scrapes the agent, operator, and Hubble metrics.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- prerequisite for Gateway API support; Cilium then registers the `cilium` GatewayClass.
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- consumes the exported GatewayClass for north-south routing.
+- [**Kubernetes NetworkPolicy**](/cloud-catalog/kubernetes-network-policy) -- the policies Cilium enforces under the chosen enforcement posture.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the namespace (`namespace`) the release installs into.
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) (or an existing Prometheus operator) -- required for the ServiceMonitor toggles; scrapes the agent, operator, and Hubble metrics.

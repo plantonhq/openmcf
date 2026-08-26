@@ -1,13 +1,12 @@
-# Zero Trust Access Group on Cloudflare
+# Cloudflare Zero Trust Access Group
 
-Deploys a reusable Cloudflare Zero Trust Access group: a named bundle of membership rules (an engineering team, a set of corporate email domains, a country allow-list) that many Access policies and other groups can reference. Factoring shared membership criteria into a group keeps policies small and lets the criteria evolve in one place. Groups are account- or zone-scoped, have an independent lifecycle, and integrate with Planton's Provider Connections and ValueFromRef wiring for cross-resource dependency resolution.
+Deploys a reusable Cloudflare Zero Trust Access group: a named bundle of membership rules (an engineering team, a set of corporate email domains, a country allow-list) that many Access policies and other groups can reference. Factoring shared membership criteria into a group keeps policies small and lets the criteria evolve in one place. Groups are account- or zone-scoped and have an independent lifecycle, so one group can serve every policy that needs the same audience.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Access Group** -- a reusable group whose membership is decided by three rule lists: `include` (OR), `exclude` (NOT, wins over include), and `require` (AND), each composed of any of the 26 Cloudflare rule criteria
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -25,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Access Group on Cloudflare**, and click **Deploy**. The creation wizard walks you through scope (account or zone) and name, then the include / exclude / require rule builders. Start from a preset in the [Presets](#presets) tab.
+Open the deployment store, find **Cloudflare Zero Trust Access Group**, and click **Deploy**. The creation wizard walks you through scope (account or zone) and name, then the include / exclude / require rule builders. Start from the **Engineering team group** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustAccessGroup
 metadata:
   name: engineering
@@ -92,7 +91,7 @@ These are the most important decisions when configuring a group. Explore the ful
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **CloudflareDnsZone** (zone-scoped only) | `zone_id` | `status.outputs.zone_id` |
+| **CloudflareDnsZone** (zone-scoped only) | `zoneId` | `status.outputs.zone_id` |
 | **CloudflareZeroTrustAccessGroup** (group-of-groups) | `include[].group.id` | `status.outputs.group_id` |
 
 ### What This Component Provides
@@ -107,11 +106,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Team by email domain** -- Include an email-domain rule; reuse the group across every internal application.
+**Team by email domain** -- Include an email-domain rule; reuse the group across every internal application. Start from the **Engineering team group** preset.
+
+**IdP group with enforced MFA** -- Include an identity-provider group (Okta, Azure AD, GitHub) and require the `mfa` auth method, so membership stays managed in the IdP while Cloudflare enforces the login strength. Start from the **IdP group with MFA login method** preset.
 
 **Group-of-groups** -- Include several team groups to compose a broader audience without re-listing members.
 
 ## Works With
 
-- [**Zero Trust Access Policy on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- references this group via its `group` rule
-- [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches policies that reference this group
+- [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- references this group via its `group` rule
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches policies that reference this group

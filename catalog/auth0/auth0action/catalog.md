@@ -100,4 +100,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Auth0 Role**](/cloud-catalog/auth0-role) — role assignments populate the `event.authorization.roles` that post-login actions read when enriching tokens
-- [**Auth0 Resource Server**](/cloud-catalog/auth0-resource-server) — the APIs whose access tokens post-login and credentials-exchange actions enrich and gate
+- [**Auth0 Resource Server (API)**](/cloud-catalog/auth0-resource-server) — the APIs whose access tokens post-login and credentials-exchange actions enrich and gate

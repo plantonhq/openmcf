@@ -29,7 +29,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Compute MIG**, and click **Deploy**. Start from the **Autoscaled Web Tier** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Compute MIG**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the VM template, placement (zonal or regional), scaling, and the rollout policy. Start from the **Autoscaled Web Tier** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -75,11 +75,35 @@ spec:
 planton apply -f mig.yaml
 ```
 
+This creates a regional fleet of e2-small Debian 12 VMs scaling between 2 and 10 replicas on a 60% CPU target, rolled proactively with a three-instance surge on every template change. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-The serving backbone in one chart: this group, a GcpHealthCheck wired into `autoHealing`, and a GcpBackendService whose backend `group` references the `instance_group` output — the whole HTTPS-LB family composes behind it.
+The serving backbone in one chart: this group, a GcpHealthCheck wired into `autoHealing`, and a GcpBackendService consuming the `instance_group` output — the whole HTTPS-LB family composes behind it:
+
+```yaml
+spec:
+  autoHealing:
+    healthCheck:
+      valueFrom:
+        kind: GcpHealthCheck
+        name: web-hc
+        fieldPath: status.outputs.self_link
+    initialDelaySec: 120
+  template:
+    networkInterfaces:
+      - subnetwork:
+          valueFrom:
+            kind: GcpSubnetwork
+            name: prod-subnet
+            fieldPath: status.outputs.subnetwork_self_link
+```
+
+The InfraPipeline deploys the network and health check first, then the group; the backend service downstream picks up `instance_group` the same way.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a managed instance group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **zone / region** -- exactly one. Zonal is simplest; regional spreads VMs across the region's zones so a zone outage takes down only part of the fleet (add `distributionPolicy` to shape the spread).
 
@@ -111,6 +135,8 @@ The serving backbone in one chart: this group, a GcpHealthCheck wired into `auto
 | **GcpAddress** (optional) | `perInstanceConfigs[].preservedState.externalIps[].address` | `status.outputs.address` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

@@ -16,7 +16,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target scope.
 - **Planton Runner** -- required when using Runner-based credential delivery.
 
-### GCP Scope and Destination
+### GCP Project
 
 - **The scope**: a project (default), folder, organization, or billing account — folder/org/billing sinks need `roles/logging.configWriter` at that scope.
 - **The destination**: a GCS bucket, BigQuery dataset, or Pub/Sub topic, ideally referenced as Planton resources so the grant flow stays in one chart.
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Logging Sink**, and click **Deploy**. Start from the **Error Archive to GCS** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Logging Sink**, and click **Deploy**. The creation wizard walks you through the scope, the destination reference, the filter and exclusions, and the writer-identity posture. Start from the **Error Archive to GCS** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -49,14 +49,13 @@ spec:
 planton apply -f logging-sink.yaml
 ```
 
-This exports every ERROR-and-above entry in the project to hourly JSON batches in the bucket. The deploy's second half: grant the `writer_identity` output `roles/storage.objectCreator` on the bucket.
+This exports every ERROR-and-above entry in the project to hourly JSON batches in the bucket. The deploy's second half: grant the `writer_identity` output `roles/storage.objectCreator` on the bucket. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-The full pattern — sink plus grant — in one chart:
+When deploying alongside its destination, the sink references the bucket via ValueFromRef:
 
 ```yaml
-# The sink references the bucket:
 spec:
   destination:
     gcsBucket:
@@ -64,20 +63,14 @@ spec:
         kind: GcpGcsBucket
         name: log-archive
         fieldPath: status.outputs.bucket_id
-
-# And the bucket grants the sink's writer identity:
-# (on the GcpGcsBucket resource)
-spec:
-  iamMembers:
-    - role: roles/storage.objectCreator
-      member:
-        valueFrom:
-          kind: GcpLoggingSink
-          name: error-archive
-          fieldPath: status.outputs.writer_identity
+  filter: severity>=ERROR
 ```
 
+The InfraPipeline deploys the bucket first, then the sink with the resolved bucket name — and the same chart closes the loop by granting this sink's `writer_identity` output `roles/storage.objectCreator` on the bucket resource.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a logging sink. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Scope** -- omit for the ambient project; set `folderId`/`organizationId` for centralized capture across children (with `includeChildren`), or `billingAccount` for billing-account logs.
 
@@ -99,6 +92,8 @@ spec:
 | **GcpProject** (optional) | `scope.projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

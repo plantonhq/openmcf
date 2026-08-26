@@ -1,6 +1,6 @@
-# Kubernetes Kafka
+# Apache Kafka
 
-Deploys an Apache Kafka cluster on Kubernetes as Strimzi `Kafka` + `KafkaNodePool` custom resources in **KRaft mode** — Kafka's built-in Raft metadata quorum; ZooKeeper does not exist in this architecture. The cluster is declared as node pools (independently scalable groups of nodes carrying the `controller` and/or `broker` roles), listeners (how clients reach the brokers, from in-cluster plaintext to cloud LoadBalancers with TLS and SASL), and broker configuration. The Strimzi cluster operator (installed separately as Strimzi Kafka Operator) reconciles the declaration into brokers, controllers, certificates, and the per-cluster entity operators. Topics and users are first-class Cloud Resources — Kubernetes Kafka Topic and Kubernetes Kafka User — never embedded in this spec.
+Deploys an Apache Kafka cluster on Kubernetes as Strimzi `Kafka` + `KafkaNodePool` custom resources in **KRaft mode** — Kafka's built-in Raft metadata quorum; ZooKeeper does not exist in this architecture. The cluster is declared as node pools (independently scalable groups of nodes carrying the `controller` and/or `broker` roles), listeners (how clients reach the brokers, from in-cluster plaintext to cloud LoadBalancers with TLS and SASL), and broker configuration. The Strimzi cluster operator (installed separately as Strimzi Kafka Operator) reconciles the declaration into brokers, controllers, certificates, and the per-cluster entity operators. Topics and users are first-class Cloud Resources — Kafka Topic and Kafka User — never embedded in this spec.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Kafka**, and click **Deploy**. The creation wizard walks the operator's decision sequence — placement, version, the node pools (the machines), rack awareness, the listeners (client access), broker durability configuration, authorization, entity operators, observability, Cruise Control, JVM heap, and certificate lifecycle. Start from the **dev-single-node** preset for development or **production-three-broker** for production in the [Presets](#presets) tab.
+Open the deployment store, find **Apache Kafka**, and click **Deploy**. The creation wizard walks the operator's decision sequence — placement, version, the node pools (the machines), rack awareness, the listeners (client access), broker durability configuration, authorization, entity operators, observability, Cruise Control, JVM heap, and certificate lifecycle. Start from the **Dev single node preset** for development or the **Production three broker preset** for production in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKafka
 metadata:
   name: event-bus
@@ -47,8 +47,8 @@ metadata:
 spec:
   namespace:
     value: "kafka"
-  create_namespace: true
-  node_pools:
+  createNamespace: true
+  nodePools:
     - name: controller
       roles:
         - controller
@@ -92,26 +92,26 @@ spec:
       kind: KubernetesNamespace
       name: kafka-home
       fieldPath: spec.name
-  create_namespace: false
+  createNamespace: false
 ```
 
 The InfraPipeline deploys the namespace (and the Strimzi operator) first, then provisions the cluster into it.
 
 ## Key Configuration
 
-These are the most important decisions when configuring a Kubernetes Kafka deployment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+These are the most important decisions when configuring an Apache Kafka deployment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Node pools — the machines.** At least one pool must carry the `controller` role (the KRaft metadata quorum — keep the count ODD: 3 for production, 1 for dev) and one the `broker` role (stores and serves data; 3 is the floor for surviving a broker loss with the recommended replication). One dual-role pool is the dev shape; production separates the pools so brokers scale without disturbing the quorum. Storage is per pool: `persistent-claim` with a `size` (the default), `ephemeral` (dev only — data dies with the pod), or `jbod` with multiple volumes per node (volume IDs are part of the on-disk layout — grow by adding IDs, never renumber).
 
-**Listeners — how clients reach the brokers.** Each listener declares a name (1–11 lowercase alphanumerics), a unique port (9092+), an exposure type (`internal`, `cluster-ip`, `nodeport`, `loadbalancer`, `ingress` — deprecated upstream, prefer loadbalancer/nodeport — `route`, `tlsroute`), TLS, and client authentication (`tls`, `scram-sha-512`, or `custom`; credentials are minted by Kubernetes Kafka User resources, never typed here). Cloud LoadBalancers are shaped through Service annotations on the bootstrap/per-broker configuration — note which controller answers each annotation.
+**Listeners — how clients reach the brokers.** Each listener declares a name (1–11 lowercase alphanumerics), a unique port (9092+), an exposure type (`internal`, `cluster-ip`, `nodeport`, `loadbalancer`, `ingress` — deprecated upstream, prefer loadbalancer/nodeport — `route`, `tlsroute`), TLS, and client authentication (`tls`, `scram-sha-512`, or `custom`; credentials are minted by Kafka User resources, never typed here). Cloud LoadBalancers are shaped through Service annotations on the bootstrap/per-broker configuration — note which controller answers each annotation.
 
 **Durability lives in `config`.** `default.replication.factor: "3"` + `min.insync.replicas: "2"` (plus the internal-topic RF entries) is the posture that survives a broker loss; a single-node dev cluster runs them at `"1"`. Values are Kafka configuration strings — write numbers and booleans as strings. The operator OWNS listener/security/quorum configuration: entries with prefixes like `listeners`, `ssl.`, `sasl.`, `node.id`, `controller.` are ignored with a log warning, never applied.
 
-**Authorization is a deliberate switch.** Omitted = no authorizer: every client that can connect can do everything. Enabling `simple` enforces the ACLs declared on Kubernetes Kafka User resources from that moment — declare your operational tooling's principals as `super_users` BEFORE enabling, or a single deploy can lock every client out.
+**Authorization is a deliberate switch.** Omitted = no authorizer: every client that can connect can do everything. Enabling `simple` enforces the ACLs declared on Kafka User resources from that moment — declare your operational tooling's principals as `superUsers` BEFORE enabling, or a single deploy can lock every client out.
 
-**Upgrades and the metadata one-way door.** `kafka_version` empty runs the operator's default. When upgrading, hold `metadata_version` at the old version's format until every node runs the new binaries — once bumped, the KRaft metadata format cannot be downgraded.
+**Upgrades and the metadata one-way door.** `kafkaVersion` empty runs the operator's default. When upgrading, hold `metadataVersion` at the old version's format until every node runs the new binaries — once bumped, the KRaft metadata format cannot be downgraded.
 
-**Everything else** — rack awareness (`rack.topology_key`, typically `topology.kubernetes.io/zone`, spreads replicas across zones), the entity-operator dials (disabling one makes KafkaTopic/KafkaUser declarations silently inert), Cruise Control with its add/remove-brokers auto-rebalance modes, JMX metrics + the consumer-lag exporter, JVM heap (set -Xms equal to -Xmx in production), and the CA validity/renewal windows with maintenance time windows for renewal-triggered rolling restarts.
+**Everything else** — rack awareness (`rack.topologyKey`, typically `topology.kubernetes.io/zone`, spreads replicas across zones), the entity-operator dials (disabling one makes KafkaTopic/KafkaUser declarations silently inert), Cruise Control with its add/remove-brokers auto-rebalance modes, JMX metrics + the consumer-lag exporter, JVM heap (set -Xms equal to -Xmx in production), and the CA validity/renewal windows with maintenance time windows for renewal-triggered rolling restarts.
 
 ## Outputs and Dependencies
 
@@ -120,8 +120,8 @@ These are the most important decisions when configuring a Kubernetes Kafka deplo
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesStorageClass** | `node_pools[].storage.storage_class` (and per JBOD volume) | `metadata.name` |
-| **KubernetesCertificate** | `listeners[].configuration.broker_cert_chain_and_key.secret_name` | `status.outputs.secret_name` |
+| **KubernetesStorageClass** | `nodePools[].storage.storageClass` (and per JBOD volume) | `metadata.name` |
+| **KubernetesCertificate** | `listeners[].configuration.brokerCertChainAndKey.secretName` | `status.outputs.secret_name` |
 
 ### What This Component Provides
 
@@ -129,8 +129,8 @@ After provisioning, `status.outputs` contains values that applications and downs
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `namespace` | Namespace the cluster runs in | Placing Kubernetes Kafka Topic / Kubernetes Kafka User resources beside the cluster (their entity operators watch only here) |
-| `cluster_name` | Cluster name (`metadata.name`) — the `strimzi.io/cluster` label value | The `kafka_cluster` reference on Kubernetes Kafka Topic / Kubernetes Kafka User resources |
+| `namespace` | Namespace the cluster runs in | Placing Kafka Topic / Kafka User resources beside the cluster (their entity operators watch only here) |
+| `cluster_name` | Cluster name (`metadata.name`) — the `strimzi.io/cluster` label value | The `kafka_cluster` reference on Kafka Topic / Kafka User resources |
 | `bootstrap_service_name` | Name of the internal bootstrap Service (`<cluster>-kafka-bootstrap`) | Custom Service/NetworkPolicy composition |
 | `internal_bootstrap_endpoint` | In-cluster bootstrap address for the FIRST internal listener (`<cluster>-kafka-bootstrap.<namespace>.svc.cluster.local:<port>`); empty when no internal listener is declared | The value workloads put in `bootstrap.servers` |
 | `cluster_ca_cert_secret_name` | Secret holding the cluster CA certificate (`<cluster>-cluster-ca-cert`, key `ca.crt`) | What TLS clients add to their truststore |
@@ -139,19 +139,19 @@ After provisioning, `status.outputs` contains values that applications and downs
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dev single node** — the smallest declarable Kafka that actually serves: one dual-role pool (KRaft controller + broker in one pod), one plaintext internal listener, RF-1 settings. Real wire protocol, zero durability. Start from the **dev-single-node** preset.
+**Dev single node** — the smallest declarable Kafka that actually serves: one dual-role pool (KRaft controller + broker in one pod), one plaintext internal listener, RF-1 settings. Real wire protocol, zero durability. Start from the **Dev single node preset**.
 
-**Production three-broker** — the standard production posture: a 3-node controller pool, a 3-node broker pool on JBOD storage, RF-3 / min-ISR-2, SCRAM-over-TLS and mutual-TLS listeners, simple authorization with a real admin super user, zone-spread rack awareness, full observability, explicit CA policy with a Sunday-night maintenance window, and a fixed 4g heap. Start from the **production-three-broker** preset.
+**Production three-broker** — the standard production posture: a 3-node controller pool, a 3-node broker pool on JBOD storage, RF-3 / min-ISR-2, SCRAM-over-TLS and mutual-TLS listeners, simple authorization with a real admin super user, zone-spread rack awareness, full observability, explicit CA policy with a Sunday-night maintenance window, and a fixed 4g heap. Start from the **Production three broker preset**.
 
-**External access on AWS** — the production shape plus a `loadbalancer` listener: the AWS Load Balancer Controller provisions one NLB per broker plus bootstrap (Kafka is raw TCP — an L7 balancer cannot carry it), with external-dns annotations for DNS. Start from the **aws-external-loadbalancer** preset.
+**External access on AWS** — the production shape plus a `loadbalancer` listener: the AWS Load Balancer Controller provisions one NLB per broker plus bootstrap (Kafka is raw TCP — an L7 balancer cannot carry it), with external-dns annotations for DNS. Start from the **AWS external loadbalancer preset**.
 
-**SCRAM application cluster** — a quorum-safe cluster with exactly one credential story: a single SCRAM-SHA-512-over-TLS listener plus simple ACL authorization. Start from the **scram-app-cluster** preset.
+**SCRAM application cluster** — a quorum-safe cluster with exactly one credential story: a single SCRAM-SHA-512-over-TLS listener plus simple ACL authorization. Start from the **SCRAM app cluster preset**.
 
 ## Works With
 
 - [**Strimzi Kafka Operator**](/cloud-catalog/kubernetes-strimzi-kafka-operator) — the declared prerequisite: it must watch this cluster's namespace
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace (one per cluster)
-- [**Kubernetes Kafka Topic**](/cloud-catalog/kubernetes-kafka-topic) — topics as first-class resources, reconciled by this cluster's topic operator
-- [**Kubernetes Kafka User**](/cloud-catalog/kubernetes-kafka-user) — authenticated principals + ACLs, reconciled by this cluster's user operator
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) — custom listener server certificates (the cert-manager seam)
-- [**Kubernetes External DNS**](/cloud-catalog/kubernetes-external-dns) — DNS records for external listener addresses
+- [**Kafka Topic**](/cloud-catalog/kubernetes-kafka-topic) — topics as first-class resources, reconciled by this cluster's topic operator
+- [**Kafka User**](/cloud-catalog/kubernetes-kafka-user) — authenticated principals + ACLs, reconciled by this cluster's user operator
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) — custom listener server certificates (the cert-manager seam)
+- [**ExternalDNS**](/cloud-catalog/kubernetes-external-dns) — DNS records for external listener addresses

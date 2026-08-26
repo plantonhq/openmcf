@@ -1,4 +1,4 @@
-# Deployment on Kubernetes
+# Kubernetes Deployment
 
 Deploys a containerized application on any Kubernetes cluster as an apps/v1 Deployment fronted by a Kubernetes Service. Supports custom container images, environment variables with cross-resource references, secret variables, sidecar and init containers, liveness/readiness/startup probes, volume mounts from ConfigMaps, Secrets, HostPath, EmptyDir, or PVCs, horizontal pod autoscaling, pod disruption budgets, zero-downtime rolling update strategies, pod scheduling (affinity, tolerations, topology spread), and the full restricted-profile security hardening surface. External exposure is composed with first-class kinds (KubernetesIngress, Gateway API routes) referencing the exported Service. Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Deployment on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Service Deployment** preset in the [Presets](#presets) tab to pre-populate a working configuration for HTTP services.
+Open the deployment store, find **Kubernetes Deployment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Service Deployment** preset in the [Presets](#presets) tab to pre-populate a working configuration for HTTP services.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: api-server
@@ -64,7 +64,7 @@ spec:
 planton apply -f deployment.yaml
 ```
 
-This creates a single-replica Deployment with a Kubernetes Service on port 80 and cluster-internal access. Autoscaling, probes, secrets, and hardening are not configured -- add them as your workload needs them.
+This creates a single-replica Deployment with a Kubernetes Service on port 80 and cluster-internal access. Autoscaling, probes, secrets, and hardening are not configured -- add them as your workload needs them. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -136,6 +136,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the Deployment
-- [**Kubernetes Service Account**](/cloud-catalog/kubernetes-service-account) -- the composed identity pods run as, carrying workload-identity bindings and pull secrets
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the composed identity pods run as, carrying workload-identity bindings and pull secrets
 - [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) -- exposes the Deployment's Service externally with host/path routing and TLS
-- [**Kubernetes Http Route**](/cloud-catalog/kubernetes-http-route) -- Gateway API exposure referencing the exported Service
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route) -- Gateway API exposure referencing the exported Service

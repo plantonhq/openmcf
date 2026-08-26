@@ -35,14 +35,14 @@ The subnets, load balancer, user-assigned identities, and disk encryption sets a
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Machine Scale Set**, and click **Deploy**. The creation wizard leads with the orchestration mode — the fork every later capability gates on — then walks placement, capacity (with the FLEXIBLE fault-domain contract), the OS and image unions, disks, networking, lifecycle, spot economics, identity, security, and extensions. Start from the **Stateless Web (Flexible)** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Virtual Machine Scale Set**, and click **Deploy**. The creation wizard leads with the orchestration mode — the fork every later capability gates on — then walks placement, capacity (with the FLEXIBLE fault-domain contract), the OS and image unions, disks, networking, lifecycle, spot economics, identity, security, and extensions. Start from the **Stateless Web Fleet (Flexible)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachineScaleSet
 metadata:
   name: web-fleet
@@ -79,10 +79,7 @@ spec:
         - name: internal
           primary: true
           subnetId:
-            valueFrom:
-              kind: AzureSubnet
-              name: web-subnet
-              fieldPath: status.outputs.subnet_id
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.Network/virtualNetworks/prod-vnet/subnets/web-subnet
   zones: ["1", "2", "3"]
 ```
 
@@ -90,7 +87,7 @@ spec:
 planton apply -f scale-set.yaml
 ```
 
-This creates a FLEXIBLE (the unspecified default — Azure's recommendation) three-instance Ubuntu fleet on ephemeral OS disks, zone-spread with the fault-domain contract satisfied (1 — zones are the resilience unit), SSH-key-only authentication.
+This creates a FLEXIBLE (the unspecified default — Azure's recommendation) three-instance Ubuntu fleet on ephemeral OS disks, zone-spread with the fault-domain contract satisfied (1 — zones are the resilience unit), SSH-key-only authentication. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -172,19 +169,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `scale_set_id` | Azure Resource Manager ID of the scale set | AzureVirtualMachine `availability.virtualMachineScaleSetId` (attaching a standalone VM to a FLEXIBLE set), autoscale settings, monitoring scopes |
-| `scale_set_name` | Name of the scale set | Automation scripts, dashboards |
-| `unique_id` | The set's globally unique ARM-assigned identifier | Inventory systems |
 | `system_assigned_identity_principal_id` | Principal ID of the system-assigned identity — empty unless a UNIFORM set carries one | AzureRoleAssignment grants |
+
+The set also surfaces `scale_set_name` and `unique_id` (the globally unique ARM-assigned identifier) for reference; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Stateless web fleet (FLEXIBLE)** -- Ubuntu LTS on ephemeral OS disks, zone-spread, SSH keys, joined to a load-balancer pool. Start from the **Stateless Web (Flexible)** preset.
+**Stateless web fleet (FLEXIBLE)** -- Ubuntu LTS on ephemeral OS disks, zone-spread, SSH keys, joined to a load-balancer pool. Start from the **Stateless Web Fleet (Flexible)** preset.
 
-**Spot batch fleet** -- mixed sizes at CAPACITY_OPTIMIZED allocation, DELETE eviction with an on-demand priority-mix base, the termination notification for drain, cloud-init bootstrap. Start from the **Spot Batch** preset.
+**Spot batch fleet** -- mixed sizes at CAPACITY_OPTIMIZED allocation, DELETE eviction with an on-demand priority-mix base, the termination notification for drain, cloud-init bootstrap. Start from the **Spot Batch Fleet (Flexible, Mixed SKUs)** preset.
 
-**Windows fleet with automatic OS upgrades (UNIFORM)** -- Windows Server Azure Edition, rolling upgrades keyed on the LB health probe, automatic OS image upgrades on "latest", automatic repair, Azure Hybrid Benefit. Start from the **Windows Uniform Rolling** preset.
+**Windows fleet with automatic OS upgrades (UNIFORM)** -- Windows Server Azure Edition, rolling upgrades keyed on the LB health probe, automatic OS image upgrades on "latest", automatic repair, Azure Hybrid Benefit. Start from the **Windows Fleet with Automatic OS Upgrades (Uniform)** preset.
 
 ## Works With
 

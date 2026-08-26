@@ -95,7 +95,10 @@ message CloudflareRulesetSpec {
   // The kind of the ruleset.
   // Default: zone
   optional RulesetKind ruleset_kind = 3 [
-    (dev.planton.shared.options.default) = "1",
+    // The default names the enum VALUE, never its number: the manifest
+    // defaults machinery resolves enum defaults by name, and a numeric
+    // default makes every manifest that omits the field fail to load.
+    (dev.planton.shared.options.default) = "zone",
     (buf.validate.field).enum.defined_only = true
   ];
 

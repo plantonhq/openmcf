@@ -110,7 +110,7 @@ resources:
 This is a `KubernetesDeployment` manifest -- a Planton Resource that defines how your application runs on Kubernetes. The base contains configuration shared across all environments.
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service
@@ -162,7 +162,7 @@ patches:
 The overlay patches only what differs from the base. At minimum, it sets `metadata.env` to identify the target Planton environment:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service
@@ -363,7 +363,7 @@ To expose your service externally, add ingress configuration to your kustomize o
 
 ```yaml
 # _kustomize/overlays/dev/service.yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDeployment
 metadata:
   name: my-service

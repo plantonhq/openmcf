@@ -1,77 +1,36 @@
 # Cloudflare Zero Trust Gateway Policy
 
-One Gateway rule: a filter expression over employee traffic (DNS, HTTP, or network) plus the action to take when it matches. `enabled` defaults to false at Cloudflare -- a policy authored without `enabled: true` deploys disabled and filters nothing.
+Deploys one Cloudflare Gateway policy: a wirefilter expression over employee traffic (DNS queries, HTTP requests, or network connections) plus the action taken on a match — block, allow, isolate, redirect, override, resolve, and kin. Identity and device-posture expressions can narrow who and which devices the rule applies to, and `ruleSettings` carries the action-specific behavior (block pages, session checks, custom resolvers, egress IPs, isolation controls). One behavior deserves a loud warning: `enabled` defaults to false at Cloudflare, so a policy authored without `enabled: true` deploys disabled and filters nothing.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Gateway policy** -- one `cloudflare_zero_trust_gateway_policy` on the account
-- **Rule settings** -- always sent. An empty object when the spec configures nothing (the provider's own drift workaround); otherwise the full settings tree (block page, session check, DNS resolvers, isolation controls, and kin)
+- **Gateway Policy** — a `cloudflare_zero_trust_gateway_policy` on the account, carrying the action, the singular `filter` (sent as a one-element list, which is all Cloudflare accepts), the three wirefilter expressions, and optional expiration or per-weekday schedule for DNS rules
+- **Rule Settings** — always sent: an empty object when the spec configures nothing (the provider's own drift workaround), otherwise the full settings tree
 
-## Prerequisites
+## Before You Deploy
 
-- **A Cloudflare account with Zero Trust enabled** -- the organization (team name) must already exist
-- **A Cloudflare API token** with Account → Zero Trust → Edit
-- **The matching add-on** for `isolate` (Browser Isolation) or `egress` (dedicated egress IPs). Those actions fail the apply on an account that lacks the entitlement
-- **A CloudflareZeroTrustList** if the `traffic` expression references a list by ID
-- **A CloudflareZeroTrustTunnelVirtualNetwork** if `ruleSettings.dnsResolvers` sets `vnetId`
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with a Cloudflare API token carrying Account → Zero Trust → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-A DNS block with an explicit enable and precedence:
+### Cloudflare Account
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustGatewayPolicy
-metadata:
-  name: block-gambling
-  org: acme-corp
-  env: prod
-spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: block-gambling-domains
-  action: block
-  filter: dns
-  enabled: true
-  precedence: 1000
-  traffic: any(dns.domains[*] == "gambling.example.com")
-```
+- **Zero Trust enabled** — the account must have completed Cloudflare Zero Trust onboarding (the team-name step).
+- **The matching add-on** (only for `isolate` and `egress` actions) — Browser Isolation for isolate, dedicated egress IPs for egress. Those actions fail the apply on an account that lacks the entitlement; nothing is billed or upgraded through this component.
+- **A Zero Trust list** (only when `traffic` references a list by ID) — deploy the list first and use its ID in the expression.
 
-```shell
-planton apply -f gateway-policy.yaml
-```
+## Deploy
 
-DNS queries for that domain are blocked. Without `enabled: true` this rule would deploy and do nothing.
+### Console
 
-## Configuration Reference
+Open the deployment store, find **Cloudflare Zero Trust Gateway Policy**, and click **Deploy**. The creation wizard walks you through the owning account, the action and filter, the traffic/identity/device-posture expressions, and the action-specific rule settings. Start from the **DNS block** preset in the [Presets](#presets) tab.
 
-### Required Fields
+### CLI
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | Owning account. Gateway policies are account-scoped. | Required. 32-character hex. |
-| `name` | string | Display name. | Required, min length 1. |
-| `action` | string | What happens on a match. | Required. One of `on`, `off`, `allow`, `block`, `scan`, `noscan`, `safesearch`, `ytrestricted`, `isolate`, `noisolate`, `override`, `l4_override`, `egress`, `resolve`, `quarantine`, `redirect`. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `filter` | string | Cloudflare infers from the action | `http`, `dns`, `l4`, `egress`, or `dns_resolver`. The module sends `[filter]`. |
-| `enabled` | optional bool | Cloudflare's false | Set `true` or the policy is inert. |
-| `precedence` | optional int64 | Cloudflare assigns one | Lower evaluates earlier. |
-| `description` | string | unset | Purpose. |
-| `traffic` | string | match-all | Wirefilter over the request. The API reformats it; adopt the returned form if the plan drifts. |
-| `identity` | string | match-all | Wirefilter over the user. |
-| `devicePosture` | string | match-all | Wirefilter over device posture. |
-| `expiration` | object | unset | `expiresAt` (RFC3339, required in-object) and optional `duration` (≥5). |
-| `schedule` | object | unset | `mon`..`sun` time-interval strings plus `timeZone`. |
-| `ruleSettings` | object | empty object (always sent) | Action-specific settings. Avoid `addHeaders` / `overrideIps` if you need a clean re-plan -- they drift on first apply at provider v5.23.0. `dnsResolvers.ipv4[].vnetId` can reference a CloudflareZeroTrustTunnelVirtualNetwork. |
-
-## Examples
-
-### DNS block
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -93,69 +52,88 @@ spec:
     blockReason: Blocked by company policy
 ```
 
-### HTTP allow with a session check
-
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustGatewayPolicy
-metadata:
-  name: allow-intranet
-  org: acme-corp
-  env: prod
-spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: allow-intranet-with-reauth
-  action: allow
-  filter: http
-  enabled: true
-  precedence: 2000
-  traffic: http.request.host == "intranet.example.com"
-  ruleSettings:
-    checkSession:
-      enforce: true
-      duration: 24h
-    blockPage:
-      targetUri: https://block.example.com
-      includeContext: true
+```shell
+planton apply -f gateway-policy.yaml
 ```
 
-### DNS override with a virtual-network resolver
+This creates an active DNS policy blocking the named domain for every WARP-enrolled device, with the block page shown and a reason attached. Without `enabled: true` the same manifest would deploy a rule that filters nothing. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire a private resolver's virtual network to a resource managed by another Cloud Resource:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustGatewayPolicy
-metadata:
-  name: resolve-internal
-  org: acme-corp
-  env: prod
 spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: resolve-internal-via-vnet
   action: resolve
   filter: dns_resolver
   enabled: true
-  precedence: 500
-  traffic: dns.fqdn == "db.internal.example.com"
   ruleSettings:
     dnsResolvers:
       ipv4:
         - ip: 10.0.0.53
+          routeThroughPrivateNetwork: true
           vnetId:
             valueFrom:
               kind: CloudflareZeroTrustTunnelVirtualNetwork
               name: corp-vnet
+              fieldPath: status.outputs.virtual_network_id
 ```
 
-## Stack Outputs
+The InfraPipeline deploys the virtual network first, then provisions the policy against its real ID. `routeThroughPrivateNetwork: true` is required whenever `vnetId` is set — validation rejects the manifest without it.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `policy_id` | string | UUID of the created policy |
-| `precedence` | string | Evaluation order (Cloudflare-assigned when the spec left it unset) |
+## Key Configuration
 
-## Related Components
+These are the most important decisions when configuring a Gateway policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- [Cloudflare Zero Trust List](/docs/catalog/cloudflare/cloudflarezerotrustlist) -- reusable domain/IP/email sets referenced from `traffic`
-- [Cloudflare Zero Trust Tunnel Virtual Network](/docs/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork) -- `ruleSettings.dnsResolvers.*.vnetId`
-- [Cloudflare Zero Trust Access Identity Provider](/docs/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider) -- identities the `identity` expression matches
-- [Cloudflare Ruleset](/docs/catalog/cloudflare/cloudflareruleset) -- website WAF / firewall, not employee Gateway traffic
+**`enabled` defaults to false** — Cloudflare treats a missing value as disabled. Write `enabled: true` on every policy you intend to enforce; a code review that does not see that field should bounce the change.
+
+**Precedence is yours to manage** — omit `precedence` and Cloudflare assigns a number; two policies created that way can evaluate in an order you did not choose. Set it explicitly (lower runs earlier) and pick numbers with room to insert policies between them.
+
+**Action and filter must pair** — which actions are valid depends on the filter: dns takes allow/block/override/safesearch/ytrestricted, http takes allow/block/isolate/redirect/quarantine/scan, l4 takes allow/block/audit-ssh/l4_override, egress rules take egress, dns_resolver rules take resolve. Leave `filter` empty to let Cloudflare infer it from the action. Each `ruleSettings` field likewise applies only to specific filter/action combinations.
+
+**Wirefilter expressions are reformatted by the API** — `traffic`, `identity`, and `devicePosture` are rewritten before storing (whitespace, function spelling, list syntax). If a plan shows drift on an expression you did not change, the stored form is the API's — copy it back into the spec rather than fighting the formatter.
+
+**`addHeaders` and `overrideIps` drift on first apply** — at provider v5.23.0, a policy carrying either shows computed-field drift even when applied correctly; the provider's own tests expect it. `blockPage`, `checkSession`, `blockReason`, and `dnsResolvers` do not have that defect — prefer them for policies you need to prove idempotent.
+
+**Prefer disable over delete for reversibility** — destroy is a real delete, and a high-precedence block you might have to restore in a hurry is safer flipped to `enabled: false` than destroyed and re-created.
+
+**Resolver mechanisms are exclusive** — a resolve policy uses at most one of `dnsResolvers` (custom upstreams), `resolveDnsInternally` (internal DNS views), or `resolveDnsThroughCloudflare` (public 1.1.1.1); validation rejects combinations.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| CloudflareZeroTrustTunnelVirtualNetwork | `spec.ruleSettings.dnsResolvers.ipv4[].vnetId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustTunnelVirtualNetwork | `spec.ruleSettings.dnsResolvers.ipv6[].vnetId` | `status.outputs.virtual_network_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `policy_id` | The UUID of the created policy | API automation and policy audits |
+| `precedence` | The evaluation order (Cloudflare-assigned when the spec left it unset) | Slotting new policies deliberately around existing ones |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**DNS block** — the first Gateway policy on most accounts: block a domain (or a Zero Trust list of domains) for every WARP-enrolled device, with the block page and a reason. Start from the **DNS block** preset.
+
+**HTTP allow with a session check** — allowlist an internal web app and require a fresh Access session every 24 hours; uses `checkSession` and `blockPage`, the settings that stay idempotency-safe. Start from the **HTTP allow with a session check** preset.
+
+**Private DNS resolution** — a `resolve` policy routing matched internal hostnames to an on-premises resolver reached through a Zero Trust tunnel's virtual network, so corp domains answer correctly for roaming devices.
+
+**Posture-gated egress** — an l4 or http policy whose `devicePosture` expression requires a passing posture rule (disk encryption, EDR presence) before traffic leaves, pairing this kind with device posture rules.
+
+## Works With
+
+- [**Cloudflare Zero Trust List**](/cloud-catalog/cloudflare-zero-trust-list) — reusable domain/IP/email sets referenced by ID from the `traffic` expression.
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) — the private network `ruleSettings.dnsResolvers.*.vnetId` routes resolver traffic through.
+- [**Cloudflare Zero Trust Device Posture Rule**](/cloud-catalog/cloudflare-zero-trust-device-posture-rule) — the health checks the `devicePosture` expression matches on.
+- [**Cloudflare Zero Trust DNS Location**](/cloud-catalog/cloudflare-zero-trust-dns-location) — the per-site entry points DNS policies can match on.
+- [**Cloudflare Zero Trust Gateway Settings**](/cloud-catalog/cloudflare-zero-trust-gateway-settings) — the account-wide posture (TLS decryption, logging) these policies run under.
+- [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) — website WAF and firewall for zone traffic; Gateway policies filter employee traffic. Different product, different kind.

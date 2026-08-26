@@ -1,6 +1,6 @@
 # Azure Monitor Scheduled Query Alert
 
-Deploys an Azure Monitor scheduled query alert rule -- the log-search alert. It runs a KQL query against a Log Analytics Workspace (or an Application Insights resource) on a schedule, compares the result to a threshold, and fires action groups when the condition holds. It is the alerting half of the logging pipeline: diagnostic settings route logs INTO the workspace, and query alerts watch what arrives -- error spikes, security events, missing heartbeats, business anomalies, anything KQL can express. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, workspaces, identities, and action groups.
+Deploys an Azure Monitor scheduled query alert rule -- the log-search alert. It runs a KQL query against a Log Analytics Workspace (or an Application Insights resource) on a schedule, compares the result to a threshold, and fires action groups when the condition holds. It is the alerting half of the logging pipeline: diagnostic settings route logs INTO the workspace, and query alerts watch what arrives -- error spikes, security events, missing heartbeats, business anomalies, anything KQL can express.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Monitor Scheduled Query Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **error-spike** preset in the [Presets](#presets) tab to pre-populate the classic log-search pager.
+Open the deployment store, find **Azure Monitor Scheduled Query Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Error Spike Alert (Row Count)** preset in the [Presets](#presets) tab to pre-populate the classic log-search pager.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorScheduledQueryAlert
 metadata:
   name: error-spike-alert
@@ -71,11 +71,28 @@ spec:
 planton apply -f query-alert.yaml
 ```
 
-This creates a rule on the platform defaults: the query runs every 5 minutes over the last 5 minutes; each firing is its own alert (Azure's default for query rules).
+This creates a rule on the platform defaults: the query runs every 5 minutes over the last 5 minutes; each firing is its own alert (Azure's default for query rules). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the rule to the workspace and action group deployed in the same InfraPipeline. The InfraPipeline resolves the dependency graph, deploys the workspace and group first, then provisions the rule with the resolved IDs.
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the rule to the workspace it queries and the action group it fires:
+
+```yaml
+spec:
+  scope:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: platform-logs
+      fieldPath: status.outputs.workspace_id
+  action:
+    actionGroupIds:
+      - valueFrom:
+          kind: AzureMonitorActionGroup
+          name: platform-oncall
+          fieldPath: status.outputs.action_group_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the workspace and group first, then provisions the rule with the resolved IDs.
 
 ## Key Configuration
 
@@ -102,23 +119,23 @@ These are the most important decisions when configuring a scheduled query alert.
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `scheduled_query_alert_id` | Azure Resource Manager ID of the rule | Portal navigation, filtering alert history |
-| `scheduled_query_alert_name` | Name of the rule | Azure CLI references |
-| `identity_principal_id` | The system-assigned principal (when configured) | The workspace-access grant target |
+| `identity_principal_id` | The system-assigned principal ID (when the identity is configured) | The workspace-access grant target -- the second step a system-assigned query identity requires |
+
+The rule's own identifiers (`scheduled_query_alert_id`, `scheduled_query_alert_name`) are also exported for alert-history filtering and CLI reference; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Error spike** -- COUNT of exception rows greater than a threshold over a rolling window. Start from the **error-spike** preset.
+**Error spike** -- COUNT of exception rows greater than a threshold over a rolling window. Start from the **Error Spike Alert (Row Count)** preset.
 
-**Latency threshold** -- AVERAGE of a duration column above a limit -- the column-style evaluation. Start from the **latency-threshold** preset.
+**Latency threshold** -- AVERAGE of a duration column above a limit -- the column-style evaluation. Start from the **Latency Threshold Alert (Metric Measurement, Per-Dimension)** preset.
 
-**Missing heartbeat** -- COUNT LESS THAN 1: fires when expected rows STOP arriving — the absence alarm no metric can express. Start from the **missing-heartbeat** preset.
+**Missing heartbeat** -- COUNT LESS THAN 1: fires when expected rows STOP arriving — the absence alarm no metric can express. Start from the **Missing Heartbeat Alert (Absence of Data)** preset.
 
 ## Works With
 

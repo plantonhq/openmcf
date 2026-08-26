@@ -1,6 +1,6 @@
 # Azure AKS Cluster
 
-Deploys an Azure Kubernetes Service (AKS) cluster -- the managed control plane plus its built-in system node pool. The cluster is deliberately the CONTROL PLANE'S resource: application capacity attaches as separate AzureAksNodePool Cloud Resources referencing this cluster's outputs, so pools scale, price (spot), and upgrade independently. The cluster integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, subnets, identities, and observability workspaces.
+Deploys an Azure Kubernetes Service (AKS) cluster -- the managed control plane plus its built-in system node pool. The cluster is deliberately the CONTROL PLANE'S resource: application capacity attaches as separate AzureAksNodePool Cloud Resources referencing this cluster's outputs, so pools scale, price (spot), and upgrade independently. The spec covers the full control-plane surface: SKU tier and support plan, the system node pool, CNI networking and egress, API-server exposure, identity and workload identity, and the add-on families from Container Insights to managed Istio.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure AKS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the sixteen cluster configuration steps. Start from the **Standard** preset in the [Presets](#presets) tab for a production-ready public cluster, or **Private** for a private-endpoint cluster.
+Open the deployment store, find **Azure AKS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the sixteen cluster configuration steps. Start from the **Standard Production AKS Cluster** preset in the [Presets](#presets) tab for a production-ready public cluster, or **Private AKS Cluster with Workload Identity** for a private-endpoint cluster.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: prod-aks
@@ -161,11 +161,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard production cluster** -- Public endpoint, Standard tier, autoscaled zone-spread system pool, CNI Overlay, Container Insights + Key Vault secrets provider + Azure Policy + workload identity. Start from the **Standard** preset.
+**Standard production cluster** -- Public endpoint, Standard tier, autoscaled zone-spread system pool, CNI Overlay, Container Insights + Key Vault secrets provider + Azure Policy + workload identity. Start from the **Standard Production AKS Cluster** preset.
 
-**Private cluster** -- Private API endpoint with a System-managed private DNS zone, authorized operations via network reach, user-defined or NAT egress. Start from the **Private** preset.
+**Private cluster** -- Private API endpoint with a system-managed private DNS zone, authorized operations via network reach, user-defined or NAT egress. Start from the **Private AKS Cluster with Workload Identity** preset.
 
-**Hardened enterprise cluster** -- Private endpoint, Entra ID admin groups with Azure RBAC, local accounts disabled, KMS etcd encryption, Defender, host encryption. Start from the **Hardened Enterprise** preset.
+**Hardened enterprise cluster** -- Private endpoint, Entra ID admin groups with Azure RBAC, local accounts disabled, KMS etcd encryption, Defender, host encryption. Start from the **Hardened Enterprise AKS Cluster** preset.
 
 ## Works With
 

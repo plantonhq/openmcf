@@ -1,4 +1,4 @@
-# Service Account IAM Member on Google Cloud
+# GCP Service Account IAM Member
 
 Grants one role, to one identity, ON a service account — controlling who may USE or MANAGE the account itself. A GCP service account is both an identity (it holds roles elsewhere) and a resource (identities hold roles ON it); this kind covers the resource side: `roles/iam.workloadIdentityUser` (federation — the keyless-authentication hop), `roles/iam.serviceAccountTokenCreator` (minting short-lived tokens), and `roles/iam.serviceAccountUser` (actAs — deploying workloads that attach the account). Additive like every Planton grant: the (role, member) pair merges without touching anyone else's bindings, and removal subtracts only that pair. Prefer these account-scoped grants over their project-level equivalents — a project-level serviceAccountUser grant allows acting as EVERY service account in the project.
 
@@ -15,7 +15,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials permitted to set IAM policy on the target service account (e.g. `roles/iam.serviceAccountAdmin`). Map it as the default for your environment, or specify it explicitly.
 - **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-### GCP Resources
+### GCP Project
 
 - **The target service account** must exist — reference a GcpServiceAccount Cloud Resource or provide its full resource name (`projects/<project>/serviceAccounts/<email>`). There is no separate project field: the account's project is embedded in the name.
 - **For federation grants**: a workload identity pool and provider whose `principalSet://` subject you are granting.
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Service Account IAM Member on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **GitHub Workload Identity Impersonation** preset in the [Presets](#presets) tab for keyless CI/CD.
+Open the deployment store, find **GCP Service Account IAM Member**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **GitHub Workload Identity Impersonation** preset in the [Presets](#presets) tab for keyless CI/CD.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccountIamMember
 metadata:
   name: github-deploy-impersonation
@@ -102,14 +102,7 @@ These are the most important decisions when configuring a grant. Explore the ful
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains the grant's post-resolution facts:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `service_account_id` | The target account after reference resolution | Audit tooling, access reviews |
-| `role` | The role after reference resolution | Audit tooling |
-| `member` | The member after reference resolution | Audit tooling |
-| `etag` | The IAM policy fingerprint when this grant last merged | Drift detection |
+This component has no outputs that downstream Cloud Resources consume. `status.outputs` echoes the fully resolved grant tuple (`service_account_id`, `role`, `member`) plus the account policy `etag` at the moment the grant merged — audit visibility for values that usually arrive through references, not composition inputs. Downstream resources reference the service account itself, never the grant.
 
 ## Common Patterns
 
@@ -117,9 +110,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **GitHub Workload Identity impersonation** -- keyless CI/CD: the repository's `principalSet://` subject gains `workloadIdentityUser` on the deploy account. No key exists anywhere. Start from the **GitHub Workload Identity Impersonation** preset.
 
-**Token creator grant** -- a broker or CI account gains `serviceAccountTokenCreator` on a target account, minting short-lived credentials instead of holding long-lived ones. Start from the **Token Creator Grant** preset.
+**Token creator grant** -- a broker or CI account gains `serviceAccountTokenCreator` on a target account, minting short-lived credentials instead of holding long-lived ones. Start from the **Token Creator Grant (Cross-Account Impersonation)** preset.
 
-**Deployer act-as** -- the deploy identity gains `serviceAccountUser` on the runtime account, unblocking Cloud Run/GCE deployments that attach it. Start from the **Deployer Act-As** preset.
+**Deployer act-as** -- the deploy identity gains `serviceAccountUser` on the runtime account, unblocking Cloud Run/GCE deployments that attach it. Start from the **Deployer actAs Grant** preset.
 
 ## Works With
 

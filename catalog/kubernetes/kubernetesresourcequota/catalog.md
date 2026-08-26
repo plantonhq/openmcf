@@ -1,6 +1,6 @@
 # Kubernetes ResourceQuota
 
-Deploys a Kubernetes ResourceQuota with an optional companion LimitRange — two objects, one governance story: how much may this namespace consume in total, and what does a workload get when it doesn't say? Manages namespace governance declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a Kubernetes ResourceQuota with an optional companion LimitRange — two objects, one governance story: how much may this namespace consume in total, and what does a workload get when it doesn't say? Pairing the two is the load-bearing decision: a compute quota without container defaults makes the API reject every pod that omits requests and limits.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **ResourceQuota on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team Namespace Governed** preset — the safe caps-plus-defaults pairing — in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes ResourceQuota**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team Namespace Governed** preset — the safe caps-plus-defaults pairing — in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesResourceQuota
 metadata:
   name: team-quota
@@ -46,12 +46,12 @@ spec:
   hard:
     requests.cpu: "10"
     limits.memory: 40Gi
-  limit_defaults:
+  limitDefaults:
     - type: container
-      default_request:
+      defaultRequest:
         cpu: 100m
         memory: 128Mi
-      default_limit:
+      defaultLimit:
         cpu: 500m
         memory: 512Mi
 ```
@@ -60,7 +60,25 @@ spec:
 planton apply -f resourcequota.yaml
 ```
 
-This caps the namespace's compute AND gives silent containers sane defaults — the pairing that keeps naive workloads deployable.
+This caps the namespace's compute AND gives silent containers sane defaults — the pairing that keeps naive workloads deployable. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the quota to its Planton-managed namespace:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  hard:
+    requests.cpu: "10"
+    limits.memory: 40Gi
+```
+
+The InfraPipeline deploys the namespace first, then applies the quota to it.
 
 ## Key Configuration
 
@@ -78,9 +96,9 @@ These are the most important decisions when configuring a Kubernetes ResourceQuo
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the quota governs; omitted means the cluster's `default` namespace |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
 
 ### What This Component Provides
 
@@ -104,5 +122,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this quota in dependency order; prefer its built-in resource profiles for simple T-shirt sizing.
-- **Kubernetes PriorityClass** -- a priority-class-scoped quota budgets one tier's consumption.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference the namespace so infra charts create it and this quota in dependency order; prefer its built-in resource profiles for simple T-shirt sizing.
+- [**Kubernetes PriorityClass**](/cloud-catalog/kubernetes-priority-class) -- a priority-class-scoped quota budgets one tier's consumption.

@@ -1,6 +1,6 @@
 # Azure Machine Learning Compute Cluster
 
-Creates an auto-scaling compute cluster on an Azure Machine Learning workspace -- the pool of VMs that training jobs and pipelines run on, growing and shrinking between its configured node bounds. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates an auto-scaling compute cluster on an Azure Machine Learning workspace -- the pool of VMs that training jobs and pipelines run on, growing and shrinking between its configured node bounds.
 
 ## What Gets Created
 
@@ -57,11 +57,22 @@ spec:
 planton apply -f azure-machine-learning-compute-cluster.yaml
 ```
 
-The cluster object creates in a few minutes; nodes provision on demand as jobs arrive.
+This creates a scale-to-zero dedicated cluster of up to four DS3v2 nodes with a system identity; nodes provision on demand as jobs arrive. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → **compute cluster**, wiring the workspace by reference; jobs then reference the cluster by its name as their compute target.
+In an ML-platform chart the order is: workspace → **compute cluster**; jobs then reference the cluster by its name as their compute target. Wire the workspace by reference:
+
+```yaml
+spec:
+  workspaceId:
+    valueFrom:
+      kind: AzureMachineLearningWorkspace
+      name: ml-prod
+      fieldPath: status.outputs.machine_learning_workspace_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the workspace before the cluster.
 
 ## Key Configuration
 
@@ -91,7 +102,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `machine_learning_compute_cluster_id` | ARM ID of the cluster | Operational tooling |
+| `machine_learning_compute_cluster_id` | ARM ID of the cluster | AzureMachineLearningBatchDeployment references it as its `computeId` |
 | `machine_learning_compute_cluster_name` | The cluster's name | What jobs and pipelines reference as their compute target |
 | `system_assigned_identity_principal_id` | The system identity's principal ID | Storage / Key Vault / ACR role assignments |
 

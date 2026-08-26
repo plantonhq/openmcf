@@ -1,6 +1,6 @@
 # GCP Cloud SQL
 
-Deploys a fully managed MySQL, PostgreSQL, or SQL Server database instance on Google Cloud SQL — with explicit connectivity (private VPC IP, public IPv4, and/or Private Service Connect), regional high availability with automatic failover, automated backups with point-in-time recovery, read replicas, customer-managed encryption, and engine tuning flags. The instance integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPC networks, KMS keys, and other Cloud SQL instances.
+Deploys a fully managed MySQL, PostgreSQL, or SQL Server database instance on Google Cloud SQL — with explicit connectivity (private VPC IP, public IPv4, and/or Private Service Connect), regional high availability with automatic failover, automated backups with point-in-time recovery, read replicas, customer-managed encryption, and engine tuning flags. The GCP project, the VPC network, the CMEK key, and the replication primary all wire by ValueFromRef, so the instance composes into an InfraChart without hand-copied identifiers.
 
 ## What Gets Created
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Cloud SQL**, and click **Deploy**. The creation wizard walks the decisions in the order a database owner thinks: engine → identity → fresh-or-replica → machine → connectivity → availability → backups → maintenance → observability → security (with a SQL Server-only options step when that engine is chosen). The [Presets](#presets) tab offers three starting configurations: **Production PostgreSQL (Private IP)**, **MySQL High Availability**, and **PostgreSQL Read Replica**.
+Open the deployment store, find **GCP Cloud SQL**, and click **Deploy**. The creation wizard walks the decisions in the order a database owner thinks: engine → identity → fresh-or-replica → machine → connectivity → availability → backups → maintenance → observability → security (with a SQL Server-only options step when that engine is chosen). The [Presets](#presets) tab offers three starting configurations: **Production PostgreSQL (Private IP)**, **High-Availability MySQL (Auth Proxy Access)**, and **PostgreSQL Read Replica**.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: app-database
@@ -139,7 +139,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Production PostgreSQL (private IP)** -- Private-IP-only connectivity inside your VPC, regional high availability, point-in-time recovery, Query Insights, and both delete guards. Start from the **Production PostgreSQL (Private IP)** preset.
 
-**MySQL high availability** -- The MySQL equivalent: regional failover with binary logging (MySQL's PITR and replica prerequisite). Start from the **MySQL High Availability** preset.
+**MySQL high availability** -- The MySQL equivalent: regional failover with binary logging (MySQL's PITR and replica prerequisite). Start from the **High-Availability MySQL (Auth Proxy Access)** preset.
 
 **Read replica** -- Scale reads by attaching a replica to an existing primary via `masterInstanceName`. Start from the **PostgreSQL Read Replica** preset.
 

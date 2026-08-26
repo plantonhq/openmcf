@@ -1,6 +1,6 @@
 # Azure Service Bus Queue
 
-Deploys a queue inside an Azure Service Bus namespace -- reliable point-to-point messaging with FIFO delivery, at-least-once semantics, PeekLock consumption, and a built-in dead-letter sub-queue. Queues are many-per-namespace with independent lifecycles, which is why the queue is a first-class Cloud Resource referencing the namespace rather than a list folded into it. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a queue inside an Azure Service Bus namespace -- reliable point-to-point messaging with FIFO delivery, at-least-once semantics, PeekLock consumption, and a built-in dead-letter sub-queue. Queues are many-per-namespace with independent lifecycles, which is why the queue is a first-class Cloud Resource referencing the namespace rather than a list folded into it.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **Azure Service Bus Queue**, and click **Deploy*
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusQueue
 metadata:
   name: orders-queue
@@ -55,7 +55,7 @@ spec:
 planton apply -f queue.yaml
 ```
 
-Unset dials keep Azure's defaults: 1 GB size (multi-tenant), a 1-minute lock, 10 delivery attempts, unbounded TTL, batching on. Three dials are **fixed at creation** -- `partitioningEnabled`, `requiresDuplicateDetection`, and `requiresSession` -- changing any of them later replaces the queue and drops its messages, so decide them with the producer and consumer teams up front.
+This creates the `orders` queue on the `order-bus` namespace with a tightened 5-attempt poison threshold, expired messages preserved in the dead-letter sub-queue, and a 14-day TTL; unset dials keep Azure's defaults (1 GB size, 1-minute lock, batching on). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -75,6 +75,8 @@ The InfraPipeline resolves the dependency graph, deploys the namespace first, th
 ## Key Configuration
 
 These are the most important decisions when configuring a Service Bus queue. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Three one-way doors** -- `partitioningEnabled`, `requiresDuplicateDetection`, and `requiresSession` are fixed at creation: changing any of them later replaces the queue and drops its messages, so decide them with the producer and consumer teams up front.
 
 **The PeekLock contract** -- `lockDuration` (PT5S to PT5M; Azure's default PT1M) hides a received message while a consumer works on it, and `maxDeliveryCount` (Azure's default 10) is the poison-message circuit breaker: after that many failed deliveries the message moves to the dead-letter sub-queue at `{queue}/$deadletterqueue` instead of redelivering forever.
 

@@ -1,4 +1,4 @@
-# Preset: Basic Analytics Dataset
+# Basic Analytics Dataset
 
 ## When to Use
 

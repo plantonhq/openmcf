@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Redis Cache Access Policy Assignment**, and click **Deploy**. Start from the **Identity Data Reader** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Redis Cache Access Policy Assignment**, and click **Deploy**. Start from the **Workload Identity Data Reader Grant** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisCacheAccessPolicyAssignment
 metadata:
   name: app-identity-data-reader
@@ -59,7 +59,38 @@ spec:
 planton apply -f grant.yaml
 ```
 
+This grants the built-in `Data Reader` policy to the referenced managed identity on the referenced cache -- the identity can then connect with an Entra token and read every key. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+The most natural composition is the three-kind chain -- cache, custom policy, grant -- deployed in one InfraChart:
+
+```yaml
+spec:
+  redisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: app-cache
+      fieldPath: status.outputs.redis_cache_id
+  assignmentName: worker-session-grant
+  accessPolicyName:
+    valueFrom:
+      kind: AzureRedisCacheAccessPolicy
+      name: session-worker-policy
+      fieldPath: status.outputs.access_policy_name
+  objectId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: worker-identity
+      fieldPath: status.outputs.principal_id
+  objectIdAlias: worker-identity
+```
+
+The InfraPipeline resolves the dependency graph, provisions the cache, policy, and identity first, then creates the grant with the resolved values.
+
 ## Key Configuration
+
+These are the most important decisions when configuring an assignment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **The policy (WHAT)** -- One reference-capable field serving two modes: the three built-ins are referenced by literal name -- `Data Owner` (full access including admin commands), `Data Contributor` (read-write), `Data Reader` (read-only) -- with no policy resource existing; a custom policy is referenced through an AzureRedisCacheAccessPolicy's `access_policy_name` output.
 
@@ -81,20 +112,17 @@ planton apply -f grant.yaml
 
 ### What This Component Provides
 
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `access_policy_assignment_id` | Azure Resource Manager ID of the assignment | Audit trails |
-| `access_policy_assignment_name` | The assignment's name within the cache | Operational tooling |
+This component has no consumable outputs: `status.outputs` carries only the assignment's ARM ID (`access_policy_assignment_id`) and its name within the cache (`access_policy_assignment_name`), and nothing downstream composes with a grant -- the assignment is a leaf in the dependency graph.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Workload identity, read-only** -- The everyday application grant: an AzureUserAssignedIdentity granted `Data Reader`. Start from the **Identity Data Reader** preset.
+**Workload identity, read-only** -- The everyday application grant: an AzureUserAssignedIdentity granted `Data Reader`. Start from the **Workload Identity Data Reader Grant** preset.
 
 **Custom policy grant** -- The three-kind composition: cache, custom policy, grant. Start from the **Custom Policy Grant** preset.
 
-**Human operator** -- A user or group GUID granted `Data Owner` for break-glass operations. Start from the **Human Operator** preset.
+**Human operator** -- A user or group GUID granted `Data Owner` for break-glass operations. Start from the **Human Operator Grant** preset.
 
 ## Works With
 

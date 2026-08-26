@@ -1,11 +1,12 @@
-# Backend Service on Google Cloud
+# GCP Backend Service
 
-Deploys a global Compute Engine backend service — the hub of GCP's L7 load-balancing family. A backend service owns HOW traffic reaches a set of backends: which instance groups or network endpoint groups receive requests, how they are health-checked, how sessions stick, whether responses cache at Google's edge (Cloud CDN), whether Identity-Aware Proxy gates access, and how requests are logged. URL maps route host/path patterns to backend services; target proxies and forwarding rules sit in front of the URL map. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring across the whole load-balancing chain.
+Deploys a global Compute Engine backend service — the hub of GCP's L7 load-balancing family. A backend service owns HOW traffic reaches a set of backends: which instance groups or network endpoint groups receive requests, how they are health-checked, how sessions stick, whether responses cache at Google's edge (Cloud CDN), whether Identity-Aware Proxy gates access, and how requests are logged. URL maps route host/path patterns to backend services; target proxies and forwarding rules sit in front of the URL map.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Compute Engine API enablement** (`compute.googleapis.com`) on the target project (never disabled on destroy)
 - **Global Backend Service** -- for the classic external ALB (EXTERNAL), the envoy-based external ALB (EXTERNAL_MANAGED), the cross-region internal ALB (INTERNAL_MANAGED), or Traffic Director (INTERNAL_SELF_MANAGED)
 - **Backend attachments** -- each configured group with its balancing mode and capacity dials
 - **Attached policies** -- Cloud CDN caching, Cloud Armor references, IAP, logging, and the scheme's traffic policies
@@ -20,7 +21,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the service will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
 - **A health check** (GcpHealthCheck) for instance-group backends — serverless and internet NEG backends manage their own health.
 - **The backends** (GcpRegionNetworkEndpointGroup or instance groups) — or create the service health-check-only first and attach backends as they come online.
 
@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Backend Service on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **External Web Backend** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Backend Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **External Web Backend** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -57,7 +57,7 @@ spec:
 planton apply -f backend-service.yaml
 ```
 
-This creates the classic external web backend: default scheme and protocol, one NEG backend with a rate contract, and a health check.
+This creates the classic external web backend: default scheme and protocol, one NEG backend with a rate contract, and a health check. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -125,9 +125,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **External web backend** -- The classic shape: default scheme, a health check, NEG backends. Start from the **External Web Backend** preset.
 
-**CDN-cached API** -- Edge caching with a tuned cache key for read-heavy APIs. Start from the **CDN Cached API** preset.
+**CDN-cached API** -- Edge caching with a tuned cache key for read-heavy APIs. Start from the **CDN-Cached API** preset.
 
-**IAP-protected internal tool** -- Zero-trust access with Google identities in front of an internal app. Start from the **IAP Protected Internal Tool** preset.
+**IAP-protected internal tool** -- Zero-trust access with Google identities in front of an internal app. Start from the **IAP-Protected Internal Tool** preset.
 
 ## Works With
 

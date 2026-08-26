@@ -27,14 +27,14 @@ The rules that reference the group are NOT created here — they live on firewal
 
 ### Console
 
-Open the deployment store, find **Azure IP Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Branch Offices** preset in the [Presets](#presets) tab for the classic trusted-ranges set.
+Open the deployment store, find **Azure IP Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Branch-Office Address Set** preset in the [Presets](#presets) tab for the classic trusted-ranges set.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureIpGroup
 metadata:
   name: branch-offices
@@ -56,7 +56,7 @@ spec:
 planton apply -f ip-group.yaml
 ```
 
-Every firewall rule referencing `branch-offices` now matches these two ranges — and a new branch joins by adding one address here, with no policy edit.
+This creates the `branch-offices` group with two trusted ranges -- every firewall rule referencing it matches them, and a new branch joins by adding one address here, with no policy edit. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -104,9 +104,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Branch offices** -- the trusted branch egress ranges every allow-rule references; a new branch is one address added here. Start from the **Branch Offices** preset.
+**Branch offices** -- the trusted branch egress ranges every allow-rule references; a new branch is one address added here. Start from the **Branch-Office Address Set** preset.
 
-**On-premises datacenter** -- the ExpressRoute/VPN-reachable ranges rules treat as internal — the hybrid-network trust anchor. Start from the **On-Prem Datacenter** preset.
+**On-premises datacenter** -- the ExpressRoute/VPN-reachable ranges rules treat as internal — the hybrid-network trust anchor. Start from the **On-Premises Datacenter Ranges** preset.
 
 ## Works With
 

@@ -1,14 +1,14 @@
 # GCP Spanner Backup Schedule
 
-Creates backups of a Cloud Spanner database on a cron cadence and retains each backup for a configurable window. Backup schedules are first-class, many-per-database resources — a production database commonly carries a daily incremental schedule and a weekly full schedule side by side. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, Spanner instances, Spanner databases, and KMS keys.
+Creates backups of a Cloud Spanner database on a cron cadence and retains each backup for a configurable window. Backup schedules are first-class, many-per-database resources — a production database commonly carries a daily incremental schedule and a weekly full schedule side by side. The schedule is owned by its database, but the backups it creates outlive both the schedule and the database, surviving until their retention expires.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Spanner Backup Schedule** -- a schedule on the target database that creates backups at the configured cron cadence (evaluated in UTC) and retains each backup for `retentionDuration`
-- **Full or Incremental Backups** -- `backupType` selects the backup shape. `FULL` (the default when unset): every backup is a complete, self-contained copy. `INCREMENTAL`: backups form chains storing only changes since the previous one — cheaper storage at identical restore semantics, requiring an ENTERPRISE or ENTERPRISE_PLUS instance
-- **Backup Encryption** -- created only when `encryptionConfig` is set. Omitted entirely, backups inherit the database's own posture (a CMEK database gets CMEK backups). `CUSTOMER_MANAGED_ENCRYPTION` takes exactly one key shape: `kmsKeyName` (regional instance configurations) or `kmsKeyNames` (one key per region of a multi-region configuration)
+- **Spanner Backup Schedule** -- a `google_spanner_backup_schedule` on the target database that creates backups at the configured cron cadence (evaluated in UTC) and retains each backup for `retentionDuration`; `backupType` selects `FULL` (the default — every backup is a complete, self-contained copy) or `INCREMENTAL` (chains storing only changes since the previous backup — cheaper storage at identical restore semantics, requiring an ENTERPRISE or ENTERPRISE_PLUS instance)
+- **Backup Encryption configuration** -- created only when `encryptionConfig` is set. Omitted entirely, backups inherit the database's own posture (a CMEK database gets CMEK backups). `CUSTOMER_MANAGED_ENCRYPTION` takes exactly one key shape: `kmsKeyName` (regional instance configurations) or `kmsKeyNames` (one key per region of a multi-region configuration)
+- **Spanner API enablement** -- `spanner.googleapis.com` enabled in the target project so a fresh project can host backup schedules (never disabled on destroy)
 
 ## Before You Deploy
 
@@ -34,7 +34,7 @@ Open the deployment store, find **GCP Spanner Backup Schedule**, and click **Dep
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSpannerBackupSchedule
 metadata:
   name: daily-full-backups
@@ -53,7 +53,7 @@ spec:
 planton apply -f spanner-backup-schedule.yaml
 ```
 
-This creates a schedule taking a full backup daily at 02:00 UTC, keeping each backup for 31 days, with backups inheriting the database's encryption posture.
+This creates a schedule taking a full backup daily at 02:00 UTC, keeping each backup for 31 days, with backups inheriting the database's encryption posture. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -102,7 +102,7 @@ These are the most important decisions when configuring a backup schedule. Explo
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream consumers and operators can use:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -115,9 +115,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Daily full backups** -- a full backup every day at 02:00 UTC, kept 31 days. The simplest production posture. Start from the **Daily Full Backups** preset.
 
-**Incremental enterprise** -- backups every 12 hours forming incremental chains, kept 14 days. Cheap, frequent restore points for large databases on ENTERPRISE instances. Start from the **Incremental Enterprise** preset.
+**Incremental enterprise** -- backups every 12 hours forming incremental chains, kept 14 days. Cheap, frequent restore points for large databases on ENTERPRISE instances. Start from the **Incremental Backups (Enterprise)** preset.
 
-**Weekly long retention** -- a full backup every Sunday, kept 366 days (the maximum), encrypted with a customer-managed key. The compliance-archive posture. Start from the **Weekly Long Retention** preset.
+**Weekly long retention** -- a full backup every Sunday, kept 366 days (the maximum), encrypted with a customer-managed key. The compliance-archive posture. Start from the **Weekly Long-Retention Archive** preset.
 
 ## Works With
 

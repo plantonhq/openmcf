@@ -1,12 +1,13 @@
 # GCP Global Address
 
-Reserves a static IP address or CIDR range at global scope in Google Cloud. External addresses provide stable public IPs for HTTP(S) load balancers, Cloud CDN, and global forwarding rules. Internal addresses reserve private IP ranges for VPC peering (used by Cloud SQL, Memorystore, AlloyDB, Filestore) or Private Service Connect endpoints. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPCs.
+Reserves a static IP address or CIDR range at global scope in Google Cloud. External addresses provide stable public IPs for HTTP(S) load balancers, Cloud CDN, and global forwarding rules. Internal addresses reserve private IP ranges for VPC peering (used by Cloud SQL, Memorystore, AlloyDB, Filestore) or Private Service Connect endpoints. Every field except labels is ForceNew — any configuration change releases and re-reserves the address.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Global Address** -- a `compute.GlobalAddress` resource in the specified GCP project, configured as either an external public IP or an internal private IP range depending on the `addressType` setting
+- **Compute Engine API enablement** -- `compute.googleapis.com` enabled in the target project (never disabled on destroy)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -19,8 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the address reservation will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
-- **A VPC network** (if reserving an internal address) for the IP range allocation. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
+- **A VPC network** (only for internal addresses) for the IP range allocation. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
 
 ## Deploy
 
@@ -51,7 +51,7 @@ spec:
 planton apply -f global-address.yaml
 ```
 
-This reserves a public IPv4 address at global scope. GCP automatically assigns an available IP. No VPC network or prefix length is needed for external addresses.
+This reserves a public IPv4 address at global scope. GCP automatically assigns an available IP. No VPC network or prefix length is needed for external addresses. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -103,7 +103,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `address` | Reserved IP address or start of reserved CIDR range | DNS A records, load balancer frontend IP, peering connection range |
 | `self_link` | Self-link URL of the global address resource | Forwarding rules, load balancer configurations |
 | `name` | Name of the global address resource in GCP | GcpServiceNetworkingConnection `reservedPeeringRanges` — the private-services-access composition key |
-| `creation_timestamp` | Creation timestamp in RFC3339 format | Audit, lifecycle tracking |
 
 ## Common Patterns
 
@@ -113,9 +112,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Internal VPC peering range** -- Reserves a /20 private CIDR range for VPC peering with managed services. Required for Cloud SQL, Memorystore, AlloyDB, and Filestore private networking via Private Services Access. Start from the **Internal VPC Peering Range** preset.
 
-**Private Service Connect endpoint** -- Reserves a single internal IP for a Private Service Connect endpoint, enabling private connectivity to Google APIs or third-party services without traffic leaving the VPC. Start from the **Private Service Connect** preset.
+**Private Service Connect endpoint** -- Reserves a single internal IP for a Private Service Connect endpoint, enabling private connectivity to Google APIs or third-party services without traffic leaving the VPC. Start from the **Private Service Connect Endpoint Address** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the address reservation is created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for internal address IP allocation
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for internal address IP allocation
+- [**GCP Global Forwarding Rule**](/cloud-catalog/gcp-global-forwarding-rule) -- consumes the reserved external IP as a load-balancer frontend
+- [**GCP Service Networking Connection**](/cloud-catalog/gcp-service-networking-connection) -- consumes VPC_PEERING ranges by name for private services access

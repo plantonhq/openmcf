@@ -1,6 +1,6 @@
 # Azure Key Vault Certificate
 
-Deploys an X.509 certificate inside an Azure Key Vault -- the TLS building block the vault manages end to end: private key custody, enrollment or import, renewal, and expiry notification. A vault certificate is really three linked objects sharing one name: the certificate (public part + policy), its private KEY, and a SECRET whose value is the full bundle. That third face is the composition seam -- Azure services that terminate TLS consume the certificate THROUGH its secret identifier, which is why the `secret_id` outputs are what downstream kinds reference. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an X.509 certificate inside an Azure Key Vault -- the TLS building block the vault manages end to end: private key custody, enrollment or import, renewal, and expiry notification. A vault certificate is really three linked objects sharing one name: the certificate (public part + policy), its private KEY, and a SECRET whose value is the full bundle. That third face is the composition seam -- Azure services that terminate TLS consume the certificate THROUGH its secret identifier, which is why the `secret_id` outputs are what downstream kinds reference.
 
 ## What Gets Created
 
@@ -10,10 +10,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Issuance policy** -- when configured: the issuer, the private-key shape (RSA/EC, optionally HSM-backed, exportable or vault-bound), near-expiry actions (auto-renew or contact notification), and the secret encoding (PKCS#12 or PEM)
 - **X.509 content** -- for generated certificates: the subject, SANs, key usages, EKU OIDs, and validity window renewals re-issue for
 
-## The Certificate in the Vault Family
-
-- **AzureKeyVault** -- the parent security boundary, referenced by `keyVaultId`; its authorization mode, network posture, and deletion safety govern this certificate wholesale
-- **TLS terminators** -- Application Gateway listeners and trusted roots, Front Door secrets, firewall-policy TLS inspection, and Container Apps environment certificates all consume this certificate's secret identifiers
+The certificate lives entirely inside the referenced vault, whose authorization mode, network posture, and deletion safety govern it wholesale.
 
 ## Before You Deploy
 
@@ -33,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Key Vault Certificate**, and click **Deploy**. The creation wizard walks you through placement, the generate-vs-import source choice (imported bundles ride org-secret references), the issuance policy, and -- for generated certificates -- the X.509 content with live SAN guidance. Start from the **Self-Signed Auto-Renew** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Key Vault Certificate**, and click **Deploy**. The creation wizard walks you through placement, the generate-vs-import source choice (imported bundles ride org-secret references), the issuance policy, and -- for generated certificates -- the X.509 content with live SAN guidance. Start from the **Self-Signed Auto-Renewing Certificate** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultCertificate
 metadata:
   name: web-tls
@@ -80,22 +77,7 @@ spec:
 planton apply -f key-vault-certificate.yaml
 ```
 
-This creates the fully-hands-off internal-TLS shape: self-signed, renewing itself at 80% lifetime, with consumers following each renewal through the versionless secret ID.
-
-An import brings an existing bundle through an org-secret reference:
-
-```yaml
-spec:
-  name: purchased-tls
-  keyVaultId:
-    valueFrom:
-      kind: AzureKeyVault
-      name: platform-vault
-      fieldPath: status.outputs.key_vault_id
-  certificate:
-    contents: $secret/web-cert-bundle
-    password: $secret/web-cert-password
-```
+This creates the fully-hands-off internal-TLS shape: self-signed, renewing itself at 80% lifetime, with consumers following each renewal through the versionless secret ID. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -152,17 +134,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Self-signed auto-renew for internal TLS** -- the fully-hands-off shape: the vault creates, signs, and renews forever, and consumers on the versionless secret ID never notice a rotation. The trade: clients must trust the certificate explicitly, so this fits service-to-service TLS, never public hostnames. Start from the **Self-Signed Auto-Renewing Certificate** preset.
 
-**Self-signed auto-renew** -- the fully-hands-off internal-TLS shape: the vault creates, signs, and renews forever. Start from the **Self-Signed Auto-Renew** preset.
+**Imported bundle for purchased certificates** -- brings an externally-issued PFX/PEM in without plaintext touching the manifest: `certificate.contents` and `certificate.password` are sensitive fields that take Planton org-secret references (`contents: $secret/web-cert-bundle`). Renewal is on you -- re-importing new contents mints a new version. Start from the **Imported Certificate Bundle** preset.
 
-**Imported bundle** -- an externally-purchased certificate brought in through org-secret references. Start from the **Imported Bundle** preset.
-
-**CA pending CSR** -- the "Unknown"-issuer flow: the vault holds a CSR for an out-of-band CA, with contact notification before expiry. Start from the **CA Pending CSR** preset.
+**Pending CSR for an out-of-band CA** -- the "Unknown"-issuer flow: the vault mints and holds a CSR for a CA that has no vault integration. Renewal is inherently manual, so the lifetime action must be EMAIL_CONTACTS -- pair it with a real renewal runbook, because nothing else will fire. Start from the **CA-Signed via Pending CSR** preset.
 
 ## Works With
 
 - [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- the parent vault whose governance this certificate inherits
 - [**Azure Application Gateway**](/cloud-catalog/azure-application-gateway) -- terminates TLS with this certificate through its secret ID
+- [**Azure Front Door Secret**](/cloud-catalog/azure-front-door-secret) -- wraps this certificate (by its versionless ID) to serve Front Door custom domains
 - [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the sibling kind for raw cryptographic keys (CMK)
 - [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants TLS consumers secret-read access on the vault

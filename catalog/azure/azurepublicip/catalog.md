@@ -1,6 +1,6 @@
 # Azure Public IP
 
-Deploys an Azure Public IP Address -- a static, internet-routable address that load balancers, application gateways, NAT gateways, firewalls, and virtual machines attach for inbound or outbound connectivity. The spec covers the full address contract: SKU and tier, IP version, availability zones, allocation from a reserved Public IP Prefix, the Azure-managed DNS label with its reuse scope, reverse DNS, DDoS protection stance, idle timeout, routing IP tags, and edge-zone placement. The Public IP integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and prefixes.
+Deploys an Azure Public IP Address -- a static, internet-routable address that load balancers, application gateways, NAT gateways, firewalls, and virtual machines attach for inbound or outbound connectivity. The spec covers the full address contract: SKU and tier, IP version, availability zones, allocation from a reserved Public IP Prefix, the Azure-managed DNS label with its reuse scope, reverse DNS, DDoS protection stance, idle timeout, routing IP tags, and edge-zone placement. Allocation is always static, and most of the address contract -- SKU, tier, zones, prefix -- is fixed at creation, so the shape decisions come first.
 
 ## What Gets Created
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Public IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Static** preset in the [Presets](#presets) tab to pre-populate a zone-redundant configuration.
+Open the deployment store, find **Azure Public IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Static Public IP** preset in the [Presets](#presets) tab to pre-populate a zone-redundant configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIp
 metadata:
   name: lb-public-ip
@@ -124,11 +124,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard zone-redundant IP** -- A zone-redundant public IP spanning all three availability zones with Azure's default SKU, tier, and idle timeout. Suitable for production load balancers, application gateways, and NAT gateways that need high availability. Start from the **Standard Static** preset.
+**Standard zone-redundant IP** -- A zone-redundant public IP spanning all three availability zones with Azure's default SKU, tier, and idle timeout. Suitable for production load balancers, application gateways, and NAT gateways that need high availability. Start from the **Standard Static Public IP** preset.
 
-**DNS-labeled endpoint** -- A public IP with an Azure-managed hostname for services that need a stable DNS name before a custom domain exists. Start from the **DNS Labeled Endpoint** preset.
+**DNS-labeled endpoint** -- A public IP with an Azure-managed hostname for services that need a stable DNS name before a custom domain exists. Start from the **DNS-Labeled Endpoint** preset.
 
-**Allowlisted from a prefix** -- An address drawn from a reserved Public IP Prefix so partners allowlist one CIDR, forever. Start from the **Allowlisted From Prefix** preset.
+**Allowlisted from a prefix** -- An address drawn from a reserved Public IP Prefix so partners allowlist one CIDR, forever. Start from the **Allowlisted Address from a Prefix** preset.
 
 ## Works With
 

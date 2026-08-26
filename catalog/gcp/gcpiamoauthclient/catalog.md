@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP IAM OAuth Client**, and click **Deploy**. Start from the **Web App Client** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP IAM OAuth Client**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the grant types, scopes, and redirect URIs, and an inline builder for the managed credentials. Start from the **Web App Client** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -59,7 +59,7 @@ spec:
 planton apply -f client.yaml
 ```
 
-This creates a confidential client with one managed credential; its server-generated secret is the `client_secret` output.
+This creates a confidential client with one managed credential; its server-generated secret is the `client_secret` output. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -73,19 +73,24 @@ spec:
         kind: GcpCloudRun
         name: my-web-app
         fieldPath: status.outputs.url
+```
 
+```yaml
 # On a GcpSecretManagerSecret in the same chart — the secret never leaves the graph:
 spec:
   initialVersion:
-    valueFrom:
-      kind: GcpIamOauthClient
-      name: web-app-client
-      fieldPath: status.outputs.client_secret
+    data:
+      valueFrom:
+        kind: GcpIamOauthClient
+        name: web-app-client
+        fieldPath: status.outputs.client_secret
 ```
 
 The InfraPipeline deploys the app first, registers the client with the resolved URL, then stores the generated secret.
 
 ## Key Configuration
+
+These are the most important decisions when configuring an OAuth client. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Client type** -- only `CONFIDENTIAL_CLIENT` (server-side apps — manage secrets via `credentials`) can be created: GCP's enum lists `PUBLIC_CLIENT` (mobile apps, SPAs) but the service rejects creating one ("Client type is not supported"). Immutable.
 
@@ -105,6 +110,8 @@ The InfraPipeline deploys the app first, registers the client with the resolved 
 | **GcpCloudRun** (optional) | `allowedRedirectUris` entries | `status.outputs.url` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

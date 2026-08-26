@@ -94,4 +94,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Auth0 Resource Server**](/cloud-catalog/auth0-resource-server) -- defines the scopes a role grants; each permission references a Resource Server by its identifier (audience).
+- [**Auth0 Resource Server (API)**](/cloud-catalog/auth0-resource-server) -- defines the scopes a role grants; each permission references a Resource Server by its identifier (audience).

@@ -1,6 +1,6 @@
 # Azure Point-to-Site VPN Gateway
 
-Deploys a Point-to-Site VPN Gateway -- the managed receiver inside a Virtual WAN hub that individual devices dial into from anywhere. HOW users authenticate lives on the VPN Server Configuration the gateway references; WHAT addresses connected clients get comes from the gateway's connection configurations. The gateway bills from creation and creates in 30-45 minutes. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Point-to-Site VPN Gateway -- the managed receiver inside a Virtual WAN hub that individual devices dial into from anywhere. HOW users authenticate lives on the VPN Server Configuration the gateway references; WHAT addresses connected clients get comes from the gateway's connection configurations. The gateway bills from creation and creates in 30-45 minutes.
 
 ## What Gets Created
 
@@ -66,11 +66,27 @@ spec:
 planton apply -f azure-point-to-site-vpn-gateway.yaml
 ```
 
-The gateway creates in 30-45 minutes and bills from creation.
+This creates a one-scale-unit gateway in the referenced hub, handing connected clients addresses from 172.16.201.0/24 with split tunneling. The gateway creates in 30-45 minutes and bills from creation. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a remote-access chart the order is: WAN → hub → server configuration → **point-to-site gateway**, each wiring to the previous by reference.
+In a remote-access chart the order is WAN, then hub, then server configuration, then this gateway — each wiring to the previous by reference:
+
+```yaml
+spec:
+  virtualHubId:
+    valueFrom:
+      kind: AzureVirtualHub
+      name: hub-eastus
+      fieldPath: status.outputs.virtual_hub_id
+  vpnServerConfigurationId:
+    valueFrom:
+      kind: AzureVpnServerConfiguration
+      name: remote-workforce
+      fieldPath: status.outputs.vpn_server_configuration_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the gateway last, after the hub and the server configuration exist.
 
 ## Key Configuration
 
@@ -97,12 +113,7 @@ These are the most important decisions when configuring the gateway. Explore the
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `point_to_site_vpn_gateway_id` | ARM ID of the gateway | Operational tooling, diagnostics |
-| `point_to_site_vpn_gateway_name` | Name of the gateway | Operational tooling |
+`status.outputs` carries `point_to_site_vpn_gateway_id` and `point_to_site_vpn_gateway_name`, but no downstream Cloud Resource consumes the gateway by reference — the gateway is a leaf in the composition graph. Users connect through VPN client profiles downloaded from the gateway, not through ValueFromRef wiring.
 
 ## Common Patterns
 

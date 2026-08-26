@@ -1,13 +1,12 @@
-# Zero Trust Tunnel Route on Cloudflare
+# Cloudflare Zero Trust Tunnel Route
 
-Provisions a Cloudflare Tunnel route: it advertises a private IP range (CIDR) as reachable through a specific tunnel, within a virtual network. WARP clients and other tunnels can then reach that range. A route has an independent lifecycle from the tunnel -- you add or remove reachable networks without touching the tunnel -- and a tunnel commonly carries many routes. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Provisions a Cloudflare Tunnel route: it advertises a private IP range (CIDR) as reachable through a specific tunnel, within a virtual network. WARP clients and other tunnels can then reach that range. A route has an independent lifecycle from the tunnel -- you add or remove reachable networks without touching the tunnel -- and a tunnel commonly carries many routes.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Tunnel Route** -- a CIDR advertised through a tunnel within a virtual network
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -24,14 +23,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Tunnel Route on Cloudflare**, and click **Deploy**. The creation wizard captures the route (account + CIDR + comment) and its targets (the tunnel that serves it and, optionally, the virtual network it belongs to), with a live connection diagram.
+Open the deployment store, find **Cloudflare Zero Trust Tunnel Route**, and click **Deploy**. The creation wizard captures the route (account + CIDR + comment) and its targets (the tunnel that serves it and, optionally, the virtual network it belongs to), with a live connection diagram. Start from the **Private subnet via a tunnel** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustTunnelRoute
 metadata:
   name: prod-subnet
@@ -53,6 +52,26 @@ planton apply -f cloudflare-zero-trust-tunnel-route.yaml
 
 This makes the `10.0.0.0/24` subnet reachable to WARP clients through the `prod-connector` tunnel. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+Deploy the tunnel, virtual network, and route as one composition, wiring the route with ValueFromRef:
+
+```yaml
+spec:
+  tunnelId:
+    valueFrom:
+      kind: CloudflareZeroTrustTunnel
+      name: prod-connector
+      fieldPath: status.outputs.tunnel_id
+  virtualNetworkId:
+    valueFrom:
+      kind: CloudflareZeroTrustTunnelVirtualNetwork
+      name: prod-vnet
+      fieldPath: status.outputs.virtual_network_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the tunnel and virtual network first, then advertises the route through the resolved IDs.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a route. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -69,26 +88,24 @@ These are the most important decisions when configuring a route. Explore the ful
 
 ### What This Component Consumes
 
-The route references a **CloudflareZeroTrustTunnel** (via `tunnelId`) and, optionally, a **CloudflareZeroTrustTunnelVirtualNetwork** (via `virtualNetworkId`).
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareZeroTrustTunnel** | `tunnelId` | `status.outputs.tunnel_id` |
+| **CloudflareZeroTrustTunnelVirtualNetwork** (optional) | `virtualNetworkId` | `status.outputs.virtual_network_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `route_id` | The Cloudflare-assigned UUID of the route | Verification, dashboards |
-| `network` | The advertised CIDR | Auditing, grouping |
+This component has no consumable outputs: `status.outputs` carries `route_id` and echoes the advertised `network`, but nothing downstream wires to a route -- WARP clients and other tunnels consume the advertised CIDR through Cloudflare's routing table, not through ValueFromRef.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private subnet** -- advertise a `/24` through a tunnel so WARP clients reach internal hosts.
+**Private subnet** -- advertise a `/24` through a tunnel so WARP clients reach internal hosts. Start from the **Private subnet via a tunnel** preset.
 
-**Isolated overlap** -- place two overlapping CIDRs in distinct virtual networks so they route through different tunnels without collision.
+**Isolated overlap** -- place two overlapping CIDRs in distinct virtual networks so they route through different tunnels without collision. Start from the **Overlapping CIDR isolated in a virtual network** preset.
 
 ## Works With
 
-- [**Zero Trust Tunnel on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- the tunnel that serves this route's network
-- [**Zero Trust Tunnel Virtual Network on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment this route belongs to
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- the tunnel that serves this route's network
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment this route belongs to

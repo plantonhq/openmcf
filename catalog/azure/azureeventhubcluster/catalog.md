@@ -1,6 +1,6 @@
 # Azure Event Hub Cluster
 
-Provisions a dedicated Event Hubs cluster -- single-tenant capacity units (CUs) of guaranteed, isolated throughput that namespaces are placed on via their `dedicatedClusterId` reference. The cluster is the top of the Event Hubs capacity ladder, above PREMIUM's shared infrastructure: sitting on one unlocks up to 1024 partitions per hub, 90-day retention, and namespace-level customer-managed-key encryption. Many namespaces share one cluster, which is why the cluster is a first-class Cloud Resource rather than a namespace property. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Provisions a dedicated Event Hubs cluster -- single-tenant capacity units (CUs) of guaranteed, isolated throughput that namespaces are placed on via their `dedicatedClusterId` reference. The cluster is the top of the Event Hubs capacity ladder, above PREMIUM's shared infrastructure: sitting on one unlocks up to 1024 partitions per hub, 90-day retention, and namespace-level customer-managed-key encryption. Many namespaces share one cluster, which is why the cluster is a first-class Cloud Resource rather than a namespace property. Dedicated clusters bill per capacity unit per hour at enterprise rates whether traffic flows or not -- the most expensive resource in the Event Hubs family.
 
 ## What Gets Created
 
@@ -32,7 +32,7 @@ Open the deployment store, find **Azure Event Hub Cluster**, and click **Deploy*
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubCluster
 metadata:
   name: streaming-cluster
@@ -53,7 +53,7 @@ spec:
 planton apply -f cluster.yaml
 ```
 
-Three fields are **fixed at creation** -- `region`, `resourceGroup`, and `clusterName` -- changing any of them replaces the cluster. Azure forbids deleting a cluster for 4 HOURS after creation (the deletion moratorium): a destroy inside that window retries until Azure permits it, so expect a destroy of a young cluster to take hours by the service's own rule. `capacityUnits` scales in place; unset deploys 1 CU, the entry size.
+This creates a one-capacity-unit dedicated cluster named `myorg-streaming-dedicated` in `eastus`, ready for namespaces to be placed on it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -79,6 +79,8 @@ These are the most important decisions when configuring a cluster. Explore the f
 **Placement** -- `region` decides where every namespace on the cluster must live (a namespace joins a cluster in its own region). The `clusterName` serves many teams' namespaces, so name it for the platform capability, not any one workload.
 
 **Tags** -- because many namespaces share one cluster, the cluster's bill is a PLATFORM cost. Tag the owning platform team and cost center here; per-team usage attribution belongs on each namespace's own tags.
+
+**One-way doors and the deletion moratorium** -- `region`, `resourceGroup`, and `clusterName` are fixed at creation: changing any of them replaces the cluster. And Azure forbids deleting a cluster for 4 HOURS after creation -- a destroy inside that window retries until Azure permits it, so expect a destroy of a young cluster to take hours by the service's own rule.
 
 ## Outputs and Dependencies
 

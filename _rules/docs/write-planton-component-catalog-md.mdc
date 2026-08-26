@@ -38,6 +38,15 @@ The catalog bundle derives every kind's display metadata from this file's head:
 
 Therefore: the H1 is the human display name ("AWS S3 Bucket", never `AwsS3Bucket`), and the opening paragraph begins with a complete, self-sufficient sentence — that sentence stands alone on cards, in search results, and in agent tool output.
 
+**Display-name grammar: provider-first, spelled out.** The display name leads with the provider and matches the vendor's own product-name grammar — "Cloudflare Worker", "AWS S3 Bucket", "Auth0 Role" — never the suffix form ("Worker on Cloudflare"), and never abbreviated ("Zero Trust Access Application", not "Zero Trust App"). Provider-first is what users search (vendors name their products that way), and one grammar across the catalog is what makes card grids and search results scan. The display name is a contract: every cross-page mention (Works With links, the Console arm's "find **{Display Name}**" line) uses it verbatim.
+
+**"Provider-first" means the OWNING VENDOR leads — and for cloud resources the provider IS the vendor.** On Kubernetes the vendor splits, so the name follows whoever owns the thing deployed:
+
+- **Kubernetes-owned API kinds** (native workloads, config, RBAC, storage, networking, and the Gateway API) lead with Kubernetes and keep the API's own spelling: "Kubernetes Deployment", "Kubernetes ConfigMap", "Kubernetes HTTPRoute".
+- **Named projects and products** — operators, controllers, hosted open-source software, and their CRDs — carry the project's own name in the project's own grammar, with no Kubernetes prefix or suffix: "Grafana", "Istio", "KEDA", "kube-prometheus-stack", "Apache Kafka". A project-owned CRD leads with its project when the kind name alone doesn't identify it ("Istio Authorization Policy", "Cert Manager Certificate"); a kind whose name already carries its product stays bare ("Kafka Topic", "External Secret", "Helm Release").
+
+Spelling always resolves against the vendor's own docs, name by name — never a blanket casing rule. The vendor writing "HTTPRoute", "KEDA", or "kube-prometheus-stack" is the answer, even where a house style would title-case it.
+
 ---
 
 ## The Persona You Must Assume
@@ -122,7 +131,7 @@ with what this deploys.]
 ### Deploy — three arms, in this order
 
 - `### Console` — "Open the deployment store, find **{Display Name}**, and click **Deploy**." Then describe what the wizard actually walks through for THIS component (its real step groups, when known) rather than the generic sentence. Name real presets: "Start from the **{Preset Name}** preset in the [Presets](#presets) tab."
-- `### CLI` — "Create a manifest and apply it:", one complete valid manifest (`apiVersion`, `kind`, `metadata` with `name`/`org`/`env`, `spec` with realistic values — `acme-corp`, `prod`, a real region; never `<placeholder>` tokens), a `shell` block with exactly `planton apply -f {file}.yaml`, then one sentence stating precisely what this minimal manifest creates, closing with "A Stack Job tracks the provisioning in real time."
+- `### CLI` — "Create a manifest and apply it:", one complete valid manifest (`apiVersion`, `kind`, `metadata` with `name`/`org`/`env`, `spec` with realistic values — `acme-corp`, `prod`, a real region; never `<placeholder>` tokens), a `shell` block with exactly `planton apply -f {file}.yaml`, then one sentence stating precisely what this minimal manifest creates, closing with "A Stack Job tracks the provisioning in real time." One boundary on realism: an example value must never MATCH a real credential pattern (a Slack webhook URL's `T…/B…/token` shape, a key-like token) — secret scanners block pushes carrying pattern-true fakes, for this repo and for every user who copies the page. Write shape-breaking stand-ins (`your-workspace/your-incoming-webhook`) for credential-shaped fields.
 - `### InfraChart` — REQUIRED when the Consumes table is non-empty; omitted otherwise. A partial `spec:` fragment (not a full manifest) wiring `valueFrom: {kind, name, fieldPath}` for the component's most natural composition, closed by a sentence on the InfraPipeline resolving the dependency graph.
 
 ### Key Configuration
@@ -180,6 +189,8 @@ Read before writing (version dir shown as `v1alpha1/`; use the component's actua
 ---
 
 ## Verification Protocol
+
+The structural half of this protocol is machine-enforced: the `pkg/catalogpage` gate (`go test ./pkg/catalogpage/`, CI lane `lint.catalog-page.yaml`) checks the head shape, the H2/H3 skeleton, the InfraChart-arm law, and every embedded manifest's validity against a shrink-only baseline — run it after writing, and never add a baseline entry for a new page. The judgment half below is yours.
 
 Before marking the page complete, verify all six:
 

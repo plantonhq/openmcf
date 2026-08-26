@@ -1,6 +1,6 @@
 # Azure Front Door Profile
 
-Deploys an Azure Front Door (Standard/Premium) profile -- the top-level container for a global content-delivery and application-acceleration deployment on Microsoft's edge network. The profile owns the SKU tier, the origin response timeout, the managed identity, access-log scrubbing, and tags; the delivery surface (endpoints, origin groups, origins, routes) composes from standalone Cloud Resources that reference it. The profile integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and managed identities.
+Deploys an Azure Front Door (Standard/Premium) profile -- the top-level container for a global content-delivery and application-acceleration deployment on Microsoft's edge network. The profile owns the SKU tier, the origin response timeout, the managed identity, access-log scrubbing, and tags; the delivery surface (endpoints, origin groups, origins, routes) composes from standalone Cloud Resources that reference it. The SKU tier is fixed at creation -- changing it replaces the profile and every satellite nested under it -- so choose Standard or Premium deliberately up front.
 
 ## What Gets Created
 
@@ -41,7 +41,7 @@ Open the deployment store, find **Azure Front Door Profile**, and click **Deploy
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFrontDoorProfile
 metadata:
   name: cdn-profile

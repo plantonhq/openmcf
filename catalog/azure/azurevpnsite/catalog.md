@@ -1,6 +1,6 @@
 # Azure VPN Site
 
-Deploys a VPN Site -- the Virtual WAN address-book entry for one branch location: its internet links (each with a public endpoint and optional BGP speaker), the address space reachable behind it, and the device that terminates the tunnels. The site is free and deploys nothing at the branch; a VPN Gateway Connection points at it to build the actual tunnels. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a VPN Site -- the Virtual WAN address-book entry for one branch location: its internet links (each with a public endpoint and optional BGP speaker), the address space reachable behind it, and the device that terminates the tunnels. The site is free and deploys nothing at the branch; a VPN Gateway Connection points at it to build the actual tunnels. The classic-world sibling (without a Virtual WAN) is Azure Local Network Gateway.
 
 ## What Gets Created
 
@@ -62,11 +62,27 @@ spec:
 planton apply -f azure-vpn-site.yaml
 ```
 
-The site provisions in seconds and is free.
+This creates the address-book entry for a single-ISP London branch: one link at 203.0.113.10 with a /24 behind it, ready for a connection to point at. The site is free and provisions in seconds. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a branch-connectivity chart the order is: WAN → hub → VPN gateway, plus one **site** per branch → one connection per site, each wiring to the previous by reference.
+In a branch-connectivity chart the order is: WAN → hub → VPN gateway, plus one **site** per branch → one connection per site. Wire the site's references with ValueFromRef:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+  virtualWanId:
+    valueFrom:
+      kind: AzureVirtualWan
+      name: corp-wan
+      fieldPath: status.outputs.virtual_wan_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group and WAN first, then creates the site -- and each branch's connection references `vpn_site_id` and the name-keyed `link_ids`.
 
 ## Key Configuration
 
@@ -77,6 +93,8 @@ These are the most important decisions when configuring a site. Explore the full
 **Routing source** -- static `addressCidrs` (Azure routes those prefixes into the tunnels) or per-link `bgp` (the branch advertises its prefixes), or both. A site with neither routes nothing.
 
 **Device metadata** -- `deviceVendor`/`deviceModel` are informational (portal display, SD-WAN partners); they change no behavior.
+
+**What replaces the site** -- `name`, `region`, `resourceGroup`, and `virtualWanId` are fixed at creation; everything else updates in place. But a connection pins each link by ARM ID, so renaming or removing a CONNECTED link is a far-side change that breaks the tunnel -- coordinate link edits with the connection, not as a site-only edit.
 
 ## Outputs and Dependencies
 
@@ -94,8 +112,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `vpn_site_id` | ARM ID of the site | A connection's `remoteVpnSiteId` |
-| `vpn_site_name` | Name of the site | Operational tooling |
-| `link_ids` | ARM ID of each link, keyed by link name | A connection link's `vpnSiteLinkId` (`status.outputs.link_ids.<link-name>`) |
+| `link_ids` | ARM ID of each link, keyed by link name | A connection link's `vpnSiteLinkId` (`status.outputs.link_ids.primary-isp`) |
+
+The outputs also carry `vpn_site_name` -- connections reference the site by ARM ID, so the name has no ValueFromRef consumer.
 
 ## Common Patterns
 

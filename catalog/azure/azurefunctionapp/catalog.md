@@ -1,6 +1,6 @@
 # Azure Function App
 
-Deploys a Linux Function App for event-driven serverless workloads with configurable runtime stacks (.NET, Node.js, Python, Java, PowerShell, Docker), App Service Plan binding, Storage Account integration, VNet integration, managed identity, Application Insights monitoring, and IP restriction rules. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, service plans, storage accounts, and subnets.
+Deploys a Linux Function App for event-driven serverless workloads with configurable runtime stacks (.NET, Node.js, Python, Java, PowerShell, Docker), App Service Plan binding, Storage Account integration, VNet integration, managed identity, Application Insights monitoring, and IP restriction rules. The App Service Plan decides the app's cost model and capabilities up front: Consumption is pay-per-execution with cold starts and no VNet integration, while Elastic Premium and Dedicated plans unlock pre-warmed instances, Docker images, and private networking.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **Azure Function App**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFunctionApp
 metadata:
   name: order-processor
@@ -50,11 +50,11 @@ spec:
     value: "acme-prod-rg"
   functionAppName: order-processor
   servicePlanId:
-    value: "/subscriptions/.../serverfarms/consumption-plan"
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.Web/serverfarms/consumption-plan"
   storageAccountName:
     value: "acmefuncstorage"
   storageAccountAccessKey:
-    value: "<storage-access-key>"
+    value: $secret/prod-func-storage-key
   siteConfig:
     applicationStack:
       pythonVersion: "3.12"
@@ -64,7 +64,7 @@ spec:
 planton apply -f function-app.yaml
 ```
 
-This creates a Python 3.12 Function App on the specified Service Plan with HTTPS enforcement, TLS 1.2, and FTPS disabled. No VNet integration, no managed identity, no Application Insights.
+This creates a Python 3.12 Function App on the specified Service Plan with HTTPS enforcement, TLS 1.2, and FTPS disabled -- no VNet integration, no managed identity, no Application Insights. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -136,10 +136,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `identity_tenant_id` | Tenant ID of the system-assigned managed identity | RBAC configuration paired with principal ID |
 | `custom_domain_verification_id` | TXT record value for custom domain verification | DNS TXT records at `asuid.{custom-domain}` |
 | `possible_outbound_ip_addresses` | Every outbound IP the app may use across scale operations | The COMPLETE set for firewall rules |
-| `hosting_environment_id` | The App Service Environment ID (Isolated plans only) | Informational -- network isolation audits |
 | `site_credential_name` | Basic-auth publishing username (secret -- masked in the console) | Web Deploy/FTP publishing; inert when both basic-auth toggles are off |
 | `site_credential_password` | Basic-auth publishing password (secret -- masked in the console) | Web Deploy/FTP publishing; inert when both basic-auth toggles are off |
-| `kind` | Resource kind string (e.g., `functionapp,linux`) | Resource classification and filtering |
 
 ## Common Patterns
 

@@ -1,6 +1,6 @@
 # Azure Local Network Gateway
 
-Deploys a local network gateway -- Azure's description of the ON-PREMISES side of a site-to-site VPN: the VPN device's public endpoint (IP or FQDN) and the address space reachable behind it. It deploys nothing on-premises and costs nothing to keep; it is the address-book entry an AzureVirtualNetworkGatewayConnection points at, one per site. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a local network gateway -- Azure's description of the ON-PREMISES side of a site-to-site VPN: the VPN device's public endpoint (IP or FQDN) and the address space reachable behind it. It deploys nothing on-premises and costs nothing to keep; it is the address-book entry an AzureVirtualNetworkGatewayConnection points at, one per site.
 
 ## What Gets Created
 
@@ -52,7 +52,7 @@ spec:
 planton apply -f azure-local-network-gateway.yaml
 ```
 
-This describes the HQ site in seconds. A Stack Job tracks provisioning in real time.
+This creates the address-book entry for the HQ site -- the static endpoint at 198.51.100.4 and the 192.168.0.0/16 space behind it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -97,7 +97,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `local_network_gateway_id` | Azure Resource Manager ID of the description | AzureVirtualNetworkGatewayConnection's `localNetworkGatewayId`; AzureVirtualNetworkGateway's `defaultLocalNetworkGatewayId` (forced tunneling) |
-| `local_network_gateway_name` | Name of the description | Operational tooling |
 
 ## Common Patterns
 

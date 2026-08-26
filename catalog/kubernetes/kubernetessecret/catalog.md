@@ -1,6 +1,6 @@
 # Kubernetes Secret
 
-Deploys a type-safe Kubernetes Secret supporting Opaque, TLS, Docker registry, Basic Auth, SSH Auth, and Service Account Token secret types. Each variant is validated at creation time with type-specific fields, ensuring the correct Kubernetes secret type is produced. Manages secrets declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a type-safe Kubernetes Secret supporting Opaque, TLS, Docker registry, Basic Auth, SSH Auth, and Service Account Token secret types. Exactly one variant is declared per resource, each with type-specific fields validated at creation time, so the correct Kubernetes secret type is produced instead of a mistyped Opaque blob.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Secret**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Opaque** preset for general-purpose secrets or **TLS** for certificate key pairs in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes Secret**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Opaque Secret** preset for general-purpose secrets or **TLS Secret** for certificate key pairs in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSecret
 metadata:
   name: app-credentials
@@ -39,18 +39,38 @@ metadata:
   env: prod
 spec:
   name: app-credentials
-  namespace: backend-services
+  namespace:
+    value: backend-services
   opaque:
     data:
-      DB_PASSWORD: "s3cret-value"
-      API_KEY: "tok_live_abc123"
+      DB_PASSWORD: your-db-password
+      API_KEY: your-api-token
 ```
 
 ```shell
 planton apply -f secret.yaml
 ```
 
-This creates an Opaque secret in the `backend-services` namespace with two key-value pairs. The secret type is set to `Opaque` automatically. Immutability and additional labels are not configured.
+This creates an Opaque secret in the `backend-services` namespace with two key-value pairs. The secret type is set to `Opaque` automatically. Immutability and additional labels are not configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the Secret to its Planton-managed namespace:
+
+```yaml
+spec:
+  name: app-credentials
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  opaque:
+    data:
+      DB_PASSWORD: your-db-password
+```
+
+The InfraPipeline deploys the namespace first, then creates the Secret inside it.
 
 ## Key Configuration
 
@@ -68,10 +88,10 @@ These are the most important decisions when configuring a Kubernetes Secret. Exp
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the Secret is created in; omitted means the cluster's `default` namespace |
-| `spec.serviceAccountToken.serviceAccountName` | KubernetesServiceAccount (`spec.name`) | The ServiceAccount a `kubernetes.io/service-account-token` secret authenticates as |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `serviceAccountToken.serviceAccountName` | `spec.name` |
 
 ### What This Component Provides
 
@@ -87,14 +107,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Application credentials** -- Opaque secret storing database passwords, API keys, and connection strings consumed by application pods via `envFrom` or mounted volumes. Start from the **Opaque** preset.
+**Application credentials** -- Opaque secret storing database passwords, API keys, and connection strings consumed by application pods via `envFrom` or mounted volumes. Start from the **Opaque Secret** preset.
 
-**Ingress TLS termination** -- TLS secret containing a certificate and private key pair referenced by Ingress resources for HTTPS termination. Use when cert-manager is not available and certificates are managed externally. Start from the **TLS** preset.
+**Ingress TLS termination** -- TLS secret containing a certificate and private key pair referenced by Ingress resources for HTTPS termination. Use when cert-manager is not available and certificates are managed externally. Start from the **TLS Secret** preset.
 
-**Private registry access** -- Docker registry secret providing authentication for pulling images from private container registries (Docker Hub, GCR, ECR, ACR, GHCR). Referenced by pods via `imagePullSecrets`. Start from the **Docker Registry** preset.
+**Private registry access** -- Docker registry secret providing authentication for pulling images from private container registries (Docker Hub, GCR, ECR, ACR, GHCR). Referenced by pods via `imagePullSecrets`. Start from the **Docker Registry Secret** preset.
 
 ## Works With
 
-- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this Secret in dependency order.
-- **Kubernetes Service Account** -- the `serviceAccountToken` variant references the identity its token belongs to; docker-registry Secrets are attached to ServiceAccounts as `imagePullSecrets`.
-- **Kubernetes Deployment and the other workload kinds** -- consume secrets as env vars, mounted files, or registry credentials.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference the namespace so infra charts create it and this Secret in dependency order.
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the `serviceAccountToken` variant references the identity its token belongs to; docker-registry Secrets are attached to ServiceAccounts as `imagePullSecrets`.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) and the other workload kinds -- consume secrets as env vars, mounted files, or registry credentials.

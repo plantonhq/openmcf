@@ -1,6 +1,6 @@
-# Storage Bucket on DigitalOcean
+# DigitalOcean Spaces Bucket
 
-Deploys a DigitalOcean Spaces object-storage bucket with configurable region and canned ACL, object versioning, lifecycle rules, CORS, a JSON bucket policy, access logging to another bucket, and the force-destroy safety flag. Integrates with Planton's Provider Connections for DigitalOcean API token and Spaces key management, and ValueFromRef for logging-target dependency wiring.
+Deploys a DigitalOcean Spaces object-storage bucket with configurable region and canned ACL, object versioning, lifecycle rules, CORS, a JSON bucket policy, access logging to another bucket, and the force-destroy safety flag. The decisions that stick: bucket names are globally unique per region across all DigitalOcean customers, changing the region replaces the bucket, and versioning can never be removed once enabled -- only suspended.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Storage Bucket on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private** preset in the [Presets](#presets) tab to pre-populate a versioned private bucket with a lifecycle rule.
+Open the deployment store, find **DigitalOcean Spaces Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Versioned Bucket** preset in the [Presets](#presets) tab to pre-populate a versioned private bucket with a lifecycle rule.
 
 ### CLI
 
@@ -79,6 +79,8 @@ The InfraPipeline resolves the dependency graph, deploys the log-sink bucket fir
 
 These are the most important decisions when configuring a Spaces bucket. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
+**Region** -- optional for a bare bucket (the provider defaults to `nyc3`), but required the moment `corsRules`, `policy`, or `logging` is set: those satellites are separate provider resources that cannot inherit the default. Changing the region replaces the bucket, so pin it explicitly on any bucket that might grow satellites later.
+
 **Access control** -- `accessControl` sets the canned ACL: `PRIVATE` (default) restricts access to authenticated calls and signed URLs; `PUBLIC_READ` makes objects reachable by anyone with the URL. Finer grants (per-prefix, per-IP) belong on `policy`.
 
 **Versioning** -- `versioningEnabled: true` keeps every overwrite and delete. It can never be removed, only suspended. Pair it with a lifecycle rule that expires noncurrent versions, or the storage bill grows silently.
@@ -103,7 +105,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `bucket_id` | The bucket's name (Spaces buckets have no UUID) | Logging targets, CDN origins, application configuration |
+| `bucket_id` | The bucket's name (Spaces buckets have no UUID) | Logging targets (`logging.targetBucket` references), application configuration |
 | `region` | The region slug the bucket landed in | Addressing, import (`<region>,<name>`) |
 | `endpoint` | Region-level host (`<region>.digitaloceanspaces.com`) | S3 client configuration |
 | `bucket_domain_name` | Virtual-host FQDN (`<bucket>.<region>.digitaloceanspaces.com`) | CDN origin, public URLs |
@@ -113,10 +115,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private versioned bucket** -- private ACL, versioning on, a lifecycle rule that expires noncurrent versions and aborts stale multipart uploads. Start from the **Private** preset.
+**Private versioned bucket** -- private ACL, versioning on, a lifecycle rule that expires noncurrent versions and aborts stale multipart uploads. Start from the **Private Versioned Bucket** preset.
 
-**Public static-site assets** -- public-read ACL with a CORS rule letting the site's origin fetch assets. Start from the **Public Static Website** preset.
+**Public static-site assets** -- public-read ACL with a CORS rule letting the site's origin fetch assets. Start from the **Public Static Site Assets** preset.
 
 ## Works With
 
-- [**DigitalOcean Bucket**](/cloud-catalog/digital-ocean-bucket) -- another bucket as the access-log sink
+- [**DigitalOcean Spaces Bucket**](/cloud-catalog/digital-ocean-bucket) -- another bucket as the access-log sink
+- [**DigitalOcean CDN**](/cloud-catalog/digital-ocean-cdn) -- fronts a public bucket at the edge, consuming the `bucket_domain_name` output as its origin
+- [**DigitalOcean Spaces Access Key**](/cloud-catalog/digital-ocean-spaces-key) -- mints per-bucket read or read-write credentials scoped to this bucket by name

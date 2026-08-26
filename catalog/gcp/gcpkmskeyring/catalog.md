@@ -1,12 +1,13 @@
 # GCP KMS Key Ring
 
-Deploys a Cloud KMS key ring -- a permanent organizational container for cryptographic keys in a GCP project. Key rings are scoped to a specific location (region, multi-region, or global) and group CryptoKeys by geographic or organizational boundaries. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Cloud KMS key ring -- a permanent organizational container for cryptographic keys in a GCP project. Key rings are scoped to a specific location (region, multi-region, or global) and group CryptoKeys by geographic or organizational boundaries. Key rings can never be deleted from GCP, so the name and location are permanent decisions.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **KMS Key Ring** -- a `kms.KeyRing` in the specified GCP project and location, serving as the container for CryptoKeys created afterward
+- **Cloud KMS API enablement** -- `cloudkms.googleapis.com` enabled in the target project (never disabled on destroy)
 
 Key rings are permanent GCP resources -- they cannot be deleted. On destroy, the IaC module removes the resource from state but the key ring persists in GCP.
 
@@ -19,8 +20,7 @@ Key rings are permanent GCP resources -- they cannot be deleted. On destroy, the
 
 ### GCP Project
 
-- **A GCP project** where the key ring will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Cloud KMS API** (`cloudkms.googleapis.com`) enabled in the target project.
+- **A GCP project** where the key ring will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Cloud KMS API itself.
 
 ## Deploy
 
@@ -108,3 +108,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the key ring is created
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- the CryptoKeys created inside this ring; its `keyRingId` field consumes the `key_ring_id` output

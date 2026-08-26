@@ -1,6 +1,6 @@
 # Azure Managed Redis Geo Replication
 
-Links Azure Managed Redis instances into an ACTIVE geo-replication group: every member accepts writes in its own region and Azure merges the datasets with conflict-free semantics -- multi-primary, not the classic primary/warm-standby model. Applications write locally everywhere and read their own region's instance. Group membership is a first-class resource because Azure mutates the replication state of EVERY member when the group changes -- one linking resource manages the whole group, through any one member. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Links Azure Managed Redis instances into an ACTIVE geo-replication group: every member accepts writes in its own region and Azure merges the datasets with conflict-free semantics -- multi-primary, not the classic primary/warm-standby model. Applications write locally everywhere and read their own region's instance. Group membership is a first-class resource because Azure mutates the replication state of EVERY member when the group changes -- one linking resource manages the whole group, through any one member.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Managed Redis Geo Replication**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the managing instance, and the linked members. Start from the **Two-Region Pair** preset in the [Presets](#presets) tab for the common active-active shape.
+Open the deployment store, find **Azure Managed Redis Geo Replication**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the managing instance, and the linked members. Start from the **Two-Region Active Pair** preset in the [Presets](#presets) tab for the common active-active shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedisGeoReplication
 metadata:
   name: global-cache-group
@@ -54,7 +54,7 @@ spec:
 planton apply -f geo-link.yaml
 ```
 
-This links the two members into one active group: both accept writes, Azure merges conflict-free, and each application reads and writes its local region.
+This links the two members into one active group: both accept writes, Azure merges conflict-free, and each application reads and writes its local region. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -107,9 +107,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Two-region active pair** -- The common shape: active-active disaster recovery where losing a region loses no writes accepted in the other. Start from the **Two-Region Pair** preset.
+**Two-region active pair** -- The common shape: active-active disaster recovery where losing a region loses no writes accepted in the other. Start from the **Two-Region Active Pair** preset.
 
-**Global active mesh** -- Four regions across continents in one write-anywhere group (the maximum is five members). Start from the **Global Mesh** preset.
+**Global active mesh** -- Four regions across continents in one write-anywhere group (the maximum is five members). Start from the **Global Active Mesh** preset.
 
 ## Works With
 

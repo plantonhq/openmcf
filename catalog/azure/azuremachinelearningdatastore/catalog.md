@@ -1,6 +1,6 @@
 # Azure Machine Learning Datastore
 
-Registers a datastore on an Azure Machine Learning workspace -- the saved connection that tells the workspace where data lives (a blob container, a Data Lake Gen2 filesystem, or an Azure Files share) and how to reach it. Exactly one variant block selects the flavor. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Registers a datastore on an Azure Machine Learning workspace -- the saved connection that tells the workspace where data lives (a blob container, a Data Lake Gen2 filesystem, or an Azure Files share) and how to reach it. Exactly one variant block selects the flavor.
 
 ## What Gets Created
 
@@ -54,11 +54,28 @@ spec:
 planton apply -f azure-machine-learning-datastore.yaml
 ```
 
-The datastore registers in seconds.
+This registers a blob-container connection named `training_data` under the workspace's own identity -- no embedded credentials; it registers in seconds. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → storage container/share → **datastore**, wiring both by reference; jobs then reference the datastore by its name.
+In an ML-platform chart the order is: workspace → storage container/share → **datastore**; jobs then reference the datastore by its name. Wire both parents by reference:
+
+```yaml
+spec:
+  workspaceId:
+    valueFrom:
+      kind: AzureMachineLearningWorkspace
+      name: ml-prod
+      fieldPath: status.outputs.machine_learning_workspace_id
+  blobStorage:
+    storageContainerId:
+      valueFrom:
+        kind: AzureStorageContainer
+        name: training-data-container
+        fieldPath: status.outputs.container_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the workspace and container before the datastore.
 
 ## Key Configuration
 
@@ -87,7 +104,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `datastore_id` | ARM ID of the datastore | Operational tooling |
 | `datastore_name` | The datastore's name | What jobs and data assets reference |
 | `is_default` | Whether this is the workspace's default datastore | Chart logic |
 

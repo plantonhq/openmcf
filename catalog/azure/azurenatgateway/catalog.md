@@ -1,6 +1,6 @@
 # Azure NAT Gateway
 
-Deploys an Azure NAT Gateway -- the managed source-network-address-translation (SNAT) service that gives every workload in its attached subnets stable, scalable outbound internet connectivity, and the production answer to Azure retiring implicit default outbound access. The gateway is deliberately just the gateway: the public addresses it SNATs through are first-class AzurePublicIp / AzurePublicIpPrefix resources referenced by ID, and the subnets it serves declare the attachment themselves (each AzureSubnet's `natGatewayId`), matching Azure's one-gateway-many-subnets model. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure NAT Gateway -- the managed source-network-address-translation (SNAT) service that gives every workload in its attached subnets stable, scalable outbound internet connectivity, and the production answer to Azure retiring implicit default outbound access. The gateway is deliberately just the gateway: the public addresses it SNATs through are first-class AzurePublicIp / AzurePublicIpPrefix resources referenced by ID, and the subnets it serves declare the attachment themselves (each AzureSubnet's `natGatewayId`), matching Azure's one-gateway-many-subnets model. A gateway with no addresses deploys but cannot translate anything — associate at least one IP or prefix for it to carry traffic.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ Subnet attachments are NOT created here -- each AzureSubnet declares its own `na
 
 ### Console
 
-Open the deployment store, find **Azure NAT Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a zonal gateway SNATing through one referenced public IP.
+Open the deployment store, find **Azure NAT Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard NAT Gateway** preset in the [Presets](#presets) tab to pre-populate a zonal gateway SNATing through one referenced public IP.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNatGateway
 metadata:
   name: prod-nat
@@ -51,7 +51,10 @@ spec:
   zones:
     - "1"
   publicIpIds:
-    - value: "/subscriptions/.../publicIPAddresses/nat-egress-ip"
+    - valueFrom:
+        kind: AzurePublicIp
+        name: nat-egress-ip
+        fieldPath: status.outputs.public_ip_id
   idleTimeoutInMinutes: 10
 ```
 
@@ -119,18 +122,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `nat_gateway_id` | Azure Resource Manager ID of the gateway | AzureSubnet's `natGatewayId` references it to attach the gateway to a subnet |
-| `nat_gateway_name` | Name of the gateway | Diagnostics and operational tooling |
-| `resource_guid` | The immutable GUID ARM assigns | Correlating with Azure billing, monitoring, or support data |
+| `resource_guid` | The immutable GUID ARM assigns | Correlating with Azure billing, monitoring, or support data that keys on the GUID |
+
+`status.outputs` also echoes `nat_gateway_name` back, but attachments travel by ARM ID — nothing downstream consumes the gateway by name.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard zonal gateway** -- A zonal Standard gateway SNATing through one referenced public IP: stable outbound with a known source address for every attached subnet. Start from the **Standard** preset.
+**Standard zonal gateway** -- A zonal Standard gateway SNATing through one referenced public IP: stable outbound with a known source address for every attached subnet. Start from the **Standard NAT Gateway** preset.
 
-**Prefix-backed SNAT range** -- A gateway SNATing through a public IP prefix: one contiguous, allowlistable range that scales SNAT capacity for high-throughput estates. Start from the **Prefix SNAT Range** preset.
+**Prefix-backed SNAT range** -- A gateway SNATing through a public IP prefix: one contiguous, allowlistable range that scales SNAT capacity for high-throughput estates. Start from the **NAT Gateway with a Prefix SNAT Range** preset.
 
-**Zone-redundant V2** -- Azure's next-generation StandardV2 gateway: zone-redundant automatically, no zone pinning, StandardV2 addresses. Start from the **Zone-Redundant V2** preset.
+**Zone-redundant V2** -- Azure's next-generation StandardV2 gateway: zone-redundant automatically, no zone pinning, StandardV2 addresses. Start from the **Zone-Redundant StandardV2 NAT Gateway** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # Azure Machine Learning Online Endpoint
 
-Creates a managed online endpoint on an Azure Machine Learning workspace -- the stable HTTPS address applications call to score against deployed models, with authentication and a traffic dial that splits requests across the endpoint's deployments. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a managed online endpoint on an Azure Machine Learning workspace -- the stable HTTPS address applications call to score against deployed models, with authentication and a traffic dial that splits requests across the endpoint's deployments.
 
 ## What Gets Created
 
@@ -54,11 +54,22 @@ spec:
 planton apply -f azure-machine-learning-online-endpoint.yaml
 ```
 
-The endpoint creates in a few minutes; deployments then attach to it by reference.
+This creates a key-authenticated endpoint with a system identity, routing all traffic to a deployment named `blue`; deployments then attach to it by reference. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → **online endpoint** → online deployment(s), each wiring its parent by reference; the endpoint's traffic map routes to deployments by their names.
+In an ML-platform chart the order is: workspace → **online endpoint** → online deployment(s); the endpoint's traffic map routes to deployments by their names. Wire the workspace by reference:
+
+```yaml
+spec:
+  workspaceId:
+    valueFrom:
+      kind: AzureMachineLearningWorkspace
+      name: ml-prod
+      fieldPath: status.outputs.machine_learning_workspace_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the workspace before the endpoint.
 
 ## Key Configuration
 

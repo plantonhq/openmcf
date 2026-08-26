@@ -32,7 +32,7 @@ Open the deployment store, find **Azure Storage Share**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageShare
 metadata:
   name: team-files
@@ -52,11 +52,24 @@ spec:
 planton apply -f share.yaml
 ```
 
-This creates an SMB share -- what Windows mounts natively and Linux mounts via cifs -- with a 500 GB provisioned quota.
+This creates an SMB share -- what Windows mounts natively and Linux mounts via cifs -- with a 500 GB provisioned quota. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRef above wires the share to its account: the InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the share with the resolved ARM ID.
+When the account and share deploy in the same InfraChart, wire the account reference with ValueFromRef:
+
+```yaml
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: app-files
+      fieldPath: status.outputs.storage_account_id
+  shareName: team-files
+  quotaGb: 500
+```
+
+The InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the share with the resolved ARM ID.
 
 ## Key Configuration
 
@@ -101,7 +114,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **NFS premium share** -- NFS v4.1 on a FileStorage account for Linux workloads that need POSIX fidelity; private network paths only. Start from the **NFS Premium Share** preset.
 
-**Policy-anchored access** -- stored access policies anchoring revocable SAS tokens for partner exchange. Start from the **Policy-Anchored Access** preset.
+**Policy-anchored access** -- stored access policies anchoring revocable SAS tokens for partner exchange. Start from the **Policy-Anchored Access Share** preset.
 
 ## Works With
 

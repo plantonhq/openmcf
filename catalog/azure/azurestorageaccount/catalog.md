@@ -1,6 +1,6 @@
 # Azure Storage Account
 
-Deploys an Azure Storage Account -- the multi-service storage primitive that fronts Blob (objects), Files (SMB/NFS shares), Queues, Tables, and Data Lake Storage Gen2 behind one globally-unique DNS name. Kind, performance tier, and replication together pick the SKU; the service-level blocks (blob, file, static website) tune the data services the account exposes. The account is the CONTAINER -- its data-plane children (blob containers, file shares, queues, tables, Data Lake filesystems, local SFTP users, object-replication policies) are their own first-class Cloud Resources referencing this account's outputs. Blob lifecycle management is the deliberate exception: Azure models it as one per-account policy document, so it is folded in as `lifecycleRules`. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Storage Account -- the multi-service storage primitive that fronts Blob (objects), Files (SMB/NFS shares), Queues, Tables, and Data Lake Storage Gen2 behind one globally-unique DNS name. Kind, performance tier, and replication together pick the SKU; the service-level blocks (blob, file, static website) tune the data services the account exposes. The account is the CONTAINER -- its data-plane children (blob containers, file shares, queues, tables, Data Lake filesystems, local SFTP users, object-replication policies) are their own first-class Cloud Resources referencing this account's outputs. Blob lifecycle management is the deliberate exception: Azure models it as one per-account policy document, so it is folded in as `lifecycleRules`.
 
 ## What Gets Created
 
@@ -39,14 +39,14 @@ Blob containers are NOT created here -- each AzureStorageContainer references `s
 
 ### Console
 
-Open the deployment store, find **Azure Storage Account**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the account's surfaces in the order a practitioner decides them -- placement and name, kind/tier/replication, protocols, security posture, network access, identity, encryption, the blob and file services, website, WORM, lifecycle, and tags. Every default dropdown carries an honestly-labeled "Azure default" option, so an account that says nothing behaves exactly like a bare CLI manifest. Start from the **Production Locked-Down** preset in the [Presets](#presets) tab for the deny-by-default posture.
+Open the deployment store, find **Azure Storage Account**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the account's surfaces in the order a practitioner decides them -- placement and name, kind/tier/replication, protocols, security posture, network access, identity, encryption, the blob and file services, website, WORM, lifecycle, and tags. Every default dropdown carries an honestly-labeled "Azure default" option, so an account that says nothing behaves exactly like a bare CLI manifest. Start from the **Production Locked-Down Account** preset in the [Presets](#presets) tab for the deny-by-default posture.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageAccount
 metadata:
   name: app-storage
@@ -160,20 +160,23 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**General-purpose app storage** -- a General-Purpose v2 account with sensible production defaults; containers, queues, and tables compose as satellites. Start from the **General-Purpose v2** preset.
+**General-purpose app storage** -- a General-Purpose v2 account with sensible production defaults; containers, queues, and tables compose as satellites. Start from the **General-Purpose v2 Account** preset.
 
-**Production locked-down** -- GZRS replication, a DENY firewall admitting declared subnets plus trusted Microsoft services, anonymous access unrepresentable, SAS lifetimes policed, full blob data protection, and a lifecycle schedule that tiers stale data down. Start from the **Production Locked-Down** preset.
+**Production locked-down** -- GZRS replication, a DENY firewall admitting declared subnets plus trusted Microsoft services, anonymous access unrepresentable, SAS lifetimes policed, full blob data protection, and a lifecycle schedule that tiers stale data down. Start from the **Production Locked-Down Account** preset.
 
-**Data Lake Gen2** -- the hierarchical namespace for analytics engines, with the versioning trade-off accepted. Start from the **Data Lake Gen2** preset.
+**Data Lake Gen2** -- the hierarchical namespace for analytics engines, with the versioning trade-off accepted. Start from the **Data Lake Storage Gen2 Account** preset.
 
 ## Works With
 
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the account is created in
 - [**Azure Storage Container**](/cloud-catalog/azure-storage-container) -- blob containers referencing the account ID (the primary composition edge)
-- [**Azure Storage Share**](/cloud-catalog/azure-storage-share), [**Queue**](/cloud-catalog/azure-storage-queue), [**Table**](/cloud-catalog/azure-storage-table) -- the other data-plane children
+- [**Azure Storage Share**](/cloud-catalog/azure-storage-share) -- SMB/NFS file shares on the account's file service
+- [**Azure Storage Queue**](/cloud-catalog/azure-storage-queue) -- lightweight message queues on the account's queue service
+- [**Azure Storage Table**](/cloud-catalog/azure-storage-table) -- NoSQL key-attribute tables on the account's table service
 - [**Azure Storage Data Lake Gen2 Filesystem**](/cloud-catalog/azure-storage-data-lake-gen2-filesystem) -- Data Lake filesystems on a hierarchical-namespace account
 - [**Azure Storage Local User**](/cloud-catalog/azure-storage-local-user) -- SFTP credentials when the SFTP endpoint is on
-- [**Azure Storage Encryption Scope**](/cloud-catalog/azure-storage-encryption-scope) and [**Object Replication**](/cloud-catalog/azure-storage-object-replication) -- per-scope encryption and cross-account replication policies
+- [**Azure Storage Encryption Scope**](/cloud-catalog/azure-storage-encryption-scope) -- per-scope encryption keys within the account
+- [**Azure Storage Object Replication**](/cloud-catalog/azure-storage-object-replication) -- cross-account async blob replication policies
 - [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- unwraps the customer-managed key; composes vault grants before the account exists
 - [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed encryption key
 - [**Azure Subnet**](/cloud-catalog/azure-subnet) -- service-endpoint subnets admitted through the firewall

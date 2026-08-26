@@ -1,4 +1,4 @@
-# Kubernetes Issuer
+# Cert Manager Issuer
 
 Creates one cert-manager Issuer — a NAMESPACE-SCOPED certificate authority front-end. Only Certificate resources in the same namespace can request certificates from it, and every Secret it needs (credentials, CA keypairs) lives in that same namespace. The namespace scope is the point: a team's CA keypair and DNS credentials stay readable only inside the team's namespace instead of being trusted cluster-wide. The same four signing backends as the cluster-scoped variant: ACME, CA, SelfSigned, and Vault.
 
@@ -20,20 +20,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Cert Manager must be installed first** -- the Issuer is a cert-manager custom resource.
 - The target namespace must exist (or be managed by a Kubernetes Namespace resource this one references).
-- For the CA backend: a Secret holding the CA keypair (`tls.crt` + `tls.key`) in the SAME namespace — typically the output of a Kubernetes Certificate with `is_ca: true`.
+- For the CA backend: a Secret holding the CA keypair (`tls.crt` + `tls.key`) in the SAME namespace — typically the output of a Cert Manager Certificate with `isCa: true`.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Issuer**, and click **Deploy**. The creation wizard walks you through the namespace, the signing backend, and — for ACME — the challenge solvers. Start from the **Self-Signed** preset to bootstrap internal PKI in the [Presets](#presets) tab.
+Open the deployment store, find **Cert Manager Issuer**, and click **Deploy**. The creation wizard walks you through the namespace, the signing backend, and — for ACME — the challenge solvers. Start from the **Self-Signed Issuer** preset to bootstrap internal PKI in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesIssuer
 metadata:
   name: selfsigned-bootstrap
@@ -50,15 +50,37 @@ spec:
 planton apply -f issuer.yaml
 ```
 
-This creates a self-signed Issuer in `team-payments` — the starting point of the standard CA-chain bootstrap. `selfSigned: {}` is a complete, meaningful configuration: presence selects the backend.
+This creates a self-signed Issuer in `team-payments` — the starting point of the standard CA-chain bootstrap. `selfSigned: {}` is a complete, meaningful configuration: presence selects the backend. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the CA bootstrap by reference — the CA-backend Issuer consumes the CA Certificate's Secret output:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: payments-namespace
+      fieldPath: spec.name
+  config:
+    ca:
+      caSecretName:
+        valueFrom:
+          kind: KubernetesCertificate
+          name: payments-root-ca
+          fieldPath: status.outputs.secret_name
+```
+
+The InfraPipeline deploys the namespace and the CA Certificate first, then creates the Issuer against them.
 
 ## Key Configuration
 
 These are the most important decisions when configuring an Issuer. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Issuer vs ClusterIssuer** -- Identical signing capabilities (the config message is shared), different scope. Use the namespace-scoped Issuer when a namespace needs its own CA or its own credential blast radius; use a Kubernetes Cluster Issuer for the platform-wide CA serving every team.
+**Issuer vs ClusterIssuer** -- Identical signing capabilities (the config message is shared), different scope. Use the namespace-scoped Issuer when a namespace needs its own CA or its own credential blast radius; use a Cert Manager Cluster Issuer for the platform-wide CA serving every team.
 
-**The CA bootstrap is a four-step composition** -- (1) a self-signed Issuer, (2) a Kubernetes Certificate with `is_ca: true` referencing it — producing a root CA Secret, (3) a CA-backend Issuer pointing `config.ca.caSecretName` at that Secret's output, (4) leaf Certificates referencing the CA Issuer. Each step references the previous one's outputs — the standard mTLS bootstrap, entirely FK-wired.
+**The CA bootstrap is a four-step composition** -- (1) a self-signed Issuer, (2) a Cert Manager Certificate with `isCa: true` referencing it — producing a root CA Secret, (3) a CA-backend Issuer pointing `config.ca.caSecretName` at that Secret's output, (4) leaf Certificates referencing the CA Issuer. Each step references the previous one's outputs — the standard mTLS bootstrap, entirely FK-wired.
 
 **Everything stays in the namespace** -- Credential Secrets, the CA keypair, the ACME account key, and every Certificate that uses this Issuer live in the Issuer's namespace. If a certificate is needed in another namespace, that namespace needs its own Issuer (or a ClusterIssuer).
 
@@ -68,11 +90,11 @@ These are the most important decisions when configuring an Issuer. Explore the f
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the Issuer, its Secrets, and its Certificates live in |
-| `spec.config.ca.caSecretName` | KubernetesCertificate (`status.outputs.secret_name`) | CA backend: the Secret holding the CA keypair — step 3 of the CA bootstrap |
-| `spec.config.vault.kubernetesAuth.serviceAccountName` | KubernetesServiceAccount (`metadata.name`) | Vault backend: the ServiceAccount whose token authenticates to Vault |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesCertificate** | `config.ca.caSecretName` | `status.outputs.secret_name` |
+| **KubernetesServiceAccount** | `config.vault.kubernetesAuth.serviceAccountName` | `metadata.name` |
 
 ### What This Component Provides
 
@@ -80,7 +102,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `issuer_name` | Name of the created Issuer (equals `metadata.name`) | Kubernetes Certificate `issuerRef.issuer.name` (same namespace only) |
+| `issuer_name` | Name of the created Issuer (equals `metadata.name`) | Cert Manager Certificate `issuerRef.issuer.name` (same namespace only) |
 | `namespace` | Namespace where the Issuer was created | Verifying Certificate co-location |
 | `acme_account_key_secret_name` | The ACME account private key Secret cert-manager creates in the Issuer's namespace (empty for non-ACME backends) | Migrating the ACME account |
 
@@ -88,13 +110,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Bootstrap a root CA** -- A self-signed Issuer that a CA Certificate (`is_ca: true`) references. Start from the **Self-Signed** preset.
+**Bootstrap a root CA** -- A self-signed Issuer that a CA Certificate (`isCa: true`) references. Start from the **Self-Signed Issuer** preset.
 
-**Sign service certificates** -- A CA-backend Issuer referencing the root CA Secret, issuing mTLS leaf certificates inside the namespace. Start from the **CA** preset.
+**Sign service certificates** -- A CA-backend Issuer referencing the root CA Secret, issuing mTLS leaf certificates inside the namespace. Start from the **CA Issuer** preset.
 
 ## Works With
 
-- **Kubernetes Cert Manager** -- must be installed first; provides the controller and CRDs.
-- **Kubernetes Certificate** -- requests certificates from this Issuer (same namespace); also produces the CA Secret a CA-backend Issuer consumes.
-- **Kubernetes Cluster Issuer** -- the cluster-scoped alternative for platform-wide public TLS.
-- **Kubernetes Namespace** -- reference it so infra charts create the namespace and this Issuer in dependency order.
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- must be installed first; provides the controller and CRDs.
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- requests certificates from this Issuer (same namespace); also produces the CA Secret a CA-backend Issuer consumes.
+- [**Cert Manager Cluster Issuer**](/cloud-catalog/kubernetes-cluster-issuer) -- the cluster-scoped alternative for platform-wide public TLS.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference it so infra charts create the namespace and this Issuer in dependency order.

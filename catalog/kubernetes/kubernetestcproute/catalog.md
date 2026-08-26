@@ -1,4 +1,4 @@
-# TCP Route on Kubernetes
+# Kubernetes TCPRoute
 
 Creates a namespaced Kubernetes Gateway API `TCPRoute` -- a route that forwards **raw TCP connections** arriving on a Gateway listener to one or more backend Services. TCPRoute is a **layer-4** route: it has no hostnames, no matches, and no filters. A connection on the parent listener's port is simply forwarded to the rule's backends. This is the standard way to expose a non-HTTP TCP service (a database, a message broker, a custom protocol) through a Gateway. This component mirrors the upstream Gateway API `TCPRoute` (GA, `gateway.networking.k8s.io/v1`) spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
@@ -31,14 +31,14 @@ The Gateway controller reconciles the route asynchronously: it reports per-paren
 
 ### Console
 
-Open the deployment store, find **TCP Route on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Gateways** (the `parentRefs` Gateways to attach to), then **Rules** (the route rules and their destination Services and weights). Start from the **TCP Port Forwarding** or **Weighted Backends** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes TCPRoute**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Gateways** (the `parentRefs` Gateways to attach to), then **Rules** (the route rules and their destination Services and weights). Start from the **TCP Port Forwarding** or **TCP Weighted Backends** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTcpRoute
 metadata:
   name: my-tcp-route
@@ -48,11 +48,13 @@ spec:
   namespace:
     value: prod-apps
   parentRefs:
-    - name: prod-gateway
+    - name:
+        value: prod-gateway
       sectionName: tcp-postgres
   rules:
     - backendRefs:
-        - name: postgres
+        - name:
+            value: postgres
           port: 5432
 ```
 
@@ -60,7 +62,34 @@ spec:
 planton apply -f tcp-route.yaml
 ```
 
-This creates a TCPRoute in `prod-apps` that attaches to the `tcp-postgres` listener of `prod-gateway` and forwards every connection arriving on that listener to the `postgres` Service on port 5432.
+This creates a TCPRoute in `prod-apps` that attaches to the `tcp-postgres` listener of `prod-gateway` and forwards every connection arriving on that listener to the `postgres` Service on port 5432. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the Gateway and backend Service are managed in the same InfraChart, wire the route's references with `valueFrom` so the resource graph carries the edges:
+
+```yaml
+spec:
+  namespace:
+    value: prod-apps
+  parentRefs:
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: prod-gateway
+          fieldPath: status.outputs.gateway_name
+      sectionName: tcp-postgres
+  rules:
+    - backendRefs:
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: postgres
+              fieldPath: status.outputs.service_name
+          port: 5432
+```
+
+The InfraPipeline deploys the referenced Gateway and Service first, then provisions the route against them.
 
 ## Key Configuration
 
@@ -76,7 +105,13 @@ These are the most important decisions when configuring a TCPRoute. Explore the 
 
 ### What This Component Consumes
 
-This component takes foreign-key references to a `KubernetesNamespace` (via `spec.namespace`), to `KubernetesGateway` (each `parentRefs` entry's `name`), and to `KubernetesService` (each backend's `name`), so an InfraChart deploys those targets before the route and the resource graph carries the edges. Literal names cover targets created outside Planton; cross-namespace references require a `KubernetesReferenceGrant`.
+| Dependency | Field | ValueFromRef Path |
+|---|---|---|
+| Kubernetes Namespace | `spec.namespace` | `spec.name` |
+| Kubernetes Gateway | `spec.parentRefs[].name` | `status.outputs.gateway_name` |
+| Kubernetes Service | `spec.rules[].backendRefs[].name` | `status.outputs.service_name` |
+
+Literal names (`value:`) cover targets created outside Planton; cross-namespace references additionally require a Reference Grant in the target namespace.
 
 ### What This Component Provides
 
@@ -93,12 +128,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **TCP port forwarding** -- Forward all connections arriving on a Gateway's TCP listener to a single backend Service (a database, broker, or custom protocol). Start from the **TCP Port Forwarding** preset.
 
-**Weighted backends** -- Split TCP connections across two Services by weight, for example a primary and a standby. Start from the **Weighted Backends** preset.
+**Weighted backends** -- Split TCP connections across two Services by weight, for example a primary and a standby. Start from the **TCP Weighted Backends** preset.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (v1.6.0+ standard channel carries TCPRoute); deploy first (prerequisite).
-- **KubernetesGateway** -- the Gateway whose TCP listener this route attaches to (`parentRefs`); install first.
-- **KubernetesNamespace** -- the namespace (`spec.namespace`) the route runs in.
-- **KubernetesReferenceGrant** -- authorizes cross-namespace parent or backend references from this route.
-- **KubernetesService** -- the backend workloads (`backendRefs`) that receive forwarded connections.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (v1.6.0+ standard channel carries TCPRoute); deploy first.
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- the Gateway whose TCP listener this route attaches to (`parentRefs`); install first.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the namespace (`spec.namespace`) the route runs in.
+- [**Kubernetes ReferenceGrant**](/cloud-catalog/kubernetes-reference-grant) -- authorizes cross-namespace parent or backend references from this route.
+- [**Kubernetes Service**](/cloud-catalog/kubernetes-service) -- the backend workloads (`backendRefs`) that receive forwarded connections.

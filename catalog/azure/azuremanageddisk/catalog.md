@@ -38,7 +38,7 @@ Open the deployment store, find **Azure Managed Disk**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedDisk
 metadata:
   name: orders-db-data
@@ -59,7 +59,7 @@ spec:
 planton apply -f managed-disk.yaml
 ```
 
-This creates a 512 GiB Premium SSD data volume pinned to zone 1 — name the data, not the VM: the volume will outlive every machine it attaches to.
+This creates a 512 GiB Premium SSD data volume pinned to zone 1 — name the data, not the VM: the volume will outlive every machine it attaches to. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -122,7 +122,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Premium data disk** -- a zone-pinned empty Premium SSD volume for a database or application data — the common shape. Start from the **Premium Data Disk** preset.
 
-**Dialed performance** -- a Premium SSD v2 volume with IOPS and throughput dialed independently of size: high performance on modest capacity. Start from the **Premium v2 Dialed Performance** preset.
+**Dialed performance** -- a Premium SSD v2 volume with IOPS and throughput dialed independently of size: high performance on modest capacity. Start from the **Premium SSD v2 with Dialed Performance** preset.
 
 **Snapshot clone** -- a new disk cloned from a snapshot (restore drills, environment cloning, cross-zone moves), inheriting the source's size. Start from the **Snapshot Clone** preset.
 

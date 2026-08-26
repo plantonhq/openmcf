@@ -1,11 +1,12 @@
 # GCP Dataproc Cluster
 
-Deploys a Dataproc cluster for Apache Spark, Hadoop, and related data processing frameworks — either the standard Compute Engine arm (configurable master and worker nodes, preemptible/spot secondary workers, software image versioning, optional components like Jupyter/Flink/Trino, in-cluster security, lifecycle management for cost control, and CMEK encryption) or the Dataproc-on-GKE virtual arm, where Spark workloads run as pods on an existing GKE cluster. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnets, service accounts, GCS buckets, KMS keys, autoscaling policies, and GKE clusters/node pools.
+Deploys a Dataproc cluster for Apache Spark, Hadoop, and related data processing frameworks — either the standard Compute Engine arm (configurable master and worker nodes, preemptible/spot secondary workers, software image versioning, optional components like Jupyter/Flink/Trino, in-cluster security, lifecycle management for cost control, and CMEK encryption) or the Dataproc-on-GKE virtual arm, where Spark workloads run as pods on an existing GKE cluster. Most configuration is immutable after creation: the in-place exceptions on the GCE arm are worker counts, the autoscaling policy attachment, the lifecycle TTLs, and labels — the virtual arm is fully immutable.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Dataproc API enablement** -- `dataproc.googleapis.com` is enabled in the target project (never disabled on destroy, so tearing down one cluster cannot break the rest of the project)
 - **Dataproc Cluster** -- a managed cluster resource in the specified GCP project and region, configured with the chosen Dataproc image version, master/worker topology, and software components
 - **Master Nodes** -- 1 instance for standard mode or 3 instances for high-availability mode, with configurable machine type, boot disk, local SSDs, and accelerators
 - **Primary Worker Nodes** -- on-demand VMs for persistent compute capacity, with configurable machine type, disk, accelerators, and autoscaling minimum
@@ -13,7 +14,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Software Configuration** -- Dataproc image version, optional components (Jupyter, Flink, Presto, Trino), and framework property overrides for Spark, Hadoop, YARN, and HDFS
 - **Initialization Actions** -- created only when `clusterConfig.initializationActions` is set; startup scripts that run on all nodes during cluster creation
 - **Component Gateway** -- created only when `clusterConfig.endpointConfig.enableHttpPortAccess` is true; provides authenticated HTTPS access to Spark UI, YARN, HDFS, and optional component web interfaces
-- **Lifecycle Configuration** -- created only when `clusterConfig.lifecycleConfig` is set; automatic cluster deletion after idle timeout or at a scheduled time
+- **Lifecycle Configuration** -- created only when `clusterConfig.lifecycleConfig` is set; automatic cluster deletion or stop after idle timeout or at a scheduled time
 - **CMEK Encryption** -- created only when `clusterConfig.encryptionKmsKeyName` is provided; encrypts persistent disks with a customer-managed Cloud KMS key
 - **In-Cluster Security** -- created only when `clusterConfig.securityConfig` is set; exactly one of Kerberos (Hadoop Secure Mode) or personal-cluster identity mapping
 - **Autoscaling Attachment** -- created only when `clusterConfig.autoscalingPolicyUri` references a GcpDataprocAutoscalingPolicy; attaching, swapping, or detaching updates in place
@@ -29,11 +30,11 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the cluster will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Dataproc API** and **Compute Engine API** enabled in the target project.
+- **A GCP project** where the cluster will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Dataproc API itself; the **Compute Engine API** must already be enabled for the GCE arm's VMs.
 - **A VPC network or subnetwork** for cluster node placement. Using a subnetwork is recommended for production clusters with controlled IP ranges. Provide directly or reference GcpVpcNetwork/GcpSubnetwork Cloud Resources via ValueFromRef.
 - **A custom service account** (recommended for production) with minimal permissions for cluster VMs. The default Compute Engine service account works for development.
-- **Cloud NAT or Private Google Access** (if using `internalIpOnly: true`) so private nodes can reach the internet for container image pulls and package installs.
+- **Cloud NAT or Private Google Access** (only with `internalIpOnly: true`) so private nodes can reach the internet for container image pulls and package installs.
+- **An existing GKE cluster** (only for the virtual arm) that Dataproc registers Spark workloads onto — reference a GcpGkeCluster Cloud Resource.
 
 ## Deploy
 
@@ -46,7 +47,7 @@ Open the deployment store, find **GCP Dataproc Cluster**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
   name: analytics-spark
@@ -63,7 +64,7 @@ spec:
 planton apply -f dataproc-cluster.yaml
 ```
 
-This creates a standard cluster with GCP defaults: 1 master and 2 workers on n2-standard-4, 500 GB pd-standard disks, latest Dataproc image, and no lifecycle management. A Stack Job tracks the provisioning in real time.
+This creates a standard cluster with GCP defaults: 1 master and 2 workers on default machine types, 500 GB pd-standard disks, the latest stable Dataproc image, and no lifecycle management — add `lifecycleConfig` before leaving a cluster like this unattended. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -106,9 +107,11 @@ The InfraPipeline resolves the dependency graph, deploys the project, subnet, se
 
 These are the most important decisions when configuring a Dataproc cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Cluster topology** -- Set `clusterConfig.masterConfig.numInstances` to 1 for standard mode or 3 for high-availability mode. HA mode tolerates a single master failure but triples master costs. Worker count is set via `clusterConfig.workerConfig.numInstances` (default 2).
+**Cluster topology** -- Set `clusterConfig.masterConfig.numInstances` to 1 for standard mode or 3 for high-availability mode. HA mode tolerates a single master failure but triples master costs. Worker count is set via `clusterConfig.workerConfig.numInstances` (default 2) and is one of the few fields updatable in place.
 
-**Secondary workers for cost optimization** -- Configure `clusterConfig.secondaryWorkerConfig` with `preemptibility: SPOT` for cost-optimized burst capacity. Spot VMs can be preempted at any time, so use them for fault-tolerant batch workloads with Spark's dynamic allocation enabled.
+**Machine type XOR flexibility policy** -- `machineType` and `instanceFlexibilityPolicy` are alternative provisioning contracts, never complements: the API silently drops a paired machine type from the stored config, and because machine type is create-only the pairing re-plans as a whole-cluster REPLACEMENT on every subsequent apply. Rank machine types inside the flexibility policy's `instanceSelectionList` instead of setting both.
+
+**Secondary workers for cost optimization** -- Configure `clusterConfig.secondaryWorkerConfig` with `preemptibility: SPOT` for cost-optimized burst capacity (the API's default is legacy PREEMPTIBLE, and the choice is immutable). Spot VMs can be preempted at any time, so use them for fault-tolerant batch workloads with Spark's dynamic allocation enabled; `provisioningModelMix` protects a baseline of on-demand capacity under the spot burst.
 
 **Lifecycle management** -- Set `clusterConfig.lifecycleConfig.idleDeleteTtl` (e.g., `"1800s"` for 30 minutes) to auto-delete idle clusters. Critical for ephemeral batch clusters to avoid runaway costs. Use `autoDeleteTime` for time-boxed clusters with a known end date. The stop variants — `idleStopTtl` / `autoStopTime` — shut the VMs down instead of deleting, keeping the cluster restartable; and `deletionPolicy: ABANDON` releases a cluster from IaC management without destroying it.
 
@@ -124,7 +127,7 @@ These are the most important decisions when configuring a Dataproc cluster. Expl
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 | **GcpVpcNetwork** (optional) | `clusterConfig.gceConfig.network` | `status.outputs.network_self_link` |
 | **GcpSubnetwork** (optional) | `clusterConfig.gceConfig.subnetwork` | `status.outputs.subnetwork_self_link` |
 | **GcpServiceAccount** (optional) | `clusterConfig.gceConfig.serviceAccount` | `status.outputs.email` |
@@ -135,6 +138,7 @@ These are the most important decisions when configuring a Dataproc cluster. Expl
 | **GcpKmsKey** (Kerberos only) | `clusterConfig.securityConfig.kerberosConfig.kmsKeyUri` | `status.outputs.key_id` |
 | **GcpGkeCluster** (virtual arm) | `virtualClusterConfig.kubernetesClusterConfig.gkeClusterConfig.gkeClusterTarget` | `status.outputs.cluster_id` |
 | **GcpGkeNodePool** (virtual arm) | `virtualClusterConfig...nodePoolTarget[].nodePool` | `status.outputs.node_pool_id` |
+| **KubernetesNamespace** (virtual arm, optional) | `virtualClusterConfig.kubernetesClusterConfig.kubernetesNamespace` | `spec.name` |
 | **GcpGcsBucket** (virtual arm) | `virtualClusterConfig.stagingBucket` | `status.outputs.bucket_id` |
 | **GcpDataprocCluster** (virtual arm) | `virtualClusterConfig.auxiliaryServicesConfig.sparkHistoryServerConfig.dataprocCluster` | `status.outputs.cluster_id` |
 
@@ -146,17 +150,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `cluster_id` | Fully qualified cluster resource name (`projects/{p}/regions/{r}/clusters/{c}`) | Dataproc job submissions, workflow template references, another cluster's Spark History Server attachment |
 | `cluster_name` | Short cluster name | Display, logging, job targeting |
-| `staging_bucket` | GCS bucket used for staging job dependencies | Job dependency uploads, output inspection |
+| `staging_bucket` | GCS bucket used for staging job dependencies (user-supplied or GCP auto-created) | Job dependency uploads, output inspection |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dev with Jupyter** -- Single master, 2 workers on e2-standard-4, Jupyter notebooks enabled, Component Gateway for web UI access, and 30-minute idle auto-delete. Optimized for interactive data exploration and prototyping. Start from the **Dev Jupyter** preset.
+**Dev with Jupyter** -- Single master, 2 workers, Jupyter notebooks enabled, Component Gateway for web UI access, and 30-minute idle auto-delete. Optimized for interactive data exploration and prototyping. Start from the **Dev Jupyter** preset.
 
-**HA production** -- 3 masters for high availability, 5 workers with SSD disks and local SSDs, internal-only networking, CMEK encryption, custom service account, and graceful decommission timeout. Suitable for production ETL pipelines and long-running Spark applications. Start from the **HA Production** preset.
+**HA production** -- 3 masters for high availability, workers with SSD disks and NVMe local SSDs, Shielded VMs, internal-only networking, CMEK encryption, custom service account, and OSS metrics into Cloud Monitoring. Suitable for production ETL pipelines and long-running Spark applications. Start from the **HA Production** preset.
 
-**Cost-optimized batch** -- Single master with 2 primary workers and 10 spot secondary workers, dynamic allocation enabled, and 15-minute idle auto-delete. Suitable for ephemeral batch ETL jobs where cost efficiency outweighs preemption risk. Start from the **Cost-Optimized Batch** preset.
+**Cost-optimized batch** -- A small on-demand base with a spot secondary group using machine-type flexibility and a standard/spot capacity mix, an attached autoscaling policy, and aggressive idle auto-delete. Suitable for ephemeral batch ETL jobs where cost efficiency outweighs preemption risk. Start from the **Cost-Optimized Batch** preset.
 
 **Spark on GKE** -- A Dataproc-on-GKE virtual cluster: Spark workloads run as pods on an existing GKE cluster referenced by ValueFromRef, sharing its capacity, autoscaling, and operational tooling. Start from the **Spark on GKE** preset.
 

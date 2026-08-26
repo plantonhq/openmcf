@@ -7,7 +7,7 @@ Installs the Kubernetes Cluster Autoscaler from the official Helm chart. The aut
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Helm Release** (`cluster-autoscaler`) -- the autoscaler Deployment (chart default 1 replica; extras leader-elect as warm standbys), RBAC, the provider-specific credential Secret when declared credentials are used, and the chart-derived service account cloud-side keyless bindings are written against
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true; a pre-existing `kube-system` is the upstream convention
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true; a pre-existing `kube-system` is the upstream convention
 
 ## Before You Deploy
 
@@ -15,7 +15,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
-### Cluster / Cloud
+### Kubernetes Cluster
 
 - Node capacity organized as pre-defined groups with size bounds — ASGs tagged for auto-discovery on AWS (`k8s.io/cluster-autoscaler/enabled` + `k8s.io/cluster-autoscaler/<cluster_name>`), VMSS on Azure, MIG name prefixes on GCE, annotated MachineDeployments on Cluster API.
 - Cloud-side identity for the keyless postures: an IRSA role, GCP Workload Identity binding, or Azure workload/managed identity written against the chart's derived service account.
@@ -33,7 +33,7 @@ Open the deployment store, find **Cluster Autoscaler**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesClusterAutoscaler
 metadata:
   name: cluster-autoscaler
@@ -53,7 +53,27 @@ spec:
 planton apply -f cluster-autoscaler.yaml
 ```
 
-The autoscaler then manages every ASG carrying the discovery tags for the cluster — new node groups enroll by tagging alone.
+This installs the autoscaler into `kube-system` with tag-based ASG auto-discovery and keyless IRSA identity — it then manages every ASG carrying the discovery tags for the cluster, and new node groups enroll by tagging alone. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, reference the namespace instead of hardcoding it:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: autoscaler-namespace
+      fieldPath: spec.name
+  aws:
+    region: us-west-2
+    autoDiscovery:
+      clusterName: my-eks-cluster
+    irsaRoleArn: arn:aws:iam::111111111111:role/cluster-autoscaler
+```
+
+The InfraPipeline creates the namespace first, then installs the autoscaler into it in dependency order.
 
 ## Key Configuration
 
@@ -67,7 +87,7 @@ These are the most important decisions when configuring the autoscaler. Explore 
 
 **Version alignment** -- keep the autoscaler's minor version aligned with the cluster's Kubernetes minor per upstream guidance; the chart pin is that decision.
 
-**The flag long tail** -- `extra_args` carries the autoscaler's long tail of flags as key/value pairs (the chart's own contract) — the tier between the typed fields and the `helm_values` YAML hatch.
+**The flag long tail** -- `extraArgs` carries the autoscaler's long tail of flags as key/value pairs (the chart's own contract) — the tier between the typed fields and the `helmValues` YAML hatch.
 
 **Pick one fleet controller** -- the autoscaler and Karpenter must not manage the same capacity. For AWS clusters that would rather launch right-sized machines on demand than manage groups, Karpenter is the modern alternative.
 
@@ -75,9 +95,9 @@ These are the most important decisions when configuring the autoscaler. Explore 
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the autoscaler is installed into |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
 
 ### What This Component Provides
 
@@ -101,6 +121,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Karpenter** -- the alternative fleet controller for just-in-time, right-sized nodes; never both on the same capacity.
-- **Kubernetes Deployment / StatefulSet / Job** -- unschedulable pods from any workload trigger scale-up; no per-workload wiring needed.
-- **Kubernetes Pod Disruption Budget** -- shapes what the autoscaler may evict during scale-down.
+- [**Karpenter**](/cloud-catalog/kubernetes-karpenter) -- the alternative fleet controller for just-in-time, right-sized nodes; never both on the same capacity.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- unschedulable pods from any workload (Deployments, StatefulSets, Jobs) trigger scale-up; no per-workload wiring needed.
+- [**Kubernetes PodDisruptionBudget**](/cloud-catalog/kubernetes-pod-disruption-budget) -- shapes what the autoscaler may evict during scale-down.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference it when installing outside `kube-system` so infra charts create the namespace first.

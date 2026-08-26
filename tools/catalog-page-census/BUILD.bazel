@@ -5,7 +5,10 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/plantonhq/planton/tools/catalog-page-census",
     visibility = ["//visibility:private"],
-    deps = ["//internal/manifest"],
+    deps = [
+        "//internal/manifest",
+        "//pkg/catalogpage",
+    ],
 )
 
 go_binary(

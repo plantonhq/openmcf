@@ -1,6 +1,6 @@
 # Azure Log Analytics Workspace
 
-Deploys an Azure Log Analytics Workspace -- the central data platform for Azure Monitor. Workspaces collect, store, and query log and performance data, and they are the foundation AKS Container Insights, Application Insights, Microsoft Sentinel, diagnostic settings, and log-query alerts all build on. The component covers the full workspace surface: pricing tier and commitment capacity, retention and daily quota, the authentication and network-access posture, the query access model, compliance switches, a managed identity, and a default Data Collection Rule. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups.
+Deploys an Azure Log Analytics Workspace -- the central data platform for Azure Monitor. Workspaces collect, store, and query log and performance data, and they are the foundation AKS Container Insights, Application Insights, Microsoft Sentinel, diagnostic settings, and log-query alerts all build on. The component covers the full workspace surface: pricing tier and commitment capacity, retention and daily quota, the authentication and network-access posture, the query access model, compliance switches, a managed identity, and a default Data Collection Rule.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Log Analytics Workspace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **pay-as-you-go** preset in the [Presets](#presets) tab to pre-populate the everyday configuration.
+Open the deployment store, find **Azure Log Analytics Workspace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Pay-As-You-Go Workspace** preset in the [Presets](#presets) tab to pre-populate the everyday configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLogAnalyticsWorkspace
 metadata:
   name: platform-logs
@@ -49,7 +49,7 @@ spec:
 planton apply -f log-analytics.yaml
 ```
 
-This creates a Log Analytics Workspace on Azure's defaults: pay-as-you-go pricing (PerGB2018), 30-day retention, unlimited daily ingestion, and public ingestion/query endpoints.
+This creates a Log Analytics Workspace on Azure's defaults: pay-as-you-go pricing (PerGB2018), 30-day retention, unlimited daily ingestion, and public ingestion/query endpoints. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -88,6 +88,7 @@ These are the most important decisions when configuring a Log Analytics Workspac
 |------------|-------|-------------------|
 | **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
 | **AzureUserAssignedIdentity** | `identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| **AzureMonitorDataCollectionRule** | `dataCollectionRuleId` | `status.outputs.data_collection_rule_id` |
 
 ### What This Component Provides
 
@@ -107,11 +108,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Pay-as-you-go** -- PerGB2018 pricing with 90-day retention and a daily cap as a cost guard. The everyday workspace nearly every environment starts from. Start from the **pay-as-you-go** preset.
+**Pay-as-you-go** -- PerGB2018 pricing with 90-day retention and a daily cap as a cost guard. The everyday workspace nearly every environment starts from. Start from the **Pay-As-You-Go Workspace** preset.
 
-**Commitment tier** -- `CAPACITY_RESERVATION` with a reserved daily capacity, for estates sustaining 100+ GB/day where commitment tiers discount ingestion. Start from the **commitment-tier** preset.
+**Commitment tier** -- `CAPACITY_RESERVATION` with a reserved daily capacity, for estates sustaining 100+ GB/day where commitment tiers discount ingestion. Start from the **Commitment-Tier Workspace** preset.
 
-**Private hardened** -- Entra-only authentication with both public endpoints disabled and immediate post-retention purge, for regulated estates running Azure Monitor Private Link Scope. Start from the **private-hardened** preset.
+**Private hardened** -- Entra-only authentication with both public endpoints disabled and immediate post-retention purge, for regulated estates running Azure Monitor Private Link Scope. Start from the **Private, Hardened Workspace** preset.
 
 ## Works With
 
@@ -120,3 +121,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Azure Container App Environment**](/cloud-catalog/azure-container-app-environment) -- persists application logs here when its logs destination is Log Analytics
 - [**Azure AKS Cluster**](/cloud-catalog/azure-aks-cluster) -- Container Insights and Microsoft Defender stream cluster telemetry here
 - [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- supplies the workspace's user-assigned identity for CMK and linked-storage access
+- [**Azure Monitor Data Collection Rule**](/cloud-catalog/azure-monitor-data-collection-rule) -- referenced as the workspace's default DCR for data arriving without an explicit rule
+- [**Azure Monitor Scheduled Query Alert**](/cloud-catalog/azure-monitor-scheduled-query-alert) -- runs KQL alert rules against the logs stored here

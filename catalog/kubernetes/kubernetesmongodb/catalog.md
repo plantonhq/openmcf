@@ -1,4 +1,4 @@
-# Kubernetes MongoDB
+# MongoDB
 
 Deploys a production-grade MongoDB cluster reconciled by the Percona Operator for MongoDB. One resource carries the whole database story: replica sets with automated failover (a new primary is elected in seconds), optional sharding (mongos routers + config servers, every declared replica set becoming a shard), declarative users with operator-managed password Secrets, scheduled logical/physical/incremental backups with point-in-time recovery via Percona Backup for MongoDB, and TLS. The server is Percona Server for MongoDB — a fully MongoDB-compatible open-source distribution, so every driver, tool, and query works unchanged. The cluster is in-cluster plumbing by design — external exposure is composed from first-class exposure kinds, never embedded here.
 
@@ -20,7 +20,7 @@ Applications connect through the SERVICES, never a pod: for replica-set clusters
 
 ### Kubernetes Cluster
 
-- **Percona MongoDB operator** installed and running — deploy the **Kubernetes Percona Mongo Operator** component first. The operator must WATCH the database's namespace: its default posture watches only its own namespace, and a cluster declared outside the watched set is silently never reconciled. Install the operator beside the database, or widen its watch scope.
+- **Percona MongoDB operator** installed and running — deploy the **Percona Operator for MongoDB** component first. The operator must WATCH the database's namespace: its default posture watches only its own namespace, and a cluster declared outside the watched set is silently never reconciled. Install the operator beside the database, or widen its watch scope.
 - **A storage class** capable of dynamic provisioning for the declared sizes; volume expansion support if you plan to grow storage in place.
 - For keyless backups: cloud-side ambient identity on the member pods (EKS IRSA or node instance-profile credentials for S3, GKE Workload Identity for GCS).
 - For organization-trusted TLS: cert-manager with a ClusterIssuer (or a namespaced Issuer in the database's namespace) referenced by `tls.issuer`; otherwise the operator self-generates certificates.
@@ -29,14 +29,14 @@ Applications connect through the SERVICES, never a pod: for replica-set clusters
 
 ### Console
 
-Open the deployment store, find **Kubernetes MongoDB**, and click **Deploy**. The creation wizard walks you through placement (with the operator-watch check), the server image, the replica-set topology, sharding, TLS, users, backup storages with their credential postures, backup schedules, point-in-time recovery, operations, and the explicit unsafe opt-ins. Start from the **Replica Set** preset in the [Presets](#presets) tab.
+Open the deployment store, find **MongoDB**, and click **Deploy**. The creation wizard walks you through placement (with the operator-watch check), the server image, the replica-set topology, sharding, TLS, users, backup storages with their credential postures, backup schedules, point-in-time recovery, operations, and the explicit unsafe opt-ins. Start from the **Replica Set** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMongodb
 metadata:
   name: orders-db
@@ -128,11 +128,11 @@ These are the most important decisions when configuring a MongoDB cluster. Explo
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the cluster runs in |
-| `spec.replicaSets[].storage.storageClass` / `spec.sharding.configServer.storage.storageClass` | KubernetesStorageClass (`status.outputs.storage_class_name`) | The storage class backing the member / config-server PVCs |
-| `spec.tls.issuer` | KubernetesClusterIssuer (`metadata.name`) — or a namespaced KubernetesIssuer when `issuerKind: Issuer` | The cert-manager issuer for organization-trusted certificates |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesStorageClass** | `replicaSets[].storage.storageClass` / `sharding.configServer.storage.storageClass` | `status.outputs.storage_class_name` |
+| **KubernetesClusterIssuer** | `tls.issuer` (or a namespaced KubernetesIssuer when `issuerKind: Issuer`) | `metadata.name` |
 
 ### What This Component Provides
 
@@ -160,8 +160,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes Percona Mongo Operator** — the prerequisite: reconciles the PerconaServerMongoDB resource and must watch the database's namespace.
-- **Kubernetes Namespace** — the placement target.
-- **Kubernetes StorageClass** — backs the member and config-server volumes.
-- **Kubernetes Cluster Issuer** — the cert-manager seam for organization-trusted TLS.
-- **Kubernetes Postgres** — the relational sibling in a typical polyglot data layer.
+- [**Percona Operator for MongoDB**](/cloud-catalog/kubernetes-percona-mongo-operator) — the prerequisite: reconciles the PerconaServerMongoDB resource and must watch the database's namespace
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — the placement target
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) — backs the member and config-server volumes
+- [**Cert Manager Cluster Issuer**](/cloud-catalog/kubernetes-cluster-issuer) — the cert-manager seam for organization-trusted TLS
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) — the relational sibling in a typical polyglot data layer

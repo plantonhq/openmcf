@@ -30,9 +30,11 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Planton Runner**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and the spec fields.
+Open the deployment store, find **GCP Planton Runner**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the region and token, VPC placement, the runtime identity, and sizing. Start from the **Regional Runner** preset in the [Presets](#presets) tab.
 
 ### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1alpha1
@@ -50,9 +52,11 @@ spec:
 planton apply -f runner.yaml
 ```
 
-This minimal manifest deploys a single always-on worker at the default sizing (1 vCPU, 512Mi) tracking the latest runner release, in the provider's default project, with a dedicated permissionless service account and no VPC egress -- project, sizing, version pinning, VPC placement, and the runtime identity are not configured.
+This minimal manifest deploys a single always-on worker at the default sizing (1 vCPU, 512Mi) tracking the latest runner release, in the provider's default project, with a dedicated permissionless service account and no VPC egress -- project, sizing, version pinning, VPC placement, and the runtime identity are not configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
+
+When deploying as part of a multi-resource environment, the runner wires its project, network placement, and runtime identity via ValueFromRef:
 
 ```yaml
 spec:
@@ -85,11 +89,15 @@ The InfraPipeline resolves the dependency graph, deploys the project, network, s
 
 These are the most important decisions when configuring the runner. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- **VPC placement** -- `vpcAccess` is what gives the runner private reach: with it, private-range traffic rides Direct VPC egress into your network (the route to a private GKE control plane); without it, the runner reaches only public endpoints. Either way the control-plane dial-out keeps its normal internet path. Network `tags` are how VPC firewall rules select the runner's egress.
-- **Runtime identity** -- leave `serviceAccount` empty to get a dedicated permissionless account (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference a `GcpServiceAccount` composed with exactly the permissions keyless cloud access needs. Never the Compute Engine default.
-- **Sizing** -- `cpu` must be one of Cloud Run's instance sizes (1, 2, 4, 6, or 8 vCPUs), and larger sizes carry memory minimums (2Gi at 4 vCPUs, 4Gi at 6 or 8) -- validated up front. Memory pressure shows up as failed operations mid-apply, so size memory up before cpu.
-- **Runner build** -- empty `runnerVersion` tracks the newest release on every instance (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
-- **Control plane endpoint** -- leave `controlPlaneEndpoint` unset for Planton's hosted control plane; set host:port for a self-hosted instance.
+**VPC placement** -- `vpcAccess` is what gives the runner private reach: with it, private-range traffic rides Direct VPC egress into your network (the route to a private GKE control plane); without it, the runner reaches only public endpoints. Either way the control-plane dial-out keeps its normal internet path. Network `tags` are how VPC firewall rules select the runner's egress.
+
+**Runtime identity** -- leave `serviceAccount` empty to get a dedicated permissionless account (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference a `GcpServiceAccount` composed with exactly the permissions keyless cloud access needs. Never the Compute Engine default.
+
+**Sizing** -- `cpu` must be one of Cloud Run's instance sizes (1, 2, 4, 6, or 8 vCPUs), and larger sizes carry memory minimums (2Gi at 4 vCPUs, 4Gi at 6 or 8) -- validated up front. Memory pressure shows up as failed operations mid-apply, so size memory up before cpu.
+
+**Runner build** -- empty `runnerVersion` tracks the newest release on every instance (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
+
+**Control plane endpoint** -- leave `controlPlaneEndpoint` unset for Planton's hosted control plane; set host:port for a self-hosted instance.
 
 ## Outputs and Dependencies
 
@@ -115,6 +123,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `runner_name` | The name the runner registers itself under | Finding the runner in `planton runner list` |
 | `project_id` | The GCP project the runner was deployed in | Targeting follow-up GCP operations correctly |
 | `region` | The deployed region | Targeting follow-up GCP operations correctly |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Regional runner** -- the minimal appliance: one always-on worker in the region of the endpoints it operates, default sizing, latest release, permissionless identity. The right first runner for any project. Start from the **Regional Runner** preset.
+
+**Private VPC runner** -- Direct VPC egress into the network holding private endpoints; the shape that makes a private GKE control plane deployable. The subnetwork must be in the runner's region, and the network `tags` are what firewall rules select. Start from the **Private VPC Runner** preset.
+
+**Production hardened** -- sized up (4 vCPUs / 4Gi) with a pinned `runnerVersion` so nothing tracks `latest`; upgrades become deliberate manifest changes instead of silent restarts. Start from the **High Capacity (Production Hardened)** preset.
 
 ## Works With
 

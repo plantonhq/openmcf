@@ -26,7 +26,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Monitoring Uptime Check**, and click **Deploy**. Start from the **Public HTTPS Check** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Monitoring Uptime Check**, and click **Deploy**. The creation wizard walks you through the target project, the probe target, the HTTP/TCP check settings, cadence and regions, and content assertions. Start from the **Public HTTPS Check** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -55,24 +55,27 @@ spec:
 planton apply -f uptime-check.yaml
 ```
 
-This probes `https://example.com/` from all regions every 5 minutes (the default period), failing on non-2xx responses and invalid certificates.
+This probes `https://example.com/` from all regions every 5 minutes (the default period), failing on non-2xx responses and invalid certificates. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-Wire the check into the paging path in the same InfraPipeline:
+For a synthetic monitor, the check references its probe function via ValueFromRef:
 
 ```yaml
-# On a GcpMonitoringAlertPolicy in the same chart:
 spec:
-  conditions:
-    - displayName: uptime check failed
-      conditionThreshold:
-        filter: metric.type="monitoring.googleapis.com/uptime_check/check_passed" AND resource.type="uptime_url"
-        comparison: COMPARISON_GT
-        duration: 300s
+  syntheticMonitor:
+    cloudFunction:
+      valueFrom:
+        kind: GcpCloudFunction
+        name: checkout-synthetic
+        fieldPath: status.outputs.function_id
 ```
 
+The InfraPipeline deploys the function first, then the check against it — and an alert policy in the same chart pages on the check's `check_passed` metric, closing the paging path.
+
 ## Key Configuration
+
+These are the most important decisions when configuring an uptime check. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Target** -- exactly one of `monitoredResource` (the canonical public-URL form: type `uptime_url` with a `host` label), `resourceGroup` (probe every member), or `syntheticMonitor` (a 2nd-gen Cloud Function carries the probe logic).
 
@@ -92,6 +95,8 @@ spec:
 | **GcpCloudFunction** (optional) | `syntheticMonitor.cloudFunction` | `status.outputs.function_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

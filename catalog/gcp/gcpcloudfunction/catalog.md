@@ -1,6 +1,6 @@
 # GCP Cloud Function
 
-Deploys a Cloud Functions (Gen 2) function — source-based serverless compute built on Cloud Run and Eventarc. You ship a source archive; Cloud Build containerizes it with buildpacks and Cloud Run serves it, so every function is backed by a real Cloud Run service. The spec mirrors the API's two-config split: `buildConfig` owns how the source becomes a container, `serviceConfig` owns how it runs, and the trigger decides what invokes it — HTTPS requests or a CloudEvent delivered by Eventarc. Seven fields accept ValueFromRef wiring to other Planton resources, from the GCP project down to the Pub/Sub topic that triggers it.
+Deploys a Cloud Functions (Gen 2) function — source-based serverless compute built on Cloud Run and Eventarc. You ship a source archive; Cloud Build containerizes it with buildpacks and Cloud Run serves it, so every function is backed by a real Cloud Run service. The spec mirrors the API's two-config split: `buildConfig` owns how the source becomes a container, `serviceConfig` owns how it runs, and the trigger decides what invokes it — HTTPS requests or a CloudEvent delivered by Eventarc. The spec wires by reference to other Planton resources at every seam, from the GCP project down to the Pub/Sub topic that triggers it.
 
 ## What Gets Created
 
@@ -11,6 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **The underlying Cloud Run service** -- serves the function; its ID and `*.run.app` URI are exported
 - **An Eventarc trigger** -- created only when `trigger.triggerType` is `EVENT_TRIGGER`; wires the function to Pub/Sub, Cloud Storage, Firestore, or audit-log events with filters and a retry policy
 - **A public-invoker IAM grant** -- created only when `serviceConfig.allowUnauthenticated` is true; grants `roles/run.invoker` to `allUsers` on the underlying Cloud Run service
+- **API enablement** -- the Cloud Functions, Cloud Build, Cloud Run, Artifact Registry, and Eventarc APIs are enabled on the project before the function deploys, and never disabled on destroy
 - **Platform attribution** -- organization, environment, and resource labels merged beneath your own `labels`
 
 ## Before You Deploy
@@ -32,7 +33,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Cloud Function**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTP API** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP Cloud Function**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTP API — basic** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -65,7 +66,7 @@ spec:
 planton apply -f cloud-function.yaml
 ```
 
-This creates a public HTTP function on Node.js 22 with GCP's defaults — 256M memory, derived CPU, a 60-second timeout, and scale-to-zero. Shipping a new release is uploading a new archive and pointing `object` at it: a changed object name is what makes the deploy roll.
+This creates a public HTTP function on Node.js 22 with GCP's defaults — 256M memory, derived CPU, a 60-second timeout, and scale-to-zero. Shipping a new release is uploading a new archive and pointing `object` at it: a changed object name is what makes the deploy roll. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -107,7 +108,7 @@ These are the most important decisions when configuring a Cloud Function. Explor
 
 **Access control** -- `allowUnauthenticated: true` grants public invocation (deliberate for webhooks); `ingressSettings` restricts network-level reachability (`ALLOW_INTERNAL_ONLY` for event consumers, `ALLOW_INTERNAL_AND_GCLB` when fronting with an external Application Load Balancer). The runtime `serviceAccountEmail` is the identity your code exercises — production functions get a dedicated least-privilege GcpServiceAccount.
 
-**Private egress** -- `vpcConnector` routes egress through a Serverless VPC Access connector to reach Cloud SQL private IP, Memorystore, and internal load balancers; `vpcConnectorEgressSettings: ALL_TRAFFIC` enables static egress IPs via Cloud NAT.
+**Private egress** -- two mutually exclusive paths into a VPC. `vpcConnector` routes egress through a Serverless VPC Access connector to reach Cloud SQL private IP, Memorystore, and internal load balancers. `directVpcNetworkInterface` attaches the function straight to a network or subnet — no connector to size, pay for, or saturate — but instances draw IPs from the subnet, so its free range caps how far the function scales. On either path, the `ALL_TRAFFIC` egress setting enables static egress IPs via Cloud NAT.
 
 **Build hardening** -- a custom build `serviceAccount` (fully-qualified resource name), a private `workerPool`, a customer-managed `dockerRepository`, and `updatePolicy: ON_DEPLOY` to pin the runtime between deploys. `kmsKeyName` (CMEK) encrypts the image and source artifacts and REQUIRES the customer-managed `dockerRepository`.
 
@@ -124,6 +125,8 @@ These are the most important decisions when configuring a Cloud Function. Explor
 | **GcpGcsBucket** | `buildConfig.source.storageSource.bucket` | `status.outputs.bucket_id` |
 | **GcpServiceAccount** | `serviceConfig.serviceAccountEmail` | `status.outputs.email` |
 | **GcpServerlessVpcConnector** | `serviceConfig.vpcConnector` | `status.outputs.self_link` |
+| **GcpVpcNetwork** | `serviceConfig.directVpcNetworkInterface.network` | `status.outputs.network_name` |
+| **GcpSubnetwork** | `serviceConfig.directVpcNetworkInterface.subnetwork` | `status.outputs.subnetwork_name` |
 | **GcpPubSubTopic** | `trigger.eventTrigger.pubsubTopic` | `status.outputs.topic_id` |
 | **GcpServiceAccount** | `trigger.eventTrigger.serviceAccountEmail` | `status.outputs.email` |
 
@@ -140,19 +143,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `cloud_run_service_id` | The underlying Cloud Run service | Traffic splitting (canary/rollback), Cloud Run API access |
 | `service_account_email` | The runtime identity | IAM policy grants, secret accessor bindings |
 | `eventarc_trigger_id` | The Eventarc trigger (event functions only) | Event routing configuration, monitoring |
-| `state` | Current function state (`ACTIVE`, `OFFLINE`, ...) | Health monitoring, deployment verification |
-| `environment` | The execution environment (e.g. `GEN_2`) | Fleet audits |
-| `update_time` | Timestamp of the last update (RFC 3339) | Change tracking |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**HTTP API** -- a public HTTPS endpoint for webhooks, small REST APIs, and glue code, built from a versioned GCS archive. Start from the **HTTP API** preset.
+**HTTP API** -- a public HTTPS endpoint for webhooks, small REST APIs, and glue code, built from a versioned GCS archive. Start from the **HTTP API — basic** preset.
 
-**Pub/Sub event processor** -- an event-driven worker consuming a topic through Eventarc, with internal-only ingress and a bounded instance ceiling as backpressure. Start from the **Pub/Sub Event** preset.
+**Pub/Sub event processor** -- an event-driven worker consuming a topic through Eventarc, with internal-only ingress and a bounded instance ceiling as backpressure. Start from the **Pub/Sub event processor** preset.
 
-**Private VPC egress** -- a function reaching a private-IP database through a Serverless VPC Access connector, running as a dedicated least-privilege service account, reading its credential from Secret Manager at instance start. Start from the **Private VPC Egress** preset.
+**Private VPC egress** -- a function reaching a private-IP database through a Serverless VPC Access connector, running as a dedicated least-privilege service account, reading its credential from Secret Manager at instance start. Start from the **Private VPC egress — database-backed function** preset.
 
 **Behind a load balancer** -- set `ingressSettings: ALLOW_INTERNAL_AND_GCLB` and reference the function's `name` output from a serverless network endpoint group to front it with an external Application Load Balancer.
 
@@ -161,7 +161,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the project the function is created in
 - [**GCP GCS Bucket**](/cloud-catalog/gcp-gcs-bucket) -- holds the versioned source archives
 - [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- the event source for messagePublished triggers
-- [**GCP Serverless VPC Connector**](/cloud-catalog/gcp-serverless-vpc-connector) -- private VPC egress
+- [**GCP Serverless VPC Connector**](/cloud-catalog/gcp-serverless-vpc-connector) -- private VPC egress through a connector
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) / [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- direct VPC egress without a connector
 - [**GCP Artifact Registry Repo**](/cloud-catalog/gcp-artifact-registry-repo) -- customer-managed image storage (required for CMEK)
 - [**GCP Region Network Endpoint Group**](/cloud-catalog/gcp-region-network-endpoint-group) -- puts the function behind an external Application Load Balancer
 - [**GCP Cloud Run**](/cloud-catalog/gcp-cloud-run) / [**GCP Cloud Run Job**](/cloud-catalog/gcp-cloud-run-job) -- the container-image serving and batch siblings

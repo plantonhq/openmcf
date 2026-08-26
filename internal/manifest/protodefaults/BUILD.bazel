@@ -20,12 +20,17 @@ go_test(
     name = "protodefaults_test",
     srcs = [
         "applier_test.go",
+        "registry_defaults_test.go",
         "type_converter_test.go",
     ],
     embed = [":protodefaults"],
     deps = [
         "//catalog/_test/testcloudresourcegeneric/v1alpha1",
+        "//internal/manifest",
+        "//pkg/crkreflect",
         "//shared",
+        "//shared/cloudresourcekind",
+        "//shared/options",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
         "@org_golang_google_protobuf//proto",

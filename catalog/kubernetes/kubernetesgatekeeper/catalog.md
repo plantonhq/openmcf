@@ -25,21 +25,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Kubernetes Cluster
 
 - **Cluster-admin-grade permissions** -- the install creates cluster-scoped CRDs and webhook configurations.
-- **A pre-issued TLS Secret, only if you choose external webhook certificates** -- the default posture needs nothing: Gatekeeper's embedded cert controller generates and rotates the webhook certificate. Declaring `external_cert` requires the Secret (typically materialized by cert-manager) to exist in the install namespace BEFORE the install -- the chart mounts it, and a missing Secret holds the rollout.
-- **Air-gapped clusters need THREE images mirrored** -- the engine (`openpolicyagent/gatekeeper`, overridable via the typed `image` field), the CRD hook (`openpolicyagent/gatekeeper-crds`), and the webhook probe (`curlimages/curl`); the last two ride `helm_values`.
+- **A pre-issued TLS Secret, only if you choose external webhook certificates** -- the default posture needs nothing: Gatekeeper's embedded cert controller generates and rotates the webhook certificate. Declaring `externalCert` requires the Secret (typically materialized by cert-manager) to exist in the install namespace BEFORE the install -- the chart mounts it, and a missing Secret holds the rollout.
+- **Air-gapped clusters need THREE images mirrored** -- the engine (`openpolicyagent/gatekeeper`, overridable via the typed `image` field), the CRD hook (`openpolicyagent/gatekeeper-crds`), and the webhook probe (`curlimages/curl`); the last two ride `helmValues`.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **OPA Gatekeeper**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Audit First** preset for Gatekeeper as it ships (fail-open, audit-only until constraints say otherwise), **Production Enforce** for the fail-closed posture with a tuned audit loop, or **cert-manager TLS** to serve the webhook with an externally issued certificate, in the [Presets](#presets) tab.
+Open the deployment store, find **OPA Gatekeeper**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Audit-first preset** for Gatekeeper as it ships (fail-open, audit-only until constraints say otherwise), the **Production enforce preset** for the fail-closed posture with a tuned audit loop, or the **cert-manager TLS preset** to serve the webhook with an externally issued certificate, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatekeeper
 metadata:
   name: gatekeeper
@@ -48,19 +48,19 @@ metadata:
 spec:
   namespace:
     value: "gatekeeper-system"
-  create_namespace: true
+  createNamespace: true
   replicas: 3
-  validating_webhook:
-    failure_policy: Fail
-    timeout_seconds: 5
+  validatingWebhook:
+    failurePolicy: Fail
+    timeoutSeconds: 5
   audit:
-    interval_seconds: 120
-    match_kind_only: true
-    constraint_violations_limit: 50
-  exempt_namespace_prefixes:
+    intervalSeconds: 120
+    matchKindOnly: true
+    constraintViolationsLimit: 50
+  exemptNamespacePrefixes:
     - kube-
   engine:
-    log_denies: true
+    logDenies: true
 ```
 
 ```shell
@@ -80,13 +80,13 @@ spec:
       kind: KubernetesNamespace
       name: gatekeeper-namespace
       fieldPath: spec.name
-  create_namespace: false
-  external_cert:
-    secret_name:
+  createNamespace: false
+  externalCert:
+    secretName:
       valueFrom:
         kind: KubernetesCertificate
         name: gatekeeper-webhook-cert
-        fieldPath: spec.secretName
+        fieldPath: spec.secret_name
 ```
 
 The InfraPipeline deploys the namespace and the certificate first, then provisions Gatekeeper against them.
@@ -95,19 +95,19 @@ The InfraPipeline deploys the namespace and the certificate first, then provisio
 
 These are the most important decisions when configuring Gatekeeper. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**The deliberate fail-OPEN / fail-CLOSED pair** -- `validating_webhook.failure_policy` defaults `Ignore` (fail-open: an engine outage never blocks admission -- but a request that slips through during one is not evaluated), while `validating_webhook.check_ignore_failure_policy` -- the webhook guarding Gatekeeper's own exemption label -- defaults `Fail` (the label cannot be smuggled onto a namespace during that same outage; its blast radius is namespace label edits only). Flipping the policy webhook to `Fail` closes the smuggling window and blocks every matched admission when the engine is down: only responsible with the webhook highly available (3 replicas) and a short timeout.
+**The deliberate fail-OPEN / fail-CLOSED pair** -- `validatingWebhook.failurePolicy` defaults `Ignore` (fail-open: an engine outage never blocks admission -- but a request that slips through during one is not evaluated), while `validatingWebhook.checkIgnoreFailurePolicy` -- the webhook guarding Gatekeeper's own exemption label -- defaults `Fail` (the label cannot be smuggled onto a namespace during that same outage; its blast radius is namespace label edits only). Flipping the policy webhook to `Fail` closes the smuggling window and blocks every matched admission when the engine is down: only responsible with the webhook highly available (3 replicas) and a short timeout.
 
-**Exemption is a two-key system** -- `exempt_namespaces` and `exempt_namespace_prefixes` AUTHORIZE namespaces to carry the `admission.gatekeeper.sh/ignore` label -- they do not exempt by themselves. Exemption takes both keys: authorization on the list AND the label on the namespace, applied separately, with the fail-closed label guard enforcing the authorization. The chart's post-install hook labels only Gatekeeper's own namespace (`hooks.label_namespace`, default true -- leave it on, or the engine polices its own pods and can deadlock itself).
+**Exemption is a two-key system** -- `exemptNamespaces` and `exemptNamespacePrefixes` AUTHORIZE namespaces to carry the `admission.gatekeeper.sh/ignore` label -- they do not exempt by themselves. Exemption takes both keys: authorization on the list AND the label on the namespace, applied separately, with the fail-closed label guard enforcing the authorization. The chart's post-install hook labels only Gatekeeper's own namespace (`hooks.labelNamespace`, default true -- leave it on, or the engine polices its own pods and can deadlock itself).
 
-**The CRD posture** -- The engine CRDs ship in the chart's `crds/` directory: installed on first install, never upgraded or deleted by Helm. Destroying the engine KEEPS them -- and every ConstraintTemplate, Constraint, and runtime-generated constraint CRD with them; a later install adopts the kept CRDs and the policy library enforces again. `hooks.upgrade_crds` (default true) is the chart's own answer to upgrades -- a pre-install/pre-upgrade Job applies the CRDs at the chart's version; disabling it leaves CRDs frozen at their first-install schema.
+**The CRD posture** -- The engine CRDs ship in the chart's `crds/` directory: installed on first install, never upgraded or deleted by Helm. Destroying the engine KEEPS them -- and every ConstraintTemplate, Constraint, and runtime-generated constraint CRD with them; a later install adopts the kept CRDs and the policy library enforces again. `hooks.upgradeCrds` (default true) is the chart's own answer to upgrades -- a pre-install/pre-upgrade Job applies the CRDs at the chart's version; disabling it leaves CRDs frozen at their first-install schema.
 
-**Declared lists REPLACE chart defaults** -- `engine.disabled_builtins` carries the chart default `["{http.send}"]` (Rego in ConstraintTemplates must not make arbitrary network calls from the admission path; external data providers are the sanctioned alternative). Declaring the field REPLACES the default: re-include `{http.send}` unless dropping it is a deliberate acceptance.
+**Declared lists REPLACE chart defaults** -- `engine.disabledBuiltins` carries the chart default `["{http.send}"]` (Rego in ConstraintTemplates must not make arbitrary network calls from the admission path; external data providers are the sanctioned alternative). Declaring the field REPLACES the default: re-include `{http.send}` unless dropping it is a deliberate acceptance.
 
-**The audit loop, tuned as typed fields** -- `audit.interval_seconds` (default 60; 0 is a real position: run the audit exactly once at startup), `constraint_violations_limit` (default 20; raising it grows constraint objects in etcd), `match_kind_only` (only list kinds some constraint actually matches), `chunk_size`, and `from_cache` (requires syncing kinds via a Gatekeeper Config resource). The audit controller records violations -- it never blocks anything.
+**The audit loop, tuned as typed fields** -- `audit.intervalSeconds` (default 60; 0 is a real position: run the audit exactly once at startup), `constraintViolationsLimit` (default 20; raising it grows constraint objects in etcd), `matchKindOnly` (only list kinds some constraint actually matches), `chunkSize`, and `fromCache` (requires syncing kinds via a Gatekeeper Config resource). The audit controller records violations -- it never blocks anything.
 
-**Webhook TLS** -- By default Gatekeeper's embedded cert controller generates and rotates the webhook certificate in the chart-fixed `gatekeeper-webhook-server-cert` Secret: zero prerequisites. Declaring `external_cert` disables the embedded rotation and mounts your Secret instead -- and the chart only auto-disables rotation on the audit controller, so the module sets `disableCertRotation` on the controller manager explicitly; without that the embedded rotator would keep overwriting your issued certificate.
+**Webhook TLS** -- By default Gatekeeper's embedded cert controller generates and rotates the webhook certificate in the chart-fixed `gatekeeper-webhook-server-cert` Secret: zero prerequisites. Declaring `externalCert` disables the embedded rotation and mounts your Secret instead -- and the chart only auto-disables rotation on the audit controller, so the module sets `disableCertRotation` on the controller manager explicitly; without that the embedded rotator would keep overwriting your issued certificate.
 
-**The pre-delete webhook cleanup** -- `hooks.delete_webhook_configurations_on_uninstall` (default false -- chart-owned webhook configurations already delete with the release) adds a pre-delete hook Job for teardown-ordering edge cases. The raw chart value alone fails at uninstall (it reads a service-account name from a key the chart never renders), so the module renders the hook's service-account name alongside.
+**The pre-delete webhook cleanup** -- `hooks.deleteWebhookConfigurationsOnUninstall` (default false -- chart-owned webhook configurations already delete with the release) adds a pre-delete hook Job for teardown-ordering edge cases. The raw chart value alone fails at uninstall (it reads a service-account name from a key the chart never renders), so the module renders the hook's service-account name alongside.
 
 ## Outputs and Dependencies
 
@@ -116,7 +116,7 @@ These are the most important decisions when configuring Gatekeeper. Explore the 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesCertificate** | `external_cert.secret_name` | `spec.secretName` |
+| **KubernetesCertificate** | `externalCert.secretName` | `spec.secret_name` |
 
 ### What This Component Provides
 
@@ -133,14 +133,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Audit first** -- Gatekeeper as it ships: three webhook replicas, the policy webhook fail-open, and the audit controller re-checking existing resources every 60 seconds. The right first posture for adopting policy on a running cluster. Start from the **Audit First** preset.
+**Audit first** -- Gatekeeper as it ships: three webhook replicas, the policy webhook fail-open, and the audit controller re-checking existing resources every 60 seconds. The right first posture for adopting policy on a running cluster. Start from the **Audit-first preset**.
 
-**Production enforce** -- The fail-closed policy webhook with a 5-second timeout, the audit loop tuned for scale, kube-* prefixes authorized for exemption, and every deny logged. Start from the **Production Enforce** preset.
+**Production enforce** -- The fail-closed policy webhook with a 5-second timeout, the audit loop tuned for scale, kube-* prefixes authorized for exemption, and every deny logged. Start from the **Production enforce preset**.
 
-**cert-manager TLS** -- The webhook serving a certificate issued by cert-manager instead of the embedded rotator, with the Secret reference composing the two kinds in the resource graph. Start from the **cert-manager TLS** preset.
+**cert-manager TLS** -- The webhook serving a certificate issued by cert-manager instead of the embedded rotator, with the Secret reference composing the two kinds in the resource graph. Start from the **cert-manager TLS preset**.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the Gatekeeper install
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) -- materializes the TLS Secret when webhook issuance is switched to cert-manager
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- materializes the TLS Secret when webhook issuance is switched to cert-manager
 - [**Kubernetes Manifest**](/cloud-catalog/kubernetes-manifest) -- applies the ConstraintTemplates and Constraints the engine enforces

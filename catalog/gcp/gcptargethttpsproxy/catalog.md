@@ -1,12 +1,13 @@
-# Target HTTPS Proxy on Google Cloud
+# GCP Target HTTPS Proxy
 
-Deploys a global Compute Engine target HTTPS proxy — the TLS-termination node of a global external Application Load Balancer. It binds a global forwarding rule (the VIP) to a URL map (the routing brain) and owns the client-facing handshake: which certificates are presented, which TLS policy constrains ciphers and versions, whether QUIC (HTTP/3) is negotiated, and whether TLS 1.3 0-RTT early data is accepted. Certificates attach through exactly one of three mechanisms — the classic compute-certificate list, Certificate Manager certificates (cross-region internal ALB), or an SNI-scale certificate map. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, URL maps, certificates, and SSL policies.
+Deploys a global Compute Engine target HTTPS proxy — the TLS-termination node of a global external Application Load Balancer. It binds a global forwarding rule (the VIP) to a URL map (the routing brain) and owns the client-facing handshake: which certificates are presented, which TLS policy constrains ciphers and versions, whether QUIC (HTTP/3) is negotiated, and whether TLS 1.3 0-RTT early data is accepted. Certificates attach through exactly one of three mechanisms — the classic compute-certificate list, Certificate Manager certificates (cross-region internal ALB), or an SNI-scale certificate map.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Compute Engine Target HTTPS Proxy (global)** -- bound to the configured URL map, certificate mechanism, SSL policy, and QUIC/early-data posture
+- **Compute Engine API enablement** -- `compute.googleapis.com` is enabled in the target project; tearing down the proxy never disables the API
 
 ## Before You Deploy
 
@@ -17,15 +18,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the proxy will be created.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the proxy will be created. The module enables the Compute Engine API itself, so the connection's principal needs permission to enable services on a fresh project.
 - **A URL map** (GcpUrlMap) and **at least one certificate** (GcpManagedSslCertificate or GcpSslCertificate) covering every host the map routes.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Target HTTPS Proxy on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Managed Cert Frontend** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Target HTTPS Proxy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Managed-Certificate HTTPS Frontend** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -51,7 +51,7 @@ spec:
 planton apply -f target-https-proxy.yaml
 ```
 
-This creates the standard serving frontend: TLS terminated with the attached certificate, requests routed by the URL map.
+This creates the standard serving frontend: TLS terminated with the attached certificate, requests routed by the URL map. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -113,16 +113,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Managed cert frontend** -- The standard shape: a Google-managed certificate + the application URL map. Start from the **Managed Cert Frontend** preset.
+**Managed cert frontend** -- The standard shape: a Google-managed certificate + the application URL map, with an SSL policy replacing GCP's permissive default. Start from the **Managed-Certificate HTTPS Frontend** preset.
 
-**Certificate map SaaS** -- SNI-scale certificate selection for many customer domains. Start from the **Certificate Map SaaS** preset.
+**Certificate map SaaS** -- SNI-scale certificate selection for many customer domains, lifting the 15-certificate list limit. Start from the **Certificate-Map SaaS Frontend** preset.
 
-**mTLS server TLS policy** -- Demanding and validating client certificates. Start from the **MTLS Server TLS Policy** preset.
+**mTLS frontend** -- A ServerTlsPolicy demanding and validating client certificates on top of the server certificate; early data stays disabled since replayable 0-RTT and client-certificate auth do not mix. Start from the **Mutual-TLS Frontend** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the proxy is created
 - [**GCP URL Map**](/cloud-catalog/gcp-url-map) -- the routing table for decrypted requests
 - [**GCP Managed SSL Certificate**](/cloud-catalog/gcp-managed-ssl-certificate) -- the auto-renewing certificates this proxy presents
+- [**GCP SSL Certificate**](/cloud-catalog/gcp-ssl-certificate) -- the self-managed certificate alternative on the same list
 - [**GCP SSL Policy**](/cloud-catalog/gcp-ssl-policy) -- the TLS versions/ciphers floor
 - [**GCP Global Forwarding Rule**](/cloud-catalog/gcp-global-forwarding-rule) -- consumes this proxy's `self_link` as its target

@@ -1,11 +1,12 @@
-# Backend Bucket on Google Cloud
+# GCP Backend Bucket
 
-Deploys a Compute Engine backend bucket — the piece that serves a Cloud Storage bucket's objects through an external HTTP(S) load balancer, optionally cached at Google's edge by Cloud CDN. It is the static-content counterpart of a backend service: URL maps route paths like /assets/* to a backend bucket while dynamic paths go to backend services. The backend bucket is deliberately a separate node from the bucket itself — one GCS bucket can sit behind several backend buckets with different CDN policies, and swapping the origin bucket is an in-place update that leaves the URL map untouched. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, buckets, and Cloud Armor edge policies.
+Deploys a Compute Engine backend bucket — the piece that serves a Cloud Storage bucket's objects through an external HTTP(S) load balancer, optionally cached at Google's edge by Cloud CDN. It is the static-content counterpart of a backend service: URL maps route paths like /assets/* to a backend bucket while dynamic paths go to backend services. The backend bucket is deliberately a separate node from the bucket itself — one GCS bucket can sit behind several backend buckets with different CDN policies, and swapping the origin bucket is an in-place update that leaves the URL map untouched.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Compute Engine API enablement** (`compute.googleapis.com`) on the target project (never disabled on destroy)
 - **Compute Engine Backend Bucket** -- fronting the configured GCS origin for external load balancers (or, rarely, the cross-region internal ALB)
 - **Cloud CDN policy** -- when enabled: cache mode, TTLs, negative caching, the cache key, and up to 3 signed-URL signing keys
 
@@ -19,14 +20,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the backend bucket will be created — it may differ from the project owning the GCS bucket (cross-project origins are valid).
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
 - **The origin bucket** (GcpGcsBucket) with publicly readable objects — or signed-URL serving configured. The load balancer does not authenticate to the bucket.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Backend Bucket on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CDN Static Assets** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Backend Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CDN-Cached Static Assets** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -54,7 +54,7 @@ spec:
 planton apply -f backend-bucket.yaml
 ```
 
-This creates the standard static-assets shape: a GCS origin cached at the edge for a day.
+This creates the standard static-assets shape: a GCS origin cached at the edge for a day. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -107,11 +107,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**CDN static assets** -- The standard shape: long TTLs, narrow cache key, fingerprinted assets. Start from the **CDN Static Assets** preset.
+**CDN static assets** -- The standard shape: long TTLs, narrow cache key, fingerprinted assets. Start from the **CDN-Cached Static Assets** preset.
 
-**Plain origin** -- No CDN — every request proxies to the bucket; the starting point before caching decisions. Start from the **Plain Origin** preset.
+**Plain origin** -- No CDN — every request proxies to the bucket; the starting point before caching decisions. Start from the **Plain Origin (No CDN)** preset.
 
-**Signed-URL private CDN** -- Paid/gated downloads served from the edge with expiring links. Start from the **Signed URL Private CDN** preset.
+**Signed-URL private CDN** -- Paid/gated downloads served from the edge with expiring links. Start from the **Private Content via CDN Signed URLs** preset.
 
 ## Works With
 

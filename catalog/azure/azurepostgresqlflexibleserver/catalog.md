@@ -1,6 +1,6 @@
 # Azure PostgreSQL Flexible Server
 
-Deploys an Azure Database for PostgreSQL Flexible Server with configurable compute tiers, storage, high availability, VNet integration, and bundled databases with firewall rules. Network access mode is determined by whether a delegated subnet is provided -- public access with firewall rules or private VNet-only access. The server integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, subnets, and private DNS zones.
+Deploys an Azure Database for PostgreSQL Flexible Server with configurable compute tiers, storage, high availability, VNet integration, and bundled databases with firewall rules. Network access mode is determined by whether a delegated subnet is provided -- public access with firewall rules or private VNet-only access. Lifecycle modes (`createMode`) cover the full server story: a fresh server, a read replica, a point-in-time restore, and a geo-restore from geo-redundant backups.
 
 ## What Gets Created
 
@@ -40,7 +40,7 @@ Open the deployment store, find **Azure PostgreSQL Flexible Server**, and click 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePostgresqlFlexibleServer
 metadata:
   name: app-postgres
@@ -53,7 +53,7 @@ spec:
   serverName: acme-app-pg-prod
   administratorLogin: pgadmin
   administratorPassword:
-    value: "YourStr0ngP@ssword!"
+    value: "$secret/postgres-admin-password"
   skuName: GP_Standard_D2ds_v5
   storageMb: 32768
   databases:
@@ -127,11 +127,10 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `server_id` | Azure resource ID of the PostgreSQL Flexible Server | Private endpoint connections, diagnostic settings |
-| `server_name` | Name of the PostgreSQL Flexible Server | Application configuration, monitoring |
+| `server_id` | Azure resource ID of the PostgreSQL Flexible Server | Private endpoint connections, replica/restore `source_server_id`, diagnostic settings |
 | `fqdn` | Fully qualified domain name (`{name}.postgres.database.azure.com`) | Application connection strings |
 | `administrator_login` | Administrator login name | Application connection strings |
-| `database_ids` | Map of database names to Azure resource IDs (e.g. `status.outputs.database_ids.appdb`) | Downstream resource references |
+| `database_ids` | Map of database names to Azure resource IDs (e.g. `status.outputs.database_ids.appdb`) | Any resource that targets one database by ARM ID |
 | `identity_principal_id` | Principal ID of the system-assigned managed identity (empty unless the identity type includes system-assigned) | AzureRoleAssignment grants |
 
 ## Common Patterns
@@ -149,3 +148,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the PostgreSQL server is created
 - [**Azure Subnet**](/cloud-catalog/azure-subnet) -- provides the delegated subnet for VNet-integrated private access
 - [**Azure Private DNS Zone**](/cloud-catalog/azure-private-dns-zone) -- provides the private DNS zone for FQDN resolution in VNet mode
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed encryption key (`customerManagedKey.keyVaultKeyId`)
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- unwraps the CMK and serves as an Entra administrator principal

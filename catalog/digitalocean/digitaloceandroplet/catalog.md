@@ -1,6 +1,6 @@
-# Droplet/VM on DigitalOcean
+# DigitalOcean Droplet
 
-Deploys a DigitalOcean Droplet with configurable sizing, region and VPC placement, SSH key injection, automated backups with a policy window, IPv6 and public-networking toggles, the monitoring and web-console agents, block storage volume attachments, cloud-init user data, tags, and GPU partitioning. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC and volume dependency wiring.
+Deploys a DigitalOcean Droplet with configurable sizing, region and VPC placement, SSH key injection, automated backups with a policy window, IPv6 and public-networking toggles, the monitoring and web-console agents, block storage volume attachments, cloud-init user data, tags, and GPU partitioning. The create-time choices carry the weight: image, region, VPC placement, SSH keys, and cloud-init user data are all fixed at creation, while size, backups, tags, and volume attachments can change over the Droplet's life.
 
 ## What Gets Created
 
@@ -32,7 +32,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Droplet/VM on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production** preset in the [Presets](#presets) tab to pre-populate a working configuration with SSH keys, backups, and VPC isolation.
+Open the deployment store, find **DigitalOcean Droplet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Droplet** preset in the [Presets](#presets) tab to pre-populate a working configuration with SSH keys, backups, and VPC isolation.
 
 ### CLI
 
@@ -89,7 +89,9 @@ These are the most important decisions when configuring a Droplet. Explore the f
 
 **Cloud-init user data** -- The `userData` field accepts a cloud-init script (up to 32 KiB) for bootstrapping the Droplet on first boot. Create-only; DigitalOcean stores only a hash.
 
-**Volume attachments** -- The `volumeIds` field accepts a list of block storage volume UUIDs or ValueFromRef references. Volumes must be in the same region as the Droplet.
+**Volume attachments** -- `volumeIds` attaches existing block storage volumes (UUIDs or ValueFromRef references) and updates in place: moving a volume between Droplets is an edit to the Droplets' manifests, never a volume recreation. Volumes must live in the same region as the Droplet.
+
+**Networking one-way doors** -- `enableIpv6` turns on in place, but turning it off recreates the Droplet. `publicNetworking: false` (create-only) produces a Droplet with no public interface at all -- reachable only inside its VPC -- so it belongs behind a load balancer or bastion that already exists.
 
 ## Outputs and Dependencies
 
@@ -117,13 +119,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production server** -- 2 vCPU / 4 GB instance with SSH keys, weekly backups in a fixed window, VPC isolation, monitoring, and tags for firewall targeting. Start from the **Production** preset.
+**Production server** -- 2 vCPU / 4 GB instance with SSH keys, weekly backups in a fixed window, VPC isolation, monitoring, and tags for firewall targeting. Start from the **Production Droplet** preset.
 
-**Development instance** -- 1 vCPU / 1 GB instance with no backups and no pinned region or VPC — the smallest real Droplet. Start from the **Development** preset.
+**Development instance** -- 1 vCPU / 1 GB instance with no backups and no pinned region or VPC — the smallest real Droplet. Start from the **Development Droplet** preset.
 
 ## Works With
 
 - [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the private network for Droplet placement
 - [**DigitalOcean Volume**](/cloud-catalog/digital-ocean-volume) -- provides block storage volumes attached to the Droplet
 - [**DigitalOcean Load Balancer**](/cloud-catalog/digital-ocean-load-balancer) -- routes traffic to Droplets by ID or tag
-- [**DigitalOcean Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures Droplets by ID or tag
+- [**DigitalOcean Cloud Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures Droplets by ID or tag

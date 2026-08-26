@@ -29,7 +29,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Secret Manager Secret**, and click **Deploy**. Start from the **App Secret with Access** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Secret Manager Secret**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the secret's scope and replication, the first payload, and the access grants. Start from the **App Secret with Access** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -79,7 +79,11 @@ spec:
           fieldPath: status.outputs.member
 ```
 
+The InfraPipeline resolves the dependency graph, deploys the producing service accounts first, then provisions the secret with the resolved payload and grant.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a secret. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Scope** -- omit `region` for a GLOBAL secret (replication control: automatic by default, or pinned `userManaged` replicas, each optionally CMEK-encrypted); set it for a REGIONAL secret whose payloads never leave the region — the data-residency posture, with CMEK attached directly.
 
@@ -87,7 +91,9 @@ spec:
 
 **Access** -- `iamMembers` grants are secret-SCOPED and additive: `roles/secretmanager.secretAccessor` to each consuming workload's service account, composing safely with grants made elsewhere.
 
-**Safety rails** -- `deletionProtection` (engine-side) plus `deletionPolicy: PREVENT` (API-side) for production credentials; `versionDestroyTtl` adds a restore window to version destruction; `expireTime`/`ttl` auto-delete short-lived secrets.
+**Version aliases have a temporal constraint** -- GCP validates `versionAliases` against EXISTING versions, so a first apply that both seeds `initialVersion` and aliases it is rejected ("Aliases cannot be assigned to versions that don't exist"). Deploy first, then add the alias on a subsequent apply once version 1 exists.
+
+**Safety rails** -- `deletionProtection` (engine-side) plus `deletionPolicy: PREVENT` (API-side) for production credentials; `versionDestroyTtl` adds a restore window to version destruction; `expireTime`/`ttl` auto-delete short-lived secrets. Whole-secret deletion removes every version regardless of `versionDestroyTtl`.
 
 ## Outputs and Dependencies
 
@@ -101,6 +107,8 @@ spec:
 | **GcpPubSubTopic** (optional) | `topics[]` | `status.outputs.topic_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

@@ -1,6 +1,6 @@
 # Kubernetes StorageClass
 
-Deploys a cluster-scoped Kubernetes StorageClass — an entry on the cluster's storage menu. A class names the CSI provisioner that creates volumes, the provisioner-specific parameters (disk type, IOPS, encryption), and the lifecycle policies for the volumes it provisions. Manages the storage menu declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a cluster-scoped Kubernetes StorageClass — an entry on the cluster's storage menu. A class names the CSI provisioner that creates volumes, the provisioner-specific parameters (disk type, IOPS, encryption), and the lifecycle policies for the volumes it provisions.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **StorageClass on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **AWS EBS gp3** preset (or its GCP/Azure siblings) in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes StorageClass**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **AWS EBS gp3** preset (or its GCP/Azure siblings) in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStorageClass
 metadata:
   name: fast-ssd
@@ -44,15 +44,15 @@ spec:
   parameters:
     type: gp3
     encrypted: "true"
-  volume_binding_mode: wait_for_first_consumer
-  allow_volume_expansion: true
+  volumeBindingMode: wait_for_first_consumer
+  allowVolumeExpansion: true
 ```
 
 ```shell
 planton apply -f storageclass.yaml
 ```
 
-This creates an encrypted gp3 class with zonal-correct binding and expansion enabled — claims reference it via `storageClassName: fast-ssd`.
+This creates an encrypted gp3 class with zonal-correct binding and expansion enabled — claims reference it via `storageClassName: fast-ssd`. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -80,7 +80,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `storage_class_name` | The name of the created class | PersistentVolumeClaims' `storage_class_name` (the KubernetesPersistentVolumeClaim kind references it directly) |
+| `storage_class_name` | The name of the created class | PersistentVolumeClaims' `storageClassName` (the Kubernetes PersistentVolumeClaim kind references it directly) |
 | `provisioner` | The CSI driver behind the class | Auditing the storage menu |
 | `is_default_class` | Whether this class is the cluster default | Auditing default posture |
 
@@ -92,5 +92,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes PersistentVolumeClaim** -- claims order from the menu by this class's name (and can reference it declaratively on this platform).
-- **Kubernetes StatefulSet** -- volume claim templates name the class for per-replica storage.
+- [**Kubernetes PersistentVolumeClaim**](/cloud-catalog/kubernetes-persistent-volume-claim) -- claims order from the menu by this class's name (and can reference it declaratively on this platform).
+- [**Kubernetes StatefulSet**](/cloud-catalog/kubernetes-stateful-set) -- volume claim templates name the class for per-replica storage.

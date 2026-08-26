@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Monitoring Alert Policy**, and click **Deploy**. Start from the **CPU Threshold** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Monitoring Alert Policy**, and click **Deploy**. The creation wizard walks you through the target project, conditions and combiner, severity, notification channels, and the runbook documentation. Start from the **CPU Threshold** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -59,7 +59,7 @@ spec:
 planton apply -f alert-policy.yaml
 ```
 
-This opens a WARNING incident when any instance's mean CPU stays above 80% for five sustained minutes.
+This opens a WARNING incident when any instance's mean CPU stays above 80% for five sustained minutes. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -77,6 +77,8 @@ spec:
 The InfraPipeline deploys the channel first, then the policy with the resolved channel name.
 
 ## Key Configuration
+
+These are the most important decisions when configuring an alert policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Conditions** -- one to six, each with exactly one condition arm. `conditionThreshold` is the workhorse (metric crosses a value for a duration); `conditionAbsent` alerts on silence; `conditionMatchedLog` alerts on log entries (and requires the rate limit); `conditionPrometheusQueryLanguage` carries ported Prometheus rules; `conditionSql` runs scheduled SQL over log analytics.
 
@@ -96,6 +98,8 @@ The InfraPipeline deploys the channel first, then the policy with the resolved c
 | **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

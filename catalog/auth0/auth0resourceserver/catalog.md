@@ -95,5 +95,5 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 ## Works With
 
-- [**Auth0 Client**](/cloud-catalog/auth0-client) — the applications authorized to call this API; each `apiGrants` entry references this audience with the scopes granted to that client
+- [**Auth0 Application (Client)**](/cloud-catalog/auth0-client) — the applications authorized to call this API; each `apiGrants` entry references this audience with the scopes granted to that client
 - [**Auth0 Role**](/cloud-catalog/auth0-role) — groups this API's scopes into assignable access tiers; each role permission references the audience and a scope defined here

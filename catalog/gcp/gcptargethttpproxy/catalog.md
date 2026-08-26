@@ -1,12 +1,13 @@
-# Target HTTP Proxy on Google Cloud
+# GCP Target HTTP Proxy
 
-Deploys a global Compute Engine target HTTP proxy — the plaintext-HTTP frontend adapter of a global external Application Load Balancer. The proxy binds a global forwarding rule (the VIP) to a URL map (the routing brain): the rule delivers client connections, the proxy consults the map for every request. It is deliberately thin — TLS lives on the target HTTPS proxy, routing on the URL map, traffic policy on the backend service. The standard production pattern is a PAIR sharing one static IP: this proxy serves a redirect-only URL map (http→https 301) while the HTTPS proxy serves the application. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects and URL maps.
+Deploys a global Compute Engine target HTTP proxy — the plaintext-HTTP frontend adapter of a global external Application Load Balancer. The proxy binds a global forwarding rule (the VIP) to a URL map (the routing brain): the rule delivers client connections, the proxy consults the map for every request. It is deliberately thin — TLS lives on the target HTTPS proxy, routing on the URL map, traffic policy on the backend service. The standard production pattern is a PAIR sharing one static IP: this proxy serves a redirect-only URL map (http→https 301) while the HTTPS proxy serves the application.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Compute Engine Target HTTP Proxy (global)** -- bound to the configured URL map, with optional keep-alive tuning and Traffic Director bind
+- **Compute Engine API enablement** -- `compute.googleapis.com` is enabled in the target project; tearing down the proxy never disables the API
 
 ## Before You Deploy
 
@@ -17,15 +18,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the proxy will be created.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the proxy will be created. The module enables the Compute Engine API itself, so the connection's principal needs permission to enable services on a fresh project.
 - **A URL map** (GcpUrlMap) — the proxy's one required dependency; for the redirect pattern, a redirect-only map.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Target HTTP Proxy on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTPS Redirect Frontend** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Target HTTP Proxy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTPS Redirect Frontend** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -49,7 +49,7 @@ spec:
 planton apply -f target-http-proxy.yaml
 ```
 
-This creates the redirect half: a port-80 forwarding rule pointing here upgrades every request to HTTPS.
+This creates the redirect half: a port-80 forwarding rule pointing here upgrades every request to HTTPS. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -104,7 +104,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Plain HTTP frontend** -- Serving an application over plain HTTP (internal tools, pre-TLS testing). Start from the **Plain HTTP Frontend** preset.
 
-**Traffic Director mesh** -- The proxy bound to mesh-private IPs for INTERNAL_SELF_MANAGED frontends. Start from the **Traffic Director Mesh** preset.
+**Traffic Director mesh** -- The proxy bound to mesh-private IPs for INTERNAL_SELF_MANAGED frontends. Start from the **Traffic Director Mesh Frontend** preset.
 
 ## Works With
 

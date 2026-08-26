@@ -1,13 +1,12 @@
-# Load Balancer Monitor on Cloudflare
+# Cloudflare Load Balancer Monitor
 
-Deploys a reusable Cloudflare Load Balancing health monitor. A monitor probes the origins inside a load balancer pool and decides whether each origin (and the pool) is healthy. Monitors are account-scoped and reusable -- many pools can reference the same monitor -- and integrate with Planton's Provider Connections for Cloudflare credential management.
+Deploys a reusable Cloudflare Load Balancing health monitor. A monitor probes the origins inside a load balancer pool and decides whether each origin (and the pool) is healthy. Monitors are account-scoped and reusable -- many pools can reference the same monitor -- and a monitor has no knowledge of the pools that use it, so its lifecycle is deliberately independent of theirs.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Load Balancer Monitor** -- a health check of the configured protocol (HTTP, HTTPS, TCP, UDP/ICMP, ICMP ping, or SMTP) with the chosen probe configuration, timing, and health-flip thresholds
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
 
 ## Before You Deploy
 
@@ -18,21 +17,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **Load Balancing add-on** -- Cloudflare Load Balancing is a paid feature and must be enabled on your account before deploying.
+- **Load Balancing add-on** -- monitors, pools, and load balancers all ride the paid Load Balancing add-on; without it every call returns `403`. Enable the subscription before deploying any of the three.
 - **Reachable origins** -- the origins this monitor will eventually check (via a pool) must be reachable from Cloudflare's probing regions over the chosen protocol.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Load Balancer Monitor on Cloudflare**, and click **Deploy**. The creation wizard walks you through account and protocol selection, the protocol-specific probe configuration, and the timing thresholds. Start from the **HTTPS web** preset in the [Presets](#presets) tab for an application-layer check.
+Open the deployment store, find **Cloudflare Load Balancer Monitor**, and click **Deploy**. The creation wizard walks you through account and protocol selection, the protocol-specific probe configuration, and the timing thresholds. Start from the **HTTPS web health check** preset in the [Presets](#presets) tab for an application-layer check.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancerMonitor
 metadata:
   name: web-https
@@ -63,13 +62,13 @@ This creates an HTTPS monitor that probes `/healthz` on each origin and marks it
 
 These are the most important decisions when configuring a monitor. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Protocol (`type`)** -- Determines what a check measures. `http`/`https` validate the application response (path, status codes, body, headers) and catch "up but broken" origins. `tcp`, `udp_icmp`, and `smtp` confirm a port accepts connections. `icmp_ping` checks raw reachability only. Prefer an application-layer check whenever clients use HTTP(S).
+**Protocol (`type`)** -- determines what a check measures and which fields matter. `http`/`https` validate the application response (path, status codes, body, headers) and catch "up but broken" origins. `tcp`, `udp_icmp`, and `smtp` confirm a port accepts connections and require `port > 0` -- a tcp monitor with no port fails validation, while the HTTP knobs are ignored. `icmp_ping` checks raw reachability only. Prefer an application-layer check whenever clients use HTTP(S).
 
-**Expected codes** -- For HTTP(S), `expectedCodes` is the response code or range (e.g. `200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body.
+**Expected codes (`expectedCodes`)** -- for HTTP(S), the response code or range (`200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body.
 
-**Port** -- Required for `tcp`, `udp_icmp`, and `smtp` monitors; optional for HTTP(S) where it defaults to 80/443. Set it to a non-standard port only when origins listen elsewhere.
+**Timing and thresholds** -- `interval`, `timeout`, `retries`, `consecutiveUp`, and `consecutiveDown` trade failover speed for stability; effective detection time is roughly interval × consecutive-down. Zero means "Cloudflare's default" (60s / 5s / 2): the module omits zeroed fields so the server default applies. After an import, the API reports those defaults as numbers, so a post-import plan may show a diff on `port` or the `consecutive*` fields even though nothing operationally changed.
 
-**Timing and thresholds** -- `interval`, `timeout`, `retries`, `consecutiveUp`, and `consecutiveDown` trade failover speed for stability. Leaving any at 0 uses Cloudflare's defaults (60s / 5s / 2). Effective detection time is roughly interval × consecutive-down.
+**Deletion order matters** -- pools reference monitors, not the other way around. Deleting a monitor a pool still names will fail or leave the pool unmonitored, at which point its origins look permanently healthy. Delete pools first, or clear the pool's `monitor` field, then the monitor.
 
 ## Outputs and Dependencies
 
@@ -84,16 +83,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `monitor_id` | The Cloudflare-assigned identifier of the monitor | Referenced by a CloudflareLoadBalancerPool's `monitor` field |
-| `monitor_type` | The health-check protocol (echoed for convenience) | Verification, dashboards |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**HTTPS web health check** -- an HTTPS monitor probing `/healthz` for a `2xx` response, with a `Host` header for virtual-hosted origins. Use for web/API pools where application-level health matters. Start from the **HTTPS web health check** preset.
 
-**HTTPS web health check** -- An HTTPS monitor probing `/healthz` for a `2xx` response, with a `Host` header for virtual-hosted origins. Use for web/API pools where application-level health matters. Start from the **HTTPS web** preset.
+**TCP port check** -- a TCP monitor that confirms a port accepts connections, for non-HTTP origins such as databases or message brokers. Use when only connection-level health is needed. Start from the **TCP port health check** preset.
 
-**TCP port check** -- A TCP monitor that confirms a port accepts connections, for non-HTTP origins such as databases or message brokers. Use when only connection-level health is needed. Start from the **TCP port** preset.
+**One monitor, many pools** -- because monitors are account-scoped and reusable, define one health check per service contract (e.g. "web tier answers `/healthz` with 2xx") and point every regional pool at it, so a probe change rolls out everywhere at once.
 
 ## Works With
 
-- [**Load Balancer Pool on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-pool) -- references this monitor (via `monitor`) to health-check its origins
+- [**Cloudflare Load Balancer Pool**](/cloud-catalog/cloudflare-load-balancer-pool) -- references this monitor (via `monitor`) to health-check its origins
+- [**Cloudflare Load Balancer**](/cloud-catalog/cloudflare-load-balancer) -- steers traffic across the pools this monitor keeps honest

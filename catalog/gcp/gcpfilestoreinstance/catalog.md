@@ -1,6 +1,6 @@
 # GCP Filestore Instance
 
-Deploys a fully managed NFS file server on Google Cloud Filestore with configurable tiers (BASIC_SSD through ENTERPRISE), VPC network connectivity, CMEK encryption, NFS export controls, and IOPS performance tuning. Each instance provides a single file share mountable via NFSv3 or NFSv4.1. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
+Deploys a fully managed NFS file server on Google Cloud Filestore with configurable tiers (BASIC_SSD through ENTERPRISE), VPC network connectivity, CMEK encryption, NFS export controls, and IOPS performance tuning. Each instance provides a single file share mountable via NFSv3 or NFSv4.1, and can be seeded from a backup or paired with a peer instance for cross-instance replication at create time.
 
 ## What Gets Created
 
@@ -12,6 +12,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **NFS Export Options** -- created only when export options are provided; control client access by IP range, read/write mode, and root squash settings
 - **Performance Configuration** -- created only when `performanceConfig` is set; configures fixed IOPS or per-TB IOPS scaling (ZONAL, REGIONAL, ENTERPRISE tiers only)
 - **CMEK Encryption** -- applied only when `kmsKeyName` is provided; encrypts data at rest with a customer-managed Cloud KMS key
+- **Filestore API enablement** -- `file.googleapis.com` enabled in the target project (never disabled on destroy)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -24,9 +25,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the Filestore instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **A VPC network** for the instance to connect to. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef. The network configuration is immutable after creation.
-- **Cloud Filestore API** (`file.googleapis.com`) enabled in the target project.
-- **Private Services Access** (if using PRIVATE_SERVICE_ACCESS connect mode) -- the VPC must have a private services connection configured.
+- **A VPC network** for the instance to connect to. Provide the network NAME directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef — the Filestore API rejects self-link URLs for same-project networks. The network configuration is immutable after creation.
+- **Private Services Access** (only for PRIVATE_SERVICE_ACCESS connect mode) -- the VPC must have a private services connection configured.
 
 ## Deploy
 
@@ -63,7 +63,7 @@ spec:
 planton apply -f filestore.yaml
 ```
 
-This creates a BASIC_SSD Filestore instance with a 2.5 TiB file share named `data`, connected to the specified VPC via DIRECT_PEERING. No CMEK, deletion protection, or performance tuning is configured.
+This creates a BASIC_SSD Filestore instance with a 2.5 TiB file share named `data`, connected to the specified VPC via DIRECT_PEERING. No CMEK, deletion protection, or performance tuning is configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -133,9 +133,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `instance_name` | Short name of the Filestore instance | Application configuration |
 | `ip_addresses` | IP addresses assigned on the connected VPC network | NFS mount commands (`mount <ip>:/<share> /mnt`) |
 | `file_share_name` | Name of the file share (NFS export path) | NFS mount path construction |
-| `create_time` | Instance creation timestamp (RFC3339) | Audit, lifecycle tracking |
-| `reserved_ip_range` | The CIDR range in use (set or auto-selected) | Planning non-overlapping address space |
-| `etag` | Server-computed checksum of the instance state | Optimistic-concurrency API calls |
+| `reserved_ip_range` | The /29 CIDR range in use (set or auto-selected by GCP) | Planning non-overlapping address space for the next instance |
 
 ## Common Patterns
 
@@ -150,5 +148,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the instance is created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for instance connectivity
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for instance connectivity
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the encryption key for customer-managed encryption at rest

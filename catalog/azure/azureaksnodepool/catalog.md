@@ -1,6 +1,6 @@
 # Azure AKS Node Pool
 
-Adds a standalone node pool to an existing Azure Kubernetes Service (AKS) cluster. The pool is deliberately separate from the cluster Cloud Resource so application capacity can scale, price (Spot), upgrade, and taint independently of the control plane and its built-in system pool. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent cluster (and optional subnets / public IP prefixes).
+Adds a standalone node pool to an existing Azure Kubernetes Service (AKS) cluster. The pool is deliberately separate from the cluster Cloud Resource so application capacity can scale, price (Spot), upgrade, and taint independently of the control plane and its built-in system pool. Each pool is the unit of compute shape — general, memory-optimized, GPU, Spot, or Windows — with a fully independent lifecycle: scale, upgrade, rotate, or delete a pool without touching the cluster or its sibling pools.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure AKS Node Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the eight pool configuration steps. Start from the **On-Demand General Purpose** preset in the [Presets](#presets) tab for a production-ready user pool, or **Spot Cost-Optimized** for fault-tolerant batch capacity.
+Open the deployment store, find **Azure AKS Node Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the pool configuration steps. Start from the **On-Demand General Purpose Node Pool** preset in the [Presets](#presets) tab for a production-ready user pool, or **Spot Cost-Optimized Node Pool** for fault-tolerant batch capacity.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksNodePool
 metadata:
   name: prod-apps-pool
@@ -126,10 +126,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `node_pool_name` | Name of the pool (matches `spec.name`) | kubectl / scripting (`agentpool` label) |
 | `node_image_version` | The node image version currently running | Upgrade auditing |
 
-## Presets
+## Common Patterns
 
-Ready-to-deploy configurations for common patterns. See the [Presets](#presets) tab for the full list, or start from:
+**On-demand application capacity** -- a User pool of general-purpose VMs, autoscaled across three zones. The production default: guaranteed capacity, zone-resilient, and the autoscaler owns the count. Start from the **On-Demand General Purpose Node Pool** preset.
 
-- **On-Demand General Purpose** -- User pool, D4s_v5, autoscaled 2–10 across three zones
-- **Spot Cost-Optimized** -- Spot priority for fault-tolerant batch / CI capacity
-- **GPU or Windows** -- GPU-tainted or Windows Server pool shapes
+**Spot batch and CI capacity** -- `priority: SPOT` with `minCount: 0` trades evictability for a 30-90% discount. Right for fault-tolerant, stateless, or queue-driven work only: workloads need the toleration for Azure's Spot taint, and eviction can take nodes at any time. Start from the **Spot Cost-Optimized Node Pool** preset.
+
+**Special-hardware pool reserved by taint** -- a GPU (or Windows) pool with a purpose label and a `NoSchedule` taint, so expensive nodes never fill with ordinary pods. Pods opt in with a toleration plus nodeSelector. Start from the **GPU Node Pool Reserved by Taint** preset; the same label-plus-taint pattern applies to Windows pools.
+
+**Canary node upgrades pool by pool** -- pools may lag the control plane by up to two minor versions via `orchestratorVersion`. Upgrade one pool, soak, then roll the rest — the seam AKS gives you for de-risking node upgrades without a second cluster.
+
+## Works With
+
+- [**Azure AKS Cluster**](/cloud-catalog/azure-aks-cluster) -- the parent cluster this pool attaches to by ARM ID; the pool inherits its region and resource group
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- optional dedicated node subnet (`vnetSubnetId`) or pod subnet (`podSubnetId`) for segmenting pools on Azure CNI
+- [**Azure Public IP Prefix**](/cloud-catalog/azure-public-ip-prefix) -- allocates node public IPs from one allowlistable CIDR when `nodePublicIpEnabled` is set
