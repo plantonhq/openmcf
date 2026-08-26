@@ -22,14 +22,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Cloud SQL Database**, and click **Create**. The wizard walks two decisions: which instance hosts the database, then the database's name and collation. The [Presets](#presets) tab offers **PostgreSQL App Database** and **MySQL utf8mb4 Database** starting points.
+Open the deployment store, find **GCP Cloud SQL Database**, and click **Deploy**. The creation wizard walks two decisions: which instance hosts the database, then the database's name and collation. Start from the **PostgreSQL Application Database** or **MySQL Database (utf8mb4)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlDatabase
 metadata:
   name: orders
@@ -52,13 +52,35 @@ spec:
 planton apply -f database.yaml
 ```
 
+This creates a UTF8 `orders` database on the referenced instance, ready for a GcpCloudSqlUser to connect to. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the hosting instance by reference so the pipeline orders the graph:
+
+```yaml
+spec:
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: orders-db-prod
+      fieldPath: status.outputs.instance_name
+  databaseName: orders
+```
+
+The InfraPipeline deploys the Cloud SQL instance first, then creates the database on it.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a Cloud SQL database. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Instance** -- Immutable. A database never moves between instances; relocating data is an export/import. Reference the GcpCloudSql resource rather than typing the name.
 
 **Database name** -- Immutable, max 128 characters. It is what applications put in their connection strings — name by the owning application.
 
 **Charset and collation** -- Engine-interpreted: MySQL accepts any supported pair (`utf8mb4` + `utf8mb4_0900_ai_ci` is the modern default); PostgreSQL wants `UTF8` with an OS locale collation (`en_US.UTF8`); SQL Server ignores charset and uses its own collation names. Empty keeps the engine default.
+
+**Deletion policy** -- `DELETE` (the default) drops the database on destroy; `PREVENT` fails any plan that would drop it. `ABANDON` removes it from IaC management while leaving it in the instance — the documented answer for PostgreSQL databases that cannot be dropped while clients hold connections.
 
 ## Outputs and Dependencies
 
@@ -71,10 +93,22 @@ planton apply -f database.yaml
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `database_name` | The created database's name | Application connection strings, service configuration |
 | `self_link` | GCP resource self link | Audit log filters |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**One database per application** -- the composition this kind exists for: a shared production instance hosts `orders`, `billing`, and `analytics` as separate resources, each owned, reviewed, and torn down with its application — never with the instance. Start from the **PostgreSQL Application Database** preset.
+
+**MySQL with modern Unicode** -- MySQL's legacy `utf8` charset is three-byte and silently rejects emoji and supplementary characters; declare `utf8mb4` + `utf8mb4_0900_ai_ci` explicitly at creation, because converting a populated database later means rewriting every table. Start from the **MySQL Database (utf8mb4)** preset.
+
+**Instance-plus-satellites chart** -- one GcpCloudSql node with a database and a user node per application, all wired by ValueFromRef; adding the next application to the environment is two small manifests, not an instance change.
 
 ## Works With
 

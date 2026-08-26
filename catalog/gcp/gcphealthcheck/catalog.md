@@ -1,6 +1,6 @@
-# Health Check on Google Cloud
+# GCP Health Check
 
-Deploys a Compute Engine health check — the probe that decides which backends receive load-balancer traffic and which managed-instance-group VMs get auto-healed. One kind covers both scopes: leave `region` empty for a GLOBAL check (global backend services and external Application Load Balancers) or set it for a REGIONAL one (regional backend services and MIG auto-healing). The probe protocol is an exclusive choice — HTTP, HTTPS, HTTP/2, TCP, SSL, gRPC, or gRPC with TLS — each with its own knobs. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Compute Engine health check — the probe that decides which backends receive load-balancer traffic and which managed-instance-group VMs get auto-healed. One kind covers both scopes: leave `region` empty for a GLOBAL check (global backend services and external Application Load Balancers) or set it for a REGIONAL one (regional backend services and MIG auto-healing). The probe protocol is an exclusive choice — HTTP, HTTPS, HTTP/2, TCP, SSL, gRPC, or gRPC with TLS — each with its own knobs, and the probe configuration stays mutable in place: retuning the check is its normal day-2 life.
 
 ## What Gets Created
 
@@ -8,6 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Compute Engine Health Check** -- global or regional, probing with the selected protocol at the configured cadence
 - **Probe configuration** -- the request path / banner exchange / gRPC service name, the port choice (fixed, named, or serving port), timing dials, and optional health-transition logging
+- **Compute Engine API enablement** -- `compute.googleapis.com` enabled in the target project (never disabled on destroy)
 
 ## Before You Deploy
 
@@ -19,14 +20,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the check will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
 - **A firewall rule for instance-group backends** -- probes originate from Google's ranges `35.191.0.0/16` and `130.211.0.0/22`; without an allow rule every probe fails and the whole service drains. Serverless NEG backends need no firewall work.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Health Check on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTP Serving Port** preset in the [Presets](#presets) tab to pre-populate the workhorse probe.
+Open the deployment store, find **GCP Health Check**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTP Probe on the Serving Port** preset in the [Presets](#presets) tab to pre-populate the workhorse probe.
 
 ### CLI
 
@@ -52,7 +52,7 @@ spec:
 planton apply -f health-check.yaml
 ```
 
-This creates the workhorse probe: an HTTP GET of `/healthz` against whatever port each backend actually serves on — the right default for serverless NEGs and most instance groups.
+This creates the workhorse probe: an HTTP GET of `/healthz` against whatever port each backend actually serves on — the right default for serverless NEGs and most instance groups. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -106,11 +106,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**HTTP serving port** -- The workhorse: GET a dedicated health endpoint on whatever port each backend serves. Start from the **HTTP Serving Port** preset.
+**HTTP serving port** -- The workhorse: GET a dedicated health endpoint on whatever port each backend serves. Start from the **HTTP Probe on the Serving Port** preset.
 
-**Regional TCP** -- The cheapest liveness signal for a regional backend service fronting a TCP tier (databases, brokers). Start from the **Regional TCP** preset.
+**Regional TCP** -- The cheapest liveness signal for a regional backend service fronting a TCP tier (databases, brokers). Start from the **Regional TCP Probe** preset.
 
-**gRPC service** -- Probe one service's health on a multi-service gRPC server via the standard health protocol. Start from the **gRPC Service** preset.
+**gRPC service** -- Probe one service's health on a multi-service gRPC server via the standard health protocol. Start from the **gRPC Health Service Probe** preset.
 
 ## Works With
 

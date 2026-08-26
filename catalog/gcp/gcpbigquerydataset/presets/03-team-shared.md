@@ -1,4 +1,4 @@
-# Preset: Team-Shared Dataset
+# Team-Shared Dataset
 
 ## When to Use
 

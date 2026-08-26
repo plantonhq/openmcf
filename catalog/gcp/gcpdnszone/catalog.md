@@ -1,11 +1,12 @@
-# DNS Zone on Google Cloud
+# GCP DNS Zone
 
-Deploys a Cloud DNS managed zone — the authoritative container for one domain. Public zones answer the internet once the domain is delegated to the assigned nameservers; private zones answer only inside the VPC networks and GKE clusters you attach, and can alternatively forward queries to upstream resolvers or peer with another VPC's Cloud DNS. The zone owns the shell only: DNS records are separate GcpDnsRecord Cloud Resources referencing this zone by name. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPC networks, and GKE clusters.
+Deploys a Cloud DNS managed zone — the authoritative container for one domain. Public zones answer the internet once the domain is delegated to the assigned nameservers; private zones answer only inside the VPC networks and GKE clusters you attach, and can alternatively forward queries to upstream resolvers or peer with another VPC's Cloud DNS. The zone owns the shell only: DNS records are separate GcpDnsRecord Cloud Resources referencing this zone by name, so records deploy, change, and destroy independently of the zone.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Cloud DNS API enablement** -- `dns.googleapis.com` is enabled in the target project (never disabled on destroy, so tearing down one zone cannot break the rest of the project)
 - **Cloud DNS Managed Zone** -- public (internet-facing) or private (VPC-scoped), for the domain in `dnsName` (trailing dot required; when omitted, derived from the resource metadata name plus a dot)
 - **Private visibility bindings** -- created only for private zones with `privateVisibilityConfig`; attaches the zone to the listed VPC networks and GKE clusters
 - **Forwarding configuration** -- created only when `forwardingConfig` lists target name servers; queries for the domain forward to those upstream resolvers (hybrid/on-prem DNS)
@@ -23,16 +24,15 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the managed zone will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Cloud DNS API** (`dns.googleapis.com`) enabled in the target project.
-- **Domain registrar access** (public zones) to update nameserver (NS) records for the domain after zone creation.
-- **VPC networks or GKE clusters** (private zones) that the zone will be visible to — reference GcpVpcNetwork / GcpGkeCluster resources or supply their URLs.
+- **A GCP project** where the managed zone will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef; the module enables the Cloud DNS API itself.
+- **Domain registrar access** (only for public zones) to update nameserver (NS) records for the domain after zone creation.
+- **VPC networks or GKE clusters** (only for private zones) that the zone will be visible to — reference GcpVpcNetwork / GcpGkeCluster resources or supply their URLs.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **DNS Zone on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the visibility choice forks the flow into private resolution (private zones) or DNSSEC (public zones). Start from the **Public Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the visibility choice forks the flow into private resolution (private zones) or DNSSEC (public zones). Start from the **Public DNS Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -56,7 +56,7 @@ spec:
 planton apply -f dns-zone.yaml
 ```
 
-This creates a public managed zone for `example.com.`. After provisioning, update your domain registrar's NS records with the nameservers from the outputs.
+This creates a public managed zone for `example.com.` with GCP-assigned nameservers and no DNSSEC; update your domain registrar's NS records with the nameservers from the outputs to delegate the domain. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -94,7 +94,7 @@ These are the most important decisions when configuring a DNS zone. Explore the 
 
 **DNSSEC** -- Public zones only. Turning signing `on` is half the chain: publish the DS record at the registrar to activate validation, and never delete a signed zone without removing the DS record first. Key specs are optional — omitted, Cloud DNS generates modern defaults.
 
-**Force destroy** -- Unset, a zone destroy fails while record sets exist (the safety net). Armed, destroying the zone deletes every record set in it first — sane for ephemeral zones, dangerous for shared production domains.
+**Destroy levers** -- Unset, `forceDestroy` leaves the safety net in place: a zone destroy fails while non-default record sets exist. Armed, destroying the zone deletes every record set in it first — sane for ephemeral zones, dangerous for shared production domains. `deletionPolicy` decides the zone shell itself: `PREVENT` protects a zone that registrars and parent zones delegate to; `ABANDON` removes it from management while it keeps serving DNS.
 
 ## Outputs and Dependencies
 
@@ -102,10 +102,10 @@ These are the most important decisions when configuring a DNS zone. Explore the 
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **GcpProject** | `projectId` | `status.outputs.project_id` |
-| **GcpVpcNetwork** | `privateVisibilityConfig.networks[].networkUrl` | `status.outputs.network_self_link` |
-| **GcpGkeCluster** | `privateVisibilityConfig.gkeClusters[].gkeClusterName` | `status.outputs.cluster_id` |
-| **GcpVpcNetwork** | `peeringConfig.targetNetwork` | `status.outputs.network_self_link` |
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
+| **GcpVpcNetwork** (private zones) | `privateVisibilityConfig.networks[].networkUrl` | `status.outputs.network_self_link` |
+| **GcpGkeCluster** (private zones) | `privateVisibilityConfig.gkeClusters[].gkeClusterName` | `status.outputs.cluster_id` |
+| **GcpVpcNetwork** (peering zones) | `peeringConfig.targetNetwork` | `status.outputs.network_self_link` |
 
 ### What This Component Provides
 
@@ -121,7 +121,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public zone with composed records** -- The zone owns the shell; each record is a standalone GcpDnsRecord referencing `zone_name`, so records deploy, change, and destroy independently. Start from the **Public Zone** preset.
+**Public zone with composed records** -- The zone owns the shell; each record is a standalone GcpDnsRecord referencing `zone_name`, so records deploy, change, and destroy independently. Start from the **Public DNS Zone** preset.
 
 **Certificate validation chain** -- A GcpCertManagerDnsAuthorization exports a CNAME triple; a GcpDnsRecord serves it in this zone; the GcpCertManagerCert validates automatically — TLS issuance before any load balancer exists.
 
@@ -132,4 +132,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the managed zone is created
 - [**GCP DNS Record**](/cloud-catalog/gcp-dns-record) -- the record sets served from this zone, referencing its `zone_name` output
 - [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- visibility targets for private zones and peering producers
+- [**GCP GKE Cluster**](/cloud-catalog/gcp-gke-cluster) -- narrows a private zone's visibility to a single cluster
 - [**GCP Cert Manager DNS Authorization**](/cloud-catalog/gcp-cert-manager-dns-authorization) -- exports the validation record a GcpDnsRecord serves in this zone

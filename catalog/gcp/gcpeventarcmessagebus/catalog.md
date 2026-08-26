@@ -23,13 +23,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **A GCP project** to host the family (directly or via a GcpProject reference).
 - **IAM**: the deploying identity needs `roles/eventarc.admin`.
-- **Region**: Eventarc Advanced serves a [subset of regions](https://cloud.google.com/eventarc/docs/locations) — the API rejects unsupported ones at create time.
+- **Region**: Eventarc Advanced serves a subset of regions — the API rejects unsupported ones at create time.
+- **CMEK grant** (only for `cryptoKey`) — the key must be in the same region as the bus, and the Eventarc service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on it before creating.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Eventarc Message Bus**, and click **Deploy**. Start from the **Bus with Topic Pipeline** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Eventarc Message Bus**, and click **Deploy**. The creation wizard walks you through project and location, the bus itself, then its satellites: Google API sources, pipelines with their destinations and auth, and the enrollments that bind them. Start from the **Bus with Topic Pipeline** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -49,7 +50,7 @@ spec:
     - pipelineId: deliver-to-topic
       destination:
         topic:
-          value: projects/my-project/topics/downstream
+          value: projects/acme-prod/topics/downstream
   enrollments:
     - enrollmentId: route-everything
       celMatch: "true"
@@ -60,11 +61,34 @@ spec:
 planton apply -f message-bus.yaml
 ```
 
+This creates the bus, one pipeline publishing to a Pub/Sub topic, and one enrollment routing every bus message to it. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-The central eventing hub in one chart: this bus with an audit-log API source, a GcpPubSubTopic destination for the analytics stream, and a GcpWorkflow destination for the remediation stream — one hub, two consumers.
+When the pipeline's destination is a topic deployed in the same InfraPipeline, wire it with ValueFromRef:
+
+```yaml
+spec:
+  location: us-central1
+  pipelines:
+    - pipelineId: deliver-to-topic
+      destination:
+        topic:
+          valueFrom:
+            kind: GcpPubSubTopic
+            name: downstream-topic
+            fieldPath: status.outputs.topic_id
+  enrollments:
+    - enrollmentId: route-everything
+      celMatch: "true"
+      pipeline: deliver-to-topic
+```
+
+The InfraPipeline deploys the topic first, then provisions the bus family with the resolved topic name.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a message bus. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **googleApiSources** -- publish Google-service events into the bus. Each source is AUTO-WIRED to this kind's own bus — a source feeding another bus belongs to that bus's manifest.
 
@@ -72,7 +96,9 @@ The central eventing hub in one chart: this bus with an audit-log API source, a 
 
 **pipelines** -- one destination each (API truth): an HTTPS endpoint via a VPC network attachment, a Pub/Sub topic, a Workflow, or another bus. Per-pipeline `authentication` (OIDC for Cloud Run/IAP, OAuth for Google APIs), avro/json/protobuf payload conversion, a single CEL `mediationTransformationTemplate`, and 1–100 attempt retries with 1–600s backoff.
 
-**logSeverity** -- platform-log verbosity per resource. `INFO` while onboarding sources and pipelines, then scale back.
+**logSeverity** -- platform-log verbosity per resource. Empty means the API default (NONE — no platform logs at all): run `INFO` while onboarding sources and pipelines, then scale back.
+
+**deletionPolicy** -- one lever applied to the bus and every satellite. The default (`DELETE`) removes everything on destroy, losing undelivered messages; `PREVENT` makes destroy fail — the posture for a production hub; `ABANDON` unmanages the resources but leaves them running in GCP.
 
 ## Outputs and Dependencies
 
@@ -87,6 +113,8 @@ The central eventing hub in one chart: this bus with an audit-log API source, a 
 | **GcpKmsKey** (optional) | `cryptoKey` (bus/source/pipeline) | `status.outputs.key_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

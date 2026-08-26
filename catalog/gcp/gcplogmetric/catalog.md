@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Log Metric**, and click **Deploy**. Start from the **Error Counter** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Log Metric**, and click **Deploy**. The creation wizard walks you through the target project, the filter, the metric descriptor, and the extraction and histogram settings. Start from the **Error Counter** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -50,15 +50,29 @@ spec:
 planton apply -f log-metric.yaml
 ```
 
-The metric then charts (and alerts) as `logging.googleapis.com/user/checkout-errors`.
+The metric then charts (and alerts) as `logging.googleapis.com/user/checkout-errors`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-The logs-to-pages path in one chart: this metric plus a GcpMonitoringAlertPolicy whose threshold condition filters on `metric.type="logging.googleapis.com/user/checkout-errors"` — deploy both together and log spikes page on-call.
+When scoping the metric to a log bucket deployed in the same InfraPipeline, wire the reference with ValueFromRef:
+
+```yaml
+spec:
+  filter: severity>=ERROR
+  bucketName:
+    valueFrom:
+      kind: GcpLogBucket
+      name: audit-logs
+      fieldPath: status.outputs.bucket_name
+```
+
+The InfraPipeline deploys the bucket first, then the metric against it. The same chart typically carries a GcpMonitoringAlertPolicy whose threshold condition filters on `logging.googleapis.com/user/{metric}` — deploy both together and log spikes page on-call.
 
 ## Key Configuration
 
-**filter** -- the [logging query](https://cloud.google.com/logging/docs/view/logging-query-language) selecting the entries that feed the metric. Scope it tightly (resource type + service) — an over-broad filter counts the whole project.
+These are the most important decisions when configuring a log-based metric. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**filter** -- the Cloud Logging query selecting the entries that feed the metric. Scope it tightly (resource type + service) — an over-broad filter counts the whole project.
 
 **metricDescriptor** -- the metric's shape: `DELTA`/`INT64` for counters (the workhorse), `DISTRIBUTION` for extracted-value histograms. Declare `labels` for every key `labelExtractors` populates. Label keys and value types REPLACE the metric on change — the schema is append-only in the API.
 
@@ -78,6 +92,8 @@ The logs-to-pages path in one chart: this metric plus a GcpMonitoringAlertPolicy
 | **GcpLogBucket** (optional) | `bucketName` | `status.outputs.bucket_name` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

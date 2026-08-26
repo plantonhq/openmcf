@@ -1,4 +1,4 @@
-# Preset: Basic IP Allowlist
+# Basic IP Allowlist
 
 ## Use Case
 

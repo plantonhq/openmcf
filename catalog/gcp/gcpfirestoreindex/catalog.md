@@ -9,6 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Firestore Composite Index** -- an index on the specified collection (or collection group) with the declared fields in order; Firestore builds it in the background and appends `__name__` automatically
 - **Vector Index** -- created when a field carries `vectorConfig`; enables `find_nearest` queries against embeddings of the declared dimension (flat index type)
 - **Search Index** -- created when a field carries `searchConfig` (text and/or geo); the Firestore Enterprise search surface, requiring an ENTERPRISE-edition database
+- **Firestore API enablement** -- `firestore.googleapis.com` enabled in the target project (never disabled on destroy)
 
 Single-field indexes are built by Firestore automatically and never need this resource. Every index property is immutable at the API — changing the definition replaces the index with a background rebuild, and the old index keeps serving queries until the new one is ready (create-before-destroy).
 
@@ -22,20 +23,19 @@ Single-field indexes are built by Firestore automatically and never need this re
 ### GCP Project
 
 - **A Firestore database** in the target project. Leave `database` empty to target the project's `"(default)"` database, or reference a `GcpFirestoreDatabase` Cloud Resource via ValueFromRef.
-- **Firestore API** (`firestore.googleapis.com`) enabled in the target project.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Firestore Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Composite Filter Sort** preset in the [Presets](#presets) tab for the classic equality-filter-plus-sort query shape.
+Open the deployment store, find **GCP Firestore Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Composite Filter-and-Sort Index** preset in the [Presets](#presets) tab for the classic equality-filter-plus-sort query shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpFirestoreIndex
 metadata:
   name: orders-by-customer
@@ -103,16 +103,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `index_id` | Full index resource name (`projects/{project}/databases/{database}/collectionGroups/{collection}/indexes/{id}`) | Audit, correlation |
-| `collection` | The collection (group) ID the index serves | Application configuration |
+| `index_id` | Full index resource name (`projects/{project}/databases/{database}/collectionGroups/{collection}/indexes/{id}`) | Firestore Admin API calls addressing the index |
+| `collection` | The collection (group) ID the index serves | Confirms the target without dereferencing the spec |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Composite Filter Sort** -- The classic multi-field index: equality filter on one field, sort on another (`WHERE customerId == X ORDER BY createdAt DESC`). The most common index shape for list views. Start from the **Composite Filter Sort** preset.
+**Composite Filter Sort** -- The classic multi-field index: equality filter on one field, sort on another (`WHERE customerId == X ORDER BY createdAt DESC`). The most common index shape for list views. Start from the **Composite Filter-and-Sort Index** preset.
 
-**Vector Neighbors** -- A filter field plus a vector field last, enabling filtered nearest-neighbor queries over embeddings — the Firestore-native RAG/semantic-search building block. Start from the **Vector Neighbors** preset.
+**Vector Neighbors** -- A filter field plus a vector field last, enabling filtered nearest-neighbor queries over embeddings — the Firestore-native RAG/semantic-search building block. Start from the **Vector Nearest-Neighbor Index** preset.
 
 ## Works With
 

@@ -1,12 +1,13 @@
-# URL Map on Google Cloud
+# GCP URL Map
 
-Deploys a global Compute Engine URL map — the L7 routing brain of a global external Application Load Balancer. The URL map matches each request's Host and path and decides what happens: send it to a backend service or backend bucket, split it across weighted backends (canary/blue-green), redirect, or rewrite. Target proxies bind this map's self link; the forwarding rule and its IP sit in front of the proxy. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, backend services, and backend buckets.
+Deploys a global Compute Engine URL map — the L7 routing brain of a global external Application Load Balancer. The URL map matches each request's Host and path and decides what happens: send it to a backend service or backend bucket, split it across weighted backends (canary/blue-green), redirect, or rewrite. Target proxies bind this map's self link; the forwarding rule and its IP sit in front of the proxy.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Compute Engine URL Map (global)** -- host rules, path matchers with path or route rules, default targets at every level, header policies, custom error pages, routing self-tests, and per-route traffic management (timeouts, retries, mirroring, CORS, fault injection, route-scoped CDN caching)
+- **Compute Engine API enablement** -- `compute.googleapis.com` is enabled in the target project; tearing down the URL map never disables the API
 
 ## Before You Deploy
 
@@ -17,22 +18,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the URL map will be created.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the URL map will be created. The module enables the Compute Engine API itself, so the connection's principal needs permission to enable services on a fresh project.
 - **At least one backend** (GcpBackendService or GcpBackendBucket) — the default target is required, and it is the natural creation order: backends first, then the routing that references them.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **URL Map on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Host Path Fanout** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP URL Map**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Host and Path Fan-Out** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpUrlMap
 metadata:
   name: prod-web-map
@@ -60,7 +60,7 @@ spec:
 planton apply -f url-map.yaml
 ```
 
-This creates the classic fan-out: dynamic traffic to a backend service, /assets/* to a CDN-backed bucket.
+This creates the classic fan-out: dynamic traffic to a backend service, /assets/* to a CDN-backed bucket. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -118,11 +118,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Host + path fan-out** -- One domain, paths split across API and static backends. Start from the **Host Path Fanout** preset.
+**Host + path fan-out** -- One domain, paths split across API and static backends. Start from the **Host and Path Fan-Out** preset.
 
-**Weighted canary** -- A 90/10 split walked up as confidence grows; weight 0 drains a backend. Start from the **Weighted Canary** preset.
+**Weighted canary** -- A 90/10 split walked up as confidence grows; weight 0 drains a backend. Start from the **Weighted Canary Split** preset.
 
-**Apex redirect** -- The redirect-only map a port-80 HTTP proxy serves (http→https 301). Start from the **Apex Redirect** preset.
+**Apex redirect** -- The redirect-only map a port-80 HTTP proxy serves (http→https 301), or the apex-to-www bounce. Start from the **Apex-to-WWW HTTPS Redirect** preset.
+
+**Traffic-managed canary** -- A weighted split hardened with bounded timeouts, deliberate retries, load-balancer CORS, and an attribution response header. Start from the **Traffic-Managed Canary** preset.
 
 ## Works With
 

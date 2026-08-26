@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Eventarc Trigger**, and click **Deploy**. Start from the **Pub/Sub to Cloud Run** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Eventarc Trigger**, and click **Deploy**. The creation wizard walks you through project and location, the matching criteria, the destination arm, and the trigger's service-account identity. Start from the **Pub/Sub to Cloud Run** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -50,20 +50,46 @@ spec:
       service:
         value: order-processor
   serviceAccount:
-    value: eventarc-invoker@my-project.iam.gserviceaccount.com
+    value: eventarc-invoker@acme-prod.iam.gserviceaccount.com
 ```
 
 ```shell
 planton apply -f trigger.yaml
 ```
 
+This creates a trigger that delivers every Pub/Sub message published to its Eventarc-minted transport topic to the `order-processor` Cloud Run service in the same region. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-The event-routing backbone in one chart: a GcpPubSubTopic, this trigger consuming it as transport, and the GcpCloudRun destination — publish and the service is invoked.
+When the destination and identity are deployed in the same InfraPipeline, wire them with ValueFromRef:
+
+```yaml
+spec:
+  location: us-central1
+  matchingCriteria:
+    - attribute: type
+      value: google.cloud.pubsub.topic.v1.messagePublished
+  destination:
+    cloudRunService:
+      service:
+        valueFrom:
+          kind: GcpCloudRun
+          name: order-processor
+          fieldPath: status.outputs.service_name
+  serviceAccount:
+    valueFrom:
+      kind: GcpServiceAccount
+      name: eventarc-invoker
+      fieldPath: status.outputs.email
+```
+
+The InfraPipeline deploys the Cloud Run service and service account first, then provisions the trigger against them.
 
 ## Key Configuration
 
-**matchingCriteria** -- ALL criteria must match. Every trigger MUST filter the `type` attribute (the [event catalog](https://cloud.google.com/eventarc/docs/reference/supported-events) lists types and their filterable attributes). `match-path-pattern` is the only non-exact operator (Storage object names, audit-log resourceName).
+These are the most important decisions when configuring a trigger. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**matchingCriteria** -- ALL criteria must match. Every trigger MUST filter the `type` attribute (the CloudEvents type, e.g. `google.cloud.pubsub.topic.v1.messagePublished` or `google.cloud.audit.log.v1.written`); only the attributes the event type declares filterable are accepted. `match-path-pattern` is the only non-exact operator (Storage object names, audit-log resourceName).
 
 **destination** -- exactly one arm: `cloudRunService` (the workhorse), `gke` (needs one-time `gcloud eventarc gke-destinations init` per project), `workflow` (references a GcpWorkflow), or `httpEndpoint` (private endpoints via a VPC network attachment).
 
@@ -71,7 +97,9 @@ The event-routing backbone in one chart: a GcpPubSubTopic, this trigger consumin
 
 **transportPubsubTopic** -- messagePublished triggers only: consume an EXISTING topic instead of letting Eventarc mint one. The topic is never deleted with the trigger.
 
-**partnerChannel** -- receive events from a SaaS partner: the module creates the channel and wires the trigger; hand the `partner_channel_activation_token` output to the partner to complete the handshake.
+**partnerChannel** -- receive events from a SaaS partner: the module creates the channel and wires the trigger; hand the `partner_channel_activation_token` output to the partner to complete the handshake — the channel stays PENDING and delivers nothing until then. The channel name is immutable: changing it replaces the channel and mints a NEW token, redoing the handshake.
+
+**googleChannelCryptoKey** -- CMEK for the shared Google channel ALL non-partner triggers in this project+location deliver through. The module manages the per-project-per-location singleton: set this from AT MOST ONE trigger per project+location — a second manager fights over the same singleton.
 
 ## Outputs and Dependencies
 
@@ -88,6 +116,8 @@ The event-routing backbone in one chart: a GcpPubSubTopic, this trigger consumin
 | **GcpKmsKey** (optional) | `partnerChannel.cryptoKey`, `googleChannelCryptoKey` | `status.outputs.key_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

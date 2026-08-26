@@ -1,42 +1,40 @@
 # GCP Cloud Composer User Workloads Secret
 
-Deploys a Kubernetes Secret inside a Cloud Composer environment's GKE cluster, managed as a first-class resource: DAGs read credentials from it at runtime, and rotation flows through the same declarative review process as everything else — no `kubectl` against the environment's cluster and no plaintext in any manifest. Secret values are org-secret references resolved just-in-time at deploy by the runner. The component integrates with Planton's Provider Connections for GCP credential management and composes against the parent environment via ValueFromRef.
+Deploys a Kubernetes Secret inside a Cloud Composer environment's GKE cluster, managed as a first-class resource: DAGs read credentials from it at runtime, and rotation flows through the same declarative review process as everything else — no `kubectl` against the environment's cluster and no ad-hoc mutation of the environment. Values are base64-encoded at the source (Kubernetes Secret semantics), marked sensitive in IaC state, and deliberately never exported in stack outputs.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **User Workloads Secret** -- a Kubernetes Secret in the Composer environment's user-workloads namespace, holding the configured entries (base64-encoded values)
-- **Environment Attachment** -- the Secret is created through the Cloud Composer API against the referenced environment, so its lifecycle follows the environment's
+- **User Workloads Secret** — a Kubernetes Secret in the Composer environment's user-workloads namespace, created through the Cloud Composer API against the referenced environment. It holds the configured base64-encoded entries; KubernetesPodOperator tasks and Airflow connections consume it by name, and its lifecycle follows the environment's.
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project.
-- **Org Secrets** -- each data value references an org secret in the Config Manager holding the BASE64-ENCODED value (`echo -n 'value' | base64`). The runner resolves references just-in-time; plaintext never enters the manifest.
-- **Planton Runner** -- required when using Runner-based credential delivery.
+- **GCP Provider Connection** — an active connection in the Connect module with credentials for the target GCP project.
+- **Planton Runner** — required when using Runner-based credential delivery.
 
 ### GCP Project
 
 - **A Cloud Composer environment** (Composer 3, or Composer 2 with user workloads support) in the target project and region — reference a GcpCloudComposerEnvironment Cloud Resource via ValueFromRef.
-- **Cloud Composer API** enabled in the target project.
+- **Cloud Composer API** — already enabled by the environment this Secret is delivered into; the module enables nothing itself.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Cloud Composer User Workloads Secret**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — secret values go through the reference-only picker. Start from the **Airflow Connection** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Cloud Composer User Workloads Secret**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the environment reference, and the Secret's data entries. Start from the **Airflow Connection** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudComposerUserWorkloadsSecret
 metadata:
-  name: airflow-connections
+  name: orders-db-connection
   org: acme-corp
   env: prod
 spec:
@@ -46,28 +44,45 @@ spec:
       kind: GcpCloudComposerEnvironment
       name: prod-airflow
       fieldPath: status.outputs.environment_name
-  secretName: airflow-connections
+  secretName: orders-db-connection
   data:
-    connection-string: $secret/warehouse-connection-b64
+    # base64 of "postgresql://appuser:example-password@10.20.0.12:5432/orders"
+    connection: cG9zdGdyZXNxbDovL2FwcHVzZXI6ZXhhbXBsZS1wYXNzd29yZEAxMC4yMC4wLjEyOjU0MzIvb3JkZXJz
 ```
 
 ```shell
 planton apply -f secret.yaml
 ```
 
-A Stack Job tracks the provisioning in real time.
+This creates one Kubernetes Secret named `orders-db-connection` in the environment's user-workloads namespace, readable by DAG tasks from that moment on. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the environment reference orders the deploy graph automatically: the InfraPipeline provisions the Composer environment first, then creates the Secret inside it.
+When deploying as part of a multi-resource environment, wire the environment by reference so the deploy graph orders itself:
+
+```yaml
+spec:
+  region: us-central1
+  environment:
+    valueFrom:
+      kind: GcpCloudComposerEnvironment
+      name: prod-airflow
+      fieldPath: status.outputs.environment_name
+```
+
+The InfraPipeline provisions the Composer environment first, then creates the Secret inside it.
 
 ## Key Configuration
 
-**The attachment pair is the identity** -- `environment` + `secretName` locate the object; both are immutable. The name follows Kubernetes object-name rules: lowercase letters, numbers, and hyphens, up to 63 characters.
+These are the most important decisions when configuring a user workloads Secret. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Values are references, base64 at the source** -- every `data` value is a `$secret/<slug>` org-secret reference; the referenced org secret must hold the BASE64-ENCODED value (the Composer API rejects raw strings at deploy). The decoded material is never placed in stack outputs.
+**The attachment pair is the identity** — `environment` + `secretName` locate the object; both are immutable after creation, as are `region` and `projectId`. Changing any of them replaces the Secret. The name follows Kubernetes object-name rules: lowercase letters, numbers, and hyphens, up to 63 characters.
 
-**Rotation is the day-2 lever** -- update the org secret (or point an entry at a new one) and redeploy; the Kubernetes Secret updates in place and new task runs pick it up.
+**Values are base64 at the source** — every `data` value must be the BASE64-ENCODED material (`echo -n 'value' | base64`); the API rejects raw strings at deploy. The entries are held as secrets in IaC state and the decoded material is never placed in stack outputs — but the base64 text does sit in the manifest, so treat the manifest file with the same care as the credential it carries.
+
+**Rotation is the day-2 lever** — `data` updates in place: change an entry and redeploy, and new task runs pick up the rotated value without recreating the Secret or touching the environment.
+
+**`deletionPolicy` decides what a destroy does** — the default `DELETE` removes the Kubernetes Secret from the environment, and DAGs consuming it start failing immediately. Set `PREVENT` on credentials live pipelines depend on so the Secret cannot ride along with a stack teardown, or `ABANDON` to drop it from management while leaving it in the cluster.
 
 ## Outputs and Dependencies
 
@@ -87,16 +102,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `name` | Fully qualified Secret resource name | Composer API handles, audit |
 | `secret_name` | The short Kubernetes object name | The name DAG code mounts and reads |
 
+The Secret's data is deliberately never exported.
+
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Airflow connection** -- a database or warehouse connection URI DAGs read as a mounted secret. Start from the **Airflow Connection** preset.
+**Airflow connection** — a database or warehouse connection URI DAGs read as a mounted secret. Start from the **Airflow Connection** preset.
 
-**API credentials** -- third-party vendor keys tasks read as environment variables. Start from the **API Credentials** preset.
+**API credentials** — third-party vendor keys tasks read as environment variables. Start from the **API Credentials** preset.
 
 ## Works With
 
-- [**GCP Cloud Composer Environment**](/cloud-catalog/gcp-cloud-composer-environment) -- the environment this Secret lives in
-- [**GCP Cloud Composer User Workloads ConfigMap**](/cloud-catalog/gcp-cloud-composer-user-workloads-config-map) -- the plain-text twin for non-sensitive settings
-- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project the environment runs in
+- [**GCP Cloud Composer Environment**](/cloud-catalog/gcp-cloud-composer-environment) — the environment this Secret lives in
+- [**GCP Cloud Composer User Workloads ConfigMap**](/cloud-catalog/gcp-cloud-composer-user-workloads-config-map) — the plain-text twin for non-sensitive settings
+- [**GCP Project**](/cloud-catalog/gcp-project) — provides the GCP project the environment runs in

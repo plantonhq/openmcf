@@ -36,7 +36,7 @@ Open the deployment store, find **GCP Compute Disk**, and click **Deploy**. The 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeDisk
 metadata:
   name: postgres-data
@@ -56,7 +56,7 @@ spec:
 planton apply -f disk.yaml
 ```
 
-This creates an empty 100 GB pd-balanced disk ready to attach to a VM in `us-central1-a`.
+This creates an empty 100 GB pd-balanced disk ready to attach to a VM in `us-central1-a`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -100,7 +100,9 @@ These are the most important decisions when configuring a persistent disk. Explo
 |------------|-------|-------------------|
 | **GcpProject** | `projectId` | `status.outputs.project_id` |
 | **GcpComputeDisk** (optional) | `sourceDisk` (clone) | `status.outputs.self_link` |
+| **GcpComputeDisk** (optional) | `asyncPrimaryDisk` (async replication) | `status.outputs.self_link` |
 | **GcpKmsKey** (optional) | `kmsKey` | `status.outputs.key_id` |
+| **GcpKmsKey** (optional) | `sourceImageEncryption.kmsKey` / `sourceSnapshotEncryption.kmsKey` | `status.outputs.key_id` |
 
 ### What This Component Provides
 
@@ -112,8 +114,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `name` | Name of the disk in GCP | Monitoring, snapshot schedules |
 | `disk_id` | Server-assigned unique numeric identifier | API references, audit logs |
 | `zone` | Zone the disk lives in | Placement checks for consuming VMs |
-| `size_gb` | Provisioned size in GB | Capacity planning |
-| `type` | Disk type (e.g. pd-balanced) | Cost reporting |
 
 ## Common Patterns
 

@@ -1,6 +1,6 @@
-# Storage Bucket on GCP
+# GCP GCS Bucket
 
-Deploys a Google Cloud Storage bucket — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data. The spec covers the full bucket surface: the four placement shapes (region, multi-region, predefined and custom dual-regions with turbo replication), the modern IAM-only access model with additive per-bucket grants, Autoclass and lifecycle management, WORM retention with the irreversible lock, soft delete, CMEK, static website serving, CORS, access logging, network-layer IP filtering, and the bucket's structural companions — folders (real directories on hierarchical-namespace buckets), managed folders (prefix-scoped IAM anchors), and Pub/Sub notification configs (object-change events for event-driven pipelines). Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, KMS keys, service accounts, VPC networks, Pub/Sub topics, and other buckets.
+Deploys a Google Cloud Storage bucket — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data. The spec covers the full bucket surface: the four placement shapes (region, multi-region, predefined and custom dual-regions with turbo replication), the modern IAM-only access model with additive per-bucket grants, Autoclass and lifecycle management, WORM retention with the irreversible lock, soft delete, CMEK, static website serving, CORS, access logging, network-layer IP filtering, and the bucket's structural companions — folders (real directories on hierarchical-namespace buckets), managed folders (prefix-scoped IAM anchors), and Pub/Sub notification configs (object-change events for event-driven pipelines). Placement, hierarchical namespace, and object retention are create-time decisions — changing them replaces the bucket and its data.
 
 ## What Gets Created
 
@@ -12,6 +12,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Folders** -- created only when `folders` are provided (hierarchical-namespace buckets); real directories created parents-first, each with its own force-destroy posture
 - **Managed Folders** -- created only when `managedFolders` are provided; prefix-scoped IAM anchor points for grants like "read `reports/` only"
 - **Notification Configs** -- created only when `notifications` are provided; object-change event feeds into Pub/Sub topics (the GCS service agent's `roles/pubsub.publisher` grant on the topic is a composed prerequisite)
+- **Storage API enablement** -- `storage.googleapis.com` enabled in the target project (never disabled on destroy)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) plus any custom labels from `labels`, applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -24,7 +25,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the bucket will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Cloud Storage API** enabled in the target project (enabled by default).
 - **A globally unique bucket name** -- GCS bucket names must be unique across all GCP projects worldwide. Must be 3-63 characters, lowercase letters, numbers, hyphens, or dots.
 - **For CMEK**: a Cloud KMS key whose key the GCS service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`).
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Storage Bucket on GCP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Standard** preset in the [Presets](#presets) tab to pre-populate a secure private bucket configuration.
+Open the deployment store, find **GCP GCS Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Standard Bucket** preset in the [Presets](#presets) tab to pre-populate a secure private bucket configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGcsBucket
 metadata:
   name: app-data
@@ -58,11 +58,11 @@ spec:
 planton apply -f gcs-bucket.yaml
 ```
 
-This creates a STANDARD storage bucket in `us-central1` with the modern security posture: IAM-only access control and public access impossible.
+This creates a STANDARD storage bucket in `us-central1` with the modern security posture: IAM-only access control and public access impossible. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the bucket to a GCP project deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the bucket to a GCP project and KMS key deployed in the same InfraPipeline:
 
 ```yaml
 spec:
@@ -71,9 +71,14 @@ spec:
       kind: GcpProject
       name: production-project
       fieldPath: status.outputs.project_id
+  kmsKeyName:
+    valueFrom:
+      kind: GcpKmsKey
+      name: bucket-key
+      fieldPath: status.outputs.key_id
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the bucket with the resolved project ID.
+The InfraPipeline resolves the dependency graph, deploys the project and key first, then provisions the bucket with the resolved values.
 
 ## Key Configuration
 
@@ -125,13 +130,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private standard bucket** -- Uniform bucket-level access with public access prevention enforced, versioning enabled, a lifecycle rule bounding version history, and an additive grant for the workload's service account. The recommended default for application data, backups, and internal file storage. Start from the **Private Standard** preset.
+**Private standard bucket** -- Uniform bucket-level access with public access prevention enforced, versioning enabled, a lifecycle rule bounding version history, and an additive grant for the workload's service account. The recommended default for application data, backups, and internal file storage. Start from the **Private Standard Bucket** preset.
 
-**Static website** -- Public read via a single additive `allUsers` `objectViewer` grant (with prevention `inherited`), CORS opened for the application origin, and website routing with `index.html` and `404.html`. Start from the **Static Website** preset.
+**Static website** -- Public read via a single additive `allUsers` `objectViewer` grant (with prevention `inherited`), CORS opened for the application origin, and website routing with `index.html` and `404.html`. Start from the **Static Website Bucket** preset.
 
-**Dual-region data lake with Autoclass** -- A custom dual-region pinned to your analytics regions, Autoclass to ARCHIVE, multipart-upload hygiene and `tmp/` TTL rules, and prefix-scoped reader grants via IAM conditions. Start from the **Data Lake Autoclass** preset.
+**Dual-region data lake with Autoclass** -- A custom dual-region pinned to your analytics regions, Autoclass to ARCHIVE, multipart-upload hygiene and `tmp/` TTL rules, and prefix-scoped reader grants via IAM conditions. Start from the **Dual-Region Data Lake with Autoclass** preset.
 
-**Event-driven pipeline bucket** -- A private bucket that publishes object-change events to a Pub/Sub topic: `OBJECT_FINALIZE` under an `uploads/` prefix triggers downstream processing (Cloud Run, Cloud Functions, Eventarc all consume the topic). Composes with a GcpPubSubTopic and the GCS service agent's publisher grant. Start from the **Event-Driven Pipeline** preset.
+**Event-driven pipeline bucket** -- A private bucket that publishes object-change events to a Pub/Sub topic: `OBJECT_FINALIZE` under an `uploads/` prefix triggers downstream processing (Cloud Run, Cloud Functions, Eventarc all consume the topic). Composes with a GcpPubSubTopic and the GCS service agent's publisher grant. Start from the **Event-Driven Pipeline Bucket** preset.
 
 ## Works With
 

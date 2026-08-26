@@ -1,6 +1,6 @@
 # GCP Cloud Scheduler Job
 
-Deploys a Cloud Scheduler cron job that dispatches to an HTTP endpoint, Pub/Sub topic, or App Engine handler on a user-defined schedule. The job supports OAuth and OIDC token authentication for secure invocation of Cloud Run and Cloud Functions targets, configurable retry behavior with exponential backoff, and time zone-aware scheduling. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, and Pub/Sub topics.
+Deploys a Cloud Scheduler cron job that dispatches to an HTTP endpoint, Pub/Sub topic, or App Engine handler on a user-defined schedule. The job supports OAuth and OIDC token authentication for secure invocation of Cloud Run and Cloud Functions targets, configurable retry behavior with exponential backoff, and time zone-aware scheduling. The GCP project, the token-minting service account, and the Pub/Sub topic all wire by ValueFromRef, so the job drops into an InfraChart beside the workload it triggers.
 
 ## What Gets Created
 
@@ -58,7 +58,7 @@ spec:
 planton apply -f scheduler-job.yaml
 ```
 
-This creates a Cloud Scheduler job that sends an HTTP POST to the specified endpoint every day at 2:00 AM Eastern. No authentication, retry configuration, or request body is configured.
+This creates a Cloud Scheduler job that sends an HTTP POST to the specified endpoint every day at 2:00 AM Eastern; no authentication, retry configuration, or request body is configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 

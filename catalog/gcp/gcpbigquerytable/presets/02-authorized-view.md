@@ -1,4 +1,4 @@
-# Preset: Authorized View
+# Authorized View
 
 ## When to Use
 

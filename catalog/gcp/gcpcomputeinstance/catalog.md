@@ -1,6 +1,6 @@
 # GCP Compute Instance
 
-Deploys a Compute Engine virtual machine with configurable machine type, boot disk, network interfaces, attached disks, scheduling options (including Spot VMs), Shielded/confidential hardening, GPU accelerators, service account bindings, and startup scripts. The instance integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnets, disks, addresses, KMS keys, and service accounts.
+Deploys a Compute Engine virtual machine with configurable machine type, boot disk, network interfaces, attached disks, scheduling options (including Spot VMs), Shielded/confidential hardening, GPU accelerators, service account bindings, and startup scripts. Every composition seam — the GCP project, VPCs and subnets, disks, reserved addresses, KMS keys, and the runtime service account — accepts ValueFromRef wiring, so the VM drops into an InfraChart without hand-copied identifiers.
 
 ## What Gets Created
 
@@ -65,7 +65,7 @@ spec:
 planton apply -f compute-instance.yaml
 ```
 
-This creates a Debian 12 VM with 2 vCPU, 8 GB RAM, 50 GB SSD boot disk, and no external IP. Spot VM scheduling, service account, and deletion protection are not configured.
+This creates a Debian 12 VM with 2 vCPU, 8 GB RAM, 50 GB SSD boot disk, and no external IP; Spot VM scheduling, service account, and deletion protection are not configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -139,9 +139,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `internal_ip` | Private IP address | Application connection strings, GcpDnsRecord targets |
 | `external_ip` | Public IP address (empty for private VMs) | SSH access, external service endpoints |
 | `status` | Current instance status (RUNNING, TERMINATED, ...) | Health monitoring, automation triggers |
-| `zone` | Zone where the instance is located | Regional resource configuration |
-| `machine_type` | Machine type of the instance | Capacity planning, cost reporting |
-| `cpu_platform` | CPU platform of the instance | Performance benchmarking |
+| `zone` | Zone where the instance is located | Placement checks for zone-bound resources (disks, addresses) |
 
 ## Common Patterns
 

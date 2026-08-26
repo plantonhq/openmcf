@@ -17,7 +17,7 @@ No API-enablement resource — deny policies live on the always-on IAM v2 surfac
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target attach point.
 - **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-### GCP Organization
+### GCP Project
 
 - **IAM**: creating deny policies requires ORG-LEVEL `roles/iam.denyAdmin` — even for project-attached policies. Deny policies are platform-team infrastructure by Google's own permission design.
 - **Supported permissions**: only permissions on Google's supported-permissions list can be denied.
@@ -26,7 +26,7 @@ No API-enablement resource — deny policies live on the always-on IAM v2 surfac
 
 ### Console
 
-Open the deployment store, find **GCP IAM Deny Policy**, and click **Deploy**. Start from the **Guard Secret Access** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP IAM Deny Policy**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the attach point, and an inline builder for the deny rules. Start from the **Guard Secret Access** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -56,7 +56,7 @@ spec:
 planton apply -f deny-policy.yaml
 ```
 
-This blocks secret-version access for everyone in the project except the break-glass service account — no role grant can override it.
+This blocks secret-version access for everyone in the provider's default project except the break-glass service account — no role grant can override it, and `PREVENT` makes the guardrail fail destroys instead of silently vanishing. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -76,6 +76,8 @@ The InfraPipeline creates the project first, then attaches the guardrail to it.
 
 ## Key Configuration
 
+These are the most important decisions when configuring a deny policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Attach point** -- `parent` takes exactly one of `projectId`, `folderId`, or `organizationId`; empty means the provider's default project. The module renders the URL-ENCODED full resource name GCP's API expects (e.g. `cloudresourcemanager.googleapis.com%2Fprojects%2Fmy-project`) so manifests never hand-assemble it.
 
 **Rules** -- each rule names the denied principals (v2 principal formats like `principalSet://goog/public:all`), the denied permissions (`{service-fqdn}/{resource}.{verb}`, from Google's supported list), exception lists for both, and an optional CEL `denialCondition` evaluated on resource tags.
@@ -93,6 +95,8 @@ The InfraPipeline creates the project first, then attaches the guardrail to it.
 | **GcpProject** (optional) | `parent.projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

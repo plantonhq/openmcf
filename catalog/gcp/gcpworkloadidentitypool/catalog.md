@@ -1,6 +1,6 @@
-# Workload Identity Pool on Google Cloud
+# GCP Workload Identity Pool
 
-Deploys the trust boundary of keyless authentication: a Workload Identity Pool lets external identities — GitHub Actions, GitLab CI, AWS workloads, on-prem SAML/X.509 estates — act in Google Cloud with no service-account key anywhere. The pool holds no issuer configuration itself; it is the boundary and the namespace for principals. Attach one GcpWorkloadIdentityPoolProvider per external issuer, then authorize the pool's principals through GcpServiceAccountIamMember grants. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects managed as separate Cloud Resources.
+Deploys the trust boundary of keyless authentication: a Workload Identity Pool lets external identities — GitHub Actions, GitLab CI, AWS workloads, on-prem SAML/X.509 estates — act in Google Cloud with no service-account key anywhere. The pool holds no issuer configuration itself; it is the boundary and the namespace for principals. Attach one GcpWorkloadIdentityPoolProvider per external issuer, then authorize the pool's principals through GcpServiceAccountIamMember grants. GCP soft-deletes pools: a deleted pool's ID stays reserved for about 30 days and cannot be recreated, so pool IDs are long-lived identifiers.
 
 ## What Gets Created
 
@@ -9,6 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Workload Identity Pool** -- an `iam.WorkloadIdentityPool` in the target project, in FEDERATION_ONLY mode (the default) or TRUST_DOMAIN mode
 - **Certificate Issuance** -- created only when `inlineCertificateIssuanceConfig` is specified; wires Certificate Authority Service CA pools for mTLS workload certificates (trust-domain pools)
 - **Trust Bundles** -- created only when `inlineTrustConfig` lists foreign trust domains whose certificates this pool accepts
+- **Attestation Rules** -- created only when `attestationRules` names the Google Cloud workloads permitted to receive a managed identity (at most 50); GCP applies them through a second API call after the pool create, so a failed apply can leave a pool without its rules — re-apply converges
 
 ## Before You Deploy
 
@@ -25,7 +26,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Workload Identity Pool on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the pool's permanent identity, and its operating mode. Start from the **CI Federation Pool** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP Workload Identity Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the pool's permanent identity, and its operating mode. Start from the **CI Federation Pool** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -54,16 +55,19 @@ This creates the pool in FEDERATION_ONLY mode (GCP's default when `mode` is unse
 
 ### InfraChart
 
-The keyless-CI composition wires the whole federation story in one InfraPipeline: this pool, a GcpWorkloadIdentityPoolProvider for the issuer, and a GcpServiceAccountIamMember granting the pool's principals impersonation:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the pool to a GCP project deployed in the same InfraPipeline:
 
 ```yaml
 spec:
-  workloadIdentityPoolId:
+  workloadIdentityPoolId: github-actions
+  projectId:
     valueFrom:
-      kind: GcpWorkloadIdentityPool
-      name: github-actions
-      fieldPath: status.outputs.workload_identity_pool_id
+      kind: GcpProject
+      name: security-project
+      fieldPath: status.outputs.project_id
 ```
+
+The InfraPipeline resolves the dependency graph and deploys the project first. The keyless-CI composition builds on this node: a GcpWorkloadIdentityPoolProvider references the pool's `workload_identity_pool_id` output, and a GcpServiceAccountIamMember grants the pool's principals impersonation — the whole federation story in one chart.
 
 ## Key Configuration
 
@@ -76,6 +80,8 @@ These are the most important decisions when configuring a pool. Explore the full
 **Disabled is the kill switch** -- a disabled pool rejects all token exchanges and existing tokens stop granting access; re-enabling restores them. Prefer disabling over deleting when rotating or investigating.
 
 **One pool per trust boundary** -- "our CI systems", "the partner's AWS estate" — not one per repository. Providers and their attribute conditions do the fine-grained scoping inside the boundary.
+
+**Destroy is a soft delete** -- destroying the pool stops token exchanges immediately, but the pool lingers DELETED for ~30 days and its ID stays reserved. Set `deletionPolicy: PREVENT` on the pool every keyless-CI grant in the project references, or `ABANDON` to hand a live trust boundary to another management plane.
 
 ## Outputs and Dependencies
 
@@ -101,7 +107,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **CI federation pool** -- the everyday shape: a FEDERATION_ONLY pool for keyless CI, ready for a GitHub/GitLab OIDC provider. Start from the **CI Federation Pool** preset.
 
-**Locked-down pool** -- the land-first, arm-later pattern: the pool deploys disabled and a later change enables it once providers and grants are reviewed. Start from the **Locked-Down Pool** preset.
+**Locked-down pool** -- the land-first, arm-later pattern: the pool deploys disabled and a later change enables it once providers and grants are reviewed. Start from the **Locked-Down (Staged) Pool** preset.
 
 ## Works With
 

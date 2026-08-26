@@ -1,6 +1,6 @@
 # GCP Cloud Run Job
 
-Deploys a run-to-completion batch workload on Google Cloud Run v2: a task template (containers, volumes, networking, hardware) plus an execution model (task count, parallelism, per-attempt timeout, retries). Each run — an "execution" — stamps out the tasks and exits; there is no endpoint and no traffic, and the only health check is an optional startup probe gating task start. The job integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, KMS keys, Cloud SQL instances, GCS buckets, VPC networks, and subnetworks.
+Deploys a run-to-completion batch workload on Google Cloud Run v2: a task template (containers, volumes, networking, hardware) plus an execution model (task count, parallelism, per-attempt timeout, retries). Each run — an "execution" — stamps out the tasks and exits; there is no endpoint and no traffic, and the only health check is an optional startup probe gating task start. Every composition seam — the GCP project, the runtime service account, the KMS key, Cloud SQL instances, GCS buckets, VPC networks and subnetworks — accepts ValueFromRef wiring.
 
 ## What Gets Created
 
@@ -33,14 +33,14 @@ The resource owns the job DEFINITION, not individual runs — trigger executions
 
 ### Console
 
-Open the deployment store, find **GCP Cloud Run Job**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Batch ETL** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP Cloud Run Job**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Batch ETL — basic** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRunJob
 metadata:
   name: nightly-etl
@@ -65,7 +65,7 @@ spec:
 planton apply -f cloud-run-job.yaml
 ```
 
-This creates a job whose executions run 20 tasks (5 at a time), each with 2 vCPU / 4Gi and a one-hour per-attempt budget. Trigger a run:
+This creates a job whose executions run 20 tasks (5 at a time), each with 2 vCPU / 4Gi and a one-hour per-attempt budget. A Stack Job tracks the provisioning in real time. Trigger a run:
 
 ```shell
 gcloud run jobs execute nightly-etl --region us-central1
@@ -146,11 +146,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Batch ETL** -- a single task (or a small sharded set) loading data on a schedule, triggered by Cloud Scheduler. Start from the **Batch ETL** preset.
+**Batch ETL** -- a single task (or a small sharded set) loading data on a schedule, triggered by Cloud Scheduler. Start from the **Batch ETL — basic** preset.
 
-**Parallel fan-out** -- many tasks at capped parallelism, each selecting its slice from the task index — dataset processing without a queue. Start from the **Parallel VPC Cleanup** preset.
+**Parallel fan-out** -- many tasks at capped parallelism, each selecting its slice from the task index — dataset processing without a queue. Start from the **Parallel VPC cleanup** preset.
 
-**GPU batch inference** -- `template.nodeSelector.accelerator` gives every task a GPU; the zonal-redundancy opt-out (`gpuZonalRedundancyDisabled`) trades single-zone risk for cheaper capacity — often right for restartable batch work. Start from the **GPU Batch Inference** preset.
+**GPU batch inference** -- `template.nodeSelector.accelerator` gives every task a GPU; the zonal-redundancy opt-out (`gpuZonalRedundancyDisabled`) trades single-zone risk for cheaper capacity — often right for restartable batch work. Start from the **GPU batch inference** preset.
 
 ## Works With
 

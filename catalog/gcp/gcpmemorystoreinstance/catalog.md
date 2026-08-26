@@ -1,6 +1,6 @@
 # GCP Memorystore Instance
 
-Deploys a Memorystore instance (Valkey/Redis-compatible) with configurable sharding, node types, Private Service Connect networking, persistence (RDB or AOF), zone distribution, TLS encryption, IAM authentication, automated backups, and CMEK encryption. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
+Deploys a Memorystore instance (Valkey/Redis-compatible) with configurable sharding, node types, Private Service Connect networking, persistence (RDB or AOF), zone distribution, TLS encryption, IAM authentication, automated backups, CMEK encryption, and cross-region replication. Cluster mode, shard topology, zone distribution, and both security modes are immutable after creation — the up-front decisions this page exists to inform.
 
 ## What Gets Created
 
@@ -13,6 +13,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Maintenance Window** -- created only when `maintenancePolicy` is set; defines a weekly 1-hour window for GCP-managed maintenance operations
 - **Automated Backups** -- created only when `automatedBackupConfig` is set; daily backups at the specified hour with configurable retention
 - **CMEK Encryption** -- created only when `kmsKey` is provided; encrypts data at rest using a customer-managed Cloud KMS key
+- **API enablement** -- `memorystore.googleapis.com` and `networkconnectivity.googleapis.com` enabled in the target project (never disabled on destroy)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -24,8 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Memorystore API** (`memorystore.googleapis.com`) enabled in the target project.
+- **A GCP project** where the instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Memorystore and Network Connectivity APIs itself.
 - **A VPC network** for PSC endpoint creation. Applications connect to the instance through PSC endpoints in the consumer VPC. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
 
 ## Deploy
@@ -158,5 +158,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the instance is created and PSC endpoints are placed
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network where PSC endpoints are created for application connectivity
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network where PSC endpoints are created for application connectivity
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the CMEK encryption key for data at rest

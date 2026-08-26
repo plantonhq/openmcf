@@ -1,4 +1,4 @@
-# Preset: Rate Limiting for API Endpoints
+# Rate Limiting for API Endpoints
 
 ## Use Case
 

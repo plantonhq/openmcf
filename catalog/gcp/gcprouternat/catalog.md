@@ -1,6 +1,6 @@
 # GCP Router NAT
 
-Deploys a Cloud Router with a NAT gateway that provides outbound internet connectivity for VMs and GKE nodes without external IP addresses (public NAT) or NAT between private networks (private NAT). The NAT can cover all subnets in a region or be scoped to specific subnets — down to individual secondary ranges — with automatic or static IP allocation, NAT64 for IPv6-only workloads, per-destination NAT rules, port and timeout tuning, and configurable translation logging. The router's own BGP surface (ASN, route advertisement, keepalive) is configurable for routers that also serve VPN or Interconnect sessions. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnetworks, and address reservations.
+Deploys a Cloud Router with a NAT gateway that provides outbound internet connectivity for VMs and GKE nodes without external IP addresses (public NAT) or NAT between private networks (private NAT). The NAT can cover all subnets in a region or be scoped to specific subnets — down to individual secondary ranges — with automatic or static IP allocation, NAT64 for IPv6-only workloads, per-destination NAT rules, port and timeout tuning, and configurable translation logging. The router's own BGP surface (ASN, route advertisement, keepalive) is configurable for routers that also serve VPN or Interconnect sessions. Only the names, region, network, endpoint type, and NAT type are immutable — IP allocation, subnet scoping, port tuning, timeouts, and rules all update in place, which is what makes NAT IP rotation and fleet-wide egress tuning zero-downtime operations.
 
 ## What Gets Created
 
@@ -29,7 +29,7 @@ Static NAT IPs are **referenced, never created**: each `natIps` entry points at 
 
 ### Console
 
-Open the deployment store, find **GCP Router NAT**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **All-Subnets Auto** preset in the [Presets](#presets) tab to pre-populate a NAT configuration covering all subnets with auto-allocated IPs.
+Open the deployment store, find **GCP Router NAT**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **All-Subnets Auto-Allocated NAT** preset in the [Presets](#presets) tab to pre-populate a NAT configuration covering all subnets with auto-allocated IPs.
 
 ### CLI
 
@@ -114,22 +114,22 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `name` | Name of the Cloud NAT gateway | Inventory/automation references (private GKE clusters compose Cloud NAT on their network — no spec field links them) |
-| `router_self_link` | Self-link URL of the Cloud Router | Network topology documentation, dependency ordering |
+| `router_self_link` | Self-link URL of the Cloud Router | The router that VPN tunnels and Interconnect attachments compose on top of |
 | `nat_ips` | Self links of the manual NAT IP reservations (empty under auto-allocation) | Partner allowlisting and compliance records — the literal IPs live on the referenced GcpAddress nodes' `address` outputs |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**All-subnets auto-allocated NAT** -- Covers all subnets in the region with auto-allocated external IPs and error-only logging. The simplest configuration for giving private GKE nodes or VMs outbound internet access. Start from the **All-Subnets Auto** preset.
+**All-subnets auto-allocated NAT** -- Covers all subnets in the region with auto-allocated external IPs and error-only logging. The simplest configuration for giving private GKE nodes or VMs outbound internet access. Start from the **All-Subnets Auto-Allocated NAT** preset.
 
-**Static IP allowlisting** -- Referenced GcpAddress reservations as stable egress IPs, with subnet scoping and connection draining for rotation. Use when egress must come from known, stable IP addresses for partner allowlisting or compliance. Start from the **Static IP Allowlisting** preset.
+**Static IP allowlisting** -- Referenced GcpAddress reservations as stable egress IPs, with subnet scoping and connection draining for rotation. Use when egress must come from known, stable IP addresses for partner allowlisting or compliance. Start from the **Static-IP Allowlisted Egress** preset.
 
-**Private NAT between NCC spokes** -- `type: PRIVATE` with subnetwork-range rules for NAT between VPC networks joined by Network Connectivity Center. Start from the **Private NAT** preset.
+**Private NAT between NCC spokes** -- `type: PRIVATE` with subnetwork-range rules for NAT between VPC networks joined by Network Connectivity Center. Start from the **Private NAT for Network Connectivity Center** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the Cloud Router and NAT are created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network that the Cloud Router is attached to
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network that the Cloud Router is attached to
 - [**GCP Address**](/cloud-catalog/gcp-address) -- EXTERNAL reservations referenced as stable NAT IPs
 - [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- subnetworks scoped for NAT (and NAT64) coverage

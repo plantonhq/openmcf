@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Monitoring Notification Channel**, and click **Deploy**. Start from the **On-call Email** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP Monitoring Notification Channel**, and click **Deploy**. The creation wizard walks you through the target project, the channel type, its configuration labels, and the credential fields for authenticated types. Start from the **On-call Email** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -50,25 +50,29 @@ spec:
 planton apply -f channel.yaml
 ```
 
-This creates an email channel that alert policies can reference. Email channels require verification before they deliver — check the `verification_status` output.
+This creates an email channel that alert policies can reference. Email channels require verification before they deliver — check the `verification_status` output. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, downstream alert policies wire to the channel via ValueFromRef:
+When deploying as part of a multi-resource environment, the channel references its project via ValueFromRef:
 
 ```yaml
-# On a GcpMonitoringAlertPolicy in the same chart:
 spec:
-  notificationChannels:
-    - valueFrom:
-        kind: GcpMonitoringNotificationChannel
-        name: oncall-email
-        fieldPath: status.outputs.channel_name
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: observability-project
+      fieldPath: status.outputs.project_id
+  type: email
+  channelLabels:
+    email_address: oncall@example.com
 ```
 
-The InfraPipeline deploys the channel first, then provisions the policy with the resolved channel name.
+The InfraPipeline deploys the project first, then the channel — and downstream alert policies in the same chart consume this channel's `channel_name` output in their `notificationChannels` list.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a notification channel. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Type** -- the delivery mechanism (`email`, `sms`, `slack`, `pagerduty`, `webhook_tokenauth`, `webhook_basicauth`, `pubsub`, ...). GCP validates the value and its configuration keys server-side against its live channel-type catalog.
 
@@ -87,6 +91,8 @@ The InfraPipeline deploys the channel first, then provisions the policy with the
 | **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

@@ -6,6 +6,7 @@ Deploys a BigQuery table inside an existing dataset — a native table, a logica
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **BigQuery API enablement** (`bigquery.googleapis.com`) on the target project (never disabled on destroy)
 - **BigQuery Table** -- one of four shapes: a native table (BigQuery-managed storage, optionally partitioned and clustered), a logical view (a saved query evaluated at read time), a materialized view (precomputed, incrementally refreshed results), or an external table (data stays in GCS/Sheets/Bigtable and is read at query time)
 - **Partitioning & Clustering** -- time-based or integer-range partitioning plus up to four clustering columns, the primary scan-cost levers for large tables
 - **Table Constraints** -- when declared, unenforced primary/foreign keys the query optimizer and lineage tools consume
@@ -22,14 +23,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A BigQuery dataset** the table will live in. Reference a GcpBigQueryDataset Cloud Resource via ValueFromRef or provide the dataset ID directly. The dataset pins the location and supplies encryption/expiration defaults.
-- **BigQuery API** enabled in the target project.
 - **Cloud KMS key** (if using per-table CMEK) -- the BigQuery service agent must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP BigQuery Table**, and click **Deploy**. The creation wizard forks on the table kind (native / view / materialized view / external) and walks you through partitioning, clustering, and protection. Start from the **Partitioned Analytics** preset in the [Presets](#presets) tab for the standard fact-table shape.
+Open the deployment store, find **GCP BigQuery Table**, and click **Deploy**. The creation wizard forks on the table kind (native / view / materialized view / external) and walks you through partitioning, clustering, and protection. Start from the **Partitioned Analytics Table** preset in the [Presets](#presets) tab for the standard fact-table shape.
 
 ### CLI
 
@@ -44,10 +44,7 @@ metadata:
   env: prod
 spec:
   datasetId:
-    valueFrom:
-      kind: GcpBigQueryDataset
-      name: analytics
-      fieldPath: status.outputs.dataset_id
+    value: analytics_events_prod
   tableId: events_raw
   timePartitioning:
     type: DAY
@@ -61,7 +58,7 @@ spec:
 planton apply -f bigquery-table.yaml
 ```
 
-This creates a day-partitioned, clustered native table with deletion protection on (the default) — the workhorse shape for event data.
+This creates a day-partitioned, clustered native table with deletion protection on (the default) — the workhorse shape for event data. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -84,6 +81,8 @@ spec:
 The InfraPipeline resolves the dependency graph, deploys the dataset (and key) first, then provisions the table.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a BigQuery table. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Table kind** -- at most one of `view`, `materializedView`, or `externalDataConfiguration` may be set; none of them is a native table. Converting between kinds recreates the table.
 
@@ -125,7 +124,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Partitioned analytics** -- a day-partitioned, clustered native fact table with an explicit schema and the partition-filter cost guard. Start from the **Partitioned Analytics** preset.
+**Partitioned analytics** -- a day-partitioned, clustered native fact table with an explicit schema and the partition-filter cost guard. Start from the **Partitioned Analytics Table** preset.
 
 **Authorized view** -- a logical view exposing a filtered slice of sensitive data; pair it with the dataset's authorized-view access entry so readers never touch the raw tables. Start from the **Authorized View** preset.
 

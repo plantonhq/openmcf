@@ -1,6 +1,6 @@
 # GCP Vertex AI Index Endpoint
 
-Deploys a Vertex AI Vector Search index endpoint: the serving surface deployed indexes answer nearest-neighbor queries through. The endpoint owns connectivity — public, VPC-peered, or Private Service Connect — while the indexes themselves are separate GcpVertexAiIndex resources placed onto it by GcpVertexAiDeployedIndex. This is a different GCP resource from the online-prediction GcpVertexAiEndpoint (which serves models). The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPC networks.
+Deploys a Vertex AI Vector Search index endpoint: the serving surface deployed indexes answer nearest-neighbor queries through. The endpoint owns connectivity — public, VPC-peered, or Private Service Connect — while the indexes themselves are separate GcpVertexAiIndex resources placed onto it by GcpVertexAiDeployedIndex. This is a different GCP resource from the online-prediction GcpVertexAiEndpoint (which serves models). Connectivity is a one-way door: every mode is immutable, and switching means recreating the endpoint and re-deploying every index on it.
 
 ## What Gets Created
 
@@ -10,6 +10,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Public Serving Domain** -- when `publicEndpointEnabled` is true, a GCP-managed public domain name (surfaced as the `public_endpoint_domain_name` output) that authenticated clients query over the internet
 - **VPC Peering Attachment** -- when `network` is set, the endpoint becomes reachable only inside the peered VPC via Private Services Access; both IaC modules normalize the network self-link to the relative form the Vertex AI API expects
 - **PSC Service Attachment Surface** -- when `privateServiceConnectConfig` is present, allowlisted consumer projects create forwarding rules to each deployment's service attachment; no peering needed
+- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
+- **Vertex AI API enablement** -- `aiplatform.googleapis.com` is enabled in the target project; tearing down the endpoint never disables the API
 
 ## Before You Deploy
 
@@ -20,16 +22,16 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the endpoint will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Vertex AI API** enabled in the target project.
+- **A GCP project** where the endpoint will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Vertex AI API itself, so the connection's principal needs permission to enable services on a fresh project.
 - **For VPC-peered serving** -- Private Services Access configured on the network first: a GcpGlobalAddress (purpose VPC_PEERING) composed with a GcpServiceNetworkingConnection.
 - **For PSC serving** -- the list of consumer project IDs, decided up front (the allowlist is immutable).
+- **Cloud KMS key** (only for CMEK) -- a key in the same region as the endpoint, with the Vertex AI service agent granted `roles/cloudkms.cryptoKeyEncrypterDecrypter`.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Vertex AI Index Endpoint**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public** preset in the [Presets](#presets) tab for the simplest path to production.
+Open the deployment store, find **GCP Vertex AI Index Endpoint**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public Index Endpoint** preset in the [Presets](#presets) tab for the simplest path to production.
 
 ### CLI
 
@@ -54,7 +56,7 @@ spec:
 planton apply -f index-endpoint.yaml
 ```
 
-A Stack Job tracks the provisioning in real time.
+This creates a public serving endpoint: queries hit a GCP-managed domain over the internet, authenticated with Google Cloud credentials. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -83,6 +85,8 @@ These are the most important decisions when configuring an index endpoint. Explo
 
 **Private Service Connect** -- `projectAllowlist` names the consumer projects allowed to create forwarding rules; include every consumer up front (immutable). Consumers connect through each deployment's `service_attachment`.
 
+**Encryption** -- `kmsKeyName` pins data on the endpoint's serving replicas to a customer-managed key in the same region; the Vertex AI service agent needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on it. Immutable after creation.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -91,6 +95,9 @@ These are the most important decisions when configuring an index endpoint. Explo
 |------------|-------|-------------------|
 | **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 | **GcpVpcNetwork** (optional — VPC-peered mode) | `network` | `status.outputs.network_self_link` |
+| **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
+| **GcpVpcNetwork** (optional, per PSC automation entry) | `privateServiceConnectConfig.pscAutomationConfigs[].network` | `status.outputs.network_self_link` |
+| **GcpProject** (optional, per PSC automation entry) | `privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
 
@@ -101,23 +108,22 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `index_endpoint_id` | Fully qualified endpoint path (`projects/{p}/locations/{l}/indexEndpoints/{id}`) | The exact value a GcpVertexAiDeployedIndex's `indexEndpoint` join consumes |
 | `index_endpoint_name` | The GCP-assigned numeric endpoint ID | Display, logging |
 | `public_endpoint_domain_name` | Public query domain (populated only when public serving is enabled) | Query clients over the internet |
-| `create_time` | RFC3339 creation timestamp | Audit |
-| `update_time` | RFC3339 last-update timestamp | Audit |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public serving** -- The simplest path to production: one flag, a public domain output, IAM-authenticated queries. Start from the **Public** preset.
+**Public serving** -- The simplest path to production: one flag, a public domain output, IAM-authenticated queries. Start from the **Public Index Endpoint** preset.
 
-**VPC-peered private serving** -- Query traffic never leaves private address space; compose with the Private Services Access pair first. Start from the **VPC Peered** preset.
+**VPC-peered private serving** -- Query traffic never leaves private address space; compose with the Private Services Access pair first. Start from the **VPC-Peered Index Endpoint** preset.
 
-**Private Service Connect** -- Private connectivity across project boundaries without peering — the modern model for multi-project estates. Start from the **PSC** preset.
+**Private Service Connect** -- Private connectivity across project boundaries without peering — the modern model for multi-project estates. Start from the **Private Service Connect Index Endpoint** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the endpoint is created
 - [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- the VPC a peered endpoint serves inside
+- [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- the customer-managed key for data at rest on the serving replicas
 - [**GCP Global Address**](/cloud-catalog/gcp-global-address) + [**GCP Service Networking Connection**](/cloud-catalog/gcp-service-networking-connection) -- the Private Services Access pair a peered endpoint requires
 - [**GCP Vertex AI Index**](/cloud-catalog/gcp-vertex-ai-index) -- the vector index deployed onto this endpoint
 - [**GCP Vertex AI Deployed Index**](/cloud-catalog/gcp-vertex-ai-deployed-index) -- joins an index to this endpoint via `indexEndpoint`

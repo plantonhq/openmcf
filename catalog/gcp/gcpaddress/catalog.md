@@ -53,7 +53,7 @@ spec:
 planton apply -f address.yaml
 ```
 
-This reserves a public IPv4 address GCP assigns — the reservation pins it permanently, so the NAT gateway that consumes it keeps a stable, allow-listable egress address.
+This reserves a public IPv4 address GCP assigns — the reservation pins it permanently, so the NAT gateway that consumes it keeps a stable, allow-listable egress address. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -113,7 +113,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **External NAT IP** -- A Premium-tier public IPv4 for Cloud NAT, so all egress traffic leaves through one stable, allow-listable address. Start from the **External NAT IP** preset.
 
-**Internal LB VIP** -- An internal reservation with the `SHARED_LOADBALANCER_VIP` purpose — the stable frontend address for an internal load balancer. Start from the **Internal LB VIP** preset.
+**Internal LB VIP** -- An internal reservation with the `SHARED_LOADBALANCER_VIP` purpose — the stable frontend address for an internal load balancer. Start from the **Internal Load Balancer VIP** preset.
 
 **Internal GCE Endpoint** -- A subnetwork-anchored private IP a VM references from its NIC, keeping clients and DNS stable across VM rebuilds. Start from the **Internal GCE Endpoint** preset.
 

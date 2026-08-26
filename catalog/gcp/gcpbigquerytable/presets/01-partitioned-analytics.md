@@ -1,4 +1,4 @@
-# Preset: Partitioned Analytics Table
+# Partitioned Analytics Table
 
 ## When to Use
 

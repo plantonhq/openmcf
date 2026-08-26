@@ -1,6 +1,6 @@
-# Workload Identity Pool Provider on Google Cloud
+# GCP Workload Identity Pool Provider
 
-Attaches one external issuer to a Workload Identity Pool — the piece that turns the trust boundary into a working keyless-auth path. Each provider trusts exactly one identity system (a GitHub org's OIDC tokens, an AWS account, a SAML IdP, an X.509 certificate estate), translates its claims into Google attributes through the attribute mapping, and gates which otherwise-valid credentials are accepted through the attribute condition. A pool holds many providers, one per issuer — revoking one never touches the others. Integrates with Planton's Provider Connections and composes through ValueFromRef with GcpWorkloadIdentityPool (`workload_identity_pool_id` output).
+Attaches one external issuer to a Workload Identity Pool — the piece that turns the trust boundary into a working keyless-auth path. Each provider trusts exactly one identity system (a GitHub org's OIDC tokens, an AWS account, a SAML IdP, an X.509 certificate estate), translates its claims into Google attributes through the attribute mapping, and gates which otherwise-valid credentials are accepted through the attribute condition. A pool holds many providers, one per issuer — revoking one never touches the others. Like the pool, GCP soft-deletes providers for about 30 days and blocks ID reuse while soft-deleted, so prefer disabling over deleting during rotation or investigation.
 
 ## What Gets Created
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Workload Identity Pool Provider on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the provider identity, the issuer choice, and the attribute mapping + condition. Start from the **GitHub Actions OIDC** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP Workload Identity Pool Provider**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the provider identity, the issuer choice, and the attribute mapping + condition. Start from the **GitHub Actions OIDC Provider** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -54,7 +54,7 @@ spec:
 planton apply -f gcp-workload-identity-pool-provider.yaml
 ```
 
-A Stack Job tracks the provisioning in real time.
+This attaches a GitHub Actions OIDC issuer to the `github-actions` pool, scoped so only workflows in the `acme` GitHub org can federate. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -83,6 +83,8 @@ These are the most important decisions when configuring a provider. Explore the 
 
 **Empty allowed audiences are the safest** (OIDC) -- incoming tokens must then carry the provider's own canonical resource name as `aud`; tokens minted for anything else are rejected.
 
+**Disable, don't delete** -- `disabled: true` rejects new token exchanges immediately (already-issued Google credentials remain valid until they expire) and is fully reversible. Deletion starts the ~30-day soft-delete clock and blocks the ID from reuse. `deletionPolicy: PREVENT` protects the keyless-auth path every pipeline federating through this issuer depends on.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -106,14 +108,15 @@ After provisioning, `status.outputs` contains values that downstream consumers u
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**GitHub Actions OIDC** -- issuer `https://token.actions.githubusercontent.com`, subject/repository mapping, and an org-scoping condition. Start from the **GitHub Actions OIDC** preset.
+**GitHub Actions OIDC** -- issuer `https://token.actions.githubusercontent.com`, subject/repository mapping, and an org-scoping condition. Start from the **GitHub Actions OIDC Provider** preset.
 
-**AWS account** -- a 12-digit account whose workloads federate, with a role-scoping condition over `attribute.aws_role`. Start from the **AWS Account** preset.
+**AWS account** -- a 12-digit account whose workloads federate, with a role-scoping condition over `attribute.aws_role`. Start from the **AWS Account Provider** preset.
 
-**GitLab CI OIDC** -- issuer `https://gitlab.com` with project-path mapping and a namespace-scoping condition. Start from the **GitLab CI OIDC** preset.
+**GitLab CI OIDC** -- issuer `https://gitlab.com` with project-path mapping and a namespace-scoping condition. Start from the **GitLab CI OIDC Provider** preset.
 
 ## Works With
 
 - [**GCP Workload Identity Pool**](/cloud-catalog/gcp-workload-identity-pool) -- the trust boundary this provider attaches to; its `workload_identity_pool_id` output feeds the pool field
 - [**GCP Service Account IAM Member**](/cloud-catalog/gcp-service-account-iam-member) -- grants the provider's federated principals impersonation of a service account (`roles/iam.workloadIdentityUser`)
 - [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- the identity federated workloads act as, keylessly
+- [**GCP Project**](/cloud-catalog/gcp-project) -- provides the project that owns the pool and this provider

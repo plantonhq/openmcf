@@ -12,17 +12,22 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ## Before You Deploy
 
+### Planton Setup
+
+- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **IdP credentials** -- each provider's `clientId`/`clientSecret` comes from that provider's own developer console — consent-screen OAuth clients have no programmatic creation path. Secrets are supplied as managed secrets.
+
+### GCP Project
+
 - **The first deploy PERMANENTLY initializes Identity Platform on the project** (billing required). GCP has no de-initialize — destroy abandons the config in place. Choose the project deliberately.
 - **Already-initialized projects deploy with `adoptExisting: true`** — GCP rejects a second initialization outright, so the adoption switch imports the project's config singleton and applies your spec as an update (a re-deploy after destroy needs it too).
-- **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project.
 - **IAM**: the deploying identity needs `roles/identityplatform.admin` or broader.
-- **IdP credentials**: each provider's `clientId`/`clientSecret` comes from that provider's own developer console — consent-screen OAuth clients have no programmatic creation path (supplied as managed secrets).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Identity Platform Config**, and click **Deploy**. Start from the **Email + Password** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP Identity Platform Config**, and click **Deploy**. The creation wizard walks you through the target project, sign-in methods, authorized domains, MFA, and the identity-provider lists. Start from the **Email + Password** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -48,7 +53,7 @@ spec:
 planton apply -f config.yaml
 ```
 
-This initializes Identity Platform on the project and enables email/password sign-in. The `api_key` output is what client apps initialize the sign-in SDK with.
+This initializes Identity Platform on the project and enables email/password sign-in; the `api_key` output is what client apps initialize the sign-in SDK with. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -75,6 +80,8 @@ The InfraPipeline deploys the project and function first, then initializes Ident
 
 ## Key Configuration
 
+These are the most important decisions when configuring a project's Identity Platform. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Sign-in arms** -- each of `email`, `phoneNumber`, and `anonymous` you set is sent explicitly, including `enabled: false` — a disable in the manifest actively disables the method. Arms you omit stay unmanaged.
 
 **Identity providers** -- three lists compose the project's IdP surface: `defaultSupportedIdps` for well-known providers (by `idpId`, e.g. `google.com`), `oauthIdpConfigs` for custom OIDC (`oidc.`-prefixed names), and `inboundSamlConfigs` for enterprise SAML (`saml.`-prefixed names). Client secrets are managed secrets end to end.
@@ -95,6 +102,8 @@ The InfraPipeline deploys the project and function first, then initializes Ident
 | **GcpCloudFunction** (optional) | `blockingFunctions.triggers[].functionUri` | `status.outputs.function_url` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

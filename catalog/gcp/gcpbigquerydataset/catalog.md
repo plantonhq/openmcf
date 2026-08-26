@@ -1,11 +1,12 @@
 # GCP BigQuery Dataset
 
-Deploys a BigQuery dataset with configurable data location, access control, default table lifecycle policies, storage billing model, and optional CMEK encryption. The dataset integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
+Deploys a BigQuery dataset with configurable data location, access control, default table lifecycle policies, storage billing model, and optional CMEK encryption. The dataset is the container tables, views, and routines live in — its location decides where every table's data resides and where queries process, and that choice is permanent.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **BigQuery API enablement** (`bigquery.googleapis.com`) on the target project (never disabled on destroy)
 - **BigQuery Dataset** -- a managed dataset in the specified GCP project and location, configured with the chosen storage billing model, time travel window, and default table expiration policies
 - **Access Control Entries** -- when `access` entries are specified, authoritative IAM bindings granting roles to users, groups, domains, special groups, IAM members, or authorized views (if omitted, BigQuery applies default project-level access)
 - **CMEK Encryption Configuration** -- created only when `kmsKeyName` is set; configures a default Cloud KMS encryption key for all new tables in the dataset
@@ -21,14 +22,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the dataset will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **BigQuery API** enabled in the target project.
 - **Cloud KMS key** (if using CMEK) -- the key must be in the same location as the dataset. The BigQuery service account must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP BigQuery Dataset**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Analytics** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP BigQuery Dataset**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Analytics Dataset** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -52,7 +52,7 @@ spec:
 planton apply -f bigquery-dataset.yaml
 ```
 
-This creates a dataset in the US multi-region with Google-managed encryption, default project-level access, logical storage billing, and 7-day time travel. No table expiration policies are configured.
+This creates a dataset in the US multi-region with Google-managed encryption, default project-level access, logical storage billing, and 7-day time travel. No table expiration policies are configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -114,11 +114,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Basic analytics** -- US multi-region dataset with Google-managed encryption, default project-level access, and logical storage billing. The simplest starting point for analytics workloads. Start from the **Basic Analytics** preset.
+**Basic analytics** -- US multi-region dataset with Google-managed encryption, default project-level access, and logical storage billing. The simplest starting point for analytics workloads. Start from the **Basic Analytics Dataset** preset.
 
-**CMEK encrypted** -- Regional dataset with customer-managed encryption via Cloud KMS and physical storage billing. Designed for compliance scenarios requiring data residency and encryption key control. Start from the **CMEK Encrypted** preset.
+**CMEK encrypted** -- Regional dataset with customer-managed encryption via Cloud KMS and physical storage billing. Designed for compliance scenarios requiring data residency and encryption key control. Start from the **CMEK-Encrypted Dataset** preset.
 
-**Team shared** -- Dataset with explicit access control separating data engineers (WRITER) from data analysts (READER), plus project owners retaining OWNER access. Standard pattern for shared analytics datasets with role-based access. Start from the **Team Shared** preset.
+**Team shared** -- Dataset with explicit access control separating data engineers (WRITER) from data analysts (READER), plus project owners retaining OWNER access. Standard pattern for shared analytics datasets with role-based access. Start from the **Team-Shared Dataset** preset.
 
 ## Works With
 

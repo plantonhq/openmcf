@@ -1,6 +1,6 @@
 # GCP Firewall Rule
 
-Deploys a Compute Engine firewall rule that controls inbound or outbound traffic to VM instances in a VPC network. Each rule allows or denies traffic matching protocol/port combinations, filtered by source or destination CIDR ranges and scoped by network tags or service accounts. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPCs.
+Deploys a Compute Engine firewall rule that controls inbound or outbound traffic to VM instances in a VPC network. Each rule allows or denies traffic matching protocol/port combinations, filtered by source or destination CIDR ranges and scoped by network tags or service accounts, with optional per-rule logging and a priority that decides which rule wins when several match.
 
 ## What Gets Created
 
@@ -9,7 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Compute Engine Firewall Rule** -- a `compute.Firewall` in the specified project and VPC network, configured with the direction (INGRESS or EGRESS), action (ALLOW or DENY), protocol/port rules, and traffic source or destination filters
 - **Traffic Matching Rules** -- one or more protocol/port blocks mapped to either allow or deny entries based on the `action` field
 - **Logging Configuration** -- created only when `logConfig` is present; enables firewall logging with configurable metadata inclusion (INCLUDE_ALL_METADATA or EXCLUDE_ALL_METADATA)
-- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
+- **Resource Manager tag bindings** -- created only when `resourceManagerTags` is set; bound at create time only, and changing them REPLACES the firewall rule
 
 ## Before You Deploy
 
@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Firewall Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Ingress Allow Web** preset in the [Presets](#presets) tab to pre-populate a standard HTTP/HTTPS ingress rule.
+Open the deployment store, find **GCP Firewall Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Ingress Allow Web (HTTP/HTTPS)** preset in the [Presets](#presets) tab to pre-populate a standard HTTP/HTTPS ingress rule.
 
 ### CLI
 
@@ -109,20 +109,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `firewall_self_link` | Full self-link URI of the firewall rule | Dependency ordering in InfraCharts |
-| `firewall_name` | Name of the firewall rule as it exists in GCP | Audit logs, monitoring dashboards |
-| `creation_timestamp` | RFC3339 timestamp of when the rule was created | Change tracking, compliance documentation |
+| `firewall_name` | Name of the firewall rule as it exists in GCP | gcloud commands, log filters on `firewall_rule_name` |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Ingress allow web** -- Allows inbound HTTP (port 80) and HTTPS (port 443) from all IPv4 addresses. The standard rule for internet-facing web servers and load balancer backends. Start from the **Ingress Allow Web** preset.
+**Ingress allow web** -- Allows inbound HTTP (port 80) and HTTPS (port 443) from all IPv4 addresses. The standard rule for internet-facing web servers and load balancer backends. Start from the **Ingress Allow Web (HTTP/HTTPS)** preset.
 
-**Ingress allow SSH via IAP** -- Allows SSH (port 22) exclusively from Google's Identity-Aware Proxy range (`35.235.240.0/20`). Provides authenticated, audited SSH access to VMs without exposing port 22 to the public internet. Scoped to VMs tagged with `allow-ssh`. Start from the **Ingress Allow SSH IAP** preset.
+**Ingress allow SSH via IAP** -- Allows SSH (port 22) exclusively from Google's Identity-Aware Proxy range (`35.235.240.0/20`). Provides authenticated, audited SSH access to VMs without exposing port 22 to the public internet. Scoped to VMs tagged with `allow-ssh`. Start from the **Ingress Allow SSH via IAP** preset.
 
 **Egress deny all** -- Denies all outbound traffic at priority 65534, overriding GCP's implied allow-all egress rule. Establishes a deny-by-default egress posture for compliance-driven environments. Add higher-priority allow rules for approved destinations. Start from the **Egress Deny All** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the firewall rule is created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network that the firewall rule is attached to
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network that the firewall rule is attached to

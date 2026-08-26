@@ -1,6 +1,6 @@
 # GCP Vertex AI Notebook
 
-Deploys a Vertex AI Workbench instance -- a managed JupyterLab environment backed by a Compute Engine VM -- with configurable machine types, GPU accelerators, boot and data disk encryption, VPC networking, and pre-built or custom container images. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, subnets, KMS keys, and service accounts.
+Deploys a Vertex AI Workbench instance -- a managed JupyterLab environment backed by a Compute Engine VM -- with configurable machine types, GPU accelerators, boot and data disk encryption, VPC networking, and pre-built or custom container images. Machine, disk, and network settings are create-time decisions; the instance can be suspended via `desiredState` to stop compute billing while disks persist.
 
 ## What Gets Created
 
@@ -14,6 +14,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Service Account Binding** -- created only when `serviceAccount` is set; configures the VM identity for accessing GCP resources (BigQuery, GCS, Vertex AI) with `cloud-platform` scope
 - **Shielded VM Configuration** -- created only when `shieldedInstanceConfig` is set; enables Secure Boot, vTPM, and integrity monitoring for enhanced security
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
+- **API enablement** -- `notebooks.googleapis.com` and `compute.googleapis.com` are enabled in the target project; tearing down the instance never disables the APIs
 
 ## Before You Deploy
 
@@ -24,8 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the notebook instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Notebooks API** (`notebooks.googleapis.com`) enabled in the target project.
+- **A GCP project** where the notebook instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Notebooks and Compute Engine APIs itself, so the connection's principal needs permission to enable services on a fresh project.
 - **A VPC network and subnet** (if using private networking) -- the instance can be placed in a specific VPC/subnet with optional public IP disabled. Provide self-links directly or reference GcpVpcNetwork and GcpSubnetwork Cloud Resources via ValueFromRef.
 - **Cloud KMS key** (if using CMEK) -- a key in the same region as the instance for boot and/or data disk encryption.
 - **GPU quota** (if using accelerators) -- sufficient GPU quota in the target zone for the chosen accelerator type.
@@ -147,7 +147,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the notebook instance is created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network for private notebook access
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network for private notebook access
 - [**GCP Subnetwork**](/cloud-catalog/gcp-subnetwork) -- provides the subnet for instance placement within the VPC
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides customer-managed encryption keys for boot and data disks
 - [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- provides the VM identity for accessing GCP resources

@@ -1,11 +1,12 @@
 # GCP AlloyDB Cluster
 
-Deploys an AlloyDB cluster with a bundled primary instance, private networking (Private Service Access VPC peering XOR Private Service Connect), configurable PostgreSQL version, PRIMARY or cross-region SECONDARY topology, automated periodic backups, continuous backup with point-in-time recovery, optional CMEK encryption across cluster data, backups, and continuous backups independently, and a maintenance window. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, VPCs, and KMS keys.
+Deploys an AlloyDB cluster with a bundled primary instance, private networking (Private Service Access VPC peering XOR Private Service Connect), configurable PostgreSQL version, PRIMARY or cross-region SECONDARY topology, automated periodic backups, continuous backup with point-in-time recovery, optional CMEK encryption across cluster data, backups, and continuous backups independently, and a maintenance window. The cluster can also be seeded from a backup or by point-in-time recovery from another cluster's continuous backup stream — a create-time-only choice.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **AlloyDB API enablement** (`alloydb.googleapis.com`) on the target project (never disabled on destroy)
 - **AlloyDB Cluster** -- a managed cluster in the specified GCP project and region with private networking, optional display name, annotations, and a subscription tier (STANDARD or TRIAL)
 - **Primary Instance** -- a compute instance within the cluster configured with CPU count or explicit machine type, availability type (ZONAL or REGIONAL), database flags, query insights, SSL mode, and optional connector enforcement
 - **Network Configuration** -- exactly one connectivity path: Private Service Access through the specified VPC (with optional allocated IP range for pre-planned CIDR assignments) OR Private Service Connect (`pscConfig.pscEnabled`) for endpoint-based multi-VPC access
@@ -25,7 +26,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **A GCP project** where the AlloyDB cluster will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
 - **A VPC network** with Private Service Access configured (compose GcpGlobalAddress with VPC_PEERING purpose + GcpServiceNetworkingConnection). Provide the network as the relative resource path `projects/{project}/global/networks/{network}` -- the AlloyDB API rejects full https:// self-link URLs -- or reference a GcpVpcNetwork Cloud Resource via ValueFromRef (resolves to exactly that path). Not needed when using Private Service Connect instead.
-- **AlloyDB API** (`alloydb.googleapis.com`) enabled in the target project.
 - **Cloud KMS keys** (if using CMEK) -- each key must be in the same region as the cluster. The AlloyDB service account must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on each key.
 
 ## Deploy
@@ -62,7 +62,7 @@ spec:
 planton apply -f alloydb-cluster.yaml
 ```
 
-This creates a regional AlloyDB cluster with a 4-CPU primary instance, private networking via the specified VPC, and GCP default backup policies. No initial user is created. The cluster ships destroy-guarded: `deletionProtection` defaults to TRUE, so a destroy fails until the spec flips it false and that change is applied first.
+This creates a regional AlloyDB cluster with a 4-CPU primary instance, private networking via the specified VPC, and GCP default backup policies. No initial user is created. The cluster ships destroy-guarded: `deletionProtection` defaults to TRUE, so a destroy fails until the spec flips it false and that change is applied first. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -118,6 +118,7 @@ These are the most important decisions when configuring an AlloyDB cluster. Expl
 | **GcpKmsKey** (optional) | `kmsKeyName` | `status.outputs.key_id` |
 | **GcpKmsKey** (optional) | `automatedBackupPolicy.encryptionKmsKeyName` | `status.outputs.key_id` |
 | **GcpKmsKey** (optional) | `continuousBackupConfig.encryptionKmsKeyName` | `status.outputs.key_id` |
+| **GcpAlloydbCluster** (PITR restore) | `restoreContinuousBackupSource.cluster` | `status.outputs.cluster_id` |
 
 ### What This Component Provides
 
