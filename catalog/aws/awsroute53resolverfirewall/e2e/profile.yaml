@@ -17,9 +17,17 @@ spec:
   #     own destroy; the lane would strand the group. The arm is
   #     config-verified offline only.
   #
-  # pending_proof: forged this session to the full offline bar -- Q47
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q47): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip (the
+  # threat rule's {group}:{match_id} composite re-imported blind
+  # through the rule_match_ids map). TWO catches fixed at the bar:
+  # (1) AWS stores every firewall domain as a trailing-dot FQDN and
+  # echoes it - a bare-authored block_override_domain re-planned
+  # forever; both modules now compose the canonical form; (2) the TF
+  # rule_match_ids output picked the SDKv2 empty-string
+  # firewall_domain_list_id over the real threat-protection id (""
+  # is not null) - coalesce() now feeds the composite.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

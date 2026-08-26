@@ -17,9 +17,14 @@ spec:
   #     ForceNew string either way. Unblock: fold an S3-destination
   #     scenario into a future proof session if drift appears.
   #
-  # pending_proof: forged this session to the full offline bar -- Q47
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q47): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip (~1.8 min
+  # per engine). Clean first-pass; the verifier's ACTIVE assertion on
+  # the VPC association held, and the open destination question is
+  # settled: the resolver ACCEPTS the CloudWatch log group's bare ARN
+  # (no ":*" suffix needed - the association reached ACTIVE as
+  # authored).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

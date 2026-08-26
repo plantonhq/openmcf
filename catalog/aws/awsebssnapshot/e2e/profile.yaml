@@ -23,9 +23,14 @@ spec:
   #     90-day minimum-storage billing commitment per snapshot.
   #     Unblock: an owner-approved cost waiver.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Clean first-pass - the volume-arm
+  # snapshot completed with FSR enabled in us-west-2a and disabled on
+  # destroy, and the FSR {zone},{snapshot} composite re-imported blind
+  # at zero diff (~3.5 min per engine including the source-volume
+  # fixture).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

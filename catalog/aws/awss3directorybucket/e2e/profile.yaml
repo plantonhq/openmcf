@@ -13,9 +13,16 @@ spec:
   #     derived-redundancy pairing are the load-bearing guards.
   #     Unblock: a Local Zone opt-in on the harness account.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate (~40s per engine); both engines
+  # derived the identical "planton-oss-e2e-awss3dirb--usw2-az1--x-s3"
+  # name. One VERIFIER catch fixed at the bar: S3 Express routes
+  # HeadBucket through CreateSession, so a deleted bucket's 404
+  # surfaces inside a credential-acquisition wrapper the typed
+  # not-found match never sees - the verifier now also matches the
+  # gone-code textually (the unmodeled-not-found class, third face).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

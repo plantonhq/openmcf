@@ -1926,11 +1926,13 @@ spec:
       pulumi_type: aws:s3tables/table:Table
       id_format: "{table_bucket_arn};{namespace};{table_name}"
       # The Iceberg schema and properties (metadata) are CREATE-ONLY
-      # input the provider never reads back - a fresh import lacks them
-      # and the first plan re-asserts; post-apply idempotency holds
-      # (schema evolution happens through query engines).
-      write_normalized_attributes:
-        - metadata
+      # replace-forcing input the provider never reads back, so a blind
+      # import would plan a DESTRUCTIVE delete+create against the empty
+      # imported state (live-caught 2026-08-26; upstream's own import
+      # tests ImportStateVerifyIgnore the block). Both modules suppress
+      # the diff at the source - TF lifecycle ignore_changes / Pulumi
+      # IgnoreChanges on metadata - so the round-trip is genuinely
+      # zero-diff and no tolerance is declared here.
       notes: >-
         Semicolon-separated bucket-ARN;namespace;table composite (the
         provider's hand-written import path).

@@ -146,8 +146,16 @@ func namespace(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 			}
 			args.HealthCheckConfig = healthCheck
 		}
+		// AWS materializes failure_threshold=1 on every custom-health
+		// config (the argument is retired - 1 is the only value it ever
+		// stores) and echoes it on read; an empty block would diff
+		// 0-vs-1 forever on a replace-forcing attribute (live-caught
+		// 2026-08-26). Always send the materialized value. PARITY: the
+		// Terraform module sends the same.
 		if service.HealthCheckCustomConfig != nil {
-			args.HealthCheckCustomConfig = &servicediscovery.ServiceHealthCheckCustomConfigArgs{}
+			args.HealthCheckCustomConfig = &servicediscovery.ServiceHealthCheckCustomConfigArgs{
+				FailureThreshold: pulumi.Int(1),
+			}
 		}
 		if service.ForceDestroy {
 			args.ForceDestroy = pulumi.Bool(true)

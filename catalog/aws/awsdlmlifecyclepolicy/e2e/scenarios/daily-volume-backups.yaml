@@ -21,8 +21,11 @@ metadata:
     managed-by: planton-e2e
     e2e-component: awsdlmlifecyclepolicy
   annotations:
+    # The consumer-scoped execution role (prerequisites/awsiamrole.yaml)
+    # rides the kind's registry AwsIamRole edge - naming it here too
+    # would deploy the same fixture twice and break the Pulumi teardown
+    # (the second destroy finds no stack).
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "catalog/aws/awsdlmlifecyclepolicy/e2e/prerequisites/awsiamrole.yaml"
   tags:
     - planton-e2e
 spec:

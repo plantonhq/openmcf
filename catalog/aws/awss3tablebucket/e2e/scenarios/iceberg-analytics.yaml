@@ -6,6 +6,12 @@
 # namespace and table satellites, and the create-only schema.
 # Storage is empty - free at rest, seconds per phase.
 #
+# The name is run-scoped: S3 Tables holds a deleted bucket's name in
+# a "transitional state" window (CreateTableBucket 409
+# ConflictException "previous deletion attempt"), so a fixed name
+# collides across back-to-back engine lanes - the S3 name-limbo
+# class, S3 Tables edition.
+#
 # Deliberately unexercised arms (recorded in the profile): bucket and
 # table replication (destination is another AwsS3TableBucket - the
 # self-kind-prerequisite guard), and the resource policies (need the
@@ -13,8 +19,8 @@
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3TableBucket
 metadata:
-  name: planton-oss-e2e-awss3tblb
-  id: planton-oss-e2e-awss3tblb
+  name: planton-oss-e2e-awss3tblb-${E2E_RUN_ID}
+  id: planton-oss-e2e-awss3tblb-${E2E_RUN_ID}
   org: planton-oss
   env: e2e
   labels:

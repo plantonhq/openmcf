@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -173,6 +174,17 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		slug, err := manifestKindSlug(full)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s annotation entry %q", scenarioPrerequisitesAnnotation, entry)
+		}
+		// An "extra instance" is only meaningful when it is a DIFFERENT
+		// manifest. When an annotation names the same file the kind-driven
+		// chain already resolved (the typical slip: annotating the
+		// consumer-scoped override of a registry prerequisite), the
+		// duplicate deploys the same stack twice and breaks teardown -- the
+		// second destroy finds no stack (live-caught 2026-08-26 on a DLM
+		// role fixture; the Terraform path masks it because destroying an
+		// empty state succeeds). Skip the duplicate instead.
+		if slices.ContainsFunc(deps, func(d Dependency) bool { return d.ManifestPath == full }) {
+			continue
 		}
 		entryKind := crkreflect.KindFromString(slug)
 		pre, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, crkreflect.Prerequisites(entryKind), visited)

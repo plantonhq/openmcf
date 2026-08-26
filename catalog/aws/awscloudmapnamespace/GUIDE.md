@@ -25,3 +25,15 @@ A service publishing SRV returns hostname+port tuples, and clients must ask for 
 ## Custom health starts UNHEALTHY-free but needs a heartbeat
 
 `health_check_custom_config` services mark instances healthy until told otherwise, but the workload must push UpdateInstanceCustomHealthStatus to ever mark one unhealthy — silence means permanently healthy, not monitored.
+
+## CNAME services must say WEIGHTED out loud
+
+A CNAME record answers with exactly one value, so AWS rejects a CNAME service under the default MULTIVALUE policy — CreateService fails with "WEIGHTED routing policy must be used with DNS Record Type CNAME" (proven live). The spec enforces the explicit `routingPolicy: WEIGHTED` so the manifest fails at validation, not at deploy.
+
+## Cloud Map's Route 53 health checks outlive their instances briefly
+
+The health checks Cloud Map creates for health-checked instances are LINKED resources: `DeleteHealthCheck` refuses them ("can only be managed through AWS Cloud Map"), and after the instance, service, and namespace are all gone the checks linger in `list-health-checks` until AWS's own cleanup sweeps them (observed live: minutes-scale). A post-teardown audit that finds only `LinkedService: servicediscovery.amazonaws.com` checks is looking at drain, not leakage — you could not delete them even if you wanted to.
+
+## Public namespaces cannot ride documentation domains
+
+A PUBLIC_DNS namespace creates a real Route 53 public hosted zone, and Route 53 refuses `example.com` and its subdomains — "reserved by AWS", CANNOT_CREATE_HOSTED_ZONE (proven live). Private namespaces don't care (no public zone involved). For rehearsals without a real domain, `.test` names are accepted; you never need to own or delegate the domain just to create the namespace.
