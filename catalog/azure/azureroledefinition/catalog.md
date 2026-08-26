@@ -1,6 +1,6 @@
 # Azure Role Definition
 
-Deploys a custom Azure RBAC role: a named, reusable bundle of permissions that principals can then be granted through role assignments. Azure ships hundreds of built-in roles, but real organizations routinely need permission sets the built-ins don't express — "Contributor, except role assignments and policy writes", "can restart VMs but not create or delete them", "read-only plus blob data access". A custom role captures such a set once, with a meaningful name, and every grant of it stays consistent as the definition evolves. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource-group scopes.
+Deploys a custom Azure RBAC role: a named, reusable bundle of permissions that principals can then be granted through role assignments. Azure ships hundreds of built-in roles, but real organizations routinely need permission sets the built-ins don't express — "Contributor, except role assignments and policy writes", "can restart VMs but not create or delete them", "read-only plus blob data access". A custom role captures such a set once, with a meaningful name, and every grant of it stays consistent as the definition evolves: updating the definition's permissions updates what every existing assignment of it allows.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ A definition grants nothing by itself -- permissions only take effect when an **
 
 ### Console
 
-Open the deployment store, find **Azure Role Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-add templates for the classic permission-block shapes. Start from the **VM Operator Role** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Role Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-add templates for the classic permission-block shapes. Start from the **Explicit-Actions Operator Role** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleDefinition
 metadata:
   name: acme-vm-operator
@@ -56,7 +56,7 @@ spec:
 planton apply -f role.yaml
 ```
 
-Assignable scopes are omitted, so Azure defaults them to the definition's own scope (the subscription).
+This creates a subscription-scoped custom role that can start, stop, restart, and deallocate existing VMs but never create or delete them; assignable scopes are omitted, so Azure defaults them to the definition's own scope. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -82,13 +82,19 @@ spec:
       kind: AzureResourceGroup
       name: data-rg
       fieldPath: status.outputs.resource_group_id
-  roleDefinitionId: "<from the definition's role_definition_id output>"
+  roleDefinitionId:
+    valueFrom:
+      kind: AzureRoleDefinition
+      name: acme-blob-reader
+      fieldPath: status.outputs.role_definition_id
   principalId:
     valueFrom:
       kind: AzureUserAssignedIdentity
       name: analytics-reader
       fieldPath: status.outputs.principal_id
 ```
+
+The InfraPipeline resolves the dependency graph: the custom role exists before the grant that binds it.
 
 ## Key Configuration
 
@@ -110,25 +116,25 @@ These are the most important decisions when configuring a custom role. Explore t
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `role_definition_id` | Fully-scoped ARM ID of the definition | AzureRoleAssignment's `roleDefinitionId` field |
-| `role_definition_guid` | The definition's GUID resource name | Authorization API automation |
-| `role_name` | The display name as deployed | Portal cross-reference |
-| `scope` | The creation scope as resolved | Auditing |
-| `assignable_scopes` | The scopes Azure recorded (incl. the provider-defaulted own scope) | Auditing where grants may exist |
+| `role_definition_id` | Fully-scoped ARM ID of the definition | AzureRoleAssignment's `roleDefinitionId` field -- the reference that binds this custom role to a principal |
+| `role_definition_guid` | The definition's GUID resource name | Identifying the definition in authorization-API automation, since assignments track roles by GUID |
+| `assignable_scopes` | The scopes Azure recorded -- carries the provider-defaulted own scope when the spec omitted the field | Knowing where grants of this role may exist without re-reading the spec |
+
+The `role_name` and `scope` outputs echo the definition's coordinates as deployed for portal cross-reference and audit tooling; they are not typically wired into other Cloud Resources.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Operational roles** -- Verb-scoped control-plane roles ("operate, don't create"): the VM operator pattern. Start from the **VM Operator Role** preset.
+**Operational roles** -- Verb-scoped control-plane roles ("operate, don't create"): the VM operator pattern. Start from the **Explicit-Actions Operator Role** preset.
 
-**Data-access roles** -- Pure data-plane grants with zero management surface: the blob-data-reader pattern. Start from the **Blob Data Reader Role** preset.
+**Data-access roles** -- Pure data-plane grants with zero management surface: the blob-data-reader pattern. Start from the **Data-Plane Role (Blob Auditor)** preset.
 
-**Admin-minus-carve-out** -- Broad grants with the RBAC-write carve-out, keeping permission changes in the hands of the few. Start from the **Project Admin Carve-Out Role** preset.
+**Admin-minus-carve-out** -- Broad grants with the RBAC-write carve-out, keeping permission changes in the hands of the few. Start from the **Broad Grant with Carve-Outs and Assignable-Scope Control** preset.
 
 ## Works With
 

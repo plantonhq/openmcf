@@ -1,6 +1,6 @@
 # Azure Cognitive Account Project
 
-Deploys an AI Foundry project onto an Azure AI services account -- the workspace a team organizes its AI work in (agents, evaluations, files), isolated from sibling projects on the same account. The parent account must be kind `AIServices` with project management enabled. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an AI Foundry project onto an Azure AI services account -- the workspace a team organizes its AI work in (agents, evaluations, files), isolated from sibling projects on the same account. The parent account must be kind `AIServices` with project management enabled; the project carries only its own identity, naming, and description, and provisions in seconds as a free workspace object.
 
 ## What Gets Created
 
@@ -53,9 +53,22 @@ spec:
 planton apply -f azure-cognitive-account-project.yaml
 ```
 
+This creates a team project with its own system-assigned identity on the referenced AIServices account. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-In an AI-platform chart the order is: account (AIServices, project management on) → **projects** (one per team), each wiring to the account by reference.
+In an AI-platform chart the order is: account (AIServices, project management on) → **projects** (one per team). Wire the account with ValueFromRef so the InfraPipeline deploys it first:
+
+```yaml
+spec:
+  cognitiveAccountId:
+    valueFrom:
+      kind: AzureCognitiveAccount
+      name: foundry-prod
+      fieldPath: status.outputs.cognitive_account_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the account first, then creates each project with the resolved account ARM ID.
 
 ## Key Configuration
 

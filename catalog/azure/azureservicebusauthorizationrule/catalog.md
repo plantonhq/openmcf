@@ -1,6 +1,6 @@
 # Azure Service Bus Authorization Rule
 
-Mints a SAS (shared-access-signature) credential for Azure Service Bus: a named rule with listen/send/manage rights, scoped to exactly one of a namespace, a queue, or a topic. Authorization rules are how applications get least-privilege connection strings -- a sender service holds a send-only rule on its one queue, a worker holds a listen-only rule, and neither can touch anything else. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Mints a SAS (shared-access-signature) credential for Azure Service Bus: a named rule with listen/send/manage rights, scoped to exactly one of a namespace, a queue, or a topic. Authorization rules are how applications get least-privilege connection strings -- a sender service holds a send-only rule on its one queue, a worker holds a listen-only rule, and neither can touch anything else. The rule's keys and connection strings surface as sensitive outputs, with a secondary pair for zero-downtime rotation.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Service Bus Authorization Rule**, and click **Deploy**. The creation wizard walks you through the credential scope (namespace-wide, one queue, or one topic -- the blast-radius decision), the rule identity, and the rights trio with persona quick-picks (Sender / Listener / Full manage) and Azure's manage-superset contract enforced live. Start from the **Queue Sender** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Service Bus Authorization Rule**, and click **Deploy**. The creation wizard walks you through the credential scope (namespace-wide, one queue, or one topic -- the blast-radius decision), the rule identity, and the rights trio with persona quick-picks (Sender / Listener / Full manage) and Azure's manage-superset contract enforced live. Start from the **Queue Sender Credential** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusAuthorizationRule
 metadata:
   name: orders-sender-rule
@@ -53,7 +53,7 @@ spec:
 planton apply -f rule.yaml
 ```
 
-Azure's rights contract: at least one of listen/send/manage must be true, and **manage requires BOTH listen and send** (it is a superset, never standalone). The scope and the rule name are **fixed at creation** -- changing either replaces the rule and REGENERATES its keys, cutting off every client holding the old connection string.
+This mints `orders-api-sender`, a send-only SAS credential scoped to the `orders-queue` queue -- the tightest credential Service Bus can offer a producer. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -76,7 +76,7 @@ These are the most important decisions when configuring an authorization rule. E
 
 **The scope IS the blast radius** -- `namespaceId` grants rights over EVERY queue and topic (tooling, never app workloads); `queueId` and `topicId` scope to one entity. A leaked queue-scoped sender credential exposes one queue, not the namespace.
 
-**The rights trio** -- `listen` receives (and browses/peeks), `send` produces, `manage` creates and deletes entities. One rule per holder beats one shared rule: when the orders API's rule leaks, you rotate it alone.
+**The rights trio** -- `listen` receives (and browses/peeks), `send` produces, `manage` creates and deletes entities. Azure's contract: at least one right must be true, and `manage` requires BOTH listen and send -- it is a superset, never standalone. One rule per holder beats one shared rule: when the orders API's rule leaks, you rotate it alone.
 
 **Rotation by design** -- primary and secondary keys both work at all times: move clients to the secondary, regenerate the primary in Azure, move back. Rights edits update the rule IN PLACE (the keys keep working); renaming or re-scoping replaces the rule and its keys.
 
@@ -108,9 +108,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Queue sender** -- the tightest credential Service Bus can mint: send-only on one queue, the shape most producer services should hold. Start from the **Queue Sender** preset.
+**Queue sender** -- the tightest credential Service Bus can mint: send-only on one queue, the shape most producer services should hold. Start from the **Queue Sender Credential** preset.
 
-**Namespace operator** -- the full listen+send+manage trio at namespace scope, for entity-management tooling and deploy pipelines. Start from the **Namespace Operator** preset.
+**Namespace operator** -- the full listen+send+manage trio at namespace scope, for entity-management tooling and deploy pipelines. Start from the **Namespace Operator Credential** preset.
 
 ## Works With
 

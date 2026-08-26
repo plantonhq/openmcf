@@ -1,6 +1,6 @@
 # Azure ExpressRoute Circuit
 
-Deploys an ExpressRoute circuit -- the dedicated PRIVATE connection between your infrastructure and Microsoft, bought through a connectivity provider (Equinix, Megaport, ...) or carved from your own ExpressRoute Direct port. Creating the circuit issues the service key your provider uses to provision the physical cross-connect; peerings (AzureExpressRouteCircuitPeering) then make routes flow through it. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an ExpressRoute circuit -- the dedicated PRIVATE connection between your infrastructure and Microsoft, bought through a connectivity provider (Equinix, Megaport, ...) or carved from your own ExpressRoute Direct port. Creating the circuit issues the service key your provider uses to provision the physical cross-connect; peerings (AzureExpressRouteCircuitPeering) then make routes flow through it. Azure meters the circuit from the moment the service key is issued, even while the provider side is unprovisioned.
 
 ## What Gets Created
 
@@ -55,11 +55,22 @@ spec:
 planton apply -f azure-express-route-circuit.yaml
 ```
 
-The circuit provisions in minutes and sits in `NotProvisioned` until you hand the `service_key` output to your provider. **Billing starts at creation**, even before the provider completes the cross-connect.
+This creates a 1 Gbps STANDARD metered circuit provisioned through Equinix at the Washington DC peering location; it sits in `NotProvisioned` until you hand the `service_key` output to your provider. A Stack Job tracks the provisioning in real time. **Billing starts at creation**, even before the provider completes the cross-connect.
 
 ### InfraChart
 
-In a hybrid-connectivity chart, the circuit anchors the chain: circuit → private peering → ExpressRoute-type virtual network gateway → gateway connection, each wiring to the previous by reference.
+In a hybrid-connectivity chart, the circuit anchors the chain: circuit → private peering → ExpressRoute-type virtual network gateway → gateway connection, each wiring to the previous by reference. Wire the circuit itself to a resource group (or, for a Direct circuit, to its port) deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the circuit with the resolved values.
 
 ## Key Configuration
 
@@ -78,6 +89,7 @@ These are the most important decisions when configuring a circuit. Explore the f
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AzureResourceGroup** | `resourceGroup` | `status.outputs.resource_group_name` |
+| **AzureExpressRoutePort** | `expressRoutePortId` | `status.outputs.express_route_port_id` |
 
 ### What This Component Provides
 
@@ -85,7 +97,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `express_route_circuit_id` | Azure Resource Manager ID of the circuit | Operational tooling |
+| `express_route_circuit_id` | Azure Resource Manager ID of the circuit | AzureVirtualNetworkGatewayConnection's `expressRouteCircuitId` -- the link that attaches a VNet gateway to the circuit |
 | `express_route_circuit_name` | Name of the circuit | AzureExpressRouteCircuitPeering's `expressRouteCircuitName` |
 | `service_key` | The provisioning credential (sensitive) | Handed to the connectivity provider |
 | `service_provider_provisioning_state` | NotProvisioned / Provisioning / Provisioned / Deprovisioning | Gating peering deployment |
@@ -99,8 +111,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Metro-local circuit** -- LOCAL tier for egress-free connectivity in one metro. Start from the **Local Metro Circuit** preset.
 
+**Direct-port circuit** -- carved from your own ExpressRoute Direct port, with no third-party provider in the loop: `expressRoutePortId` plus `bandwidthInGbps`, for the 10/100 Gbps estates that own their cross-connects. Start from the **Direct Port Circuit** preset.
+
 ## Works With
 
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the circuit is created in
 - [**Azure ExpressRoute Circuit Peering**](/cloud-catalog/azure-express-route-circuit-peering) -- the BGP configuration that makes routes flow
+- [**Azure ExpressRoute Port**](/cloud-catalog/azure-express-route-port) -- the Direct port a provider-less circuit is carved from
 - [**Azure Virtual Network Gateway**](/cloud-catalog/azure-virtual-network-gateway) -- the EXPRESS_ROUTE-type gateway that connects a VNet to the circuit's private peering

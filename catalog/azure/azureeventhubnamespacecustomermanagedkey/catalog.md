@@ -1,6 +1,6 @@
 # Azure Event Hub Namespace Customer Managed Key
 
-Configures customer-managed-key (BYOK) encryption on an Event Hubs namespace: event data at rest is encrypted with YOUR Key Vault keys instead of Microsoft-managed keys. Azure models CMK as a configuration applied ONTO an existing namespace -- and this kind mirrors that grain, for a real reason: encrypting with the namespace's own system-assigned identity is only possible as a second step (create the namespace with its identity, grant that identity wrap/unwrap on the vault, then apply this kind). A folded create-time block could never express that sequence. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Configures customer-managed-key (BYOK) encryption on an Event Hubs namespace: event data at rest is encrypted with YOUR Key Vault keys instead of Microsoft-managed keys. Azure models CMK as a configuration applied ONTO an existing namespace -- and this kind mirrors that grain, for a real reason: encrypting with the namespace's own system-assigned identity is only possible as a second step (create the namespace with its identity, grant that identity wrap/unwrap on the vault, then apply this kind). A folded create-time block could never express that sequence. CMK is add-only by Azure's own contract: once enabled it can never be removed short of replacing the namespace itself.
 
 ## What Gets Created
 
@@ -34,7 +34,7 @@ Open the deployment store, find **Azure Event Hub Namespace Customer Managed Key
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubNamespaceCustomerManagedKey
 metadata:
   name: telemetry-cmk
@@ -62,11 +62,11 @@ spec:
 planton apply -f cmk.yaml
 ```
 
-Two fields are **fixed at creation** -- `eventhubNamespaceId` (the configuration is bound to its namespace for life) and `infrastructureEncryptionEnabled` (fixed the moment CMK is first configured). The key list and the identity edit in place.
+This applies BYOK encryption to the `telemetry-hubs-premium` namespace with one versionless Key Vault key, unwrapped by the `cmk-identity` user-assigned identity. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, sequence namespace, grant, and CMK in one InfraPipeline -- the dependency graph resolves the order:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the CMK configuration onto a namespace deployed in the same InfraPipeline:
 
 ```yaml
 spec:
@@ -77,6 +77,8 @@ spec:
       fieldPath: status.outputs.namespace_id
 ```
 
+The InfraPipeline resolves the dependency graph, deploying the namespace (and the identity's vault grant) before this configuration applies.
+
 ## Key Configuration
 
 These are the most important decisions when configuring CMK. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -86,6 +88,8 @@ These are the most important decisions when configuring CMK. Explore the full fi
 **The unwrap identity** -- unset uses the namespace's SYSTEM-ASSIGNED identity (grant it the vault access via its `identity_principal_id` output). Set `userAssignedIdentityId` for the fleet pattern: one CMK identity with a standing vault grant, attached to every namespace at creation -- the identity must already ride the namespace's identity block with vault access when this kind applies.
 
 **Infrastructure encryption** -- `infrastructureEncryptionEnabled` adds a second, independent encryption layer beneath your keys. It is fixed the moment CMK is first configured; decide it now.
+
+**What can change later** -- `eventhubNamespaceId` is fixed at creation (the configuration is bound to its namespace for life), while the key list and the unwrap identity edit in place. And remember the add-only lifecycle: deleting this resource changes nothing on the namespace, and there is no path back to Microsoft-managed keys short of replacing the namespace.
 
 ## Outputs and Dependencies
 

@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Cosmos DB SQL Container**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **tenant-partitioned** preset in the [Presets](#presets) tab for the multi-tenant shape.
+Open the deployment store, find **Azure Cosmos DB SQL Container**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Tenant-Partitioned Container** preset in the [Presets](#presets) tab for the multi-tenant shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbSqlContainer
 metadata:
   name: carts-container
@@ -62,6 +62,8 @@ When deploying as part of a multi-resource environment, the whole chain composes
 
 ## Key Configuration
 
+These are the most important decisions when configuring a SQL container. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Partition key** -- `partitionKeyPaths` (1-3 paths starting with `/`) plus `partitionKeyKind`: unset/`HASH` for the normal single-path key, `MULTI_HASH` for a hierarchical key of up to three levels (e.g. `/tenantId`, `/userId`) that routes queries carrying any prefix efficiently — hierarchical keys require `partitionKeyVersion: 2`. All fixed at creation: changing the key means a new container and a data migration.
 
 **Throughput model** -- Leave both fields unset to share the database's provisioned budget (or on serverless accounts); set `throughput` (minimum 400 RU/s, increments of 100) for dedicated fixed capacity; or set `autoscaleMaxThroughput` (minimum 1000, increments of 1000). The two are mutually exclusive. Edits in place.
@@ -80,11 +82,29 @@ When deploying as part of a multi-resource environment, the whole chain composes
 |------------|-------|-------------------|
 | AzureCosmosdbSqlDatabase | `sqlDatabaseId` | `status.outputs.sql_database_id` |
 
-### What This Component Produces
+### What This Component Provides
 
-| Output | Description | Consumed By |
-|--------|-------------|-------------|
-| `sql_container_id` | The ARM ID of the container | ARM-scoped tooling |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `sql_container_id` | The ARM ID of the container | The scope for container-level data-plane RBAC (AzureCosmosdbSqlRoleAssignment) |
 | `sql_container_name` | The container's name | Application configuration |
 | `sql_database_name` | The parent database's name | SDK addressing (`{database}/{container}`) |
 | `cosmosdb_account_name` | The account's name | Connection string composition |
+
+There are deliberately no endpoint or credential outputs here: connectivity and keys live on the account (AzureCosmosdbAccount's endpoint and key outputs); the container is addressed inside that connection by database and container name.
+
+## Common Patterns
+
+**Tenant-partitioned workhorse** — a single high-cardinality key (`/tenantId`), autoscale throughput that follows the daily traffic curve (billing 10% of the ceiling when idle), and an indexing policy that includes `/*` but excludes a bulky `/payload/*` subtree queries never filter on. Start from the **Tenant-Partitioned Container** preset.
+
+**Hierarchical key for tenants that outgrow one partition** — `MULTI_HASH` with `/tenantId`, `/userId` (and `partitionKeyVersion: 2`) lifts the 20 GB per-partition-key-value ceiling of a simple key, and prefix queries route efficiently at every level. Pair with a composite index matching the feed's ORDER BY. Start from the **Hierarchical Partition Key** preset.
+
+**Self-cleaning session store** — `defaultTtl: 86400` expires documents a day after their last write, `indexingMode: NONE` stops paying indexing RU (point reads by id only — wrong for anything that queries), and no throughput fields so the container rides the database's shared budget. The cheapest shape for ephemeral data. Start from the **TTL Session Store** preset.
+
+## Works With
+
+- [**Azure Cosmos DB SQL Database**](/cloud-catalog/azure-cosmosdb-sql-database) — the parent database this container lives in, referenced via `sql_database_id`
+- [**Azure Cosmos DB Account**](/cloud-catalog/azure-cosmosdb-account) — the account that owns connectivity, keys, and network posture for everything inside
+- [**Azure Cosmos DB SQL Role Assignment**](/cloud-catalog/azure-cosmosdb-sql-role-assignment) — data-plane grants scoped to this container (`{account-id}/dbs/{database-name}/colls/{container-name}`)

@@ -1,6 +1,6 @@
 # Azure Machine Learning Online Deployment
 
-Creates a managed online deployment on an Azure Machine Learning online endpoint -- a running copy of a model behind the endpoint's address, on Azure-managed VMs with health probes, request limits, and optional model data collection. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a managed online deployment on an Azure Machine Learning online endpoint -- a running copy of a model behind the endpoint's address, on Azure-managed VMs with health probes, request limits, and optional model data collection.
 
 ## What Gets Created
 
@@ -46,18 +46,29 @@ spec:
   region: eastus
   instanceType: Standard_DS3_v2
   instanceCount: 2
-  model: /subscriptions/.../workspaces/ml-prod/models/fraud-model/versions/3
+  model: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ml-platform-rg/providers/Microsoft.MachineLearningServices/workspaces/ml-prod/models/fraud-model/versions/3
 ```
 
 ```shell
 planton apply -f azure-machine-learning-online-deployment.yaml
 ```
 
-The deployment provisions its instances in ten to twenty minutes; the endpoint's traffic map then routes to it by name.
+This creates a two-instance `blue` deployment serving registered model version 3; it provisions its instances in ten to twenty minutes, and the endpoint's traffic map then routes to it by name. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → online endpoint → **online deployment(s)**, each wiring its parent by reference; the endpoint's traffic map routes by the deployments' names.
+In an ML-platform chart the order is: workspace → online endpoint → **online deployment(s)**; the endpoint's traffic map routes by the deployments' names. Wire the endpoint by reference:
+
+```yaml
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureMachineLearningOnlineEndpoint
+      name: fraud-scoring
+      fieldPath: status.outputs.online_endpoint_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the endpoint before the deployment.
 
 ## Key Configuration
 
@@ -85,7 +96,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `online_deployment_id` | ARM ID of the deployment | Operational tooling |
 | `online_deployment_name` | The deployment's name | The endpoint's traffic-map key |
 
 ## Common Patterns

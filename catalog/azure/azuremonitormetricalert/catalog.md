@@ -1,6 +1,6 @@
 # Azure Monitor Metric Alert
 
-Deploys an Azure Monitor metric alert rule -- the watchdog on platform metrics. It evaluates a metric (CPU, latency, queue depth, transactions -- anything a resource emits to Azure Monitor Metrics) against a condition on a rolling window and fires action groups when the condition holds. Three condition families exist: static thresholds (the classic "metric crosses a value"), dynamic machine-learning thresholds (Azure learns the metric's normal band), and web-test availability (fires when an Application Insights availability test fails from N locations -- how a failed probe becomes a page). The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, watched resources, web tests, and action groups.
+Deploys an Azure Monitor metric alert rule -- the watchdog on platform metrics. It evaluates a metric (CPU, latency, queue depth, transactions -- anything a resource emits to Azure Monitor Metrics) against a condition on a rolling window and fires action groups when the condition holds. Three condition families exist: static thresholds (the classic "metric crosses a value"), dynamic machine-learning thresholds (Azure learns the metric's normal band), and web-test availability (fires when an Application Insights availability test fails from N locations -- how a failed probe becomes a page).
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Monitor Metric Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **static-threshold** preset in the [Presets](#presets) tab to pre-populate the classic threshold rule.
+Open the deployment store, find **Azure Monitor Metric Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Static Threshold Alert** preset in the [Presets](#presets) tab to pre-populate the classic threshold rule.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorMetricAlert
 metadata:
   name: checkout-latency-alert
@@ -44,7 +44,7 @@ spec:
     value: "observability-rg"
   alertName: checkout-api-high-latency
   scopes:
-    - value: "/subscriptions/.../sites/checkout-api"
+    - value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/web-rg/providers/Microsoft.Web/sites/checkout-api"
   description: p95 latency above 500ms -- runbook wiki/checkout-latency
   severity: 1
   staticCriteria:
@@ -65,7 +65,7 @@ spec:
 planton apply -f metric-alert.yaml
 ```
 
-This creates a rule on the platform defaults: evaluated every minute over the last five minutes, stateful (one firing per incident, self-resolving).
+This creates a rule on the platform defaults: evaluated every minute over the last five minutes, stateful (one firing per incident, self-resolving). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -120,22 +120,17 @@ These are the most important decisions when configuring a metric alert. Explore 
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values for operators (the rule is a leaf -- nothing references it downstream):
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `metric_alert_id` | Azure Resource Manager ID of the alert rule | Portal navigation, filtering alert history in Azure Monitor |
-| `metric_alert_name` | Name of the alert rule | Azure CLI references |
+The rule is a leaf in the dependency graph: `status.outputs` carries only its own identifiers (`metric_alert_id`, `metric_alert_name`) for filtering alert history and CLI reference -- no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Static threshold** -- the classic paging rule: an average crosses a number you know means trouble. Start from the **static-threshold** preset.
+**Static threshold** -- the classic paging rule: an average crosses a number you know means trouble. Start from the **Static Threshold Alert** preset.
 
-**Dynamic anomaly** -- Azure learns the metric's seasonal normal and alerts on deviation -- for request volume, queue depth, and anything where a fixed number is wrong half the day. Start from the **dynamic-anomaly** preset.
+**Dynamic anomaly** -- Azure learns the metric's seasonal normal and alerts on deviation -- for request volume, queue depth, and anything where a fixed number is wrong half the day. Start from the **Dynamic Anomaly Alert** preset.
 
-**Web-test availability** -- the outside-in pager: fires when the availability probe fails from three or more locations. Start from the **webtest-availability** preset.
+**Web-test availability** -- the outside-in pager: fires when the availability probe fails from three or more locations. Start from the **Web-Test Availability Alert** preset.
 
 ## Works With
 

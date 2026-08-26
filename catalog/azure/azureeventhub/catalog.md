@@ -1,6 +1,6 @@
 # Azure Event Hub
 
-Deploys an event hub inside an Azure Event Hubs namespace -- one partitioned, replayable event stream. Producers append events to partitions; consumers read them through consumer groups, each keeping its own offset, so the same stream feeds real-time processing, batch analytics, and archival independently. Hubs are many-per-namespace with independent lifecycles, which is why the hub is a first-class Cloud Resource referencing the namespace rather than a list folded into it. Kafka clients see the hub as a topic, unchanged. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an event hub inside an Azure Event Hubs namespace -- one partitioned, replayable event stream. Producers append events to partitions; consumers read them through consumer groups, each keeping its own offset, so the same stream feeds real-time processing, batch analytics, and archival independently. Hubs are many-per-namespace with independent lifecycles, which is why the hub is a first-class Cloud Resource referencing the namespace rather than a list folded into it. Kafka clients see the hub as a topic, unchanged. Capture — continuous Avro archival to Blob Storage — folds into the same spec, because Azure models it as a property of the hub.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **Azure Event Hub**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHub
 metadata:
   name: telemetry-stream
@@ -54,7 +54,7 @@ spec:
 planton apply -f event-hub.yaml
 ```
 
-Exactly one of `messageRetention` (days) and `retentionDescription` (hours / compaction) must be set. Two fields are **fixed at creation** -- `eventHubName` and `retentionDescription.cleanupPolicy` -- changing either replaces the hub and its retained events. The partition count can only ever be INCREASED, and only on PREMIUM/dedicated namespaces: on shared namespaces, size for peak up front.
+This creates an eight-partition hub named `telemetry` on the `telemetry-hubs` namespace with a three-day replay window. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -82,6 +82,8 @@ These are the most important decisions when configuring an event hub. Explore th
 **Capture** -- `captureDescription` archives every event to Blob Storage in Avro on a size-or-interval cadence (defaults: 300 seconds / 300 MB): the built-in streaming-to-batch bridge with no consumer application to run. The `archiveNameFormat` must carry all nine placeholders ({Namespace}, {EventHub}, {PartitionId}, {Year}, {Month}, {Day}, {Hour}, {Minute}, {Second}) -- the placeholder path IS your batch layout. Authentication is service-managed SAS by default, or keyless via the namespace's system-assigned identity or a user-assigned identity (grant it Storage Blob Data Contributor on the account and attach it via the namespace's identity block).
 
 **The administrative gate** -- `status` is the designed day-two edit: `SEND_DISABLED` drains the stream before a decommission or migration (producers rejected, consumers keep reading); `DISABLED` freezes both directions while retained events stay stored. Unspecified deploys ACTIVE.
+
+**One-way doors** -- exactly one retention model must be set: `messageRetention` (a day count) or `retentionDescription` (hours / compaction). `eventHubName` and `retentionDescription.cleanupPolicy` are fixed at creation -- changing either replaces the hub and destroys its retained events.
 
 ## Outputs and Dependencies
 
@@ -114,7 +116,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Captured archive stream** -- capture enabled so every event lands in Blob Storage as Avro: cold storage and audit trails that outlive the retention window. Start from the **Captured Archive Stream** preset.
 
-**Compacted changelog** -- log compaction keeps the latest event per key forever: materialized views and cache warming read the whole current state by replaying from the start. Start from the **Compacted Changelog** preset.
+**Compacted changelog** -- log compaction keeps the latest event per key forever: materialized views and cache warming read the whole current state by replaying from the start. Start from the **Compacted Changelog Stream** preset.
 
 ## Works With
 

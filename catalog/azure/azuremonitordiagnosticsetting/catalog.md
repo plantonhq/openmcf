@@ -1,6 +1,6 @@
 # Azure Monitor Diagnostic Setting
 
-Deploys an Azure Monitor diagnostic setting -- how a resource's platform telemetry LEAVES the resource. It selects which log categories and metrics the target emits and routes them to destinations: a Log Analytics Workspace (queryable with KQL, alertable with scheduled query rules), a Storage Account (cheap archival), an Event Hub (streaming to SIEMs), or an Azure Native partner solution. Without a diagnostic setting, most Azure resources emit nothing beyond basic platform metrics -- this kind closes the logging pipeline that scheduled query alerts watch. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to targets and destinations.
+Deploys an Azure Monitor diagnostic setting -- how a resource's platform telemetry LEAVES the resource. It selects which log categories and metrics the target emits and routes them to destinations: a Log Analytics Workspace (queryable with KQL, alertable with scheduled query rules), a Storage Account (cheap archival), an Event Hub (streaming to SIEMs), or an Azure Native partner solution. Without a diagnostic setting, most Azure resources emit nothing beyond basic platform metrics -- this kind closes the logging pipeline that scheduled query alerts watch.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Monitor Diagnostic Setting**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **logs-to-workspace** preset in the [Presets](#presets) tab to pre-populate the everyday observability wiring.
+Open the deployment store, find **Azure Monitor Diagnostic Setting**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **All Logs and Metrics to a Workspace** preset in the [Presets](#presets) tab to pre-populate the everyday observability wiring.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorDiagnosticSetting
 metadata:
   name: vault-diagnostics
@@ -60,11 +60,27 @@ spec:
 planton apply -f diagnostic-setting.yaml
 ```
 
-This routes every current AND future log category of the vault (the allLogs group tracks new ones automatically) plus its metrics into the workspace, landing in modern resource-specific tables.
+This routes every current AND future log category of the vault (the allLogs group tracks new ones automatically) plus its metrics into the workspace, landing in modern resource-specific tables. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the setting between the resource it drains and the workspace it fills -- the InfraPipeline resolves the dependency graph and deploys target, workspace, then setting.
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the setting between the resource it drains and the workspace it fills:
+
+```yaml
+spec:
+  targetResourceId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: my-app-vault
+      fieldPath: status.outputs.key_vault_id
+  logAnalyticsWorkspaceId:
+    valueFrom:
+      kind: AzureLogAnalyticsWorkspace
+      name: platform-logs
+      fieldPath: status.outputs.workspace_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the target and the workspace before the setting.
 
 ## Key Configuration
 
@@ -90,23 +106,17 @@ These are the most important decisions when configuring a diagnostic setting. Ex
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains (the setting is a leaf -- operator identifiers):
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `diagnostic_setting_id` | Azure Resource Manager ID of the setting | Portal navigation, CLI references |
-| `diagnostic_setting_name` | Name of the setting | Azure CLI references |
-| `target_resource_id` | The as-deployed target | The routing audit trail -- what this setting actually drains |
+The setting is a leaf in the dependency graph: `status.outputs` carries only its own identifiers (`diagnostic_setting_id`, `diagnostic_setting_name`) and the as-deployed `target_resource_id` as a routing audit trail -- no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Logs to workspace** -- allLogs + AllMetrics into the platform workspace: the everyday observability wiring, and what makes scheduled query alerts see the resource. Start from the **logs-to-workspace** preset.
+**Logs to workspace** -- allLogs + AllMetrics into the platform workspace: the everyday observability wiring, and what makes scheduled query alerts see the resource. Start from the **All Logs and Metrics to a Workspace** preset.
 
-**Archive to storage** -- audit categories into blob storage for long-horizon compliance retention. Start from the **archive-to-storage** preset.
+**Archive to storage** -- audit categories into blob storage for long-horizon compliance retention. Start from the **Audit Trail to Storage Archival** preset.
 
-**Stream to SIEM** -- categories into an Event Hub an external pipeline consumes. Start from the **stream-to-siem** preset.
+**Stream to SIEM** -- categories into an Event Hub an external pipeline consumes. Start from the **Security Stream to an External SIEM** preset.
 
 ## Works With
 

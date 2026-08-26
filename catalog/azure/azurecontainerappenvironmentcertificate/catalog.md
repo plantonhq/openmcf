@@ -1,6 +1,6 @@
 # Azure Container App Environment Certificate
 
-Stores a bring-your-own TLS certificate on a Container App Environment -- the certificate store of the Container Apps family. Certificates live on the ENVIRONMENT and are shared by every app in it: upload or reference the certificate once, then bind it to any app's hostname through an Azure Container App Custom Domain. This kind is for certificates you bring -- EV/OV chains, org-mandated CAs, wildcard certificates; for free, domain-validated certificates Azure provisions and renews end to end, use the managed-certificate kind instead. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Stores a bring-your-own TLS certificate on a Container App Environment -- the certificate store of the Container Apps family. Certificates live on the ENVIRONMENT and are shared by every app in it: upload or reference the certificate once, then bind it to any app's hostname through an Azure Container App Custom Domain. This kind is for certificates you bring -- EV/OV chains, org-mandated CAs, wildcard certificates; for free, domain-validated certificates Azure provisions and renews end to end, use the managed-certificate kind instead. The certificate arrives exactly one way: a Key Vault reference the environment keeps current across renewals, or an inline PFX upload whose rotation is manual.
 
 ## What Gets Created
 
@@ -32,12 +32,32 @@ Open the deployment store, find **Azure Container App Environment Certificate**,
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentCertificate
 metadata:
   name: app-example-com-cert
   org: acme-corp
   env: prod
+spec:
+  certificateName: app.example.com
+  containerAppEnvironmentId:
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.App/managedEnvironments/prod-apps-env"
+  certificateKeyVault:
+    keyVaultSecretId:
+      value: "https://acme-prod-vault.vault.azure.net/secrets/app-example-com"
+```
+
+```shell
+planton apply -f certificate.yaml
+```
+
+This stores a Key-Vault-sourced certificate named `app.example.com` on the environment, read with the environment's system-assigned identity and following vault renewals automatically. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the certificate to the environment and vault certificate deployed in the same InfraPipeline:
+
+```yaml
 spec:
   certificateName: app.example.com
   containerAppEnvironmentId:
@@ -53,27 +73,7 @@ spec:
         fieldPath: status.outputs.versionless_secret_id
 ```
 
-```shell
-planton apply -f certificate.yaml
-```
-
-Only `tags` update in place. Every other change replaces the certificate -- but the ARM ID rides the NAME, so replacing the certificate CONTENT under the same name keeps the ID, and every domain binding referencing it re-binds to the new material. That is the designed rotation workflow; renaming or moving environments mints a different ID and strands the bindings.
-
-### InfraChart
-
-When deploying as part of a multi-resource environment, use ValueFromRef to wire domain bindings onto the certificate deployed in the same InfraPipeline:
-
-```yaml
-spec:
-  containerAppEnvironmentCertificateId:
-    valueFrom:
-      kind: AzureContainerAppEnvironmentCertificate
-      name: app-example-com-cert
-      fieldPath: status.outputs.certificate_id
-  certificateBindingType: SNI_ENABLED
-```
-
-The InfraPipeline resolves the dependency graph, deploys the environment and certificate first, then provisions the domain bindings that serve it.
+The InfraPipeline resolves the dependency graph, deploys the environment and vault certificate first, then stores this certificate with the resolved values.
 
 ## Key Configuration
 
@@ -81,7 +81,7 @@ These are the most important decisions when configuring a certificate. Explore t
 
 **Source** -- exactly one per certificate. The Key Vault reference (`certificateKeyVault`) is the recommended path: the environment reads the certificate's SECRET face from the vault and, with a VERSIONLESS reference, follows every renewal automatically. The inline PFX (`certificateBlobBase64` + `certificatePassword`, both secret-bearing) is the fallback for material outside a vault -- its rotation is manual, and Azure never returns the blob on reads, so the spec is the only record of what was uploaded.
 
-**Certificate name** -- a segment of the ARM ID every domain binding references. Commonly the hostname (`app.example.com`) or a hyphenated wildcard form (`wildcard-example-com`). Rotation preserves it; renaming strands bindings.
+**Certificate name** -- a segment of the ARM ID every domain binding references. Commonly the hostname (`app.example.com`) or a hyphenated wildcard form (`wildcard-example-com`). Only `tags` update in place; every other change replaces the certificate -- but the ARM ID rides the name, so replacing the certificate CONTENT under the same name keeps the ID, and every domain binding referencing it re-binds to the new material. That is the designed rotation workflow; renaming mints a different ID and strands the bindings.
 
 **Vault read identity** -- which managed identity reads the vault secret. Unset deploys `System` (the environment's system-assigned identity, Azure's own default); reference an AzureUserAssignedIdentity's `identity_id` output to read with a shared fleet identity. Either way the identity must be on the environment and hold Key Vault Secrets User on the vault.
 

@@ -1,6 +1,6 @@
 # Azure Machine Learning Batch Deployment
 
-Creates a batch deployment on an Azure Machine Learning batch endpoint -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a batch deployment on an Azure Machine Learning batch endpoint -- the job recipe (model, compute, batching behavior) the endpoint's default-deployment pointer routes submissions to.
 
 ## What Gets Created
 
@@ -58,11 +58,27 @@ spec:
 planton apply -f azure-machine-learning-batch-deployment.yaml
 ```
 
-The deployment registers in minutes; invoke the endpoint to run a job from it.
+This registers a scoring recipe named `production` behind the endpoint -- registered model version 3, four cluster nodes per job; invoke the endpoint to run a job from it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → compute cluster → batch endpoint → **batch deployment**, each wiring its parent by reference; the endpoint's default-deployment pointer then routes submissions to this recipe by name.
+In an ML-platform chart the order is: workspace → compute cluster → batch endpoint → **batch deployment**; the endpoint's default-deployment pointer then routes submissions to this recipe by name. Wire the parents by reference:
+
+```yaml
+spec:
+  endpointId:
+    valueFrom:
+      kind: AzureMachineLearningBatchEndpoint
+      name: nightly-scoring
+      fieldPath: status.outputs.batch_endpoint_id
+  computeId:
+    valueFrom:
+      kind: AzureMachineLearningComputeCluster
+      name: cpu-pool
+      fieldPath: status.outputs.machine_learning_compute_cluster_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the endpoint and cluster before the deployment.
 
 ## Key Configuration
 

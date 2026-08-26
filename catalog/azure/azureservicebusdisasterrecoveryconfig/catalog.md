@@ -1,6 +1,6 @@
 # Azure Service Bus Disaster Recovery Config
 
-Pairs two PREMIUM Azure Service Bus namespaces for geo-disaster recovery: metadata (queues, topics, subscriptions, rules, SAS rules -- not message data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a failover needs no client reconfiguration. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Pairs two PREMIUM Azure Service Bus namespaces for geo-disaster recovery: metadata (queues, topics, subscriptions, rules, SAS rules -- not message data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a failover needs no client reconfiguration.
 
 ## What Gets Created
 
@@ -34,7 +34,7 @@ Open the deployment store, find **Azure Service Bus Disaster Recovery Config**, 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusDisasterRecoveryConfig
 metadata:
   name: app-bus-dr
@@ -63,7 +63,7 @@ spec:
 planton apply -f dr-config.yaml
 ```
 
-The alias and the primary are **fixed at creation**. Changing the partner breaks the current pairing and re-pairs to the new one -- the alias and primary keep serving throughout. Deleting the resource breaks the pairing gracefully: both namespaces keep running independently, and the alias name is released after deletion.
+This pairs the east and west namespaces under the `myorg-app-bus-alias` DNS name, with alias credentials carrying the scoped DR rule's keys instead of the root rule's. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -91,6 +91,8 @@ These are the most important decisions when configuring a geo-DR pairing. Explor
 **Failover is operational** -- it is triggered from the SECONDARY side (portal/CLI/SDK) during a regional incident, never a configuration change here. After a promotion, set up a NEW pairing to a new partner region.
 
 **Least-privilege alias credentials** -- unset `aliasAuthorizationRuleId` defaults to the namespace's root rule (full manage rights for every DR client). Prefer a scoped NAMESPACE-level rule minted for DR clients.
+
+**Lifecycle semantics** -- the alias and the primary are fixed at creation; changing the partner breaks the current pairing and re-pairs to the new one while the alias and primary keep serving. Deleting the resource breaks the pairing gracefully: both namespaces keep running independently, and the alias name is released after deletion.
 
 ## Outputs and Dependencies
 

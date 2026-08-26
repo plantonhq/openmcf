@@ -1,6 +1,6 @@
 # Azure Event Hub Authorization Rule
 
-Deploys a shared-access authorization rule for Azure Event Hubs -- a named SAS credential with listen/send/manage rights, scoped to exactly one of a namespace (every hub) or a single event hub. The scope is the blast radius: a producer service holds a send-only rule on its one stream, a consumer fleet holds a listen-only rule, and neither can touch anything else. Rights contract (Azure's own): at least one of listen/send/manage must be granted, and manage requires BOTH listen and send. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a shared-access authorization rule for Azure Event Hubs -- a named SAS credential with listen/send/manage rights, scoped to exactly one of a namespace (every hub) or a single event hub. The scope is the blast radius: a producer service holds a send-only rule on its one stream, a consumer fleet holds a listen-only rule, and neither can touch anything else. Rights contract (Azure's own): at least one of listen/send/manage must be granted, and manage requires BOTH listen and send. The rule's keys and connection strings surface as sensitive outputs; both the scope and the rule name are fixed at creation.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Event Hub Authorization Rule**, and click **Deploy**. The creation wizard walks you through the credential scope (with the blast-radius model taught live), the rule name, and the rights trio with Producer / Consumer / Full manage quick-picks. Start from the **Hub Producer** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Event Hub Authorization Rule**, and click **Deploy**. The creation wizard walks you through the credential scope (with the blast-radius model taught live), the rule name, and the rights trio with Producer / Consumer / Full manage quick-picks. Start from the **Hub-Scoped Producer Credential** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubAuthorizationRule
 metadata:
   name: producer-credential
@@ -52,7 +52,7 @@ spec:
 planton apply -f auth-rule.yaml
 ```
 
-Exactly one of `namespaceId` and `eventHubId` must be set -- the scope. Both the scope and `ruleName` are **fixed at creation**: replacing either regenerates the keys and cuts off every client holding the old connection strings. The rights trio (`listen`/`send`/`manage`) edits in place without touching the keys.
+This creates a send-only SAS rule named `telemetry-producer` scoped to the `telemetry-stream` hub, with its keys and connection strings surfaced as sensitive outputs. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -79,6 +79,8 @@ These are the most important decisions when configuring an authorization rule. E
 
 **Rotation** -- primary and secondary keys exist for zero-downtime rotation: move clients to the secondary, regenerate the primary in Azure, move back. Prefer keyless Entra data-plane roles (via AzureRoleAssignment) where clients support them; SAS rules remain the shape for Kafka clients and legacy SDKs.
 
+**Fixed at creation** -- exactly one of `namespaceId` and `eventHubId` must be set, and both the scope and `ruleName` are one-way doors: replacing either regenerates the keys and cuts off every client holding the old connection strings. The rights trio (`listen`/`send`/`manage`) edits in place without touching the keys -- widening a consumer to a producer-consumer is a day-two edit, not a new credential.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -104,9 +106,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Hub producer** -- the everyday least-privilege credential: a send-only rule scoped to one stream. Start from the **Hub Producer** preset.
+**Hub producer** -- the everyday least-privilege credential: a send-only rule scoped to one stream. Start from the **Hub-Scoped Producer Credential** preset.
 
-**Namespace operator** -- the full-manage trio over the whole namespace, for entity-management tooling. Start from the **Namespace Operator** preset.
+**Namespace operator** -- the full-manage trio over the whole namespace, for entity-management tooling. Start from the **Namespace-Scoped Operator Credential** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # Azure Federated Identity Credential
 
-Deploys a federated identity credential: a keyless trust rule on a user-assigned managed identity that lets an external workload exchange its own OIDC token for Azure credentials — no client secret, nothing to rotate, nothing to leak. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the parent identity and (for AKS workload identity) the cluster's OIDC issuer.
+Deploys a federated identity credential: a keyless trust rule on a user-assigned managed identity that lets an external workload exchange its own OIDC token for Azure credentials — no client secret, nothing to rotate, nothing to leak. It unlocks two headline flows: CI pipelines (GitHub Actions and friends) that deploy to Azure without stored service-principal secrets, and AKS workload identity, where pods reach RBAC-granted resources through a Kubernetes service account's projected token.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ A credential conveys no permissions by itself -- it only authenticates the exter
 
 ### Console
 
-Open the deployment store, find **Azure Federated Identity Credential**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-picks for the well-known issuers and subject-format templates so the byte-for-byte match rules are hard to get wrong. Start from the **GitHub Actions OIDC** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Federated Identity Credential**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with quick-picks for the well-known issuers and subject-format templates so the byte-for-byte match rules are hard to get wrong. Start from the **GitHub Actions Keyless CI** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFederatedIdentityCredential
 metadata:
   name: github-main-branch
@@ -56,7 +56,7 @@ spec:
 planton apply -f credential.yaml
 ```
 
-This lets workflows on the `main` branch of `acme/platform` deploy to Azure as the `ci-deployer` identity -- with no stored service-principal secret anywhere. The audience is omitted, so Azure applies `api://AzureADTokenExchange` (what every standard client requests).
+This lets workflows on the `main` branch of `acme/platform` deploy to Azure as the `ci-deployer` identity -- with no stored service-principal secret anywhere. The audience is omitted, so Azure applies `api://AzureADTokenExchange` (what every standard client requests). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -116,9 +116,11 @@ After provisioning, `status.outputs` contains values that downstream tooling can
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**CI without secrets** -- One credential per pipeline trust boundary (branch, environment, or tag), all on a `ci-deployer` identity whose role assignments scope to exactly what the pipeline deploys. Start from the **GitHub Actions OIDC** preset.
+**CI without secrets** -- One credential per pipeline trust boundary (branch, environment, or tag), all on a `ci-deployer` identity whose role assignments scope to exactly what the pipeline deploys. Start from the **GitHub Actions Keyless CI** preset.
 
 **AKS workload identity** -- The issuer references the cluster's `oidc_issuer_url` output; the subject names one Kubernetes service account; the pod's service account carries the `azure.workload.identity/client-id` annotation pointing at the identity's client ID. Start from the **AKS Workload Identity** preset.
+
+**Any other OIDC issuer** -- The same trust rule works for GitLab, HashiCorp Vault, or any provider that mints OIDC tokens: a literal issuer URL and the provider's own subject format. Start from the **Generic External OIDC Issuer** preset.
 
 ## Works With
 

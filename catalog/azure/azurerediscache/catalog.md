@@ -1,6 +1,6 @@
 # Azure Redis Cache
 
-Deploys an Azure Cache for Redis instance -- a fully managed, in-memory data store built on the open-source Redis engine, used for caching, session state, real-time leaderboards, and pub/sub messaging with sub-millisecond latency. The component models the full v-current surface: the tier/capacity ladder, engine configuration, the keyless (Entra) authentication posture, managed identity, RDB/AOF persistence, VNet injection, patch schedules, and firewall rules. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Cache for Redis instance -- a fully managed, in-memory data store built on the open-source Redis engine, used for caching, session state, real-time leaderboards, and pub/sub messaging with sub-millisecond latency. The component models the full current surface: the tier/capacity ladder, engine configuration, the keyless (Entra) authentication posture, managed identity, RDB/AOF persistence, VNet injection, patch schedules, and firewall rules. Know before you choose it: Azure has announced the retirement of classic Azure Cache for Redis in favor of Azure Managed Redis, and ARM has begun rejecting new cache creations region by region -- existing caches keep running and this kind remains the right surface for managing them, but prefer Azure Managed Redis for new deployments.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Redis Cache**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard + Entra** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
+Open the deployment store, find **Azure Redis Cache**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Cache with Entra Authentication** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisCache
 metadata:
   name: app-cache
@@ -54,7 +54,7 @@ spec:
 planton apply -f redis-cache.yaml
 ```
 
-This creates a Standard-tier (Azure's default when the tier is unspecified) Redis 6 cache with 2.5 GB memory (C2), TLS-only access on port 6380, and Azure's default engine behavior. No VNet injection, clustering, persistence, or firewall rules are configured.
+This creates a Standard-tier (Azure's default when the tier is unspecified) Redis 6 cache with 2.5 GB memory (C2), TLS-only access on port 6380, and Azure's default engine behavior. No VNet injection, clustering, persistence, or firewall rules are configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -125,11 +125,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard production cache with Entra auth** -- A Standard-tier replicated cache with Entra token authentication enabled alongside the keys, ready to migrate clients toward the keyless posture. Start from the **Standard + Entra** preset.
+**Standard production cache with Entra auth** -- A Standard-tier replicated cache with Entra token authentication enabled alongside the keys, ready to migrate clients toward the keyless posture. Start from the **Standard Cache with Entra Authentication** preset.
 
-**Premium enterprise cache** -- A Premium-tier cache with zone pinning, clustering or replicas, and persistence for workloads where a cold rebuild is expensive. Start from the **Premium Enterprise** preset.
+**Premium enterprise cache** -- A Premium-tier cache with zone pinning, clustering or replicas, and persistence for workloads where a cold rebuild is expensive. Start from the **Premium Enterprise Cache** preset.
 
-**Development cache** -- A Basic-tier single-node cache for development and testing. No SLA, no replication, lowest cost. Start from the **Development** preset.
+**Development cache** -- A Basic-tier single-node cache for development and testing. No SLA, no replication, lowest cost. Start from the **Development Cache** preset.
 
 ## Works With
 
@@ -140,3 +140,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Azure Redis Cache Access Policy Assignment**](/cloud-catalog/azure-redis-cache-access-policy-assignment) -- grants a policy (built-in or custom) to a Microsoft Entra identity
 - [**Azure Redis Linked Server**](/cloud-catalog/azure-redis-linked-server) -- geo-replication link pairing two Premium caches for disaster recovery
 - [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- private connectivity to the cache with public access disabled
+- [**Azure Managed Redis**](/cloud-catalog/azure-managed-redis) -- the successor service; prefer it for new Redis deployments as classic-cache creation retires region by region

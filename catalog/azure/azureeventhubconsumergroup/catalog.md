@@ -1,6 +1,6 @@
 # Azure Event Hub Consumer Group
 
-Deploys a consumer group on an Azure Event Hub -- an independent, named view over one stream. Every group keeps its OWN offset per partition, so real-time processing, batch analytics, and archival all read the same events without ever contending: reading never removes anything, and groups are cursors, not queues. The rule of thumb is one group per consuming APPLICATION -- two applications sharing a group steal each other's partitions and corrupt each other's checkpoints. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a consumer group on an Azure Event Hub -- an independent, named view over one stream. Every group keeps its OWN offset per partition, so real-time processing, batch analytics, and archival all read the same events without ever contending: reading never removes anything, and groups are cursors, not queues. The rule of thumb is one group per consuming APPLICATION -- two applications sharing a group steal each other's partitions and corrupt each other's checkpoints. Both identity coordinates -- the hub reference and the group name -- are fixed at creation.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Event Hub Consumer Group**, and click **Deploy**. The creation wizard walks you through the hub attachment (with the one-group-per-application model taught live) and the ownership note. Start from the **Per-Application Group** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Event Hub Consumer Group**, and click **Deploy**. The creation wizard walks you through the hub attachment (with the one-group-per-application model taught live) and the ownership note. Start from the **Per-Application Consumer Group** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubConsumerGroup
 metadata:
   name: analytics-consumer
@@ -52,7 +52,7 @@ spec:
 planton apply -f consumer-group.yaml
 ```
 
-Both identity coordinates are **fixed at creation** -- the hub reference and `consumerGroupName`. Renaming replaces the group and RESETS every stored offset: consumers restart from the start or end of the stream per their configuration, reprocessing or skipping events. Only `userMetadata` edits in place.
+This creates a consumer group named `analytics` on the `telemetry-stream` hub, carrying an ownership note operators see wherever the group is inspected. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -77,6 +77,10 @@ These are the most important decisions when configuring a consumer group. Explor
 
 **The ownership note** -- `userMetadata` (max 1024 characters) is how an operator six months from now knows which team owns this cursor and whether it is safe to delete. A key=value convention keeps it parseable by tooling; it edits in place, so keep it current as ownership moves.
 
+**Renaming resets offsets** -- the hub reference and `consumerGroupName` are fixed at creation. Renaming replaces the group and RESETS every stored offset: consumers restart from the start or end of the stream per their configuration, reprocessing or skipping events. Only `userMetadata` edits in place.
+
+**Tier limits** -- the group count a hub supports is a namespace-tier concern, enforced by Azure at apply time: BASIC hubs allow no groups beyond the service-created `$Default`, STANDARD allows 20 per hub, PREMIUM/dedicated more. A group-per-application convention on a busy STANDARD hub can hit the ceiling -- budget groups like any other quota.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -100,7 +104,7 @@ The group carries no secrets: credentials come separately -- an AzureEventHubAut
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Per-application group** -- the everyday shape: a group named after the consuming application with a traceable ownership note. Start from the **Per-Application Group** preset.
+**Per-application group** -- the everyday shape: a group named after the consuming application with a traceable ownership note. Start from the **Per-Application Consumer Group** preset.
 
 ## Works With
 

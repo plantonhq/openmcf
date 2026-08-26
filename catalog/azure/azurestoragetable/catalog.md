@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Storage Table**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **App Entities** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Storage Table**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Application Entities Table** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageTable
 metadata:
   name: device-state
@@ -50,11 +50,23 @@ spec:
 planton apply -f table.yaml
 ```
 
-This creates a table with no stored access policies -- applications reach it with data-plane RBAC or account keys.
+This creates a table with no stored access policies -- applications reach it with data-plane RBAC or account keys. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRef above wires the table to its account: the InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the table with the resolved ARM ID.
+When the account and table deploy in the same InfraChart, wire the account reference with ValueFromRef:
+
+```yaml
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: app-storage
+      fieldPath: status.outputs.storage_account_id
+  tableName: DeviceState
+```
+
+The InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the table with the resolved ARM ID.
 
 ## Key Configuration
 
@@ -88,11 +100,11 @@ There is deliberately NO URL output: the table's data-plane address is the ACCOU
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Application entities** -- the default shape: a table per entity domain (DeviceState, UserProfiles), applications reaching it with role assignments scoped to `table_id`. Start from the **App Entities** preset.
+**Application entities** -- the default shape: a table per entity domain (DeviceState, UserProfiles), applications reaching it with role assignments scoped to `table_id`. Start from the **Application Entities Table** preset.
 
-**Append-mostly audit trail** -- a table capturing who-did-what rows keyed by time; consumers query, writers add. Start from the **Audit Trail** preset.
+**Append-mostly audit trail** -- a table capturing who-did-what rows keyed by time; consumers query, writers add. Start from the **Audit Trail Table** preset.
 
-**Policy-anchored partner access** -- a query-only stored access policy (`r`) with a bounded window; ending the engagement is shortening one expiry. Start from the **Policy-Anchored Access** preset.
+**Policy-anchored partner access** -- a query-only stored access policy (`r`) with a bounded window; ending the engagement is shortening one expiry. Start from the **Policy-Anchored Read-Only Table** preset.
 
 ## Works With
 

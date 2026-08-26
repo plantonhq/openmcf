@@ -1,6 +1,6 @@
 # Azure ExpressRoute Circuit Peering
 
-Deploys an ExpressRoute circuit peering -- the BGP routing configuration that makes routes flow through a circuit. Private peering carries your VNets' address space (what an ExpressRoute-type virtual network gateway connects to); Microsoft peering carries Microsoft 365 and Azure public services. A circuit holds at most one peering of each type. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an ExpressRoute circuit peering -- the BGP routing configuration that makes routes flow through a circuit. Private peering carries your VNets' address space (what an ExpressRoute-type virtual network gateway connects to); Microsoft peering carries Microsoft 365 and Azure public services. A circuit holds at most one peering of each type, and the peering can be declared before the provider finishes the cross-connect -- ARM stores the configuration, and routes flow once the circuit reads Provisioned.
 
 ## What Gets Created
 
@@ -56,11 +56,22 @@ spec:
 planton apply -f azure-express-route-circuit-peering.yaml
 ```
 
-A Stack Job tracks provisioning in real time; Microsoft's ASN and edge-port identifiers appear in the outputs.
+This configures private peering on the `hq-circuit` circuit: two BGP sessions on VLAN 100, one /30 per physical link, with Microsoft's ASN and edge-port identifiers surfacing in the outputs. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a hybrid-connectivity chart the peering sits between the circuit and the gateway: circuit → this peering → EXPRESS_ROUTE-type virtual network gateway → gateway connection, each wiring by reference.
+In a hybrid-connectivity chart the peering sits between the circuit and the gateway: circuit → this peering → EXPRESS_ROUTE-type virtual network gateway → gateway connection. Wire the peering to a circuit deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  expressRouteCircuitName:
+    valueFrom:
+      kind: AzureExpressRouteCircuit
+      name: hq-circuit
+      fieldPath: status.outputs.express_route_circuit_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the circuit first, then configures the peering on it.
 
 ## Key Configuration
 
@@ -90,10 +101,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `express_route_circuit_peering_id` | Azure Resource Manager ID of the peering | Another circuit's Global Reach `peerPeeringId` |
+| `express_route_circuit_peering_id` | Azure Resource Manager ID of the peering | AzureExpressRouteGateway circuit connections, and another circuit's Global Reach `peerPeeringId` |
 | `azure_asn` | Microsoft's BGP ASN (12076 on public Azure) | Router neighbor configuration |
-| `primary_azure_port` / `secondary_azure_port` | Microsoft-edge port identifiers | Provider troubleshooting |
-| `connection_ids` | Name-keyed Global Reach connection IDs | Operational tooling |
+| `primary_azure_port` / `secondary_azure_port` | Microsoft-edge port identifiers | Provider troubleshooting on the physical links |
+
+`connection_ids` is also exported -- the ARM ID of each Global Reach connection created from the `connections` list, keyed by name; it exists for inspection and has no ValueFromRef consumers.
 
 ## Common Patterns
 
@@ -108,3 +120,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Azure ExpressRoute Circuit**](/cloud-catalog/azure-express-route-circuit) -- the parent circuit this peering configures
 - [**Azure Virtual Network Gateway**](/cloud-catalog/azure-virtual-network-gateway) -- the EXPRESS_ROUTE-type gateway that consumes private peering
 - [**Azure Virtual Network Gateway Connection**](/cloud-catalog/azure-virtual-network-gateway-connection) -- the link between a gateway and the circuit
+- [**Azure ExpressRoute Gateway**](/cloud-catalog/azure-express-route-gateway) -- the Virtual WAN gateway whose circuit connections reference this peering's ID

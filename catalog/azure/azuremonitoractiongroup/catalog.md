@@ -1,6 +1,6 @@
 # Azure Monitor Action Group
 
-Deploys an Azure Monitor Action Group -- the notification and automation hub alerts fire into. When a metric alert, scheduled query alert, or activity log alert triggers, Azure notifies every receiver in the referenced group: human channels (email, SMS, voice, the Azure mobile app), automation (webhooks, Azure Functions, Logic Apps, Automation runbooks), streaming and ITSM systems (Event Hubs, ServiceNow), and role-based fan-out (every holder of an ARM role). One group typically serves many alert rules -- it is the stable routing node; the alert rules are the volatile edge. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, Function Apps, Event Hubs, and role definitions.
+Deploys an Azure Monitor Action Group -- the notification and automation hub alerts fire into. When a metric alert, scheduled query alert, or activity log alert triggers, Azure notifies every receiver in the referenced group: human channels (email, SMS, voice, the Azure mobile app), automation (webhooks, Azure Functions, Logic Apps, Automation runbooks), streaming and ITSM systems (Event Hubs, ServiceNow), and role-based fan-out (every holder of an ARM role). One group typically serves many alert rules -- it is the stable routing node; the alert rules are the volatile edge.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Monitor Action Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **oncall-team** preset in the [Presets](#presets) tab to pre-populate a human notification group.
+Open the deployment store, find **Azure Monitor Action Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **On-Call Team Notifications** preset in the [Presets](#presets) tab to pre-populate a human notification group.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorActionGroup
 metadata:
   name: platform-oncall
@@ -56,7 +56,7 @@ spec:
 planton apply -f action-group.yaml
 ```
 
-This creates a global action group whose SMS messages arrive signed "PltOnCall". A group with no receivers at all is also legal -- a routing node declared before its channels exist.
+This creates a global action group whose SMS messages arrive signed "PltOnCall"; a group with no receivers at all is also legal -- a routing node declared before its channels exist. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -110,11 +110,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**On-call team** -- email plus SMS for the humans, the common alert schema on. The stable routing node every paging alert references. Start from the **oncall-team** preset.
+**On-call team** -- email plus SMS for the humans, the common alert schema on. The stable routing node every paging alert references. Start from the **On-Call Team Notifications** preset.
 
-**Automation hooks** -- a webhook into incident tooling plus an Azure Function for auto-triage; no human channel at all. Start from the **automation-hooks** preset.
+**Automation hooks** -- a webhook into incident tooling plus an Azure Function for auto-triage; no human channel at all. Start from the **Automation Hooks (Webhook + Function)** preset.
 
-**Role fan-out** -- notify every subscription Owner about governance events with no address list to maintain. Start from the **role-fanout** preset.
+**Role fan-out** -- notify every subscription Owner about governance events with no address list to maintain. Start from the **ARM Role Fan-Out** preset.
 
 ## Works With
 

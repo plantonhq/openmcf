@@ -30,7 +30,7 @@ Open the deployment store, find **Azure Storage Queue**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageQueue
 metadata:
   name: work-items
@@ -49,11 +49,23 @@ spec:
 planton apply -f queue.yaml
 ```
 
-Messages hold up to 64 KB; a queue holds as many as the account's capacity allows.
+This creates an empty queue named `work-items` on the referenced account -- messages hold up to 64 KB, and the queue holds as many as the account's capacity allows. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRef above wires the queue to its account: the InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the queue with the resolved ARM ID.
+When the account and queue deploy in the same InfraChart, wire the account reference with ValueFromRef:
+
+```yaml
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: app-storage
+      fieldPath: status.outputs.storage_account_id
+  queueName: work-items
+```
+
+The InfraPipeline resolves the dependency graph, deploys the storage account first, then provisions the queue with the resolved ARM ID.
 
 ## Key Configuration
 
@@ -89,9 +101,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Work queue** -- the everyday shape: producers enqueue with Message Sender grants, workers process with Message Processor grants — least privilege per direction, no account keys. Start from the **Work Queue** preset.
 
-**Poison companion** -- the `{name}-poison` sibling Functions moves repeatedly failing messages to. Start from the **Poison Companion** preset.
+**Poison companion** -- the `{name}-poison` sibling Functions moves repeatedly failing messages to. Start from the **Poison-Queue Companion** preset.
 
-**Ingest buffer** -- a load-leveling buffer absorbing bursty producers ahead of steady workers. Start from the **Ingest Buffer** preset.
+**Ingest buffer** -- a load-leveling buffer absorbing bursty producers ahead of steady workers. Start from the **Ingest Buffer Queue** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # Azure Network Security Group
 
-Deploys an Azure Network Security Group (NSG) -- the stateful firewall that filters inbound and outbound traffic for everything deployed in the subnets and NICs it guards. Each security rule is a 5-tuple filter (source, destination, port, protocol, direction) with an access decision and a priority; sources and destinations take one addressing style each -- a single prefix (CIDR, IP, service tag, or `*`), a list of CIDRs/IPs, or application security groups (identity-based addressing that follows workloads as they scale). The NSG integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and application security groups.
+Deploys an Azure Network Security Group (NSG) -- the stateful firewall that filters inbound and outbound traffic for everything deployed in the subnets and NICs it guards. Each security rule is a 5-tuple filter (source, destination, port, protocol, direction) with an access decision and a priority; sources and destinations take one addressing style each -- a single prefix (CIDR, IP, service tag, or `*`), a list of CIDRs/IPs, or application security groups (identity-based addressing that follows workloads as they scale). The attachment is always the guarded side's declaration — a subnet or NIC references this NSG, so one group serves many subnets without listing them.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Network Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier** preset in the [Presets](#presets) tab to pre-populate rules allowing HTTP and HTTPS inbound traffic.
+Open the deployment store, find **Azure Network Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier NSG** preset in the [Presets](#presets) tab to pre-populate rules allowing HTTP and HTTPS inbound traffic.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkSecurityGroup
 metadata:
   name: web-tier-nsg
@@ -117,17 +117,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `network_security_group_id` | Azure Resource Manager ID of the Network Security Group | A subnet's `networkSecurityGroupId` attachment, a NIC's security settings, diagnostic settings |
-| `network_security_group_name` | Name of the Network Security Group | Network diagnostics, audit logging references |
+
+`status.outputs` also echoes `network_security_group_name` back; attachments travel by ARM ID, not name.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Web tier** -- Allows inbound HTTP (80) and HTTPS (443) from the internet using the `Internet` service tag. The standard pattern for subnets hosting load balancers, application gateways, or public-facing web servers. Start from the **Web Tier** preset.
+**Web tier** -- Allows inbound HTTP (80) and HTTPS (443) from the internet using the `Internet` service tag. The standard pattern for subnets hosting load balancers, application gateways, or public-facing web servers. Start from the **Web Tier NSG** preset.
 
-**Database tier** -- Allows only PostgreSQL (5432) and MySQL (3306) traffic from within the VNet using the `VirtualNetwork` service tag, with an explicit deny-all for internet traffic. Suitable for subnets hosting managed databases or self-hosted database servers. Start from the **Database Tier** preset.
+**Database tier** -- Allows only PostgreSQL (5432) and MySQL (3306) traffic from within the VNet using the `VirtualNetwork` service tag, with an explicit deny-all for internet traffic. Suitable for subnets hosting managed databases or self-hosted database servers. Start from the **Database Tier NSG** preset.
 
-**Bastion** -- Allows SSH (22) and RDP (3389) only from trusted IP ranges with an explicit deny-all catch-all rule. Suitable for bastion or jump-host subnets requiring controlled, auditable remote access. Start from the **Bastion** preset.
+**Bastion** -- Allows SSH (22) and RDP (3389) only from trusted IP ranges with an explicit deny-all catch-all rule. Suitable for bastion or jump-host subnets requiring controlled, auditable remote access. Start from the **Bastion NSG** preset.
 
 ## Works With
 

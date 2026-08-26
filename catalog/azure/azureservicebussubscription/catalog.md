@@ -1,6 +1,6 @@
 # Azure Service Bus Subscription
 
-Deploys a subscription under an Azure Service Bus topic -- an independent, optionally filtered view of the topic's message stream, with its own consumer semantics: lock duration, delivery attempts, sessions, and dead-lettering. Subscriptions are many-per-topic and typically owned by the consuming team rather than the team that provisioned the namespace -- which is why they are a first-class Cloud Resource referencing the topic. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a subscription under an Azure Service Bus topic -- an independent, optionally filtered view of the topic's message stream, with its own consumer semantics: lock duration, delivery attempts, sessions, and dead-lettering. Subscriptions are many-per-topic and typically owned by the consuming team rather than the team that provisioned the namespace -- which is why they are a first-class Cloud Resource referencing the topic.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **Azure Service Bus Subscription**, and click **
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusSubscription
 metadata:
   name: emea-consumer-sub
@@ -59,9 +59,7 @@ spec:
 planton apply -f subscription.yaml
 ```
 
-**The one real trap**: Azure auto-creates a catch-all rule named `$Default` on every new subscription, and declared rules are ADDITIVE beside it -- this subscription keeps receiving EVERYTHING until the catch-all is removed once, after creation: `az servicebus topic subscription rule delete --name '$Default' --namespace-name <ns> --topic-name <topic> --subscription-name <sub> --resource-group <rg>` (it never comes back unless the subscription is recreated). `$Default` is also not a declarable rule name.
-
-Two decisions are **fixed at creation** -- `requiresSession` and the `clientScopedSubscription` identity -- changing either replaces the subscription and RESETS its read position (undelivered messages are lost).
+This creates the `emea-consumer` subscription on the `order-events-topic` topic, admitting only high-priority EMEA messages via the SQL rule (plus everything else through the `$Default` catch-all until it is removed -- see Key Configuration). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -86,7 +84,9 @@ These are the most important decisions when configuring a Service Bus subscripti
 
 **Filter rules** -- SQL rules (`sys.Label = 'important' AND quantity > 10`) are flexible and evaluated per message; correlation rules (pure equality on correlation properties) are cheaper at high throughput. Rules combine with OR semantics, and the optional SQL `action` annotates matches before delivery. Messages that CRASH a SQL filter are dead-lettered by default (`deadLetteringOnFilterEvaluationError` defaults true) -- evidence for finding the malformed producer.
 
-**Sessions** -- `requiresSession: true` is the consumer half of ordered pub/sub (the topic's `supportOrdering` is the publisher half): each SessionId delivers in strict order to one session-aware consumer at a time. Fixed at creation.
+**The `$Default` catch-all trap** -- Azure auto-creates a catch-all rule named `$Default` on every new subscription, and declared rules are ADDITIVE beside it: the subscription keeps receiving EVERYTHING until the catch-all is removed once, after creation, with `az servicebus topic subscription rule delete --name '$Default'` (it never comes back unless the subscription is recreated). `$Default` is also not a declarable rule name.
+
+**Sessions** -- `requiresSession: true` is the consumer half of ordered pub/sub (the topic's `supportOrdering` is the publisher half): each SessionId delivers in strict order to one session-aware consumer at a time. Fixed at creation, as is the `clientScopedSubscription` identity -- changing either replaces the subscription and RESETS its read position, losing undelivered messages.
 
 **Filter-then-funnel routing** -- `forwardTo` turns the subscription into a routing edge: rules decide WHAT is admitted, forwarding decides WHERE it lands (typically a work queue), by entity NAME in the same namespace. The target must exist first and must not be session-aware.
 
@@ -108,12 +108,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `subscription_id` | Azure Resource Manager ID of the subscription | Diagnostics and governance tooling |
 | `subscription_name` | The subscription's name within the topic | Consumer SDK configuration (with the topic name) |
 | `topic_name` | The parent topic's name, parsed from the resolved reference | The receive pair without a second reference |
 | `namespace_name` | The namespace's name, parsed from the resolved reference | The full namespace/topic/subscription receive triple |
 
-Consumers configure the receive triple -- the namespace endpoint, the topic name, and this subscription name. Credentials come from an AzureServiceBusAuthorizationRule or keyless Entra data-plane roles; the subscription itself mints none.
+Consumers configure the receive triple -- the namespace endpoint, the topic name, and this subscription name. Credentials come from an AzureServiceBusAuthorizationRule or keyless Entra data-plane roles; the subscription itself mints none. The `subscription_id` output carries the ARM ID for audit tooling but is not typically wired into other Cloud Resources.
 
 ## Common Patterns
 
@@ -123,7 +122,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Filtered consumer** -- a SQL rule admits only this team's slice of the stream (remove the catch-all once for restrictive delivery). Start from the **Filtered Consumer** preset.
 
-**Fan-out to work queue** -- a correlation rule admits matches and forwarding funnels them into a dedicated queue a processing fleet drains. Start from the **Fanout To Work Queue** preset.
+**Fan-out to work queue** -- a correlation rule admits matches and forwarding funnels them into a dedicated queue a processing fleet drains. Start from the **Fan-Out to Work Queue** preset.
 
 ## Works With
 

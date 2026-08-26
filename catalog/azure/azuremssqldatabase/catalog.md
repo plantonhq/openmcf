@@ -22,21 +22,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Azure Subscription
 
-- **SKU planning** -- blank applies Azure's GP_Gen5_2 default. DTU tiers (Basic, S0-S12, P1-P15), vCore (GP_/BC_), serverless (GP_S_/HS_S_ — auto-pause and per-second billing), or Hyperscale (HS_ — 100 TB, up to 4 named replicas). A pooled database instead references an AzureMssqlElasticPool and carries the literal SKU `ElasticPool`.
+- **SKU planning** -- blank applies Azure's serverless GP_S_Gen5_2 default. DTU tiers (Basic, S0-S12, P1-P15), vCore (GP_/BC_), serverless (GP_S_/HS_S_ — auto-pause and per-second billing), or Hyperscale (HS_ — 100 TB, up to 4 named replicas). A pooled database instead references an AzureMssqlElasticPool and carries the literal SKU `ElasticPool`.
 - **The permanent set** -- name, collation, ledger mode, and enclave type are fixed at creation.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Azure MSSQL Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **general-purpose** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure MSSQL Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose Production Database** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlDatabase
 metadata:
   name: app-database
@@ -63,7 +63,20 @@ This creates a fresh General Purpose database on the referenced server with zone
 
 ### InfraChart
 
-The database's `serverId` reference orders it after its server in the same InfraPipeline; a pooled database additionally references the pool, and a replica references its primary database — the dependency graph resolves all three.
+When the database deploys alongside its server in one chart, the `serverId` reference orders it after the server:
+
+```yaml
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: app-sql
+      fieldPath: status.outputs.server_id
+  databaseName: appdb
+  skuName: GP_Gen5_2
+```
+
+A pooled database additionally references its pool (`elasticPoolId`), and a replica references its primary (`creationSourceDatabaseId`) — the InfraPipeline resolves the full dependency graph.
 
 ## Key Configuration
 
@@ -75,7 +88,7 @@ These are the most important decisions when configuring a SQL database. Explore 
 
 **Serverless dials** -- `autoPauseDelayInMinutes` (-1 disables pausing; 60-10080 minutes otherwise) and `minCapacity` (0.25-40 vCores) apply only to GP_S_/HS_S_ SKUs; `readReplicaCount` (0-4) applies only to Hyperscale.
 
-**Backups** -- `geoBackupEnabled` (default on) feeds geo-recovery; `storageAccountType` picks the backup-storage redundancy; the retention policies shape the PITR window and the LTR vault.
+**Backups** -- `storageAccountType` picks the backup-storage redundancy (GEO, the default, is what enables geo-restore); the retention policies shape the PITR window and the LTR vault. `geoBackupEnabled` applies to Data Warehouse SKUs only — every other tier controls backup redundancy through `storageAccountType`.
 
 **Encryption** -- `transparentDataEncryptionKeyVaultKeyId` gives this database its own CMK (requires an entry in `userAssignedIdentityIds` — the identity unwraps the key); `transparentDataEncryptionKeyAutomaticRotationEnabled` adopts new key versions automatically.
 
@@ -104,11 +117,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**General purpose** -- The everyday production database: a provisioned vCore SKU with zone redundancy and a widened PITR window. Start from the **general-purpose** preset.
+**General purpose** -- The everyday production database: a provisioned vCore SKU with zone redundancy and a widened PITR window. Start from the **General Purpose Production Database** preset.
 
-**Serverless with auto-pause** -- Per-second billing that stops when idle — the dev/test and spiky-workload shape. Start from the **serverless-autopause** preset.
+**Serverless with auto-pause** -- Per-second billing that stops when idle — the dev/test and spiky-workload shape. Start from the **Serverless Auto-Pausing Database** preset.
 
-**Hyperscale with replicas** -- The 100 TB tier with named read replicas for read scale-out. Start from the **hyperscale-replicas** preset.
+**Hyperscale with replicas** -- The 100 TB tier with named read replicas for read scale-out. Start from the **Hyperscale Database with Readable Replicas** preset.
 
 ## Works With
 

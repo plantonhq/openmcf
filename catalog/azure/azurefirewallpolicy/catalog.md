@@ -35,7 +35,7 @@ Open the deployment store, find **Azure Firewall Policy**, and click **Deploy**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewallPolicy
 metadata:
   name: egress-baseline
@@ -58,7 +58,7 @@ spec:
 planton apply -f firewall-policy.yaml
 ```
 
-Threat intelligence blocks known-malicious destinations from day one, and the DNS proxy makes FQDN-based network rules deterministic — point spoke DNS at the attached firewall's private IP.
+This creates a STANDARD policy with threat intelligence in deny and the DNS proxy on, ready for rule collection groups to nest under it and firewalls to attach it. A Stack Job tracks the provisioning in real time. The DNS proxy makes FQDN-based network rules deterministic — point spoke DNS at the attached firewall's private IP.
 
 ### InfraChart
 
@@ -118,8 +118,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `firewall_policy_id` | Azure Resource Manager ID of the policy | AzureFirewall attachment (`firewallPolicyId`), AzureFirewallPolicyRuleCollectionGroup nesting, child policies' `basePolicyId` |
-| `firewall_policy_name` | Name of the policy | Automation scripts, inventory |
 | `identity_principal_id` | The system-assigned principal (empty without a system identity) | Role assignments — e.g. Key Vault secret read for TLS inspection |
+
+`firewall_policy_name` is also exported for tooling that addresses the policy by name; it has no ValueFromRef consumers.
 
 ## Common Patterns
 
@@ -127,7 +128,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Standard egress baseline** -- threat intelligence in DENY with the DNS proxy on: the parent policy of the enterprise pattern. Start from the **Standard Egress Baseline** preset.
 
-**Premium TLS inspection** -- decrypt-inspect-re-encrypt with your CA from Key Vault, plus IDPS in deny: the regulated-environment posture. Start from the **Premium TLS Inspection** preset.
+**Premium TLS inspection** -- decrypt-inspect-re-encrypt with your CA from Key Vault, plus IDPS in deny: the regulated-environment posture. Start from the **Premium TLS Inspection + IDPS** preset.
 
 ## Works With
 

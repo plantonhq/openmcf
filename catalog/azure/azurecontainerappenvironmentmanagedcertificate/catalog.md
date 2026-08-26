@@ -1,6 +1,6 @@
 # Azure Container App Environment Managed Certificate
 
-Provisions a TLS certificate Azure issues and renews end to end for one custom domain -- free, domain-validated, and rotated before expiry. The managed certificate lives on the Container App Environment and attaches to the matching Azure Container App Custom Domain binding asynchronously once issued. It covers exactly one hostname -- no wildcards, no additional SANs (bring your own certificate for those). The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Provisions a TLS certificate Azure issues and renews end to end for one custom domain -- free, domain-validated, and rotated before expiry. The managed certificate lives on the Container App Environment and attaches to the matching Azure Container App Custom Domain binding asynchronously once issued. It covers exactly one hostname -- no wildcards, no additional SANs (bring your own certificate for those). Deployment blocks on domain validation, so the required DNS records must resolve before this resource deploys.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container App Environment Managed Certificate**, and click **Deploy**. The creation wizard leads hostname-first -- the subject and validation method with a live preview of the exact DNS records validation polls for -- then the placement (environment + a one-click dots-to-hyphens name suggestion) and tags. Start from the **CNAME Validated** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Container App Environment Managed Certificate**, and click **Deploy**. The creation wizard leads hostname-first -- the subject and validation method with a live preview of the exact DNS records validation polls for -- then the placement (environment + a one-click dots-to-hyphens name suggestion) and tags. Start from the **CNAME-Validated Certificate** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentManagedCertificate
 metadata:
   name: app-example-com-managed-cert
@@ -41,10 +41,7 @@ metadata:
 spec:
   certificateName: app-example-com
   containerAppEnvironmentId:
-    valueFrom:
-      kind: AzureContainerAppEnvironment
-      name: apps-env
-      fieldPath: status.outputs.environment_id
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.App/managedEnvironments/prod-apps-env"
   subjectName: app.example.com
   domainControlValidation: CNAME
 ```
@@ -53,7 +50,7 @@ spec:
 planton apply -f managed-certificate.yaml
 ```
 
-Only `tags` update in place -- every other change re-issues the certificate (Azure re-issues rather than mutating managed certificates), with fresh domain validation against the published records.
+This issues a free, CNAME-validated certificate for `app.example.com` on the environment, provided the asuid TXT and CNAME records already resolve. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -69,6 +66,8 @@ spec:
       fieldPath: status.outputs.environment_id
 ```
 
+The InfraPipeline resolves the dependency graph, deploys the environment, binding, and DNS records first, then provisions the certificate against the published records.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a managed certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -77,7 +76,7 @@ These are the most important decisions when configuring a managed certificate. E
 
 **Domain control validation** -- how Azure proves you control the domain before issuing. `CNAME` is the standard choice for subdomains (the domain already CNAMEs to the app's ingress FQDN for routing); `HTTP` serves a token on the domain and fits apex domains routed by A record. Left unspecified, Azure deploys its HTTP default.
 
-**Certificate name** -- the resource's identity on the environment, conventionally the subject with dots as hyphens (`app-example-com`). Nothing references it by name in this composition -- attachment matches on the hostname.
+**Certificate name** -- the resource's identity on the environment, conventionally the subject with dots as hyphens (`app-example-com`). Nothing references it by name in this composition -- attachment matches on the hostname. Only `tags` update in place; every other change re-issues the certificate (Azure re-issues rather than mutating managed certificates), with fresh domain validation against the published records.
 
 **Keep the DNS records published** -- renewal re-validates domain control. Removing the asuid TXT or routing record turns the next automatic renewal into an outage.
 
@@ -102,9 +101,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Free TLS for a subdomain** -- the everyday flow: bind `app.example.com` certificate-less, publish the TXT + CNAME records, deploy this certificate CNAME-validated. Start from the **CNAME Validated** preset.
+**Free TLS for a subdomain** -- the everyday flow: bind `app.example.com` certificate-less, publish the TXT + CNAME records, deploy this certificate CNAME-validated. Start from the **CNAME-Validated Certificate** preset.
 
-**Apex domain** -- `example.com` cannot CNAME: route it with an A record to the environment's static IP and validate over HTTP. Start from the **HTTP Validated** preset.
+**Apex domain** -- `example.com` cannot CNAME: route it with an A record to the environment's static IP and validate over HTTP. Start from the **HTTP-Validated Certificate** preset.
 
 **Many hostnames** -- one managed certificate per hostname, each free and self-renewing; a wildcard that covers them all is the bring-your-own kind's job.
 

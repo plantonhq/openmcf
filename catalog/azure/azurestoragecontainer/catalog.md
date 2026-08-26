@@ -32,7 +32,7 @@ Open the deployment store, find **Azure Storage Container**, and click **Deploy*
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageContainer
 metadata:
   name: app-uploads
@@ -51,7 +51,7 @@ spec:
 planton apply -f container.yaml
 ```
 
-This creates a private container -- every read requires authorization, the right posture for everything that is not a public website or CDN origin.
+This creates a private container named `uploads` on the `app-storage` account -- every read requires authorization, the right posture for everything that is not a public website or CDN origin. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -96,11 +96,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Private application container** -- the default shape: private access, no encryption scope. Grant applications data access with role assignments scoped to `container_id`. Start from the **Private Container** preset.
 
-**Public CDN origin** -- `containerAccessType: BLOB` on an account that allows nested public items; consumers fetch objects by direct URL, nobody can enumerate. Start from the **Public CDN Origin** preset.
+**Public CDN origin** -- `containerAccessType: BLOB` on an account that allows nested public items; consumers fetch objects by direct URL, nobody can enumerate. Start from the **Public CDN-Origin Container** preset.
 
-**Tenant-scoped encryption** -- a default encryption scope with the per-blob override blocked; revoking one tenant's scope key renders exactly that tenant's data unreadable. Start from the **Tenant-Scoped Encryption** preset.
+**Tenant-scoped encryption** -- a default encryption scope with the per-blob override blocked; revoking one tenant's scope key renders exactly that tenant's data unreadable. Start from the **Tenant-Scoped Encryption Container** preset.
 
 ## Works With
 
 - [**Azure Storage Account**](/cloud-catalog/azure-storage-account) -- the parent account and the source of the blob endpoint containers compose URLs from
+- [**Azure Storage Encryption Scope**](/cloud-catalog/azure-storage-encryption-scope) -- the same-account scope a container can adopt as its default encryption boundary
 - [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- container-scoped data-plane grants targeting `container_id`

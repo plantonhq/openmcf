@@ -1,6 +1,6 @@
 # Azure Virtual Hub Connection
 
-Deploys a Virtual Hub Connection -- the attachment that joins one spoke virtual network to a Virtual WAN hub. The connection itself is free; its routing block is where WAN topologies are actually built: route-table association, label-based propagation, static routes toward appliances, and internet security. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Virtual Hub Connection -- the attachment that joins one spoke virtual network to a Virtual WAN hub. The connection itself is free; its routing block is where WAN topologies are actually built: route-table association, label-based propagation, static routes toward appliances, and internet security.
 
 ## What Gets Created
 
@@ -42,6 +42,25 @@ metadata:
 spec:
   name: spoke-app
   virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+  remoteVirtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Network/virtualNetworks/app-vnet
+```
+
+```shell
+planton apply -f azure-virtual-hub-connection.yaml
+```
+
+This attaches the spoke VNet to the hub with ARM's default routing -- any-to-any reachability through the hub's built-in route table. The connection provisions in a few minutes and is free; transit through the hub is what bills. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+In a hub-and-spoke chart, one connection per spoke: WAN → hub → **connection** (per VNet), each wiring to the previous by reference:
+
+```yaml
+spec:
+  name: spoke-app
+  virtualHubId:
     valueFrom:
       kind: AzureVirtualHub
       name: hub-eastus
@@ -53,15 +72,7 @@ spec:
       fieldPath: status.outputs.virtual_network_id
 ```
 
-```shell
-planton apply -f azure-virtual-hub-connection.yaml
-```
-
-The connection provisions in a few minutes and is free -- transit through the hub is what bills.
-
-### InfraChart
-
-In a hub-and-spoke chart, one connection per spoke: WAN → hub → **connection** (per VNet), each wiring to the previous by reference.
+The InfraPipeline resolves the dependency graph, deploys the hub and spoke network first, then provisions the connection with the resolved IDs.
 
 ## Key Configuration
 
@@ -91,7 +102,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `virtual_hub_connection_id` | ARM ID of the connection | A hub BGP peering's `virtualNetworkConnectionId` |
-| `virtual_hub_connection_name` | Name of the connection | Operational tooling |
+
+The only other output, `virtual_hub_connection_name`, echoes the connection's name back; no downstream Cloud Resource consumes it.
 
 ## Common Patterns
 

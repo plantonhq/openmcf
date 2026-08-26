@@ -1,6 +1,6 @@
 # Azure Virtual WAN
 
-Deploys a Virtual WAN -- the free, lightweight umbrella object of Azure's managed hub-and-spoke networking. Regional virtual hubs (and the VPN/ExpressRoute gateways on them) are separate resources that reference this WAN; the WAN itself carries the global transit policy. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Virtual WAN -- the free, lightweight umbrella object of Azure's managed hub-and-spoke networking. Regional virtual hubs (and the VPN/ExpressRoute gateways on them) are separate resources that reference this WAN; the WAN itself carries the global transit policy.
 
 ## What Gets Created
 
@@ -48,11 +48,24 @@ spec:
 planton apply -f azure-virtual-wan.yaml
 ```
 
-The WAN provisions in minutes and is free by itself -- hubs and gateways carry the cost.
+This creates a Standard-tier WAN with ARM's defaults -- branch-to-branch transit on, no Office 365 breakout. The WAN provisions in minutes and is free by itself; hubs and gateways carry the cost. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a hub-and-spoke chart, the WAN is the root: WAN → virtual hub(s) → hub connections and gateways, each wiring to the previous by reference.
+In a hub-and-spoke chart, the WAN is the root: WAN → virtual hub(s) → hub connections and gateways, each wiring to the previous by reference:
+
+```yaml
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+  name: global-wan
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then the WAN, then the hubs that reference its `virtual_wan_id` output.
 
 ## Key Configuration
 
@@ -79,7 +92,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `virtual_wan_id` | Azure Resource Manager ID of the WAN | A virtual hub's `virtualWanId` |
-| `virtual_wan_name` | Name of the WAN | Operational tooling |
+
+The only other output, `virtual_wan_name`, echoes the WAN's name back; no downstream Cloud Resource consumes it.
 
 ## Common Patterns
 
@@ -87,8 +101,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Standard WAN** -- the full-mesh default. Start from the **Standard WAN** preset.
 
-**Isolated branches** -- branch-to-branch transit off for hub-and-spoke-only reachability. Start from the **Isolated Branches** preset.
+**Isolated branches** -- branch-to-branch transit off for hub-and-spoke-only reachability. Start from the **Isolated Branches WAN** preset.
 
 ## Works With
 
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group the WAN is created in
+- [**Azure Virtual Hub**](/cloud-catalog/azure-virtual-hub) -- the regional routers that reference this WAN's `virtual_wan_id`

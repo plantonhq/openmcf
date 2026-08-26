@@ -1,6 +1,6 @@
 # Azure Event Hub Disaster Recovery Config
 
-Creates a geo-disaster-recovery pairing between two Event Hubs namespaces: metadata (hubs, consumer groups, authorization rules -- not event data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name (`{alias}.servicebus.windows.net`) fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a regional failover needs no client reconfiguration. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a geo-disaster-recovery pairing between two Event Hubs namespaces: metadata (hubs, consumer groups, authorization rules -- not event data) continuously replicates from the primary to the partner, and a failover-stable ALIAS DNS name (`{alias}.servicebus.windows.net`) fronts whichever namespace is currently primary. Clients connect through the alias instead of either namespace, so a regional failover needs no client reconfiguration. What replicates is structure and credentials, never events -- after a failover the partner has the same hubs, groups, and rules, but starts with empty streams.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **Azure Event Hub Disaster Recovery Config**, an
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubDisasterRecoveryConfig
 metadata:
   name: telemetry-geo-dr
@@ -57,7 +57,7 @@ spec:
 planton apply -f geo-dr.yaml
 ```
 
-Two fields are **fixed at creation** -- `aliasName` and `primaryNamespaceId` -- changing either replaces the pairing. Changing `partnerNamespaceId` breaks the current pairing and re-pairs to the new partner.
+This creates a geo-DR pairing under the `telemetry-hubs` namespace, replicating its metadata to `telemetry-hubs-dr` and fronting both with the `myorg-telemetry-alias` DNS name. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -83,6 +83,8 @@ These are the most important decisions when configuring a geo-DR pairing. Explor
 **The pairing** -- `primaryNamespaceId` is the active side the pairing lives under; `partnerNamespaceId` is the standby metadata replicates to. Understand what replicates: STRUCTURE and CREDENTIALS, not events -- after a failover the partner has the same hubs, groups, and rules, but starts with empty streams.
 
 **Failover** -- an operational action, not a config change: triggered from the SECONDARY side (portal/CLI/SDK) during a regional incident, because the primary's region may be unreachable. After failover the alias points at the former partner. Deleting this resource breaks the pairing gracefully -- both namespaces keep running independently.
+
+**One-way doors** -- `aliasName` and `primaryNamespaceId` are fixed at creation: changing either replaces the pairing. Changing `partnerNamespaceId` breaks the current pairing and re-pairs to the new partner -- a live operation, not a rebuild, but the new partner must again be empty and cross-region.
 
 ## Outputs and Dependencies
 

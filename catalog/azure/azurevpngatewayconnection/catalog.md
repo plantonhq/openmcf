@@ -1,6 +1,6 @@
 # Azure VPN Gateway Connection
 
-Deploys a VPN Gateway Connection -- the tunnel bundle joining one branch (a VPN Site) to a Virtual WAN hub's VPN gateway. Each `vpnLinks` entry is one tunnel, pinned to one of the site's links and carrying that tunnel's own IPsec, BGP, and NAT choices. The connection is free and provisions in minutes; **a tunnel reaches Connected only when the branch device negotiates** -- deployment success and tunnel establishment are different events. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a VPN Gateway Connection -- the tunnel bundle joining one branch (a VPN Site) to a Virtual WAN hub's VPN gateway. Each `vpnLinks` entry is one tunnel, pinned to one of the site's links and carrying that tunnel's own IPsec, BGP, and NAT choices. The connection is free and provisions in minutes; **a tunnel reaches Connected only when the branch device negotiates** -- deployment success and tunnel establishment are different events.
 
 ## What Gets Created
 
@@ -43,6 +43,29 @@ metadata:
 spec:
   name: branch-london
   vpnGatewayId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/vpnGateways/hub-vpn-gateway
+  remoteVpnSiteId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/vpnSites/branch-london
+  vpnLinks:
+    - name: primary-isp
+      vpnSiteLinkId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/vpnSites/branch-london/vpnSiteLinks/primary-isp
+```
+
+```shell
+planton apply -f azure-vpn-gateway-connection.yaml
+```
+
+This creates a one-tunnel connection joining the branch site's primary link to the hub gateway with Azure's default IPsec proposals and a generated shared key. The connection provisions in minutes and is free; watch the tunnel's connection state separately. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+In a branch-connectivity chart the order is: WAN → hub → VPN gateway, plus one site per branch → one **connection** per site, each wiring to the previous by reference:
+
+```yaml
+spec:
+  name: branch-london
+  vpnGatewayId:
     valueFrom:
       kind: AzureVpnGateway
       name: hub-vpn-gateway
@@ -61,15 +84,7 @@ spec:
           fieldPath: status.outputs.link_ids.primary-isp
 ```
 
-```shell
-planton apply -f azure-vpn-gateway-connection.yaml
-```
-
-The connection provisions in minutes and is free; watch the tunnel's connection state separately.
-
-### InfraChart
-
-In a branch-connectivity chart the order is: WAN → hub → VPN gateway, plus one site per branch → one **connection** per site, each wiring to the previous by reference.
+The InfraPipeline resolves the dependency graph, deploys the gateway and site first, then provisions the connection with the resolved IDs.
 
 ## Key Configuration
 
@@ -98,12 +113,7 @@ These are the most important decisions when configuring a connection. Explore th
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `connection_id` | ARM ID of the connection | Operational tooling |
-| `connection_name` | Name of the connection | Operational tooling |
+The connection's `status.outputs` carry only `connection_id` and `connection_name` -- identity echoes of the resource itself. No downstream Cloud Resource consumes them: the connection is a leaf of the branch-connectivity graph, and the tunnels' live state is runtime telemetry, not a provisioning output.
 
 ## Common Patterns
 

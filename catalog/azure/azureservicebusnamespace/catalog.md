@@ -1,6 +1,6 @@
 # Azure Service Bus Namespace
 
-Deploys an Azure Service Bus namespace -- the container and billing boundary for enterprise messaging. The namespace is where the pricing tier, network posture, encryption ownership, and authentication mode are set; the messaging entities themselves (queues, topics, subscriptions, scoped SAS rules, and the geo-DR pairing) are first-class Cloud Resource kinds that reference it, so application teams own their entities independently of the namespace's owner. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Service Bus namespace -- the container and billing boundary for enterprise messaging. The namespace is where the pricing tier, network posture, encryption ownership, and authentication mode are set; the messaging entities themselves (queues, topics, subscriptions, scoped SAS rules, and the geo-DR pairing) are first-class Cloud Resource kinds that reference it, so application teams own their entities independently of the namespace's owner.
 
 ## What Gets Created
 
@@ -13,14 +13,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Namespace firewall** -- when the `networkRuleSet` block is configured (Premium only): a default action plus admitted IP ranges and VNet service-endpoint subnets
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
 
-## The Satellite Family
-
-The namespace deliberately contains no messaging entities -- each is its own kind referencing `namespace_id`:
-
-- **AzureServiceBusQueue** -- point-to-point messaging with lock duration, sessions, duplicate detection, and dead-lettering
-- **AzureServiceBusTopic** -- publish-subscribe distribution, with **AzureServiceBusSubscription** under a topic
-- **AzureServiceBusAuthorizationRule** -- least-privilege SAS credentials scoped to the namespace or a single entity
-- **AzureServiceBusDisasterRecoveryConfig** -- the geo-DR alias pairing two Premium namespaces
+The namespace deliberately contains no messaging entities at creation: queues, topics, subscriptions, scoped SAS rules, and the geo-DR pairing are their own kinds, each referencing this namespace's `namespace_id` output.
 
 ## Before You Deploy
 
@@ -46,7 +39,7 @@ Open the deployment store, find **Azure Service Bus Namespace**, and click **Dep
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServiceBusNamespace
 metadata:
   name: order-bus
@@ -66,29 +59,7 @@ spec:
 planton apply -f servicebus-namespace.yaml
 ```
 
-This creates a Standard-tier namespace. Leaving `sku` out entirely is also valid -- Azure deploys STANDARD when the spec records no tier. Queues and topics arrive as their own kinds afterward, referencing this namespace.
-
-A Premium namespace carries the required capacity pair and unlocks the enterprise blocks:
-
-```yaml
-spec:
-  region: eastus
-  resourceGroup:
-    value: "acme-prod-rg"
-  namespaceName: acme-premium-bus
-  sku: PREMIUM
-  capacity: 1
-  premiumMessagingPartitions: 1
-  networkRuleSet:
-    defaultAction: DENY
-    trustedServicesAllowed: true
-    networkRules:
-      - subnetId:
-          valueFrom:
-            kind: AzureSubnet
-            name: app-subnet
-            fieldPath: status.outputs.subnet_id
-```
+This creates a Standard-tier namespace (leaving `sku` out entirely is also valid -- Azure deploys STANDARD when the spec records no tier); queues and topics arrive as their own kinds afterward, referencing this namespace. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -150,17 +121,21 @@ Production workloads should mint least-privilege credentials with AzureServiceBu
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Standard namespace as the default** -- the full-featured multi-tenant tier (topics, sessions, duplicate detection) fits most production workloads at multi-tenant pricing; entities arrive later as their own kinds. The trade: no VNet integration, CMK, or geo-DR -- and moving to PREMIUM later replaces the namespace and every entity in it, so pick the tier deliberately. Start from the **Standard Namespace** preset.
 
-**Standard namespace** -- the full-featured multi-tenant tier that fits most production workloads; entities arrive later as their own kinds. Start from the **Standard Namespace** preset.
+**Premium isolated for latency-sensitive workloads** -- dedicated messaging units with the namespace firewall on DENY and admitted subnets only, for predictable latency and network isolation. Remember the partition layout is fixed at creation, and DENY requires at least one admitted source or Azure refuses the configuration. Start from the **Premium Isolated Namespace** preset.
 
-**Premium isolated** -- dedicated messaging units with the namespace firewall on DENY and admitted subnets only, for workloads requiring predictable latency and network isolation. Start from the **Premium Isolated** preset.
-
-**Keyless with Entra** -- SAS authentication disabled; clients authenticate with Microsoft Entra data-plane roles, and no static credential exists to leak or rotate. Start from the **Keyless Entra** preset.
+**Keyless with Entra identities** -- `localAuthEnabled: false` makes every SAS key inert (including the root keys in this kind's outputs), so no static credential exists to leak or rotate; clients hold Entra data-plane roles (Azure Service Bus Data Owner/Sender/Receiver) granted via AzureRoleAssignment. The trade: every client must support Entra authentication -- legacy connection-string consumers break. Start from the **Keyless Namespace (Entra-Only)** preset.
 
 ## Works With
 
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the namespace is created
-- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- admitted to the Premium firewall via service endpoints
+- [**Azure Service Bus Queue**](/cloud-catalog/azure-service-bus-queue) -- point-to-point messaging entities living in this namespace
+- [**Azure Service Bus Topic**](/cloud-catalog/azure-service-bus-topic) -- publish-subscribe distribution, with [**Azure Service Bus Subscription**](/cloud-catalog/azure-service-bus-subscription) under a topic
+- [**Azure Service Bus Authorization Rule**](/cloud-catalog/azure-service-bus-authorization-rule) -- least-privilege SAS credentials scoped to the namespace or a single entity
+- [**Azure Service Bus Disaster Recovery Config**](/cloud-catalog/azure-service-bus-disaster-recovery-config) -- the geo-DR alias pairing two Premium namespaces
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed key Premium namespaces encrypt messaging data under
 - [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- attached via the identity block; unwraps customer-managed keys
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) -- admitted to the Premium firewall via service endpoints
 - [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- takes the namespace off the public internet (subresource: `namespace`)
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants Entra identities data-plane roles for the keyless posture

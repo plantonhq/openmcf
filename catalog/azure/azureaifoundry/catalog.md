@@ -1,6 +1,6 @@
 # Azure AI Foundry Hub
 
-Creates an Azure AI Foundry hub -- the shared foundation (security, storage, network posture) a company's AI teams create their Foundry projects in. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates an Azure AI Foundry hub -- the shared foundation (security, storage, network posture) a company's AI teams create their Foundry projects in. The hub requires a key vault and a storage account at creation (both attachments are fixed for the hub's life), optionally wires Application Insights and a container registry, and owns the identity, encryption, and managed-network posture every project inside it inherits. Deletion is a soft delete: the ghost keeps holding the hub name until purged.
 
 ## What Gets Created
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure AI Foundry Hub**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team Hub** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure AI Foundry Hub**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team AI Hub** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -58,11 +58,32 @@ spec:
 planton apply -f azure-ai-foundry.yaml
 ```
 
-The hub provisions in a few minutes.
+This creates a hub with a system-assigned identity, attached to the referenced key vault and storage account, in the referenced resource group. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an AI-platform chart the order is: resource group → key vault + storage account → **hub** → projects, wiring each layer by reference.
+In an AI-platform chart the order is: resource group → key vault + storage account → **hub** → projects. Wire each layer with ValueFromRef so the InfraPipeline deploys them in dependency order:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: ai-platform-rg
+      fieldPath: status.outputs.resource_group_name
+  keyVaultId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: ai-platform-kv
+      fieldPath: status.outputs.key_vault_id
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: ai-platform-storage
+      fieldPath: status.outputs.storage_account_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the resource group, key vault, and storage account first, then creates the hub with the resolved ARM IDs.
 
 ## Key Configuration
 
@@ -89,6 +110,8 @@ These are the most important decisions when configuring the hub. Explore the ful
 | **AzureContainerRegistry** | `containerRegistryId` | `status.outputs.container_registry_id` |
 | **AzureKeyVaultKey** | `encryption.keyId` | `status.outputs.key_id` (the VERSIONED URL) |
 | **AzureUserAssignedIdentity** | `identity.identityIds[]` | `status.outputs.identity_id` |
+| **AzureUserAssignedIdentity** | `primaryUserAssignedIdentity` | `status.outputs.identity_id` |
+| **AzureUserAssignedIdentity** | `encryption.userAssignedIdentityId` | `status.outputs.identity_id` |
 
 ### What This Component Provides
 
@@ -106,14 +129,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Shared team hub** -- the simple foundation with a system identity. Start from the **Team Hub** preset.
+**Shared team hub** -- the simple foundation: system-assigned identity, public endpoint, no CMK. The right start for most teams; the trade is that access grants happen after creation. Start from the **Team AI Hub** preset.
 
-**Regulated estate** -- CMK encryption, private access, approved-outbound isolation. Start from the **CMK-Hardened Hub** preset.
+**Regulated estate** -- CMK encryption, disabled public access, approved-outbound isolation, user-assigned identity so key grants exist before the hub does. Every hardening choice here is fixed at creation or one-way, so start hardened rather than retrofitting. Start from the **CMK-Hardened AI Hub** preset.
 
 ## Works With
 
 - [**Azure AI Foundry Project**](/cloud-catalog/azure-ai-foundry-project) -- the per-team workspace created inside this hub
 - [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- required secrets companion
 - [**Azure Storage Account**](/cloud-catalog/azure-storage-account) -- required artifacts companion
-- [**Azure Search Service**](/cloud-catalog/azure-search-service) -- retrieval for the projects' RAG applications
+- [**Azure AI Search Service**](/cloud-catalog/azure-search-service) -- retrieval for the projects' RAG applications
 - [**Azure Cognitive Account**](/cloud-catalog/azure-cognitive-account) -- the Azure OpenAI models the projects call

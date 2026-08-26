@@ -1,6 +1,6 @@
 # Azure Private Link Service
 
-Deploys a Private Link Service -- the PROVIDER side of Azure Private Link. Your service (behind a Standard internal load balancer, or at one fixed destination IP) becomes privately consumable from other virtual networks, subscriptions, and Entra tenants through private endpoints: traffic stays on the Microsoft backbone, address spaces never meet, and nothing is exposed publicly. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Private Link Service -- the PROVIDER side of Azure Private Link. Your service (behind a Standard internal load balancer, or at one fixed destination IP) becomes privately consumable from other virtual networks, subscriptions, and Entra tenants through private endpoints: traffic stays on the Microsoft backbone, address spaces never meet, and nothing is exposed publicly. Consumers connect through the service's generated alias, so the string in the outputs -- not an IP or hostname -- is what you hand to the other side.
 
 ## What Gets Created
 
@@ -46,6 +46,27 @@ spec:
   natIpConfigurations:
     - name: nat-1
       subnetId:
+        value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/subnets/pls-nat-subnet"
+      primary: true
+  loadBalancerFrontendIpConfigurationIds:
+    - value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/loadBalancers/orders-lb/frontendIPConfigurations/internal"
+```
+
+```shell
+planton apply -f azure-private-link-service.yaml
+```
+
+This publishes the service behind the internal load balancer's frontend, with one NAT address on the policies-disabled subnet and the consumer-facing alias in the outputs. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+In a service-publication chart, the service composes onto the load balancer and subnet deployed in the same InfraPipeline by reference:
+
+```yaml
+spec:
+  natIpConfigurations:
+    - name: nat-1
+      subnetId:
         valueFrom:
           kind: AzureSubnet
           name: pls-nat-subnet
@@ -58,15 +79,7 @@ spec:
         fieldPath: status.outputs.frontend_ip_configuration_ids.internal
 ```
 
-```shell
-planton apply -f azure-private-link-service.yaml
-```
-
-A Stack Job tracks provisioning in real time; the service's alias appears in the outputs when it completes.
-
-### InfraChart
-
-In a service-publication chart, the service composes onto the load balancer and subnet by reference -- the InfraPipeline deploys the network, the load balancer, then the Private Link Service, and the alias output is what you hand to consumers.
+The InfraPipeline resolves the dependency graph, deploys the network and the load balancer first, then the Private Link Service -- and the alias output is what you hand to consumers.
 
 ## Key Configuration
 

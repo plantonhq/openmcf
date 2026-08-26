@@ -1,6 +1,6 @@
 # Azure Disk Encryption Set
 
-Deploys an Azure Disk Encryption Set -- the bridge between Key Vault and server-side disk encryption. Managed disks, VM OS disks, and scale-set disks reference the SET (never the key directly), and the set holds the grantable identity that unwraps the vault key. One set serves many disks: the fan-out point where a single customer-managed key protects a whole environment's storage. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Disk Encryption Set -- the bridge between Key Vault and server-side disk encryption. Managed disks, VM OS disks, and scale-set disks reference the SET (never the key directly), and the set holds the grantable identity that unwraps the vault key. One set serves many disks: the fan-out point where a single customer-managed key protects a whole environment's storage.
 
 ## What Gets Created
 
@@ -10,12 +10,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Managed identity** -- required: a system-assigned principal (the grant target surfaced in the outputs) or attached user-assigned identities that unwrap the key
 - **Automatic key rotation** -- when enabled: the set re-wraps every dependent disk against each new key version within about a day of rotation
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
-
-## The Set in the Security Family
-
-- **AzureKeyVaultKey** -- the customer-managed key this set unwraps, referenced by `keyVaultKeyId` (its `versionless_id` for the rotating posture); the key's vault must run purge protection
-- **AzureUserAssignedIdentity** -- optionally attached so vault grants can exist BEFORE the set deploys (the pipeline-friendly ordering)
-- **Compute consumers** -- AzureManagedDisk, AzureVirtualMachine, and AzureVirtualMachineScaleSet reference the set's ARM ID as their `disk_encryption_set_id`
 
 ## Before You Deploy
 
@@ -34,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Disk Encryption Set**, and click **Deploy**. The creation wizard walks you through placement (region affinity taught up front), the vault key with the rotation pairing rule carried live to the moment of choice, the required identity, and the fixed encryption posture. Start from the **System-Assigned Rotation** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Disk Encryption Set**, and click **Deploy**. The creation wizard walks you through placement (region affinity taught up front), the vault key with the rotation pairing rule carried live to the moment of choice, the required identity, and the fixed encryption posture. Start from the **System-Assigned Set with Auto Key Rotation** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDiskEncryptionSet
 metadata:
   name: prod-des
@@ -66,7 +60,7 @@ spec:
 planton apply -f disk-encryption-set.yaml
 ```
 
-This creates the recommended posture: a system-assigned identity and automatic rotation following the key's versionless ID. Grant the identity vault crypto access after creation (via the `identity_principal_id` output), then point disks at the set.
+This creates the recommended posture: a system-assigned identity and automatic rotation following the key's versionless ID. Grant the identity vault crypto access after creation (via the `identity_principal_id` output), then point disks at the set. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -120,14 +114,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**System-assigned rotation** -- the recommended posture: the set's own identity, automatic rotation, grant after creation. Start from the **System-Assigned Rotation** preset.
+**System-assigned rotation** -- the recommended posture: the set's own identity, automatic rotation following the key's versionless ID, and the vault grant issued after creation via `identity_principal_id`. Start from the **System-Assigned Set with Auto Key Rotation** preset.
 
-**User-assigned pre-provisioned** -- attached identities whose vault grants exist before the set deploys; the cleaner IaC ordering. Start from the **User-Assigned Pre-Provisioned** preset.
+**User-assigned pre-provisioned** -- attached identities whose vault grants exist before the set deploys, avoiding the system-assigned chicken-and-egg; the cleaner ordering when the identity, the grant, and the set all deploy in one dependency-ordered pass. Start from the **User-Assigned Set with Pre-Provisioned Access** preset.
 
 ## Works With
 
 - [**Azure Key Vault**](/cloud-catalog/azure-key-vault) -- hosts the key; must run purge protection
-- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed key this set unwraps
-- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- pre-provisioned unwrapping identities
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) -- the customer-managed key this set unwraps, referenced by `keyVaultKeyId` (its `versionless_id` for the rotating posture)
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- pre-provisioned unwrapping identities attached so vault grants can exist BEFORE the set deploys
 - [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants the set's identity vault crypto access
-- [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) -- encrypts its OS and data disks through the set
+- [**Azure Managed Disk**](/cloud-catalog/azure-managed-disk) / [**Azure Virtual Machine**](/cloud-catalog/azure-virtual-machine) / [**Azure Virtual Machine Scale Set**](/cloud-catalog/azure-virtual-machine-scale-set) -- reference the set's ARM ID as their `disk_encryption_set_id` to encrypt disks through it

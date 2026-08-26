@@ -1,6 +1,6 @@
 # Azure Key Vault
 
-Deploys an Azure Key Vault -- the tenant-scoped container where an organization's encryption keys, TLS certificates, and application secrets live behind one security boundary. The vault is where governance is set: authorization mode (Azure RBAC vs legacy access policies), network isolation, deletion safety (soft delete and purge protection), and the pricing tier that gates HSM-backed keys. What lives inside is composed, never bundled -- keys and certificates are first-class Cloud Resource kinds referencing this vault, and secret VALUES are deliberately out of scope for infrastructure-as-code. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Key Vault -- the tenant-scoped container where an organization's encryption keys, TLS certificates, and application secrets live behind one security boundary. The vault is where governance is set: authorization mode (Azure RBAC vs legacy access policies), network isolation, deletion safety (soft delete and purge protection), and the pricing tier that gates HSM-backed keys. What lives inside is composed, never bundled -- keys and certificates are first-class Cloud Resource kinds referencing this vault, and secret VALUES are deliberately out of scope for infrastructure-as-code, so plaintext never enters deployment manifests or state.
 
 ## What Gets Created
 
@@ -12,14 +12,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Network rules** -- when the `networkAcls` block is configured: a default action, the trusted-Microsoft-services bypass, an IP allowlist, and a VNet service-endpoint subnet allowlist
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically, merged with any user tags (user values win on key conflicts)
 
-## The Vault Family
-
-The vault deliberately contains no objects at creation -- each is its own kind referencing `key_vault_id`:
-
-- **AzureKeyVaultKey** -- encryption keys (RSA/EC, optionally HSM-backed) with rotation policies; the customer-managed-key source for storage, databases, messaging, and disk encryption sets
-- **AzureKeyVaultCertificate** -- TLS certificates, vault-generated or imported, consumed by TLS terminators through their secret IDs
-- **AzureRoleAssignment** -- data-plane grants on an RBAC-mode vault, scoped to the vault ARM ID (or finer)
-- **AzureDiskEncryptionSet** -- bridges a vault key to server-side disk encryption for VMs and managed disks
+The vault deliberately contains no objects at creation: encryption keys (AzureKeyVaultKey) and TLS certificates (AzureKeyVaultCertificate) are their own kinds, each referencing this vault's `key_vault_id` output.
 
 ## Before You Deploy
 
@@ -45,7 +38,7 @@ Open the deployment store, find **Azure Key Vault**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVault
 metadata:
   name: platform-vault
@@ -65,28 +58,7 @@ spec:
 planton apply -f key-vault.yaml
 ```
 
-This creates a Standard-tier vault in RBAC mode (both are the recorded-nothing defaults -- leaving `sku` and `rbacAuthorizationEnabled` out ships no opinion and applies Standard + RBAC). Keys and certificates arrive as their own kinds afterward, referencing this vault.
-
-A network-restricted Premium vault engages the rule set:
-
-```yaml
-spec:
-  region: eastus
-  resourceGroup:
-    value: "acme-security-rg"
-  vaultName: acme-restricted-kv
-  sku: PREMIUM
-  purgeProtectionEnabled: true
-  networkAcls:
-    defaultAction: DENY
-    ipRules:
-      - "203.0.113.0/24"
-    virtualNetworkSubnetIds:
-      - valueFrom:
-          kind: AzureSubnet
-          name: app-subnet
-          fieldPath: status.outputs.subnet_id
-```
+This creates a Standard-tier vault in RBAC mode with purge protection on (leaving `sku` and `rbacAuthorizationEnabled` out ships no opinion and applies Standard + RBAC); keys and certificates arrive as their own kinds afterward, referencing this vault. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -143,13 +115,11 @@ The vault outputs no secrets -- it stores them. Consuming services reference the
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Standard RBAC vault** -- the recommended baseline: RBAC authorization, purge protection on, grants composed as ordinary AzureRoleAssignment resources with PIM and access reviews. The trade against access policies: grants need Microsoft.Authorization write permission to manage, but they scale and audit like every other Azure grant. Start from the **Standard RBAC Vault** preset.
 
-**Standard RBAC vault** -- the recommended baseline: RBAC authorization, purge protection on, grants composed as role assignments. Start from the **Standard RBAC Vault** preset.
+**Premium network-restricted CMK vault** -- HSM-capable tier with the rule set on DENY and admitted sources only, for customer-managed-key roots under compliance regimes demanding hardware protection and network isolation. Watch the bypass decision: NONE closes the door even to trusted Microsoft services, which breaks first-party integrations like Azure Backup. Start from the **Premium Network-Restricted CMK Vault** preset.
 
-**Premium network-restricted** -- HSM-capable tier with the rule set on DENY and admitted sources only, for compliance regimes demanding hardware protection and network isolation. Start from the **Premium Network-Restricted** preset.
-
-**Legacy access-policy vault** -- explicit per-principal permission lists for workloads and org standards that require the pre-RBAC model. Start from the **Legacy Access Policy** preset.
+**Legacy access-policy vault** -- explicit per-principal permission lists for workloads and org standards that require the pre-RBAC model. Populating `accessPolicies` on an RBAC vault is almost always a mistake -- ARM stores but ignores them -- so set `rbacAuthorizationEnabled: false` deliberately. Start from the **Legacy Access-Policy Vault** preset.
 
 ## Works With
 

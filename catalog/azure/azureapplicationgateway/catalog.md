@@ -1,6 +1,6 @@
 # Azure Application Gateway
 
-Deploys an Azure Application Gateway -- the Layer 7 (HTTP/HTTPS) load balancer and reverse proxy that routes by host name and URI path, terminates TLS (including mutual TLS) with Key Vault certificates that renew in place, rewrites requests and responses in flight, proxies raw TCP/TLS at layer 4, and enforces a Web Application Firewall policy on the WAF_v2 SKU. The gateway bundles its sub-objects -- frontends, ports, listeners, backend pools, backend settings, routing rules, path maps, probes, certificates, SSL profiles, redirects, and rewrites -- because Azure configures them as one atomic ARM resource: none has a life outside its gateway, and they wire to each other BY NAME within the spec. What other resources need to reach is exported as name-keyed map outputs, so pool membership composes from the member side without splitting the gateway apart. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Application Gateway -- the Layer 7 (HTTP/HTTPS) load balancer and reverse proxy that routes by host name and URI path, terminates TLS (including mutual TLS) with Key Vault certificates that renew in place, rewrites requests and responses in flight, proxies raw TCP/TLS at layer 4, and enforces a Web Application Firewall policy on the WAF_v2 SKU. The gateway bundles its sub-objects -- frontends, ports, listeners, backend pools, backend settings, routing rules, path maps, probes, certificates, SSL profiles, redirects, and rewrites -- because Azure configures them as one atomic ARM resource: none has a life outside its gateway, and they wire to each other BY NAME within the spec. What other resources need to reach is exported as name-keyed map outputs, so pool membership composes from the member side without splitting the gateway apart.
 
 ## What Gets Created
 
@@ -41,14 +41,14 @@ Pool membership is NOT created here -- each AzureNetworkInterface or scale set r
 
 ### Console
 
-Open the deployment store, find **Azure Application Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the gateway's sub-objects in dependency order -- every name reference is a dropdown over what you have declared, so a dangling reference cannot be typed. Start from the **Standard HTTPS** preset for the production TLS baseline in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Application Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the gateway's sub-objects in dependency order -- every name reference is a dropdown over what you have declared, so a dangling reference cannot be typed. Start from the **Standard HTTPS Gateway with Key Vault TLS** preset for the production TLS baseline in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationGateway
 metadata:
   name: web-gateway
@@ -60,7 +60,8 @@ spec:
     value: "web-rg"
   name: web-gateway
   subnetId:
-    value: "/subscriptions/.../subnets/appgw"
+    valueFrom:
+      name: appgw-subnet
   sku: STANDARD_V2
   autoscale:
     minCapacity: 2
@@ -69,7 +70,8 @@ spec:
   frontendIpConfigurations:
     - name: public
       publicIpAddressId:
-        value: "/subscriptions/.../publicIPAddresses/gw-pip"
+        valueFrom:
+          name: gw-pip
   frontendPorts:
     - name: http
       port: 80
@@ -177,7 +179,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `application_gateway_id` | Azure Resource Manager ID of the gateway | Diagnostics settings, RBAC scopes |
 | `application_gateway_name` | Name of the gateway | Operational tooling |
-| `backend_address_pool_ids.<name>` | Each pool's ARM ID, keyed by name | THE membership seam: NIC ip_configurations and scale-set network profiles reference it to join |
+| `backend_address_pool_ids.<name>` | Each pool's ARM ID, keyed by name | THE membership seam: NIC ipConfigurations and scale-set network profiles reference it to join |
 | `frontend_ip_configuration_ids.<name>` | Each frontend's ARM ID, keyed by name | Chaining the frontend into other resources |
 | `private_ip_address` | The first private frontend's address | The address internal DNS records point at |
 | `private_ip_addresses` | All private frontends' addresses, in declaration order | Multi-frontend internal DNS |
@@ -188,11 +190,11 @@ A public frontend's ADDRESS is not exported here -- it lives on the referenced A
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production HTTPS baseline** -- a zone-redundant autoscaling Standard v2 gateway terminating TLS with a Key Vault certificate, the universal HTTP-to-HTTPS 301 redirect, a /healthz probe, and the Microsoft strict TLS policy. Start from the **Standard HTTPS** preset.
+**Production HTTPS baseline** -- a zone-redundant autoscaling Standard v2 gateway terminating TLS with a Key Vault certificate, the universal HTTP-to-HTTPS 301 redirect, a /healthz probe, and the Microsoft strict TLS policy. Start from the **Standard HTTPS Gateway with Key Vault TLS** preset.
 
-**WAF with path-based routing** -- a WAF v2 gateway enforcing a referenced firewall policy, with a URL path map splitting /api/* and /static/* across pools. Start from the **WAF Path Routing** preset.
+**WAF with path-based routing** -- a WAF v2 gateway enforcing a referenced firewall policy, with a URL path map splitting /api/* and /static/* across pools. Start from the **WAF Gateway with Path-Based Routing** preset.
 
-**Internal gateway** -- a private frontend in the dedicated subnet serving east-west traffic with no public exposure. Start from the **Internal Gateway** preset.
+**Internal gateway** -- a private frontend in the dedicated subnet serving east-west traffic with no public exposure. Start from the **Internal (Private-Only) Gateway** preset.
 
 ## Works With
 

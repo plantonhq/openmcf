@@ -1,6 +1,6 @@
 # Azure VPN Server Configuration
 
-Deploys a VPN Server Configuration -- the reusable "who may connect and how" policy for point-to-site VPN: the authentication methods remote users sign in with (Entra ID, certificate, RADIUS), the trusted and revoked certificates, the tunnel protocols offered, and optional policy groups for user segmentation. The configuration is free and deploys in seconds; a Point-to-Site VPN Gateway is born pointing at one, and many gateways can share it. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a VPN Server Configuration -- the reusable "who may connect and how" policy for point-to-site VPN: the authentication methods remote users sign in with (Entra ID, certificate, RADIUS), the trusted and revoked certificates, the tunnel protocols offered, and optional policy groups for user segmentation. The configuration is free and deploys in seconds; a Point-to-Site VPN Gateway is born pointing at one, and many gateways can share it. Everything except the name, region, and resource group updates in place -- gateways using the configuration pick the change up, and users reconnect under the new policy.
 
 ## What Gets Created
 
@@ -49,8 +49,8 @@ spec:
     - AAD
   aadAuthentication:
     audience: 41b23e61-6c1e-4545-b367-cd054e0ed4b4
-    issuer: https://sts.windows.net/<your-tenant-id>/
-    tenant: https://login.microsoftonline.com/<your-tenant-id>
+    issuer: https://sts.windows.net/f47ac10b-58cc-4372-a567-0e02b2c3d479/
+    tenant: https://login.microsoftonline.com/f47ac10b-58cc-4372-a567-0e02b2c3d479
   vpnProtocols:
     - OpenVPN
 ```
@@ -59,11 +59,22 @@ spec:
 planton apply -f azure-vpn-server-configuration.yaml
 ```
 
-The configuration provisions in seconds and is free.
+This creates an Entra ID-only policy offering OpenVPN -- the audience is the Microsoft-published Azure VPN Client application ID, and the issuer and tenant URLs embed your directory (tenant) ID. The configuration is free and provisions in seconds. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a remote-access chart the order is: WAN → hub → **server configuration** → point-to-site gateway, the gateway wiring to the configuration by reference.
+In a remote-access chart the order is: WAN → hub → **server configuration** → point-to-site gateway. Wire the resource group with ValueFromRef; the gateway then wires to this configuration the same way:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then creates the configuration -- and the point-to-site gateway that consumes it references `vpn_server_configuration_id`.
 
 ## Key Configuration
 
@@ -74,6 +85,8 @@ These are the most important decisions when configuring the policy. Explore the 
 **Tunnel protocols** -- leave `vpnProtocols` empty for Azure's default. Set `["OpenVPN"]` when you use policy groups or plan multiple gateway address pools -- both require OpenVPN.
 
 **Policy groups** -- named member-matching rules (Entra ID group ID, certificate common name, RADIUS group ID). The gateway maps groups to address pools; each group's ARM ID surfaces in `policy_group_ids` keyed by the group's name.
+
+**Revocation without rotation** -- `clientRevokedCertificates` blocks a single lost or compromised client certificate by thumbprint, without rotating the trusted root and reissuing every user's certificate. Because the whole policy updates in place, adding a revocation entry takes effect on the shared configuration without touching any gateway.
 
 ## Outputs and Dependencies
 
@@ -90,8 +103,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `vpn_server_configuration_id` | ARM ID of the configuration | A point-to-site gateway's `vpnServerConfigurationId` |
-| `vpn_server_configuration_name` | Name of the configuration | Operational tooling |
-| `policy_group_ids` | ARM ID of each policy group, keyed by group name | Group-aware automation (`status.outputs.policy_group_ids.<group-name>`) |
+| `policy_group_ids` | ARM ID of each policy group, keyed by group name | Gateway connection configurations mapping groups to address pools (`status.outputs.policy_group_ids.engineering`) |
+
+The outputs also carry `vpn_server_configuration_name` -- gateways reference the configuration by ARM ID, so the name has no ValueFromRef consumer.
 
 ## Common Patterns
 

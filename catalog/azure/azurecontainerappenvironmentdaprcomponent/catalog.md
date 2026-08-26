@@ -1,6 +1,6 @@
 # Azure Container App Environment Dapr Component
 
-Registers a Dapr component on a Container App Environment -- the pluggable backend behind one of Dapr's building blocks: a state store (state.azure.blobstorage, state.redis), a pub/sub broker (pubsub.azure.servicebus), a secret store, or a binding. Application code calls the Dapr API with the component's NAME; which database or broker actually serves the call is this registration's decision, swappable without touching application code. Components register once on the environment and are consumed by any Dapr-enabled app whose `dapr.app_id` appears in `scopes` -- an empty scopes list exposes the component to every Dapr-enabled app in the environment. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Registers a Dapr component on a Container App Environment -- the pluggable backend behind one of Dapr's building blocks: a state store (state.azure.blobstorage, state.redis), a pub/sub broker (pubsub.azure.servicebus), a secret store, or a binding. Application code calls the Dapr API with the component's NAME; which database or broker actually serves the call is this registration's decision, swappable without touching application code. Components register once on the environment and are consumed by any Dapr-enabled app whose `dapr.app_id` appears in `scopes` -- an empty scopes list exposes the component to every Dapr-enabled app in the environment.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container App Environment Dapr Component**, and click **Deploy**. The creation wizard walks you through the component identity (environment, the name application code calls, and the type as a curated free-solo over Dapr's dotted notation), the runtime dials (version, init timeout, the fail-loudly error posture), the declare-before-reference secrets, the per-entry value-or-secret configuration, and the app-ID scopes with the empty-means-everyone exposure warning. Start from the **Blob State Store** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Container App Environment Dapr Component**, and click **Deploy**. The creation wizard walks you through the component identity (environment, the name application code calls, and the type as a curated free-solo over Dapr's dotted notation), the runtime dials (version, init timeout, the fail-loudly error posture), the declare-before-reference secrets, the per-entry value-or-secret configuration, and the app-ID scopes with the empty-means-everyone exposure warning. Start from the **Blob Storage State Store** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentDaprComponent
 metadata:
   name: orders-state-component
@@ -40,10 +40,7 @@ metadata:
   env: prod
 spec:
   containerAppEnvironmentId:
-    valueFrom:
-      kind: AzureContainerAppEnvironment
-      name: apps-env
-      fieldPath: status.outputs.environment_id
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.App/managedEnvironments/prod-apps-env"
   componentName: orders-state
   componentType: state.azure.blobstorage
   version: v1
@@ -67,14 +64,19 @@ spec:
 planton apply -f component.yaml
 ```
 
-Three fields are **fixed at creation** -- `containerAppEnvironmentId`, `componentName` (the contract application code calls), and `componentType` (the backend itself). Everything else -- version, timeout, error posture, secrets, metadata, scopes -- edits in place; sidecars pick up the change when they restart.
+This registers a blob-storage state store named `orders-state`, scoped to the `orders-api` app, with the account key delivered as a managed secret. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef inside metadata entries to wire deploy-time values -- the keyless-auth pattern is the canonical case:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the component to the environment -- and inside metadata entries to wire deploy-time values, where the keyless-auth pattern is the canonical case:
 
 ```yaml
 spec:
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: apps-env
+      fieldPath: status.outputs.environment_id
   metadata:
     - name: azureClientId
       value:
@@ -84,13 +86,13 @@ spec:
           fieldPath: status.outputs.client_id
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the identity and backend first, then registers the component.
+The InfraPipeline resolves the dependency graph, deploys the environment, identity, and backend first, then registers the component.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a component. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Name and type** -- the name is what code calls (name it for the ROLE: orders-state, not orders-blob-storage); the type names the building block AND the backend in Dapr's dotted notation. Both are fixed at creation -- swapping the backend later is a new component plus a data migration, and Dapr's promise is that the migration never touches application code. The type deliberately carries no pinned vocabulary: any component the Dapr runtime ships stays expressible.
+**Name and type** -- the name is what code calls (name it for the ROLE: orders-state, not orders-blob-storage); the type names the building block AND the backend in Dapr's dotted notation. Both are fixed at creation, along with the environment -- swapping the backend later is a new component plus a data migration, and Dapr's promise is that the migration never touches application code. Everything else -- version, timeout, error posture, secrets, metadata, scopes -- edits in place; sidecars pick up the change when they restart. The type deliberately carries no pinned vocabulary: any component the Dapr runtime ships stays expressible.
 
 **Metadata** -- the component's configuration, with keys defined by the chosen type's Dapr reference. Each entry is a VALUE (a literal, or a reference for deploy-time facts like a client ID) or a SECRET reference -- never both; connection strings and keys always travel through the secrets list.
 
@@ -120,9 +122,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Blob state store** -- state.azure.blobstorage with a secret-backed account key, scoped to the owning app. Start from the **Blob State Store** preset.
+**Blob state store** -- state.azure.blobstorage with a secret-backed account key, scoped to the owning app. Start from the **Blob Storage State Store** preset.
 
-**Shared pub/sub** -- pubsub.azure.servicebus registered unscoped as environment-wide messaging infrastructure, authenticated keylessly through an `azureClientId` entry. Start from the **Service Bus Pub/Sub** preset.
+**Shared pub/sub** -- pubsub.azure.servicebus registered unscoped as environment-wide messaging infrastructure, authenticated keylessly through an `azureClientId` entry. Start from the **Service Bus Pub/Sub (Keyless)** preset.
 
 **Promotion-path parity** -- staging and production environments each carry their own registration of the same logical component: same name, same type, different backing account -- application code stays identical across the promotion path.
 

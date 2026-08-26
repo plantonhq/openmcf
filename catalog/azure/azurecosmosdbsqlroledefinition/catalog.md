@@ -18,23 +18,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Azure Subscription
 
 - **A Cosmos DB account** speaking the SQL (NoSQL) API. Reference an AzureCosmosdbAccount Cloud Resource via ValueFromRef, or provide the account's ARM ID directly.
-
-### Check the Built-ins First
-
-Every SQL-API account already carries two built-in data roles — Data Reader (`00000000-0000-0000-0000-000000000001`) and Data Contributor (`00000000-0000-0000-0000-000000000002`). Assigning one needs NO definition resource: an AzureCosmosdbSqlRoleAssignment references the well-known ID directly. Author a custom definition when neither fits — "read-only on one container", "write items but never delete", "metadata-only for a monitoring probe".
+- **Check the built-ins first** — every SQL-API account already carries two built-in data roles: Data Reader (`00000000-0000-0000-0000-000000000001`) and Data Contributor (`00000000-0000-0000-0000-000000000002`). Assigning one needs NO definition resource: an AzureCosmosdbSqlRoleAssignment references the well-known ID directly. Author a custom definition only when neither fits — "read-only on one container", "write items but never delete", "metadata-only for a monitoring probe".
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Azure Cosmos DB SQL Role Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **read-only-role** preset in the [Presets](#presets) tab for the reader shape.
+Open the deployment store, find **Azure Cosmos DB SQL Role Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Read-Only Role** preset in the [Presets](#presets) tab for the reader shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbSqlRoleDefinition
 metadata:
   name: orders-read-only
@@ -72,6 +69,8 @@ When deploying as part of a multi-resource environment, the account, its roles, 
 
 ## Key Configuration
 
+These are the most important decisions when configuring a role definition. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **Permissions** -- ALLOW rules over Cosmos data operations, evaluated as a union across blocks. No carve-outs and no control-plane actions exist in this RBAC system; the four write operations (create/replace/upsert/delete) grant individually. Practically every role includes `readMetadata` — SDKs read metadata before any data call. Editing permissions later updates EVERY existing assignment of the role at once.
 
 **Assignable scopes** -- Where assignments of this role may be CREATED: the account, a database (`{account-id}/dbs/{db}`), or a container (`{account-id}/dbs/{db}/colls/{container}`). At least one is required; database/container entries are literal paths composed on the account ID (references cannot append path suffixes).
@@ -87,11 +86,27 @@ When deploying as part of a multi-resource environment, the account, its roles, 
 | AzureCosmosdbAccount | `cosmosdbAccountId` | `status.outputs.cosmosdb_account_id` |
 | AzureCosmosdbAccount | `assignableScopes[]` | `status.outputs.cosmosdb_account_id` |
 
-### What This Component Produces
+### What This Component Provides
 
-| Output | Description | Consumed By |
-|--------|-------------|-------------|
-| `role_definition_id` | The fully-scoped ARM ID of the definition | AzureCosmosdbSqlRoleAssignment |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `role_definition_id` | The fully-scoped ARM ID of the definition | AzureCosmosdbSqlRoleAssignment `roleDefinitionId` |
 | `role_definition_guid` | The definition's GUID resource name | Audit tooling |
 | `role_name` | The display name as deployed | Data-plane RBAC listings |
 | `cosmosdb_account_name` | The parent account's name | Automation that needs the account/definition pair |
+
+## Common Patterns
+
+**Read-only under your own governance** — the full read surface (point reads, SQL queries, the change feed) plus the `readMetadata` every SDK needs. It mirrors the built-in Data Reader; author it as a custom role when you want your own naming and assignable-scope narrowing rather than Microsoft's. Start from the **Read-Only Role** preset.
+
+**Writer without delete** — the role the built-ins cannot express: full read plus create/replace/upsert, never delete. Ingest pipelines and application workloads write documents all day and have no business destroying them; reserving deletion for operators turns a whole class of bugs and compromises into authorization errors. Start from the **Writer Without Delete** preset.
+
+**Database-scoped boundary** — a single assignable scope of one database's path means an assignment of this role at the account level, or in any other database, is rejected by Azure at apply. The boundary is enforced by the definition itself, not by review discipline on each grant — the shape for giving a team full data access to THEIR database in a shared account. Start from the **Database-Scoped Role** preset.
+
+## Works With
+
+- [**Azure Cosmos DB Account**](/cloud-catalog/azure-cosmosdb-account) — the SQL-API account the definition lives in, and the default assignable-scope reference
+- [**Azure Cosmos DB SQL Role Assignment**](/cloud-catalog/azure-cosmosdb-sql-role-assignment) — the grant that binds this definition to a principal at a scope, consuming `role_definition_id`
+- [**Azure Cosmos DB SQL Database**](/cloud-catalog/azure-cosmosdb-sql-database) / [**Azure Cosmos DB SQL Container**](/cloud-catalog/azure-cosmosdb-sql-container) — the narrower assignable scopes (`{account-id}/dbs/{db}` and `{account-id}/dbs/{db}/colls/{container}`)

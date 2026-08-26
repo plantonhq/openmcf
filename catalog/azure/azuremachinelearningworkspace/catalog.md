@@ -1,6 +1,6 @@
 # Azure Machine Learning Workspace
 
-Deploys an Azure Machine Learning workspace -- the central home a data-science team keeps its experiments, models, endpoints, datastores, and compute in. The workspace plugs into a storage account, a key vault, and an application-insights component (all required, all referenced by typed refs), plus an optional container registry. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Machine Learning workspace -- the central home a data-science team keeps its experiments, models, endpoints, datastores, and compute in. The workspace plugs into a storage account, a key vault, and an application-insights component (all required, all referenced by typed refs), plus an optional container registry.
 
 ## What Gets Created
 
@@ -63,11 +63,37 @@ spec:
 planton apply -f azure-machine-learning-workspace.yaml
 ```
 
-The workspace provisions in a few minutes.
+This creates a system-identity workspace attached to its three companion services. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: resource group → storage account + key vault + log analytics → application insights → **workspace** → datastores and compute, each wiring to the workspace by reference.
+In an ML-platform chart the order is: resource group → storage account + key vault + log analytics → application insights → **workspace** → datastores and compute. Wire the companion services by reference:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: ml-platform-rg
+      fieldPath: status.outputs.resource_group_name
+  applicationInsightsId:
+    valueFrom:
+      kind: AzureApplicationInsights
+      name: ml-insights
+      fieldPath: status.outputs.application_insights_id
+  keyVaultId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: ml-vault
+      fieldPath: status.outputs.key_vault_id
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: mlartifacts
+      fieldPath: status.outputs.storage_account_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the companion services before the workspace.
 
 ## Key Configuration
 
@@ -102,20 +128,20 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `machine_learning_workspace_id` | ARM ID of the workspace | Datastores, compute, and outbound rules reference it as their `workspace_id` |
-| `machine_learning_workspace_name` | The workspace's name | ARM child addressing, operational tooling |
+| `machine_learning_workspace_id` | ARM ID of the workspace | Datastores, compute, endpoints, and deployments reference it as their workspace |
 | `workspace_guid` | The immutable workspace GUID | Data-plane SDKs, diagnostic settings |
 | `discovery_url` | The regional discovery URL | SDK endpoint resolution |
 | `system_assigned_identity_principal_id` | The system identity's principal ID | Storage / Key Vault role assignments |
-| `fqdn_outbound_rule_ids` | Rule ARM IDs keyed by name | Operational tooling |
-| `private_endpoint_outbound_rule_ids` | Rule ARM IDs keyed by name | Operational tooling |
-| `service_tag_outbound_rule_ids` | Rule ARM IDs keyed by name | Operational tooling |
+
+The outbound-rule ID maps (`fqdn_outbound_rule_ids`, `private_endpoint_outbound_rule_ids`, `service_tag_outbound_rule_ids`) echo the managed-VNet rules back for inspection; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Team workspace** -- system identity on the standard companion trio. Start from the **Team Workspace** preset.
+
+**Feature store** -- a `FEATURE_STORE`-flavor workspace (with the required `featureStore` block) backing online/offline feature serving. Deployed alongside, not instead of, the regular training workspace. Start from the **Feature Store** preset.
 
 **Private hardened workspace** -- public access off, approved-outbound isolation, explicit outbound rules. Start from the **Private Hardened Workspace** preset.
 

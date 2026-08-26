@@ -1,6 +1,6 @@
 # Azure ExpressRoute Port
 
-Deploys an ExpressRoute Port -- your own pair of physical ports on a Microsoft edge router at a colocation facility (ExpressRoute Direct). The port is the capacity object of the largest hybrid estates: you order 10 or 100 Gbps of dual links, hand the port's letter-of-authorization facts to the facility to complete the cross-connects, and carve ExpressRoute circuits from its bandwidth. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an ExpressRoute Port -- your own pair of physical ports on a Microsoft edge router at a colocation facility (ExpressRoute Direct). The port is the capacity object of the largest hybrid estates: you order 10 or 100 Gbps of dual links, hand the port's letter-of-authorization facts to the facility to complete the cross-connects, and carve ExpressRoute circuits from its bandwidth. The port bills its full monthly rate from the moment it is created -- one of the most expensive single objects in Azure networking.
 
 ## What Gets Created
 
@@ -58,11 +58,22 @@ spec:
 planton apply -f azure-express-route-port.yaml
 ```
 
-The port object provisions its links as a pair; the physical cross-connects are ordered out-of-band with the facility using the per-link outputs (router, interface, patch panel, rack).
+This creates a 10 Gbps Dot1Q port pair at Equinix Ashburn DC2 with both links admin-enabled; the physical cross-connects are ordered out-of-band with the facility using the per-link outputs (router, interface, patch panel, rack). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a hybrid-connectivity chart, the port anchors the ExpressRoute Direct chain: port → Direct-mode circuit → private peering → gateway connection, each wiring to the previous by reference.
+In a hybrid-connectivity chart, the port anchors the ExpressRoute Direct chain: port → Direct-mode circuit → private peering → gateway connection. Wire the port to a resource group deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group first, then provisions the port; Direct-mode circuits downstream reference `status.outputs.express_route_port_id`.
 
 ## Key Configuration
 
@@ -92,11 +103,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `express_route_port_id` | Azure Resource Manager ID of the port | AzureExpressRouteCircuit's `expressRoutePortId` (Direct mode) |
-| `express_route_port_name` | Name of the port | Operational tooling |
 | `guid` / `ethertype` / `mtu` | Port-level physical facts | Facility ordering, network design |
 | `link1_*` / `link2_*` | Per-link router, interface, patch panel, rack, connector | The facility's cross-connect (LOA) order |
 | `system_assigned_identity_principal_id` | The system-assigned identity's principal | Key Vault access policies |
 | `authorization_keys` | Name-keyed issued keys (sensitive) | Circuits in other subscriptions |
+
+`express_route_port_name` is also exported for tooling that addresses the port by name; it has no ValueFromRef consumers.
 
 ## Common Patterns
 
@@ -105,6 +117,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Standard port** -- 10 Gbps Dot1Q metered with both links enabled. Start from the **Standard Port** preset.
 
 **MACsec-encrypted port** -- layer-2 encryption keyed from your Key Vault via a user-assigned identity. Start from the **MACsec Port** preset.
+
+**Shared-capacity port** -- one team owns the port and issues authorizations; circuits in other subscriptions redeem the keys and are carved from its bandwidth, so the physical capacity is bought once and billed centrally. Start from the **Shared Capacity Port** preset.
 
 ## Works With
 
