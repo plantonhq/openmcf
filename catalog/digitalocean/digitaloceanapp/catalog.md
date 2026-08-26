@@ -1,6 +1,6 @@
-# App on DigitalOcean App Platform
+# DigitalOcean App Platform App
 
-Deploys a full App Platform application — HTTP services, workers, jobs, static sites, functions, and in-app databases — from Git or from a container image. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for VPC, DNS zone, and database-cluster wiring.
+Deploys a full App Platform application -- HTTP services, workers, jobs, static sites, functions, and in-app databases -- from Git or from a container image. One manifest declares every component with its source, sizing, and autoscaling, plus app-level domains, ingress rules, alerts, and VPC egress placement; App Platform builds and serves the result with automatic HTTPS on a default `ondigitalocean.app` hostname. The decisions that matter most: which source type the DigitalOcean account can actually use, and which fields deploy only through Terraform at the current Pulumi SDK.
 
 ## What Gets Created
 
@@ -19,19 +19,23 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Planton Setup
 
 - **DigitalOcean Provider Connection** -- an active connection in the Connect module with a DigitalOcean API token. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
 ### DigitalOcean Account
 
-- **A source** for each component: a public Git clone URL, a linked GitHub/GitLab/Bitbucket repo, or a container image (Docker Hub, GHCR, or DigitalOcean Container Registry).
+- **A source** for each component: a public Git clone URL, a linked GitHub/GitLab/Bitbucket repo, or a container image (Docker Hub, GHCR, or DigitalOcean Container Registry). The `github`/`gitlab`/`bitbucket` sources need the matching connection in the DigitalOcean control panel; `git` with a public clone URL needs none.
 - **A supported App Platform region** (for example `nyc3`, `sfo3`, `fra1`).
+- **A DigitalOcean-managed DNS zone** (only for custom domains) -- `domains[].zone` expects the zone to already exist; App Platform will not create DNS for you.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **App on DigitalOcean App Platform**, and click **Deploy**. Start from the **Git Source Web App** preset to build from a repository, or **Container Image App** to run a pre-built image.
+Open the deployment store, find **DigitalOcean App Platform App**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Git Source Web App** preset in the [Presets](#presets) tab to build from a repository, or **Container Image App** to run a pre-built image with autoscaling.
 
 ### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: digital-ocean.planton.dev/v1alpha1
@@ -56,19 +60,58 @@ spec:
 planton apply -f app.yaml
 ```
 
-This creates a single-instance web app in NYC3 built from the sample Node.js repository.
+This creates a single-instance web app in NYC3 built from the sample Node.js repository, served with automatic HTTPS on its default hostname. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When wiring VPC egress placement, a custom domain on a DigitalOcean-managed zone, or a production database attachment, use ValueFromRef to reference resources deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: app-network
+      fieldPath: status.outputs.vpc_id
+  domains:
+    - name: www.example.com
+      zone:
+        valueFrom:
+          kind: DigitalOceanDnsZone
+          name: example-com
+          fieldPath: status.outputs.zone_name
+  databases:
+    - name: app-db
+      engine: pg
+      production: true
+      clusterName:
+        valueFrom:
+          kind: DigitalOceanDatabaseCluster
+          name: app-postgres
+          fieldPath: spec.cluster_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the VPC, DNS zone, and database cluster first, then provisions the app with the resolved values.
 
 ## Key Configuration
 
-**App name** -- `appName` is 2–32 characters and unique in the DigitalOcean account.
+These are the most important decisions when configuring an App Platform application. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Components** -- add at least one of `services`, `workers`, `jobs`, `staticSites`, or `functions`. An empty app cannot deploy.
+**Components** -- add at least one of `services`, `workers`, `jobs`, `staticSites`, or `functions`; validation rejects an empty app before any provisioner runs. Jobs run around a deployment and never autoscale; static sites build from Git only (no image source).
 
-**Source** -- each component sets exactly one of `git`, `github`, `gitlab`, `bitbucket`, or (services/workers/jobs) `image`. Use `git` with a public clone URL when the account has no VCS connection.
+**Source per component** -- each component sets exactly one of `git`, `github`, `gitlab`, `bitbucket`, or (services/workers/jobs) `image`. The VCS-linked sources need the matching connection in the DigitalOcean control panel -- `deployOnPush` is silently ignored without it and a missing connection fails the deploy -- so `git` with a public clone URL is the right default for unlinked accounts. For Docker Hub images, `registry` is the namespace (`library` for official images), not the string "docker-hub"; for DigitalOcean Container Registry set `registryType: docr` and leave `registry` empty.
 
-**Instance size** -- `instanceSizeSlug` is a free-form string (`basic-xxs`, `professional-s`, …). New sizes work without a catalog change.
+**App name** -- `appName` is 2-32 characters, DNS-friendly, and unique in the DigitalOcean account. Changing it replaces the app.
 
-**Autoscaling** -- set `autoscaling` on a service or worker and leave `instanceCount` unset. Autoscaling is not available on jobs.
+**Instance size and count** -- `instanceSizeSlug` is a free-form string (`basic-xxs`, `professional-s`, ...); new provider sizes work without a catalog change. The slug is the cost driver: every instance of every service, worker, and job bills by its size, so a forgotten `professional` slug on a staging worker costs real money.
+
+**Autoscaling** -- set `autoscaling` on a service or worker and leave `instanceCount` unset; the spec rejects the combination because App Platform ignores a fixed count while autoscaling is on. Jobs cannot autoscale.
+
+**Termination** -- `termination.drainSeconds` is a service-only HTTP connection drain; workers and jobs reject it and honor `gracePeriodSeconds` only.
+
+**Terraform-only fields at the current Pulumi SDK (v4.49.0)** -- `vpc`, `maintenance`, service/worker `livenessHealthCheck`, `ingress.secureHeader`, ingress `authorityExact` matches, and alert destinations are all real spec fields that Terraform wires; the Pulumi module fails the apply loudly if they are set. Deploy through Terraform when you need them.
+
+**In-app databases** -- a `databases[]` entry without `clusterName` is App Platform's managed dev database, not a production data store. Set `production: true` with `clusterName` referencing an existing cluster; the attachment never creates the cluster.
 
 ## Outputs and Dependencies
 
@@ -84,23 +127,27 @@ VPC placement is wired by Terraform. The Pulumi SDK at v4.49.0 cannot set it; Pu
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `app_id` | App Platform application UUID | Import, API operations |
 | `default_hostname` | Default `ondigitalocean.app` hostname | DNS CNAME targets |
 | `live_url` | Public URL including protocol | Application integrations |
 | `live_domain` | Live hostname without scheme | Certificates, DNS |
-| `active_deployment_id` | Currently live deployment UUID | Deployment tracking |
+| `active_deployment_id` | Currently live deployment UUID | Post-deploy verification that a new deployment went live |
 
 ## Common Patterns
 
-**Git source web app** -- one HTTP service built from a public repository. Start from the **Git Source Web App** preset.
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Container image app** -- one HTTP service from Docker Hub, GHCR, or DOCR, with optional autoscaling. Start from the **Container Image App** preset.
+**Git source web app** -- one HTTP service built from a public repository; App Platform detects the language and builds it, no VCS connection required. The shape for getting an app live before wiring GitHub. Start from the **Git Source Web App** preset.
+
+**Container image app** -- one HTTP service from Docker Hub, GHCR, or DOCR with CPU autoscaling; skips the build entirely, so deploys are as fast as an image pull and the running artifact is exactly what CI produced. Start from the **Container Image App** preset.
 
 ## Works With
 
-- [**VPC on DigitalOcean**](/cloud-catalog/digital-ocean-vpc) -- optional egress placement (`spec.vpc`)
-- [**DNS Zone on DigitalOcean**](/cloud-catalog/digital-ocean-dns-zone) -- custom domains (`spec.domains`)
-- [**Database Cluster on DigitalOcean**](/cloud-catalog/digital-ocean-database-cluster) -- in-app database `clusterName`
-- [**Function on DigitalOcean**](/cloud-catalog/digital-ocean-function) -- standalone functions app when the functions component should not share this app
+- [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- optional egress placement (`spec.vpc`)
+- [**DigitalOcean DNS Zone**](/cloud-catalog/digital-ocean-dns-zone) -- custom domains (`spec.domains`)
+- [**DigitalOcean Database Cluster**](/cloud-catalog/digital-ocean-database-cluster) -- in-app database `clusterName`
+- [**DigitalOcean Function**](/cloud-catalog/digital-ocean-function) -- standalone functions app when the functions component should not share this app

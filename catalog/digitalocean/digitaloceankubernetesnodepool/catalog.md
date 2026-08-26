@@ -1,6 +1,6 @@
-# Kubernetes Node Pool on DigitalOcean
+# DigitalOcean Kubernetes Node Pool
 
-Adds a worker pool to an existing DigitalOcean Kubernetes (DOKS) cluster with configurable node sizing, fixed or autoscaled node counts, Kubernetes labels and taints, DigitalOcean tags, and AMD GPU partitioning. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for cluster dependency wiring.
+Adds a worker pool to an existing DigitalOcean Kubernetes (DOKS) cluster with configurable node sizing, fixed or autoscaled node counts, Kubernetes labels and taints, DigitalOcean tags, and AMD GPU partitioning. Separate pools are how a DOKS cluster grows capacity classes safely: the pool resizes and replaces independently of the cluster, while changing the cluster's own inline default pool replaces the whole cluster. Size is the one-way decision here -- changing it recreates every node in the pool.
 
 ## What Gets Created
 
@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Node Pool on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Autoscaling Production** preset in the [Presets](#presets) tab.
+Open the deployment store, find **DigitalOcean Kubernetes Node Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Autoscaling Production Pool** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -99,19 +99,21 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `node_pool_id` | The pool's UUID | Import addressing, pool-scoped automation |
-| `cluster_id` | The owning cluster's UUID | Anything addressing the pool through the cluster API |
+| `cluster_id` | The owning cluster's UUID (echoes the resolved `cluster` input) | Anything addressing the pool through the cluster API, which needs both ids |
 | `node_ids` | DOKS node object UUIDs of the current members | Node-level automation against the DOKS API |
 | `droplet_ids` | Integer ids of the Droplets backing the nodes | Firewall rules and other Droplet-scoped wiring |
+
+No other catalog kind consumes these outputs through typed references today -- a node pool is a leaf of the dependency graph. They exist for API addressing and Droplet-scoped automation; with autoscaling on, `node_ids` and `droplet_ids` are a snapshot from provisioning time, not a live membership list.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Autoscaling application pool** -- general-purpose nodes scaling 2–6 with a `workload: app` label. Start from the **Autoscaling Production** preset.
+**Autoscaling application pool** -- general-purpose nodes scaling 2–6 with a `workload: app` label. Start from the **Autoscaling Production Pool** preset.
 
-**Dedicated system pool** -- a fixed two-node pool with a `NoSchedule` taint reserving it for system components. Start from the **Fixed Size** preset.
+**Dedicated system pool** -- a fixed two-node pool with a `NoSchedule` taint reserving it for system components. Start from the **Fixed-Size Dedicated Pool** preset.
 
 ## Works With
 
 - [**DigitalOcean Kubernetes Cluster**](/cloud-catalog/digital-ocean-kubernetes-cluster) -- the cluster this pool attaches to
-- [**DigitalOcean Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures the pool's Droplets by id or tag
+- [**DigitalOcean Cloud Firewall**](/cloud-catalog/digital-ocean-firewall) -- secures the pool's Droplets; target by tag, which tracks pool membership as nodes come and go

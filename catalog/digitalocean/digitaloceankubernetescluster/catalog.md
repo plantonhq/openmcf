@@ -1,6 +1,6 @@
-# Kubernetes Cluster on DigitalOcean
+# DigitalOcean Kubernetes Cluster
 
-Deploys a managed Kubernetes cluster (DOKS) on DigitalOcean with the full provider surface: configurable node sizing with labels, taints, and autoscaling, optional high availability, surge and automatic upgrades with a maintenance policy, a control-plane firewall, custom pod/service subnets, SSO, cluster-autoscaler tuning, container registry integration, and managed addon toggles. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC dependency wiring.
+Deploys a managed Kubernetes cluster (DOKS) on DigitalOcean with the full provider surface: configurable node sizing with labels, taints, and autoscaling, optional high availability, surge and automatic upgrades with a maintenance policy, a control-plane firewall, custom pod/service subnets, SSO, cluster-autoscaler tuning, container registry integration, and managed addon toggles. The decisions that lock in at creation deserve the most care: VPC and subnet placement can never be changed, HA can never be turned off, and changing the default node pool's size later replaces the entire cluster rather than resizing the pool.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Cluster on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab for a resilient configuration with autoscaling and an API firewall.
+Open the deployment store, find **DigitalOcean Kubernetes Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA Kubernetes Cluster** preset in the [Presets](#presets) tab for a resilient configuration with autoscaling and an API firewall.
 
 ### CLI
 
@@ -104,7 +104,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `cluster_id` | Unique cluster identifier (UUID) on DigitalOcean | Node pool attachment, DigitalOcean API operations, monitoring |
+| `cluster_id` | Unique cluster identifier (UUID) on DigitalOcean | Node pool attachment, firewall source/destination rules, database firewall trusted sources, DigitalOcean API operations |
 | `kubeconfig` | Raw kubeconfig YAML for cluster access (sensitive) | Kubernetes Provider Connections, CI/CD pipeline configuration |
 | `api_server_endpoint` | Kubernetes API server endpoint URL | kubectl configuration, application health checks |
 | `urn` | `do:kubernetes:<cluster_id>` | DigitalOcean project attachment |
@@ -116,11 +116,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production HA cluster** -- HA control plane, autoscaling node pool (2-5 nodes), automatic patch upgrades in a Sunday maintenance window, container registry integration, and a control-plane firewall. Start from the **Production HA** preset.
+**Production HA cluster** -- HA control plane, autoscaling node pool (2-5 nodes), automatic patch upgrades in a Sunday maintenance window, container registry integration, and a control-plane firewall. Start from the **Production HA Kubernetes Cluster** preset.
 
-**Development cluster** -- Non-HA control plane, 2 fixed-size nodes with smaller instances, no auto-upgrade or API firewall. Minimal cost for dev/test and feature-branch clusters. Start from the **Development** preset.
+**Development cluster** -- Non-HA control plane, 2 fixed-size nodes with smaller instances, no auto-upgrade or API firewall. Minimal cost for dev/test and feature-branch clusters. Start from the **Development Kubernetes Cluster** preset.
 
 ## Works With
 
 - [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the VPC network for cluster placement (required)
 - [**DigitalOcean Kubernetes Node Pool**](/cloud-catalog/digital-ocean-kubernetes-node-pool) -- adds independently sized worker pools to the cluster
+- [**DigitalOcean Cloud Firewall**](/cloud-catalog/digital-ocean-firewall) -- Droplet firewall rules that allow traffic from or to the cluster by its `cluster_id`
+- [**DigitalOcean Database Firewall**](/cloud-catalog/digital-ocean-database-firewall) -- trusts the cluster as a source so in-cluster workloads can reach a managed database

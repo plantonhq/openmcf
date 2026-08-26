@@ -1,6 +1,6 @@
-# DNS Zone on DigitalOcean
+# DigitalOcean DNS Zone
 
-Deploys a DNS zone (domain) on DigitalOcean with optional inline DNS records covering every type the DigitalOcean API accepts -- A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, and SOA -- plus the create-only apex-A convenience. DigitalOcean manages the authoritative nameservers for the zone, and record values can reference outputs from other Cloud Resources via ValueFromRef. Integrates with Planton's Provider Connections for DigitalOcean API token management.
+Deploys a DNS zone (domain) on DigitalOcean with optional inline DNS records covering every type the DigitalOcean API accepts -- A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, and SOA -- plus the create-only apex-A convenience. DigitalOcean manages the authoritative nameservers for the zone, and record values can reference outputs from other Cloud Resources via ValueFromRef. The zone answers on DigitalOcean's nameservers the moment it exists, but the public internet only follows once the registrar's NS delegation is flipped -- and domain names are unique across ALL DigitalOcean accounts, so a name another account holds cannot be created.
 
 ## What Gets Created
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Zone on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Simple Website** preset in the [Presets](#presets) tab to create a zone with apex and www records.
+Open the deployment store, find **DigitalOcean DNS Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Simple Website Zone** preset in the [Presets](#presets) tab to create a zone with apex and www records.
 
 ### CLI
 
@@ -68,6 +68,8 @@ These are the most important decisions when configuring a DNS zone. Explore the 
 
 **`ipAddress`** -- a create-only convenience that seeds an apex A record the platform never tracks afterwards. Prefer declaring the apex record in `records`; use `ipAddress` only when migrating a configuration that already relies on it.
 
+**Destroy blast radius** -- destroying the zone deletes every record in it, including records created by the standalone DNS record kind and records added by hand in the control panel. Deleting a zone also releases the domain name for any DigitalOcean account to claim. Enumerate what lives in a shared zone before destroying it.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -89,10 +91,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Simple website zone** -- apex A record plus a www CNAME. Minimal configuration for getting a domain live quickly. Start from the **Simple Website** preset.
+**Simple website zone** -- apex A record plus a www CNAME. Minimal configuration for getting a domain live quickly. Start from the **Simple Website Zone** preset.
 
-**Production zone with email** -- website records plus MX pairs with priorities, an SPF policy, and CAA certificate authority pinning. Start from the **Production With Email** preset.
+**Production zone with email** -- website records plus MX pairs with priorities, an SPF policy, and CAA certificate authority pinning. Start from the **Production Zone with Email** preset.
 
 ## Works With
 
-- [**DNS Record on DigitalOcean**](/cloud-catalog/digital-ocean-dns-record) -- standalone records referencing this zone's `zone_name` output, for records owned by other teams or charts
+- [**DigitalOcean DNS Record**](/cloud-catalog/digital-ocean-dns-record) -- standalone records referencing this zone's `zone_name` output, for records owned by other teams or charts
+- [**DigitalOcean App Platform App**](/cloud-catalog/digital-ocean-app) -- app custom domains reference the zone so App Platform manages their DNS records in it
