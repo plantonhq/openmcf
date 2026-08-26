@@ -1,6 +1,6 @@
 # OpenSearch
 
-Deploy an [OpenSearch](https://opensearch.org) cluster — the Apache-2.0 search and analytics engine (a drop-in replacement for the Elasticsearch APIs at the 7.10 fork line, with its own 2.x/3.x feature line since). The cluster is declared as an `OpenSearchCluster` custom resource reconciled by the OpenSearch Kubernetes Operator, which manages the full lifecycle: node StatefulSets per pool, cluster bootstrap, TLS, the security plugin's admin bootstrap, safe rolling upgrades, and an optional OpenSearch Dashboards console.
+Deploys an OpenSearch cluster — the Apache-2.0 search and analytics engine (a drop-in replacement for the Elasticsearch APIs at the 7.10 fork line, with its own 2.x/3.x feature line since). The cluster is declared as an `OpenSearchCluster` custom resource reconciled by the OpenSearch Kubernetes Operator, which manages the full lifecycle: node StatefulSets per pool, cluster bootstrap, TLS, the security plugin's admin bootstrap, safe rolling upgrades, and an optional OpenSearch Dashboards console.
 
 The topology is yours to declare: node pools carry roles (`cluster_manager`, `data`, `ingest`, …), counts, storage, and sizing. The smallest working dev shape is one all-roles pool with 2 replicas — a single manager-eligible replica cannot survive the operator's bootstrap handoff (verified live).
 
@@ -8,18 +8,18 @@ The topology is yours to declare: node pools carry roles (`cluster_manager`, `da
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **OpenSearchCluster custom resource** — one StatefulSet per node pool, the cluster Services, and (when enabled) the Dashboards Deployment, all reconciled by the operator
-- **Generated TLS** — a CA plus per-layer certificates for node-to-node and client traffic (the default posture), and the security plugin's admin bootstrap
-- **Snapshot repositories and keystore entries** — registered on the cluster at startup when declared
+- **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
+- **OpenSearchCluster custom resource** — the only object the module itself creates in the namespace; the operator derives everything else from it: one StatefulSet per node pool, the cluster Services, the generated TLS Secrets (a CA plus per-layer certificates for node-to-node and client traffic — the default posture), the `<name>-admin-password` bootstrap Secret, and (when enabled) the Dashboards Deployment
+- **Snapshot repositories and keystore entries** — registered on the cluster at startup when declared in `snapshotRepositories` and `keystore`
 
 ## Before You Deploy
 
 ### Planton Setup
 
 - **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
-- **OpenSearch Operator** — a **Kubernetes OpenSearch Operator** resource must be running and watching the target namespace (its default watch is cluster-wide). Deploy it first.
+- **OpenSearch Operator** — an **OpenSearch Operator** resource must be running and watching the target namespace (its default watch is cluster-wide). Deploy it first.
 
-### Cluster Side
+### Kubernetes Cluster
 
 - **Kernel tuning** — OpenSearch needs `vm.max_map_count` raised; the default-on privileged init container handles it. On clusters that forbid privileged init containers, tune nodes out of band and disable the dial.
 - **Prometheus Operator CRDs** — only if you enable monitoring; a missing ServiceMonitor CRD fails reconciliation.
@@ -28,23 +28,25 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **OpenSearch**, and click **Deploy**. The creation wizard walks you through namespace placement, the engine version, the node-pool topology (with the manager-quorum floor held live), engine settings, node runtime, the TLS/security posture, the optional Dashboards console, monitoring, backups, and air-gap sourcing. Start from the **Dev Minimal** preset in the [Presets](#presets) tab.
+Open the deployment store, find **OpenSearch**, and click **Deploy**. The creation wizard walks you through namespace placement, the engine version, the node-pool topology (with the manager-quorum floor held live), engine settings, node runtime, the TLS/security posture, the optional Dashboards console, monitoring, backups, and air-gap sourcing. Start from the **Dev minimal preset** in the [Presets](#presets) tab.
 
 ### CLI
 
+Create a manifest and apply it:
+
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenSearch
 metadata:
   name: dev-opensearch
   org: acme-corp
-  env: dev
+  env: prod
 spec:
   namespace:
     value: dev-opensearch
-  create_namespace: true
+  createNamespace: true
   version: 2.19.4
-  node_pools:
+  nodePools:
     - name: all
       replicas: 2
       roles:
@@ -52,29 +54,48 @@ spec:
         - data
         - ingest
       jvm: -Xmx1G -Xms1G
-      disk_size: 10Gi
+      diskSize: 10Gi
 ```
 
 ```shell
 planton apply -f opensearch-cluster.yaml
 ```
 
+This creates a two-node all-roles cluster (the smallest shape that survives the operator's bootstrap handoff) with operator-generated TLS on both layers and a 10Gi PVC per node. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-Compose the cluster behind its operator and give Dashboards real exposure:
+When deploying as part of a multi-resource environment, use ValueFromRef to place the cluster in a managed namespace and pin its storage to a composed StorageClass:
 
 ```yaml
 spec:
   namespace:
-    value: search
+    valueFrom:
+      kind: KubernetesNamespace
+      name: search
+      fieldPath: spec.name
   version: 2.19.4
-  dashboards:
-    enabled: true
+  nodePools:
+    - name: data
+      replicas: 3
+      roles:
+        - cluster_manager
+        - data
+        - ingest
+      persistence:
+        pvc:
+          storageClass:
+            valueFrom:
+              kind: KubernetesStorageClass
+              name: fast-ssd
+              fieldPath: status.outputs.storage_class_name
 ```
 
-Reference the exported `dashboards_service_name` from a **Kubernetes Ingress** or Gateway API route for team access.
+The InfraPipeline creates the namespace and StorageClass first, then provisions the cluster against them. Reference the exported `dashboards_service_name` from an Ingress or Gateway API route for team access.
 
 ## Key Configuration
+
+These are the most important decisions when configuring an OpenSearch cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **The manager floor** — a lone 1-replica `cluster_manager` pool is stranded by the operator's temporary bootstrap manager (every write returns `cluster_manager_not_discovered`). Declare at least 2 manager-eligible replicas; production runs 3 dedicated managers.
 
@@ -90,42 +111,48 @@ Reference the exported `dashboards_service_name` from a **Kubernetes Ingress** o
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | Where the cluster runs |
-| `spec.node_pools[].persistence.pvc.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | Per-pool volume class |
-| `spec.security.transport_tls.secret` / `spec.security.http_tls.secret` | KubernetesCertificate (`status.outputs.secret_name`) | Bring-your-own TLS (the cert-manager seam) |
-| `spec.security.transport_tls.ca_secret` | KubernetesSecret (`metadata.name`) | Existing CA for generated node certs |
-| `spec.security.config.*` | KubernetesSecret (`metadata.name`) | Custom security-plugin config trio |
-| `spec.dashboards.tls.secret` | KubernetesCertificate (`status.outputs.secret_name`) | Dashboards HTTPS certificate |
-| `spec.dashboards.opensearch_credentials_secret` | KubernetesSecret (`metadata.name`) | Dashboards cluster credentials (custom security config) |
-| `spec.monitoring.monitoring_user_secret` | KubernetesSecret (`metadata.name`) | Scrape credentials (custom security config) |
-| `spec.keystore[].secret` | KubernetesSecret (`metadata.name`) | Secure settings loaded into the node keystore |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesStorageClass** (optional, per pool) | `nodePools[].persistence.pvc.storageClass` | `status.outputs.storage_class_name` |
+| **KubernetesCertificate** (bring-your-own TLS) | `security.transportTls.secret` | `status.outputs.secret_name` |
+| **KubernetesCertificate** (bring-your-own TLS) | `security.httpTls.secret` | `status.outputs.secret_name` |
+| **KubernetesSecret** (optional) | `security.transportTls.caSecret` | `metadata.name` |
+| **KubernetesSecret** (custom security config) | `security.config.securityConfigSecret` | `metadata.name` |
+| **KubernetesCertificate** (optional) | `dashboards.tls.secret` | `status.outputs.secret_name` |
+| **KubernetesSecret** (custom security config) | `dashboards.opensearchCredentialsSecret` | `metadata.name` |
+| **KubernetesSecret** (custom security config) | `monitoring.monitoringUserSecret` | `metadata.name` |
+| **KubernetesSecret** (per entry) | `keystore[].secret` | `metadata.name` |
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `http_endpoint` | In-cluster https API endpoint | Application clients, log shippers, dashboards |
+| `http_endpoint` | In-cluster https API endpoint | Application clients, log shippers, Dashboards |
 | `admin_credentials_secret_name` | The bootstrapped admin Secret (username/password) — empty when a custom security config replaces the bootstrap | Client authentication |
-| `service_name` / `cluster_name` / `namespace` | Cluster identity handles | Ingress/Gateway composition, monitoring |
-| `dashboards_service_name` / `dashboards_endpoint` | The console's handles — empty when Dashboards is disabled | Ingress/Gateway exposure for the team |
+| `service_name` | The cluster's main Service | Ingress/Gateway composition, monitoring scrape targets |
+| `dashboards_service_name` | The Dashboards Service — empty when Dashboards is disabled | Ingress/Gateway exposure for the team |
+| `dashboards_endpoint` | In-cluster Dashboards endpoint — empty when Dashboards is disabled | Wiring internal links and health checks |
 | `port_forward_command` | Copy-paste developer access | Local exploration |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dev Minimal** — one all-roles pool with 2 replicas (the smallest shape that survives the bootstrap handoff), generated TLS on both layers. Start from the **Dev Minimal** preset.
+**Dev minimal** — one all-roles pool with 2 replicas (the smallest shape that survives the bootstrap handoff), generated TLS on both layers. Start from the **Dev minimal preset**.
 
-**Production Cluster** — dedicated manager and data pools, sized heaps, durable storage, disruption budgets. Start from the **Production Cluster** preset.
+**Production cluster** — dedicated manager and data pools, sized heaps, durable storage, disruption budgets. Start from the **Production cluster preset**.
 
-**S3 Snapshots** — the production shape plus the `repository-s3` plugin, keystore-loaded credentials, and a registered S3 snapshot repository. Start from the **S3 Snapshots** preset.
+**S3 snapshots** — the production shape plus the `repository-s3` plugin, keystore-loaded credentials, and a registered S3 snapshot repository. Start from the **S3 snapshots preset**.
 
 ## Works With
 
-- **Kubernetes OpenSearch Operator** — the engine that reconciles this cluster; deploy it first.
-- **Kubernetes Certificate** — cert-manager-issued TLS for bring-your-own postures.
-- **Kubernetes Secret** — keystore sources, custom security config, credentials.
-- **Kubernetes Ingress / Gateway API kinds** — real exposure for the API and Dashboards.
-- **Kubernetes Kube Prometheus Stack** — the ServiceMonitor consumer when monitoring is enabled.
+- [**OpenSearch Operator**](/cloud-catalog/kubernetes-open-search-operator) — the engine that reconciles this cluster; deploy it first
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace the cluster runs in
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) — pins per-pool volume classes by reference
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) — cert-manager-issued TLS for bring-your-own postures
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) — keystore sources, custom security config, credentials
+- [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) — real exposure for the API and Dashboards
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) — the ServiceMonitor consumer when monitoring is enabled

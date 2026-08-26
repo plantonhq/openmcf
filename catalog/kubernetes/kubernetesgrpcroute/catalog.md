@@ -1,4 +1,4 @@
-# gRPC Route on Kubernetes
+# Kubernetes GRPCRoute
 
 Creates a namespaced Kubernetes Gateway API `GRPCRoute` -- a route that matches **gRPC requests** by hostname (`:authority`), service/method, or header, optionally transforms them with filters, and forwards them to one or more backend Services through a Gateway. GRPCRoute is part of the Gateway API **standard channel** (served as `gateway.networking.k8s.io/v1`). This is the first-class way to expose a gRPC API behind a Gateway -- weighted canaries, header-based routing, and request mirroring included. This component mirrors the upstream Gateway API `GRPCRoute` spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
@@ -29,14 +29,14 @@ The Gateway controller reconciles the route asynchronously: it reports per-paren
 
 ### Console
 
-Open the deployment store, find **gRPC Route on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Routing** (the `hostnames` to match and the `parentRefs` Gateways to attach to), then **Rules** (per-rule matches, filters, and destination Services with weights). Start from the **gRPC Service Routing** or **gRPC Weighted Canary** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes GRPCRoute**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable), then **Routing** (the `hostnames` to match and the `parentRefs` Gateways to attach to), then **Rules** (per-rule matches, filters, and destination Services with weights). Start from the **gRPC Service Routing** or **gRPC Weighted Canary** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGrpcRoute
 metadata:
   name: my-grpc-route
@@ -46,7 +46,8 @@ spec:
   namespace:
     value: prod-apps
   parentRefs:
-    - name: prod-gateway
+    - name:
+        value: prod-gateway
       sectionName: grpc
   hostnames:
     - api.example.com
@@ -55,7 +56,8 @@ spec:
         - method:
             service: helloworld.Greeter
       backendRefs:
-        - name: greeter
+        - name:
+            value: greeter
           port: 9000
 ```
 
@@ -63,7 +65,34 @@ spec:
 planton apply -f grpc-route.yaml
 ```
 
-This creates a GRPCRoute in `prod-apps` that attaches to the `grpc` listener of `prod-gateway`, matches calls to `helloworld.Greeter` on `api.example.com`, and forwards them to the `greeter` Service on port 9000.
+This creates a GRPCRoute in `prod-apps` that attaches to the `grpc` listener of `prod-gateway`, matches calls to `helloworld.Greeter` on `api.example.com`, and forwards them to the `greeter` Service on port 9000. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the route's Gateway and backend Service by reference so the InfraPipeline orders the deploys:
+
+```yaml
+spec:
+  namespace:
+    value: prod-apps
+  parentRefs:
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: prod-gateway
+          fieldPath: status.outputs.gateway_name
+      sectionName: grpc
+  rules:
+    - backendRefs:
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: greeter-service
+              fieldPath: status.outputs.service_name
+          port: 9000
+```
+
+The InfraPipeline deploys the Gateway and the backend Service first, then creates the route against them.
 
 ## Key Configuration
 
@@ -75,16 +104,23 @@ These are the most important decisions when configuring a GRPCRoute. Explore the
 
 **Parent Gateways** -- The `parentRefs` (0-32) attach this route to Gateway listeners. Use `sectionName` to target one named listener and/or `port` to pin a port. A parent in another namespace needs a `ReferenceGrant` there and a matching listener `allowedRoutes` policy. Each parent's `name` is a foreign key to `KubernetesGateway`: reference a Planton-managed Gateway (the route then deploys after it), or pass a literal name for a Gateway or ListenerSet created outside Planton.
 
-**Rules** -- A GRPCRoute has 1-16 `rules`, each combining:
-- **Matches** (0-64) -- select requests by `method` (`service` and/or `method`, `Exact` or `RegularExpression`) and/or request `headers`. Matches within a rule are ORed; conditions within a match are ANDed. No matches means the rule applies to every request.
-- **Filters** -- transform matching traffic: `RequestHeaderModifier` / `ResponseHeaderModifier` (set/add/remove headers), `RequestMirror` (shadow traffic to another backend), or `ExtensionRef` (an implementation-specific filter). Rule-level filters apply to every backend; per-backend filters exist but are implementation-specific, so prefer rule-level for portability.
-- **Backends** (1-16) -- the destination Services, each with a `name`, `port`, and optional `weight` for traffic splitting (e.g. a stable/canary split at 90/10; weight `0` drains a backend).
+**Matches are ORed, conditions ANDed** -- Each of a rule's `matches` (up to 64) selects requests by `method` (`service` and/or `method`, `Exact` or `RegularExpression`) and/or request `headers`. A request matches the rule if ANY one match is satisfied; within a match, every condition must hold. No matches means the rule applies to every request the parent admits -- a common surprise on shared listeners.
+
+**Filters at rule level, for portability** -- `RequestHeaderModifier` / `ResponseHeaderModifier` (set/add/remove headers), `RequestMirror` (shadow traffic to another backend), or `ExtensionRef` (an implementation-specific filter). Rule-level filters apply to every backend; per-backend filters exist but are implementation-specific, so prefer rule-level when the route must survive a controller change.
+
+**Backends split by weight** -- Each rule forwards to 1-16 `backendRefs`, each with a `name`, `port`, and optional `weight` for traffic splitting (a stable/canary split at 90/10; weight `0` drains a backend without removing it from the manifest -- the clean way to hold a backend ready for rollback).
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-This component takes foreign-key references to a `KubernetesNamespace` (via `spec.namespace`), to `KubernetesGateway` (each `parentRefs` entry's `name`), and to `KubernetesService` (each backend's `name`), so an InfraChart deploys those targets before the route and the resource graph carries the edges. Literal names cover targets created outside Planton; cross-namespace references require a `KubernetesReferenceGrant`.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesGateway** | `parentRefs[].name` | `status.outputs.gateway_name` |
+| **KubernetesService** | `rules[].backendRefs[].name` | `status.outputs.service_name` |
+
+Literal names cover Gateways and Services created outside Planton; cross-namespace references additionally require a `KubernetesReferenceGrant` in the target namespace.
 
 ### What This Component Provides
 
@@ -105,8 +141,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (standard channel is sufficient); deploy first (prerequisite).
-- **KubernetesGateway** -- the Gateway whose HTTP/2 listener this route attaches to (`parentRefs`); install first.
-- **KubernetesNamespace** -- the namespace (`spec.namespace`) the route runs in.
-- **KubernetesReferenceGrant** -- authorizes cross-namespace parent or backend references from this route.
-- **KubernetesService** -- the backend gRPC workloads (`backendRefs`) that receive forwarded requests.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (standard channel is sufficient); deploy first (prerequisite).
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- the Gateway whose HTTP/2 listener this route attaches to (`parentRefs`); install first.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the namespace (`spec.namespace`) the route runs in.
+- [**Kubernetes ReferenceGrant**](/cloud-catalog/kubernetes-reference-grant) -- authorizes cross-namespace parent or backend references from this route.
+- [**Kubernetes Service**](/cloud-catalog/kubernetes-service) -- the backend gRPC workloads (`backendRefs`) that receive forwarded requests.

@@ -115,4 +115,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- references this group via its `group` rule
-- [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches policies that reference this group
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) -- attaches policies that reference this group

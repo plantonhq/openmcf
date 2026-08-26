@@ -1,4 +1,4 @@
-# Gateway Class on Kubernetes
+# Kubernetes GatewayClass
 
 Creates a cluster-scoped Kubernetes Gateway API `GatewayClass` that identifies the controller (Istio, Envoy Gateway, NGINX Gateway Fabric, and others) responsible for managing Gateways of that class. GatewayClass is the infrastructure-provider layer of the Gateway API role model -- the root resource a `KubernetesGateway` references by name. This component mirrors the upstream Gateway API v1 `GatewayClass` spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
@@ -27,14 +27,14 @@ No namespaced workloads are created -- GatewayClass is cluster-scoped.
 
 ### Console
 
-Open the deployment store, find **Gateway Class on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the two spec steps: **Controller** (the immutable `controllerName`) and **Parameters & Description** (both optional). Start from the **Istio** or **Envoy Gateway** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes GatewayClass**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the two spec steps: **Controller** (the immutable `controllerName`) and **Parameters & Description** (both optional). Start from the **Istio GatewayClass** or **Envoy Gateway GatewayClass** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGatewayClass
 metadata:
   name: istio
@@ -49,7 +49,7 @@ spec:
 planton apply -f gateway-class.yaml
 ```
 
-This creates a GatewayClass named `istio` bound to the Istio Gateway controller. The name becomes the value Gateways reference via `spec.gatewayClassName`.
+This creates a GatewayClass named `istio` bound to the Istio Gateway controller. The name becomes the value Gateways reference via `spec.gatewayClassName`. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -80,12 +80,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Istio GatewayClass** -- Binds the class to `istio.io/gateway-controller` for clusters running Istio with the Gateway API controller enabled. The standard choice for production ingress and service-mesh traffic. Start from the **Istio** preset.
+**Istio GatewayClass** -- Binds the class to `istio.io/gateway-controller` for clusters running Istio with the Gateway API controller enabled. The standard choice for production ingress and service-mesh traffic. Start from the **Istio GatewayClass** preset.
 
-**Envoy Gateway GatewayClass** -- Binds the class to `gateway.envoyproxy.io/gatewayclass-controller` for a lightweight, Envoy-based data plane without a full mesh. Optionally attach an `EnvoyProxy` resource via `parametersRef` for advanced tuning. Start from the **Envoy Gateway** preset.
+**Envoy Gateway GatewayClass** -- Binds the class to `gateway.envoyproxy.io/gatewayclass-controller` for a lightweight, Envoy-based data plane without a full mesh. Optionally attach an `EnvoyProxy` resource via `parametersRef` for advanced tuning. Start from the **Envoy Gateway GatewayClass** preset.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (prerequisite, install first).
-- **KubernetesGateway** -- references this class via `gatewayClassName` to define listeners and entry points.
-- **KubernetesHttpRoute / KubernetesGrpcRoute / KubernetesTlsRoute / KubernetesTcpRoute** -- route traffic through a Gateway of this class.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (prerequisite, install first)
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- references this class via `gatewayClassName` to define listeners and entry points
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route) -- routes HTTP traffic through a Gateway of this class
+- [**Kubernetes GRPCRoute**](/cloud-catalog/kubernetes-grpc-route) -- routes gRPC traffic through a Gateway of this class
+- [**Kubernetes TLSRoute**](/cloud-catalog/kubernetes-tls-route) -- routes passthrough TLS through a Gateway of this class
+- [**Kubernetes TCPRoute**](/cloud-catalog/kubernetes-tcp-route) -- routes raw TCP through a Gateway of this class

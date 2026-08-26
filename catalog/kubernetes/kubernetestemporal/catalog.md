@@ -1,6 +1,6 @@
-# Temporal on Kubernetes
+# Temporal
 
-Deploys Temporal -- the durable workflow engine (long-running business logic, human-in-the-loop flows, saga orchestration, AI-agent pipelines) -- from the official `temporal` Helm chart: the four server services (frontend, history, matching, worker) as separate Deployments, the Web UI (on by default), an admin-tools pod for operational commands, and the schema-setup Jobs that prepare the databases before the server starts. Bring your own database -- nothing is bundled: PostgreSQL (the recommended path; a KubernetesPostgres composes naturally), MySQL 8, or an external Cassandra cluster for the default store (the visibility store must be SQL). Supports per-service replica and resource tuning, declarative Temporal namespaces with retention, runtime limits via dynamic config, archival of closed histories to S3/GCS, ServiceMonitor metrics, container image overrides for air-gapped clusters, and a Helm values escape hatch. Uses a Kubernetes Provider Connection for cluster access.
+Deploys Temporal -- the durable workflow engine (long-running business logic, human-in-the-loop flows, saga orchestration, AI-agent pipelines) -- from the official `temporal` Helm chart: the four server services (frontend, history, matching, worker) as separate Deployments, the Web UI (on by default), an admin-tools pod for operational commands, and the schema-setup Jobs that prepare the databases before the server starts. Bring your own database -- nothing is bundled: PostgreSQL (the recommended path; a KubernetesPostgres composes naturally), MySQL 8, or an external Cassandra cluster for the default store (the visibility store must be SQL). Supports per-service replica and resource tuning, declarative Temporal namespaces with retention, runtime limits via dynamic config, archival of closed histories to S3/GCS, ServiceMonitor metrics, container image overrides for air-gapped clusters, and a Helm values escape hatch.
 
 ## What Gets Created
 
@@ -35,14 +35,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Temporal on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **dev** preset for the smallest useful cluster or **production** for sized services with ServiceMonitor metrics in the [Presets](#presets) tab.
+Open the deployment store, find **Temporal**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev preset** for the smallest useful cluster or the **Production preset** for sized services with ServiceMonitor metrics in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTemporal
 metadata:
   name: workflow-engine
@@ -113,11 +113,11 @@ These are the most important decisions when configuring a Temporal deployment. E
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesPostgres** | `database.postgres.host` | `status.outputs.rw_service` |
-| **KubernetesPostgres** | `database.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
-| **KubernetesMysql** | `database.mysql.host` | `status.outputs.primary_service` |
-| **KubernetesMysql** | `database.mysql.passwordSecret.secretName` | `status.outputs.root_password_secret.name` |
+| Kubernetes Namespace | `spec.namespace` | `spec.name` |
+| PostgreSQL | `spec.database.postgres.host` | `status.outputs.rw_service` |
+| PostgreSQL | `spec.database.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
+| MySQL | `spec.database.mysql.host` | `status.outputs.primary_service` |
+| MySQL | `spec.database.mysql.passwordSecret.secretName` | `status.outputs.root_password_secret.name` |
 
 ### What This Component Provides
 
@@ -138,13 +138,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Smallest useful cluster for development** -- All four server services at one replica, the Web UI, and one Temporal namespace (`default`), against a composed KubernetesPostgres in the same Kubernetes namespace. The 512-shard default is kept deliberately -- never lower it "because dev"; it is immutable. Start from the **dev** preset.
+**Smallest useful cluster for development** -- All four server services at one replica, the Web UI, and one Temporal namespace (`default`), against a composed KubernetesPostgres in the same Kubernetes namespace. The 512-shard default is kept deliberately -- never lower it "because dev"; it is immutable. Start from the **Dev preset**.
 
-**Sized for production** -- Replicated frontend/matching/worker, three history replicas, a replicated stateless UI, explicit retention on every declared Temporal namespace, and ServiceMonitor metrics for the Prometheus Operator. Start from the **production** preset.
+**Sized for production** -- Replicated frontend/matching/worker, three history replicas, a replicated stateless UI, explicit retention on every declared Temporal namespace, and ServiceMonitor metrics for the Prometheus Operator. Start from the **Production preset**.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the Temporal deployment
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) -- the recommended default and visibility store; the host and credential references resolve to its read-write Service and operator-maintained Secret
-- [**Kubernetes MySQL**](/cloud-catalog/kubernetes-mysql) -- the MySQL 8 alternative for both stores
-- [**Kubernetes Kube Prometheus Stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator that scrapes the per-service ServiceMonitors
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the recommended default and visibility store; the host and credential references resolve to its read-write Service and operator-maintained Secret
+- [**MySQL**](/cloud-catalog/kubernetes-mysql) -- the MySQL 8 alternative for both stores
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator that scrapes the per-service ServiceMonitors

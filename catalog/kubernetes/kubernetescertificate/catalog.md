@@ -1,4 +1,4 @@
-# Kubernetes Certificate
+# Cert Manager Certificate
 
 Requests one signed X.509 certificate from a cert-manager issuer and keeps it renewed for as long as the resource exists. The signed certificate, its private key, and the CA chain land in a Kubernetes TLS Secret that consumers — Ingress TLS blocks, Gateway listeners, workload volume mounts, CA issuers — reference by name. The issuer decides WHO signs; this resource decides WHAT is requested: the names, lifetime, key parameters, usages, and output formats. Covers the complete cert-manager.io/v1 Certificate surface.
 
@@ -8,7 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Certificate** -- the cert-manager custom resource in the specified namespace, wired to the selected issuer
 - **TLS Secret** -- created and kept renewed by cert-manager (keys: `tls.crt`, `tls.key`, `ca.crt`), optionally extended with JKS/PKCS#12 keystores, DER, or combined-PEM entries
-- When `is_ca: true` -- the Secret carries a CA certificate suitable for signing other certificates (the internal-PKI bootstrap)
+- When `isCa: true` -- the Secret carries a CA certificate suitable for signing other certificates (the internal-PKI bootstrap)
 
 ## Before You Deploy
 
@@ -19,21 +19,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Kubernetes Cluster
 
 - **Cert Manager must be installed first** -- the Certificate is a cert-manager custom resource.
-- **At least one issuer available** -- a Kubernetes Cluster Issuer (serves any namespace) or a Kubernetes Issuer in the SAME namespace as this certificate; or a third-party issuer kind (e.g. AWS Private CA) via the external reference.
+- **At least one issuer available** -- a Cert Manager Cluster Issuer (serves any namespace) or a Cert Manager Issuer in the SAME namespace as this certificate; or a third-party issuer kind (e.g. AWS Private CA) via the external reference.
 - Wildcard names (`*.apps.example.com`) require a DNS-01-capable ACME issuer or a private CA.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Certificate**, and click **Deploy**. The creation wizard walks you through the namespace, the issuer, the requested names, the output Secret, lifetime and renewal, private-key parameters, and advanced X.509 settings. Start from the **ClusterIssuer** preset for standard public TLS in the [Presets](#presets) tab.
+Open the deployment store, find **Cert Manager Certificate**, and click **Deploy**. The creation wizard walks you through the namespace, the issuer, the requested names, the output Secret, lifetime and renewal, private-key parameters, and advanced X.509 settings. Start from the **Standard TLS Certificate via ClusterIssuer** preset for standard public TLS in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesCertificate
 metadata:
   name: api-example-com
@@ -55,7 +55,32 @@ spec:
 planton apply -f certificate.yaml
 ```
 
-This requests a certificate for `api.example.com` from the platform ClusterIssuer and keeps it renewed into the `api-example-com-tls` Secret — everything else (lifetime, key parameters, usages) deliberately left to the issuer's defaults.
+This requests a certificate for `api.example.com` from the platform ClusterIssuer and keeps it renewed into the `api-example-com-tls` Secret — everything else (lifetime, key parameters, usages) deliberately left to the issuer's defaults. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the namespace and issuer to resources managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: team-payments-namespace
+      fieldPath: spec.name
+  secretName: api-example-com-tls
+  issuerRef:
+    clusterIssuer:
+      name:
+        valueFrom:
+          kind: KubernetesClusterIssuer
+          name: letsencrypt-production
+          fieldPath: status.outputs.cluster_issuer_name
+  dnsNames:
+    - api.example.com
+```
+
+The InfraPipeline deploys the namespace and the issuer first, then requests the certificate against them.
 
 ## Key Configuration
 
@@ -73,17 +98,17 @@ These are the most important decisions when configuring a Certificate. Explore t
 
 **Keystores for JVM/Windows consumers** -- JKS and PKCS#12 entries can be added to the Secret alongside the PEM data, each protected by a password (declared sensitively, materialized platform-side). The PKCS#12 `modern2023` profile uses current crypto but requires consumers newer than ~2013.
 
-**The CA bootstrap** -- `is_ca: true` against a self-signed issuer produces a root CA Secret; a CA-backend issuer then signs leaf certificates with it. Pair with `nameConstraints` to restrict what names the delegated CA may sign — defense-in-depth for internal PKI.
+**The CA bootstrap** -- `isCa: true` against a self-signed issuer produces a root CA Secret; a CA-backend issuer then signs leaf certificates with it. Pair with `nameConstraints` to restrict what names the delegated CA may sign — defense-in-depth for internal PKI.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the Certificate and its output Secret live in |
-| `spec.issuerRef.clusterIssuer.name` | KubernetesClusterIssuer (`status.outputs.cluster_issuer_name`) | The cluster-scoped signing authority |
-| `spec.issuerRef.issuer.name` | KubernetesIssuer (`status.outputs.issuer_name`) | The namespace-scoped signing authority |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesClusterIssuer** | `issuerRef.clusterIssuer.name` | `status.outputs.cluster_issuer_name` |
+| **KubernetesIssuer** | `issuerRef.issuer.name` | `status.outputs.issuer_name` |
 
 ### What This Component Provides
 
@@ -99,15 +124,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public TLS** -- One DNS name from the platform ClusterIssuer into one Secret. Start from the **ClusterIssuer** preset.
+**Public TLS** -- One DNS name from the platform ClusterIssuer into one Secret. Start from the **Standard TLS Certificate via ClusterIssuer** preset.
 
-**Wildcard for multi-service domains** -- `*.apps.example.com` via a DNS-01-capable ClusterIssuer. Start from the **Wildcard** preset.
+**Wildcard for multi-service domains** -- `*.apps.example.com` via a DNS-01-capable ClusterIssuer. Start from the **Wildcard TLS Certificate** preset.
 
-**Root CA bootstrap** -- `is_ca: true` against a self-signed Issuer, producing the CA Secret for internal PKI. Start from the **Root CA Bootstrap** preset.
+**Root CA bootstrap** -- `isCa: true` against a self-signed Issuer, producing the CA Secret for internal PKI. Start from the **Self-Signed Root CA Certificate (CA Bootstrap)** preset.
 
 ## Works With
 
-- **Kubernetes Cert Manager** -- must be installed first; provides the controller and CRDs.
-- **Kubernetes Cluster Issuer / Kubernetes Issuer** -- the signing authorities this certificate references; a CA-backend Issuer also consumes this resource's Secret output for the CA bootstrap.
-- **Kubernetes Ingress Nginx / Kubernetes Gateway** -- terminate HTTPS with the output Secret.
-- **Kubernetes Namespace** -- reference it so infra charts create the namespace and this certificate in dependency order.
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- must be installed first; provides the controller and CRDs.
+- [**Cert Manager Cluster Issuer**](/cloud-catalog/kubernetes-cluster-issuer) -- the cluster-scoped signing authority; [**Cert Manager Issuer**](/cloud-catalog/kubernetes-issuer) is the namespace-scoped alternative, and a CA-backend Issuer also consumes this resource's Secret output for the CA bootstrap.
+- [**Ingress NGINX**](/cloud-catalog/kubernetes-ingress-nginx) -- terminates HTTPS with the output Secret; [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) listeners reference it through `certificateRefs`.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference it so infra charts create the namespace and this certificate in dependency order.

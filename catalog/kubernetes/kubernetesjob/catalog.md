@@ -1,6 +1,6 @@
-# Job on Kubernetes
+# Kubernetes Job
 
-Runs work to completion on any Kubernetes cluster as a batch/v1 Job: pods are created, execute until they succeed or exhaust their retry budget, and are never restarted once the Job finishes. This is the kind for one-shot work — data migrations, backfills, report generation, parallel batch processing. Supports the complete batch/v1 surface: parallelism and completions, Indexed completion mode for partitioned workloads, per-index retry budgets, pod failure policies (fail fast on unrecoverable exit codes, forgive node disruptions), success policies for leader/worker topologies, active deadline enforcement, TTL-based cleanup, and the full shared workload surface (sidecars and init containers, all environment variable sources, probes, security contexts). Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
+Runs work to completion on any Kubernetes cluster as a batch/v1 Job: pods are created, execute until they succeed or exhaust their retry budget, and are never restarted once the Job finishes. This is the kind for one-shot work — data migrations, backfills, report generation, parallel batch processing. Supports the complete batch/v1 surface: parallelism and completions, Indexed completion mode for partitioned workloads, per-index retry budgets, pod failure policies (fail fast on unrecoverable exit codes, forgive node disruptions), success policies for leader/worker topologies, active deadline enforcement, TTL-based cleanup, and the full shared workload surface (sidecars and init containers, all environment variable sources, probes, security contexts).
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Job on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Database Migration** preset for sequential one-shot work, or **Parallel Batch** for an Indexed fan-out, in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes Job**, and click **Deploy**. The creation wizard walks you through placement, the container specification, fan-out and retries, failure and success policies, deadlines, and cleanup. Start from the **Database Migration Job** preset for sequential one-shot work, or **Parallel Batch Job (Indexed)** for an Indexed fan-out, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJob
 metadata:
   name: etl-pipeline
@@ -57,7 +57,7 @@ spec:
 planton apply -f job.yaml
 ```
 
-This creates a single-pod Job (parallelism and completions default to 1) with up to 3 retries on failure and automatic cleanup 1 hour after it finishes.
+This creates a single-pod Job (parallelism and completions default to 1) with up to 3 retries on failure and automatic cleanup 1 hour after it finishes. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -115,11 +115,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Database migration** -- Sequential one-shot work with a tight retry budget (retrying a half-applied migration is dangerous), an active deadline to catch runaway processes, and no TTL cleanup so the pods survive for verification. Start from the **Database Migration** preset.
+**Database migration** -- Sequential one-shot work with a tight retry budget (retrying a half-applied migration is dangerous), an active deadline to catch runaway processes, and no TTL cleanup so the pods survive for verification. Start from the **Database Migration Job** preset.
 
-**Parallel batch** -- An Indexed fan-out where each pod processes its own numbered partition, with a per-index retry budget so one flaky shard cannot fail the run. Start from the **Parallel Batch** preset.
+**Parallel batch** -- An Indexed fan-out where each pod processes its own numbered partition, with a per-index retry budget so one flaky shard cannot fail the run. Start from the **Parallel Batch Job (Indexed)** preset.
 
-**Resilient batch** -- A failure policy that fails fast on the "bad input" exit code and forgives node disruptions — the production posture for long-running batch work on spot capacity. Start from the **Resilient Batch** preset.
+**Resilient batch** -- A failure policy that fails fast on the "bad input" exit code and forgives node disruptions — the production posture for long-running batch work on spot capacity. Start from the **Resilient Batch Job (Failure Policy)** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
-# Tekton Operator on Kubernetes
+# Tekton Operator
 
-Install the [Tekton Operator](https://tekton.dev/docs/operator/) — the lifecycle manager maintained by the Tekton project — from its official single-file release manifest (the in-repo Helm chart is unpublished and is not a distribution channel). The operator reconciles a `TektonConfig` declaration (declared with **Tekton on Kubernetes**) into running Tekton components — Pipelines, Triggers, Dashboard, Chains — managing their installation, upgrades, and removal through `TektonInstallerSet` resources.
+Installs the Tekton Operator — the lifecycle manager maintained by the Tekton project — from its official single-file release manifest (the in-repo Helm chart is unpublished and is not a distribution channel). The operator reconciles a `TektonConfig` declaration (declared with **Tekton**) into running Tekton components — Pipelines, Triggers, Dashboard, Chains — managing their installation, upgrades, and removal through `TektonInstallerSet` resources.
 
 This component installs the **manager only**. Installing it deploys NO pipeline runtime: automatic component installation is disabled by design, so the KubernetesTekton declaration is the single owner of what Tekton actually runs on the cluster.
 
@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module applies the release manifest
 
 - **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
 
-### Cluster Side
+### Kubernetes Cluster
 
 - **No existing install** — exactly ONE operator install per cluster is the upstream contract: its webhooks and CRDs are cluster-scoped singletons with fixed names, and a second install cannot coexist.
 - **Registry reachability** — the operator images pull from GitHub Container Registry (`ghcr.io`). Air-gapped clusters set the image overrides and pull secrets (see Key Configuration).
@@ -29,12 +29,14 @@ When you deploy this Cloud Resource, the IaC module applies the release manifest
 
 ### Console
 
-Open the deployment store, find **Tekton Operator on Kubernetes**, and click **Deploy**. The creation wizard walks you through the installation contract (the fixed namespace, the pinned release, the one-per-cluster rule, the CRD lifecycle), the air-gap image overrides, sizing, and scheduling. Start from the **Operator** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Tekton Operator**, and click **Deploy**. The creation wizard walks you through the installation contract (the fixed namespace, the pinned release, the one-per-cluster rule, the CRD lifecycle), the air-gap image overrides, sizing, and scheduling. Start from the **Tekton Operator preset** in the [Presets](#presets) tab.
 
 ### CLI
 
+Create a manifest and apply it:
+
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTektonOperator
 metadata:
   name: tekton-operator
@@ -47,9 +49,11 @@ spec: {}
 planton apply -f tekton-operator.yaml
 ```
 
-An empty spec is the complete install: the release manifest's own defaults, in its fixed namespace, with automatic component installation disabled. Declare a **Tekton on Kubernetes** resource next to choose what actually runs.
+An empty spec is the complete install: the release manifest's own defaults, in its fixed namespace, with automatic component installation disabled. Declare a **Tekton** resource next to choose what actually runs. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
+
+These are the most important decisions when configuring the Tekton Operator. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **There is no version field — deliberately** — the installed operator (and the TektonConfig schema the KubernetesTekton kind renders against) is pinned to the release this catalog was designed against (`v0.80.0`). A user-selectable version would silently drift the TektonConfig surface away from what the catalog models. Operator upgrades arrive with catalog releases, not spec edits.
 
@@ -57,9 +61,9 @@ An empty spec is the complete install: the release manifest's own defaults, in i
 
 **The CRDs delete with this resource** — the 14 `operator.tekton.dev` CRDs are documents of the applied manifest, so destroying the operator removes them, which CASCADE-DELETES any TektonConfig on the cluster. Always destroy the KubernetesTekton resource FIRST: its teardown blocks until the operator finishes removing the components, and the `TektonInstallerSet` finalizers are processed only by a RUNNING operator — removing the operator first strands them.
 
-**Image overrides are the air-gap seam** — `operator_image` overrides the image for BOTH containers of the operator Deployment, `webhook_image` the admission webhook's; empty means the release manifest's digest-pinned `ghcr.io/tektoncd/operator/*` images at the pinned release. `image_pull_secrets` names existing `kubernetes.io/dockerconfigjson` Secrets in the fixed `tekton-operator` namespace — references, never credentials.
+**Image overrides are the air-gap seam** — `operatorImage` overrides the image for BOTH containers of the operator Deployment, `webhookImage` the admission webhook's; empty means the release manifest's digest-pinned `ghcr.io/tektoncd/operator/*` images at the pinned release. `imagePullSecrets` names existing `kubernetes.io/dockerconfigjson` Secrets in the fixed `tekton-operator` namespace — references, never credentials.
 
-**Sizing and placement** — the manifest sets NO resource requests or limits (the operator runs unbounded); set `operator_resources` / `webhook_resources` on production clusters with quotas. `node_selector` and `tolerations` steer the operator and webhook pods — scheduling for the Tekton COMPONENT pods lives on the KubernetesTekton resource's placement instead.
+**Sizing and placement** — the manifest sets NO resource requests or limits (the operator runs unbounded); set `operatorResources` / `webhookResources` on production clusters with quotas. `nodeSelector` and `tolerations` steer the operator and webhook pods — scheduling for the Tekton COMPONENT pods lives on the KubernetesTekton resource's placement instead.
 
 ## Outputs and Dependencies
 
@@ -81,9 +85,9 @@ The operator exports no component handles of its own: the Tekton namespace, prof
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Operator** — the complete install with an empty spec, which is deliberately tiny: the operator is a lifecycle manager, not the product. Set the image overrides on air-gapped clusters and resource requests on quota-governed ones. Start from the **Operator** preset.
+**Operator** — the complete install with an empty spec, which is deliberately tiny: the operator is a lifecycle manager, not the product. Set the image overrides on air-gapped clusters and resource requests on quota-governed ones. Start from the **Tekton Operator preset**.
 
 ## Works With
 
-- **Tekton on Kubernetes** — the cluster's TektonConfig declaration this operator reconciles; deploy the operator FIRST, and destroy the declaration FIRST on the way out.
-- **Kubernetes Manifest** — Tasks, Pipelines, and their runs are plain custom resources once the Tekton installation converges.
+- [**Tekton**](/cloud-catalog/kubernetes-tekton) — the cluster's TektonConfig declaration this operator reconciles; deploy the operator FIRST, and destroy the declaration FIRST on the way out.
+- [**Kubernetes Manifest**](/cloud-catalog/kubernetes-manifest) — Tasks, Pipelines, and their runs are plain custom resources once the Tekton installation converges.

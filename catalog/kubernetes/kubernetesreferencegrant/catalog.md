@@ -1,4 +1,4 @@
-# Reference Grant on Kubernetes
+# Kubernetes ReferenceGrant
 
 Creates a namespaced Kubernetes Gateway API `ReferenceGrant` -- a runtime authorization that permits resources in *other* namespaces to reference specified kinds of resources in *this* grant's namespace. In the Gateway API, every cross-namespace reference (a Gateway's TLS `certificateRefs`, a Route's `backendRefs`, and similar) is denied by default; a ReferenceGrant placed in the *referenced* ("to") namespace is what explicitly authorizes it. This component mirrors the upstream Gateway API v1 `ReferenceGrant` spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
@@ -11,16 +11,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ReferenceGrant has no controller-managed status upstream (the Gateway API project deliberately omitted it), so there is no `Accepted`/`Programmed` condition to wait on -- the grant takes effect as soon as it exists.
 
-## The Trust Direction (read this first)
-
-A ReferenceGrant is non-obvious because it lives in the **target** namespace, not the source:
-
-- **`spec.namespace`** -- the namespace being referenced *into* (the "to" side). The grant must be created here; deleting it revokes the access.
-- **`from`** -- the trusted sources: each `{ group, kind, namespace }` names a kind of resource in a source namespace that is allowed to reference in. Entries combine with OR.
-- **`to`** -- the referenceable targets in this grant's namespace: each `{ group, kind, name? }`. Omit `name` to allow all resources of that kind, or set it to narrow the grant to one.
-
-Example: a `Gateway` in `istio-ingress` needs a TLS `Secret` in `cert-manager`. The grant is created in `cert-manager` (`spec.namespace`), with `from: [{ kind: Gateway, group: gateway.networking.k8s.io, namespace: istio-ingress }]` and `to: [{ kind: Secret, group: "" }]`.
-
 ## Before You Deploy
 
 ### Planton Setup
@@ -30,21 +20,21 @@ Example: a `Gateway` in `istio-ingress` needs a TLS `Secret` in `cert-manager`. 
 
 ### Kubernetes Cluster
 
-- **Gateway API CRDs installed** -- deploy the `KubernetesGatewayApiCrds` component first. ReferenceGrant is a Gateway API type and will not register without the CRDs.
+- **Gateway API CRDs installed** -- deploy the **Kubernetes Gateway API CRDs** component first. ReferenceGrant is a Gateway API type and will not register without the CRDs.
 - **The target namespace exists** -- `spec.namespace` should resolve to a real `KubernetesNamespace`. Reference an existing one or type the namespace name directly.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Reference Grant on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (the immutable "to" namespace), **Sources** (the trusted `from` entries), and **Targets** (the referenceable `to` entries). Start from the **Allow Gateway Secret Ref** or **Allow Route Backend Ref** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes ReferenceGrant**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (the immutable "to" namespace), **Sources** (the trusted `from` entries), and **Targets** (the referenceable `to` entries). Start from the **Allow a Gateway to Reference TLS Secrets in Another Namespace** or **Allow Routes to Reference Backend Services in Another Namespace** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesReferenceGrant
 metadata:
   name: allow-gateway-secret-ref
@@ -66,23 +56,49 @@ spec:
 planton apply -f reference-grant.yaml
 ```
 
-This creates a ReferenceGrant in `cert-manager` that authorizes Gateways in `istio-ingress` to reference Secrets there.
+This creates a ReferenceGrant in `cert-manager` that authorizes Gateways in `istio-ingress` to reference Secrets there. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the "to" namespace is itself Planton-managed, wire the grant to it so the InfraPipeline orders the namespace first:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: cert-manager-namespace
+      fieldPath: spec.name
+  from:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: istio-ingress
+  to:
+    - group: ""
+      kind: Secret
+```
+
+The InfraPipeline resolves the namespace reference and creates the grant inside it.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a ReferenceGrant. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Namespace** -- The `namespace` field is the "to" namespace where the grant is created and which it protects. It is **immutable**: the grant boundary is defined relative to this namespace, so changing it means creating a different grant. Reference an existing `KubernetesNamespace` or type the name directly.
+**The grant lives in the TARGET namespace, not the source** -- the non-obvious part of ReferenceGrant. `namespace` is the namespace being referenced *into* (the "to" side): a `Gateway` in `istio-ingress` needing a TLS `Secret` in `cert-manager` means the grant is created in `cert-manager`, with `from` naming the Gateway's namespace and kind and `to` naming `kind: Secret`. Deleting the grant revokes the access. The namespace is also **immutable**: the trust boundary is defined relative to it, so changing it means creating a different grant.
 
-**Sources (`from`)** -- One or more `{ group, kind, namespace }` tuples (1-16). `kind` and `namespace` are required; `group` is the API group (use `gateway.networking.k8s.io` for Gateways and Routes, or empty `""` for core kinds). Each entry is an additional source allowed to reference in.
+**Sources (`from`) are kind-level trust, combined with OR** -- each `{ group, kind, namespace }` tuple (1-16 entries) trusts every resource of that kind in that source namespace, not one specific object. `kind` and `namespace` are required; `group` is `gateway.networking.k8s.io` for Gateways and Routes, or empty `""` for core kinds. Grant per kind and per namespace deliberately -- a broad `from` list is a broad trust statement.
 
-**Targets (`to`)** -- One or more `{ group, kind, name? }` tuples (1-16). `kind` is required; `group` is `""` for the core kinds `Secret` and `Service`. Leave `name` empty to allow all resources of the kind, or set it to restrict the grant to a single named resource.
+**Targets (`to`) default to ALL resources of the kind** -- each `{ group, kind, name? }` tuple (1-16) with `name` empty authorizes referencing every resource of that kind in the grant's namespace. Set `name` to narrow the grant to a single Secret or Service when the target namespace holds resources of the same kind that should stay unreferenceable.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-This component takes a foreign-key reference to a `KubernetesNamespace` via `spec.namespace`. The `from`/`to` entries are kind-level trust assertions (not pointers to specific resource instances), so they create no deploy-ordering dependencies.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+The `from`/`to` entries are kind-level trust assertions (not pointers to specific resource instances), so they create no deploy-ordering dependencies.
 
 ### What This Component Provides
 
@@ -97,13 +113,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Allow a Gateway to reference TLS Secrets** -- A Gateway terminates TLS using a certificate Secret in another namespace (typically the cert-manager namespace). Create the grant in the Secret's namespace, with `from` the Gateway's namespace/kind and `to` `kind: Secret`. Start from the **Allow Gateway Secret Ref** preset.
+**Allow a Gateway to reference TLS Secrets** -- A Gateway terminates TLS using a certificate Secret in another namespace (typically the cert-manager namespace). Create the grant in the Secret's namespace, with `from` the Gateway's namespace/kind and `to` `kind: Secret`. Start from the **Allow a Gateway to Reference TLS Secrets in Another Namespace** preset.
 
-**Allow Routes to reference backend Services** -- HTTP/gRPC routes in an application namespace forward traffic to backend Services in another namespace. Create the grant in the backend namespace, with one `from` entry per trusted route kind and `to` `kind: Service`. Start from the **Allow Route Backend Ref** preset.
+**Allow Routes to reference backend Services** -- HTTP/gRPC routes in an application namespace forward traffic to backend Services in another namespace. Create the grant in the backend namespace, with one `from` entry per trusted route kind and `to` `kind: Service`. Start from the **Allow Routes to Reference Backend Services in Another Namespace** preset.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (prerequisite, install first).
-- **KubernetesNamespace** -- the "to" namespace (`spec.namespace`) and the source namespaces named in `from`.
-- **KubernetesGateway** -- a common `from` source when referencing cross-namespace TLS Secrets.
-- **KubernetesHttpRoute / KubernetesGrpcRoute / KubernetesTlsRoute / KubernetesTcpRoute** -- common `from` sources when referencing cross-namespace backend Services.
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (prerequisite, install first).
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the "to" namespace (`spec.namespace`) and the source namespaces named in `from`.
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- a common `from` source when referencing cross-namespace TLS Secrets.
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route), [**Kubernetes GRPCRoute**](/cloud-catalog/kubernetes-grpc-route), [**Kubernetes TLSRoute**](/cloud-catalog/kubernetes-tls-route), and [**Kubernetes TCPRoute**](/cloud-catalog/kubernetes-tcp-route) -- common `from` sources when referencing cross-namespace backend Services.

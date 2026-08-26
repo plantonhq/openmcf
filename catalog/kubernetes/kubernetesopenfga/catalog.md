@@ -1,6 +1,6 @@
 # OpenFGA
 
-Deploys OpenFGA -- the CNCF authorization engine built on Google's Zanzibar model -- from the official `openfga` chart at `openfga.github.io/helm-charts`. The server is stateless: every store, authorization model, and relationship tuple lives in the datastore you declare (PostgreSQL recommended, MySQL supported, in-memory for evaluation only), so replicas scale Check and ListObjects throughput linearly. Uses a Kubernetes Provider Connection for cluster access.
+Deploys OpenFGA -- the CNCF authorization engine built on Google's Zanzibar model -- from the official `openfga` chart at `openfga.github.io/helm-charts`. The server is stateless: every store, authorization model, and relationship tuple lives in the datastore you declare (PostgreSQL recommended, MySQL supported, in-memory for evaluation only), so replicas scale Check and ListObjects throughput linearly.
 
 Know the grain before you deploy: this component deploys the ENGINE, never the DATA. Stores, authorization models, and relationship tuples are managed through OpenFGA's own API against the exported endpoints -- the `fga` CLI, the SDKs, or the platform's OpenFgaStore / OpenFgaAuthorizationModel / OpenFgaRelationshipTuple resources composed against `api_http_endpoint`. And know the default posture: without an `authn` block the API is OPEN -- anyone who can reach the Service can read and write every store.
 
@@ -16,7 +16,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
   - The connection URI rendered WITHOUT credentials -- username and password ride environment variables read from the password Secret via secretKeyRef
 - **Authn keys Secret** -- created only when pre-shared keys are DECLARED in the spec (`<name>-authn-keys`, data key `keys`); the declared `$secret/<slug>` references are materialized at deploy time, and only the Secret NAME ever renders into values
 - **HorizontalPodAutoscaler** -- created only when `hpa.enabled` is `true` (illegal with the in-memory engine -- the spec's own rule)
-- **ServiceMonitor** -- created only when `metrics.service_monitor_enabled` is `true`; requires the Prometheus Operator CRDs on the cluster (the install FAILS without them)
+- **ServiceMonitor** -- created only when `metrics.serviceMonitorEnabled` is `true`; requires the Prometheus Operator CRDs on the cluster (the install FAILS without them)
 - **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
 Deliberately absent: the chart's demo playground is ALWAYS disabled (upstream security default -- the server refuses to start with the playground combined with any authentication), and no ingress is created -- public exposure composes from Gateway API kinds.
@@ -39,14 +39,14 @@ Deliberately absent: the chart's demo playground is ALWAYS disabled (upstream se
 
 ### Console
 
-Open the deployment store, find **OpenFGA**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **With PostgreSQL Datastore** preset in the [Presets](#presets) tab for the production shape.
+Open the deployment store, find **OpenFGA**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **PostgreSQL datastore preset** in the [Presets](#presets) tab for the production shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenFga
 metadata:
   name: openfga
@@ -55,7 +55,7 @@ metadata:
 spec:
   namespace:
     value: "openfga"
-  create_namespace: true
+  createNamespace: true
   replicas: 3
   datastore:
     postgres:
@@ -63,12 +63,12 @@ spec:
         value: postgres-rw.openfga.svc.cluster.local
       database: openfga
       username: openfga
-      password_secret:
-        secret_name:
+      passwordSecret:
+        secretName:
           value: my-postgres-app
   authn:
     preshared:
-      existing_keys_secret_name: openfga-api-keys
+      existingKeysSecretName: openfga-api-keys
 ```
 
 ```shell
@@ -85,7 +85,7 @@ When deploying as part of a multi-resource environment, use ValueFromRef to wire
 spec:
   namespace:
     value: openfga
-  create_namespace: true
+  createNamespace: true
   datastore:
     postgres:
       host:
@@ -95,32 +95,32 @@ spec:
           fieldPath: status.outputs.rw_service
       database: openfga
       username: openfga
-      password_secret:
-        secret_name:
+      passwordSecret:
+        secretName:
           valueFrom:
             kind: KubernetesPostgres
             name: my-postgres
-            fieldPath: status.outputs.app_credentials_secret_name
-    migration_timeout: 5m
+            fieldPath: status.outputs.password_secret.name
+    migrationTimeout: 5m
 ```
 
-The InfraPipeline deploys the Postgres cluster first, then provisions OpenFGA against its read-write Service and operator-maintained credential Secret. Widen `migration_timeout` when both provision concurrently -- the init container retries until the database is up.
+The InfraPipeline deploys the Postgres cluster first, then provisions OpenFGA against its read-write Service and operator-maintained credential Secret. Widen `migrationTimeout` when both provision concurrently -- the init container retries until the database is up.
 
 ## Key Configuration
 
 These are the most important decisions when configuring OpenFGA. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Datastore engine** -- `datastore.postgres`, `datastore.mysql`, and `datastore.memory` are one required choice (no default arm). PostgreSQL is the recommended production engine. `memory: {}` is the zero-dependency evaluation sandbox: all data lost on every restart, replicas pinned to 1 -- never for real use. Credentials never render: the URI ships credential-free and the password rides a secretKeyRef. Pool dials (`max_open_conns`, default 30 per replica) multiply by replicas against the database's connection limit.
+**Datastore engine** -- `datastore.postgres`, `datastore.mysql`, and `datastore.memory` are one required choice (no default arm). PostgreSQL is the recommended production engine. `memory: {}` is the zero-dependency evaluation sandbox: all data lost on every restart, replicas pinned to 1 -- never for real use. Credentials never render: the URI ships credential-free and the password rides a secretKeyRef. Pool dials (`maxOpenConns`, default 30 per replica) multiply by replicas against the database's connection limit.
 
-**Authentication** -- `authn.preshared` and `authn.oidc` are one choice, and NO choice means NO authentication -- an open API, fine on a lab cluster, never in production. Pre-shared keys go exactly one way: declare them (org-secret references materialized into the managed `<name>-authn-keys` Secret) OR point `existing_keys_secret_name` at a Secret you maintain (comma-separated keys under the data key `keys` -- the chart's contract). OIDC requires BOTH `issuer` and `audience` -- the server hard-fails at startup with either empty (audience validation became mandatory as a security fix).
+**Authentication** -- `authn.preshared` and `authn.oidc` are one choice, and NO choice means NO authentication -- an open API, fine on a lab cluster, never in production. Pre-shared keys go exactly one way: declare them (org-secret references materialized into the managed `<name>-authn-keys` Secret) OR point `existingKeysSecretName` at a Secret you maintain (comma-separated keys under the data key `keys` -- the chart's contract). OIDC requires BOTH `issuer` and `audience` -- the server hard-fails at startup with either empty (audience validation became mandatory as a security fix).
 
 **Replicas and the HPA** -- `replicas` (default 3, range 1-50) scales reads linearly; the ceiling is the DATABASE. `hpa.enabled` hands the count to the autoscaler (min <= max -- the spec's own rule; the platform defaults max to 10 where the chart's own fallback is 100). Autoscaling on the memory engine is ILLEGAL -- pods would each hold their own divergent authorization world.
 
-**Observability** -- Metrics are the unusual default-ON: `/metrics` on port 2112 unless explicitly disabled. `metrics.enable_rpc_histograms` trades metric cardinality for the per-RPC latency visibility that sizes CPU against check volume. `tracing.enabled` requires `otlp_endpoint` (the spec's own rule); `sample_ratio` defaults to 0.2 -- 1.0 on a busy authorization path floods the collector. Log level `none` exists on the server but the chart's closed values schema rejects it -- the chart's vocabulary is law.
+**Observability** -- Metrics are the unusual default-ON: `/metrics` on port 2112 unless explicitly disabled. `metrics.enableRpcHistograms` trades metric cardinality for the per-RPC latency visibility that sizes CPU against check volume. `tracing.enabled` requires `otlpEndpoint` (the spec's own rule); `sampleRatio` defaults to 0.2 -- 1.0 on a busy authorization path floods the collector. Log level `none` exists on the server but the chart's closed values schema rejects it -- the chart's vocabulary is law.
 
 **Query tuning** -- Every `tuning` field maps to a server flag; empty keeps the server's own defaults. The check-query cache trades up to its TTL (default 10s) of authorization-change propagation delay for large Check throughput gains -- a REVOKED permission may keep answering allowed until its entry expires. `experimentals` accepts exactly four values (the chart's closed schema), and declaring ANY replaces the server's own default set -- which ships `pipeline_list_objects` enabled; re-include it unless you mean to turn it off.
 
-**The escape hatch** -- `helm_values` merges LAST over everything the typed fields render (Helm `-f` semantics), but this chart's values schema is CLOSED (`additionalProperties: false`): only keys the chart already defines are legal. The real surface is `extraEnvVars` -- the ~50 `OPENFGA_*` server flags without values paths -- plus TLS file wiring and sidecars. The module re-pins `fullnameOverride` after the merge so the exported Service names stay stable. Never put secret material in this document.
+**The escape hatch** -- `helmValues` merges LAST over everything the typed fields render (Helm `-f` semantics), but this chart's values schema is CLOSED (`additionalProperties: false`): only keys the chart already defines are legal. The real surface is `extraEnvVars` -- the ~50 `OPENFGA_*` server flags without values paths -- plus TLS file wiring and sidecars. The module re-pins `fullnameOverride` after the merge so the exported Service names stay stable. Never put secret material in this document.
 
 ## Outputs and Dependencies
 
@@ -130,7 +130,7 @@ These are the most important decisions when configuring OpenFGA. Explore the ful
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
 | **KubernetesPostgres** (optional) | `datastore.postgres.host` | `status.outputs.rw_service` |
-| **KubernetesPostgres** (optional) | `datastore.postgres.password_secret.secret_name` | `status.outputs.app_credentials_secret_name` |
+| **KubernetesPostgres** (optional) | `datastore.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 | **KubernetesMysql** (optional) | `datastore.mysql.host` | `status.outputs.primary_service` |
 
 ### What This Component Provides
@@ -152,15 +152,15 @@ Deliberately absent: stores, models, and tuples are API data the deployment neve
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production with PostgreSQL** -- Three stateless replicas against a composed KubernetesPostgres (read-write Service + operator-maintained credential Secret), pre-shared-key authentication, metrics on. Start from the **With PostgreSQL Datastore** preset.
+**Production with PostgreSQL** -- Three stateless replicas against a composed KubernetesPostgres (read-write Service + operator-maintained credential Secret), pre-shared-key authentication, metrics on. Start from the **PostgreSQL datastore preset**.
 
 **Evaluation sandbox** -- `datastore.memory: {}`, one replica, no authentication: the zero-dependency shape for evaluating authorization models and API integration. Everything resets on every restart -- that is the point.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the OpenFGA install
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) -- the recommended production datastore; the host and credential Secret both resolve by reference
-- [**Kubernetes Mysql**](/cloud-catalog/kubernetes-mysql) -- the alternative datastore engine
-- [**Kubernetes Kube Prometheus Stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator CRDs the ServiceMonitor needs
-- [**Kubernetes Otel Collector**](/cloud-catalog/kubernetes-otel-collector) -- the OTLP gRPC target for trace export
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the recommended production datastore; the host and credential Secret both resolve by reference
+- [**MySQL**](/cloud-catalog/kubernetes-mysql) -- the alternative datastore engine
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator CRDs the ServiceMonitor needs
+- [**OpenTelemetry Collector**](/cloud-catalog/kubernetes-otel-collector) -- the OTLP gRPC target for trace export
 - [**OpenFGA Store**](/cloud-catalog/openfga-store) -- creates stores as first-class resources against the exported HTTP endpoint

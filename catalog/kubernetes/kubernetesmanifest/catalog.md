@@ -1,6 +1,6 @@
 # Kubernetes Manifest
 
-Deploys raw Kubernetes YAML manifests to any Kubernetes cluster, acting as a generic escape hatch for resources that do not have a dedicated component. Supports single-document and multi-document manifests (separated by `---`), including Deployments, Services, ConfigMaps, CRDs, Custom Resources, and any other valid Kubernetes resource types. Integrates with Planton's Provider Connections, ValueFromRef, and Stack Job tracking.
+Deploys raw Kubernetes YAML manifests to any Kubernetes cluster, acting as a generic escape hatch for resources that do not have a dedicated component. Supports single-document and multi-document manifests (separated by `---`), including Deployments, Services, ConfigMaps, CRDs, Custom Resources, and any other valid Kubernetes resource types. The manifest content is applied exactly as written -- no injected labels, no rewritten fields -- with automatic CRD-before-custom-resource ordering inside one manifest.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Manifest**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Resource** preset in the [Presets](#presets) tab to deploy a ConfigMap as a starting point, then replace the YAML with your actual manifest.
+Open the deployment store, find **Kubernetes Manifest**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Config Bundle** preset in the [Presets](#presets) tab, then replace the YAML with your actual manifest.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesManifest
 metadata:
   name: app-config
@@ -108,8 +108,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single resource deployment** -- Deploys a single Kubernetes resource (ConfigMap, ServiceAccount, RBAC rule) into an existing namespace. Replace the example ConfigMap with any Kubernetes resource type. Start from the **Single Resource** preset.
+**Config bundle** -- A multi-document manifest (a ConfigMap and a Secret) anchored in one namespace: write plain documents once, point the whole bundle at a namespace from the outside. Check the catalog first -- a single ConfigMap belongs in the typed KubernetesConfigMap component. Start from the **Config Bundle** preset.
+
+**CRD and custom resource in one pass** -- A CustomResourceDefinition and a custom resource of that new type ship in the same manifest; the module orders the CRD install first, avoiding the two-apply dance that breaks a naive `kubectl apply -f`. Start from the **CRD and Custom Resource** preset.
+
+**Vendor install manifest** -- Paste the YAML a project publishes for `kubectl apply -f` -- often hundreds of documents spanning CRDs, RBAC, Services, and webhooks -- and get declarative apply, update, and destroy wrapped around it. Charts belong in KubernetesHelmRelease instead. Start from the **Vendor Install Manifest** preset.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the default namespace for manifest resources
+- [**Helm Release**](/cloud-catalog/kubernetes-helm-release) -- the right escape hatch when the vendor publishes a chart rather than raw YAML
+- [**Kubernetes ConfigMap**](/cloud-catalog/kubernetes-config-map) -- the typed component a single configuration document belongs in

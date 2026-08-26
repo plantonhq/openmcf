@@ -33,14 +33,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GitHub Actions Runner Scale Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from **Repository runners** (scale-to-zero for one repo), **Organization Docker builds** (a dind fleet behind a runner group), or **Unprivileged Kubernetes mode** (container jobs without privileged pods) in the [Presets](#presets) tab.
+Open the deployment store, find **GitHub Actions Runner Scale Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Repository runners preset** (scale-to-zero for one repo), the **Organization Docker-builds preset** (a dind fleet behind a runner group), or the **Unprivileged Kubernetes-mode preset** (container jobs without privileged pods) in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: build-runners
@@ -49,12 +49,12 @@ metadata:
 spec:
   namespace:
     value: "ci-runners"
-  create_namespace: true
-  github_config_url: https://github.com/acme-corp/api-server
+  createNamespace: true
+  githubConfigUrl: https://github.com/acme-corp/api-server
   auth:
-    existing_secret_name: github-credential
-  min_runners: 0
-  max_runners: 10
+    existingSecretName: github-credential
+  minRunners: 0
+  maxRunners: 10
 ```
 
 ```shell
@@ -74,11 +74,11 @@ spec:
       kind: KubernetesNamespace
       name: ci-runners-namespace
       fieldPath: spec.name
-  create_namespace: false
-  container_mode:
+  createNamespace: false
+  containerMode:
     mode: kubernetes
-    kubernetes_work_volume:
-      storage_class:
+    kubernetesWorkVolume:
+      storageClass:
         valueFrom:
           kind: KubernetesStorageClass
           name: ci-fast-ssd
@@ -92,21 +92,21 @@ The InfraPipeline deploys the namespace and StorageClass first, then provisions 
 
 These are the most important decisions when configuring a GitHub Actions Runner Scale Set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Workflows target the fleet BY NAME** -- The fleet registers in GitHub under `runner_scale_set_name` (empty = this resource's metadata.name; at most 45 characters, GitHub's own limit), and workflows select it with `runs-on: <that name>`. Labels are not how scale sets route. Renaming re-registers the fleet: workflows still saying the old name queue forever.
+**Workflows target the fleet BY NAME** -- The fleet registers in GitHub under `runnerScaleSetName` (empty = this resource's metadata.name; at most 45 characters, GitHub's own limit), and workflows select it with `runs-on: <that name>`. Labels are not how scale sets route. Renaming re-registers the fleet: workflows still saying the old name queue forever.
 
-**The registration scope is the URL's shape** -- `github_config_url` (required) is a repository (`https://github.com/my-org/my-repo`), an organization (`https://github.com/my-org`), or an enterprise (`https://github.com/enterprises/my-enterprise`); GitHub Enterprise Server URLs work the same way. On org/enterprise registrations, `runner_group` governs WHICH repositories may use the fleet -- the group must already exist in GitHub.
+**The registration scope is the URL's shape** -- `githubConfigUrl` (required) is a repository (`https://github.com/my-org/my-repo`), an organization (`https://github.com/my-org`), or an enterprise (`https://github.com/enterprises/my-enterprise`); GitHub Enterprise Server URLs work the same way. On org/enterprise registrations, `runnerGroup` governs WHICH repositories may use the fleet -- the group must already exist in GitHub.
 
-**Authentication is secret-native, exactly one method** -- `auth` is required with exactly one arm: `existing_secret_name` (RECOMMENDED -- the credential never rides a manifest; the Secret's key contract is `github_token` for a PAT or the three `github_app_*` keys for an App), or an inline `pat` / `github_app` whose sensitive values are materialized into a Secret and never rendered into chart values. A GitHub App is the production posture (fine-grained permissions, expiring installation tokens); a PAT is the quick start.
+**Authentication is secret-native, exactly one method** -- `auth` is required with exactly one arm: `existingSecretName` (RECOMMENDED -- the credential never rides a manifest; the Secret's key contract is `github_token` for a PAT or the three `github_app_*` keys for an App), or an inline `pat` / `githubApp` whose sensitive values are materialized into a Secret and never rendered into chart values. A GitHub App is the production posture (fine-grained permissions, expiring installation tokens); a PAT is the quick start.
 
-**Scaling is scale-to-zero by default** -- `min_runners` empty = 0 (runners exist only while jobs run; one pod schedule of cold-start latency per job); `max_runners` empty = unbounded (queued jobs above the ceiling WAIT in GitHub, they never fail). When both are set, max must be >= min.
+**Scaling is scale-to-zero by default** -- `minRunners` empty = 0 (runners exist only while jobs run; one pod schedule of cold-start latency per job); `maxRunners` empty = unbounded (queued jobs above the ceiling WAIT in GitHub, they never fail). When both are set, max must be >= min.
 
-**Docker builds need a container mode** -- No `container_mode` = the plain runner: shell/tool jobs only. `dind` runs a privileged Docker-in-Docker sidecar per runner (docker build/run work; the cluster must allow privileged pods). `kubernetes` runs container jobs as separate unprivileged pods via the container hook -- it REQUIRES `kubernetes_work_volume` (a dynamically-provisioning StorageClass + a per-runner size), and jobs must declare a container. `kubernetes-novolume` is the hook without a shared work volume.
+**Docker builds need a container mode** -- No `containerMode` = the plain runner: shell/tool jobs only. `dind` runs a privileged Docker-in-Docker sidecar per runner (docker build/run work; the cluster must allow privileged pods). `kubernetes` runs container jobs as separate unprivileged pods via the container hook -- it REQUIRES `kubernetesWorkVolume` (a dynamically-provisioning StorageClass + a per-runner size), and jobs must declare a container. `kubernetes-novolume` is the hook without a shared work volume.
 
 **The runner container is the jobs' budget** -- `runner.image` empty = `ghcr.io/actions/actions-runner:latest` (pin a tag on production fleets; latest changes under you). `runner.resources` is sized for the JOBS, not the agent -- every build the fleet runs inherits these limits.
 
-**Network seams for locked-down clusters** -- `proxy` routes listener and runner egress through corporate proxies (per-scheme URL + an existing credential Secret NAME with `username`/`password` keys; put in-cluster hosts in `no_proxy`). `github_server_tls` trusts a private CA towards a self-signed GHES (a CA ConfigMap reference; the runner mount path also sets NODE_EXTRA_CA_CERTS).
+**Network seams for locked-down clusters** -- `proxy` routes listener and runner egress through corporate proxies (per-scheme URL + an existing credential Secret NAME with `username`/`password` keys; put in-cluster hosts in `noProxy`). `githubServerTls` trusts a private CA towards a self-signed GHES (a CA ConfigMap reference; the runner mount path also sets NODE_EXTRA_CA_CERTS).
 
-**The controller reference is for fenced controllers only** -- Leave `controller_service_account` EMPTY with a cluster-wide controller (the chart auto-discovers it). It is required when the controller was fenced with `watch_single_namespace` -- wire the name from the controller's `service_account_name` stack output.
+**The controller reference is for fenced controllers only** -- Leave `controllerServiceAccount` EMPTY with a cluster-wide controller (the chart auto-discovers it). It is required when the controller was fenced with `watchSingleNamespace` -- wire the name from the controller's `service_account_name` stack output.
 
 ## Outputs and Dependencies
 
@@ -115,8 +115,8 @@ These are the most important decisions when configuring a GitHub Actions Runner 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesStorageClass** | `container_mode.kubernetes_work_volume.storage_class` | `metadata.name` |
-| **KubernetesConfigMap** | `github_server_tls.config_map_name` | `metadata.name` |
+| **KubernetesStorageClass** | `containerMode.kubernetesWorkVolume.storageClass` | `metadata.name` |
+| **KubernetesConfigMap** | `githubServerTls.configMapName` | `metadata.name` |
 
 ### What This Component Provides
 
@@ -133,15 +133,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Repository runners** -- Scale-to-zero runners for one repository with a pre-created credential Secret. The quick start. Start from the **Repository runners** preset.
+**Repository runners** -- Scale-to-zero runners for one repository with a pre-created credential Secret. The quick start. Start from the **Repository runners preset**.
 
-**Organization Docker builds** -- An org-wide dind fleet behind a runner group, warm runners for the compounding cold start, and resources sized for builds. Start from the **Organization Docker builds** preset.
+**Organization Docker builds** -- An org-wide dind fleet behind a runner group, warm runners for the compounding cold start, and resources sized for builds. Start from the **Organization Docker-builds preset**.
 
-**Unprivileged Kubernetes mode** -- Container jobs without privileged pods via the container hook and a per-runner work volume -- for Pod Security `restricted` and regulated clusters. Start from the **Unprivileged Kubernetes mode** preset.
+**Unprivileged Kubernetes mode** -- Container jobs without privileged pods via the container hook and a per-runner work volume -- for Pod Security `restricted` and regulated clusters. Start from the **Unprivileged Kubernetes-mode preset**.
 
 ## Works With
 
-- [**Kubernetes GHA Runner Scale Set Controller**](/cloud-catalog/kubernetes-gha-runner-scale-set-controller) -- the prerequisite engine that reconciles this fleet into listener and runner pods
+- [**GitHub Actions Runner Scale Set Controller**](/cloud-catalog/kubernetes-gha-runner-scale-set-controller) -- the prerequisite engine that reconciles this fleet into listener and runner pods
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the fleet
-- [**Kubernetes Storage Class**](/cloud-catalog/kubernetes-storage-class) -- backs the per-runner work volumes in `kubernetes` container mode
-- [**Kubernetes Config Map**](/cloud-catalog/kubernetes-config-map) -- holds the private CA certificate for a self-signed GitHub Enterprise Server
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) -- backs the per-runner work volumes in `kubernetes` container mode
+- [**Kubernetes ConfigMap**](/cloud-catalog/kubernetes-config-map) -- holds the private CA certificate for a self-signed GitHub Enterprise Server

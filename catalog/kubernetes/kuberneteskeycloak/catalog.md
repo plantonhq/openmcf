@@ -1,10 +1,10 @@
-# Keycloak on Kubernetes
+# Keycloak
 
-Declares a [Keycloak](https://www.keycloak.org/) server — the open-source identity and access management platform (OIDC, SAML, user federation) — as a `Keycloak` custom resource reconciled by the official Keycloak Operator. Keycloak ships no official Helm chart; the operator is the first-party Kubernetes distribution, and this component renders its CR faithfully: the operator turns the declaration into a running StatefulSet, its Services, network policy, and the one-time bootstrap admin credential.
+Declares a Keycloak server — the open-source identity and access management platform (OIDC, SAML, user federation) — as a `Keycloak` custom resource reconciled by the official Keycloak Operator. Keycloak ships no official Helm chart; the operator is the first-party Kubernetes distribution, and this component renders its CR faithfully: the operator turns the declaration into a running StatefulSet, its Services, network policy, and the one-time bootstrap admin credential.
 
 The spec's purpose is converting **crash-loops into apply-time errors**: the CR itself requires almost nothing, but the server refuses to start without a database, a served-or-delegated TLS answer, and (in strict mode) a hostname. Every one of those server-startup rules is validated on this spec before anything deploys.
 
-**Prerequisite**: a **Keycloak Operator on Kubernetes** install watching this namespace — under its default namespaced watch, the operator and this resource live in the SAME namespace. Without it the declaration sits unreconciled.
+**Prerequisite**: a **Keycloak Operator** install watching this namespace — under its default namespaced watch, the operator and this resource live in the SAME namespace. Without it the declaration sits unreconciled.
 
 ## What Gets Created
 
@@ -27,25 +27,25 @@ Realm imports and OIDC/SAML client CRs are deliberately not modeled — the impo
 
 - **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
 
-### Cluster Side
+### Kubernetes Cluster
 
-- **A Keycloak Operator watching the namespace** — deploy **Keycloak Operator on Kubernetes** first; its CRDs define the `Keycloak` kind this component declares.
-- **A database** — required for anything real. A **Kubernetes Postgres** resource composes naturally by reference; the embedded `dev-file`/`dev-mem` sandbox vendors exist only for evaluation.
-- **A TLS answer** — a certificate Secret (a **Kubernetes Certificate** resource composes by reference), or a TLS-terminating proxy in front if you enable the plain-HTTP listener.
+- **A Keycloak Operator watching the namespace** — deploy **Keycloak Operator** first; its CRDs define the `Keycloak` kind this component declares.
+- **A database** — required for anything real. A **PostgreSQL** resource composes naturally by reference; the embedded `dev-file`/`dev-mem` sandbox vendors exist only for evaluation.
+- **A TLS answer** — a certificate Secret (a **Cert Manager Certificate** resource composes by reference), or a TLS-terminating proxy in front if you enable the plain-HTTP listener.
 - **Name budget** — the operator derives every child name by suffixing this resource's name; keep `metadata.name` within 48 characters so the longest derived name stays DNS-legal.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Keycloak on Kubernetes**, and click **Deploy**. The creation wizard walks you through namespace placement, the required database, the TLS-or-HTTP listener, the hostname contract, clustering, the image and its update strategy, sizing, scheduling, features, server options, admin access, health probes, the operator integrations, and tracing. Start from the **Standard** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Keycloak**, and click **Deploy**. The creation wizard walks you through namespace placement, the required database, the TLS-or-HTTP listener, the hostname contract, clustering, the image and its update strategy, sizing, scheduling, features, server options, admin access, health probes, the operator integrations, and tracing. Start from the **Standard preset** in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKeycloak
 metadata:
   name: keycloak
@@ -78,6 +78,8 @@ spec:
 ```shell
 planton apply -f keycloak.yaml
 ```
+
+This creates a two-instance clustered Keycloak backed by the named Postgres database, serving TLS from the `keycloak-tls` Secret and advertising `https://auth.example.com` as its identity. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -113,9 +115,11 @@ The InfraPipeline deploys the operator and the database first, then provisions K
 
 ## Key Configuration
 
-**The database is required** — `db.vendor` takes one of eight values: `postgres` (recommended — a Kubernetes Postgres composes by reference), `mysql`, `mariadb`, `tidb`, `mssql`, `oracle` for databases you operate, and the never-production sandbox vendors `dev-file`/`dev-mem` (embedded H2 on ephemeral pod storage or memory — data dies with the pod, and the spec caps them at a single instance). Real vendors need host + database + both credential selectors, or a full `jdbcUrl`.
+These are the most important decisions when configuring a Keycloak server. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**TLS or HTTP, decided up front** — the server refuses to start with neither. Recommended: `http.tlsSecretName` referencing a **Kubernetes Certificate**. Enable the plain-HTTP listener only behind a TLS-terminating proxy, paired with `proxyHeaders` (`xforwarded` or `forwarded`) so the server trusts the forwarded scheme and host.
+**The database is required** — `db.vendor` takes one of eight values: `postgres` (recommended — a PostgreSQL composes by reference), `mysql`, `mariadb`, `tidb`, `mssql`, `oracle` for databases you operate, and the never-production sandbox vendors `dev-file`/`dev-mem` (embedded H2 on ephemeral pod storage or memory — data dies with the pod, and the spec caps them at a single instance). Real vendors need host + database + both credential selectors, or a full `jdbcUrl`.
+
+**TLS or HTTP, decided up front** — the server refuses to start with neither. Recommended: `http.tlsSecretName` referencing a **Cert Manager Certificate**. Enable the plain-HTTP listener only behind a TLS-terminating proxy, paired with `proxyHeaders` (`xforwarded` or `forwarded`) so the server trusts the forwarded scheme and host.
 
 **The hostname is identity, not routing** — `hostname.hostname` (a full URL, e.g. `https://auth.example.com`) is what tokens, redirects, and the OIDC discovery document advertise. The working full-surface posture is a fixed public URL plus `backchannelDynamic: true`, letting in-cluster clients reach the server on its Service address. `strict` (default true) makes the server refuse to answer without a declared hostname — and is ignored once a hostname is set. Both full-URL rules mirror the server's own startup errors.
 
@@ -157,13 +161,13 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard** — the production shape: two instances clustering through the discovery Service, a Kubernetes Postgres referenced for the database, TLS from a Kubernetes Certificate reference, and a declared public hostname. Start from the **Standard** preset.
+**Standard** — the production shape: two instances clustering through the discovery Service, a PostgreSQL referenced for the database, TLS from a Cert Manager Certificate reference, and a declared public hostname. Start from the **Standard preset**.
 
-**Dev sandbox** — the smallest Keycloak that starts: `dev-mem`, the plain-HTTP listener, strict resolution off. Deliberately disposable — data dies with the pod.
+**Dev sandbox** — the smallest Keycloak that starts: `dev-mem`, the plain-HTTP listener, strict resolution off. Deliberately disposable — data dies with the pod. Start from the **Dev-sandbox preset**.
 
 ## Works With
 
-- **Keycloak Operator on Kubernetes** — the manager that reconciles this declaration; deploy it FIRST, in this same namespace under its default watch, and destroy declarations BEFORE the operator on the way out.
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) — the recommended production database; its read-write Service and app-credential Secret compose by reference.
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) — issues the TLS Secret the listener serves.
+- [**Keycloak Operator**](/cloud-catalog/kubernetes-keycloak-operator) — the manager that reconciles this declaration; deploy it FIRST, in this same namespace under its default watch, and destroy declarations BEFORE the operator on the way out.
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) — the recommended production database; its read-write Service and app-credential Secret compose by reference.
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) — issues the TLS Secret the listener serves.
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace by reference; co-locate the operator, the database, and Keycloak so the credential secretKeyRefs resolve.

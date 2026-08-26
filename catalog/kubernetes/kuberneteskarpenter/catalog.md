@@ -8,7 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **CRD Helm Release** (`karpenter-crd`) -- the NodePool, NodeClaim, and EC2NodeClass definitions as their own release — upstream's supported path for keeping CRDs upgradable — annotated to survive uninstall by default, so removing the release does not cascade-delete every fleet declaration in the cluster
 - **Controller Helm Release** (`karpenter`) -- the controller Deployment (chart default 2 replicas: leader plus warm standby), RBAC, and the `karpenter` service account; the chart pins controller pods away from Karpenter-provisioned nodes so the controller never disrupts its own machine
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true; a pre-existing `kube-system` is upstream's recommended home
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true; a pre-existing `kube-system` is upstream's recommended home
 
 ## Before You Deploy
 
@@ -34,7 +34,7 @@ Open the deployment store, find **Karpenter**, and click **Deploy**. The creatio
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenter
 metadata:
   name: karpenter
@@ -44,17 +44,40 @@ spec:
   namespace:
     value: kube-system
   cluster:
-    name: my-eks-cluster
+    name: prod-eks
     eksControlPlane: true
   aws:
-    irsaRoleArn: arn:aws:iam::111111111111:role/karpenter-controller
+    irsaRoleArn:
+      value: arn:aws:iam::111111111111:role/karpenter-controller
+    interruptionQueue: karpenter-interruptions
 ```
 
 ```shell
 planton apply -f karpenter.yaml
 ```
 
-Then declare the fleet: an EC2NodeClass and at least one NodePool, and Karpenter starts launching nodes for pending pods.
+This installs the CRD and controller releases into `kube-system`, wired to the `prod-eks` control plane with IRSA identity and interruption handling; declare the fleet next (an EC2NodeClass and at least one NodePool) and Karpenter starts launching nodes for pending pods. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the controller's IAM identity from the IAM role that carries upstream's controller policy:
+
+```yaml
+spec:
+  namespace:
+    value: kube-system
+  cluster:
+    name: prod-eks
+    eksControlPlane: true
+  aws:
+    irsaRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: karpenter-controller-role
+        fieldPath: status.outputs.role_arn
+```
+
+The InfraPipeline creates the IAM role first, then installs the controller with the resolved ARN — the reference is also the deploy-ordering edge.
 
 ## Key Configuration
 
@@ -70,15 +93,16 @@ These are the most important decisions when configuring Karpenter. Explore the f
 
 **Interruption handling before spot at scale** -- the SQS queue lets the controller drain nodes ahead of spot reclaims and scheduled maintenance instead of losing them mid-flight.
 
-**The escape hatch** -- `helm_values` carries additional chart values as a YAML document, merged LAST over everything the typed fields render — never the substitute for typed fields, never a place for secrets.
+**The escape hatch** -- `helmValues` carries additional chart values as a YAML document, merged LAST over everything the typed fields render — never the substitute for typed fields, never a place for secrets.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the controller is installed into |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **AwsIamRole** | `aws.irsaRoleArn` | `status.outputs.role_arn` |
 
 ### What This Component Provides
 
@@ -103,7 +127,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Karpenter EC2 Node Class** -- the machine template (AMI, networking, storage, IAM) the fleet launches from; declare it right after the controller.
-- **Karpenter Node Pool** -- the fleet constraints (instance families, capacity types, limits, disruption policy); one class typically serves several pools.
-- **Cluster Autoscaler** -- the alternative fleet controller for pre-defined node groups; never both on the same capacity.
-- **Kubernetes Deployment / StatefulSet / Job** -- pending pods from any workload trigger provisioning; no per-workload wiring needed.
+- [**Karpenter EC2 Node Class**](/cloud-catalog/kubernetes-karpenter-ec2-node-class) -- the machine template (AMI, networking, storage, IAM) the fleet launches from; declare it right after the controller
+- [**Karpenter Node Pool**](/cloud-catalog/kubernetes-karpenter-node-pool) -- the fleet constraints (instance families, capacity types, limits, disruption policy); one class typically serves several pools
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the controller's IRSA identity; wire `irsaRoleArn` from its `role_arn` output
+- [**Cluster Autoscaler**](/cloud-catalog/kubernetes-cluster-autoscaler) -- the alternative fleet controller for pre-defined node groups; never both on the same capacity
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- pending pods from any workload trigger provisioning; no per-workload wiring needed

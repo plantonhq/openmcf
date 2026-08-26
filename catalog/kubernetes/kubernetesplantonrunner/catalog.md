@@ -1,6 +1,6 @@
 # Kubernetes Planton Runner
 
-Deploys a standing Planton runner appliance on a Kubernetes cluster -- an always-on, outbound-only worker that receives deploy operations from the control plane and executes them from inside the cluster's network. The module installs the official `planton-runner` chart (OCI, ghcr.io/plantonhq/charts) as a real Helm release, so the deployed runner is byte-identical to a hand-installed one. Enrollment is token-first: the runner joins with a token, registers itself, and receives its own individually revocable identity. Uses a Kubernetes Provider Connection for cluster access.
+Deploys a standing Planton runner appliance on a Kubernetes cluster -- an always-on, outbound-only worker that receives deploy operations from the control plane and executes them from inside the cluster's network. The module installs the official `planton-runner` chart (OCI, ghcr.io/plantonhq/charts) as a real Helm release, so the deployed runner is byte-identical to a hand-installed one. Enrollment is token-first: the runner joins with a token, registers itself, and receives its own individually revocable identity.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Planton Runner**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and the spec fields.
+Open the deployment store, find **Kubernetes Planton Runner**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and the spec fields. Start from the **Cluster Runner** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPlantonRunner
 metadata:
   name: cluster-runner
@@ -54,7 +54,7 @@ spec:
 planton apply -f runner.yaml
 ```
 
-This minimal manifest installs chart version 0.4.0 tracking the latest runner release from the official image repository, at the chart's own default sizing (requests 100m/256Mi, limits 1/1Gi). The runner registers itself as `prod-cluster-runner` (`<env>-<metadata.name>`) the moment it joins, and `planton runner list` shows it.
+This minimal manifest installs chart version 0.4.0 tracking the latest runner release from the official image repository, at the chart's own default sizing (requests 100m/256Mi, limits 1/1Gi). The runner registers itself as `prod-cluster-runner` (`<env>-<metadata.name>`) the moment it joins, and `planton runner list` shows it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -77,13 +77,19 @@ The InfraPipeline deploys the namespace first, then installs the runner into it.
 
 These are the most important decisions when configuring the runner. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- **Token** -- `token` authorizes the runner to JOIN and is never its identity: the runner registers itself on first boot and receives its own individually revocable identity, and revoking the token never touches runners it already admitted. The module stores it in the `<name>-token` Secret; it never appears in rendered chart values.
-- **Runner name** -- leave `runnerName` unset: it defaults to `<env>-<metadata.name>` (`metadata.name` outside an environment), the same derivation the platform uses for records that reference this runner. Re-deploying with the same name and the same token re-admits the runner (lost-disk recovery); set it explicitly only when deliberately adopting an existing enrollment.
-- **Control-plane endpoint** -- `controlPlaneEndpoint` (host:port) is only for self-hosted control planes; leave it unset for Planton's hosted endpoint. It is the one bootstrap coordinate the join cannot deliver -- everything else arrives in the join response, so the runner self-configures its execution mode on arrival and no mode knob exists.
-- **Chart version** -- empty `chartVersion` installs the pinned default (0.4.0), the version this catalog release was validated against. Versions below 0.4.0 predate token enrollment and are refused loudly -- older charts would silently ignore the enrollment values and the runner would deploy with no way to join.
-- **Sizing** -- when `resources` is omitted, the chart's own defaults apply (requests 100m/256Mi, limits 1/1Gi), comfortable for the runner's control loops plus typical IaC operations. Memory pressure shows up as failed IaC operations mid-apply; size memory up before CPU.
-- **Build worker** -- `build.enabled: true` registers the runner as a build worker executing container-image build pipelines through Tekton (Tekton Pipelines must be installed); `build.tektonNamespace` defaults to the runner's own namespace.
-- **Escape hatch** -- `helmValues` merges raw values YAML over what the spec renders (Helm `-f` semantics), for chart knobs the spec does not model (nodeSelector, tolerations, extra env). The enrollment block is re-pinned after the merge and cannot be overridden -- the token never rides rendered values.
+**Token** -- `token` authorizes the runner to JOIN and is never its identity: the runner registers itself on first boot and receives its own individually revocable identity, and revoking the token never touches runners it already admitted. The module stores it in the `<name>-token` Secret; it never appears in rendered chart values.
+
+**Runner name** -- leave `runnerName` unset: it defaults to `<env>-<metadata.name>` (`metadata.name` outside an environment), the same derivation the platform uses for records that reference this runner. Re-deploying with the same name and the same token re-admits the runner (lost-disk recovery); set it explicitly only when deliberately adopting an existing enrollment.
+
+**Control-plane endpoint** -- `controlPlaneEndpoint` (host:port) is only for self-hosted control planes; leave it unset for Planton's hosted endpoint. It is the one bootstrap coordinate the join cannot deliver -- everything else arrives in the join response, so the runner self-configures its execution mode on arrival and no mode knob exists.
+
+**Chart version** -- empty `chartVersion` installs the pinned default (0.4.0), the version this catalog release was validated against. Versions below 0.4.0 predate token enrollment and are refused loudly -- older charts would silently ignore the enrollment values and the runner would deploy with no way to join.
+
+**Sizing** -- when `resources` is omitted, the chart's own defaults apply (requests 100m/256Mi, limits 1/1Gi), comfortable for the runner's control loops plus typical IaC operations. Memory pressure shows up as failed IaC operations mid-apply; size memory up before CPU.
+
+**Build worker** -- `build.enabled: true` registers the runner as a build worker executing container-image build pipelines through Tekton (Tekton Pipelines must be installed); `build.tektonNamespace` defaults to the runner's own namespace.
+
+**Escape hatch** -- `helmValues` merges raw values YAML over what the spec renders (Helm `-f` semantics), for chart knobs the spec does not model (nodeSelector, tolerations, extra env). The enrollment block is re-pinned after the merge and cannot be overridden -- the token never rides rendered values.
 
 ## Outputs and Dependencies
 
@@ -103,6 +109,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `release_name` | The Helm release name (equals metadata.name) | Helm management and debugging |
 | `token_secret_name` | The Kubernetes Secret holding the runner token | Auditing secret access; rotation tooling |
 | `runner_name` | The name the runner registers itself under with the control plane | Console and `planton runner list` lookups |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Standard in-cluster runner** -- two decisions (a namespace and a token reference) make a cluster's private targets deployable: the runner dials out to the control plane, receives deploy operations, and executes them from inside the network with zero inbound exposure. Start from the **Cluster Runner** preset.
+
+**Deploys plus image builds** -- the same runner additionally registered as a build worker: container-image build pipelines execute through Tekton on this cluster, without shipping build context out of the network. Tekton Pipelines is a prerequisite the module does not install. Start from the **Build Runner (Deploys + Image Builds)** preset.
+
+**Enrolling against your own control plane** -- one `controlPlaneEndpoint` (host:port, no scheme) plus a token minted by YOUR instance is the entire difference from the standard shape -- a token minted by one control plane is meaningless to another. Start from the **Self-Hosted Control Plane** preset.
 
 ## Works With
 

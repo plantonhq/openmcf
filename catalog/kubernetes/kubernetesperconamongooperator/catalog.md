@@ -37,7 +37,7 @@ Open the deployment store, find **Percona Operator for MongoDB**, and click **De
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPerconaMongoOperator
 metadata:
   name: psmdb-operator
@@ -117,4 +117,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the operator deployment
-- [**Kubernetes MongoDB**](/cloud-catalog/kubernetes-mongodb) -- the databases this engine reconciles; declare them in a namespace the operator watches
+- [**MongoDB**](/cloud-catalog/kubernetes-mongodb) -- the databases this engine reconciles; declare them in a namespace the operator watches

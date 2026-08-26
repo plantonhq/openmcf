@@ -1,6 +1,6 @@
 # Kubernetes NetworkPolicy
 
-Deploys a Kubernetes NetworkPolicy — the in-cluster firewall. The policy selects pods with a label selector and ALLOWS the traffic its rules describe; everything not allowed by some policy is denied once a pod is selected in that direction. Manages network isolation declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a Kubernetes NetworkPolicy — the in-cluster firewall. The policy selects pods with a label selector and ALLOWS the traffic its rules describe; everything not allowed by some policy is denied once a pod is selected in that direction. Manages network isolation declaratively, with the full audit trail and versioning every Cloud Resource carries.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **NetworkPolicy on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Deny All** preset for namespace lockdown or **Allow DNS Egress** for its essential companion in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes NetworkPolicy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Deny All** preset for namespace lockdown or the **Allow DNS Egress** preset for its essential companion in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNetworkPolicy
 metadata:
   name: default-deny-all
@@ -42,8 +42,8 @@ spec:
   name: default-deny-all
   namespace:
     value: backend-services
-  pod_selector: {}
-  policy_types:
+  podSelector: {}
+  policyTypes:
     - ingress
     - egress
 ```
@@ -52,15 +52,35 @@ spec:
 planton apply -f networkpolicy.yaml
 ```
 
-This denies ALL traffic to and from every pod in `backend-services` — the lockdown baseline that targeted allow policies then open back up.
+This denies ALL traffic to and from every pod in `backend-services` — the lockdown baseline that targeted allow policies then open back up. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the policy to a namespace managed by another Cloud Resource:
+
+```yaml
+spec:
+  name: default-deny-all
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  podSelector: {}
+  policyTypes:
+    - ingress
+    - egress
+```
+
+The InfraPipeline deploys the namespace first, then applies the policy into it.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a Kubernetes NetworkPolicy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Selection is the isolation** -- An EMPTY pod selector selects ALL pods in the namespace (the default-deny building block); labels narrow it to one workload. Every Planton workload stamps the `app` label (set to its name) on its pods, so `match_labels: {app: checkout}` governs exactly that workload.
+**Selection is the isolation** -- An EMPTY pod selector selects ALL pods in the namespace (the default-deny building block); labels narrow it to one workload. Every Planton workload stamps the `app` label (set to its name) on its pods, so `matchLabels: {app: checkout}` governs exactly that workload.
 
-**Declare directions explicitly** -- When `policy_types` is omitted, Kubernetes infers: ingress always, egress only when egress rules exist. Every isolation intent should set it explicitly — a deny-all-egress policy MUST say egress (there is no rule to infer it from), and an egress-only policy that omits it also isolates ingress.
+**Declare directions explicitly** -- When `policyTypes` is omitted, Kubernetes infers: ingress always, egress only when egress rules exist. Every isolation intent should set it explicitly — a deny-all-egress policy MUST say egress (there is no rule to infer it from), and an egress-only policy that omits it also isolates ingress.
 
 **Rules are additive ORs** -- Traffic is allowed when it matches ANY rule's peers AND that rule's ports. Within a rule, empty peers mean ALL sources/destinations and empty ports mean ALL ports — an entirely empty rule allows everything in its direction.
 
@@ -72,9 +92,11 @@ These are the most important decisions when configuring a Kubernetes NetworkPoli
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace whose pods the policy governs; omitted means the cluster's `default` namespace |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+An omitted `namespace` means the cluster's `default` namespace.
 
 ### What This Component Provides
 
@@ -100,6 +122,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this policy in dependency order.
-- **Kubernetes Deployment and the other workload kinds** -- their `app` label is the selection contract; their `selector_labels` output carries the full set.
-- **Kubernetes Cilium** -- a CNI that enforces these policies (and extends them with its own richer policy language).
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference the namespace so infra charts create it and this policy in dependency order
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- its `app` label is the selection contract; its `selector_labels` output carries the full set
+- [**Cilium**](/cloud-catalog/kubernetes-cilium) -- a CNI that enforces these policies (and extends them with its own richer policy language)

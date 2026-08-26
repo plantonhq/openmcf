@@ -1,13 +1,13 @@
 # Strimzi Kafka Operator
 
-Installs the Strimzi cluster operator — the CNCF project that runs Apache Kafka on Kubernetes — from the official `strimzi-kafka-operator` Helm chart. The operator is the ENGINE: it reconciles `Kafka` custom resources (declared with Kubernetes Kafka) into KRaft-mode Kafka clusters, and its per-cluster entity operators reconcile `KafkaTopic` / `KafkaUser` resources into real topics and authenticated users. This component installs and configures the operator itself; Kafka clusters, topics, and users are declared as their own first-class Cloud Resources. Credentials are delivered through a Kubernetes Provider Connection.
+Installs the Strimzi cluster operator — the CNCF project that runs Apache Kafka on Kubernetes — from the official `strimzi-kafka-operator` Helm chart. The operator is the ENGINE: it reconciles `Kafka` custom resources (declared with Apache Kafka) into KRaft-mode Kafka clusters, and its per-cluster entity operators reconcile `KafkaTopic` / `KafkaUser` resources into real topics and authenticated users. This component installs and configures the operator itself; Kafka clusters, topics, and users are declared as their own first-class Cloud Resources.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise deploys into an existing namespace
-- **Strimzi Helm Release** — the official `strimzi-kafka-operator` chart from https://strimzi.io/charts/ at the pinned `chartVersion`
+- **Strimzi Helm Release** — the official `strimzi-kafka-operator` chart from the Strimzi chart repository at the pinned `chartVersion`
 - **Cluster Operator Deployment** — the Strimzi cluster operator pod(s); extra replicas are leader-elected warm standbys for the operator itself, not added reconciliation throughput
 - **Strimzi CRDs** — Kafka, KafkaNodePool, KafkaTopic, KafkaUser, and the rest, shipped in the chart's Helm-native `crds/` directory: installed on first install, never upgraded or deleted by Helm (uninstalling the release never cascade-deletes Kafka clusters)
 - **RBAC** — the ClusterRoles, ServiceAccounts, and bindings the operator needs (`createGlobalResources` governs the cluster-scoped set), plus per-namespace RoleBindings for a fenced watch list
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Strimzi Kafka Operator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **default** preset in the [Presets](#presets) tab for the standard posture.
+Open the deployment store, find **Strimzi Kafka Operator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default** preset in the [Presets](#presets) tab for the standard posture.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesStrimziKafkaOperator
 metadata:
   name: strimzi
@@ -53,7 +53,7 @@ spec:
 planton apply -f strimzi-operator.yaml
 ```
 
-This installs the operator watching its OWN namespace only (the chart default) — Kafka clusters declared in the `kafka` namespace are reconciled; clusters elsewhere are invisible to it. The operator creates no Kafka clusters by itself: declare them with Kubernetes Kafka resources.
+This installs the operator watching its OWN namespace only (the chart default) — Kafka clusters declared in the `kafka` namespace are reconciled; clusters elsewhere are invisible to it. The operator creates no Kafka clusters by itself: declare them with Apache Kafka resources. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -91,7 +91,7 @@ These are the most important decisions when configuring the operator. Explore th
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **KubernetesNamespace** | `namespace` | `spec.name` |
+| Kubernetes Namespace | `spec.namespace` | `spec.name` |
 
 ### What This Component Provides
 
@@ -108,15 +108,15 @@ The operator has no per-cluster surface of its own — Kafka clusters compose ag
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard install** — the pinned chart in its own-namespace posture; Kafka clusters live beside the operator. Start from the **default** preset.
+**Standard install** — the pinned chart in its own-namespace posture; Kafka clusters live beside the operator. Start from the **Default** preset.
 
-**Platform-team operator** — one operator in a dedicated control-plane namespace managing Kafka clusters in every namespace. Start from the **cluster-wide** preset.
+**Platform-team operator** — one operator in a dedicated control-plane namespace managing Kafka clusters in every namespace. Start from the **Cluster-Wide** preset.
 
-**Fenced teams** — one operator reconciling only an explicit list of team namespaces. Start from the **fenced-teams** preset (the listed namespaces must already exist).
+**Fenced teams** — one operator reconciling only an explicit list of team namespaces. Start from the **Fenced Teams** preset (the listed namespaces must already exist).
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) — provides the namespace for the operator deployment
-- [**Kubernetes Kafka**](/cloud-catalog/kubernetes-kafka) — the Kafka clusters this operator reconciles
-- [**Kubernetes Kafka Topic**](/cloud-catalog/kubernetes-kafka-topic) — topics reconciled by each cluster's entity operator
-- [**Kubernetes Kafka User**](/cloud-catalog/kubernetes-kafka-user) — authenticated users reconciled by each cluster's entity operator
+- [**Apache Kafka**](/cloud-catalog/kubernetes-kafka) — the Kafka clusters this operator reconciles
+- [**Kafka Topic**](/cloud-catalog/kubernetes-kafka-topic) — topics reconciled by each cluster's entity operator
+- [**Kafka User**](/cloud-catalog/kubernetes-kafka-user) — authenticated users reconciled by each cluster's entity operator

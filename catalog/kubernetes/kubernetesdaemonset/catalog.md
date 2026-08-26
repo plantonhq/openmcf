@@ -1,4 +1,4 @@
-# DaemonSet on Kubernetes
+# Kubernetes DaemonSet
 
 Deploys a node agent on any Kubernetes cluster as an apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's scheduling rules, and pods are added or garbage-collected as nodes join and leave. This is the kind for log shippers, node monitors, storage daemons, and CNI components. Supports the full shared workload surface (sidecars and init containers, all environment variable sources, probes, lifecycle hooks, security contexts), node coverage via selectors/affinity/tolerations, host ports and host namespaces for node-level access, and fleet-safe update strategies with surge support. Credentials are delivered through a Kubernetes Provider Connection or Runner-based delivery.
 
@@ -29,14 +29,14 @@ There is no replica count — node membership IS the replica count — and no Se
 
 ### Console
 
-Open the deployment store, find **DaemonSet on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Log Collector** preset for log forwarding with host path mounts, or **Node Monitor** for a lightweight metrics agent, in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes DaemonSet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Log Collector** preset for log forwarding with host path mounts, or **Node Monitor** for a lightweight metrics agent, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDaemonSet
 metadata:
   name: node-exporter
@@ -68,7 +68,7 @@ spec:
 planton apply -f daemonset.yaml
 ```
 
-This creates a DaemonSet running on every node including control-plane nodes, exposing node metrics on each node's own IP at port 9100.
+This creates a DaemonSet running on every node including control-plane nodes, exposing node metrics on each node's own IP at port 9100. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -136,5 +136,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the target namespace for the DaemonSet
 - [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the identity agents run as when they read the Kubernetes API
-- [**Kubernetes Rbac**](/cloud-catalog/kubernetes-rbac) -- grants the agent identity its API permissions (composed, never bundled)
+- [**Kubernetes RBAC**](/cloud-catalog/kubernetes-rbac) -- grants the agent identity its API permissions (composed, never bundled)
 - [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- image pull secrets and referenced credential material

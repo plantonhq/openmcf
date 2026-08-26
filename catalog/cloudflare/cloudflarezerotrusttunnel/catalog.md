@@ -121,5 +121,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**Cloudflare Zero Trust Tunnel Route**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- advertises private CIDRs through this tunnel
 - [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment a route belongs to
-- [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- the Access apps an ingress Access block references
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) -- the Access apps an ingress Access block references
 - [**Cloudflare DNS Record**](/cloud-catalog/cloudflare-dns-record) -- the CNAME that points a public hostname at the tunnel

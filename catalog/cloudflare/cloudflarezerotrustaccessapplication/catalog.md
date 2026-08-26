@@ -132,6 +132,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 - [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- attached via `policies[]` to decide who is admitted
 - [**Cloudflare Zero Trust Access Group**](/cloud-catalog/cloudflare-zero-trust-access-group) -- reusable identity groups the attached policies reference
-- [**Zero Trust Access Identity Provider on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-identity-provider) -- the IdPs `allowedIdps` restricts sign-in to
+- [**Cloudflare Zero Trust Access Identity Provider**](/cloud-catalog/cloudflare-zero-trust-access-identity-provider) -- the IdPs `allowedIdps` restricts sign-in to
 - [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- publishes the private origin a self-hosted application protects
 - [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- scopes a zone-level application and hosts the protected hostname

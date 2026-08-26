@@ -1,6 +1,6 @@
 # Kubernetes ServiceAccount
 
-Deploys a Kubernetes ServiceAccount -- the identity pods run as -- with inherited image pull secrets, a tri-state automatic API token mount, and optional keyless federation to a GCP service account (GKE Workload Identity), AWS IAM role (EKS IRSA), or Azure managed identity (AKS Workload Identity). Manages workload identity declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a Kubernetes ServiceAccount -- the identity pods run as -- with inherited image pull secrets, a tri-state automatic API token mount, and optional keyless federation to a GCP service account (GKE Workload Identity), AWS IAM role (EKS IRSA), or Azure managed identity (AKS Workload Identity). One identity per app is the posture that keeps least privilege auditable: workloads reference it, RBAC grants bind to it, and cloud federation attaches to it.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **ServiceAccount on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic** preset for a plain per-app identity or a **Workload Identity** preset for keyless cloud access in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes ServiceAccount**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic ServiceAccount** preset for a plain per-app identity, or **GKE Workload Identity** / **EKS IRSA (IAM Roles for Service Accounts)** for keyless cloud access, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesServiceAccount
 metadata:
   name: checkout-identity
@@ -50,7 +50,30 @@ spec:
 planton apply -f service-account.yaml
 ```
 
-This creates a hardened per-app identity in the `backend-services` namespace: pods running as it get no automatic API server token.
+This creates a hardened per-app identity in the `backend-services` namespace: pods running as it get no automatic API server token. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the identity to its namespace and cloud principal:
+
+```yaml
+spec:
+  name: checkout-identity
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  workloadIdentity:
+    eks:
+      roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: checkout-role
+          fieldPath: status.outputs.role_arn
+```
+
+The InfraPipeline deploys the namespace and the IAM role first, then creates the federated identity against them.
 
 ## Key Configuration
 
@@ -68,13 +91,13 @@ These are the most important decisions when configuring a Kubernetes ServiceAcco
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the identity is scoped to; omitted means the cluster's `default` namespace |
-| `spec.imagePullSecrets[]` | KubernetesSecret (`spec.name`) | Docker-registry Secret names every pod with this identity inherits |
-| `spec.workloadIdentity.gke.serviceAccountEmail` | GcpServiceAccount (`status.outputs.email`) | The Google service account this identity federates to |
-| `spec.workloadIdentity.eks.roleArn` | AwsIamRole (`status.outputs.role_arn`) | The IAM role this identity federates to |
-| `spec.workloadIdentity.aks.clientId` | AzureUserAssignedIdentity (`status.outputs.client_id`) | The managed identity this identity federates to |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesSecret** | `imagePullSecrets[]` | `spec.name` |
+| **GcpServiceAccount** | `workloadIdentity.gke.serviceAccountEmail` | `status.outputs.email` |
+| **AwsIamRole** | `workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
+| **AzureUserAssignedIdentity** | `workloadIdentity.aks.clientId` | `status.outputs.client_id` |
 
 ### What This Component Provides
 
@@ -91,15 +114,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Per-app identity** -- A plain ServiceAccount named for the app, referenced by its workload and its RBAC grant. Start from the **Basic** preset.
+**Per-app identity** -- A plain ServiceAccount named for the app, referenced by its workload and its RBAC grant. Start from the **Basic ServiceAccount** preset.
 
-**Keyless cloud access** -- The GKE / EKS-IRSA / AKS arm federates the identity to a cloud principal; pods call cloud APIs with zero stored keys. Start from the matching **Workload Identity** preset.
+**Keyless cloud access** -- The GKE / EKS-IRSA / AKS arm federates the identity to a cloud principal; pods call cloud APIs with zero stored keys. Start from the **GKE Workload Identity** or **EKS IRSA (IAM Roles for Service Accounts)** preset.
 
-**Private registry access** -- Registry credentials attached once via `imagePullSecrets`; every pod running as this identity pulls without per-pod configuration. Start from the **Image Pull Secrets** preset.
+**Private registry access** -- Registry credentials attached once via `imagePullSecrets`; every pod running as this identity pulls without per-pod configuration. Start from the **Image Pull Secrets with Automount Hardening** preset.
 
 ## Works With
 
-- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this identity in dependency order.
-- **Kubernetes Secret** -- docker-registry Secrets attach via `imagePullSecrets`; the Secret kind's `serviceAccountToken` variant mints long-lived tokens FOR this identity.
-- **Kubernetes RBAC** -- grants bind Kubernetes permissions to this identity as a ServiceAccount subject.
-- **Kubernetes Deployment and the other workload kinds** -- run as this identity via `serviceAccountName`.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference the namespace so infra charts create it and this identity in dependency order.
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- docker-registry Secrets attach via `imagePullSecrets`; the Secret kind's `serviceAccountToken` variant mints long-lived tokens FOR this identity.
+- [**Kubernetes RBAC**](/cloud-catalog/kubernetes-rbac) -- grants bind Kubernetes permissions to this identity as a ServiceAccount subject.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) and the other workload kinds -- run as this identity via `serviceAccountName`.

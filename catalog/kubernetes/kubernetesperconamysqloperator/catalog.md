@@ -36,7 +36,7 @@ Open the deployment store, find **Percona Operator for MySQL**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: pxc-operator
@@ -102,7 +102,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `namespace` | Namespace the operator runs in | Placing `KubernetesMysql` databases beside their operator (the default watch scope) |
-| `releaseName` | Helm release name of the operator | Identifying the installation in cluster tooling |
+| `release_name` | Helm release name of the operator | Identifying the installation in cluster tooling |
 
 The operator has no per-database surface of its own: each MySQL cluster is a `KubernetesMysql` resource composing against the CRDs this installation provides.
 
@@ -117,4 +117,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the operator deployment
-- [**Kubernetes MySQL**](/cloud-catalog/kubernetes-mysql) -- the databases this operator reconciles, one Cloud Resource per MySQL cluster
+- [**MySQL**](/cloud-catalog/kubernetes-mysql) -- the databases this operator reconciles, one Cloud Resource per MySQL cluster

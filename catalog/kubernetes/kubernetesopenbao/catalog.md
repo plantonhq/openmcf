@@ -1,6 +1,6 @@
 # OpenBao
 
-Deploys OpenBao -- the open-source secrets manager forked from HashiCorp Vault -- from the official `openbao` chart at `openbao.github.io/openbao-helm`. Three server modes cover the whole lifecycle: dev (in-memory, auto-unsealed, evaluation only), standalone (one server, file storage on a persistent volume -- the chart default), and HA (integrated Raft storage with leader election; the module synthesizes the `retry_join` stanzas the chart alone ships without, so multi-replica clusters actually form). Auto-unseal delegates master-key protection to AWS KMS, GCP Cloud KMS, Azure Key Vault, or a central instance's transit engine. Uses a Kubernetes Provider Connection for cluster access.
+Deploys OpenBao -- the open-source secrets manager forked from HashiCorp Vault -- from the official `openbao` chart at `openbao.github.io/openbao-helm`. Three server modes cover the whole lifecycle: dev (in-memory, auto-unsealed, evaluation only), standalone (one server, file storage on a persistent volume -- the chart default), and HA (integrated Raft storage with leader election; the module synthesizes the `retry_join` stanzas the chart alone ships without, so multi-replica clusters actually form). Auto-unseal delegates master-key protection to AWS KMS, GCP Cloud KMS, Azure Key Vault, or a central instance's transit engine.
 
 Know the seal lifecycle before you deploy: a fresh OpenBao server starts UNINITIALIZED and SEALED, and reports NotReady BY DESIGN until you run `bao operator init` and unseal it -- initialization is a runtime operation no deployment tool can perform declaratively. The readiness probe is `bao status`, and the chart keeps sealed pods addressable so init and unseal can reach them.
 
@@ -39,14 +39,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **OpenBao**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev Mode** preset for evaluation, **Production HA** for a Raft cluster with manual unsealing, or **Production HA GCP Auto-Unseal** for the restart-toil-free shape, in the [Presets](#presets) tab.
+Open the deployment store, find **OpenBao**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev-mode preset** for evaluation, the **Production HA (integrated Raft) preset** for a Raft cluster with manual unsealing, or the **Production HA + GCP Cloud KMS auto-unseal preset** for the restart-toil-free shape, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenBao
 metadata:
   name: openbao
@@ -55,7 +55,7 @@ metadata:
 spec:
   namespace:
     value: "openbao"
-  create_namespace: true
+  createNamespace: true
   server:
     ha:
       replicas: 3
@@ -66,9 +66,9 @@ spec:
       limits:
         cpu: "1"
         memory: 1Gi
-    data_storage:
+    dataStorage:
       size: 10Gi
-    audit_storage:
+    auditStorage:
       size: 10Gi
   metrics:
     enabled: true
@@ -91,26 +91,26 @@ spec:
       kind: KubernetesNamespace
       name: openbao-namespace
       fieldPath: spec.name
-  create_namespace: false
-  auto_unseal:
-    gcp_kms:
+  createNamespace: false
+  autoUnseal:
+    gcpKms:
       project:
         valueFrom:
           kind: GcpProject
           name: infra-project
           fieldPath: status.outputs.project_id
       region: global
-      key_ring:
+      keyRing:
         valueFrom:
           kind: GcpKmsKeyRing
           name: openbao-keyring
           fieldPath: status.outputs.key_ring_name
-      crypto_key:
+      cryptoKey:
         valueFrom:
           kind: GcpKmsKey
           name: openbao-unseal-key
           fieldPath: status.outputs.key_name
-      workload_identity_service_account:
+      workloadIdentityServiceAccount:
         valueFrom:
           kind: GcpServiceAccount
           name: openbao-sa
@@ -125,21 +125,21 @@ These are the most important decisions when configuring OpenBao. Explore the ful
 
 **Server mode** -- `server.dev`, `server.standalone`, and `server.ha` are one choice (leave all unset for the chart's standalone default). Dev mode is evaluation only: in-memory data lost on every restart, auto-initialized and auto-unsealed, the root token literally `root` in plain text in the pod spec, no PVC -- and the chart DROPS ServiceAccount annotations, so cloud workload identity does not apply there. HA mode (`server.ha.replicas`, default 3, range 1-11) runs integrated Raft: odd counts tolerate minority loss, and the module synthesizes `retry_join` for every peer -- without it a multi-replica install never forms a cluster.
 
-**Auto-unseal** -- By default every restarted pod waits SEALED for a human with unseal key shares (Shamir-mode reality). Declaring one `auto_unseal` arm (`aws_kms`, `gcp_kms`, `azure_key_vault`, or `transit`) wraps the master key with an external KMS so servers unseal THEMSELVES at startup. Initialization stays a one-time manual step -- with auto-unseal it produces RECOVERY keys instead of unseal keys. Keyless-first: prefer ambient workload identity (IRSA / GKE Workload Identity / Azure MSI) and leave the static-credential fields empty; declared credentials are org-secret references materialized into a module-owned Secret and delivered as environment variables. Version horizon: at the pinned OpenBao 2.6.x the cloud KMS seals are built in but deprecated upstream -- v2.7 moves them to external KMS plugins.
+**Auto-unseal** -- By default every restarted pod waits SEALED for a human with unseal key shares (Shamir-mode reality). Declaring one `autoUnseal` arm (`awsKms`, `gcpKms`, `azureKeyVault`, or `transit`) wraps the master key with an external KMS so servers unseal THEMSELVES at startup. Initialization stays a one-time manual step -- with auto-unseal it produces RECOVERY keys instead of unseal keys. Keyless-first: prefer ambient workload identity (IRSA / GKE Workload Identity / Azure MSI) and leave the static-credential fields empty; declared credentials are org-secret references materialized into a module-owned Secret and delivered as environment variables. Version horizon: at the pinned OpenBao 2.6.x the cloud KMS seals are built in but deprecated upstream -- v2.7 moves them to external KMS plugins.
 
-**TLS is a composite this module owns end to end** -- `tls.enabled` with `tls.cert_secret_name` switches the listener's certificate files, the Secret mount, every derived URL, and the probe scheme TOGETHER. (The chart's lone `global.tlsDisable` flag alone produces a plaintext server addressed as https -- an instant outage; the module renders all the pieces coherently.) A KubernetesCertificate reference is the natural issuer.
+**TLS is a composite this module owns end to end** -- `tls.enabled` with `tls.certSecretName` switches the listener's certificate files, the Secret mount, every derived URL, and the probe scheme TOGETHER. (The chart's lone `global.tlsDisable` flag alone produces a plaintext server addressed as https -- an instant outage; the module renders all the pieces coherently.) A KubernetesCertificate reference is the natural issuer.
 
-**Storage split** -- `server.data_storage` (default 10Gi; one PVC per replica) holds file storage in standalone and Raft data in HA; dev mode ignores it. `server.audit_storage` optionally mounts a second volume at `/openbao/audit` -- creating the volume does NOT enable auditing; run `bao audit enable file file_path=/openbao/audit/audit.log` after initialization.
+**Storage split** -- `server.dataStorage` (default 10Gi; one PVC per replica) holds file storage in standalone and Raft data in HA; dev mode ignores it. `server.auditStorage` optionally mounts a second volume at `/openbao/audit` -- creating the volume does NOT enable auditing; run `bao audit enable file file_path=/openbao/audit/audit.log` after initialization.
 
-**Agent Injector** -- OFF by default here, a deliberate divergence from the chart (whose default installs the MutatingWebhookConfiguration for every pod create/update cluster-wide). When on, `injector.failure_policy` chooses `Ignore` (fail open -- injector downtime skips injection; the default) or `Fail`; above 1 replica, leader election creates the hard-coded `openbao-injector-certs` Secret -- one multi-replica injector per namespace.
+**Agent Injector** -- OFF by default here, a deliberate divergence from the chart (whose default installs the MutatingWebhookConfiguration for every pod create/update cluster-wide). When on, `injector.failurePolicy` chooses `Ignore` (fail open -- injector downtime skips injection; the default) or `Fail`; above 1 replica, leader election creates the hard-coded `openbao-injector-certs` Secret -- one multi-replica injector per namespace.
 
-**Raft snapshots** -- `snapshot_agent` runs a CronJob (default `*/15 * * * *`) shipping `bao operator raft snapshot` to an S3-compatible bucket (an in-cluster KubernetesSeaweedFs endpoint composes naturally); `s3_expire_days` (default 14) prunes old snapshots agent-side. PREREQUISITE the module cannot create: the Kubernetes auth method and the `bao_role` it logs in with are runtime configuration inside OpenBao -- until they exist, snapshot pods fail their login. `s3_credentials_secret_name` names an existing Secret with s3cmd-style `access_key` / `secret_key` -- pods crash-loop without it.
+**Raft snapshots** -- `snapshotAgent` runs a CronJob (default `*/15 * * * *`) shipping `bao operator raft snapshot` to an S3-compatible bucket (an in-cluster KubernetesSeaweedFs endpoint composes naturally); `s3ExpireDays` (default 14) prunes old snapshots agent-side. PREREQUISITE the module cannot create: the Kubernetes auth method and the `baoRole` it logs in with are runtime configuration inside OpenBao -- until they exist, snapshot pods fail their login. `s3CredentialsSecretName` names an existing Secret with s3cmd-style `access_key` / `secret_key` -- pods crash-loop without it.
 
-**Metrics are unauthenticated when enabled** -- `metrics.enabled` renders the telemetry stanza AND opens `/v1/sys/metrics` without a token; anything that can reach the Service can read operational telemetry. `metrics.service_monitor_enabled` additionally requires the Prometheus Operator CRDs, and in HA scrapes only the active node.
+**Metrics are unauthenticated when enabled** -- `metrics.enabled` renders the telemetry stanza AND opens `/v1/sys/metrics` without a token; anything that can reach the Service can read operational telemetry. `metrics.serviceMonitorEnabled` additionally requires the Prometheus Operator CRDs, and in HA scrapes only the active node.
 
-**Workload identity and Kubernetes auth** -- `service_account.annotations` is the cloud identity seam (`eks.amazonaws.com/role-arn`, `iam.gke.io/gcp-service-account`, `azure.workload.identity/client-id`) -- the keyless path for auto-unseal KMS access. `service_account.auth_delegator_enabled` (default true) binds `system:auth-delegator`, which OpenBao's Kubernetes auth method needs to validate workload tokens via TokenReview.
+**Workload identity and Kubernetes auth** -- `serviceAccount.annotations` is the cloud identity seam (`eks.amazonaws.com/role-arn`, `iam.gke.io/gcp-service-account`, `azure.workload.identity/client-id`) -- the keyless path for auto-unseal KMS access. `serviceAccount.authDelegatorEnabled` (default true) binds `system:auth-delegator`, which OpenBao's Kubernetes auth method needs to validate workload tokens via TokenReview.
 
-**The escape hatch** -- `helm_values` merges LAST over everything the typed fields render (Helm `-f` semantics): the CSI provider, injector webhook selectors, extra volumes, the lab-only anti-affinity relaxation. The module re-pins `fullnameOverride` after the merge so the exported Service names stay stable. Never put secret material in this document.
+**The escape hatch** -- `helmValues` merges LAST over everything the typed fields render (Helm `-f` semantics): the CSI provider, injector webhook selectors, extra volumes, the lab-only anti-affinity relaxation. The module re-pins `fullnameOverride` after the merge so the exported Service names stay stable. Never put secret material in this document.
 
 ## Outputs and Dependencies
 
@@ -148,13 +148,13 @@ These are the most important decisions when configuring OpenBao. Explore the ful
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **KubernetesNamespace** | `namespace` | `spec.name` |
-| **KubernetesStorageClass** (optional) | `server.data_storage.storage_class` / `server.audit_storage.storage_class` | `status.outputs.storage_class_name` |
-| **KubernetesCertificate** (optional) | `tls.cert_secret_name` | `status.outputs.secret_name` |
-| **GcpProject** (optional) | `auto_unseal.gcp_kms.project` | `status.outputs.project_id` |
-| **GcpKmsKeyRing** (optional) | `auto_unseal.gcp_kms.key_ring` | `status.outputs.key_ring_name` |
-| **GcpKmsKey** (optional) | `auto_unseal.gcp_kms.crypto_key` | `status.outputs.key_name` |
-| **GcpServiceAccount** (optional) | `auto_unseal.gcp_kms.workload_identity_service_account` | `status.outputs.email` |
-| **KubernetesSeaweedFs** (optional) | `snapshot_agent.s3_host` | `status.outputs.s3_endpoint` |
+| **KubernetesStorageClass** (optional) | `server.dataStorage.storageClass` / `server.auditStorage.storageClass` | `status.outputs.storage_class_name` |
+| **KubernetesCertificate** (optional) | `tls.certSecretName` | `status.outputs.secret_name` |
+| **GcpProject** (optional) | `autoUnseal.gcpKms.project` | `status.outputs.project_id` |
+| **GcpKmsKeyRing** (optional) | `autoUnseal.gcpKms.keyRing` | `status.outputs.key_ring_name` |
+| **GcpKmsKey** (optional) | `autoUnseal.gcpKms.cryptoKey` | `status.outputs.key_name` |
+| **GcpServiceAccount** (optional) | `autoUnseal.gcpKms.workloadIdentityServiceAccount` | `status.outputs.email` |
+| **KubernetesSeaweedFs** (optional) | `snapshotAgent.s3Host` | `status.outputs.s3_endpoint` |
 
 ### What This Component Provides
 
@@ -178,18 +178,18 @@ Deliberately absent: root tokens and unseal/recovery keys are produced by the ru
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dev mode** -- Zero ceremony: auto-initialized, auto-unsealed, root token `root`, all data in memory. Evaluation and API integration work only -- never real secrets. Start from the **Dev Mode** preset.
+**Dev mode** -- Zero ceremony: auto-initialized, auto-unsealed, root token `root`, all data in memory. Evaluation and API integration work only -- never real secrets. Start from the **Dev-mode preset**.
 
-**Production HA (Raft)** -- Three servers with integrated Raft storage, per-replica data PVCs, an audit volume, and metrics on. Initialization and unsealing are yours; after every pod restart the affected server waits sealed. Start from the **Production HA** preset.
+**Production HA (Raft)** -- Three servers with integrated Raft storage, per-replica data PVCs, an audit volume, and metrics on. Initialization and unsealing are yours; after every pod restart the affected server waits sealed. Start from the **Production HA (integrated Raft) preset**.
 
-**Production HA + GCP auto-unseal** -- The HA shape with the restart toil removed: the master key wrapped by a Cloud KMS crypto key via GKE Workload Identity -- no static credential anywhere. Start from the **Production HA GCP Auto-Unseal** preset.
+**Production HA + GCP auto-unseal** -- The HA shape with the restart toil removed: the master key wrapped by a Cloud KMS crypto key via GKE Workload Identity -- no static credential anywhere. Start from the **Production HA + GCP Cloud KMS auto-unseal preset**.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the OpenBao install
-- [**Kubernetes Storage Class**](/cloud-catalog/kubernetes-storage-class) -- backs the data and audit persistent volumes
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) -- issues the server TLS certificate Secret
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) -- backs the data and audit persistent volumes
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- issues the server TLS certificate Secret
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- wraps the master key for GCP Cloud KMS auto-unseal
 - [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- the workload identity for keyless KMS access
-- [**Kubernetes SeaweedFS**](/cloud-catalog/kubernetes-seaweed-fs) -- an in-cluster S3 endpoint for Raft snapshots
-- [**Kubernetes External Secrets**](/cloud-catalog/kubernetes-external-secrets) -- consumes the `api_endpoint` output as a ClusterSecretStore backend
+- [**SeaweedFS**](/cloud-catalog/kubernetes-seaweed-fs) -- an in-cluster S3 endpoint for Raft snapshots
+- [**External Secrets Operator**](/cloud-catalog/kubernetes-external-secrets-operator) -- consumes the `api_endpoint` output as a ClusterSecretStore backend

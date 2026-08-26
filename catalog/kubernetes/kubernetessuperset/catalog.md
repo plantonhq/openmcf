@@ -1,6 +1,6 @@
 # Apache Superset
 
-Declares one Apache Superset install -- the open-source BI platform: dashboards, charts, and SQL Lab over any SQLAlchemy-speaking database. The official Helm chart renders the web tier (`supersetNode`, gunicorn on port 8088) against ONE required input: an external PostgreSQL metadata database, where dashboards, charts, users, saved queries and the ENCRYPTED datasource credentials live -- the chart's bundled PostgreSQL/Redis subcharts ride frozen legacy image lines and NEVER ship from this kind. SECURED BY DEFAULT: the session-signing `SECRET_KEY` (Superset refuses to start on its insecure default) and the bootstrap admin password are module-generated Secrets -- the chart's documented admin/admin default never deploys -- and every credential rides environment references composed into a module-owned Secret at apply time, never rendered literals. Declaring a cache/broker forks the install async: Celery workers execute SQL Lab queries, thumbnails and reports; beat fires the schedules; optional websocket and MCP arms add live result push and an AI-agent surface. Uses a Kubernetes Provider Connection for cluster access.
+Declares one Apache Superset install -- the open-source BI platform: dashboards, charts, and SQL Lab over any SQLAlchemy-speaking database. The official Helm chart renders the web tier (`supersetNode`, gunicorn on port 8088) against ONE required input: an external PostgreSQL metadata database, where dashboards, charts, users, saved queries and the ENCRYPTED datasource credentials live -- the chart's bundled PostgreSQL/Redis subcharts ride frozen legacy image lines and NEVER ship from this kind. SECURED BY DEFAULT: the session-signing `SECRET_KEY` (Superset refuses to start on its insecure default) and the bootstrap admin password are module-generated Secrets -- the chart's documented admin/admin default never deploys -- and every credential rides environment references composed into a module-owned Secret at apply time, never rendered literals. Declaring a cache/broker forks the install async: Celery workers execute SQL Lab queries, thumbnails and reports; beat fires the schedules; optional websocket and MCP arms add live result push and an AI-agent surface.
 
 ## What Gets Created
 
@@ -11,7 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
   - The web Deployment (`<name>-superset`, port 8088) -- the UI and REST API; 1 replica by default, optionally HPA-scaled
   - The init Job -- migrates the metadata schema (`superset db upgrade`), creates the bootstrap admin, optionally loads example dashboards
   - With a cache declared: the Celery worker Deployment, the beat scheduler (a SINGLETON by design), and optionally flower (port 5555), the websocket server, and the MCP server (port 5008)
-  - Config rendered with checksum annotations, so `config_overrides` / `feature_flags` changes roll the pods automatically
+  - Config rendered with checksum annotations, so `configOverrides` / `featureFlags` changes roll the pods automatically
 - **Module-owned Secrets** -- the environment Secret (`<name>-env`, the chart's runtime-credential contract composed from YOUR referenced database/cache Secrets), the session-signing key (`<name>-secret-key`, STABLE across applies), the admin credential (`<name>-admin-auth`), and with websockets a shared JWT (`<name>-ws-jwt`)
 - **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
@@ -40,7 +40,7 @@ Open the deployment store, find **Apache Superset**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSuperset
 metadata:
   name: team-bi
@@ -48,14 +48,14 @@ metadata:
   env: prod
 spec:
   namespace:
-    value: "superset"
-  create_namespace: true
-  metadata_database:
+    value: superset
+  createNamespace: true
+  metadataDatabase:
     host:
-      value: "superset-pg-rw.superset.svc"
-    password_secret:
-      secret_name:
-        value: "superset-pg-app"
+      value: superset-pg-rw.superset.svc
+    passwordSecret:
+      secretName:
+        value: superset-pg-app
 ```
 
 ```shell
@@ -71,15 +71,15 @@ When deploying as part of a multi-resource environment, use ValueFromRef to wire
 ```yaml
 spec:
   namespace:
-    value: "analytics"
-  metadata_database:
+    value: analytics
+  metadataDatabase:
     host:
       valueFrom:
         kind: KubernetesPostgres
         name: superset-pg
         fieldPath: status.outputs.rw_service
-    password_secret:
-      secret_name:
+    passwordSecret:
+      secretName:
         valueFrom:
           kind: KubernetesPostgres
           name: superset-pg
@@ -90,8 +90,8 @@ spec:
         kind: KubernetesValkey
         name: superset-cache
         fieldPath: status.outputs.service
-    password_secret:
-      secret_name:
+    passwordSecret:
+      secretName:
         valueFrom:
           kind: KubernetesValkey
           name: superset-cache
@@ -106,19 +106,19 @@ These are the most important decisions when configuring Superset. Explore the fu
 
 **The metadata database is the one required input, read this first** -- dashboards, charts, users, saved queries and the ENCRYPTED datasource credentials all live there; the Superset pods are otherwise stateless. It is ALWAYS external (the bundled subchart never ships). The database itself must PRE-EXIST -- on a KubernetesPostgres declare it at bootstrap (`initdb.database`); the init Job creates and migrates the schema under the configured user ("superset" by default). The password rides a Secret reference, never a literal.
 
-**The cache is THE FORK** -- absent, this is the web-only Superset: every query runs synchronously and the whole Celery family (workers, beat, flower, websockets, MCP) must stay off -- the spec's own rules enforce it. Declared (a composed KubernetesValkey, or any Redis-protocol store), it becomes the query cache, the Celery broker and the async-results backend in one. The credential is OPTIONAL (absence = an auth-less store); `cache_db`/`celery_db` are Redis database numbers 0-15 where an explicit 0 is a real database (blank = the chart defaults 1/0).
+**The cache is THE FORK** -- absent, this is the web-only Superset: every query runs synchronously and the whole Celery family (workers, beat, flower, websockets, MCP) must stay off -- the spec's own rules enforce it. Declared (a composed KubernetesValkey, or any Redis-protocol store), it becomes the query cache, the Celery broker and the async-results backend in one. The credential is OPTIONAL (absence = an auth-less store); `cacheDb`/`celeryDb` are Redis database numbers 0-15 where an explicit 0 is a real database (blank = the chart defaults 1/0).
 
 **The worker dial is DEFAULT-TRUE** -- with the cache declared, an UNSET `worker.enabled` means the fleet RUNS (async SQL Lab queries, thumbnails, and alerts & reports execute there); the explicit FALSE is the deliberate web+cache-only opt-out (query caching without async execution). Beat is the SINGLETON clock that makes schedules FIRE -- off means alert schedules exist in the UI but nothing runs them; it requires the cache and the worker not explicitly disabled. Flower ships NO authentication of its own -- anyone reaching its Service sees task payloads INCLUDING EXECUTED SQL; keep it off or fence it with a NetworkPolicy.
 
 **THE ROTATION STORY** -- the session-signing `SECRET_KEY` signs sessions AND encrypts the stored datasource credentials. The module generates it into `<name>-secret-key` and keeps it STABLE across applies. Changing it logs out every session and ORPHANS every stored datasource credential -- rotate only via `superset re-encrypt-secrets` with the old key in `PREVIOUS_SECRET_KEY`.
 
-**THE DRIVER STORY, verified live** -- the official image is the driver-less "lean" build; even the PostgreSQL metadata driver ships only in dev/ci variants. The module's default `bootstrap_script` installs the exact psycopg2 pin -- and DECLARING a script REPLACES that default ENTIRELY: keep a driver install in it or the pods crash-loop with "No module named 'psycopg2'". Installs must target the app's venv (`uv pip install --python /app/.venv/bin/python <driver>`) -- the image's plain `pip` installs invisibly into the system interpreter. pip at container start needs internet and re-runs on every restart; for production bake a custom image and set the script to a no-op.
+**THE DRIVER STORY, verified live** -- the official image is the driver-less "lean" build; even the PostgreSQL metadata driver ships only in dev/ci variants. The module's default `bootstrapScript` installs the exact psycopg2 pin -- and DECLARING a script REPLACES that default ENTIRELY: keep a driver install in it or the pods crash-loop with "No module named 'psycopg2'". Installs must target the app's venv (`uv pip install --python /app/.venv/bin/python <driver>`) -- the image's plain `pip` installs invisibly into the system interpreter. pip at container start needs internet and re-runs on every restart; for production bake a custom image and set the script to a no-op.
 
-**Configuration is four surfaces** -- `feature_flags` (name → bool: `DASHBOARD_RBAC`, `ALERT_REPORTS`, `GLOBAL_ASYNC_QUERIES`), `config_overrides` (name → raw python appended to `superset_config.py` -- OAuth providers, row limits, timeouts), `extra_env` (plain values), and `extra_env_from_secret` (name → Secret reference). The pairing that keeps credentials out of every rendered surface: read secret values in overrides via `os.environ.get(...)` and declare them as secret-backed variables -- literals in overrides also sit in rendered Helm values.
+**Configuration is four surfaces** -- `featureFlags` (name → bool: `DASHBOARD_RBAC`, `ALERT_REPORTS`, `GLOBAL_ASYNC_QUERIES`), `configOverrides` (name → raw python appended to `superset_config.py` -- OAuth providers, row limits, timeouts), `extraEnv` (plain values), and `extraEnvFromSecret` (name → Secret reference). The pairing that keeps credentials out of every rendered surface: read secret values in overrides via `os.environ.get(...)` and declare them as secret-backed variables -- literals in overrides also sit in rendered Helm values.
 
 **Realtime is two opt-in arms** -- `websockets` switches the `GLOBAL_ASYNC_QUERIES` transport to `ws` automatically (results push instead of polling; the shared JWT is module-generated), but its chart-default image is a COMMUNITY build with an UNPINNED tag -- pin deliberately for production. `mcp` (the Model Context Protocol server, port 5008) exposes dashboards and datasets to AI agents but requires the `fastmcp` python extra the official image does NOT include -- a custom image or a bootstrap-script install, or its pods crash-loop.
 
-**The escape hatch, merged LAST** -- `helm_values` is raw chart values with Helm `-f` semantics for what the typed fields don't model. The module RE-PINS security-critical values AFTER the merge: the bundled postgresql/redis subcharts stay OFF and the chart's own env Secret stays OFF -- those cannot be silently re-enabled from here. NEVER secret material.
+**The escape hatch, merged LAST** -- `helmValues` is raw chart values with Helm `-f` semantics for what the typed fields don't model. The module RE-PINS security-critical values AFTER the merge: the bundled postgresql/redis subcharts stay OFF and the chart's own env Secret stays OFF -- those cannot be silently re-enabled from here. NEVER secret material.
 
 ## Outputs and Dependencies
 
@@ -126,10 +126,10 @@ These are the most important decisions when configuring Superset. Explore the fu
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **KubernetesPostgres** | `metadata_database.host` | `status.outputs.rw_service` |
-| **KubernetesPostgres** | `metadata_database.password_secret.secret_name` | `status.outputs.password_secret.name` |
-| **KubernetesValkey** | `cache.host` | `status.outputs.service` |
-| **KubernetesValkey** | `cache.password_secret.secret_name` | `status.outputs.password_secret.name` |
+| PostgreSQL | `spec.metadataDatabase.host` | `status.outputs.rw_service` |
+| PostgreSQL | `spec.metadataDatabase.passwordSecret.secretName` | `status.outputs.password_secret.name` |
+| Valkey | `spec.cache.host` | `status.outputs.service` |
+| Valkey | `spec.cache.passwordSecret.secretName` | `status.outputs.password_secret.name` |
 
 ### What This Component Provides
 
@@ -158,8 +158,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) -- the metadata database; the `metadata_database` foreign-key defaults point at it
-- [**Kubernetes Valkey**](/cloud-catalog/kubernetes-valkey) -- the natural cache/broker; the `cache` foreign-key defaults point at it
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the metadata database; the `metadataDatabase` foreign-key defaults point at it
+- [**Valkey**](/cloud-catalog/kubernetes-valkey) -- the natural cache/broker; the `cache` foreign-key defaults point at it
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the deployment
-- [**Kubernetes Trino**](/cloud-catalog/kubernetes-trino) -- the federated SQL engine Superset naturally fronts; connect its exported coordinator endpoint as a datasource
-- [**Kubernetes Kube Prometheus Stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- cluster monitoring for the web and worker tiers
+- [**Trino**](/cloud-catalog/kubernetes-trino) -- the federated SQL engine Superset naturally fronts; connect its exported coordinator endpoint as a datasource
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- cluster monitoring for the web and worker tiers

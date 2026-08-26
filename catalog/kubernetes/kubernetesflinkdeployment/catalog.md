@@ -35,14 +35,14 @@ The apply is deliberately NON-blocking: the CR applies and the operator reconcil
 
 ### Console
 
-Open the deployment store, find **Flink Deployment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Application Stateless** preset for the recommended one-cluster-per-pipeline grain, or **Stateful HA S3** for the full durable-state posture in the [Presets](#presets) tab.
+Open the deployment store, find **Flink Deployment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Application (stateless) preset** for the recommended one-cluster-per-pipeline grain, or the **Stateful HA-on-S3 preset** for the full durable-state posture, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesFlinkDeployment
 metadata:
   name: orders-pipeline
@@ -51,11 +51,11 @@ metadata:
 spec:
   namespace:
     value: "stream-processing"
-  create_namespace: true
-  flink_version: v2_1
+  createNamespace: true
+  flinkVersion: v2_1
   image: registry.example.com/pipelines/orders:2.1
   job:
-    jar_uri: local:///opt/pipeline/orders.jar
+    jarUri: local:///opt/pipeline/orders.jar
     parallelism: 4
 ```
 
@@ -76,7 +76,7 @@ spec:
       kind: KubernetesNamespace
       name: stream-processing-namespace
       fieldPath: spec.name
-  create_namespace: false
+  createNamespace: false
   state:
     s3:
       endpoint:
@@ -135,14 +135,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Application cluster, stateless pipeline** -- One cluster per pipeline, a custom image with the job jar baked in, no durable state: correct ONLY for pipelines with no state worth carrying across upgrades. Start from the **Application Stateless** preset.
+**Application cluster, stateless pipeline** -- One cluster per pipeline, a custom image with the job jar baked in, no durable state: correct ONLY for pipelines with no state worth carrying across upgrades. Start from the **Application (stateless) preset**.
 
-**Stateful, HA, savepoint upgrades on composed S3** -- The full durable-state posture: checkpoints, savepoints, and HA metadata on S3-compatible storage, a standby JobManager, `savepoint` upgrade mode, and the S3 seam composed from a KubernetesSeaweedFs. Start from the **Stateful HA S3** preset.
+**Stateful, HA, savepoint upgrades on composed S3** -- The full durable-state posture: checkpoints, savepoints, and HA metadata on S3-compatible storage, a standby JobManager, `savepoint` upgrade mode, and the S3 seam composed from a KubernetesSeaweedFs. Start from the **Stateful HA-on-S3 preset**.
 
 **Session cluster** -- `flinkVersion` and sizing only, no `job`: an empty Flink runtime for many short-lived jobs sharing warm capacity, submitted via FlinkSessionJob CRs or the REST API at `rest_endpoint`.
 
 ## Works With
 
-- [**Kubernetes Flink Operator**](/cloud-catalog/kubernetes-flink-operator) -- the PREREQUISITE: reconciles this declaration; its watch scope must cover this namespace
+- [**Flink Operator**](/cloud-catalog/kubernetes-flink-operator) -- the PREREQUISITE: reconciles this declaration; its watch scope must cover this namespace
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the deployment
-- [**Kubernetes Seaweed FS**](/cloud-catalog/kubernetes-seaweed-fs) -- the composed S3-compatible object store for checkpoints, savepoints, and HA metadata; the `state.s3` foreign-key defaults point at it
+- [**SeaweedFS**](/cloud-catalog/kubernetes-seaweed-fs) -- the composed S3-compatible object store for checkpoints, savepoints, and HA metadata; the `state.s3` foreign-key defaults point at it

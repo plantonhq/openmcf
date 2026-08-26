@@ -1,4 +1,4 @@
-# Destination Rule on Kubernetes
+# Istio Destination Rule
 
 Defines an Istio DestinationRule: a namespaced resource that tunes *how* traffic is sent to a service once routing has chosen it. It controls load balancing, connection-pool sizing, circuit breaking (outlier detection), and the TLS the sidecar originates upstream, and it can carve a service into named subsets (versions) that route rules target. This is how you add resilience, session affinity, and secure egress to a service without changing the application.
 
@@ -6,18 +6,9 @@ Defines an Istio DestinationRule: a namespaced resource that tunes *how* traffic
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **A DestinationRule** -- a namespaced Istio policy that applies a traffic policy to a service host, plus any named subsets and per-port overrides.
-- **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking.
+- **DestinationRule** -- a namespaced `networking.istio.io/v1` policy applying the declared traffic policy to a service host, plus any named subsets and per-port overrides. istiod picks it up and programs every sidecar (or only the sidecars matched by `workloadSelector`) accordingly.
 
-## What It Controls
-
-- **Host** -- the service from the registry this rule applies to (a Kubernetes service or a host declared by a ServiceEntry). A rule for an unknown host is ignored.
-- **Traffic Policy** -- load balancing (simple algorithm or consistent-hash session affinity, plus locality settings and warmup), connection-pool limits (TCP and HTTP), outlier detection (circuit breaking), and the client TLS the sidecar originates upstream. Settings apply across all ports unless a per-port override is set.
-- **Subsets** -- named versions of the service selected by label, each able to override the traffic policy. Route rules send traffic to subsets by name for canary and blue/green rollouts.
-
-## Important Behavior
-
-The traffic policy is optional -- an empty policy means Envoy's defaults apply. Per-port overrides **fully replace** the destination-level policy for that port (there is no field-level merge), so set everything a port needs inside its override. A subset's policy only takes effect once a route rule actually sends traffic to that subset. For short host names, istiod resolves the host relative to this rule's namespace, so prefer fully-qualified hosts. The `host` is a foreign key defaulting to a Kubernetes Service reference: wiring it with `valueFrom` orders this rule after the Service whose traffic it shapes and can never drift from the Service's actual name, while a literal `value:` covers ServiceEntry hosts, external FQDNs, and wildcards. The `workload_selector` and TLS `credential_name` remain plain runtime references (no dependency edge) -- order this rule after the workloads or secret it uses with `metadata.relationships`.
+The rule is pure configuration: no pods, no Services. A rule written for a host that is not in the service registry (no Kubernetes Service and no ServiceEntry) is silently ignored -- deploying it "succeeds" while doing nothing.
 
 ## Before You Deploy
 
@@ -28,21 +19,22 @@ The traffic policy is optional -- an empty policy means Envoy's defaults apply. 
 
 ### Kubernetes Cluster
 
-- **Istio installed** -- the Istio CRDs (Istio Base CRDs on Kubernetes) must be present and the Istio control plane (istiod) running. The rule is only honored where istiod is active.
+- **Istio installed** -- the Istio CRDs (deploy **Istio Base CRDs**) must be present and the Istio control plane (istiod) running. The rule is only honored where istiod is active.
 - **Target namespace exists** -- the rule is created in a specific namespace; reference an existing one or create it first.
+- **The host in the registry** -- a Kubernetes Service for in-mesh destinations, or a ServiceEntry for external hosts (only needed for egress rules).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Destination Rule on Kubernetes**, and click **Deploy**. The creation wizard walks you through the namespace, the destination host, the traffic policy, and any subsets, with guidance at each step.
+Open the deployment store, find **Istio Destination Rule**, and click **Deploy**. The creation wizard walks you through the namespace, the destination host, the traffic policy, and any subsets. Start from the **Circuit Breaking & Outlier Detection** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesDestinationRule
 metadata:
   name: reviews-circuit-breaker
@@ -73,40 +65,73 @@ spec:
 planton apply -f destination-rule.yaml
 ```
 
-This caps how many connections and requests callers push at `reviews`, and ejects any host that returns five consecutive 5xx errors -- classic circuit breaking that keeps a struggling backend from taking down its callers.
+This caps how many connections and requests callers push at `reviews`, and ejects any host that returns five consecutive 5xx errors -- classic circuit breaking that keeps a struggling backend from taking down its callers. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the host to the Service whose traffic this rule shapes:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: prod-apps-namespace
+      fieldPath: spec.name
+  host:
+    valueFrom:
+      kind: KubernetesService
+      name: reviews
+      fieldPath: status.outputs.kube_endpoint
+```
+
+The InfraPipeline deploys the namespace and Service first, then provisions the DestinationRule against the resolved host -- the rule can never drift from the Service's actual name.
 
 ## Key Configuration
 
-- **Namespace** -- the namespace the rule is created in. It is fixed once created; short host names resolve relative to it.
-- **Host** -- the service registry host the rule applies to: reference a Planton-managed Kubernetes Service (the rule then deploys after it), or pass a literal fully-qualified name (e.g. `reviews.prod.svc.cluster.local`) for ServiceEntry hosts and external services.
-- **Traffic Policy** -- **load balancing** (Least Request / Round Robin / Random / Passthrough, or consistent-hash on a header, cookie, source IP, or query parameter), **connection pool** (TCP connection caps and timeouts; HTTP request and retry limits), **outlier detection** (consecutive 5xx, scan interval, ejection time and cap), **TLS** (Disable / Simple / Mutual / Istio Mutual), and a **retry budget** bounding concurrent retries as a share of active traffic.
-- **Subsets** -- named versions selected by labels, each with optional traffic-policy overrides.
+These are the most important decisions when configuring a DestinationRule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Host: reference or literal** -- referencing a Planton-managed Kubernetes Service through `valueFrom` orders this rule after the Service and pins the rule to its real in-cluster FQDN. A literal `value:` covers everything else: ServiceEntry hosts, external FQDNs, wildcards. Prefer fully-qualified hosts either way -- istiod resolves short names relative to this rule's namespace, and a rule that resolves against the wrong namespace applies to nothing.
+
+**Per-port overrides fully replace, never merge** -- a `portLevelSettings` entry replaces the entire destination-level policy for that port; there is no field-level merge. Set everything a port needs inside its override, or the destination-level settings you thought applied silently stop applying on that port.
+
+**Outlier detection is the circuit breaker** -- `consecutive5xxErrors`, the scan `interval`, `baseEjectionTime`, and `maxEjectionPercent` decide when a failing endpoint is ejected and for how long. Cap `maxEjectionPercent` below 100 unless you are prepared for the rule to eject every endpoint of a uniformly failing service and fail all traffic outright.
+
+**Connection-pool limits protect the caller, not the callee** -- `tcp.maxConnections` and the HTTP request caps bound what the *client-side* sidecars will push. Undersized pools surface as 503s under load with a healthy backend -- size them from observed peak concurrency, not defaults.
+
+**Subsets only bite when routed** -- a subset's traffic policy takes effect once a route rule actually sends traffic to that subset by name. Defining subsets without the accompanying routing is a silent no-op; plan the two together for canary and blue/green rollouts.
+
+**Upstream TLS mode is an egress decision** -- `tls.mode` (DISABLE / SIMPLE / MUTUAL / ISTIO_MUTUAL) sets what the sidecar originates toward the destination. MUTUAL with a `credentialName` presents client certificates from a Kubernetes secret; the secret reference is runtime-only (no dependency edge), so order this rule after the secret with `metadata.relationships`.
+
+**Scope with workloadSelector deliberately** -- `workloadSelector` is a plain label match applied at runtime by istiod, not a foreign key: it creates no dependency edge and no deploy-time validation. Without it the rule applies to every sidecar in the namespace that talks to the host.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Dependency | Description |
-|------------|-------------|
-| `namespace` | The namespace the rule is created in. Reference an existing Namespace on Kubernetes or supply the name directly. |
-| `host` | The service whose traffic this rule shapes. Reference an existing Kubernetes Service (resolves to its in-cluster FQDN and orders the rule after it) or supply a literal host for ServiceEntry hosts, external FQDNs, and wildcards. |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesService** | `host` | `status.outputs.kube_endpoint` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources and operators can reference:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `destination_rule_name` | Name of the created DestinationRule (equals `metadata.name`) | Ordering resources that depend on the rule being in place |
-| `namespace` | The namespace the rule was created in | Confirming where the rule applies |
+A DestinationRule is a policy resource consumed by istiod -- it has no controller-reconciled status worth exporting. `status.outputs` carries only the resource identity (`destination_rule_name`, `namespace`), both echoes of what the manifest declared; downstream resources have nothing to consume from it.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-- **Circuit breaking and outlier detection** -- cap connection-pool size and eject hosts that keep returning errors, so a struggling backend cannot take down its callers and the mesh routes around unhealthy endpoints. Start from the **circuit-breaking-outlier-detection** preset.
-- **mTLS origination to an egress host** -- have the sidecar originate mutual TLS to an external service, presenting client certificates loaded from a Kubernetes secret, so in-mesh workloads can reach a partner API or managed database that requires client-cert auth. Start from the **mtls-origination-egress** preset.
+**Circuit breaking and outlier detection** -- cap connection-pool size and eject hosts that keep returning errors, so a struggling backend cannot take down its callers and the mesh routes around unhealthy endpoints. Start from the **Circuit Breaking & Outlier Detection** preset.
+
+**mTLS origination to an egress host** -- have the sidecar originate mutual TLS to an external service, presenting client certificates loaded from a Kubernetes secret, so in-mesh workloads can reach a partner API or managed database that requires client-cert auth. Pair with a ServiceEntry that brings the host into the registry. Start from the **mTLS Origination to an Egress Host** preset.
+
+**Session affinity for stateful backends** -- consistent-hash load balancing on a cookie or header pins each client to one endpoint, trading balanced load for cache locality and sticky sessions.
 
 ## Works With
 
-DestinationRule is part of the Istio traffic-management family. It requires the Istio Base CRDs on Kubernetes and a running Istio control plane. It pairs naturally with a **Service Entry** (to bring an external host into the registry so this rule can configure it), a **VirtualService** (to route traffic across the subsets this rule defines), and a **Peer Authentication** (the shared workload selector scopes the rule to specific sidecars). Referencing a Kubernetes Service for the host gives the rule its dependency edge automatically; for the workloads or TLS secret it uses, express ordering through `metadata.relationships`.
+- [**Istio Base CRDs**](/cloud-catalog/kubernetes-istio-base-crds) -- the prerequisite CRDs the DestinationRule kind is defined by
+- [**Istio**](/cloud-catalog/kubernetes-istio) -- the control plane (istiod) that reads the rule and programs the sidecars
+- [**Kubernetes Service**](/cloud-catalog/kubernetes-service) -- the in-mesh destination whose traffic the rule shapes; the `host` foreign key targets it
+- [**Istio Service Entry**](/cloud-catalog/kubernetes-service-entry) -- brings an external host into the registry so this rule can configure egress to it
+- [**Istio Peer Authentication**](/cloud-catalog/kubernetes-peer-authentication) -- the mTLS acceptance side; a shared workload selector scopes both to the same sidecars
