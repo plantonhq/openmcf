@@ -8,8 +8,9 @@ spec:
   name: "@"
   type: CAA
   ttl: 3600
-  data:
-    caa:
-      flags: 0
-      tag: issue
-      value: letsencrypt.org
+  # The typed record data is a proto oneof: its active case (caa, srv, ...)
+  # sits at the spec top level -- never under a `data:` wrapper key.
+  caa:
+    flags: 0
+    tag: issue
+    value: letsencrypt.org

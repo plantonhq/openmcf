@@ -8,9 +8,10 @@ spec:
   name: _sip._tcp
   type: SRV
   ttl: 3600
-  data:
-    srv:
-      priority: 10
-      weight: 5
-      port: 5060
-      target: <service-hostname>
+  # The typed record data is a proto oneof: its active case (srv, caa, ...)
+  # sits at the spec top level -- never under a `data:` wrapper key.
+  srv:
+    priority: 10
+    weight: 5
+    port: 5060
+    target: <service-hostname>

@@ -66,24 +66,25 @@ module "dns_record" {
 | `name` | string | Yes | - | DNS record name |
 | `type` | string | Yes | - | Record type (any of the 21 Cloudflare types) |
 | `content` | string | Cond. | "" | Value for simple types (A/AAAA/CNAME/MX/NS/PTR/TXT/OPENPGPKEY) |
-| `data` | object | Cond. | - | Typed block for structured types (one of caa/cert/dnskey/ds/https/loc/naptr/smimea/srv/sshfp/svcb/tlsa/uri) |
+| `caa`/`cert`/`dnskey`/`ds`/`https`/`loc`/`naptr`/`smimea`/`srv`/`sshfp`/`svcb`/`tlsa`/`uri` | object | Cond. | - | Typed block for structured types, at the spec top level (the proto oneof's active case; the tfvars converter never emits a `data` wrapper key) |
 | `proxied` | bool | No | false | Proxy through Cloudflare (A/AAAA/CNAME only) |
 | `ttl` | number | No | 1 | TTL in seconds (0/1 = auto, or 30-86400) |
-| `priority` | number | No | 0 | Priority for MX records |
+| `priority` | number | No | 0 | Priority for MX records only. SRV/URI priorities live inside their typed blocks; the module mirrors those into the API's top-level priority field automatically (Cloudflare fills it on its own, and an unmirrored config drifts on every re-plan) |
 | `comment` | string | No | "" | Comment |
 | `tags` | list(string) | No | [] | Custom record tags |
 | `settings` | object | No | - | `ipv4_only`, `ipv6_only`, `flatten_cname` (proxied records) |
 
-Exactly one of `content` or a `data` block must be set, matching the record `type`.
+Exactly one of `content` or a typed data block must be set, matching the record `type`.
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
 | `record_id` | Cloudflare DNS record ID |
-| `record_name` | The record name as stored by Cloudflare |
+| `record_name` | The record name as declared (relative to the zone; Cloudflare answers reads with the full FQDN) |
 | `record_type` | DNS record type |
 | `proxied` | Whether record is proxied |
+| `zone_id` | The zone the record lives in (a record's API identity is zone_id + record_id) |
 
 ## Examples
 
@@ -106,13 +107,11 @@ spec = {
   zone_id = { value = "abc123" }
   name    = "_sip._tcp"
   type    = "SRV"
-  data = {
-    srv = {
-      priority = 10
-      weight   = 5
-      port     = 5060
-      target   = "sip.example.com"
-    }
+  srv = {
+    priority = 10
+    weight   = 5
+    port     = 5060
+    target   = "sip.example.com"
   }
 }
 ```
@@ -129,7 +128,7 @@ Verify the `zone_id` matches an existing Cloudflare zone.
 
 ### "invalid record type"
 
-Ensure `type` is one of the 21 supported Cloudflare record types, and that you supply `content` for simple types or the matching `data` block for structured types.
+Ensure `type` is one of the 21 supported Cloudflare record types, and that you supply `content` for simple types or the matching typed block (`srv`, `caa`, ...) for structured types.
 
 ## Validation
 

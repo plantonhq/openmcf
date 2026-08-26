@@ -6,8 +6,12 @@ output "record_id" {
 }
 
 output "record_name" {
-  description = "The DNS record name as stored by Cloudflare"
-  value       = cloudflare_dns_record.main.name
+  description = "The DNS record name as declared in the spec (relative to the zone)"
+  # Deliberately the declared value, not the resource attribute: Cloudflare
+  # normalizes the name to the full FQDN on read, so the refreshed attribute
+  # flips this output after the first refresh and trips the apply-idempotency
+  # re-plan (live-measured: "e2e-minimal" -> "e2e-minimal.<zone>.com").
+  value = var.spec.name
 }
 
 output "record_type" {

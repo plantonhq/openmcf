@@ -177,19 +177,36 @@ func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) 
 }
 
 // VerifyConnectivity proves the token is valid and active using Cloudflare's
-// purpose-built, side-effect-free endpoint, then proves the token can see the
-// configured account. Failing fast here keeps credential problems from
+// purpose-built, side-effect-free verify endpoints, then proves the token can
+// see the configured account. Failing fast here keeps credential problems from
 // surfacing later as confusing mid-lane verification errors.
+//
+// Cloudflare issues two token forms and each has its OWN verify endpoint that
+// rejects the other form: user-owned tokens verify at user/tokens/verify,
+// account-owned tokens (the `cfat_`-prefixed kind minted under an account's
+// "API Tokens" page) verify ONLY at accounts/{account_id}/tokens/verify --
+// the user endpoint answers 401 "Invalid API Token" for them (measured
+// live 2026-08-25). Both engines accept either form as a plain bearer
+// credential, so the harness must too: try the user endpoint first, fall
+// back to the account endpoint, and fail only when both reject.
 func (c *Client) VerifyConnectivity(ctx context.Context) error {
-	resp, body, err := c.get(ctx, "user/tokens/verify")
+	resp, userBody, err := c.get(ctx, "user/tokens/verify")
 	if err != nil {
 		return errors.Wrap(err, "token verification request failed")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("token verification returned %d: %s", resp.StatusCode, body)
+		resp, acctBody, acctErr := c.get(ctx, "accounts/"+c.accountID+"/tokens/verify")
+		if acctErr != nil {
+			return errors.Wrap(acctErr, "account-token verification request failed")
+		}
+		if resp.StatusCode != http.StatusOK {
+			return errors.Errorf(
+				"token verification failed on both endpoints: user/tokens/verify returned %s; accounts/%s/tokens/verify returned %d: %s",
+				userBody, c.accountID, resp.StatusCode, acctBody)
+		}
 	}
 
-	resp, body, err = c.get(ctx, "accounts/"+c.accountID)
+	resp, body, err := c.get(ctx, "accounts/"+c.accountID)
 	if err != nil {
 		return errors.Wrap(err, "account lookup request failed")
 	}

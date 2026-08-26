@@ -80,9 +80,10 @@ make test
 | Output | Description |
 |--------|-------------|
 | `record_id` | Cloudflare DNS record ID |
-| `record_name` | The record name as stored by Cloudflare |
+| `record_name` | The record name as declared (relative to the zone; Cloudflare answers reads with the full FQDN) |
 | `record_type` | DNS record type |
 | `proxied` | Whether the record is proxied |
+| `zone_id` | The zone the record lives in (a record's API identity is zone_id + record_id) |
 
 ## Debugging
 

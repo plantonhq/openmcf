@@ -27,8 +27,10 @@ type CloudflareDnsRecordStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The unique identifier of the created DNS record in Cloudflare.
 	RecordId string `protobuf:"bytes,1,opt,name=record_id,json=recordId,proto3" json:"record_id,omitempty"`
-	// The DNS record name as stored by Cloudflare (the record's name within the
-	// zone, e.g. "www" or "@" for the apex).
+	// The DNS record name as declared in the spec (relative to the zone, e.g.
+	// "www" or "@" for the apex). Deliberately NOT the API's echo: Cloudflare
+	// normalizes names to the full FQDN on read, so echoing the refreshed value
+	// would flip this output after the first refresh.
 	RecordName string `protobuf:"bytes,2,opt,name=record_name,json=recordName,proto3" json:"record_name,omitempty"`
 	// The DNS record type that was created.
 	RecordType string `protobuf:"bytes,3,opt,name=record_type,json=recordType,proto3" json:"record_type,omitempty"`
