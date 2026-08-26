@@ -65,12 +65,29 @@ type cloudflareEnvelope struct {
 	} `json:"errors"`
 }
 
+// unknownObjectError reports whether a 400 body carries one of Cloudflare's
+// deleted-or-unknown-object error codes -- the answers several endpoints give
+// for a GET on an identifier that no longer exists, instead of a clean 404:
+//   - 7003 "could not route to that endpoint" (many collection endpoints)
+//   - 1001 "Invalid zone identifier" (zones/{zone_id} after the zone is
+//     deleted -- measured live on the zone destroy verification)
+func unknownObjectError(body []byte) bool {
+	var envelope cloudflareEnvelope
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	for _, e := range envelope.Errors {
+		if e.Code == 7003 || e.Code == 1001 {
+			return true
+		}
+	}
+	return false
+}
+
 // ResourceExists reports whether a GET on the given path (relative to
 // /client/v4/, e.g. "zones/abc123") finds a resource. 200 means present;
-// 404 means absent; a 400 carrying Cloudflare error code 7003 ("could not
-// route to that endpoint") also means absent -- Cloudflare answers a GET on
-// a deleted or unknown object identifier that way on several endpoints
-// instead of a clean 404. Anything else is a real error.
+// 404 means absent; a 400 carrying one of the unknown-object error codes
+// (see unknownObjectError) also means absent. Anything else is a real error.
 func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -83,13 +100,8 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 	case http.StatusNotFound:
 		return false, nil
 	case http.StatusBadRequest:
-		var envelope cloudflareEnvelope
-		if json.Unmarshal(body, &envelope) == nil {
-			for _, e := range envelope.Errors {
-				if e.Code == 7003 {
-					return false, nil
-				}
-			}
+		if unknownObjectError(body) {
+			return false, nil
 		}
 		return false, errors.Errorf("GET %s returned 400: %s", path, body)
 	default:
@@ -98,10 +110,10 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 }
 
 // ResourcePresent reports whether a GET finds a resource that is still
-// present after applying opts. 404 and Cloudflare's 400/7003 unknown-object
-// answer are always absent. A 200 is present unless SoftDeleted sees a
-// non-null result.deleted_at, IsDeletedFlag sees a non-zero
-// result.is_deleted, or result.status matches AbsentStatuses.
+// present after applying opts. 404 and Cloudflare's 400 unknown-object
+// answers (see unknownObjectError) are always absent. A 200 is present
+// unless SoftDeleted sees a non-null result.deleted_at, IsDeletedFlag sees a
+// non-zero result.is_deleted, or result.status matches AbsentStatuses.
 // Parses the v4 envelope, so it must never replace ResourceExists on
 // raw-body endpoints (e.g. the KV value endpoint).
 func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
@@ -155,13 +167,8 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 	case http.StatusNotFound:
 		return false, nil
 	case http.StatusBadRequest:
-		var envelope cloudflareEnvelope
-		if json.Unmarshal(body, &envelope) == nil {
-			for _, e := range envelope.Errors {
-				if e.Code == 7003 {
-					return false, nil
-				}
-			}
+		if unknownObjectError(body) {
+			return false, nil
 		}
 		return false, errors.Errorf("GET %s returned 400: %s", path, body)
 	default:

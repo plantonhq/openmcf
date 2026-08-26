@@ -34,8 +34,10 @@ fields: `zoneName`, `accountId`.
 records whose typed oneof case (srv/caa/cert/…) is translated by
 `buildRecordData` in [module/records.go](./module/records.go) into the
 provider's single union `data` object. `ttl` 0 maps to 1 (automatic — the
-provider requires ttl ≥ 1), and top-level `priority` is sent for MX only
-(SRV/URI/HTTPS/SVCB carry theirs inside their structured data).
+provider requires ttl ≥ 1). Top-level `priority` is sent for MX from the
+record's priority field, and for SRV/URI mirrored from their structured data
+(Cloudflare reflects it there on read; omitting the mirror re-plans forever,
+live-measured). HTTPS/SVCB carry priority only inside their data.
 
 ## Outputs
 
@@ -45,6 +47,9 @@ provider requires ttl ≥ 1), and top-level `priority` is sent for MX only
 - `status` — zone status (`pending` until the registrar delegates).
 - `dnssec_*` — DS/DNSKEY material to enter at the registrar (empty strings when
   DNSSEC is off, so the output contract is always satisfied).
+- `record_ids` — inline-record Cloudflare ids keyed by name-type-index (import
+  recipes derive `{zone_id}/{dns_record_id}` from it; empty map without inline
+  records).
 
 ## Requirements
 

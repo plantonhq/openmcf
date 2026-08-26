@@ -16,10 +16,14 @@ spec:
         right-hand API panel), or `GET /zones?name=<domain>` on the
         Cloudflare v4 API (the id field).
     - name: dns_record_id
+      derivations:
+        - from_stack_output_keyed_by_address: record_ids
       where_to_find: >-
         Needed only when importing a zone whose spec carries inline records:
-        each record's Cloudflare-assigned id, from the dashboard (the zone ->
-        DNS -> Records; open the record -- the id is in the URL) or
+        each record's Cloudflare-assigned id. A prior deploy's stack outputs
+        carry them in the record_ids map, keyed by the record's
+        name-type-index key (the same key the record's resource address
+        uses). Without outputs: the dashboard (the zone -> DNS -> Records;
+        open the record -- the id is in the URL) or
         `GET /zones/<zone_id>/dns_records?name=<fqdn>` on the Cloudflare v4
-        API (the id field). The zone's outputs do not carry per-record ids
-        (records are a list; import resolution asks per address).
+        API (the id field).

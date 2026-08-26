@@ -59,3 +59,10 @@ output "dnssec_flags" {
   description = "The DNSKEY flags"
   value       = local.has_dnssec ? tostring(cloudflare_zone_dnssec.main[0].flags) : ""
 }
+
+# Keyed by the records' name-type-index for_each key so import can address
+# each cloudflare_dns_record as {zone_id}/{dns_record_id}.
+output "record_ids" {
+  description = "Cloudflare-assigned ids of the inline DNS records, keyed by name-type-index"
+  value       = { for k, r in cloudflare_dns_record.records : k => r.id }
+}

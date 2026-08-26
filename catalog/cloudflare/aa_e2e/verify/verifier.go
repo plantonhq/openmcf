@@ -48,8 +48,10 @@ type EnvelopePresence struct {
 // existence probe plus the account scope resolved at Setup.
 type API interface {
 	// ResourceExists GETs a path relative to /client/v4/ and reports
-	// presence (200) vs absence (404, or Cloudflare's 400/7003 unknown-
-	// object answer); any other status is an error.
+	// presence (200) vs absence (404, or one of Cloudflare's 400
+	// unknown-object answers: code 7003 "could not route", and code 1001
+	// "Invalid zone identifier" -- the zones/{id} answer for a deleted
+	// zone, measured live); any other status is an error.
 	ResourceExists(ctx context.Context, path string) (bool, error)
 	// ResourceActive is the soft-delete-aware sibling: a 200 whose envelope
 	// carries a non-null result.deleted_at counts as ABSENT. Used only by
@@ -57,7 +59,8 @@ type API interface {
 	// routes) -- it parses the v4 envelope, so it must never replace
 	// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 	ResourceActive(ctx context.Context, path string) (bool, error)
-	// ResourcePresent is the envelope-aware probe: 404 / 400-7003 are
+	// ResourcePresent is the envelope-aware probe: 404 / the 400
+	// unknown-object codes (7003, 1001) are
 	// always absent; a 200 is absent when SoftDeleted sees deleted_at or
 	// result.status matches AbsentStatuses. Parses the v4 envelope --
 	// never use on raw-body endpoints.

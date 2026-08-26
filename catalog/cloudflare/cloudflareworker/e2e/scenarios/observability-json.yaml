@@ -3,6 +3,9 @@
 # observability expansion beyond the original enabled + headSamplingRate pair.
 # No migrations here — those are a one-shot Cloudflare tag and live in
 # e2e/migrations-plan.yaml for offline plan only.
+# traces.propagationPolicy is deliberately ABSENT: it is gated on the
+# account's trace-propagation feature and deploys 403 (code 100342) without
+# it -- measured live 2026-08-26. Its shape is proven by e2e/manifest.yaml.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareWorker
 metadata:
@@ -41,4 +44,3 @@ spec:
       enabled: true
       persist: true
       headSamplingRate: 1
-      propagationPolicy: authenticated

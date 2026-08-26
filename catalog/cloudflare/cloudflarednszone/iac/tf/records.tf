@@ -86,9 +86,18 @@ resource "cloudflare_dns_record" "records" {
   # proxied is only applicable to A, AAAA, and CNAME records
   proxied = contains(["A", "AAAA", "CNAME"], each.value.type) ? each.value.proxied : false
 
-  # Priority is only used for MX records (SRV/URI/HTTPS/SVCB carry theirs
-  # inside their structured data).
-  priority = each.value.type == "MX" ? each.value.priority : null
+  # The provider schema marks top-level priority "Required for MX, SRV and URI
+  # records". MX carries it in spec priority; SRV/URI carry it inside their
+  # structured data, and Cloudflare mirrors that value into the top-level
+  # field on its own -- omitting the mirror here drifts on refresh forever
+  # (live-measured on the sibling record kind's SRV lane). HTTPS/SVCB carry
+  # priority only inside data.
+  priority = (
+    each.value.type == "MX" ? each.value.priority :
+    each.value.type == "SRV" ? try(each.value.srv.priority, null) :
+    each.value.type == "URI" ? try(each.value.uri.priority, null) :
+    null
+  )
 
   # comment for the DNS record
   comment = each.value.comment != "" ? each.value.comment : null

@@ -41,4 +41,10 @@ message CloudflareDnsZoneStackOutputs {
 
   // The DNSKEY flags. Empty unless DNSSEC is enabled.
   string dnssec_flags = 12;
+
+  // Cloudflare-assigned ids of the zone's inline DNS records, keyed by the
+  // records' name-type-index key (both engines key record instances the same
+  // way). Import recipes derive each record's {zone_id}/{dns_record_id}
+  // import ID from this map; empty when the spec declares no inline records.
+  map<string, string> record_ids = 13;
 }

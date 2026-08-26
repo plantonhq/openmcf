@@ -25,15 +25,16 @@ spec:
       id_format: "{zone_id}"
     - terraform_type: cloudflare_zone_dns_settings
       pulumi_type: cloudflare:index/zoneDnsSettings:ZoneDnsSettings
-      id_format: "{zone_id}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 (docs: "This
+        resource does not currently support terraform import"). The create is
+        a zone-singleton PUT, idempotent for identical values, so the
+        adopter's re-create path converges on the live settings -- the round
+        trip skips the import and proves that path instead.
       notes: >-
-        The v5.23.0 terraform provider ships NO importer for this resource
-        (docs: "This resource does not currently support terraform import";
-        the package has no ImportState). The id_format records the API
-        identity (GET /zones/{zone_id}/dns_settings). A blind round-trip must
-        expect the import step to fail for this address and instead re-assert
-        the settings from configuration -- safe, because the resource is a
-        zone-singleton PUT whose create is idempotent for identical values.
+        The API identity is the bare zone id (GET
+        /zones/{zone_id}/dns_settings); it is recorded here for the day the
+        provider ships an importer.
     - terraform_type: cloudflare_zone_dnssec
       pulumi_type: cloudflare:index/zoneDnssec:ZoneDnssec
       id_format: "{zone_id}"
@@ -50,6 +51,25 @@ spec:
     - terraform_type: cloudflare_workers_script
       pulumi_type: cloudflare:index/workersScript:WorkersScript
       id_format: "{account_id}/{script_name}"
+      # The v5.23.0 ImportState fetches only the script-content GET and
+      # unmarshals the raw body as JSON -- it restores nothing beyond the
+      # identity (account_id/script_name), and the settings Read that follows
+      # does not return main_module and reads collections back in normalized
+      # (empty-vs-null) form. A plan after a faithful import therefore shows
+      # in-place updates on exactly these attributes (measured live
+      # 2026-08-26); content, compatibility_date, and the identity stay under
+      # the round-trip oracle.
+      write_normalized_attributes:
+        - main_module
+        - bindings
+        - compatibility_flags
+        - tail_consumers
+        - etag
+        - handlers
+        - has_assets
+        - has_modules
+        - last_deployed_from
+        - modified_on
     - terraform_type: cloudflare_workers_script_subdomain
       pulumi_type: cloudflare:index/workersScriptSubdomain:WorkersScriptSubdomain
       id_format: "{account_id}/{script_name}"

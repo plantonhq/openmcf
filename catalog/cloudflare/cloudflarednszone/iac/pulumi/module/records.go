@@ -9,13 +9,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// records creates DNS records within the zone.
+// records creates DNS records within the zone and returns their
+// Cloudflare-assigned ids keyed by the same name-type-index key the tofu
+// module uses for for_each -- the keyed record_ids stack output import
+// recipes derive per-record import IDs from.
 func records(
 	ctx *pulumi.Context,
 	zone *cloudflare.Zone,
 	recordsList []*cloudflarednszonev1alpha1.CloudflareDnsZoneRecord,
 	cloudflareProvider *cloudflare.Provider,
-) error {
+) (pulumi.StringMap, error) {
+	recordIds := pulumi.StringMap{}
 	for idx, record := range recordsList {
 		// Include index to ensure uniqueness when multiple records have same name and type
 		resourceName := fmt.Sprintf("%s-%s-%d", record.Name, record.Type.String(), idx)
@@ -49,10 +53,19 @@ func records(
 			recordArgs.Proxied = pulumi.Bool(record.Proxied)
 		}
 
-		// Priority is only used for MX records (SRV/URI/HTTPS/SVCB carry theirs
-		// inside their structured data).
-		if record.Type == cloudflarednszonev1alpha1.CloudflareDnsZoneRecord_MX {
+		// The provider schema marks top-level priority "Required for MX, SRV
+		// and URI records". MX carries it in the record's priority field;
+		// SRV/URI carry it inside their structured data, and Cloudflare
+		// mirrors that value into the top-level field on its own -- omitting
+		// the mirror drifts on refresh forever (live-measured on the sibling
+		// record kind's SRV lane). HTTPS/SVCB carry priority only in data.
+		switch {
+		case record.Type == cloudflarednszonev1alpha1.CloudflareDnsZoneRecord_MX:
 			recordArgs.Priority = pulumi.Float64Ptr(float64(record.Priority))
+		case record.GetSrv() != nil:
+			recordArgs.Priority = pulumi.Float64Ptr(float64(record.GetSrv().Priority))
+		case record.GetUri() != nil:
+			recordArgs.Priority = pulumi.Float64Ptr(float64(record.GetUri().Priority))
 		}
 
 		// comment for the DNS record
@@ -80,7 +93,7 @@ func records(
 			recordArgs.PrivateRouting = pulumi.Bool(true)
 		}
 
-		_, err := cloudflare.NewDnsRecord(
+		createdRecord, err := cloudflare.NewDnsRecord(
 			ctx,
 			resourceName,
 			recordArgs,
@@ -88,10 +101,11 @@ func records(
 			pulumi.DependsOn([]pulumi.Resource{zone}),
 		)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create dns record %s", resourceName)
+			return nil, errors.Wrapf(err, "failed to create dns record %s", resourceName)
 		}
+		recordIds[resourceName] = createdRecord.ID()
 	}
-	return nil
+	return recordIds, nil
 }
 
 // buildRecordData translates the typed `data` oneof into the provider's flat

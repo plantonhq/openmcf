@@ -13,8 +13,16 @@ spec:
   # only, never in e2e/scenarios/ (the provider profile asserts apply
   # idempotency). Workers create in seconds on the free tier.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26 on the real account: both scenarios through the
+  # full lifecycle on both engines (idempotency gate green) plus the blind
+  # import round-trip on both terraform lanes (script + subdomain re-imported
+  # blind; the plan proposed no real change beyond the catalog-declared
+  # import-normalization set). Live proof also caught and fixed: the pulumi
+  # module's missing main_module="index.js" default (legacy-script upload
+  # rejected ES-module syntax) and the traces propagation_policy account
+  # feature gate (403 code 100342) -- that field is offline-only here now.
+  status: green
   timeout_minutes: 15
+  validated_provisioners:
+    - pulumi
+    - terraform

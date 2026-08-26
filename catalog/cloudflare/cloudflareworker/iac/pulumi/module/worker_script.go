@@ -37,12 +37,20 @@ func worker(
 	// Script source: inline content, else the R2 bundle body. A worker may instead
 	// be a pure static site (assets only, no script) — main_module is then omitted.
 	// body_part marks service-worker syntax and is mutually exclusive with main_module.
+	// main_module defaults to "index.js" when unset (mirrors the tofu module):
+	// an empty main_module makes Cloudflare treat the upload as a legacy
+	// service-worker script, which rejects ES-module syntax at deploy with
+	// "Uncaught SyntaxError: Unexpected token 'export'" (measured live).
+	mainModule := spec.MainModule
+	if mainModule == "" {
+		mainModule = "index.js"
+	}
 	if spec.GetContent() != "" {
 		scriptArgs.Content = pulumi.StringPtr(spec.GetContent())
 		if spec.BodyPart != "" {
 			scriptArgs.BodyPart = pulumi.String(spec.BodyPart)
 		} else {
-			scriptArgs.MainModule = pulumi.String(spec.MainModule)
+			scriptArgs.MainModule = pulumi.String(mainModule)
 		}
 	} else if bundle := spec.GetR2Bundle(); bundle != nil {
 		obj := s3.GetObjectOutput(ctx, s3.GetObjectOutputArgs{
@@ -53,7 +61,7 @@ func worker(
 		if spec.BodyPart != "" {
 			scriptArgs.BodyPart = pulumi.String(spec.BodyPart)
 		} else {
-			scriptArgs.MainModule = pulumi.String(spec.MainModule)
+			scriptArgs.MainModule = pulumi.String(mainModule)
 		}
 	}
 

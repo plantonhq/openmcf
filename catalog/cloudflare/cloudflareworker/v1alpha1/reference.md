@@ -41,6 +41,14 @@ spec:
   observability:
     enabled: true
     headSamplingRate: 1
+    # traces.propagationPolicy is offline-only here by design: setting it on
+    # an account without the trace-propagation feature fails the deploy with
+    # 403 code 100342 ("propagation_policy requires the trace propagation
+    # feature to be enabled") -- measured live. The live scenario proves the
+    # rest of the traces subtree.
+    traces:
+      enabled: true
+      propagationPolicy: authenticated
 ```
 
 ## Spec Fields
@@ -332,6 +340,11 @@ The object key (path) of the script bundle within the bucket.
 `string`
 
 The entrypoint module filename within the bundle (module-format workers).
+Both engines default it to "index.js" when unset (unless body_part marks
+service-worker syntax): an upload without a main module is treated by
+Cloudflare as a legacy service-worker script and ES-module code then
+fails deploy with "Uncaught SyntaxError: Unexpected token 'export'"
+(measured live).
 
 - default: `index.js`
 
@@ -828,6 +841,10 @@ Nested trace export / persistence settings.
 
 How inbound traceparent/tracestate headers are handled: "authenticated"
 (default) or "accept".
+Requires the account's trace-propagation feature: without it Cloudflare
+rejects the whole script upload with 403 code 100342 ("propagation_policy
+requires the trace propagation feature to be enabled") -- measured live.
+Leave unset unless the account carries the feature.
 
 - rule: propagation_policy must be "authenticated" or "accept"
 

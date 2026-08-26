@@ -21,3 +21,11 @@ spec:
   observability:
     enabled: true
     headSamplingRate: 1
+    # traces.propagationPolicy is offline-only here by design: setting it on
+    # an account without the trace-propagation feature fails the deploy with
+    # 403 code 100342 ("propagation_policy requires the trace propagation
+    # feature to be enabled") -- measured live. The live scenario proves the
+    # rest of the traces subtree.
+    traces:
+      enabled: true
+      propagationPolicy: authenticated
