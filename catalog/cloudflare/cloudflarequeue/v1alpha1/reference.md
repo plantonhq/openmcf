@@ -121,7 +121,11 @@ v5 API rejects values above 86400; revisit if Cloudflare raises the ceiling.)
 
 The queue's single consumer. Omit when nothing consumes the queue yet (producers
 can still write to it). A push (worker) consumer runs a Worker automatically; a
-pull (http_pull) consumer is read over HTTP by external clients.
+pull (http_pull) consumer is read over HTTP by external clients. When adopting
+an existing queue that already has a consumer, delete that consumer first (or
+omit this field): Cloudflare enforces one consumer per queue and refuses a
+duplicate create with error 11004 (measured 2026-08-26), and the consumer has
+no import path at provider v5.23.0.
 
 - rule: script_name is required when consumer type is worker
 - rule: script_name may only be set when consumer type is worker

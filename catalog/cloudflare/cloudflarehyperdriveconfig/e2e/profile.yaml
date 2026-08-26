@@ -22,8 +22,23 @@ spec:
   # re-assert it from configuration. Objects create in seconds at zero cost
   # (the origin database is the proof session's only real expense).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Environment-blocked, not defective: Cloudflare validates the origin
+    database connection at CREATE, and the 2026-08-26 proof session (which
+    proved the other five kinds of its group live) had no internet-reachable
+    origin Postgres to offer -- the operator declined provisioning one, so
+    the env-gated lane skipped honestly rather than fail on an unreachable
+    origin. Nothing about the kind itself is blocked: both modules build,
+    every shape is offline-plan-proven, and the import surface is already
+    prepared (origin.password is declared write-normalized in the provider
+    import catalog, so the blind round-trip's one expected diff is
+    tolerated; the provider preserves the password from state on refresh
+    per its own custom.go). One cross-engine fix landed pre-proof: the
+    pulumi module now omits an unset origin.host like the terraform module
+    does (a VPC-service origin legitimately omits host). Unblock: set
+    PLANTON_E2E_HYPERDRIVE_ORIGIN_HOST / _USER / _PASSWORD / _DATABASE to
+    any small internet-reachable Postgres (a free-tier Neon database
+    suffices; TLS is fine -- Hyperdrive negotiates it), then run both
+    engine lanes plus the terraform round-trip unchanged.
   timeout_minutes: 10

@@ -16,6 +16,19 @@ metadata:
     e2e-component: cloudflarequeue
   annotations:
     planton.dev/e2e: "true"
+    # The consumer STRUCTURALLY cannot round-trip: the upstream resource
+    # ships no ImportState at v5.23.0, and the re-create path the runner
+    # tolerates for not-importable types is rejected by Cloudflare because
+    # the live consumer still exists -- POST .../consumers answers 400 code
+    # 11004 "Queue ... already has a consumer" (measured 2026-08-26). One
+    # consumer per queue is Cloudflare's documented model, so no recipe can
+    # converge. The queue's own importer is proven by the minimal scenario.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      cloudflare_queue_consumer has no upstream importer and its tolerated
+      re-create is refused while the live consumer exists (400 code 11004
+      "already has a consumer"; one consumer per queue by Cloudflare design,
+      measured 2026-08-26) -- the consumer cannot round-trip on any recipe;
+      the queue importer is proven by the minimal scenario.
   tags:
     - planton-e2e
 spec:

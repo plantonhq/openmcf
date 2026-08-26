@@ -1005,6 +1005,25 @@ asking "should editing this field replace the resource?" -- no
 (immutable creation history) means ignore_changes; yes (rotatable
 secret) means the annotation.
 
+The annotation's second structural class: a SINGLETON COMPANION with no
+upstream importer whose re-create the cloud REFUSES while the live object
+exists. A not-importable type normally rides the catalog's
+`not_importable_upstream_reason` -- the round-trip skips its import and
+proves the adopter's re-create path instead -- but that tolerance is
+honest only for upsert-convergent creates (idempotent PUTs). When the
+create is a plain POST and the service enforces one-per-parent, the
+re-create is rejected with the object still live, so NO recipe can
+converge: the companion-bearing scenario opts out with the annotation
+(reason naming the measured error), the parent's importer keeps proving
+on a companion-free scenario, and the kind's docs teach the real adoption
+path (delete the live companion first, or leave it managed outside).
+First users, both measured 2026-08-26: Cloudflare queue consumers --
+POST `.../consumers` answers 400 code 11004 "already has a consumer"
+(one consumer per queue by design) -- and Cloudflare R2 bucket event
+notifications -- the per-queue PUT MERGES rules instead of replacing
+them, so an identical re-put answers 400 code 11020 "rules have invalid
+overlap".
+
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 
 When a scenario fails at DEPENDENCIES-UP with `failed to read outputs for

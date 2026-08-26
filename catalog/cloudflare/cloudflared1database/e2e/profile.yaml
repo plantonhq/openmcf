@@ -18,8 +18,16 @@ spec:
   # wall, the replicated arm falls back to region-hint-only under proof-lane
   # design authority. Objects create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal + replicated through
+  # the full lifecycle with the apply-idempotency re-plan green, plus both
+  # blind import round-trips ({account_id}/{database_id}) at zero change on
+  # the Terraform lane. Read replication `auto` confirmed AVAILABLE on the
+  # free plan (the offline entitlement question resolved). First contact
+  # fixed two module classes in both engines: read_replication coalesces to
+  # the server default "disabled" (Optional-not-Computed echo), and
+  # primary_location_hint is ignore_changes (create-only, never read back,
+  # replace-forcing -- a blind import otherwise planned a data-destroying
+  # replace to move a hint).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

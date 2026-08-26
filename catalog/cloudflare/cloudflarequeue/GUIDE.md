@@ -17,3 +17,7 @@ The DLQ is named by reference, not created on demand: point it at another Cloudf
 ## Queues ride the Workers Paid plan
 
 Cloudflare has historically gated Queues behind the Workers Paid plan (~$5/mo). On a free account the create call fails at the API, not at validation — budget the entitlement before wiring queues into a design, and remember R2 event notifications deliver INTO a queue, so they inherit this gate too.
+
+## Adopting a queue that already has a consumer
+
+The queue itself imports cleanly (`{account_id}/{queue_id}`), but its consumer cannot come along: the provider ships no consumer importer, and re-creating the consumer from your declaration is refused while the live one exists — Cloudflare enforces one consumer per queue and answers the duplicate create with 400 code 11004 "already has a consumer" (measured 2026-08-26). To bring an existing queue fully under management, delete its consumer first (dashboard or API) and let the next apply create the declared one — deleting a consumer never touches the queue or its messages. Alternatively, import the queue without declaring a `consumer` and leave the existing consumer managed where it is.

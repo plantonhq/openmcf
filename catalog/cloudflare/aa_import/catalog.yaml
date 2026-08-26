@@ -127,6 +127,12 @@ spec:
     - terraform_type: cloudflare_workers_kv
       pulumi_type: cloudflare:index/workersKv:WorkersKv
       id_format: "{account_id}/{namespace_id}/{key_name}"
+      # Cloudflare re-serializes the entry's metadata JSON on read (the
+      # import restores it byte-different, semantically identical -- measured
+      # live 2026-08-26 as a whitespace-only plan), so the first
+      # post-adoption apply rewrites formatting and nothing else.
+      write_normalized_attributes:
+        - metadata
     # --- D1 ---------------------------------------------------------------------
     - terraform_type: cloudflare_d1_database
       pulumi_type: cloudflare:index/d1Database:D1Database
@@ -137,17 +143,20 @@ spec:
       id_format: "{account_id}/{queue_id}"
     - terraform_type: cloudflare_queue_consumer
       pulumi_type: cloudflare:index/queueConsumer:QueueConsumer
-      id_format: "{account_id}/{queue_id}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 (docs: "This
+        resource does not currently support terraform import"). An adopted
+        queue re-asserts its consumer from configuration on the next apply.
       notes: >-
-        The v5.23.0 terraform provider ships NO importer for this resource
-        (docs: "This resource does not currently support terraform import";
-        the package has no ImportState). The id_format records the consumer's
-        parent scope; its full API identity is
+        The consumer's API identity is
         GET /accounts/{account_id}/queues/{queue_id}/consumers/{consumer_id},
-        where consumer_id is server-assigned. A blind round-trip must expect
-        the import step to fail for this address and instead re-assert the
-        consumer from configuration -- safe, because a queue has at most one
-        consumer and re-creating it converges on the same state.
+        where consumer_id is server-assigned. The re-create path is NOT
+        convergent: the create is a plain POST and Cloudflare enforces one
+        active consumer per queue, so re-asserting against a queue whose live
+        consumer still exists is refused with 400 code 11004 "already has a
+        consumer" (measured 2026-08-26). Adopting a queue that already
+        carries a consumer means deleting that consumer first (or leaving it
+        managed outside) -- there is no import and no idempotent re-put.
     # --- R2 ---------------------------------------------------------------------
     # The bucket's import ID is strictly positional THREE segments: the
     # provider's parser rejects a two-segment ID, so a default-jurisdiction
@@ -162,70 +171,88 @@ spec:
       id_format: "{account_id}/{bucket_name}/{jurisdiction}"
     - terraform_type: cloudflare_r2_bucket_cors
       pulumi_type: cloudflare:index/r2BucketCors:R2BucketCors
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its CORS policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/cors).
-        A blind round-trip must expect the import step to fail for this
-        address and instead re-assert the CORS policy from configuration --
-        safe, because it is a bucket-singleton PUT whose create is idempotent
-        for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/cors).
     - terraform_type: cloudflare_r2_bucket_lifecycle
       pulumi_type: cloudflare:index/r2BucketLifecycle:R2BucketLifecycle
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its lifecycle policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lifecycle).
-        A blind round-trip re-asserts the lifecycle policy from configuration
-        -- a bucket-singleton PUT, idempotent for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lifecycle).
     - terraform_type: cloudflare_r2_bucket_lock
       pulumi_type: cloudflare:index/r2BucketLock:R2BucketLock
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its lock policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lock).
-        A blind round-trip re-asserts the lock policy from configuration -- a
-        bucket-singleton PUT, idempotent for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lock).
     - terraform_type: cloudflare_r2_bucket_event_notification
       pulumi_type: cloudflare:index/r2BucketEventNotification:R2BucketEventNotification
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The re-create path is
+        NOT convergent: the per-queue PUT MERGES rules instead of replacing
+        them, so re-putting an identical rule while the live config exists
+        answers 400 code 11020 "rules have invalid overlap" (measured
+        2026-08-26). Adopting a bucket that already carries a notification
+        config means deleting that config first (or leaving it managed
+        outside).
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the parent
-        scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/event_notifications/r2/{bucket_name}/configuration/queues/{queue_id}.
-        A blind round-trip re-asserts the notification rules from
-        configuration -- a per-queue PUT, idempotent for identical values.
+        The config also outlives its bucket: deleting the bucket does NOT
+        delete its notification configs, and a dangling config blocks the
+        target queue's deletion with 400 code 11017 (measured 2026-08-26) --
+        delete the notification config explicitly before retiring either
+        side.
     - terraform_type: cloudflare_r2_custom_domain
       pulumi_type: cloudflare:index/r2CustomDomain:R2CustomDomain
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). An adopted bucket
+        re-asserts its custom domain from configuration on the next apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the parent
-        scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/custom/{domain}.
-        A blind round-trip re-asserts the custom domain from configuration.
     - terraform_type: cloudflare_r2_managed_domain
       pulumi_type: cloudflare:index/r2ManagedDomain:R2ManagedDomain
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState at v5.23.0, and the provider's Read AND Delete for
+        this resource are EMPTY function bodies -- it never refreshes from
+        the API and cannot be destroyed through terraform (the managed
+        r2.dev domain stays in the API until manually disabled). An adopted
+        bucket re-asserts the toggle from configuration on the next apply.
       notes: >-
-        No importer at v5.23.0, and the provider's Read AND Delete for this
-        resource are EMPTY function bodies -- it never refreshes from the API
-        and cannot be destroyed through terraform (the managed r2.dev domain
-        stays in the API until manually disabled). The id_format records the
-        parent scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/managed.
-        A blind round-trip re-asserts the toggle from configuration.
     # --- Hyperdrive -------------------------------------------------------------
-    # The origin password is write-only (the API never returns it), so an
-    # imported config lands with an empty password in state until the
-    # configuration re-asserts it.
+    # The origin password is write-only (the API never returns it -- the
+    # provider schema's own words at v5.23.0), so an imported config lands
+    # with an empty password in state and the first post-import plan
+    # re-asserts it from configuration. The dotted tolerance below prunes
+    # exactly that leaf from the round-trip oracle; any sibling drift inside
+    # origin still fails.
     - terraform_type: cloudflare_hyperdrive_config
       pulumi_type: cloudflare:index/hyperdriveConfig:HyperdriveConfig
       id_format: "{account_id}/{hyperdrive_id}"
+      write_normalized_attributes:
+        - origin.password
     # --- Zero Trust: Access -------------------------------------------------------
     # Applications and groups are dual-scope: the documented import ID carries a
     # literal scope prefix ("{accounts|zones}/{account_id|zone_id}/{id}"); the

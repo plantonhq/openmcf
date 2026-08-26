@@ -20,8 +20,15 @@ spec:
   # lanes (this same gate covers R2's event-notification arm, which delivers
   # to a queue). Objects create in seconds; no per-object cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal + pull-consumer through
+  # the full lifecycle with the apply-idempotency re-plan green; the queue's
+  # blind import round-trip ({account_id}/{queue_id}) passed on minimal. The
+  # entitlement question resolved OPEN on this account -- queue creates
+  # succeeded with no plan wall. The consumer measured NOT round-trippable
+  # (no upstream importer + POST create refused with 400/11004 while the
+  # live consumer exists); the pull-consumer scenario carries the
+  # reason-carrying import-roundtrip-skip and the GUIDE teaches the
+  # delete-first adoption path.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

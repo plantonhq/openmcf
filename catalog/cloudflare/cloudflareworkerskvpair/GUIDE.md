@@ -17,3 +17,7 @@ The terraform import ID is the slash-delimited `{account}/{namespace}/{key}` tri
 ## Values are not secrets
 
 KV values are plaintext storage readable by anything holding the namespace binding or an API token with KV read. Credentials belong in a Worker `secret_text` binding or Cloudflare Secrets Store; put only the *name* of a secret in KV if a Worker needs indirection.
+
+## Adopting an entry rewrites metadata formatting once
+
+Import restores both the value and the metadata, but Cloudflare re-serializes the metadata JSON on read — so the first apply after adopting an entry rewrites the metadata's whitespace and key order to match your declaration, and nothing else (measured 2026-08-26). Semantically identical, safe to apply.

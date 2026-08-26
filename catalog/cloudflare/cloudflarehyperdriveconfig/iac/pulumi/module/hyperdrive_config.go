@@ -20,8 +20,14 @@ func hyperdriveConfig(
 		Database: pulumi.String(origin.Database),
 		Scheme:   pulumi.String(origin.Scheme.String()),
 		User:     pulumi.String(origin.User),
-		Host:     pulumi.String(origin.Host),
 		Password: pulumi.String(origin.Password.GetValue()),
+	}
+	// host is optional (a VPC-service origin omits it): guard like the other
+	// optional origin fields so an unset host is OMITTED, never sent as "" --
+	// the terraform module omits it too, and an unconditional empty string is
+	// the cross-engine divergence class caught live on the worker module.
+	if origin.Host != "" {
+		originArgs.Host = pulumi.StringPtr(origin.Host)
 	}
 	if origin.Port > 0 {
 		originArgs.Port = pulumi.IntPtr(int(origin.Port))

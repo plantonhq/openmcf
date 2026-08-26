@@ -25,3 +25,7 @@ A lock rule retains matching objects for its whole window — nothing, including
 ## Event notifications ride the Queues entitlement
 
 Notifications deliver into a Cloudflare Queue, so they inherit the queue's plan gating (see the CloudflareQueue guide) and the queue must exist before the notification that names it.
+
+## Event notifications have their own lifecycle — on both ends
+
+Two live-measured walls (2026-08-26). First, the notification config outlives its bucket: deleting a bucket out-of-band does NOT delete its notification configs, and a dangling config blocks the target queue's deletion with 400 code 11017 "serves as a target for event notifications" — a declared teardown is safe (the notification is destroyed before the bucket), but if a bucket was deleted some other way, delete its notification config explicitly before retiring the queue. Second, the per-queue write MERGES rules instead of replacing them: re-putting a rule identical to one already live answers 400 code 11020 "rules have invalid overlap", so adopting a bucket whose notification config already exists means deleting that config first and letting the next apply re-create it — there is no import and no idempotent re-put.

@@ -467,6 +467,9 @@ func (x *CloudflareR2BucketEventNotification) GetRules() []*CloudflareR2BucketEv
 }
 
 // CloudflareR2BucketEventNotificationRule selects object events by action and key.
+// Empty description/prefix/suffix and absent mean the same thing to Cloudflare --
+// the API reports unset filters as "" (live-verified 2026-08-26), and both engines
+// send the empty strings so the state matches that echo.
 type CloudflareR2BucketEventNotificationRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Object actions that trigger a notification, e.g. "PutObject", "CopyObject",
