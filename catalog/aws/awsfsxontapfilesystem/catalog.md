@@ -1,6 +1,6 @@
 # AWS FSx ONTAP File System
 
-Deploys a fully managed NetApp ONTAP file system on Amazon FSx with multi-protocol access (NFS, SMB, iSCSI), configurable deployment types (single-AZ or multi-AZ with automatic failover), scale-out HA pairs, and built-in data services including snapshots, compression, deduplication, and SnapMirror replication. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, and KMS keys.
+Deploys a fully managed NetApp ONTAP file system on Amazon FSx with multi-protocol access (NFS, SMB, iSCSI), configurable deployment types (single-AZ or multi-AZ with automatic failover), scale-out HA pairs, and built-in data services including snapshots, compression, deduplication, and SnapMirror replication. The file system alone serves no data: clients mount through Storage Virtual Machines and volumes, which are their own kinds (AwsFsxOntapStorageVirtualMachine, AwsFsxOntapVolume) that attach by `file_system_id`.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx ONTAP File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single AZ Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx ONTAP File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-AZ Development FSx ONTAP** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapFileSystem
 metadata:
   name: enterprise-nas
@@ -134,14 +134,17 @@ Data-access endpoints (NFS/SMB/iSCSI DNS names) are deliberately not outputs of 
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single AZ development** -- SINGLE_AZ_2 with 1 TiB SSD, 128 MB/s throughput, 1 HA pair, no backups. Cost-effective for development, testing, and workloads that do not require cross-AZ redundancy. Start from the **Single AZ Development** preset.
+**Single AZ development** -- SINGLE_AZ_2 with 1 TiB SSD, 384 MB/s throughput (the smallest gen-2 tier), 1 HA pair, no backups. Cost-effective for development, testing, and workloads that do not require cross-AZ redundancy. Start from the **Single-AZ Development FSx ONTAP** preset.
 
-**Single AZ production** -- SINGLE_AZ_2 with SSD storage, higher throughput, automatic backups, and customer-managed KMS encryption. Suitable for production NAS workloads, database storage, and VMware Cloud on AWS environments. Start from the **Single AZ Production** preset.
+**Single AZ production** -- SINGLE_AZ_2 with SSD storage, higher throughput, automatic backups, and customer-managed KMS encryption. Suitable for production NAS workloads, database storage, and VMware Cloud on AWS environments. Start from the **Single-AZ Production FSx ONTAP** preset.
 
-**Multi AZ high availability** -- MULTI_AZ_2 with automatic failover across two AZs, SSD storage, backups, and endpoint IP range configuration. Designed for business-critical workloads requiring sub-second failover and zero data loss. Start from the **Multi AZ High Availability** preset.
+**Multi AZ high availability** -- MULTI_AZ_2 with automatic failover across two AZs, SSD storage, backups, and endpoint IP range configuration. Designed for business-critical workloads requiring sub-second failover and zero data loss. Start from the **Multi-AZ High Availability FSx ONTAP** preset.
+
+**Scale-out HA pairs** -- SINGLE_AZ_2 with multiple HA pairs multiplying throughput and IOPS; pairs can be added in place as the workload grows. The shape for the largest single-namespace performance requirements. Start from the **Scale-Out FSx ONTAP (Multiple HA Pairs)** preset.
 
 ## Works With
 
 - [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides subnets for file system network interface placement
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls multi-protocol traffic (NFS, SMB, iSCSI, ONTAP API) access to the file system
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encryption at rest
+- [**AWS FSx ONTAP Storage Virtual Machine**](/cloud-catalog/aws-fsx-ontap-storage-virtual-machine) -- the data-serving layer that attaches by `file_system_id`; clients mount through its endpoints

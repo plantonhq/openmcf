@@ -1,4 +1,4 @@
-# Preset: Basic SQL Workgroup
+# Basic SQL Workgroup
 
 A minimal Athena workgroup for interactive SQL analytics with query results
 stored in S3. All governance defaults apply — configuration enforcement is

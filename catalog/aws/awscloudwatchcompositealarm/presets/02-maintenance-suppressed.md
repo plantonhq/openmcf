@@ -1,4 +1,4 @@
-# Preset: Maintenance-Suppressed Paging
+# Maintenance-Suppressed Paging
 
 **Use case:** Stop paging during planned maintenance without deleting or
 disabling alarms.

@@ -1,4 +1,4 @@
-# Preset: Error Rate Metric Math Alarm
+# Error Rate Metric Math Alarm
 
 **Use case:** Alert when the 5xx error rate exceeds a percentage threshold using CloudWatch Metric Math.
 

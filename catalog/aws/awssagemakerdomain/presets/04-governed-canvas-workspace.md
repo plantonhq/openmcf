@@ -1,4 +1,4 @@
-# Preset: Governed Canvas Workspace
+# Governed Canvas Workspace
 
 A SageMaker Domain configured for business analysts using Canvas (no-code ML),
 with governance guardrails: models flow through the model registry instead of

@@ -1,6 +1,6 @@
 # AWS EventBridge Bus
 
-Deploys a custom EventBridge event bus with optional customer-managed KMS encryption, dead letter queue for undeliverable events, CloudWatch Logs delivery logging, replay-able event archives, and a resource-based access policy for cross-account event publishing. Custom buses isolate application event traffic from the default AWS event bus, enabling fine-grained access control and dedicated event routing. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS keys and SQS dead letter queues.
+Deploys a custom EventBridge event bus with optional customer-managed KMS encryption, dead letter queue for undeliverable events, CloudWatch Logs delivery logging, replay-able event archives, and a resource-based access policy for cross-account event publishing. Custom buses isolate application event traffic from the default AWS event bus, enabling fine-grained access control and dedicated event routing. The bus-level and per-archive KMS keys and the dead letter queue accept ValueFromRef wiring, so the bus composes directly with AwsKmsKey and AwsSqsQueue resources in the same InfraChart; AwsEventBridgeRule resources attach to the bus by referencing its `bus_name` output.
 
 ## What Gets Created
 
@@ -37,7 +37,7 @@ Open the deployment store, find **AWS EventBridge Bus**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeBus
 metadata:
   name: order-events
@@ -104,8 +104,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `bus_name` | Name of the event bus | EventBridge rule attachment, PutEvents API calls |
+| `bus_name` | Name of the event bus | AwsEventBridgeRule `eventBusName`, PutEvents API calls |
 | `bus_arn` | Amazon Resource Name of the event bus | IAM policies, cross-account event delivery |
+| `archives` | Per-archive `name`/`arn` pairs for the archives declared in `spec.archives` | StartReplay operations and IAM policies scoped to an archive |
 
 ## Common Patterns
 
@@ -119,5 +120,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
+- [**AWS EventBridge Rule**](/cloud-catalog/aws-event-bridge-rule) -- attaches to this bus and routes matching events to Lambda, SQS, SNS, and Step Functions targets
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encrypting events at rest
 - [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- provides a dead letter queue for events that fail delivery

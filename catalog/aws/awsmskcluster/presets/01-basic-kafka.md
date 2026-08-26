@@ -1,4 +1,4 @@
-# Preset: Basic Kafka Cluster
+# Basic Kafka Cluster
 
 A minimal 3-broker MSK cluster suitable for development and testing workloads.
 

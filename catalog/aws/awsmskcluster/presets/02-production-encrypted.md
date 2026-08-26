@@ -1,4 +1,4 @@
-# Preset: Production Encrypted Kafka Cluster
+# Production Encrypted Kafka Cluster
 
 A production-grade MSK cluster with customer-managed KMS encryption, tiered storage,
 comprehensive monitoring, and hardened Kafka server properties.

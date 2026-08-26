@@ -1,6 +1,6 @@
 # AWS MSK Serverless Cluster
 
-Deploys an Amazon MSK Serverless cluster — Apache Kafka with every capacity decision removed. AWS scales throughput and partitions automatically and bills per use: no broker counts, no instance types, no storage provisioning, no Kafka version management. The spec is exactly what remains — where the cluster lives (one or more VPC placements, each with subnets and security groups) — and all of it is create-time immutable. Authentication is fixed at SASL/IAM on port 9098 (the only scheme, always on), so producer and consumer identity is pure IAM. The cluster integrates with Planton's Provider Connections for AWS credential management and exports the bootstrap string and ARN that downstream consumers and Lambda event source mappings wire to.
+Deploys an Amazon MSK Serverless cluster — Apache Kafka with every capacity decision removed. AWS scales throughput and partitions automatically and bills per use: no broker counts, no instance types, no storage provisioning, no Kafka version management. The spec is exactly what remains — where the cluster lives (one or more VPC placements, each with subnets and security groups) — and all of it is create-time immutable. Authentication is fixed at SASL/IAM on port 9098 (the only scheme, always on), so producer and consumer identity is pure IAM. The cluster exports the bootstrap string and cluster ARN that downstream consumers and Lambda event source mappings wire to.
 
 ## What Gets Created
 
@@ -19,14 +19,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### AWS Account
 
 - **Subnets in at least two AZs** (production) within the target VPC — clients in an AZ with no cluster interface cross AZs on every fetch. Reference AwsSubnet Cloud Resources or provide subnet IDs directly.
-- **Security groups with TCP-9098 ingress** (up to 5) from your producer/consumer security groups. The ingress rules live on the referenced [AwsSecurityGroup](/cloud-catalog/aws-security-group) resources — decide them BEFORE creating the cluster; the set is immutable and empty falls back to the VPC's default group.
+- **Security groups with TCP-9098 ingress** (up to 5) from your producer/consumer security groups. The ingress rules live on the referenced [AWS Security Group](/cloud-catalog/aws-security-group) resources — decide them BEFORE creating the cluster; the set is immutable and empty falls back to the VPC's default group.
 - **IAM permissions for clients** -- every producer/consumer needs `kafka-cluster:Connect` plus topic-level `kafka-cluster:*` actions on the cluster ARN; network reachability alone is not enough.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **AWS MSK Serverless Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the single networking step. Start from the **Basic IAM** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS MSK Serverless Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the single networking step. Start from the **Basic IAM-Authenticated Serverless Kafka** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -78,6 +78,8 @@ spec:
             fieldPath: status.outputs.security_group_id
 ```
 
+The InfraPipeline resolves the dependency graph, deploys the subnets and security group first, then provisions the cluster with the resolved values.
+
 ## Key Configuration
 
 These are the only decisions an MSK Serverless cluster asks for — everything else is AWS-managed. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -116,11 +118,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Event-driven microservices** -- spiky, unpredictable throughput where paying per use beats provisioning for peak. Start from the **Basic IAM** preset.
+**Event-driven microservices** -- spiky, unpredictable throughput where paying per use beats provisioning for peak. Start from the **Basic IAM-Authenticated Serverless Kafka** preset.
 
-**Graph-composed placement** -- subnets and security groups wired from the resource graph so the whole event fabric deploys as one InfraChart. Start from the **Composed References** preset.
+**Graph-composed placement** -- subnets and security groups wired from the resource graph so the whole event fabric deploys as one InfraChart. Start from the **Composed Serverless Kafka (Full References)** preset.
 
-**Shared cluster across VPCs** -- one Kafka fabric serving producers and consumers in separate VPCs, each through its own placement and security group. Start from the **Multi-VPC Access** preset.
+**Shared cluster across VPCs** -- one Kafka fabric serving producers and consumers in separate VPCs, each through its own placement and security group. Start from the **Multi-VPC Serverless Kafka** preset.
 
 ## Works With
 

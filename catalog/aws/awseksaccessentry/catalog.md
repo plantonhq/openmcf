@@ -34,7 +34,7 @@ Open the deployment store, find **AWS EKS Access Entry**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAccessEntry
 metadata:
   name: platform-viewers
@@ -64,6 +64,27 @@ planton apply -f access-entry.yaml
 
 This grants the referenced role read-only access across the whole cluster through the AWS-managed view policy — no in-cluster RBAC objects, no ConfigMap edits. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the entry deploys alongside its cluster and role in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: platform-cluster
+      fieldPath: status.outputs.name
+  principalArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: platform-readonly
+      fieldPath: status.outputs.role_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the cluster and role first, then creates the access entry.
+
 ## Key Configuration
 
 These are the most important decisions when configuring an EKS access entry. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -82,14 +103,14 @@ These are the most important decisions when configuring an EKS access entry. Exp
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `clusterName` | AwsEksCluster | `status.outputs.name` |
-| `principalArn` | AwsIamRole | `status.outputs.role_arn` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsEksCluster** | `clusterName` | `status.outputs.name` |
+| **AwsIamRole** | `principalArn` | `status.outputs.role_arn` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -104,10 +125,10 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Namespace admin** -- Full admin inside a team's namespaces only, through a namespace-scoped `AmazonEKSAdminPolicy`. Start from the **Namespace Admin** preset.
 
-**Bring-your-own RBAC** -- Map the principal onto Kubernetes groups your own RoleBindings reference, with no AWS-managed policies at all. Start from the **RBAC Groups** preset.
+**Bring-your-own RBAC** -- Map the principal onto Kubernetes groups your own RoleBindings reference, with no AWS-managed policies at all. Start from the **RBAC Group Mapping** preset.
 
 ## Works With
 
-- **AwsEksCluster** -- the cluster whose Kubernetes API the entry grants access to, referenced by `clusterName`. The cluster's authentication mode must include API.
-- **AwsIamRole** -- the principal being granted access, referenced by `principalArn`.
-- **AwsEksNodeGroup / AwsEksFargateProfile** -- EKS auto-creates node-type entries for their infrastructure roles; model entries only for the principals you grant yourself.
+- [**AWS EKS Cluster**](/cloud-catalog/aws-eks-cluster) -- the cluster whose Kubernetes API the entry grants access to, referenced by `clusterName`. The cluster's authentication mode must include API.
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the principal being granted access, referenced by `principalArn`.
+- [**AWS EKS Node Group**](/cloud-catalog/aws-eks-node-group) and [**AWS EKS Fargate Profile**](/cloud-catalog/aws-eks-fargate-profile) -- EKS auto-creates node-type entries for their infrastructure roles; model entries only for the principals you grant yourself.

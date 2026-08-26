@@ -1,6 +1,6 @@
 # AWS IAM Policy
 
-Deploys a customer-managed IAM policy — the reusable unit of AWS permissions: a standalone, versioned permission document with its own ARN that can be attached to many roles and users at once. Define a grant once ("read-only access to the analytics bucket", "the permissions boundary for CI jobs"), attach it everywhere it is needed, and update it in exactly one place. Roles and users attach it through their `managedPolicyArns` fields, and a `permissionsBoundary` also takes a policy ARN, which makes this kind a leaf that much of an AWS architecture composes onto. The policy integrates with Planton's Provider Connections for AWS credential management, and its `policy_arn` output is what every attachment references via ValueFromRef.
+Deploys a customer-managed IAM policy — the reusable unit of AWS permissions: a standalone, versioned permission document with its own ARN that can be attached to many roles and users at once. Define a grant once ("read-only access to the analytics bucket", "the permissions boundary for CI jobs"), attach it everywhere it is needed, and update it in exactly one place. Roles and users attach it through their `managedPolicyArns` fields, and a `permissionsBoundary` also takes a policy ARN, which makes this kind a leaf that much of an AWS architecture composes onto. Its `policy_arn` output is what every attachment references via ValueFromRef.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS IAM Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the document editor opens seeded with the current policy language version so you author statements directly. Start from the **S3 Read Only** preset in the [Presets](#presets) tab to pre-populate the most common shared grant.
+Open the deployment store, find **AWS IAM Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the document editor opens seeded with the current policy language version so you author statements directly. Start from the **S3 Read-Only Access** preset in the [Presets](#presets) tab to pre-populate the most common shared grant.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamPolicy
 metadata:
   name: s3-read-only
@@ -60,22 +60,6 @@ planton apply -f iam-policy.yaml
 
 This publishes the shared read-only grant; every role that attaches it inherits exactly these permissions, and widening the grant later is a one-place edit. A Stack Job tracks the provisioning in real time.
 
-### InfraChart
-
-When deploying as part of a multi-resource environment, downstream roles wire to the policy through ValueFromRef:
-
-```yaml
-# On an AwsIamRole in the same InfraPipeline:
-spec:
-  managedPolicyArns:
-    - valueFrom:
-        kind: AwsIamPolicy
-        name: s3-read-only
-        fieldPath: status.outputs.policy_arn
-```
-
-The InfraPipeline resolves the dependency graph, deploys the policy first, then provisions the role with the resolved ARN.
-
 ## Key Configuration
 
 These are the most important decisions when configuring an IAM policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -92,7 +76,7 @@ These are the most important decisions when configuring an IAM policy. Explore t
 
 ### What This Component Consumes
 
-The policy is a leaf — it references no other Cloud Resources.
+This component has no foreign key dependencies. The policy is a leaf — it references no other Cloud Resources; the ARNs its statements govern travel as plain strings inside the policy document.
 
 ### What This Component Provides
 
@@ -108,9 +92,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Shared read-only grant** -- One managed policy granting read access to a bucket or table, attached by every consumer role — the most common shared permission set in an AWS estate. Start from the **S3 Read Only** preset.
+**Shared read-only grant** -- One managed policy granting read access to a bucket or table, attached by every consumer role — the most common shared permission set in an AWS estate. Start from the **S3 Read-Only Access** preset.
 
-**Permissions boundary** -- An allow-list of workload services plus an explicit Deny on identity escalation, applied through roles' `permissionsBoundary` field: the ceiling no attached policy can escalate past, and the mechanism that makes delegated role creation safe. Start from the **Permissions Boundary** preset.
+**Permissions boundary** -- An allow-list of workload services plus an explicit Deny on identity escalation, applied through roles' `permissionsBoundary` field: the ceiling no attached policy can escalate past, and the mechanism that makes delegated role creation safe. Start from the **Workload Permissions Boundary** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # AWS SNS Subscription
 
-Deploys the delivery edge that wires an SNS topic to a target endpoint — an SQS queue, a Lambda function, an HTTP/S webhook, an email address, an SMS number, a Kinesis Data Firehose stream, or a mobile push endpoint. The subscription is its own node in the resource graph, not a setting of the topic: a topic can have many subscriptions, each owning its own protocol, endpoint, message filtering, raw delivery, dead-letter queue, and archived-message replay. The subscription integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the topic, the endpoint resource, the dead-letter queue, and the Firehose delivery role.
+Deploys the delivery edge that wires an SNS topic to a target endpoint — an SQS queue, a Lambda function, an HTTP/S webhook, an email address, an SMS number, a Kinesis Data Firehose stream, or a mobile push endpoint. The subscription is its own node in the resource graph, not a setting of the topic: a topic can have many subscriptions, each owning its own protocol, endpoint, message filtering, raw delivery, dead-letter queue, and archived-message replay. The topic, the endpoint, the dead-letter queue, and the Firehose delivery role all accept ValueFromRef wiring, so a subscription composes directly with the resources on both ends of the delivery edge. Region, topic, protocol, and endpoint are create-time immutable — a different target is a different subscription.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS SNS Subscription**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **SQS Fan-Out** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS SNS Subscription**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **SQS Fan-out Consumer** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSnsSubscription
 metadata:
   name: fulfillment-events
@@ -44,9 +44,17 @@ metadata:
   env: prod
 spec:
   region: us-west-2
-  topicArn: arn:aws:sns:us-west-2:123456789012:order-events
+  topicArn:
+    valueFrom:
+      kind: AwsSnsTopic
+      name: order-events
+      fieldPath: status.outputs.topic_arn
   protocol: sqs
-  endpoint: arn:aws:sqs:us-west-2:123456789012:fulfillment-queue
+  endpoint:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: fulfillment-queue
+      fieldPath: status.outputs.queue_arn
   rawMessageDelivery: true
 ```
 
@@ -54,7 +62,7 @@ spec:
 planton apply -f sns-subscription.yaml
 ```
 
-This subscribes the queue to the topic with raw delivery — the consumer reads message bodies directly, without the SNS JSON envelope. A Stack Job tracks the provisioning in real time.
+This subscribes the referenced queue to the referenced topic with raw delivery — the consumer reads message bodies directly, without the SNS JSON envelope. To subscribe to a topic owned by another account, replace the `valueFrom` block with `value: <literal topic ARN>`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -120,9 +128,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**SQS fan-out** -- The durable pub/sub backbone: topic to queue with raw delivery and a message filter so each consumer receives only its event types. Start from the **SQS Fan-Out** preset.
+**SQS fan-out** -- The durable pub/sub backbone: topic to queue with raw delivery and a message filter so each consumer receives only its event types. Start from the **SQS Fan-out Consumer** preset.
 
-**HTTPS webhook** -- Deliver events to an external system over HTTPS with a delivery-retry override and a DLQ for failed posts. Start from the **HTTPS Webhook** preset.
+**HTTPS webhook** -- Deliver events to an external system over HTTPS with a delivery-retry override and a DLQ for failed posts. Start from the **HTTPS Webhook with Dead-Letter Queue** preset.
 
 ## Works With
 

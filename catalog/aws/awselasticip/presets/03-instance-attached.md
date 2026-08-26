@@ -1,4 +1,4 @@
-# Preset: Instance-Attached Elastic IP
+# Instance-Attached Elastic IP
 
 **Use case:** Give an EC2 instance a public IP that survives stop/start cycles.
 

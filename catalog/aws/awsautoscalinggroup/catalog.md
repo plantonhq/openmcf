@@ -1,6 +1,6 @@
 # AWS Auto Scaling Group
 
-Deploys an EC2 Auto Scaling group — the fleet manager that keeps a set of instances launched from a launch template at the desired size, replaces unhealthy members, spreads capacity across subnets, and scales on policies and schedules. The group is a pure orchestrator: WHAT launches lives in the referenced AwsLaunchTemplate; this group decides how many, where, and when. Scaling policies, scheduled actions, lifecycle hooks, and notifications are folded into the spec (they are sub-resources of exactly one group), and both IaC modules manage each as its own provider resource so adding or removing one is an in-place update — never a group replacement. The group integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the launch template, subnets, target groups, alarms, SNS topics, and IAM roles.
+Deploys an EC2 Auto Scaling group — the fleet manager that keeps a set of instances launched from a launch template at the desired size, replaces unhealthy members, spreads capacity across subnets, and scales on policies and schedules. The group is a pure orchestrator: WHAT launches lives in the referenced AwsLaunchTemplate; this group decides how many, where, and when. Scaling policies, scheduled actions, lifecycle hooks, and notifications are folded into the spec (they are sub-resources of exactly one group), and both IaC modules manage each as its own provider resource so adding or removing one is an in-place update — never a group replacement.
 
 ## What Gets Created
 
@@ -37,7 +37,7 @@ Open the deployment store, find **AWS Auto Scaling Group**, and click **Deploy**
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAutoScalingGroup
 metadata:
   name: web-fleet
@@ -90,7 +90,31 @@ This runs the full production loop: a two-instance floor across two zones, ELB h
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the group to resources deployed in the same InfraPipeline — the template, subnets, and target groups above are exactly that. The InfraPipeline resolves the dependency graph, deploys the VPC, subnets, template, and load-balancing tier first, then provisions the fleet against their outputs.
+When the fleet deploys alongside its network and launch template in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  subnets:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-b
+        fieldPath: status.outputs.subnet_id
+  launchTemplate:
+    launchTemplateId:
+      valueFrom:
+        kind: AwsLaunchTemplate
+        name: web-fleet-base
+        fieldPath: status.outputs.launch_template_id
+  minSize: 2
+  maxSize: 10
+```
+
+The InfraPipeline resolves the dependency graph, deploys the subnets and launch template first, then provisions the fleet against their outputs.
 
 ## Key Configuration
 
@@ -139,9 +163,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Spot mixed fleet** -- An On-Demand base of two with an all-Spot majority across four instance pools, capacity rebalance on. Start from the **Spot Mixed Fleet** preset.
 
-**Scheduled scale** -- Business-hours scale-up and overnight scale-to-zero on cron, with a stopped warm pool for fast mornings. Start from the **Scheduled Scale** preset.
+**Scheduled scale** -- Business-hours scale-up and overnight scale-to-zero on cron, with a stopped warm pool for fast mornings. Start from the **Scheduled Scale with Warm Pool** preset.
 
-**Reserved fleet** -- Fill pre-purchased Capacity Reservations first, place capacity reservations-then-balanced, retain failed-drain instances for post-mortems, and attach the warm-up hook atomically at creation. Start from the **Reserved Fleet** preset.
+**Reserved fleet** -- Fill pre-purchased Capacity Reservations first, place capacity reservations-then-balanced, retain failed-drain instances for post-mortems, and attach the warm-up hook atomically at creation. Start from the **Reserved Fleet with Guaranteed Capacity** preset.
 
 ## Works With
 

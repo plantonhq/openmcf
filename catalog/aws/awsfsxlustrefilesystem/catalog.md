@@ -1,6 +1,6 @@
 # AWS FSx Lustre File System
 
-Deploys a high-performance parallel file system on Amazon FSx for Lustre with configurable deployment types (scratch or persistent), storage media, throughput tiers, optional S3 data repository integration, and CloudWatch audit logging. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, KMS keys, and CloudWatch log groups.
+Deploys a high-performance parallel file system on Amazon FSx for Lustre with configurable deployment types (scratch or persistent), storage media, throughput tiers, optional S3 data repository integration, and CloudWatch audit logging. Lustre file systems are single-AZ and single-subnet, and the deployment type is the defining one-way door: scratch for ephemeral speed at lowest cost, persistent for durability and backups -- with PERSISTENT_2 moving S3 integration to per-directory Data Repository Associations entirely.
 
 ## What Gets Created
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx Lustre File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Scratch Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx Lustre File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Scratch Development FSx Lustre** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxLustreFileSystem
 metadata:
   name: ml-training-scratch
@@ -131,11 +131,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Scratch development** -- SCRATCH_2 with 1.2 TiB SSD storage. No data replication or backups. Ideal for short-lived ML training jobs, HPC simulations, and batch processing where data is sourced from S3 and results are written back. Start from the **Scratch Development** preset.
+**Scratch development** -- SCRATCH_2 with 1.2 TiB SSD storage. No data replication or backups. Ideal for short-lived ML training jobs, HPC simulations, and batch processing where data is sourced from S3 and results are written back. Start from the **Scratch Development FSx Lustre** preset.
 
-**Persistent high throughput** -- PERSISTENT_2 with 2.4 TiB SSD, 1000 MB/s/TiB throughput, LZ4 compression, automatic backups, and automatic metadata IOPS. Designed for production ML training pipelines and HPC workloads that need durable, high-performance storage. Start from the **Persistent High Throughput** preset.
+**Persistent high throughput** -- PERSISTENT_2 with 2.4 TiB SSD, 1000 MB/s/TiB throughput, LZ4 compression, automatic backups, and automatic metadata IOPS. Designed for production ML training pipelines and HPC workloads that need durable, high-performance storage. Start from the **Persistent High Throughput FSx Lustre** preset.
 
-**Persistent capacity datalake** -- PERSISTENT_1 with 6 TiB HDD, 12 MB/s/TiB throughput, LZ4 compression, and 14-day backup retention. Cost-optimized for large datasets accessed sequentially, such as data lake processing and genomics pipelines. Start from the **Persistent Capacity Datalake** preset.
+**Persistent capacity data lake** -- PERSISTENT_1 with 6 TiB HDD, 12 MB/s/TiB throughput, LZ4 compression, and 14-day backup retention. Cost-optimized for large datasets accessed sequentially, such as data lake processing and genomics pipelines. Start from the **Persistent Capacity Data Lake FSx Lustre** preset.
+
+**Intelligent-Tiering elastic** -- PERSISTENT_2 on INTELLIGENT_TIERING storage: no provisioned capacity at all, throughput in 4000 MB/s multiples, a read cache, and metadata IOPS. The shape for datasets whose size is unknown or highly variable. Start from the **Intelligent-Tiering Elastic FSx Lustre** preset.
 
 ## Works With
 

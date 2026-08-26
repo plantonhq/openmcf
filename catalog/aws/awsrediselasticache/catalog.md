@@ -1,6 +1,6 @@
 # AWS ElastiCache Redis
 
-Deploys an ElastiCache replication group running Redis or Valkey with configurable topology (non-clustered or clustered mode), automatic failover, multi-AZ deployment, at-rest and in-transit encryption, AUTH token or Redis ACL authentication, custom parameter groups, and log delivery to CloudWatch or Kinesis. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, KMS keys, and SNS topics.
+Deploys an ElastiCache replication group running Redis or Valkey with configurable topology (non-clustered or clustered mode), automatic failover, multi-AZ deployment, at-rest and in-transit encryption, AUTH token or Redis ACL authentication, custom parameter groups, and log delivery to CloudWatch or Kinesis. ElastiCache is a cache, not a system of record -- for durable Redis-compatible storage, the sibling AwsMemorydbCluster carries a multi-AZ transaction log.
 
 ## What Gets Created
 
@@ -22,7 +22,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **Subnets** in the target VPC for the ElastiCache subnet group. Provide at least two subnets in distinct Availability Zones for multi-AZ deployments. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Subnets** in the target VPC for the ElastiCache subnet group. Provide at least two subnets in distinct Availability Zones for multi-AZ deployments. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef.
 - **Security groups** to attach to the cluster nodes for network access control. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource.
 - **A KMS key** (optional) for at-rest encryption with a customer-managed key instead of the default AWS-managed key. This is a ForceNew attribute -- changing it after creation destroys and recreates the cluster.
 - **An SNS topic** (optional) for cluster event notifications (failover, maintenance, configuration changes).
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS ElastiCache Redis**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, and spec fields. Configure the engine, topology mode, node type, and encryption settings directly in the wizard.
+Open the deployment store, find **AWS ElastiCache Redis**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, and spec fields. Configure the engine, topology mode, node type, and encryption settings directly in the wizard, or start from the **Redis HA Cluster** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedisElasticache
 metadata:
   name: session-cache
@@ -65,23 +65,23 @@ spec:
 planton apply -f redis-elasticache.yaml
 ```
 
-This creates a non-clustered Redis 7.1 replication group with 1 primary and 2 read replicas, automatic failover across multiple AZs, encryption at rest and in transit, and 7-day snapshot retention. No AUTH token, custom parameters, or log delivery are configured.
+This creates a non-clustered Redis 7.1 replication group with 1 primary and 2 read replicas, automatic failover across multiple AZs, encryption at rest and in transit, and 7-day snapshot retention. No AUTH token, custom parameters, or log delivery are configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the Redis cluster to a VPC, security group, and KMS key deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Redis cluster to subnets, a security group, and a KMS key deployed in the same InfraPipeline:
 
 ```yaml
 spec:
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: cache-subnet-az1
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[1].id
+        kind: AwsSubnet
+        name: cache-subnet-az2
+        fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -99,7 +99,7 @@ spec:
       fieldPath: status.outputs.topic_arn
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the VPC, security group, KMS key, and SNS topic first, then provisions the Redis cluster with the resolved values.
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, KMS key, and SNS topic first, then provisions the Redis cluster with the resolved values.
 
 ## Key Configuration
 
@@ -115,7 +115,7 @@ These are the most important decisions when configuring an ElastiCache Redis clu
 
 **Authentication** -- Choose between `authToken` (Redis AUTH password, requires TLS) and `userGroupIds` (Redis ACL user groups for fine-grained command and key permissions — each entry accepts a group ID or a ValueFromRef to an AwsElasticacheUserGroup). These are mutually exclusive. When rotating a token on a running cluster, set `authTokenUpdateStrategy` (`ROTATE` for zero-downtime dual-token rollout, `SET` for immediate replacement). To migrate off AUTH entirely — the step before adopting ACL user groups — set `authTokenUpdateStrategy: DELETE` with NO `authToken`: DELETE removes the token, so supplying one alongside it is rejected.
 
-**Global datastore** -- Set `globalReplicationGroupId` to join an existing global datastore as a cross-region secondary. The secondary inherits the primary's engine, version, node type, encryption, and parameter group — leave those fields UNSET (an explicit `false` on the encryption flags is just as illegal as `true`; the inherited settings reject the fields' presence, not just particular values) — and may only configure its own `numCacheClusters`. Start from the **Global Datastore Secondary** preset.
+**Global datastore** -- Set `globalReplicationGroupId` to join an existing global datastore as a cross-region secondary. The secondary inherits the primary's engine, version, node type, encryption, and parameter group — leave those fields UNSET (an explicit `false` on the encryption flags is just as illegal as `true`; the inherited settings reject the fields' presence, not just particular values) — and may only configure its own `numCacheClusters`. Start from the **Global Datastore Secondary (Cross-Region DR)** preset.
 
 **Placement** -- In non-clustered mode, `preferredCacheClusterAzs` pins each node to an AZ (one entry per node). In clustered mode, `nodeGroupConfigurations` pins individual shards (primary AZ, replica AZs, per-shard replica count, keyspace slots). The two are mutually exclusive placement controls. `durability` (Valkey 9.0+, clustered) selects per-shard write acknowledgement (`async`/`sync`), and `clusterMode` (`enabled`/`compatible`/`disabled`) bridges live protocol migrations.
 
@@ -131,7 +131,7 @@ These are the most important decisions when configuring an ElastiCache Redis clu
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsVpc** (optional) | `subnetIds` | `status.outputs.private_subnets.[*].id` |
+| **AwsSubnet** (optional) | `subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
 | **AwsKmsKey** (optional) | `kmsKeyId` | `status.outputs.key_arn` |
 | **AwsSnsTopic** (optional) | `notificationTopicArn` | `status.outputs.topic_arn` |
@@ -165,7 +165,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides the subnets for the ElastiCache subnet group across multiple Availability Zones
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets for the ElastiCache subnet group across multiple Availability Zones
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for the Redis endpoint
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for at-rest encryption
 - [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- receives cluster event notifications for failover and maintenance events

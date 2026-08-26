@@ -1,4 +1,4 @@
-# Preset: Public Access with Plugins and Custom Packages
+# Public Access with Plugins and Custom Packages
 
 An MWAA environment with public webserver access, custom plugins, Python requirements,
 a startup script, and aggressive worker auto-scaling. Demonstrates the full breadth of

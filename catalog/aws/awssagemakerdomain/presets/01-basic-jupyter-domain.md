@@ -1,4 +1,4 @@
-# Preset: Basic JupyterLab Domain
+# Basic JupyterLab Domain
 
 A minimal SageMaker Domain for getting started with JupyterLab in your VPC.
 

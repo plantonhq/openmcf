@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS EKS Addon**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Core Networking** preset in the [Presets](#presets) tab to adopt a bootstrapped cluster's networking add-ons.
+Open the deployment store, find **AWS EKS Addon**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Core Networking Add-on** preset in the [Presets](#presets) tab to adopt a bootstrapped cluster's networking add-ons.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksAddon
 metadata:
   name: platform-coredns
@@ -57,6 +57,30 @@ planton apply -f eks-addon.yaml
 
 This installs CoreDNS as a managed add-on at AWS's default version for the cluster's Kubernetes version, adopting the self-managed CoreDNS the cluster bootstrapped. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the add-on deploys alongside its cluster and IAM role in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: platform-cluster
+      fieldPath: status.outputs.name
+  addonName: aws-ebs-csi-driver
+  podIdentityAssociations:
+    - serviceAccount: ebs-csi-controller-sa
+      roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: ebs-csi-role
+          fieldPath: status.outputs.role_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the cluster and role first, then installs the add-on with the resolved values.
+
 ## Key Configuration
 
 These are the most important decisions when configuring an EKS add-on. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -77,15 +101,14 @@ These are the most important decisions when configuring an EKS add-on. Explore t
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `clusterName` | AwsEksCluster | `status.outputs.name` |
-| `serviceAccountRoleArn` | AwsIamRole | `status.outputs.role_arn` |
-| `podIdentityAssociations[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsEksCluster** | `clusterName` | `status.outputs.name` |
+| **AwsIamRole** | `serviceAccountRoleArn`, `podIdentityAssociations[].roleArn` | `status.outputs.role_arn` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -97,14 +120,14 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Adopt core networking** -- Install vpc-cni, coredns, and kube-proxy as managed add-ons with `OVERWRITE` on create, taking over the self-managed copies from cluster bootstrap. Start from the **Core Networking** preset.
+**Adopt core networking** -- Install vpc-cni, coredns, and kube-proxy as managed add-ons with `OVERWRITE` on create, taking over the self-managed copies from cluster bootstrap. Start from the **Core Networking Add-on** preset.
 
-**EBS CSI with Pod Identity** -- The EBS CSI driver bound to a dedicated IAM role through Pod Identity, unlocking dynamic EBS volume provisioning. Start from the **EBS CSI Pod Identity** preset.
+**EBS CSI with Pod Identity** -- The EBS CSI driver bound to a dedicated IAM role through Pod Identity, unlocking dynamic EBS volume provisioning. Start from the **EBS CSI Driver with Pod Identity** preset.
 
-**Pinned version fleet** -- Pin `addonVersion` across environments for byte-identical clusters and staged upgrades. Start from the **Pinned Version** preset.
+**Pinned version fleet** -- Pin `addonVersion` across environments for byte-identical clusters and staged upgrades. Start from the **Pinned Version with Configuration** preset.
 
 ## Works With
 
-- **AwsEksCluster** -- the parent cluster, referenced by `clusterName`.
-- **AwsEksNodeGroup** -- add-ons schedule onto the cluster's nodes; storage drivers serve the workloads those nodes run.
-- **AwsIamRole** -- the IAM identities referenced by Pod Identity associations and IRSA.
+- [**AWS EKS Cluster**](/cloud-catalog/aws-eks-cluster) -- the parent cluster, referenced by `clusterName`.
+- [**AWS EKS Node Group**](/cloud-catalog/aws-eks-node-group) -- add-ons schedule onto the cluster's nodes; storage drivers serve the workloads those nodes run.
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the IAM identities referenced by Pod Identity associations and IRSA.

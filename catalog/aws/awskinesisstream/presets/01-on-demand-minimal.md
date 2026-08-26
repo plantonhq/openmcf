@@ -1,4 +1,4 @@
-# Preset: On-Demand Minimal
+# On-Demand Minimal
 
 ## Use Case
 

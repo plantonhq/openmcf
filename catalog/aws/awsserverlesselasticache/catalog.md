@@ -1,6 +1,6 @@
 # AWS ElastiCache Serverless
 
-Deploys an ElastiCache Serverless cache with consumption-based pricing and automatic scaling of both compute (ECPU) and storage (GB). Supports Redis, Valkey, and Memcached engines with configurable scaling limits, VPC placement, customer-managed encryption, snapshots, and Redis ACL authentication. The cache integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, and KMS keys.
+Deploys an ElastiCache Serverless cache with consumption-based pricing and automatic scaling of both compute (ECPU) and storage (GB). Supports Redis, Valkey, and Memcached engines with configurable scaling limits, VPC placement, customer-managed encryption, snapshots, and Redis ACL authentication. AWS owns node scaling, replication, and patching entirely -- the manifest declares bounds and posture, never topology.
 
 ## What Gets Created
 
@@ -22,7 +22,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **VPC subnets** (recommended) -- private subnets for the cache's VPC endpoints. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef. The `subnetIds` field is ForceNew -- changing subnets destroys and recreates the cache.
+- **VPC subnets** (recommended) -- private subnets for the cache's VPC endpoints. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef. The `subnetIds` field is ForceNew -- changing subnets destroys and recreates the cache.
 - **A security group** (recommended) -- controls network access to the cache endpoint (default port 6379 for Redis/Valkey, 11211 for Memcached). Provide the ID directly or reference an AwsSecurityGroup via ValueFromRef.
 - **A KMS key** (optional) -- for customer-managed at-rest encryption. The `kmsKeyId` field is ForceNew -- changing the key destroys and recreates the cache.
 - **A Redis ACL user group** (optional) -- for fine-grained access control (Redis/Valkey engines only).
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS ElastiCache Serverless**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsServerlessElasticache
 metadata:
   name: session-cache

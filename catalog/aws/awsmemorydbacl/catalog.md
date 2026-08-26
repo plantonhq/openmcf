@@ -1,13 +1,12 @@
 # AWS MemoryDB ACL
 
-Deploys a MemoryDB Access Control List — the single attachment point between identities and clusters in MemoryDB's only authentication model. Users ([AwsMemorydbUser](/cloud-catalog/aws-memorydb-user)) join the ACL, and a cluster ([AwsMemorydbCluster](/cloud-catalog/aws-memorydb-cluster)) attaches exactly one ACL. Granting or revoking an application's database access is an in-place membership edit here — the cluster and the users themselves never change. The ACL integrates with Planton's Provider Connections for AWS credential management and wires its membership from the resource graph via references.
+Deploys a MemoryDB Access Control List — the single attachment point between identities and clusters in MemoryDB's only authentication model. Users ([AwsMemorydbUser](/cloud-catalog/aws-memorydb-user)) join the ACL, and a cluster ([AwsMemorydbCluster](/cloud-catalog/aws-memorydb-cluster)) attaches exactly one ACL. Granting or revoking an application's database access is an in-place membership edit here — the cluster and the users themselves never change.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **MemoryDB ACL** -- one access control list whose AWS name is the resource name (create-time immutable, max 40 characters)
-- **Membership** -- the user set this ACL grants access to; edits apply in place
+- **MemoryDB ACL** -- one access control list whose AWS name is the resource name (create-time immutable, max 40 characters), carrying the user set it grants access to; membership edits apply in place
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -33,7 +32,7 @@ Open the deployment store, find **AWS MemoryDB ACL**, and click **Deploy**. The 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemorydbAcl
 metadata:
   name: prod-services
@@ -56,17 +55,23 @@ This creates an ACL holding the orders-service user, ready for a cluster to atta
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, users deploy first, then this ACL, then the cluster that attaches it:
+When the ACL deploys alongside its member users in one chart, wire the membership via ValueFromRef:
 
 ```yaml
-# In the AwsMemorydbCluster manifest:
 spec:
-  aclName:
-    valueFrom:
-      kind: AwsMemorydbAcl
-      name: prod-services
-      fieldPath: status.outputs.acl_name
+  region: us-west-2
+  userNames:
+    - valueFrom:
+        kind: AwsMemorydbUser
+        name: orders-service
+        fieldPath: status.outputs.user_name
+    - valueFrom:
+        kind: AwsMemorydbUser
+        name: payments-service
+        fieldPath: status.outputs.user_name
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the users first, then this ACL -- and the cluster that attaches it references the `acl_name` output afterwards.
 
 ## Key Configuration
 
@@ -82,9 +87,9 @@ These are the most important decisions when configuring a MemoryDB ACL. Explore 
 
 ### What This Component Consumes
 
-| Reference | Source Kind | Purpose |
-|-----------|-------------|---------|
-| `spec.userNames[]` | [AwsMemorydbUser](/cloud-catalog/aws-memorydb-user) `status.outputs.user_name` | The identities this ACL grants access to |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsMemorydbUser** (optional) | `userNames` | `status.outputs.user_name` |
 
 ### What This Component Provides
 

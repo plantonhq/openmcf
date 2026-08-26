@@ -1,4 +1,4 @@
-# Preset: Basic Data Catalog
+# Basic Data Catalog
 
 A minimal Glue Data Catalog database with a description. Tables are created
 without a default storage location — each table specifies its own S3 path.

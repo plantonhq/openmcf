@@ -1,6 +1,6 @@
 # AWS WAF IP Set
 
-Deploys a WAFv2 IP set — a named, reusable collection of IP addresses and CIDR ranges that web ACL rules match requests against. IP sets are the building block of IP-based filtering: allow-lists (office and VPN egress, partner integrations, health-checker fleets) and deny-lists (known-bad ranges, abusive clients). One set can back many rules across many web ACLs — update the set once and every referencing rule sees the change immediately, with no web ACL redeploy. The set integrates with Planton's Provider Connections for AWS credential management, and its `ip_set_arn` output is what every web ACL `ip_set_reference` statement binds via ValueFromRef.
+Deploys a WAFv2 IP set — a named, reusable collection of IP addresses and CIDR ranges that web ACL rules match requests against. IP sets are the building block of IP-based filtering: allow-lists (office and VPN egress, partner integrations, health-checker fleets) and deny-lists (known-bad ranges, abusive clients). One set can back many rules across many web ACLs — update the set once and every referencing rule sees the change immediately, with no web ACL redeploy. Its `ip_set_arn` output is what every web ACL `ip_set_reference` statement binds via ValueFromRef.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS WAF IP Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the scope choice pins the region automatically for CloudFront, and each CIDR entry is validated as you type. Start from the **Office Allowlist** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **AWS WAF IP Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the scope choice pins the region automatically for CloudFront, and each CIDR entry is validated as you type. Start from the **Office Allow-List** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafIpSet
 metadata:
   name: office-allowlist
@@ -53,28 +53,6 @@ planton apply -f waf-ip-set.yaml
 
 This publishes the allow-list; pair it with a web ACL whose default action is block and an early-priority allow rule referencing this set's ARN. A Stack Job tracks the provisioning in real time.
 
-### InfraChart
-
-When deploying as part of a multi-resource environment, web ACLs wire to the set through ValueFromRef:
-
-```yaml
-# On an AwsWafWebAcl rule in the same InfraPipeline:
-spec:
-  rules:
-    - name: allow-office
-      priority: 0
-      action: allow
-      statement:
-        ipSetReference:
-          arn:
-            valueFrom:
-              kind: AwsWafIpSet
-              name: office-allowlist
-              fieldPath: status.outputs.ip_set_arn
-```
-
-The InfraPipeline resolves the dependency graph, deploys the set first, then provisions the web ACL with the resolved ARN.
-
 ## Key Configuration
 
 These are the most important decisions when configuring an IP set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -91,7 +69,7 @@ These are the most important decisions when configuring an IP set. Explore the f
 
 ### What This Component Consumes
 
-The set is a leaf — it references no other Cloud Resources.
+This component has no foreign key dependencies. The set is a leaf — it references no other Cloud Resources; web ACLs reference it, never the reverse.
 
 ### What This Component Provides
 
@@ -107,9 +85,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Office allow-list** -- a REGIONAL IPv4 set of corporate and VPN egress ranges, referenced by an early-priority allow rule in a default-block web ACL — the standard shape for gating private APIs and staging environments. Start from the **Office Allowlist** preset.
+**Office allow-list** -- a REGIONAL IPv4 set of corporate and VPN egress ranges, referenced by an early-priority allow rule in a default-block web ACL — the standard shape for gating private APIs and staging environments. Start from the **Office Allow-List** preset.
 
-**Placeholder set** -- an empty set deployed so web ACL rules can bind its ARN before NetEng publishes the real ranges; filling it in later never touches the web ACLs. Start from the **Placeholder Set** preset.
+**Placeholder set** -- an empty set deployed so web ACL rules can bind its ARN before NetEng publishes the real ranges; filling it in later never touches the web ACLs. Start from the **Placeholder IP Set** preset.
 
 ## Works With
 

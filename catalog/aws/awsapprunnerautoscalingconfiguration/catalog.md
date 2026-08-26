@@ -1,6 +1,6 @@
 # AWS App Runner Auto Scaling Configuration
 
-Deploys an App Runner auto scaling configuration — the reusable scaling policy that controls how App Runner scales a service's instance count in response to request concurrency. It is deliberately its own resource: any number of [App Runner services](/cloud-catalog/aws-app-runner-service) reference one configuration by ARN, so a fleet adopts a common scaling posture that is tuned in one place. AWS versions these configurations — a change registers a new revision under the same name, and the revision-carrying ARN rolls referencing services on their next deployment. The configuration integrates with Planton's Provider Connections for AWS credential management.
+Deploys an App Runner auto scaling configuration — the reusable scaling policy that controls how App Runner scales a service's instance count in response to request concurrency. It is deliberately its own resource: any number of [App Runner services](/cloud-catalog/aws-app-runner-service) reference one configuration by ARN, so a fleet adopts a common scaling posture that is tuned in one place. AWS versions these configurations — a change registers a new revision under the same name, and the revision-carrying ARN rolls referencing services on their next deployment.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ Open the deployment store, find **AWS App Runner Auto Scaling Configuration**, a
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerAutoScalingConfiguration
 metadata:
   name: latency-sensitive-api
@@ -49,20 +49,6 @@ planton apply -f app-runner-auto-scaling.yaml
 ```
 
 This registers a scaling posture with three warm instances and a lowered concurrency ceiling. A Stack Job tracks the provisioning in real time.
-
-### InfraChart
-
-When deploying as part of a multi-resource environment, the InfraPipeline registers the configuration first, then the services that adopt it:
-
-```yaml
-# In the AwsAppRunnerService manifest:
-spec:
-  autoScalingConfigurationArn:
-    valueFrom:
-      kind: AwsAppRunnerAutoScalingConfiguration
-      name: latency-sensitive-api
-      fieldPath: status.outputs.configuration_arn
-```
 
 ## Key Configuration
 
@@ -84,7 +70,7 @@ These are the most important decisions when configuring an auto scaling configur
 
 ### What This Component Consumes
 
-This component has no upstream Planton dependencies — it is a leaf resource that services reference.
+This component has no foreign key dependencies — it is a leaf resource: App Runner services reference its ARN, never the other way around.
 
 ### What This Component Provides
 
@@ -103,7 +89,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Latency-sensitive API** -- three warm instances absorb bursts without cold starts, and a 50-request concurrency ceiling keeps per-instance headroom. Start from the **Latency-Sensitive API** preset.
 
-**Conservative internal tool** -- one warm instance, dense request packing, and a tight scale-out cap so a traffic anomaly can never triple the bill. Start from the **Scale Conservative** preset.
+**Conservative internal tool** -- one warm instance, dense request packing, and a tight scale-out cap so a traffic anomaly can never triple the bill. Start from the **Cost-Conscious** preset.
 
 **Per-posture fleets** -- name configurations for postures (`latency-sensitive-api`, `batch-conservative`), never for individual services; every service that shares a posture references the same configuration and is retuned in one edit.
 

@@ -1,6 +1,6 @@
 # AWS Transit Gateway VPC Attachment
 
-Attaches a VPC to an AWS Transit Gateway — the connection that plugs one spoke VPC into the regional hub. An attachment is deliberately its own resource rather than a field on the gateway: a gateway carries many attachments, each with its own lifecycle, and the attachment ID this resource outputs is what Transit Gateway route tables associate, propagate, and route against. Integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Attaches a VPC to an AWS Transit Gateway — the connection that plugs one spoke VPC into the regional hub. An attachment is deliberately its own resource rather than a field on the gateway: a gateway carries many attachments, each with its own lifecycle, and the attachment ID this resource outputs is what Transit Gateway route tables associate, propagate, and route against. The gateway and VPC pair is create-time immutable -- changing either replaces the attachment and issues a new attachment ID -- while the subnet set updates in place, so Availability Zones can be added or removed without replacement.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Transit Gateway VPC Attachment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
+Open the deployment store, find **AWS Transit Gateway VPC Attachment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Mesh Spoke** preset in the [Presets](#presets) tab for the inherit-everything shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGatewayVpcAttachment
 metadata:
   name: app-vpc-attachment
@@ -55,7 +55,7 @@ spec:
 planton apply -f attachment.yaml
 ```
 
-This attaches the VPC through two Availability Zones with every behavior dial left unset — the attachment inherits all of the gateway's settings.
+This attaches the VPC through two Availability Zones with every behavior dial left unset — the attachment inherits all of the gateway's settings. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -75,16 +75,16 @@ spec:
       fieldPath: status.outputs.vpc_id
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: app-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: tgw-subnet-a
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: app-vpc
-        fieldPath: status.outputs.private_subnets.[1].id
+        kind: AwsSubnet
+        name: tgw-subnet-b
+        fieldPath: status.outputs.subnet_id
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the gateway and VPC first, then provisions the attachment with the resolved IDs.
+The InfraPipeline resolves the dependency graph, deploys the gateway, VPC, and subnets first, then provisions the attachment with the resolved IDs.
 
 ## Key Configuration
 
@@ -122,11 +122,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Full-mesh spoke** -- Join a gateway whose default dials are on: leave every dial unset and the VPC immediately reaches every other attached VPC.
+**Full-mesh spoke** -- Join a gateway whose default dials are on: leave every dial unset and the VPC immediately reaches every other attached VPC. Start from the **Mesh Spoke** preset.
 
-**Segmented spoke** -- On a segmented gateway, leave the dials unset (the gateway's dials are off) and let custom `AwsTransitGatewayRouteTable` resources claim this attachment by its `attachment_id` output.
+**Segmented spoke** -- On a segmented gateway, leave the dials unset (the gateway's dials are off) and let custom `AwsTransitGatewayRouteTable` resources claim this attachment by its `attachment_id` output. Start from the **Segmented Spoke** preset.
 
-**Inspection VPC** -- Enable appliance mode on the attachment of the shared-services VPC hosting the firewall; leave it off on every spoke.
+**Inspection VPC** -- Enable appliance mode on the attachment of the shared-services VPC hosting the firewall; leave it off on every spoke. Start from the **Inspection VPC Attachment** preset.
 
 ## Works With
 

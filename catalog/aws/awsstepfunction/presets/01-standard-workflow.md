@@ -1,4 +1,4 @@
-# Preset: Standard Workflow
+# Standard Workflow
 
 ## When to Use
 

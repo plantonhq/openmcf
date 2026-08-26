@@ -1,6 +1,6 @@
 # AWS MSK Cluster
 
-Deploys a managed Apache Kafka cluster on Amazon MSK with configurable broker count and instance families (standard, Graviton, and Express brokers), EBS storage with optional tiered storage and provisioned throughput, KMS encryption at rest, TLS/SASL authentication, public access and multi-VPC PrivateLink connectivity, inline Kafka server properties, broker log delivery to CloudWatch Logs, Firehose, and S3, and Prometheus-compatible monitoring. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, CloudWatch log groups, Firehose delivery streams, and S3 buckets.
+Deploys a managed Apache Kafka cluster on Amazon MSK with configurable broker count and instance families (standard, Graviton, and Express brokers), EBS storage with optional tiered storage and provisioned throughput, KMS encryption at rest, TLS/SASL authentication, public access and multi-VPC PrivateLink connectivity, inline Kafka server properties, broker log delivery to CloudWatch Logs, Firehose, and S3, and Prometheus-compatible monitoring. Kafka topics can be declared with the cluster and managed through the MSK topic API — no client connectivity or credential setup at deploy time — and subnets, security groups, KMS keys, and log destinations all wire by reference.
 
 ## What Gets Created
 
@@ -35,14 +35,14 @@ Network ingress is composed, never embedded: brokers attach the referenced `secu
 
 ### Console
 
-Open the deployment store, find **AWS MSK Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Kafka** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS MSK Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Kafka Cluster** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskCluster
 metadata:
   name: event-bus
@@ -57,6 +57,8 @@ spec:
     - value: "subnet-0a1b2c3d4e5f00001"
     - value: "subnet-0a1b2c3d4e5f00002"
     - value: "subnet-0a1b2c3d4e5f00003"
+  securityGroupIds:
+    - value: "sg-0123456789abcdef0"
   authentication:
     saslIamEnabled: true
 ```
@@ -65,7 +67,7 @@ spec:
 planton apply -f msk-cluster.yaml
 ```
 
-This creates a 3-broker Kafka 3.6.0 cluster with SASL/IAM authentication, TLS-only client encryption (the AWS default), default EBS storage, and the AWS-managed encryption key. A Stack Job tracks the provisioning in real time.
+This creates a 3-broker Kafka 3.6.0 cluster attached to the referenced security group, with SASL/IAM authentication, TLS-only client encryption (the AWS default), default EBS storage, and the AWS-managed encryption key. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -140,30 +142,24 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `cluster_arn` | Amazon Resource Name of the cluster | IAM policies, Lambda event source mappings, the cluster policy |
 | `cluster_name` | Cluster name | CloudWatch alarm dimensions, application configuration |
 | `cluster_uuid` | Unique identifier extracted from the ARN | Fine-grained IAM resource patterns |
-| `current_version` | Cluster version string (changes after each modification) | Update operations |
-| `bootstrap_brokers` | Plaintext broker endpoints (port 9092) | Dev clusters with plaintext enabled |
 | `bootstrap_brokers_tls` | TLS broker endpoints (port 9094) | Application connection strings with TLS encryption |
 | `bootstrap_brokers_sasl_iam` | SASL/IAM broker endpoints (port 9098) | Application connection strings with IAM authentication |
 | `bootstrap_brokers_sasl_scram` | SASL/SCRAM broker endpoints (port 9096) | Application connection strings with password authentication |
-| `bootstrap_brokers_public_tls` | Public TLS endpoints | Internet-based clients on a public cluster |
-| `bootstrap_brokers_public_sasl_iam` | Public SASL/IAM endpoints | Internet-based clients with IAM authentication |
-| `bootstrap_brokers_public_sasl_scram` | Public SASL/SCRAM endpoints | Internet-based clients with password authentication |
-| `bootstrap_brokers_vpc_connectivity_tls` | PrivateLink mutual-TLS endpoints | Cross-VPC certificate-bearing clients |
-| `bootstrap_brokers_vpc_connectivity_sasl_iam` | PrivateLink SASL/IAM endpoints | Cross-VPC IAM clients |
-| `bootstrap_brokers_vpc_connectivity_sasl_scram` | PrivateLink SASL/SCRAM endpoints | Cross-VPC password clients |
-| `zookeeper_connect_string` | ZooKeeper endpoints (empty on KRaft clusters) | Kafka admin tools, legacy consumer configuration |
-| `zookeeper_connect_string_tls` | ZooKeeper TLS endpoints (empty on KRaft clusters) | Kafka admin tools over TLS |
-| `configuration_arn` | Module-managed MSK Configuration ARN (if created) | Configuration auditing and version tracking |
+| `topic_arns` | Map of declared topic name to topic ARN | IAM policies scoping producers and consumers to exactly the contract topics |
+
+Every connectivity surface exports its own bootstrap variant alongside these: `bootstrap_brokers` (plaintext, populated only when plaintext is enabled), the `bootstrap_brokers_public_*` endpoints on a public cluster, and the `bootstrap_brokers_vpc_connectivity_*` endpoints over PrivateLink — pick the one matching how the client reaches the cluster. `zookeeper_connect_string` / `zookeeper_connect_string_tls` are empty on KRaft-mode clusters, and `current_version` / `configuration_arn` track update state rather than feeding downstream wiring.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Basic development cluster** -- 3 brokers on `kafka.t3.small` with SASL/IAM authentication. Minimal cost for development and testing workloads. Start from the **Basic Kafka** preset.
+**Basic development cluster** -- 3 brokers on `kafka.t3.small` with SASL/IAM authentication. Minimal cost for development and testing workloads. Start from the **Basic Kafka Cluster** preset.
 
-**Production encrypted cluster** -- 6 brokers on `kafka.m7g.xlarge` with tiered storage, KMS encryption, TLS client-broker encryption, per-topic-per-broker monitoring, Prometheus exporters, and hardened server properties (replication factor 3, min ISR 2). Start from the **Production Encrypted** preset.
+**Production encrypted cluster** -- 6 brokers on `kafka.m7g.xlarge` with tiered storage, KMS encryption, TLS client-broker encryption, per-topic-per-broker monitoring, Prometheus exporters, and hardened server properties (replication factor 3, min ISR 2). Start from the **Production Encrypted Kafka Cluster** preset.
 
-**Multi-auth with full logging** -- 3 brokers with SASL/IAM, SASL/SCRAM, and mutual TLS authentication enabled simultaneously. Broker logs delivered to CloudWatch Logs, Firehose, and S3. Suitable for enterprises with diverse client populations and audit requirements. Start from the **Multi-Auth Logging** preset.
+**Multi-auth with full logging** -- 3 brokers with SASL/IAM, SASL/SCRAM, and mutual TLS authentication enabled simultaneously. Broker logs delivered to CloudWatch Logs, Firehose, and S3. Suitable for enterprises with diverse client populations and audit requirements. Start from the **Multi-Authentication with Full Logging** preset.
+
+**Declared contract topics** -- the cluster and its topics deploy as one unit: an event stream, its dead-letter queue, and a compacted snapshot topic declared in `topics`, with `auto.create.topics.enable` off so a typo'd topic name fails loudly instead of materializing an accidental single-replica topic. The `topic_arns` output scopes producer/consumer IAM policies per topic. Start from the **Cluster with Declared Contract Topics** preset.
 
 ## Works With
 
@@ -172,5 +168,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for EBS volume encryption at rest
 - [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- provides the log group for broker log delivery
 - [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose) -- provides a delivery stream for broker log delivery
-- [**Storage Bucket on AWS S3**](/cloud-catalog/aws-s3-bucket) -- provides an S3 bucket for broker log delivery
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides an S3 bucket for broker log delivery
 - [**AWS Lambda Event Source Mapping**](/cloud-catalog/aws-lambda-event-source-mapping) -- consumes the cluster ARN to trigger Lambda functions from Kafka topics

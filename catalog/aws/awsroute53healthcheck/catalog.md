@@ -1,12 +1,12 @@
-# AWS Route53 Health Check
+# AWS Route 53 Health Check
 
-Deploys a Route 53 health check — the availability signal DNS records ([AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record)) reference via `health_check_id` to keep unhealthy endpoints out of DNS answers. Health checks power failover routing (primary/secondary), health-aware weighted routing, and multivalue answers. The `check_type` selects one of four monitoring models: endpoint probing from Route 53's global checker fleet (HTTP, HTTPS, body-match variants, TCP), CALCULATED aggregation of child checks into service-level health, CLOUDWATCH_METRIC mirroring of an alarm (the way to health-check private resources), and RECOVERY_CONTROL mirroring of an Application Recovery Controller switch for DR runbooks.
+Deploys a Route 53 health check — the availability signal DNS records reference to keep unhealthy endpoints out of DNS answers. Health checks power failover routing (primary/secondary), health-aware weighted routing, and multivalue answers. The `checkType` selects one of four monitoring models: endpoint probing from Route 53's global checker fleet (HTTP, HTTPS, body-match variants, TCP), CALCULATED aggregation of child checks into service-level health, CLOUDWATCH_METRIC mirroring of an alarm (the way to health-check private resources), and RECOVERY_CONTROL mirroring of an Application Recovery Controller switch for DR runbooks.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Route 53 Health Check** -- the monitoring model chosen by `check_type` (create-time immutable), with its per-model surface: probe target, child set, mirrored alarm, or routing control
+- **Route 53 Health Check** -- the monitoring model chosen by `checkType` (create-time immutable), with its per-model surface: probe target, child set, mirrored alarm, or routing control
 - **Probe Configuration** -- interval (10s/30s, create-time immutable; AWS defaults to 30), failure threshold (AWS defaults to 3), optional latency graphing (create-time immutable), SNI, and an optional checker-region subset (min 3). Probe tuning applies to ENDPOINT checks only -- the aggregation, alarm, and recovery models take none of it, enforced at authoring time
 - **Behavior Dials** -- inversion and the administrative disable switch (the maintenance lever), both editable in place
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
@@ -16,7 +16,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Planton Setup
 
 - **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
-- **Model prerequisites** -- CALCULATED checks reference other [AwsRoute53HealthCheck](/cloud-catalog/aws-route53-health-check) resources (deploy the children first); CLOUDWATCH_METRIC checks name an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (or composite) by its `alarm_name` output.
+- **Model prerequisites** -- CALCULATED checks reference other [AWS Route 53 Health Check](/cloud-catalog/aws-route53-health-check) resources (deploy the children first); CLOUDWATCH_METRIC checks name an [AWS CloudWatch Alarm](/cloud-catalog/aws-cloudwatch-alarm) (or composite) by its `alarm_name` output.
 
 ### AWS Account
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Route53 Health Check**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the monitoring model you pick on the first step shapes the rest of the flow. Start from the **HTTPS Endpoint** preset in the [Presets](#presets) tab for the production web shape.
+Open the deployment store, find **AWS Route 53 Health Check**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the monitoring model you pick on the first step shapes the rest of the flow. Start from the **HTTPS Endpoint Health Check** preset in the [Presets](#presets) tab for the production web shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
 metadata:
   name: orders-api-health
@@ -57,23 +57,31 @@ This probes `https://api.example.com/healthz` from the global checker fleet — 
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the health check deploys before the DNS records that gate on it:
+When a CALCULATED check and its children deploy in one chart, wire the child references via ValueFromRef:
 
 ```yaml
-# In an AwsRoute53DnsRecord with failover routing:
 spec:
-  healthCheckId:
-    valueFrom:
-      kind: AwsRoute53HealthCheck
-      name: orders-api-health
-      fieldPath: status.outputs.health_check_id
+  region: us-west-2
+  checkType: CALCULATED
+  childHealthChecks:
+    - valueFrom:
+        kind: AwsRoute53HealthCheck
+        name: orders-api-health
+        fieldPath: status.outputs.health_check_id
+    - valueFrom:
+        kind: AwsRoute53HealthCheck
+        name: orders-web-health
+        fieldPath: status.outputs.health_check_id
+  childHealthThreshold: 1
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the child checks first, then creates the aggregate on their IDs.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a health check. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**The monitoring model is the one-way door** -- `check_type`, the probe interval, latency graphing, and the routing-control ARN are all create-time immutable: changing any of them replaces the check (new ID), and every referencing DNS record must re-point. Decide the model first; everything else in the wizard derives from it.
+**The monitoring model is the one-way door** -- `checkType`, the probe interval, latency graphing, and the routing-control ARN are all create-time immutable: changing any of them replaces the check (new ID), and every referencing DNS record must re-point. Decide the model first; everything else in the wizard derives from it.
 
 **Detection speed is interval × threshold** -- the default 30s × 3 reacts in ~90 seconds; fast checks (10s) with threshold 2 cut that to ~20 seconds at higher cost. The threshold updates in place — tune it freely.
 
@@ -85,7 +93,11 @@ These are the most important decisions when configuring a health check. Explore 
 
 ### What This Component Consumes
 
-A CALCULATED check references other [AwsRoute53HealthCheck](/cloud-catalog/aws-route53-health-check) resources (`health_check_id`) as its children. A CLOUDWATCH_METRIC check names an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (or [AwsCloudwatchCompositeAlarm](/cloud-catalog/aws-cloudwatch-composite-alarm)) by alarm name and region.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsRoute53HealthCheck** (children of a CALCULATED check) | `childHealthChecks` | `status.outputs.health_check_id` |
+
+A CLOUDWATCH_METRIC check names its [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (or [AwsCloudwatchCompositeAlarm](/cloud-catalog/aws-cloudwatch-composite-alarm)) by plain alarm name and region — `cloudwatchAlarmName` is a string, not a typed reference.
 
 ### What This Component Provides
 
@@ -100,13 +112,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**HTTPS endpoint probe** -- the production web default: probe a real health endpoint over TLS. Start from the **HTTPS Endpoint** preset.
+**HTTPS endpoint probe** -- the production web default: probe a real health endpoint over TLS. Start from the **HTTPS Endpoint Health Check** preset.
 
-**Alarm-backed private health** -- a CLOUDWATCH_METRIC check mirroring an alarm on a private service, gating DNS failover on internal telemetry. Start from the **CloudWatch Alarm** preset.
+**Alarm-backed private health** -- a CLOUDWATCH_METRIC check mirroring an alarm on a private service, gating DNS failover on internal telemetry. Start from the **CloudWatch Alarm Health Check** preset.
 
 ## Works With
 
-- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the records whose failover / weighted / multivalue routing gates on this check's `health_check_id`
-- [**AWS Route53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone those records live in
+- [**AWS Route 53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the records whose failover / weighted / multivalue routing gates on this check's `health_check_id`
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone those records live in
 - [**AWS CloudWatch Alarm**](/cloud-catalog/aws-cloudwatch-alarm) -- the alarm a CLOUDWATCH_METRIC check mirrors
 - [**AWS CloudWatch Composite Alarm**](/cloud-catalog/aws-cloudwatch-composite-alarm) -- a whole-service verdict a CLOUDWATCH_METRIC check can mirror into DNS

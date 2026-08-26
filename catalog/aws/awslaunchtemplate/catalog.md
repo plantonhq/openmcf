@@ -1,6 +1,6 @@
 # AWS Launch Template
 
-Deploys an EC2 launch template — the reusable blueprint that describes how to launch a machine: AMI, instance type (or attribute-based requirements), storage, networking posture, IAM identity, metadata-service hardening, and purchase options. The template is the composition anchor of EC2 fleet compute: auto-scaling groups, EKS managed node groups, AWS Batch compute environments, and one-off launches all reference it, which is why it is a first-class resource with its own lifecycle. The template integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the instance profile, security groups, subnets, and KMS keys.
+Deploys an EC2 launch template — the reusable blueprint that describes how to launch a machine: AMI, instance type (or attribute-based requirements), storage, networking posture, IAM identity, metadata-service hardening, and purchase options. The template is the composition anchor of EC2 fleet compute: auto-scaling groups, EKS managed node groups, AWS Batch compute environments, and one-off launches all reference it, which is why it is a first-class resource with its own lifecycle.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Launch Template**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Server** preset in the [Presets](#presets) tab to pre-populate a working golden-template configuration.
+Open the deployment store, find **AWS Launch Template**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Server Fleet** preset in the [Presets](#presets) tab to pre-populate a working golden-template configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLaunchTemplate
 metadata:
   name: web-fleet-base
@@ -133,13 +133,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Golden web-server template** -- AMI + type + instance profile + IMDSv2 + encrypted gp3 root: the baseline every web fleet launches from. Start from the **Web Server** preset.
+**Golden web-server template** -- AMI + type + instance profile + IMDSv2 + encrypted gp3 root: the baseline every web fleet launches from. Start from the **Web Server Fleet** preset.
 
-**Spot-flexible blueprint** -- Attribute-based requirements (memory/vCPU ranges, current generation, no bare metal) instead of a named type — the shape a diversified Spot fleet draws pools from. Start from the **Spot Flexible** preset.
+**Spot-flexible blueprint** -- Attribute-based requirements (memory/vCPU ranges, current generation, no bare metal) instead of a named type — the shape a diversified Spot fleet draws pools from. Start from the **Spot-Flexible Workers** preset.
 
-**Hardened pet** -- Stop/termination protection, a customer-managed KMS key on the root volume, and tags in metadata — for standalone instances that must survive fat fingers. Start from the **Hardened** preset.
+**Hardened pet** -- Stop/termination protection, a customer-managed KMS key on the root volume, and tags in metadata — for standalone instances that must survive fat fingers. Start from the **Hardened Baseline** preset.
 
-**Capacity Block training fleet** -- `marketType: capacity-block` plus the reservation target, with a dataset volume pre-warmed from its snapshot at a paid initialization rate — GPU training that starts on time and reads at full speed inside the paid window. Start from the **Capacity Block ML** preset.
+**Capacity Block training fleet** -- `marketType: capacity-block` plus the reservation target, with a dataset volume pre-warmed from its snapshot at a paid initialization rate — GPU training that starts on time and reads at full speed inside the paid window. Start from the **Capacity Block ML Training Fleet** preset.
 
 ## Works With
 

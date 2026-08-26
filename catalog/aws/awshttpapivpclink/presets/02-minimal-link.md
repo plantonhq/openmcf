@@ -1,4 +1,4 @@
-# Preset: Minimal Link
+# Minimal Link
 
 ## When to Use
 

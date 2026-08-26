@@ -1,4 +1,4 @@
-# Preset: CPU Utilization Alarm
+# CPU Utilization Alarm
 
 **Use case:** Alert when EC2 instance CPU exceeds a threshold, indicating high compute load.
 

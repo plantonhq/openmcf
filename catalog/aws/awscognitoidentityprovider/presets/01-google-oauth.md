@@ -1,4 +1,4 @@
-# Preset: Google OAuth
+# Google OAuth
 
 Configures Google as a social identity provider for a Cognito User Pool.
 

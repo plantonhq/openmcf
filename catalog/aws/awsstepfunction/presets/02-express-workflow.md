@@ -1,4 +1,4 @@
-# Preset: Express Workflow
+# Express Workflow
 
 ## When to Use
 

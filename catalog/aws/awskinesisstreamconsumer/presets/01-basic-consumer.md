@@ -1,4 +1,4 @@
-# Preset: Basic Consumer
+# Basic Consumer
 
 ## Use Case
 

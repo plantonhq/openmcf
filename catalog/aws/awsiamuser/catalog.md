@@ -1,6 +1,6 @@
 # AWS IAM User
 
-Deploys an IAM user with configurable managed policy attachments, inline policies, and optional access key generation. The component is designed for CI/CD pipelines and service integrations that require long-lived programmatic credentials. It integrates with Planton's Provider Connections for AWS credential management and provides `user_arn`, `access_key_id`, and `secret_access_key` outputs for downstream consumption.
+Deploys an IAM user with managed policy attachments, inline policies, an optional permissions boundary, and explicit access-key control. IAM users carry permanent credentials, so this component targets the narrow cases temporary role credentials cannot cover -- external CI systems without OIDC federation, legacy tooling, break-glass access; prefer an IAM role wherever federation is possible. One active access key is created by default and exported as sensitive outputs, and `accessKeyStatus` flips it between Active and Inactive in place -- the rotation lever.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS IAM User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CI/CD Pipeline** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS IAM User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CI/CD Pipeline User** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
   name: deployer
@@ -45,15 +45,32 @@ spec:
   region: us-west-2
   userName: github-actions-deployer
   managedPolicyArns:
-    - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-    - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+    - value: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+    - value: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 ```
 
 ```shell
 planton apply -f iam-user.yaml
 ```
 
-This creates an IAM user with ECR push access and S3 read-only access, plus an active access key pair. No inline policies are configured. A Stack Job tracks the provisioning in real time.
+This creates an IAM user with ECR push access and S3 read-only access, plus an active access key pair (literal ARNs take the `value:` form; references to an AwsIamPolicy take `valueFrom:`). No inline policies are configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the user deploys alongside a customer-managed policy in one chart, wire the attachment via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  userName: deploy-bot
+  managedPolicyArns:
+    - valueFrom:
+        kind: AwsIamPolicy
+        name: deploy-bot-policy
+        fieldPath: status.outputs.policy_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the policy first, then creates the user with the attachment in place. The same wiring works for `permissionsBoundary`.
 
 ## Key Configuration
 
@@ -90,20 +107,20 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `user_arn` | Amazon Resource Name of the IAM user | IAM policies, cross-account access grants |
-| `user_name` | IAM user name | Policy attachment, resource tagging |
-| `user_id` | Stable unique identifier of the IAM user | Audit logging, resource ownership tracking |
+| `user_arn` | Amazon Resource Name of the IAM user | Resource policies and cross-account access grants naming this user as principal |
+| `user_id` | Stable unique ID of the IAM user (never reused, unlike names) | `aws:userid` policy conditions that must survive user re-creation |
 | `access_key_id` | Access key ID (present when access keys are enabled) | CI/CD pipeline `AWS_ACCESS_KEY_ID` configuration |
 | `secret_access_key` | Base64-encoded secret access key (sensitive) | CI/CD pipeline `AWS_SECRET_ACCESS_KEY` configuration |
-| `console_url` | AWS console sign-in URL | Documentation, onboarding guides |
+
+`user_name`, `console_url`, and `access_key_status` are also exported: the name mirrors `metadata.name`, the console URL is the account sign-in page, and the key status echoes the rotation-lever position for verification against `ListAccessKeys`.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**CI/CD pipeline user** -- ECR power user, S3 read-only, and ECS deployment permissions with access keys enabled. The standard configuration for GitHub Actions, GitLab CI, or Jenkins pipelines that build container images and deploy to ECS. Start from the **CI/CD Pipeline** preset.
+**CI/CD pipeline user** -- ECR power user, S3 read-only, and ECS deployment permissions with access keys enabled. The standard configuration for GitHub Actions, GitLab CI, or Jenkins pipelines that build container images and deploy to ECS. Start from the **CI/CD Pipeline User** preset.
 
-**Read-only service user** -- Broad read-only access with access keys disabled. Suitable for third-party monitoring tools (Datadog, New Relic) or audit integrations that only need to observe resources without making changes. Start from the **Read-Only Service** preset.
+**Read-only service user** -- Broad read-only access with access keys disabled. Suitable for third-party monitoring tools (Datadog, New Relic) or audit integrations that only need to observe resources without making changes. Start from the **Read-Only Service User** preset.
 
 ## Works With
 

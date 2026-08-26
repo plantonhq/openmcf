@@ -1,6 +1,6 @@
 # AWS FSx OpenZFS File System
 
-Deploys a fully managed NFS file system on Amazon FSx for OpenZFS with configurable deployment types (single-AZ or multi-AZ with automatic failover), ZSTD/LZ4 compression, snapshots, cloning, per-user/group quotas, and root volume NFS export configuration. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, and KMS keys.
+Deploys a fully managed NFS file system on Amazon FSx for OpenZFS with configurable deployment types (single-AZ or multi-AZ with automatic failover), ZSTD/LZ4 compression, snapshots, cloning, per-user/group quotas, and root volume NFS export configuration. Deployment type is the defining one-way door: it fixes the availability posture and the throughput ceiling, and only MULTI_AZ_1 supports elastic Intelligent-Tiering storage.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx OpenZFS File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single AZ Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx OpenZFS File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-AZ Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOpenzfsFileSystem
 metadata:
   name: app-nfs-storage
@@ -130,11 +130,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single AZ development** -- SINGLE_AZ_2 with minimal storage and throughput. Cost-effective for development, testing, and CI/CD workloads that do not require cross-AZ redundancy. Start from the **Single AZ Development** preset.
+**Single AZ development** -- SINGLE_AZ_2 with minimal storage and throughput. Cost-effective for development, testing, and CI/CD workloads that do not require cross-AZ redundancy. Start from the **Single-AZ Development** preset.
 
-**Single AZ production** -- SINGLE_AZ_2 with higher throughput, ZSTD compression on the root volume, automatic backups, and customer-managed KMS encryption. Suitable for production NFS workloads including web serving, content management, and application data stores. Start from the **Single AZ Production** preset.
+**Single AZ production** -- SINGLE_AZ_2 with higher throughput, ZSTD compression on the root volume, automatic backups, and customer-managed KMS encryption. Suitable for production NFS workloads including web serving, content management, and application data stores. Start from the **Single-AZ Production** preset.
 
-**Multi AZ high availability** -- MULTI_AZ_1 with automatic failover across two AZs, endpoint IP address range, route table configuration, and automatic backups. Designed for business-critical NFS workloads requiring continuous availability. Start from the **Multi AZ High Availability** preset.
+**Multi AZ high availability** -- MULTI_AZ_1 with automatic failover across two AZs, endpoint IP address range, route table configuration, and automatic backups. Designed for business-critical NFS workloads requiring continuous availability. Start from the **Multi-AZ High Availability** preset.
+
+**Multi-AZ Intelligent-Tiering** -- MULTI_AZ_1 on elastic INTELLIGENT_TIERING storage with a read cache: no capacity dial, storage grows and shrinks with the data. The shape for large datasets whose size is unpredictable. Start from the **Multi-AZ Intelligent-Tiering FSx OpenZFS** preset.
 
 ## Works With
 

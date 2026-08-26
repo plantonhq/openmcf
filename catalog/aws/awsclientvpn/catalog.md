@@ -1,6 +1,6 @@
 # AWS Client VPN
 
-Deploys a Client VPN endpoint on AWS — the managed OpenVPN server remote users and machines connect to for secure access into AWS networks. Authentication supports certificate-based mutual TLS, Active Directory, and SAML federation (one or two options combined); the endpoint attaches to a VPC through per-subnet associations or directly to a Transit Gateway for hub-wide reach. Integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring across VPCs, certificates, security groups, log groups, and Lambda functions.
+Deploys a Client VPN endpoint on AWS — the managed OpenVPN server remote users and machines connect to for secure access into AWS networks. Authentication supports certificate-based mutual TLS, Active Directory, and SAML federation (one or two options combined); the endpoint attaches to a VPC through per-subnet associations or directly to a Transit Gateway for hub-wide reach. Two things to internalize before deploying: access is deny-by-default (connected clients reach nothing until an authorization rule grants it), and authentication, the client CIDR, and the transport protocol are all fixed at create time -- changing any of them replaces the endpoint.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Client VPN**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Certificate Split-Tunnel** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Client VPN**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Certificate Split-Tunnel VPN** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsClientVpn
 metadata:
   name: dev-vpn
@@ -68,7 +68,7 @@ spec:
 planton apply -f client-vpn.yaml
 ```
 
-This creates a certificate-authenticated endpoint with split-tunnel routing, the AWS-default UDP transport on port 443, two AZ associations, and authorization to reach the VPC CIDR. Connection logging is not configured — add `connectionLog` in production.
+This creates a certificate-authenticated endpoint with split-tunnel routing, the AWS-default UDP transport on port 443, two AZ associations, and authorization to reach the VPC CIDR. Connection logging is not configured — add `connectionLog` in production. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -83,9 +83,9 @@ spec:
       fieldPath: status.outputs.vpc_id
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: private-usw2a
+        fieldPath: status.outputs.subnet_id
   serverCertificateArn:
     valueFrom:
       kind: AwsCertManagerCert
@@ -151,15 +151,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Certificate split-tunnel** -- Mutual TLS with split-tunnel routing: only VPC traffic flows through the VPN. The most common configuration for developer access to private resources. Start from the **Certificate Split-Tunnel** preset.
+**Certificate split-tunnel** -- Mutual TLS with split-tunnel routing: only VPC traffic flows through the VPN. The most common configuration for developer access to private resources. Start from the **Certificate Split-Tunnel VPN** preset.
 
-**Certificate full-tunnel** -- All client traffic routes through the VPN for complete control and inspection — compliance-sensitive environments. Start from the **Certificate Full-Tunnel** preset.
+**Certificate full-tunnel** -- All client traffic routes through the VPN for complete control and inspection — compliance-sensitive environments. Start from the **Certificate Full-Tunnel VPN** preset.
+
+**SAML SSO with self-service portal** -- Federated authentication through an IAM SAML provider (Okta, Entra ID), with the self-service portal enabled so users download their own client configuration. Start from the **SAML SSO VPN with Self-Service Portal** preset.
 
 **Hub access via Transit Gateway** -- Attach the endpoint to a Transit Gateway so remote users reach every VPC, on-prem range, and peered network the hub routes to, with one attachment instead of per-VPC associations.
 
 ## Works With
 
-- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- the endpoint's TLS identity and (for certificate auth) the client CA chain
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- the endpoint's TLS identity and (for certificate auth) the client CA chain
 - [**AWS VPC**](/cloud-catalog/aws-vpc) -- the VPC and subnets for per-subnet attachment
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- controls traffic between VPN clients and VPC resources
 - [**AWS Transit Gateway**](/cloud-catalog/aws-transit-gateway) -- hub-wide access without per-subnet associations

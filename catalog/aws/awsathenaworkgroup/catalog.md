@@ -1,6 +1,6 @@
 # AWS Athena Workgroup
 
-Deploys an Amazon Athena workgroup that isolates query execution, enforces cost controls, and manages result storage for SQL analytics against S3 data. The workgroup supports configurable result encryption (SSE-S3, SSE-KMS, CSE-KMS), per-query data scan limits, engine version pinning, and optional Spark execution roles. It integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys and IAM roles.
+Deploys an Amazon Athena workgroup that isolates query execution, enforces cost controls, and manages result storage for SQL analytics against S3 data. The workgroup supports configurable result encryption (SSE-S3, SSE-KMS, CSE-KMS), per-query data scan limits, engine version pinning, and optional Spark execution roles. Every KMS key field and the Spark execution role accept ValueFromRef wiring, so an encrypted workgroup composes with AwsKmsKey and AwsIamRole resources in the same InfraChart.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **AWS Athena Workgroup**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAthenaWorkgroup
 metadata:
   name: analytics
@@ -124,11 +124,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic SQL workgroup** -- Minimal workgroup with an S3 result location and CloudWatch metrics. No encryption or cost controls. Suitable for development and ad-hoc exploration. Start from the **Basic SQL Workgroup** preset.
 
-**Encrypted production** -- Workgroup with SSE-KMS result encryption, enforced configuration, per-query data scan limits, and CloudWatch metrics. Designed for production environments with compliance requirements. Start from the **Encrypted Production** preset.
+**Encrypted production** -- Workgroup with SSE-KMS result encryption, enforced configuration, per-query data scan limits, and CloudWatch metrics. Designed for production environments with compliance requirements. Start from the **Encrypted Production Workgroup** preset.
 
 **Spark workgroup** -- Workgroup configured with an IAM execution role for running PySpark notebooks and Spark SQL queries, plus a customer-managed KMS key for notebook content encryption. Start from the **Spark Workgroup** preset.
 
-**Managed results, zero buckets** -- Workgroup whose results live in AWS-managed storage: nothing to create, secure, or lifecycle, with results retrieved through Athena APIs. Start from the **Managed Results Zero Bucket** preset.
+**Managed results, zero buckets** -- Workgroup whose results live in AWS-managed storage: nothing to create, secure, or lifecycle, with results retrieved through Athena APIs. Start from the **Managed Results, Zero Bucket** preset.
 
 ## Works With
 

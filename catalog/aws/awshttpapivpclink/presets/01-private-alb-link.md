@@ -1,4 +1,4 @@
-# Preset: Private ALB Link
+# Private ALB Link
 
 ## When to Use
 

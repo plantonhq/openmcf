@@ -1,4 +1,4 @@
-# Preset: Production VPC-Only Domain
+# Production VPC-Only Domain
 
 A security-hardened SageMaker Domain for production ML teams with SSO authentication,
 VPC-only networking, KMS encryption, and cost management via idle shutdown.

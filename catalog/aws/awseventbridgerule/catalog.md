@@ -1,6 +1,6 @@
 # AWS EventBridge Rule
 
-Deploys an EventBridge rule with bundled targets that matches events by pattern or schedule and routes them to one or more downstream services. Each target independently supports input transformation, retry policies, dead letter queues, and service-typed parameters (SQS FIFO message groups, Kinesis partition keys, API-destination path/query/header values, Batch job submission, ECS RunTask launches with task tags, Redshift Data API statements, SSM Run Command dispatch, SageMaker pipeline executions, AppSync GraphQL operations). The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring event bus, IAM role, target, and SQS dead letter queue dependencies.
+Deploys an EventBridge rule with bundled targets that matches events by pattern or schedule and routes them to one or more downstream services. Each target independently supports input transformation, retry policies, dead letter queues, and service-typed parameters (SQS FIFO message groups, Kinesis partition keys, API-destination path/query/header values, Batch job submission, ECS RunTask launches with task tags, Redshift Data API statements, SSM Run Command dispatch, SageMaker pipeline executions, AppSync GraphQL operations). The event bus, invocation roles, target ARNs, and per-target dead letter queues all accept ValueFromRef wiring, so a rule composes with the resources on both sides of the routing edge in one InfraChart.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **AWS EventBridge Rule**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
   name: hourly-cleanup
@@ -131,7 +131,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Event pattern to SQS** -- Pattern-based rule matching AWS service events (EC2 state changes, S3 operations) and routing them to an SQS queue with a dead letter queue for failed deliveries. The core event-driven routing pattern for decoupling producers and consumers. Start from the **Event Pattern to SQS** preset.
 
-**Multi-target fanout** -- Single rule routing matched events to multiple targets simultaneously (Lambda for real-time processing, SQS for audit trail, SNS for notifications). Each target has independent retry and DLQ configuration. Start from the **Multi-Target Fanout** preset.
+**Multi-target fanout** -- Single rule routing matched events to multiple targets simultaneously (Lambda for real-time processing, SQS for audit trail, SNS for notifications). Each target has independent retry and DLQ configuration. Start from the **Multi-Target Fan-Out** preset.
 
 ## Works With
 

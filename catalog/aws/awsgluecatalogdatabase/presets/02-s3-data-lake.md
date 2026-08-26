@@ -1,4 +1,4 @@
-# Preset: S3 Data Lake
+# S3 Data Lake
 
 A Glue Data Catalog database with a default S3 storage location for an organized
 data lake. Tables created in this database inherit the base S3 path, keeping

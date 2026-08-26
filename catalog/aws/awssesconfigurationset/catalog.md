@@ -37,7 +37,7 @@ Open the deployment store, find **AWS SES Configuration Set**, and click **Deplo
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSesConfigurationSet
 metadata:
   name: transactional-prod
@@ -69,17 +69,41 @@ This creates a production transactional set with reputation metrics on, both sup
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the configuration set deploys before the identities that inherit it — an identity references the set's `configuration_set_name` output:
+When the set deploys alongside its event-destination targets in one chart, wire the destination references via ValueFromRef:
 
 ```yaml
-# In the AwsSesEmailIdentity manifest:
 spec:
-  configurationSet:
-    valueFrom:
-      kind: AwsSesConfigurationSet
-      name: transactional-prod
-      fieldPath: status.outputs.configuration_set_name
+  reputationMetricsEnabled: true
+  eventDestinations:
+    - name: bounce-feedback
+      matchingEventTypes:
+        - BOUNCE
+        - COMPLAINT
+      snsTopic:
+        valueFrom:
+          kind: AwsSnsTopic
+          name: ses-feedback
+          fieldPath: status.outputs.topic_arn
+    - name: event-analytics
+      matchingEventTypes:
+        - SEND
+        - DELIVERY
+        - OPEN
+        - CLICK
+      firehose:
+        deliveryStream:
+          valueFrom:
+            kind: AwsKinesisFirehose
+            name: ses-events
+            fieldPath: status.outputs.delivery_stream_arn
+        iamRole:
+          valueFrom:
+            kind: AwsIamRole
+            name: ses-firehose-delivery
+            fieldPath: status.outputs.role_arn
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the SNS topic, Firehose stream, and IAM role first, then provisions the configuration set — and the AwsSesEmailIdentity resources that reference its `configuration_set_name` output deploy after it.
 
 ## Key Configuration
 
@@ -97,7 +121,14 @@ These are the most important decisions when configuring a configuration set. Exp
 
 ### What This Component Consumes
 
-Event destinations optionally reference an [AwsSnsTopic](/cloud-catalog/aws-sns-topic), an AwsEventBridgeBus, an AwsKinesisFirehose with an [AwsIamRole](/cloud-catalog/aws-iam-role), or a literal Pinpoint ARN. A set with no destinations is a leaf.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSnsTopic** (optional) | `eventDestinations[].snsTopic` | `status.outputs.topic_arn` |
+| **AwsEventBridgeBus** (optional) | `eventDestinations[].eventBus` | `status.outputs.bus_arn` |
+| **AwsKinesisFirehose** (optional) | `eventDestinations[].firehose.deliveryStream` | `status.outputs.delivery_stream_arn` |
+| **AwsIamRole** (optional) | `eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
+
+Pinpoint destinations take a literal ARN (Pinpoint is not modeled in this catalog). A set with no event destinations is a leaf.
 
 ### What This Component Provides
 
@@ -114,10 +145,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Transactional baseline** -- reputation metrics on, both suppression reasons honored, AWS transport defaults. Start from the **Minimal Transactional** preset.
 
-**Observable sender** -- the baseline plus a CloudWatch event destination dimensioned by message tags, so bounce rate slices by campaign or tenant. Start from the **CloudWatch Events** preset.
+**Observable sender** -- the baseline plus a CloudWatch event destination dimensioned by message tags, so bounce rate slices by campaign or tenant. Start from the **CloudWatch Event Destination** preset.
 
 ## Works With
 
 - [**AWS SES Email Identity**](/cloud-catalog/aws-ses-email-identity) -- the verified sending domain or address that inherits this set as its default (references `configuration_set_name`)
 - [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- the classic bounce/complaint feedback-loop destination
+- [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose) -- streams email events to S3, Redshift, or OpenSearch for durable analytics
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the role SES assumes for Firehose event delivery

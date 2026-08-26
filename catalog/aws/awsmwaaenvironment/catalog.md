@@ -1,6 +1,6 @@
 # AWS MWAA Environment
 
-Deploys a managed Apache Airflow environment on Amazon MWAA with auto-scaling workers and webservers, per-module CloudWatch logging, customer-managed KMS encryption, and VPC-scoped networking. DAGs, plugins, and Python requirements are sourced from an S3 bucket. The environment integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a managed Apache Airflow environment on Amazon MWAA with auto-scaling workers and webservers, per-module CloudWatch logging, customer-managed KMS encryption, and VPC-scoped networking. DAGs, plugins, and Python requirements are sourced from an S3 bucket. The source bucket, execution role, subnets, security groups, and KMS key all accept ValueFromRef wiring, so the environment composes with its network and storage dependencies in one InfraChart. Subnets are create-time only — changing them replaces the environment.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS MWAA Environment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Private Airflow** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS MWAA Environment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Private Airflow Environment** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMwaaEnvironment
 metadata:
   name: data-pipelines
@@ -155,11 +155,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Basic private Airflow** -- Private-access mw1.small environment with auto-scaling workers and default encryption. Suited for development and small teams getting started with managed Airflow. Start from the **Basic Private Airflow** preset.
+**Basic private Airflow** -- Private-access mw1.small environment with auto-scaling workers and default encryption. Suited for development and small teams getting started with managed Airflow. Start from the **Basic Private Airflow Environment** preset.
 
-**Production encrypted with logging** -- mw1.medium environment with customer-managed KMS encryption, all five logging modules enabled, graceful worker replacement, and a defined maintenance window. Suited for production data pipeline orchestration. Start from the **Production Encrypted Logging** preset.
+**Production encrypted with logging** -- mw1.medium environment with customer-managed KMS encryption, all five logging modules enabled, graceful worker replacement, and a defined maintenance window. Suited for production data pipeline orchestration. Start from the **Production Encrypted Airflow with Full Logging** preset.
 
-**Public access with plugins** -- mw1.large environment with public webserver access, custom plugins.zip, Python requirements, a startup script, and aggressive worker scaling up to 25. Demonstrates the full breadth of MWAA extensibility. Start from the **Public Access with Plugins** preset.
+**Public access with plugins** -- mw1.large environment with public webserver access, custom plugins.zip, Python requirements, a startup script, and aggressive worker scaling up to 25. Demonstrates the full breadth of MWAA extensibility. Start from the **Public Access with Plugins and Custom Packages** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # AWS KMS Key
 
-Deploys a customer-managed KMS key with configurable cryptographic shape (key spec and usage), a custom key policy, automatic key rotation with a configurable period, multi-Region designation, a scheduled deletion window, and a list of aliases. The key integrates with Planton's Provider Connections for AWS credential management and provides `key_arn` and `key_id` outputs that downstream Cloud Resources consume via ValueFromRef for envelope encryption.
+Deploys a customer-managed KMS key with configurable cryptographic shape (key spec and usage), a custom key policy, automatic rotation, multi-Region designation, a scheduled deletion window, aliases, and scoped grants. KMS keys have no name in AWS -- identity is the generated key ID and ARN -- so downstream Cloud Resources compose with this key by referencing its `key_arn` output, the value encryption-at-rest fields across databases, queues, buckets, and functions all take. The cryptographic shape is create-time immutable: changing `keySpec` or `keyUsage` replaces the key, and old ciphertext stays decryptable only by the old key.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Symmetric Encryption** preset in the [Presets](#presets) tab to pre-populate a standard encryption key configuration.
+Open the deployment store, find **AWS KMS Key**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Symmetric Encryption Key** preset in the [Presets](#presets) tab to pre-populate a standard encryption key configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
   name: data-encryption-key
@@ -56,6 +56,30 @@ planton apply -f kms-key.yaml
 ```
 
 This creates a symmetric encryption key with automatic rotation enabled, a 30-day deletion window, and one alias. SYMMETRIC_DEFAULT is suitable for use with S3 SSE-KMS, EBS volume encryption, RDS storage encryption, and EKS secrets encryption. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the key deploys alongside the workload role that uses it, wire the grant's principal via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  keySpec: SYMMETRIC_DEFAULT
+  enableKeyRotation: true
+  grants:
+    - name: orders-service-encrypt
+      granteePrincipal:
+        valueFrom:
+          kind: AwsIamRole
+          name: orders-service-role
+          fieldPath: status.outputs.role_arn
+      operations:
+        - Encrypt
+        - Decrypt
+        - GenerateDataKey
+```
+
+The InfraPipeline resolves the dependency graph, deploys the role first, then creates the key with the grant in place -- "this workload may use this key" wired as a first-class dependency.
 
 ## Key Configuration
 
@@ -81,7 +105,12 @@ These are the most important decisions when configuring a KMS key. Explore the f
 
 ### What This Component Consumes
 
-This component has no foreign key dependencies.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** | `grants[].granteePrincipal` | `status.outputs.role_arn` |
+| **AwsIamRole** | `grants[].retiringPrincipal` | `status.outputs.role_arn` |
+
+Both fields also accept literal IAM principal ARNs -- how users, account roots, and cross-account principals are named.
 
 ### What This Component Provides
 
@@ -100,8 +129,15 @@ The `key_arn` output is the primary value consumed by downstream resources. S3 b
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Symmetric encryption key** -- A SYMMETRIC_DEFAULT key with rotation enabled and a 30-day deletion window. The standard pattern for encrypting data at rest across AWS services (S3, EBS, RDS, EKS secrets, DynamoDB). Start from the **Symmetric Encryption** preset.
+**Symmetric encryption key** -- A SYMMETRIC_DEFAULT key with rotation enabled and a 30-day deletion window. The standard pattern for encrypting data at rest across AWS services (S3, EBS, RDS, EKS secrets, DynamoDB). Start from the **Symmetric Encryption Key** preset.
+
+**Shared key with grants** -- One key serving several workloads, each granted only the operations it needs (encrypt-only for producers, decrypt for consumers), with encryption-context constraints scoping what each grant covers. Keeps the key policy small and auditable while access stays revocable per workload. Start from the **Shared Key with Grants** preset.
+
+**External key store key** -- A key whose material lives in your own key manager outside AWS, addressed through `customKeyStoreId` and `xksKeyId`. The sovereignty shape for regulated workloads; accept that these keys are symmetric-only, never rotate automatically, and cannot be multi-Region. Start from the **External Key Store Key** preset.
 
 ## Works With
 
-This component operates independently and does not reference other components.
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the grantee and retiring principals grants reference by `role_arn`
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- consumes `key_arn` for SSE-KMS default encryption
+- [**AWS EKS Cluster**](/cloud-catalog/aws-eks-cluster) -- consumes `key_arn` for secrets envelope encryption
+- [**AWS RDS Instance**](/cloud-catalog/aws-rds-instance) -- consumes `key_arn` for storage encryption

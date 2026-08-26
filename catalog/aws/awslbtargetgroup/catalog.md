@@ -36,7 +36,7 @@ Open the deployment store, find **AWS LB Target Group**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbTargetGroup
 metadata:
   name: web-servers
@@ -63,6 +63,28 @@ planton apply -f target-group.yaml
 
 This creates an HTTP target group for IP targets (the shape ECS awsvpc services register into) with a real readiness probe. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the group deploys alongside its VPC in one chart, wire the network reference via ValueFromRef:
+
+```yaml
+spec:
+  region: us-east-1
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: main-vpc
+      fieldPath: status.outputs.vpc_id
+  targetType: ip
+  port: 8080
+  protocol: HTTP
+  healthCheck:
+    path: /healthz
+    matcher: "200"
+```
+
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then creates the target group in it.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a target group. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -83,14 +105,14 @@ These are the most important decisions when configuring a target group. Explore 
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `vpcId` | AwsVpc | `status.outputs.vpc_id` |
-| `targets[].targetId` | AwsEc2Instance | `status.outputs.instance_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AwsEc2Instance** | `targets[].targetId` | `status.outputs.instance_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -104,14 +126,17 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **ECS service backend** -- an ip-type HTTP group ECS registers task IPs into. Start from the **ECS Service HTTP** preset.
 
-**NLB TCP passthrough** -- a TCP group behind an NLB for raw connection forwarding. Start from the **NLB TCP Passthrough** preset.
+**NLB TCP passthrough** -- a TCP group behind an NLB for raw connection forwarding. Start from the **NLB TCP Pass-Through** preset.
 
-**Lambda behind an ALB** -- a lambda group giving a function HTTP routing, WAF, and OIDC auth without API Gateway. Start from the **Lambda Function** preset.
+**Lambda behind an ALB** -- a lambda group giving a function HTTP routing, WAF, and OIDC auth without API Gateway. Start from the **Lambda Function Target** preset.
+
+**HTTP/3 at the edge** -- a TCP_QUIC group behind an NLB serving QUIC natively while the same group takes clients that fall back to TCP on port 443; static registrations carry the `quicServerId` connection-ID routing requires. Start from the **QUIC / HTTP/3 Pass-Through** preset.
 
 ## Works With
 
-- **AwsLbListener** -- forwards traffic here via its default actions, referencing `target_group_arn`.
-- **AwsLbListenerRule** -- forwards matched requests here via rule actions.
-- **AwsAlb / AwsNlb** -- the load balancers whose listeners deliver the traffic.
-- **AwsVpc** -- the network the targets live in, referenced by `vpcId`.
-- **AwsEc2Instance** -- statically registered instance targets, referenced per row.
+- [**AWS LB Listener**](/cloud-catalog/aws-lb-listener) -- forwards traffic here via its default actions, referencing `target_group_arn`.
+- [**AWS LB Listener Rule**](/cloud-catalog/aws-lb-listener-rule) -- forwards matched requests here via rule actions.
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- the Layer-7 load balancer whose listeners deliver HTTP/HTTPS traffic.
+- [**AWS NLB**](/cloud-catalog/aws-nlb) -- the Layer-4 load balancer whose listeners deliver TCP/UDP/TLS/QUIC traffic.
+- [**AWS VPC**](/cloud-catalog/aws-vpc) -- the network the targets live in, referenced by `vpcId`.
+- [**AWS EC2 Instance**](/cloud-catalog/aws-ec2-instance) -- statically registered instance targets, referenced per row.

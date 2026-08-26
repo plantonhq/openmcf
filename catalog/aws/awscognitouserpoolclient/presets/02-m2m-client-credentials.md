@@ -1,4 +1,4 @@
-# Preset: Machine-to-Machine (Client Credentials)
+# Machine-to-Machine (Client Credentials)
 
 **Rank**: 2
 

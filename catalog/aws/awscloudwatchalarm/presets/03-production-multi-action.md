@@ -1,4 +1,4 @@
-# Preset: Production Multi-Action Alarm
+# Production Multi-Action Alarm
 
 **Use case:** Production-grade alarm with separate notification channels for ALARM, OK, and INSUFFICIENT_DATA state transitions.
 

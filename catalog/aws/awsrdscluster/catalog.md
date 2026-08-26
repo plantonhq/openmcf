@@ -1,6 +1,6 @@
 # AWS RDS Cluster
 
-Deploys an RDS database cluster in any of its three shapes — Aurora (an instance fleet on shared cluster storage, including Serverless v2), legacy Aurora Serverless v1, or a Multi-AZ community mysql/postgres cluster — with AWS Secrets Manager integration for managed master passwords, storage encryption, continuous backups with backtrack and fast clones, S3 XtraBackup migration, Kerberos through AWS Managed Microsoft AD, feature-scoped IAM role associations, custom reader endpoints, Database Activity Streams, Aurora Global Database membership, the RDS Data API, and CloudWatch log exports. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, and IAM roles.
+Deploys an RDS database cluster in any of its three shapes — Aurora (an instance fleet on shared cluster storage, including Serverless v2), legacy Aurora Serverless v1, or a Multi-AZ community mysql/postgres cluster — with AWS Secrets Manager integration for managed master passwords, storage encryption, continuous backups with backtrack and fast clones, S3 XtraBackup migration, Kerberos through AWS Managed Microsoft AD, feature-scoped IAM role associations, custom reader endpoints, Database Activity Streams, Aurora Global Database membership, the RDS Data API, and CloudWatch log exports. Compute lives in the `instances` list — each entry is managed as its own provider resource keyed by name, so scaling readers in and out never touches the cluster — while Serverless v1 and Multi-AZ community clusters are the two shapes where AWS owns the compute and the list stays empty.
 
 ## What Gets Created
 
@@ -10,9 +10,12 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **DB Subnet Group** -- created from the provided `subnetIds`; skipped when an existing `dbSubnetGroupName` is specified instead
 - **Cluster Instances** -- one provider resource per `instances[]` entry (Aurora topology), each keyed by name so scaling readers never touches the cluster; Serverless v1 and Multi-AZ clusters have AWS-owned compute instead
 - **Cluster Parameter Group** -- created only when `parameters` entries are configured; applies engine-specific tuning parameters
-- **Secrets Manager Secret** -- created only when `manageMasterUserPassword` is `true` (recommended); stores the master password with automatic rotation, optionally encrypted with a customer-managed KMS key
-- **CloudWatch Log Streams** -- created only when `enabledCloudwatchLogsExports` entries are specified; exports engine-specific logs (audit, error, slowquery for MySQL; postgresql, upgrade for PostgreSQL)
+- **IAM Role Associations** -- one per `iamRoles[]` entry, each managed as its own association resource so feature roles attach and detach without touching the cluster
+- **Custom Cluster Endpoints** -- one per `customEndpoints[]` entry: stable READER/ANY DNS names over a chosen subset of instances
+- **Database Activity Stream** -- created only when `activityStream` is configured; AWS creates and owns the Kinesis stream that receives every audited database event
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
+
+When `manageMasterUserPassword` is `true` (recommended), AWS itself creates and rotates the master secret in Secrets Manager -- no secret resource appears in the module, and the secret's ARN surfaces as the `master_user_secret_arn` output. Likewise, `enabledCloudwatchLogsExports` makes RDS deliver engine logs into CloudWatch Logs without the module creating log resources.
 
 ## Before You Deploy
 
@@ -23,7 +26,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **At least two subnets** in distinct Availability Zones within the target VPC. Private subnets are recommended for production. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef. Alternatively, provide an existing `dbSubnetGroupName`.
+- **At least two subnets** in distinct Availability Zones within the target VPC. Private subnets are recommended for production. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef. Alternatively, provide an existing `dbSubnetGroupName`.
 - **A security group** (optional) to attach to the cluster for network access control. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource — database ingress rules belong on the referenced security-group node.
 - **A KMS key** (optional) for encrypting cluster storage and the managed master password beyond the default AWS-managed key. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
 
@@ -31,14 +34,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS RDS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. The [Presets](#presets) tab offers three starting configurations: **Aurora PostgreSQL**, **Aurora MySQL**, and **Aurora Serverless v2**.
+Open the deployment store, find **AWS RDS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. The [Presets](#presets) tab offers ready-made starting configurations, including the **Aurora PostgreSQL (Provisioned)**, **Aurora MySQL (Provisioned)**, and **Aurora Serverless v2 (Scale-to-Zero)** presets.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsCluster
 metadata:
   name: app-database
@@ -71,23 +74,23 @@ spec:
 planton apply -f rds-cluster.yaml
 ```
 
-This creates an Aurora PostgreSQL cluster served by a writer and a reader, with the master password managed in Secrets Manager, encrypted storage, deletion protection, and 7-day continuous backups. A Stack Job tracks the provisioning and streams progress in real time.
+This creates an Aurora PostgreSQL cluster served by a writer and a reader, with the master password managed in Secrets Manager, encrypted storage, deletion protection, and 7-day continuous backups. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the Aurora cluster to a VPC and security group deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the cluster to subnets, a security group, and a KMS key deployed in the same InfraPipeline:
 
 ```yaml
 spec:
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: db-subnet-az1
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[1].id
+        kind: AwsSubnet
+        name: db-subnet-az2
+        fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -100,7 +103,7 @@ spec:
       fieldPath: status.outputs.key_arn
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the VPC, security group, and KMS key first, then provisions the Aurora cluster with the resolved values.
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and KMS key first, then provisions the cluster with the resolved values.
 
 ## Key Configuration
 
@@ -147,23 +150,22 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `arn` | Amazon Resource Name | IAM policies, CloudWatch alarms, resource tagging |
 | `cluster_resource_id` | Immutable cluster resource ID | Point-in-time restore sources, IAM auth policies |
 | `hosted_zone_id` | The endpoints' Route 53 hosted zone | Alias records |
-| `engine_version_actual` | The running engine version | Upgrade auditing |
 | `master_user_secret_arn` | Secrets Manager ARN of the AWS-managed master secret | Application credential reads |
-| `db_subnet_group_name` | DB subnet group name | Audit, related resource lookups |
-| `db_cluster_parameter_group_name` | Cluster parameter group in use | Parameter auditing |
 | `instance_endpoints` | Per-instance endpoints | Instance-pinned diagnostics |
 | `custom_endpoints` | Name + DNS of each custom endpoint | Workload-scoped connection strings (e.g. analytics) |
 | `activity_stream_kinesis_stream_name` | Kinesis stream receiving the Database Activity Stream | Audit/SIEM consumers, GuardDuty RDS Protection |
+
+`engine_version_actual`, `db_subnet_group_name`, and `db_cluster_parameter_group_name` are also exported -- they record the resolved engine version and the groups in use, for auditing rather than downstream wiring.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Aurora PostgreSQL production** -- Encrypted storage, managed master password in Secrets Manager, deletion protection, 7-day backup retention with final snapshot, and CloudWatch log export for PostgreSQL logs. Start from the **Aurora PostgreSQL** preset.
+**Aurora PostgreSQL production** -- Encrypted storage, managed master password in Secrets Manager, deletion protection, 7-day backup retention with final snapshot, and CloudWatch log export for PostgreSQL logs. Start from the **Aurora PostgreSQL (Provisioned)** preset.
 
-**Aurora MySQL production** -- Same resilience posture as PostgreSQL but with Aurora MySQL 8.0. Exports error and slow query logs to CloudWatch. Suitable for applications that require MySQL-specific features. Start from the **Aurora MySQL** preset.
+**Aurora MySQL production** -- Same resilience posture as PostgreSQL but with Aurora MySQL 8.0. Exports error and slow query logs to CloudWatch. Suitable for applications that require MySQL-specific features. Start from the **Aurora MySQL (Provisioned)** preset.
 
-**Aurora Serverless v2** -- Aurora PostgreSQL with a `db.serverless` writer, ACU bounds with scale-to-zero auto-pause, and the Data API enabled. Ideal for variable or connection-averse workloads. Start from the **Aurora Serverless v2** preset.
+**Aurora Serverless v2** -- Aurora PostgreSQL with a `db.serverless` writer, ACU bounds with scale-to-zero auto-pause, and the Data API enabled. Ideal for variable or connection-averse workloads. Start from the **Aurora Serverless v2 (Scale-to-Zero)** preset.
 
 **MySQL migration via S3** -- Restore a Percona XtraBackup from S3 into a new Aurora MySQL cluster with a backtrack window for cutover safety. Start from the **MySQL to Aurora via S3 Import** preset.
 

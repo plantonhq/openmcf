@@ -1,6 +1,6 @@
 # AWS EKS Cluster
 
-Deploys a managed Kubernetes control plane on Amazon EKS — the API server, etcd, and the cluster-level posture everything else composes onto: endpoint exposure, access-entry authentication, secrets encryption, control-plane logging, upgrade policy, and optionally EKS Auto Mode. The cluster is deliberately only the control plane; compute attaches as separate AwsEksNodeGroup resources (or Auto Mode manages it for you). It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a managed Kubernetes control plane on Amazon EKS — the API server, etcd, and the cluster-level posture everything else composes onto: endpoint exposure, access-entry authentication, secrets encryption, control-plane logging, upgrade policy, and optionally EKS Auto Mode. The cluster is deliberately only the control plane; compute attaches as separate AwsEksNodeGroup resources (or Auto Mode manages it for you).
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS EKS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** or **Private Endpoint** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS EKS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard EKS Cluster** or **Private-Endpoint EKS Cluster** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
   name: platform-cluster
@@ -61,7 +61,7 @@ spec:
 planton apply -f eks-cluster.yaml
 ```
 
-This creates a cluster on the current default Kubernetes version with the public endpoint open (AWS default), private in-VPC access enabled, access-entry authentication, and the two highest-signal log streams. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a cluster on the current default Kubernetes version with the public endpoint open (AWS default), private in-VPC access enabled, access-entry authentication, and the two highest-signal log streams. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -105,9 +105,9 @@ These are the most important decisions when configuring an EKS cluster. Explore 
 
 **Operational guard rails** -- `deletionProtection` blocks accidental control-plane deletion; `zonalShiftEnabled` lets Amazon Application Recovery Controller drain an impaired Availability Zone; `bootstrapSelfManagedAddons: false` yields a bring-your-own-add-ons cluster for GitOps flows.
 
-**Control-plane scale** -- `controlPlaneScalingTier` pre-provisions API-server capacity (`tier-xl` through `tier-8xl`, billed hourly on top of the cluster fee) for very large or bursty clusters; `standard` keeps the free reactive default. Updates in place.
+**Control-plane scale** -- `controlPlaneScalingTier` pre-provisions API-server capacity (`tier-xl` through `tier-8xl`, billed on top of the cluster itself) for very large or bursty clusters; `standard` keeps the reactive default. Updates in place.
 
-**Hybrid nodes** -- `remoteNetworks.nodeCidrs` (and optionally `podCidrs`) declare the on-premises private ranges allowed to join. Declaring ranges is free; AWS bills per vCPU only when hybrid nodes register. Ranges update in place, so adding a site later is a plain update.
+**Hybrid nodes** -- `remoteNetworks.nodeCidrs` (and optionally `podCidrs`) declare the on-premises private ranges allowed to join; cost follows the hybrid nodes that actually register, not the declared ranges. Ranges update in place, so adding a site later is a plain update.
 
 ## Outputs and Dependencies
 
@@ -139,13 +139,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard cluster** -- Public endpoint restricted by CIDRs, private access on, access-entry authentication, audit + authenticator logging. The production starting point for most teams. Start from the **Standard** preset.
+**Standard cluster** -- Public endpoint restricted by CIDRs, private access on, access-entry authentication, audit + authenticator logging. The production starting point for most teams. Start from the **Standard EKS Cluster** preset.
 
-**Private endpoint cluster** -- `endpointPublicAccess: false` with `endpointPrivateAccess: true`: the API server is reachable only inside the VPC (VPN, Direct Connect, or bastion). Required for compliance-sensitive environments (PCI-DSS, HIPAA). Start from the **Private Endpoint** preset.
+**Private endpoint cluster** -- `endpointPublicAccess: false` with `endpointPrivateAccess: true`: the API server is reachable only inside the VPC (VPN, Direct Connect, or bastion). Required for compliance-sensitive environments (PCI-DSS, HIPAA). Start from the **Private-Endpoint EKS Cluster** preset.
 
-**Hands-off compute** -- `autoMode.enabled: true` with the `general-purpose` and `system` built-in pools and an Auto Mode node role: AWS operates the compute so there are no node groups to patch or scale.
+**Hands-off compute** -- `autoMode.enabled: true` with the `general-purpose` and `system` built-in pools and an Auto Mode node role: AWS operates the compute so there are no node groups to patch or scale. Start from the **EKS Auto Mode Cluster** preset.
 
-**Hybrid fleet** -- `remoteNetworks` with your on-prem node/pod CIDRs plus regular AwsEksNodeGroup resources for the cloud side: one Kubernetes API over cloud and on-premises capacity. Start from the **Hybrid Nodes** preset.
+**Hybrid fleet** -- `remoteNetworks` with your on-prem node/pod CIDRs plus regular AwsEksNodeGroup resources for the cloud side: one Kubernetes API over cloud and on-premises capacity. Start from the **EKS Hybrid Nodes Cluster** preset.
 
 ## Works With
 

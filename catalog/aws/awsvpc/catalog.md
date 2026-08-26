@@ -33,14 +33,14 @@ To build a working network on top of this VPC, compose the companion components 
 
 ### Console
 
-Open the deployment store, find **AWS VPC**, and click **Deploy**. The creation wizard walks you through region, IPv4 addressing, optional IPv6, and DNS/options. Start from the **Production Dual-Stack** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
+Open the deployment store, find **AWS VPC**, and click **Deploy**. The creation wizard walks you through region, IPv4 addressing, optional IPv6, and DNS/options. Start from the **Production Dual-Stack VPC** preset in the [Presets](#presets) tab to pre-populate a production-ready configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
   name: production-vpc
@@ -78,7 +78,7 @@ These are the most important decisions when configuring a VPC. Explore the full 
 
 ### What This Component Consumes
 
-This component has no foreign key dependencies.
+This component has no foreign key dependencies. The IPAM pool fields (`ipv4IpamPoolId`, `ipv6IpamPoolId`, and the per-entry `ipamPoolId` on secondary CIDRs) accept literal `ipam-pool-...` IDs -- there is no IPAM pool catalog kind to reference yet.
 
 ### What This Component Provides
 
@@ -104,9 +104,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production dual-stack** -- A `/16` IPv4 range plus an Amazon-provided IPv6 `/56`, with DNS resolution and hostnames on. The standard foundation for a production network; compose subnets and gateways onto it. Start from the **Production Dual-Stack** preset.
+**Production dual-stack** -- A `/16` IPv4 range plus an Amazon-provided IPv6 `/56`, with DNS resolution and hostnames on. The standard foundation for a production network; compose subnets and gateways onto it. Start from the **Production Dual-Stack VPC** preset.
 
-**Development** -- A minimal single-CIDR, IPv4-only VPC for development environments. Start from the **Development** preset.
+**Development** -- A minimal single-CIDR, IPv4-only VPC for development environments. Start from the **Development VPC** preset.
+
+**IPAM-governed growth** -- The primary CIDR allocated from an IPAM pool, secondary ranges attached as in-place associations as the network grows, and encryption in transit enforced with a deliberate exclusion list. For organizations that govern address space centrally across many VPCs and accounts. Start from the **IPAM-Governed, Growing Network** preset.
 
 ## Works With
 

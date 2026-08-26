@@ -1,6 +1,6 @@
 # AWS App Runner Observability Configuration
 
-Deploys an App Runner observability configuration — the reusable tracing policy that [App Runner services](/cloud-catalog/aws-app-runner-service) reference to enable distributed request tracing. It is deliberately its own resource: one configuration is shared by any number of services, and attaching the reference IS the tracing on-switch — there is no separate toggle to keep in sync per service. With tracing configured, each instance of a referencing service runs an OpenTelemetry collector sidecar that forwards request spans to AWS X-Ray. Treat the configuration as immutable once created: to change tracing posture, register a new configuration name and repoint services (see the configuration notes). The configuration integrates with Planton's Provider Connections for AWS credential management.
+Deploys an App Runner observability configuration — the reusable tracing policy that [App Runner services](/cloud-catalog/aws-app-runner-service) reference to enable distributed request tracing. It is deliberately its own resource: one configuration is shared by any number of services, and attaching the reference IS the tracing on-switch — there is no separate toggle to keep in sync per service. With tracing configured, each instance of a referencing service runs an OpenTelemetry collector sidecar that forwards request spans to AWS X-Ray. Treat the configuration as immutable once created: to change tracing posture, register a new configuration name and repoint services (see the configuration notes).
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ Open the deployment store, find **AWS App Runner Observability Configuration**, 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerObservabilityConfiguration
 metadata:
   name: xray-tracing
@@ -49,20 +49,6 @@ planton apply -f app-runner-observability.yaml
 
 This registers an X-Ray tracing policy. A Stack Job tracks the provisioning in real time.
 
-### InfraChart
-
-When deploying as part of a multi-resource environment, the InfraPipeline registers the configuration first, then the services that adopt it:
-
-```yaml
-# In the AwsAppRunnerService manifest:
-spec:
-  observabilityConfigurationArn:
-    valueFrom:
-      kind: AwsAppRunnerObservabilityConfiguration
-      name: xray-tracing
-      fieldPath: status.outputs.configuration_arn
-```
-
 ## Key Configuration
 
 These are the most important decisions when configuring an observability configuration. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -79,7 +65,7 @@ These are the most important decisions when configuring an observability configu
 
 ### What This Component Consumes
 
-This component has no upstream Planton dependencies — it is a leaf resource that services reference.
+This component has no foreign key dependencies — it is a leaf resource: App Runner services reference its ARN, never the other way around.
 
 ### What This Component Provides
 

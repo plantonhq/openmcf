@@ -1,4 +1,4 @@
-# Preset: Spark Workgroup
+# Spark Workgroup
 
 An Athena workgroup configured for Apache Spark workloads (PySpark notebooks
 and Spark SQL). Requires an IAM execution role with appropriate permissions.

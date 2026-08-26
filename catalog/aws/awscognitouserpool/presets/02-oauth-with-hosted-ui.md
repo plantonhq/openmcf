@@ -1,4 +1,4 @@
-# Preset: OAuth with Hosted UI
+# OAuth with Hosted UI
 
 **Rank**: 2
 

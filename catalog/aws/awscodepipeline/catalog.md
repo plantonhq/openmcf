@@ -1,6 +1,6 @@
 # AWS CodePipeline
 
-Deploys a continuous delivery pipeline on AWS CodePipeline with configurable stages, actions, artifact stores, and optional V2 features including git-based triggers and pipeline-level variables. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring to IAM roles, S3 buckets, and KMS keys.
+Deploys a continuous delivery pipeline on AWS CodePipeline with configurable stages, actions, artifact stores, and optional V2 features including git-based triggers and pipeline-level variables. The service role, artifact buckets, encryption keys, and per-action roles all accept ValueFromRef wiring, so a pipeline composes with its IAM and storage dependencies — and the CodeBuild projects its stages invoke — in one InfraChart.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS CodePipeline**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **GitHub Source + CodeBuild** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS CodePipeline**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **GitHub Source + CodeBuild (CI Pipeline)** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
   name: api-deploy
@@ -148,14 +148,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**GitHub CI pipeline** -- GitHub source via CodeStar Connection with a CodeBuild build stage and git push trigger on main. The standard starting point for automated build-and-test on every commit. Start from the **GitHub Source + CodeBuild** preset.
+**GitHub CI pipeline** -- GitHub source via CodeStar Connection with a CodeBuild build stage and git push trigger on main. The standard starting point for automated build-and-test on every commit. Start from the **GitHub Source + CodeBuild (CI Pipeline)** preset.
 
-**Container deployment pipeline** -- ECR source triggered by new image pushes, a CodeBuild stage to generate `imagedefinitions.json`, and an ECS deploy stage for rolling updates. Decouples build and deploy into separate pipelines. Start from the **ECR Source + ECS Deploy** preset.
+**Container deployment pipeline** -- ECR source triggered by new image pushes, a CodeBuild stage to generate `imagedefinitions.json`, and an ECS deploy stage for rolling updates. Decouples build and deploy into separate pipelines. Start from the **ECR Source + ECS Deploy (Container Deployment Pipeline)** preset.
 
-**Serverless deployment pipeline** -- S3 source triggered by new deployment package uploads, with a Lambda invoke action to update function code and shift aliases. Lightweight pipeline for Lambda function releases. Start from the **S3 Source + Lambda Deploy** preset.
+**Serverless deployment pipeline** -- S3 source triggered by new deployment package uploads, with a Lambda invoke action to update function code and shift aliases. Lightweight pipeline for Lambda function releases. Start from the **S3 Source + Lambda Deploy (Serverless Deployment Pipeline)** preset.
 
 ## Works With
 
+- [**AWS CodeBuild Project**](/cloud-catalog/aws-code-build-project) -- provides the build and test stages the pipeline's CodeBuild actions invoke by project name
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the pipeline service role and optional per-action cross-account roles
 - [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides artifact storage between pipeline stages
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for artifact encryption

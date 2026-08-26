@@ -1,4 +1,4 @@
-# Preset: API Scopes
+# API Scopes
 
 **Rank**: 1 (most common starting point)
 

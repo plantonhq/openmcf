@@ -1,4 +1,4 @@
-# Preset: Production Analytics
+# Production Analytics
 
 ## Use Case
 

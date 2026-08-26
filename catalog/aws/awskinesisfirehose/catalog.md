@@ -1,6 +1,6 @@
 # AWS Kinesis Firehose
 
-Deploys a Kinesis Data Firehose delivery stream that captures, optionally transforms, and delivers streaming data to exactly one of eight destinations: Extended S3 (with Parquet/ORC conversion and dynamic partitioning), OpenSearch, OpenSearch Serverless, HTTP endpoint, Redshift, Splunk, Snowflake, or Apache Iceberg tables in the AWS Glue Data Catalog. Data enters from Direct PUT API calls, an existing Kinesis Data Stream, or an Amazon MSK topic. Supports server-side encryption (Direct PUT only), an ordered record-transformation pipeline (Lambda, JQ metadata extraction, decompression, CloudWatch Logs unwrapping, delimiting, de-aggregation), S3 backup for failed deliveries on every non-S3 destination, and AWS Secrets Manager credential delivery for the credentialed destinations. The delivery stream integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to S3 buckets, KMS keys, IAM roles, Kinesis streams, MSK clusters, Lambda functions, subnets, security groups, and OpenSearch domains.
+Deploys a Kinesis Data Firehose delivery stream that captures, optionally transforms, and delivers streaming data to exactly one of eight destinations: Extended S3 (with Parquet/ORC conversion and dynamic partitioning), OpenSearch, OpenSearch Serverless, HTTP endpoint, Redshift, Splunk, Snowflake, or Apache Iceberg tables in the AWS Glue Data Catalog. Data enters from Direct PUT API calls, an existing Kinesis Data Stream, or an Amazon MSK topic. Supports server-side encryption (Direct PUT only), an ordered record-transformation pipeline (Lambda, JQ metadata extraction, decompression, CloudWatch Logs unwrapping, delimiting, de-aggregation), S3 backup for failed deliveries on every non-S3 destination, and AWS Secrets Manager credential delivery for the credentialed destinations. Every source, destination, role, bucket, key, and network reference accepts ValueFromRef wiring, so the whole delivery pipeline — S3 buckets, KMS keys, IAM roles, Kinesis streams, MSK clusters, Lambda transformers, subnets, security groups, and OpenSearch domains — composes in one InfraChart. The destination type and the source decision are both immutable after creation.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS Kinesis Firehose**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
   name: logs-to-s3
@@ -134,12 +134,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Six presets cover the common delivery shapes:
 
-- **S3 Data Lake** -- minimal Extended S3 with GZIP compression and time-partitioned prefixes
-- **OpenSearch Log Analytics** -- domain indexing with daily rotation and failed-document backup
-- **HTTP Endpoint Webhook** -- third-party intake (Datadog) with GZIP request encoding and custom headers
-- **S3 Parquet Analytics** -- a Kinesis-stream source feeding dynamic partitioning and Parquet conversion through a Glue schema
-- **Snowflake Streaming** -- Snowpipe Streaming with Secrets Manager key-pair credentials and a least-privilege Snowflake role
-- **Iceberg Lakehouse** -- Glue-cataloged Iceberg tables with unique-key upserts
+- **S3 Data Lake Preset** -- minimal Extended S3 with GZIP compression and time-partitioned prefixes
+- **OpenSearch Log Analytics Preset** -- domain indexing with daily rotation and failed-document backup
+- **HTTP Endpoint Webhook Preset** -- third-party intake (Datadog) with GZIP request encoding and custom headers
+- **S3 Parquet Analytics Preset** -- a Kinesis-stream source feeding dynamic partitioning and Parquet conversion through a Glue schema
+- **Snowflake Streaming Preset** -- Snowpipe Streaming with Secrets Manager key-pair credentials and a least-privilege Snowflake role
+- **Iceberg Lakehouse Preset** -- Glue-cataloged Iceberg tables with unique-key upserts
 
 ## Works With
 
@@ -147,7 +147,7 @@ Six presets cover the common delivery shapes:
 - [**AWS Kinesis Data Stream**](/cloud-catalog/aws-kinesis-stream) -- provides a streaming source for the delivery stream
 - [**AWS MSK Cluster**](/cloud-catalog/aws-msk-cluster) -- provides a Kafka topic source for the delivery stream
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides service roles for Firehose to access S3, OpenSearch, Redshift, Lambda, Glue, and Secrets Manager
-- [**Storage Bucket on AWS S3**](/cloud-catalog/aws-s3-bucket) -- provides the destination bucket for Extended S3, the staging bucket for Redshift, and backup buckets for every destination
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the destination bucket for Extended S3, the staging bucket for Redshift, and backup buckets for every destination
 - [**AWS Lambda**](/cloud-catalog/aws-lambda) -- provides a transformation function for record processing before delivery
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides subnets for VPC delivery to OpenSearch domains and collections
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for VPC delivery ENIs

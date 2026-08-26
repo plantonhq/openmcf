@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS DocumentDB**, and click **Deploy**. The creation wizard leads with the creation source (fresh, snapshot restore, or point-in-time restore — derived sources inherit credentials and skip that step), then walks placement, the compute fleet, and the operational posture. Start from the **Production Managed Password** preset in the [Presets](#presets) tab.
+Open the deployment store, find **AWS DocumentDB**, and click **Deploy**. The creation wizard leads with the creation source (fresh, snapshot restore, or point-in-time restore — derived sources inherit credentials and skip that step), then walks placement, the compute fleet, and the operational posture. Start from the **Production DocumentDB (Managed Password)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDocumentDb
 metadata:
   name: orders-docdb
@@ -70,7 +70,7 @@ spec:
 planton apply -f documentdb.yaml
 ```
 
-This creates an encrypted two-instance cluster (writer + reader) with the master password managed in Secrets Manager, 7-day point-in-time recovery, deletion protection, and a named final snapshot.
+This creates an encrypted two-instance cluster (writer + reader) with the master password managed in Secrets Manager, 7-day point-in-time recovery, deletion protection, and a named final snapshot. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -143,6 +143,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `hosted_zone_id` | Route53 zone of the endpoints | DNS alias records |
 | `db_subnet_group_name` | The DB subnet group in use | Audit, related resource lookups |
 | `db_cluster_parameter_group_name` | The parameter group in use | Parameter auditing |
+
+## Common Patterns
+
+**Production writer-plus-reader** -- two provisioned instances on shared cluster storage, the reader carrying report and analytics traffic through `reader_endpoint` and doubling as the failover target (DocumentDB promotes it in seconds because it already reads from the same storage volume). Managed master password, encrypted storage, deletion protection, and audit logs to CloudWatch. Start from the **Production DocumentDB (Managed Password)** preset.
+
+**Serverless for unknown or spiky demand** -- a single `db.serverless` instance scaling within `serverlessV2Scaling` DCU bounds, so there is no instance class to re-pick as the workload grows. Remember the floor: DocumentDB Serverless does not pause to zero, so `minCapacity` is the idle cost. Start from the **DocumentDB Serverless** preset.
+
+**Prod-data staging clone** -- a second cluster created with `restoreToPointInTime` in `copy-on-write` mode: it shares storage with the source and pays only for divergence, giving staging an exact production dataset without a full copy. Derived clusters inherit credentials and may start headless, attaching instances later.
 
 ## Works With
 

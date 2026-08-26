@@ -1,4 +1,4 @@
-# Preset: BYOIP Pool Elastic IP
+# BYOIP Pool Elastic IP
 
 **Use case:** Allocate a static public IPv4 address from your own registered IP address range.
 

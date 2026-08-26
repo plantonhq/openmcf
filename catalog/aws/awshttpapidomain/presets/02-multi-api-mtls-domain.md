@@ -1,4 +1,4 @@
-# Preset: Multi-API mTLS Domain
+# Multi-API mTLS Domain
 
 ## When to Use
 

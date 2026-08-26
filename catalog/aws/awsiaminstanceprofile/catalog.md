@@ -31,7 +31,7 @@ Open the deployment store, find **AWS IAM Instance Profile**, and click **Deploy
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamInstanceProfile
 metadata:
   name: web-server
@@ -54,27 +54,19 @@ This wraps the role in a profile that EC2 instances, launch templates, and Auto 
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the profile sits between the role and the compute that carries it:
+When the profile deploys alongside its role in one chart, wire the role reference via ValueFromRef:
 
 ```yaml
-# On this profile:
 spec:
+  region: us-west-2
   role:
     valueFrom:
       kind: AwsIamRole
       name: web-server-role
       fieldPath: status.outputs.role_name
-
-# On an AwsEc2Instance in the same InfraPipeline:
-spec:
-  instanceProfile:
-    valueFrom:
-      kind: AwsIamInstanceProfile
-      name: web-server
-      fieldPath: status.outputs.instance_profile_name
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the role first, then the profile, then the instances that carry it.
+The InfraPipeline resolves the dependency graph, deploys the role first, then the profile — and downstream, the instances and launch templates that reference the profile's own outputs deploy last.
 
 ## Key Configuration
 
@@ -113,7 +105,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **EC2 role delivery** -- Wrap an AwsIamRole by reference so web fleets, SSM-managed instances, and build runners get AWS API access with zero embedded keys. Start from the **EC2 Role Delivery** preset.
 
-**Wrap an existing role** -- Carry a role that lives outside Planton by literal name — the incremental-adoption path while IAM is still managed elsewhere. Start from the **Existing Role** preset.
+**Wrap an existing role** -- Carry a role that lives outside Planton by literal name — the incremental-adoption path while IAM is still managed elsewhere. Start from the **Wrap an Existing Role** preset.
 
 ## Works With
 

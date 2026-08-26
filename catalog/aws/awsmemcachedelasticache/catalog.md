@@ -1,6 +1,6 @@
 # AWS ElastiCache Memcached
 
-Deploys an ElastiCache cluster running Memcached with configurable node count, cross-AZ distribution, optional in-transit encryption, custom parameter groups, and SNS event notifications. Memcached provides a distributed volatile cache with horizontal scaling across up to 40 nodes. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, and SNS topics.
+Deploys an ElastiCache cluster running Memcached with configurable node count, cross-AZ distribution, optional in-transit encryption, custom parameter groups, and SNS event notifications. Memcached provides a distributed volatile cache with horizontal scaling across up to 40 nodes -- no replication, no persistence, no authentication, so security is entirely network isolation and every node holds data that can vanish.
 
 ## What Gets Created
 
@@ -21,7 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **Subnets** in the target VPC for the ElastiCache subnet group. Provide at least two subnets in distinct Availability Zones when using `cross-az` mode. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Subnets** in the target VPC for the ElastiCache subnet group. Provide at least two subnets in distinct Availability Zones when using `cross-az` mode. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef.
 - **Security groups** to attach to the cluster nodes for network access control. Since Memcached has no built-in authentication, security groups are the primary access control mechanism. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource.
 - **An SNS topic** (optional) for cluster event notifications (node additions, removals, maintenance events).
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS ElastiCache Memcached**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, and spec fields. Configure the engine version, node type, node count, and network settings directly in the wizard.
+Open the deployment store, find **AWS ElastiCache Memcached**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, and spec fields. Configure the engine version, node type, node count, and network settings directly in the wizard, or start from the **Memcached Multi-Node Cross-AZ** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
 metadata:
   name: app-cache
@@ -58,23 +58,23 @@ spec:
 planton apply -f memcached-elasticache.yaml
 ```
 
-This creates a 3-node Memcached 1.6.22 cluster distributed across multiple Availability Zones with in-transit encryption. No custom parameters or SNS notifications are configured. Memcached does not support encryption at rest, persistence, or authentication.
+This creates a 3-node Memcached 1.6.22 cluster distributed across multiple Availability Zones with in-transit encryption. No custom parameters or SNS notifications are configured. Memcached does not support encryption at rest, persistence, or authentication. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the Memcached cluster to a VPC, security group, and SNS topic deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the Memcached cluster to subnets, a security group, and an SNS topic deployed in the same InfraPipeline:
 
 ```yaml
 spec:
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: cache-subnet-az1
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[1].id
+        kind: AwsSubnet
+        name: cache-subnet-az2
+        fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -87,7 +87,7 @@ spec:
       fieldPath: status.outputs.topic_arn
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the VPC, security group, and SNS topic first, then provisions the Memcached cluster with the resolved values.
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and SNS topic first, then provisions the Memcached cluster with the resolved values.
 
 ## Key Configuration
 
@@ -111,7 +111,7 @@ These are the most important decisions when configuring an ElastiCache Memcached
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsVpc** (optional) | `subnetIds` | `status.outputs.private_subnets.[*].id` |
+| **AwsSubnet** (optional) | `subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
 | **AwsSnsTopic** (optional) | `notificationTopicArn` | `status.outputs.topic_arn` |
 
@@ -133,14 +133,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single-node development cache** -- One `cache.t3.micro` node on the latest engine version. The smallest footprint for development and testing. Start from the **Single Node Dev** preset.
+**Single-node development cache** -- One `cache.t3.micro` node on the latest engine version. The smallest footprint for development and testing. Start from the **Memcached Single Node (Development)** preset.
 
-**Multi-node cross-AZ cache** -- Three nodes spread across Availability Zones with preferred AZ pinning. Keys hash across nodes, so an AZ loss costs only that node's share of the cache. Start from the **Multi Node Cross AZ** preset.
+**Multi-node cross-AZ cache** -- Three nodes spread across Availability Zones with preferred AZ pinning. Keys hash across nodes, so an AZ loss costs only that node's share of the cache. Start from the **Memcached Multi-Node Cross-AZ** preset.
 
-**Production encrypted cache** -- Three `cache.r7g.large` nodes, cross-AZ, TLS in transit, a maintenance window, and inline parameter tuning. Start from the **Production Encrypted** preset.
+**Production encrypted cache** -- Three `cache.r7g.large` nodes, cross-AZ, TLS in transit, a maintenance window, and inline parameter tuning. Start from the **Memcached Production Encrypted** preset.
 
 ## Works With
 
-- [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides the subnets for the ElastiCache subnet group across multiple Availability Zones
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets for the ElastiCache subnet group across multiple Availability Zones
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for the Memcached endpoint (primary security mechanism since Memcached has no authentication)
 - [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- receives cluster event notifications for node changes and maintenance events

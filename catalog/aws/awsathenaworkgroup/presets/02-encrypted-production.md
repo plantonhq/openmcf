@@ -1,4 +1,4 @@
-# Preset: Encrypted Production Workgroup
+# Encrypted Production Workgroup
 
 A production-grade Athena workgroup with SSE_KMS encryption, cost controls,
 and strict configuration enforcement.

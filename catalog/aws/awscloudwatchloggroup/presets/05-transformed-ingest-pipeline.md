@@ -1,4 +1,4 @@
-# Preset: Transformed Ingest Pipeline
+# Transformed Ingest Pipeline
 
 **Use case:** Normalize messy service logs at ingestion so queries, filters,
 and alarms all see one clean shape.

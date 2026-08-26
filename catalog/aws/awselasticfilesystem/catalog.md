@@ -1,6 +1,6 @@
 # AWS Elastic File System
 
-Deploys a fully managed NFS file system on Amazon EFS with configurable encryption, throughput modes, lifecycle tiering, per-AZ mount targets with optional static IPv4/IPv6 addressing, an IAM resource policy, and cross-region or cross-AZ disaster-recovery replication. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, and KMS keys. Application-level entry points live on the separate [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resource, which references this file system.
+Deploys a fully managed NFS file system on Amazon EFS with configurable encryption, throughput modes, lifecycle tiering, per-AZ mount targets with optional static IPv4/IPv6 addressing, an IAM resource policy, and cross-region or cross-AZ disaster-recovery replication. Automatic daily backups via AWS Backup and storage-class lifecycle transitions are switched on from the same spec. Application-level entry points live on the separate [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resource, which references this file system.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Elastic File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose Regional** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Elastic File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose Regional EFS** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticFileSystem
 metadata:
   name: app-shared-storage
@@ -102,9 +102,9 @@ These are the most important decisions when configuring an EFS file system. Expl
 
 **Throughput mode** -- `bursting` scales throughput with file system size (50 MiB/s per TiB). `provisioned` gives fixed throughput independent of size (set `provisionedThroughputInMibps`; AWS enforces a 24-hour cooldown between changes). `elastic` auto-scales throughput based on workload demand and is recommended for unpredictable access patterns. Elastic requires generalPurpose performance mode.
 
-**Regional vs. One Zone** -- Leave `availabilityZoneName` empty for multi-AZ redundancy (Standard storage). Set it to a specific AZ (e.g., `us-east-1a`) for One Zone storage, which is ~47% cheaper but stores data in a single AZ. One Zone allows exactly one mount target, in a subnet of that AZ. Suitable for dev/test or workloads that tolerate AZ-level failure. This is a ForceNew attribute.
+**Regional vs. One Zone** -- Leave `availabilityZoneName` empty for multi-AZ redundancy (Standard storage). Set it to a specific AZ (e.g., `us-east-1a`) for One Zone storage, which costs less precisely because data lives in a single AZ. One Zone allows exactly one mount target, in a subnet of that AZ. Suitable for dev/test or workloads that tolerate AZ-level failure. This is a ForceNew attribute.
 
-**Lifecycle tiering** -- Configure `transitionToIa` to move files to Infrequent Access storage (~92% cheaper) after a period of no access. Add `transitionToArchive` for further savings (~96% cheaper; requires the IA transition). Set `transitionToPrimaryStorageClass: AFTER_1_ACCESS` to automatically warm frequently accessed files back to Standard.
+**Lifecycle tiering** -- Configure `transitionToIa` to move files to Infrequent Access storage after a period of no access, and add `transitionToArchive` for a still-lower storage class (requires the IA transition) -- both trade per-GiB storage cost against per-access charges, so they pay off on data that goes cold. Set `transitionToPrimaryStorageClass: AFTER_1_ACCESS` to automatically warm frequently accessed files back to Standard.
 
 **File system policy** -- Provide `policy` (a JSON IAM policy document) to enforce non-negotiable guardrails: deny unencrypted NFS connections (`aws:SecureTransport`), prevent root access from clients, or require IAM authentication for all mounts. `bypassPolicyLockoutSafetyCheck` requires a policy and should stay off unless deploying a deliberate lockout posture -- a locked-out policy is recoverable only by the account root.
 
@@ -142,11 +142,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**General purpose regional** -- Encrypted multi-AZ file system with bursting throughput and automatic backups. The standard production configuration for shared storage across EKS pods, ECS tasks, or EC2 instances. Start from the **General Purpose Regional** preset.
+**General purpose regional** -- Encrypted multi-AZ file system with bursting throughput and automatic backups. The standard production configuration for shared storage across EKS pods, ECS tasks, or EC2 instances. Start from the **General Purpose Regional EFS** preset.
 
-**One Zone dev** -- Encrypted single-AZ file system with bursting throughput. ~47% cheaper than regional storage, suitable for development and testing environments where AZ-level redundancy is not required. Start from the **One Zone Dev** preset.
+**One Zone dev** -- Encrypted single-AZ file system with bursting throughput. The low-cost shape for development and testing environments where AZ-level redundancy is not required. Start from the **One Zone Dev EFS** preset.
 
-**Production elastic tiered** -- Encrypted multi-AZ file system with elastic throughput and lifecycle tiering (IA after 30 days, Archive after 90 days, warm on access). Pair it with [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resources for per-application isolation. Start from the **Production Elastic Tiered** preset.
+**Production elastic tiered** -- Encrypted multi-AZ file system with elastic throughput and lifecycle tiering (IA after 30 days, Archive after 90 days, warm on access). Pair it with [AWS EFS Access Point](/cloud-catalog/aws-efs-access-point) resources for per-application isolation. Start from the **Production Elastic EFS with Lifecycle Tiering and DR Replication** preset.
 
 ## Works With
 

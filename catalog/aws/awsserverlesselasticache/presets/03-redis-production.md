@@ -1,4 +1,4 @@
-# Preset: Redis Production
+# Redis Production
 
 **Use case:** Production workloads requiring encryption, VPC isolation, daily
 snapshots, and Redis ACL access control.

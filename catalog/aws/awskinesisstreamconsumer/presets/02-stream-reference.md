@@ -1,4 +1,4 @@
-# Preset: Stream Reference (valueFrom)
+# Stream Reference (valueFrom)
 
 ## Use Case
 

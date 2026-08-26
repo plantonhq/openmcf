@@ -1,4 +1,4 @@
-# Preset: Standard Elastic IP
+# Standard Elastic IP
 
 **Use case:** Allocate a static public IPv4 address from Amazon's default pool.
 

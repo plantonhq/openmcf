@@ -1,13 +1,12 @@
 # AWS ElastiCache User Group
 
-Deploys an ElastiCache user group — the unit of RBAC attachment for Redis and Valkey. Access control composes through a graph: users ([AwsElasticacheUser](/cloud-catalog/aws-elasticache-user)) define WHO and WHAT (identity + ACL access string), and the group defines WHERE — which caches those identities apply to. The group attaches as one object to a replication group or serverless cache; granting or revoking an application's cache access is a membership edit on the group, and the cache itself never changes. The group integrates with Planton's Provider Connections for AWS credential management and references its members via ValueFromRef.
+Deploys an ElastiCache user group — the unit of RBAC attachment for Redis and Valkey. Access control composes through a graph: users ([AwsElasticacheUser](/cloud-catalog/aws-elasticache-user)) define WHO and WHAT (identity + ACL access string), and the group defines WHERE — which caches those identities apply to. The group attaches as one object to a replication group or serverless cache; granting or revoking an application's cache access is a membership edit on the group, and the cache itself never changes.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **ElastiCache User Group** -- the RBAC attachment unit whose AWS user group id is the resource name (create-time immutable)
-- **Membership** -- the set of user ids that belong to the group; updates apply in place for the group's whole life
+- **ElastiCache User Group** -- the RBAC attachment unit whose AWS user group id is the resource name (create-time immutable), carrying the set of member user ids; membership updates apply in place for the group's whole life
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -26,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS ElastiCache User Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Redis Group** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS ElastiCache User Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Redis User Group with Default User** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticacheUserGroup
 metadata:
   name: orders-rbac
@@ -61,17 +60,24 @@ This creates a Redis user group wiring the mandatory default user plus one appli
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the InfraPipeline deploys users first, then this group, then the cache that attaches it:
+When the group deploys alongside its member users in one chart, wire the membership via ValueFromRef:
 
 ```yaml
-# In the AwsServerlessElasticache manifest:
 spec:
-  userGroupId:
-    valueFrom:
-      kind: AwsElasticacheUserGroup
-      name: orders-rbac
-      fieldPath: status.outputs.user_group_id
+  region: us-west-2
+  engine: redis
+  userIds:
+    - valueFrom:
+        kind: AwsElasticacheUser
+        name: rbac-default-user
+        fieldPath: status.outputs.user_id
+    - valueFrom:
+        kind: AwsElasticacheUser
+        name: orders-service
+        fieldPath: status.outputs.user_id
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the users first, then this group -- and the cache that attaches it references the `user_group_id` output afterwards.
 
 ## Key Configuration
 
@@ -91,7 +97,7 @@ These are the most important decisions when configuring an ElastiCache user grou
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsElasticacheUser** | `userIds[]` | `status.outputs.user_id` |
+| **AwsElasticacheUser** | `userIds` | `status.outputs.user_id` |
 
 ### What This Component Provides
 
@@ -106,9 +112,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Redis RBAC group** -- the locked-down default user plus one user per application service, attached to a Redis replication group or serverless cache. Start from the **Redis Group** preset.
+**Redis RBAC group** -- the locked-down default user plus one user per application service, attached to a Redis replication group or serverless cache. Start from the **Redis User Group with Default User** preset.
 
-**Valkey RBAC group** -- the same membership model for Valkey caches; every member must be a valkey-engine user. Start from the **Valkey Group** preset.
+**Valkey RBAC group** -- the same membership model for Valkey caches; every member must be a valkey-engine user. Start from the **Valkey User Group** preset.
 
 **Per-environment groups** -- one group per environment (dev/staging/prod) with different membership, so a staging credential can never reach the production cache.
 

@@ -1,4 +1,4 @@
-# Preset: ML Team with Custom Images
+# ML Team with Custom Images
 
 A fully-featured SageMaker Domain for advanced ML teams that need custom Docker images,
 GPU compute, Docker build capabilities, notebook sharing, and auto-cloned code repositories.

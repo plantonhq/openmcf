@@ -1,4 +1,4 @@
-# Preset: Enterprise OIDC
+# Enterprise OIDC
 
 Configures a generic OIDC provider for enterprise single sign-on. Works with
 Okta, Auth0, Azure AD, Keycloak, and any OIDC-compliant identity provider.

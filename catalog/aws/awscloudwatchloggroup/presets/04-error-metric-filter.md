@@ -1,4 +1,4 @@
-# Preset: Error-Count Metric Filter
+# Error-Count Metric Filter
 
 **Use case:** Alarm on errors that only exist in application logs.
 

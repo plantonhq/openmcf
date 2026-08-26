@@ -1,4 +1,4 @@
-# Preset: Basic Private Airflow Environment
+# Basic Private Airflow Environment
 
 A minimal MWAA environment with private webserver access, suitable for development
 and small-scale DAG workloads within a VPC.

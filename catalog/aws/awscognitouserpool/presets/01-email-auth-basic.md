@@ -1,4 +1,4 @@
-# Preset: Email Auth Basic
+# Email Auth Basic
 
 **Rank**: 1 (most common starting point)
 

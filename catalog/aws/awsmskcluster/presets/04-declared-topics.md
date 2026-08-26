@@ -1,4 +1,4 @@
-# Preset: Cluster with Declared Contract Topics
+# Cluster with Declared Contract Topics
 
 An MSK cluster whose topics deploy WITH it: three contract topics (an event stream, its dead-letter queue, and a compacted snapshot topic) declared in the spec and managed through the MSK topic API — no Kafka client, bootstrap connectivity, or credential setup at deploy time, and no init-container topic scripts in your applications.
 

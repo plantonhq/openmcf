@@ -166,7 +166,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- where the controller runs
 - [**Ingress NGINX**](/cloud-catalog/kubernetes-ingress-nginx) -- the entry point whose Ingress hostnames this controller publishes
 - [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- the HTTPS half of the same completeness story: a public endpoint needs its name resolvable AND its certificate signed
-- [**DNS Zone on AWS Route53**](/cloud-catalog/aws-route53-zone) -- the Route 53 zone referenced by `zoneIdFilters`
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- the Route 53 zone referenced by `zoneIdFilters`
 - [**GCP DNS Zone**](/cloud-catalog/gcp-dns-zone) -- the Cloud DNS zone referenced by `zoneIdFilters`
 - [**Azure DNS Zone**](/cloud-catalog/azure-dns-zone) -- the Azure zone referenced by `zoneIdFilters`
 - [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the Cloudflare zone referenced by `zoneIdFilters`

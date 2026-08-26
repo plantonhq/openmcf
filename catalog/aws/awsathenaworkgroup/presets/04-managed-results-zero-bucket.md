@@ -1,4 +1,4 @@
-# Preset: Managed Results, Zero Bucket
+# Managed Results, Zero Bucket
 
 An Athena workgroup that stores query results in AWS-managed storage — no S3
 bucket to create, secure, or lifecycle. Results are retained for 24 hours and

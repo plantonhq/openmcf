@@ -1,6 +1,6 @@
 # AWS HTTP API Gateway
 
-Deploys an HTTP API on Amazon API Gateway (v2) with route-to-integration wiring, JWT and Lambda authorizers, CORS configuration, and auto-deploying stages. The component bundles the API, stage, routes, integrations, and authorizers into a single declarative resource and integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an HTTP API on Amazon API Gateway (v2) with route-to-integration wiring, JWT and Lambda authorizers, CORS configuration, and auto-deploying stages. The component bundles the API, stage, routes, integrations, and authorizers into a single declarative resource, with typed references for wiring Lambda backends, VPC links, authorizer roles, and Cognito issuers to resources deployed alongside it.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS HTTP API Gateway**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiGateway
 metadata:
   name: my-api
@@ -58,7 +58,7 @@ spec:
 planton apply -f http-api-gateway.yaml
 ```
 
-This creates an HTTP API with a single catch-all route forwarding all requests to a Lambda function, using the `$default` stage with auto-deploy. No CORS or authorization is configured. A Stack Job tracks the provisioning and streams progress in real time.
+This creates an HTTP API with a single catch-all route forwarding all requests to a Lambda function, using the `$default` stage with auto-deploy. No CORS or authorization is configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -143,9 +143,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Single Lambda catch-all** -- A `$default` route forwarding all requests to one Lambda function. The Lambda handles routing internally. Ideal for prototyping or frameworks like Express.js or FastAPI running in Lambda. Start from the **Default Route to Lambda** preset.
 
-**Multi-route REST API** -- Separate routes per HTTP method and path with CORS enabled for browser access. Each route targets a dedicated Lambda function. Suited for production APIs with clear endpoint separation. Start from the **Multi-Route Lambda** preset.
+**Multi-route REST API** -- Separate routes per HTTP method and path with CORS enabled for browser access. Each route targets a dedicated Lambda function. Suited for production APIs with clear endpoint separation. Start from the **Multi-Route Lambda API with CORS** preset.
 
-**JWT-protected API** -- Routes secured with a JWT authorizer validating tokens from Cognito, Auth0, or any OIDC provider. Mix public and protected routes with OAuth scope requirements. Start from the **JWT Authorized API** preset.
+**JWT-protected API** -- Routes secured with a JWT authorizer validating tokens from Cognito, Auth0, or any OIDC provider. Mix public and protected routes with OAuth scope requirements. Start from the **JWT Authorized API with Cognito** preset.
 
 ## Works With
 

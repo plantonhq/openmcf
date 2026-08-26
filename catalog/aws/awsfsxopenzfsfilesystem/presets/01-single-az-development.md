@@ -1,4 +1,4 @@
-# Preset: Single-AZ Development
+# Single-AZ Development
 
 **Use case**: Development and testing environments where cost efficiency matters more than high availability or performance.
 

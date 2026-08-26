@@ -1,6 +1,6 @@
 # AWS ECS Cluster
 
-Deploys an ECS cluster: the logical boundary that groups services and tasks, decides where their containers run (Fargate, EC2 capacity providers, ECS Managed Instances, or a blend), and carries cluster-wide posture — Container Insights observability, ECS Exec auditing, Fargate storage encryption, and the Service Connect default namespace. The cluster itself is free; only the tasks and instances it schedules cost money.
+Deploys an ECS cluster: the logical boundary that groups services and tasks, decides where their containers run (Fargate, EC2 capacity providers, ECS Managed Instances, or a blend), and carries cluster-wide posture — Container Insights observability, ECS Exec auditing, Fargate storage encryption, and the Service Connect default namespace. Cost is driven by the tasks and instances the cluster schedules, not by the cluster itself.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS ECS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Fargate Standard**, **Fargate Cost-Optimized**, or **EC2 Capacity** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS ECS Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Fargate Cluster**, **Fargate Cost-Optimized Cluster**, or **EC2-Backed Cluster** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsCluster
 metadata:
   name: my-cluster
@@ -55,7 +55,7 @@ spec:
 planton apply -f ecs-cluster.yaml
 ```
 
-This creates a Fargate-ready cluster with enhanced Container Insights. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a Fargate-ready cluster with enhanced Container Insights. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -127,13 +127,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard Fargate cluster** — On-demand Fargate capacity with Container Insights. The starting point for production ECS deployments where Spot interruptions are not acceptable. Start from the **Fargate Standard** preset.
+**Standard Fargate cluster** — On-demand Fargate capacity with Container Insights. The starting point for production ECS deployments where Spot interruptions are not acceptable. Start from the **Standard Fargate Cluster** preset.
 
-**Cost-optimized Fargate cluster** — Fargate + Fargate Spot with a weighted default strategy that runs ~80% of scaled tasks on Spot while guaranteeing one on-demand task. Start from the **Fargate Cost-Optimized** preset.
+**Cost-optimized Fargate cluster** — Fargate + Fargate Spot with a weighted default strategy that runs ~80% of scaled tasks on Spot while guaranteeing one on-demand task. Start from the **Fargate Cost-Optimized Cluster** preset.
 
-**EC2-backed cluster** — Wraps an auto-scaling group as a named capacity provider for workloads needing GPUs, special instance families, or EC2 unit economics; keeps the Fargate lane alongside. Start from the **EC2 Capacity** preset.
+**EC2-backed cluster** — Wraps an auto-scaling group as a named capacity provider for workloads needing GPUs, special instance families, or EC2 unit economics; keeps the Fargate lane alongside. Start from the **EC2-Backed Cluster** preset.
 
-**Managed-instances cluster** — EC2 economics with Fargate-grade hands-off: ECS owns the fleet from attribute-based requirements, no auto-scaling group or AMI pipeline to maintain. Start from the **Managed Instances** preset.
+**Managed-instances cluster** — EC2 economics with Fargate-grade hands-off: ECS owns the fleet from attribute-based requirements, no auto-scaling group or AMI pipeline to maintain. Start from the **Managed Instances Cluster** preset.
 
 ## Works With
 

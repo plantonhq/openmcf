@@ -1,4 +1,4 @@
-# Preset: Provisioned Encrypted
+# Provisioned Encrypted
 
 ## Use Case
 

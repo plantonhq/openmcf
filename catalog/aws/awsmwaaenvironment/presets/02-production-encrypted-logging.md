@@ -1,4 +1,4 @@
-# Preset: Production Encrypted Airflow with Full Logging
+# Production Encrypted Airflow with Full Logging
 
 A production-grade MWAA environment with customer-managed KMS encryption, all five
 Airflow logging modules enabled, graceful worker replacement, and a defined

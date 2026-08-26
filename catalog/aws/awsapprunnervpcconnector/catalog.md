@@ -1,6 +1,6 @@
 # AWS App Runner VPC Connector
 
-Deploys an App Runner VPC connector — the managed network attachment that lets [App Runner services](/cloud-catalog/aws-app-runner-service) reach private resources inside a VPC (databases, caches, internal APIs) for their OUTBOUND traffic. It is deliberately its own resource: one connector is shared by any number of services, each referencing it by ARN in its egress configuration, and the connector owns the network-attachment lifecycle — AWS provisions managed ENIs into the chosen subnets that persist across service create/destroy cycles. The connector integrates with Planton's Provider Connections for AWS credential management and references its subnets and security groups via ValueFromRef.
+Deploys an App Runner VPC connector — the managed network attachment that lets [App Runner services](/cloud-catalog/aws-app-runner-service) reach private resources inside a VPC (databases, caches, internal APIs) for their OUTBOUND traffic. It is deliberately its own resource: one connector is shared by any number of services, each referencing it by ARN in its egress configuration, and the connector owns the network-attachment lifecycle — AWS provisions managed ENIs into the chosen subnets that persist across service create/destroy cycles. Its subnets and security groups accept ValueFromRef wiring to AwsSubnet and AwsSecurityGroup resources, and every attribute is immutable after creation — a change replaces the connector as a new revision under the same name.
 
 ## What Gets Created
 
@@ -34,7 +34,7 @@ Open the deployment store, find **AWS App Runner VPC Connector**, and click **De
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerVpcConnector
 metadata:
   name: private-backend-access
@@ -66,17 +66,27 @@ This creates a two-AZ connector wearing a dedicated egress group. A Stack Job tr
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the InfraPipeline deploys subnets and security groups first, then this connector, then the services that route through it:
+When the connector deploys alongside its network in one chart, wire the subnet and security group references via ValueFromRef:
 
 ```yaml
-# In the AwsAppRunnerService manifest:
 spec:
-  vpcConnectorArn:
-    valueFrom:
-      kind: AwsAppRunnerVpcConnector
-      name: private-backend-access
-      fieldPath: status.outputs.vpc_connector_arn
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-b
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: app-runner-egress
+        fieldPath: status.outputs.security_group_id
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the subnets and security group first, then provisions the connector — and the App Runner services that reference its `vpc_connector_arn` output deploy after it.
 
 ## Key Configuration
 

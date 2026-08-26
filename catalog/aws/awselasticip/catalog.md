@@ -1,6 +1,6 @@
 # AWS Elastic IP
 
-Deploys a static public IPv4 address from Amazon's address pool or from a Bring-Your-Own-IP (BYOIP) pool, with optional network border group scoping for Local Zones and Wavelength zones. The Elastic IP integrates with Planton's Provider Connections for AWS credential management.
+Deploys a static public IPv4 address from Amazon's address pool or from a Bring-Your-Own-IP (BYOIP) pool, with optional network border group scoping for Local Zones and Wavelength zones. Unlike an instance's ephemeral public IP, the address persists until the Cloud Resource is destroyed, which is what makes it the anchor for stable endpoints: NLB subnet mappings, NAT gateway egress, and pet instances that must keep their address across stop/start cycles. For the common case, no spec fields beyond `region` are needed -- the optional fields cover attachment, BYOIP, IPAM pools, edge zones, and reverse DNS.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Elastic IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard EIP** preset in the [Presets](#presets) tab to pre-populate a default configuration.
+Open the deployment store, find **AWS Elastic IP**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Elastic IP** preset in the [Presets](#presets) tab to pre-populate a default configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsElasticIp
 metadata:
   name: nlb-frontend
@@ -48,6 +48,22 @@ planton apply -f elastic-ip.yaml
 ```
 
 This allocates a standard VPC Elastic IP from Amazon's address pool in us-west-2. No BYOIP or network border group is configured. The allocated IP persists until the Cloud Resource is destroyed -- it does not change across Stack Job runs. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the address deploys alongside the instance it fronts in one chart, wire the attachment via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  instance:
+    valueFrom:
+      kind: AwsEc2Instance
+      name: bastion
+      fieldPath: status.outputs.instance_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the instance first, then allocates the address and associates it.
 
 ## Key Configuration
 
@@ -69,10 +85,10 @@ These are the most important decisions when configuring an Elastic IP. Explore t
 
 ### What This Component Consumes
 
-| Reference | Kind | Purpose |
-|-----------|------|---------|
-| `spec.instance` | AwsEc2Instance | The instance the address attaches to (`instance_id` output) |
-| `spec.networkInterface` | AwsEc2Instance | The instance's primary ENI, for the precise attachment form (`primary_network_interface_id` output; literal `eni-...` ids also work) |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsEc2Instance** | `instance` | `status.outputs.instance_id` |
+| **AwsEc2Instance** | `networkInterface` (the precise per-ENI form; literal `eni-...` ids also work) | `status.outputs.primary_network_interface_id` |
 
 ### What This Component Provides
 
@@ -93,12 +109,14 @@ The `allocation_id` is the primary output consumed by downstream resources. Netw
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard EIP** -- An Elastic IP from Amazon's pool with no special configuration. The most common pattern for NLB frontends, NAT Gateways, and EC2 instances needing stable public addresses. Start from the **Standard EIP** preset.
+**Standard EIP** -- An Elastic IP from Amazon's pool with no special configuration. The most common pattern for NLB frontends, NAT Gateways, and EC2 instances needing stable public addresses. Start from the **Standard Elastic IP** preset.
 
-**BYOIP pool allocation** -- An Elastic IP from a customer-owned IP range, useful for maintaining IP reputation (e.g., email servers) or meeting contractual requirements for specific IP addresses. Start from the **BYOIP Pool** preset.
+**BYOIP pool allocation** -- An Elastic IP from a customer-owned IP range, useful for maintaining IP reputation (e.g., email servers) or meeting contractual requirements for specific IP addresses. Start from the **BYOIP Pool Elastic IP** preset.
 
-**Instance-attached address** -- A stable public IP for a pet instance (bastion, license server), declared on the EIP side because the instance API cannot pull an address itself. Start from the **Instance-Attached** preset.
+**Instance-attached address** -- A stable public IP for a pet instance (bastion, license server), declared on the EIP side because the instance API cannot pull an address itself. Start from the **Instance-Attached Elastic IP** preset.
 
 ## Works With
 
-Consumers that take an allocation (AwsNlb subnet mappings, AwsNatGateway) reference this component's `allocation_id` output. In the other direction, this component references AwsEc2Instance outputs to attach the address to an instance or its primary network interface.
+- [**AWS NAT Gateway**](/cloud-catalog/aws-nat-gateway) -- consumes this component's `allocation_id` as the gateway's stable outbound address
+- [**AWS NLB**](/cloud-catalog/aws-nlb) -- consumes `allocation_id` in subnet mappings to bind a static IP per subnet
+- [**AWS EC2 Instance**](/cloud-catalog/aws-ec2-instance) -- the attachment target this component references, by `instance_id` or `primary_network_interface_id`

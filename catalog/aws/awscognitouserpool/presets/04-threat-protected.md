@@ -1,4 +1,4 @@
-# Preset: Threat Protected
+# Threat Protected
 
 **Rank**: 4
 

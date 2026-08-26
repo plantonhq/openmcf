@@ -1,6 +1,6 @@
 # AWS Batch Job Queue
 
-Deploys an AWS Batch job queue: the place jobs are submitted to, and the routing layer that decides WHICH compute environment runs them. A queue maps onto up to three [AWS Batch Compute Environments](/cloud-catalog/aws-batch-compute-environment) in preference order — which is what makes the canonical Batch cost pattern (Spot first, On-Demand overflow) one row away. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an AWS Batch job queue: the place jobs are submitted to, and the routing layer that decides WHICH compute environment runs them. A queue maps onto up to three compute environments in preference order — which is what makes the canonical Batch cost pattern (Spot first, On-Demand overflow) one row away.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ Jobs themselves are submitted against the queue at runtime (SubmitJob) using an 
 
 ### Console
 
-Open the deployment store, find **AWS Batch Job Queue**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the queue dials, and the environment mapping. Start from the **Single Environment** preset in the [Presets](#presets) tab.
+Open the deployment store, find **AWS Batch Job Queue**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, the queue dials, and the environment mapping. Start from the **Single Environment Queue** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchJobQueue
 metadata:
   name: batch-queue
@@ -63,7 +63,7 @@ spec:
 planton apply -f batch-job-queue.yaml
 ```
 
-This creates a queue mapped onto one compute environment with a stuck-job fuse: jobs whose resource requirements the environment can never satisfy are cancelled after an hour. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a queue mapped onto one compute environment with a stuck-job fuse: jobs whose resource requirements the environment can never satisfy are cancelled after an hour. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -129,9 +129,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single environment** -- the standard starting point: one queue on one environment with a stuck-job fuse. Start from the **Single Environment** preset.
+**Single environment** -- the standard starting point: one queue on one environment with a stuck-job fuse. Start from the **Single Environment Queue** preset.
 
-**Spot overflow** -- Spot environment at order 1, On-Demand at order 2: up to 90% savings when Spot capacity exists, reliable capacity when it does not. Start from the **Spot Overflow** preset.
+**Spot overflow** -- Spot environment at order 1, On-Demand at order 2: lower-cost Spot capacity when it exists, reliable capacity when it does not. Start from the **Spot-First With On-Demand Overflow** preset.
 
 **Two-tier priority** -- an urgent queue (priority 100) and a backfill queue (priority 1) on the same environment: urgent jobs always claim capacity first.
 

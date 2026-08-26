@@ -1,4 +1,4 @@
-# Preset: Infrequent Access Long Retention
+# Infrequent Access Long Retention
 
 **Use case:** High-volume logs with long retention at reduced cost.
 

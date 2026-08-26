@@ -1,6 +1,6 @@
 # AWS WAF Regex Pattern Set
 
-Deploys a WAFv2 regex pattern set — a named, reusable collection of regular expressions that web ACL rules match request components against: URI paths, headers, query strings, bodies. Pattern sets centralize the expressions many rules share (scanner probes, banned paths, known-bad user agents) with independent ownership: AppSec maintains the patterns, application teams reference them, and updating the set once propagates to every referencing rule immediately, with no web ACL redeploy. The set integrates with Planton's Provider Connections for AWS credential management, and its `regex_pattern_set_arn` output is what every web ACL `regex_pattern_set_reference` statement binds via ValueFromRef.
+Deploys a WAFv2 regex pattern set — a named, reusable collection of regular expressions that web ACL rules match request components against: URI paths, headers, query strings, bodies. Pattern sets centralize the expressions many rules share (scanner probes, banned paths, known-bad user agents) with independent ownership: AppSec maintains the patterns, application teams reference them, and updating the set once propagates to every referencing rule immediately, with no web ACL redeploy. Its `regex_pattern_set_arn` output is what every web ACL `regex_pattern_set_reference` statement binds via ValueFromRef.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS WAF Regex Pattern Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the scope choice pins the region automatically for CloudFront, and the expressions step teaches the PCRE-subset limits in place. Start from the **Scanner Probes** preset in the [Presets](#presets) tab for the classic block-list shape.
+Open the deployment store, find **AWS WAF Regex Pattern Set**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the scope choice pins the region automatically for CloudFront, and the expressions step teaches the PCRE-subset limits in place. Start from the **Scanner Probe Patterns** preset in the [Presets](#presets) tab for the classic block-list shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafRegexPatternSet
 metadata:
   name: scanner-probes
@@ -52,33 +52,6 @@ planton apply -f waf-regex-pattern-set.yaml
 
 This publishes the probe list; pair it with a web ACL block rule whose `regex_pattern_set_reference` statement inspects the URI path. A Stack Job tracks the provisioning in real time.
 
-### InfraChart
-
-When deploying as part of a multi-resource environment, web ACLs wire to the set through ValueFromRef:
-
-```yaml
-# On an AwsWafWebAcl rule in the same InfraPipeline:
-spec:
-  rules:
-    - name: block-scanner-probes
-      priority: 5
-      action: block
-      statement:
-        regexPatternSetReference:
-          arn:
-            valueFrom:
-              kind: AwsWafRegexPatternSet
-              name: scanner-probes
-              fieldPath: status.outputs.regex_pattern_set_arn
-          fieldToMatch:
-            uriPath: true
-          textTransformations:
-            - priority: 0
-              type: LOWERCASE
-```
-
-The InfraPipeline resolves the dependency graph, deploys the set first, then provisions the web ACL with the resolved ARN.
-
 ## Key Configuration
 
 These are the most important decisions when configuring a pattern set. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -95,7 +68,7 @@ These are the most important decisions when configuring a pattern set. Explore t
 
 ### What This Component Consumes
 
-The set is a leaf — it references no other Cloud Resources.
+This component has no foreign key dependencies. The set is a leaf — it references no other Cloud Resources; web ACLs reference it, never the reverse.
 
 ### What This Component Provides
 
@@ -111,9 +84,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Scanner-probe block-list** -- expressions catching WordPress, phpMyAdmin, and dotfile probes on the URI path, referenced by a block rule — the classic first pattern set in any estate. Start from the **Scanner Probes** preset.
+**Scanner-probe block-list** -- expressions catching WordPress, phpMyAdmin, and dotfile probes on the URI path, referenced by a block rule — the classic first pattern set in any estate. Start from the **Scanner Probe Patterns** preset.
 
-**Internal path gate** -- expressions matching admin and internal route prefixes, referenced by a rule that blocks (or CAPTCHA-challenges) requests from outside the office allow-list. Start from the **Internal Admin Paths** preset.
+**Internal path gate** -- expressions matching admin and internal route prefixes, referenced by a rule that blocks (or CAPTCHA-challenges) requests from outside the office allow-list. Start from the **Internal Admin Path Patterns** preset.
 
 ## Works With
 

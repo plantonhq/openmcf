@@ -38,7 +38,7 @@ Open the deployment store, find **AWS EC2 Instance**, and click **Deploy**. The 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEc2Instance
 metadata:
   name: backend-server
@@ -66,7 +66,7 @@ spec:
 planton apply -f ec2-instance.yaml
 ```
 
-This creates a hardened instance in a private subnet with keyless SSM access, IMDSv2 enforced, an encrypted gp3 root volume, and termination protection. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a hardened instance in a private subnet with keyless SSM access, IMDSv2 enforced, an encrypted gp3 root volume, and termination protection. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -145,11 +145,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **SSM-managed hardened pet** -- keyless SSM access through an instance profile, IMDSv2 enforced, encrypted gp3 root, termination protection ON. Connections are brokered through the AWS control plane with full audit logging. Start from the **SSM-Managed Hardened Instance** preset.
 
-**Template-backed instance** -- launch from the org's AwsLaunchTemplate golden baseline and override only what differs for this machine. The template carries the hardening; the instance carries its identity.
+**Template-backed instance** -- launch from the org's AwsLaunchTemplate golden baseline and override only what differs for this machine. The template carries the hardening; the instance carries its identity. Start from the **Launch-Template Instance** preset.
 
-**Spot worker** -- a persistent Spot request with `stop` interruption behavior for interruption-tolerant standalone workloads (build agents, batch boxes): AWS reclaims with two minutes' notice, then restarts the machine when capacity returns. Start from the **Spot Worker** preset.
+**Spot worker** -- a persistent Spot request with `stop` interruption behavior for interruption-tolerant standalone workloads (build agents, batch boxes): AWS reclaims with two minutes' notice, then restarts the machine when capacity returns. Start from the **Spot Worker Instance** preset.
 
-**Static-identity appliance** -- attach a pre-provisioned ENI (`primaryNetworkInterfaceId`) so the firewall/NAT/license-server keeps its fixed private IP and MAC across instance replacements. Start from the **Static Network Identity** preset.
+**Static-identity appliance** -- attach a pre-provisioned ENI (`primaryNetworkInterfaceId`) so the firewall/NAT/license-server keeps its fixed private IP and MAC across instance replacements. Start from the **Static Network Identity (Pre-Provisioned ENI)** preset.
 
 **Capacity-block training node** -- launch a GPU instance into a pre-purchased ML Capacity Block (`marketType: capacity-block` targeting the block's reservation) for scheduled training runs on scarce accelerators. Start from the **Capacity Block ML Training Node** preset.
 

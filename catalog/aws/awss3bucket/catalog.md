@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS S3 Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Encrypted**, **Public Static Website**, or **Log Archive Lifecycle** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS S3 Bucket**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private Encrypted Bucket**, **Public Static Website Bucket**, or **Log Archive with Lifecycle Tiering** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
   name: acme-app-artifacts
@@ -50,7 +50,7 @@ spec:
 planton apply -f s3-bucket.yaml
 ```
 
-This creates a fully private, versioned bucket — all four public-access guards on, ACLs disabled, SSE-S3 encryption by AWS default. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a fully private, versioned bucket — all four public-access guards on, ACLs disabled, SSE-S3 encryption by AWS default. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -133,22 +133,24 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `bucket_id` | The bucket name | Logging targets, CLI addressing, SDK configuration |
 | `bucket_arn` | ARN of the bucket | IAM policies, replication destinations, notification scoping |
-| `region` | The bucket's region | Client configuration |
 | `bucket_regional_domain_name` | Regional endpoint hostname | CloudFront origins (the recommended origin form) |
-| `bucket_domain_name` | Global endpoint hostname | Legacy integrations |
 | `hosted_zone_id` | The S3 Route 53 hosted zone for this region | Route 53 alias records to the bucket |
 | `website_endpoint` | Website endpoint (when hosting is configured) | DNS records for direct website hosting |
 | `website_domain` | Website domain (when hosting is configured) | Route 53 alias records |
+
+`status.outputs` also echoes `region` back and carries `bucket_domain_name`, the legacy global endpoint — neither is normally wired downstream (use the regional domain name for origins).
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private encrypted bucket** — the production default: fully private, versioned, KMS-encrypted with the bucket key on. Start from the **Private Encrypted** preset.
+**Private encrypted bucket** — the production default: fully private, versioned, KMS-encrypted with the bucket key on. Start from the **Private Encrypted Bucket** preset.
 
-**Public static website** — website hosting with relaxed guards and a public-read policy; the pattern for internal or throwaway sites (production sites belong behind CloudFront). Start from the **Public Static Website** preset.
+**Public static website** — website hosting with relaxed guards and a public-read policy; the pattern for internal or throwaway sites (production sites belong behind CloudFront). Start from the **Public Static Website Bucket** preset.
 
-**Log archive** — a destination for logs with tiering transitions to Glacier and scheduled expiration. Start from the **Log Archive Lifecycle** preset.
+**Log archive** — a destination for logs with tiering transitions to Glacier and scheduled expiration. Start from the **Log Archive with Lifecycle Tiering** preset.
+
+**Governed data lake** — a private, versioned lake bucket that audits and optimizes itself: day-zero Intelligent-Tiering on the raw zone, weekly inventory delivered to the bucket itself, storage-class analytics on the curated zone to justify future transitions, request metrics, and S3 Metadata tables queried with Athena instead of listing. Start from the **Governed Data Lake** preset.
 
 ## Works With
 

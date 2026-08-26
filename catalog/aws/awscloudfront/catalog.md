@@ -1,6 +1,6 @@
 # AWS CloudFront
 
-Deploys an Amazon CloudFront distribution — the global CDN front door that terminates TLS at the edge, caches responses close to viewers, and routes requests to one or more origins (S3 buckets, load balancers, API endpoints, or anything HTTP-addressable). The model mirrors CloudFront's own composition: origins declare WHERE content comes from, origin groups compose failover pairs, cache behaviors declare HOW requests are matched and cached, and the viewer certificate plus aliases put the distribution on your own domain. The distribution integrates with Planton's Provider Connections for AWS credential management and ValueFromRef for wiring to ACM certificates and WAF web ACLs.
+Deploys an Amazon CloudFront distribution — the global CDN front door that terminates TLS at the edge, caches responses close to viewers, and routes requests to one or more origins (S3 buckets, load balancers, API endpoints, or anything HTTP-addressable). The model mirrors CloudFront's own composition: origins declare WHERE content comes from, origin groups compose failover pairs, cache behaviors declare HOW requests are matched and cached, and the viewer certificate plus aliases put the distribution on your own domain. One regional quirk governs custom domains: the viewer certificate -- and any CLOUDFRONT-scope WAF web ACL -- must live in `us-east-1`, regardless of where the origins are.
 
 ## What Gets Created
 
@@ -33,14 +33,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS CloudFront**, and click **Deploy**. The creation wizard walks you through origins (with the private-bucket access control), the default and path-matched cache behaviors (with AWS managed-policy quick-picks), custom domains and the certificate, error pages, protections, and logging. Start from the **S3 Static Website** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS CloudFront**, and click **Deploy**. The creation wizard walks you through origins (with the private-bucket access control), the default and path-matched cache behaviors (with AWS managed-policy quick-picks), custom domains and the certificate, error pages, protections, and logging. Start from the **S3 Static Website with Origin Access Control** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudFront
 metadata:
   name: app-cdn
@@ -138,15 +138,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**S3 static website** -- A private bucket behind a created Origin Access Control, redirect-to-https with edge compression and `Managed-CachingOptimized`, `index.html` as the root object, and the single-page-app error mapping (S3's 403-for-missing-object served as `/index.html` with a 200). Start from the **S3 Static Website** preset.
+**S3 static website** -- A private bucket behind a created Origin Access Control, redirect-to-https with edge compression and `Managed-CachingOptimized`, `index.html` as the root object, and the single-page-app error mapping (S3's 403-for-missing-object served as `/index.html` with a 200). Start from the **S3 Static Website with Origin Access Control** preset.
 
-**Custom domain CDN** -- The static-site shape plus `aliases`, the ACM certificate reference, and dual-stack IPv6. Start from the **Custom Domain CDN** preset.
+**Custom domain CDN** -- The static-site shape plus `aliases`, the ACM certificate reference, and dual-stack IPv6. Start from the **Custom Domain CDN with ACM Certificate** preset.
 
-**Blue/green rollout** -- A primary distribution owning a continuous-deployment policy that canaries 10% of traffic (session-sticky) to a staging distribution. Start from the **Blue/Green Continuous Deployment** preset.
+**Blue/green rollout** -- A primary distribution owning a continuous-deployment policy that canaries 10% of traffic (session-sticky) to a staging distribution. Start from the **Blue/Green Rollout with Continuous Deployment** preset.
 
 ## Works With
 
 - [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the regional bucket endpoint origins serve from
-- [**AWS Certificate Manager Certificate**](/cloud-catalog/aws-cert-manager-cert) -- provides the us-east-1 certificate for custom domain HTTPS
-- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- points custom domains at the distribution via alias records
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- provides the us-east-1 certificate for custom domain HTTPS
+- [**AWS Route 53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- points custom domains at the distribution via alias records
 - [**AWS Lambda**](/cloud-catalog/aws-lambda) -- provides Lambda@Edge versions for behavior-attached edge logic

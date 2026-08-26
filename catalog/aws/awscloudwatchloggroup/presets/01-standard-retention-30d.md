@@ -1,4 +1,4 @@
-# Preset: Standard 30-Day Retention
+# Standard 30-Day Retention
 
 **Use case:** General-purpose application logging with a sensible retention period.
 

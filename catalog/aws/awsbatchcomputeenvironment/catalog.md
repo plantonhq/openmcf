@@ -1,6 +1,6 @@
 # AWS Batch Compute Environment
 
-Deploys a managed AWS Batch compute environment: the elastic pool of compute (EC2 On-Demand, EC2 Spot, Fargate, or Fargate Spot) that AWS Batch scales up and down to run submitted jobs. The compute environment is one node of the Batch resource graph — jobs are submitted to an [AWS Batch Job Queue](/cloud-catalog/aws-batch-job-queue) (which maps onto one or more compute environments in preference order) using an [AWS Batch Job Definition](/cloud-catalog/aws-batch-job-definition) as the container blueprint. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a managed AWS Batch compute environment: the elastic pool of compute (EC2 On-Demand, EC2 Spot, Fargate, or Fargate Spot) that AWS Batch scales up and down to run submitted jobs. The compute environment is one node of the Batch resource graph — jobs are submitted to an [AWS Batch Job Queue](/cloud-catalog/aws-batch-job-queue) (which maps onto one or more compute environments in preference order) using an [AWS Batch Job Definition](/cloud-catalog/aws-batch-job-definition) as the container blueprint.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS Batch Compute Environment**, and click **D
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchComputeEnvironment
 metadata:
   name: data-processing
@@ -60,7 +60,7 @@ spec:
 planton apply -f batch-compute-environment.yaml
 ```
 
-This creates a Fargate compute environment with a 256 vCPU ceiling. To start submitting jobs, create an AwsBatchJobQueue that references this environment's ARN. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a Fargate compute environment with a 256 vCPU ceiling. To start submitting jobs, create an AwsBatchJobQueue that references this environment's ARN. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -96,7 +96,7 @@ The InfraPipeline resolves the dependency graph, deploys the subnets, security g
 
 These are the most important decisions when configuring a Batch compute environment. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Resource type** -- `FARGATE` provides serverless, zero-management compute -- AWS handles all infrastructure. Use `EC2` for GPU instances, custom AMIs, or sustained throughput. Use `SPOT` for up to 90% cost savings on interruption-tolerant workloads. `FARGATE_SPOT` combines serverless convenience with Spot pricing.
+**Resource type** -- `FARGATE` provides serverless, zero-management compute -- AWS handles all infrastructure. Use `EC2` for GPU instances, custom AMIs, or sustained throughput. Use `SPOT` for interruption-tolerant workloads that trade reclaim risk for lower instance cost. `FARGATE_SPOT` combines serverless convenience with the Spot purchase model.
 
 **vCPU scaling** -- `computeResources.maxVcpus` caps total concurrent capacity — it is the one sizing knob AWS allows updating on every environment. For EC2/SPOT, `minVcpus` controls the always-on baseline (keep it 0 to scale to zero when idle). Fargate types only use `maxVcpus` since AWS manages scaling dynamically.
 

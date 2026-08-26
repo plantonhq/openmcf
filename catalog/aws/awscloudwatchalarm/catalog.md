@@ -1,6 +1,6 @@
 # AWS CloudWatch Alarm
 
-Deploys a CloudWatch alarm that watches a single metric, a metric math expression, or a PromQL query against an Amazon Managed Prometheus workspace, and triggers actions on breach. The component supports simple metric mode, metric query mode for computed expressions and anomaly detection, PromQL mode for Prometheus-native alerting, M-of-N evaluation windows, and integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring SNS notification targets.
+Deploys a CloudWatch alarm that watches a single metric, a metric math expression, or a PromQL query against an Amazon Managed Prometheus workspace, and triggers actions on breach. The three evaluation modes are mutually exclusive -- simple metric for single-metric thresholds, metric queries for computed expressions and anomaly detection, PromQL for Prometheus-native alerting -- and M-of-N evaluation windows guard every mode against paging on transient spikes.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **AWS CloudWatch Alarm**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchAlarm
 metadata:
   name: high-cpu-alarm
@@ -119,11 +119,11 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **CPU utilization alarm** -- Single-metric alarm on EC2 CPUUtilization with 2-of-3 M-of-N evaluation and SNS notification. The standard monitoring pattern for compute workloads. Start from the **CPU Utilization Alarm** preset.
 
-**Error rate metric math** -- Three-query metric math alarm computing error rate as a percentage (errors / requests * 100). Suitable for ALB, API Gateway, and any ratio-based alerting where raw counts are misleading. Start from the **Error Rate Metric Math** preset.
+**Error rate metric math** -- Three-query metric math alarm computing error rate as a percentage (errors / requests * 100). Suitable for ALB, API Gateway, and any ratio-based alerting where raw counts are misleading. Start from the **Error Rate Metric Math Alarm** preset.
 
-**Production multi-action alarm** -- Full lifecycle alerting with separate SNS topics for alarm, recovery, and insufficient data state transitions. Recommended for any production workload where knowing about recovery is as important as knowing about the incident. Start from the **Production Multi-Action** preset.
+**Production multi-action alarm** -- Full lifecycle alerting with separate SNS topics for alarm, recovery, and insufficient data state transitions. Recommended for any production workload where knowing about recovery is as important as knowing about the incident. Start from the **Production Multi-Action Alarm** preset.
 
-**PromQL Prometheus alarm** -- Alarms on a PromQL query evaluated against an Amazon Managed Prometheus workspace, with pending/recovery flap guards and an explicit evaluation interval. The bridge between Prometheus-native monitoring and CloudWatch's alarm-state and SNS action machinery. Start from the **PromQL Prometheus Alarm** preset.
+**PromQL Prometheus alarm** -- Alarms on a PromQL query evaluated against an Amazon Managed Prometheus workspace, with pending/recovery flap guards and an explicit evaluation interval. The bridge between Prometheus-native monitoring and CloudWatch's alarm-state and SNS action machinery. Start from the **PromQL Alarm on a Prometheus Workspace** preset.
 
 ## Works With
 

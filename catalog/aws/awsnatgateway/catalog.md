@@ -32,14 +32,14 @@ Creating a NAT gateway does not route anything on its own. To build a working eg
 
 ### Console
 
-Open the deployment store, find **AWS NAT Gateway**, and click **Deploy**. The creation wizard walks two steps: **Placement** (public vs private connectivity, zonal vs regional mode, region, and the subnet or VPC the gateway spans) and **Addressing** (the Elastic IP for a zonal public gateway, private addressing for a private one, or the per-zone layout for a regional one). Start from a preset in the [Presets](#presets) tab -- **Public NAT Gateway**, **Private NAT Gateway**, or **Regional NAT Gateway**.
+Open the deployment store, find **AWS NAT Gateway**, and click **Deploy**. The creation wizard walks two steps: **Placement** (public vs private connectivity, zonal vs regional mode, region, and the subnet or VPC the gateway spans) and **Addressing** (the Elastic IP for a zonal public gateway, private addressing for a private one, or the per-zone layout for a regional one). Start from a preset in the [Presets](#presets) tab -- **Public NAT Gateway (greenfield)**, **Private NAT Gateway**, or **Regional NAT Gateway**.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNatGateway
 metadata:
   name: prod-egress-nat
@@ -66,6 +66,28 @@ planton apply -f nat-gateway.yaml
 
 This creates a public NAT gateway in a Planton-managed public subnet, fronted by a referenced Elastic IP. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the gateway deploys alongside its subnet and Elastic IP in one chart, wire both references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  connectivityType: public
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: public-subnet-a
+      fieldPath: status.outputs.subnet_id
+  allocationId:
+    valueFrom:
+      kind: AwsElasticIp
+      name: nat-eip-a
+      fieldPath: status.outputs.allocation_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the subnet and Elastic IP first, then creates the NAT gateway on top of them.
+
 ## Key Configuration
 
 A NAT gateway's value is in how it composes; most deployments touch only a few fields. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -86,15 +108,13 @@ A NAT gateway's value is in how it composes; most deployments touch only a few f
 
 ### What This Component Consumes
 
-Via ValueFromRef, this component references:
-
-| Input | Source Resource | Source Output |
-|-------|-----------------|---------------|
-| `subnetId` | [AWS Subnet](/cloud-catalog/aws-subnet) | `status.outputs.subnet_id` |
-| `vpcId` (regional mode) | [AWS VPC](/cloud-catalog/aws-vpc) | `status.outputs.vpc_id` |
-| `allocationId` | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
-| `secondaryAllocationIds` | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
-| `availabilityZoneAddresses[].allocationIds` (regional mode) | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnetId` (zonal mode) | `status.outputs.subnet_id` |
+| **AwsVpc** | `vpcId` (regional mode) | `status.outputs.vpc_id` |
+| **AwsElasticIp** | `allocationId` | `status.outputs.allocation_id` |
+| **AwsElasticIp** | `secondaryAllocationIds` | `status.outputs.allocation_id` |
+| **AwsElasticIp** | `availabilityZoneAddresses[].allocationIds` (regional mode) | `status.outputs.allocation_id` |
 
 ### What This Component Provides
 
@@ -115,7 +135,7 @@ A NAT gateway has no ARN -- AWS exposes none, so none is published.
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private-subnet internet egress** -- the canonical pattern: a public NAT gateway in a public subnet, with private subnets routing `0.0.0.0/0` to its `nat_gateway_id`. Start from the **Public NAT Gateway** preset.
+**Private-subnet internet egress** -- the canonical pattern: a public NAT gateway in a public subnet, with private subnets routing `0.0.0.0/0` to its `nat_gateway_id`. Start from the **Public NAT Gateway (greenfield)** preset.
 
 **High-availability egress** -- a single regional gateway (start from the **Regional NAT Gateway** preset) that spans every AZ with zone-local egress; or, in the classic form, one zonal NAT gateway per Availability Zone, each in that zone's public subnet, so a zonal failure does not sever egress and cross-AZ data-processing charges are avoided.
 

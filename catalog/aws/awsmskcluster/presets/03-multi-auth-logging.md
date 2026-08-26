@@ -1,4 +1,4 @@
-# Preset: Multi-Authentication with Full Logging
+# Multi-Authentication with Full Logging
 
 An MSK cluster demonstrating all three authentication methods and all three log destinations
 enabled simultaneously. Useful for organizations with diverse client populations and

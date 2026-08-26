@@ -1,6 +1,6 @@
-# DNS Record on AWS Route53
+# AWS Route 53 DNS Record
 
-Deploys a single DNS record in a Route53 hosted zone with support for every Route53 record type (A, AAAA, CNAME, MX, TXT, SRV, NS, SOA, PTR, CAA, DS, NAPTR, SPF, HTTPS, SVCB, SSHFP, TLSA), alias records pointing to AWS resources, and the full set of routing policies (weighted, latency, failover, geolocation, geoproximity, CIDR, multivalue answer). Integrates with Planton's Provider Connections for AWS credential management and ValueFromRef for wiring to hosted zones, load balancers, and health checks.
+Deploys a single DNS record in a Route53 hosted zone with support for every Route53 record type (A, AAAA, CNAME, MX, TXT, SRV, NS, SOA, PTR, CAA, DS, NAPTR, SPF, HTTPS, SVCB, SSHFP, TLSA), alias records pointing to AWS resources, and the full set of routing policies (weighted, latency, failover, geolocation, geoproximity, CIDR, multivalue answer). A record's identity in AWS is the (zone, name, type, setIdentifier) tuple -- changing the zone or the name replaces the record, while everything else updates in place.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Record on AWS Route53**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Alias ALB** preset in the [Presets](#presets) tab to pre-populate a working alias record configuration.
+Open the deployment store, find **AWS Route 53 DNS Record**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Alias Record to ALB** preset in the [Presets](#presets) tab to pre-populate a working alias record configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53DnsRecord
 metadata:
   name: www-example
@@ -129,12 +129,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Alias to ALB** -- An alias A record pointing a domain to an Application Load Balancer with target health evaluation enabled. Suitable for web applications and APIs behind an ALB where you need zone apex support and automatic failover. Start from the **Alias ALB** preset.
+**Alias to ALB** -- An alias A record pointing a domain to an Application Load Balancer with target health evaluation enabled. Suitable for web applications and APIs behind an ALB where you need zone apex support and automatic failover. Start from the **Alias Record to ALB** preset.
 
-**Standard A record** -- A basic A record mapping a subdomain to one or more IP addresses with a configurable TTL. Suitable for pointing to external services, on-premises resources, or static IP addresses. Start from the **A Record** preset.
+**Standard A record** -- A basic A record mapping a subdomain to one or more IP addresses with a configurable TTL. Suitable for pointing to external services, on-premises resources, or static IP addresses. Start from the **Simple A Record** preset.
 
 ## Works With
 
-- [**DNS Zone on AWS Route53**](/cloud-catalog/aws-route53-zone) -- provides the hosted zone where the DNS record is created
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- provides the hosted zone where the DNS record is created
 - [**AWS ALB**](/cloud-catalog/aws-alb) -- provides the load balancer DNS name and hosted zone ID for alias records
-- [**AWS Route53 Health Check**](/cloud-catalog/aws-route53-health-check) -- gates the record's answers on endpoint health
+- [**AWS Route 53 Health Check**](/cloud-catalog/aws-route53-health-check) -- gates the record's answers on endpoint health

@@ -1,6 +1,6 @@
 # AWS Cognito Identity Provider
 
-Deploys a federated identity provider into an existing Cognito User Pool, enabling sign-in through social providers (Google, Facebook, Amazon, Apple), enterprise OIDC (Okta, Azure AD, Auth0), or SAML 2.0 (ADFS, Salesforce). The component integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent User Pool.
+Deploys a federated identity provider into an existing Cognito User Pool, enabling sign-in through social providers (Google, Facebook, Amazon, Apple), enterprise OIDC (Okta, Azure AD, Auth0), or SAML 2.0 (ADFS, Salesforce). Attribute mapping translates provider claims into pool schema attributes, and the provider's registered name is what a User Pool Client lists in `supportedIdentityProviders` to offer the sign-in option. Provider name and type are ForceNew — settle them before the first production deployment.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ Open the deployment store, find **AWS Cognito Identity Provider**, and click **D
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoIdentityProvider
 metadata:
   name: google-login

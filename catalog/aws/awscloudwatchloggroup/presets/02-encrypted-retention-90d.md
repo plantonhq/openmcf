@@ -1,4 +1,4 @@
-# Preset: Encrypted 90-Day Retention
+# Encrypted 90-Day Retention
 
 **Use case:** Production application logging with KMS encryption and 90-day retention for compliance.
 

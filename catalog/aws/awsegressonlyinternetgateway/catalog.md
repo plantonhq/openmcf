@@ -1,6 +1,6 @@
 # AWS Egress-Only Internet Gateway
 
-Attaches an egress-only internet gateway to an AWS VPC -- the IPv6 counterpart of a NAT gateway. It is a horizontally scaled, redundant, AWS-managed component that lets dual-stack instances make **outbound** IPv6 connections to the internet while AWS statefully blocks any unsolicited **inbound** ones, at no charge. It is a first-class, independently composable building block: create it as its own graph node, attach it to exactly the VPC you intend, and reference its id from the subnets that should have IPv6 egress.
+Attaches an egress-only internet gateway to an AWS VPC -- the IPv6 counterpart of a NAT gateway. It is a horizontally scaled, redundant, AWS-managed component that lets dual-stack instances make **outbound** IPv6 connections to the internet while AWS statefully blocks any unsolicited **inbound** ones. It is a first-class, independently composable building block: create it as its own graph node, attach it to exactly the VPC you intend, and reference its id from the subnets that should have IPv6 egress.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ Attaching a gateway does not route anything on its own. To give a subnet outboun
 
 ### Console
 
-Open the deployment store, find **AWS Egress-Only Internet Gateway**, and click **Deploy**. The creation wizard asks for the one decision the gateway has: the VPC to attach to and its region. Start from a preset in the [Presets](#presets) tab -- **IPv6 Egress** (greenfield, by reference) or **Attach to Existing VPC** (brownfield, by literal id).
+Open the deployment store, find **AWS Egress-Only Internet Gateway**, and click **Deploy**. The creation wizard asks for the one decision the gateway has: the VPC to attach to and its region. Start from a preset in the [Presets](#presets) tab -- **IPv6 Egress (greenfield)** to attach by reference, or **Attach to an Existing VPC (brownfield)** to attach by literal id.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEgressOnlyInternetGateway
 metadata:
   name: main-eigw
@@ -57,6 +57,22 @@ planton apply -f egress-only-internet-gateway.yaml
 
 This attaches an egress-only internet gateway to a Planton-managed VPC by reference. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the gateway deploys alongside its VPC in one chart, wire the VPC reference via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: production-vpc
+      fieldPath: status.outputs.vpc_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then attaches the gateway to it.
+
 ## Key Configuration
 
 An egress-only internet gateway has a deliberately small surface -- the value is in how it composes, not in tuning knobs. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -71,11 +87,9 @@ An egress-only internet gateway has a deliberately small surface -- the value is
 
 ### What This Component Consumes
 
-Via ValueFromRef, this component references:
-
-| Input | Source Resource | Source Output |
-|-------|-----------------|---------------|
-| `vpcId` | [AWS VPC](/cloud-catalog/aws-vpc) | `status.outputs.vpc_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsVpc** | `vpcId` | `status.outputs.vpc_id` |
 
 ### What This Component Provides
 
@@ -93,11 +107,11 @@ AWS exposes no ARN for an egress-only internet gateway.
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Dual-stack private subnets** -- attach this gateway, then give private subnets an `::/0` IPv6 route to its `egress_only_internet_gateway_id` so their IPv6 workloads can reach the internet outbound. Start from the **IPv6 Egress** preset.
+**Dual-stack private subnets** -- attach this gateway, then give private subnets an `::/0` IPv6 route to its `egress_only_internet_gateway_id` so their IPv6 workloads can reach the internet outbound. Start from the **IPv6 Egress (greenfield)** preset.
 
-**Cost-sensitive IPv6 egress** -- replace NAT-gateway charges for traffic that can use IPv6 end to end; the egress-only gateway has no per-hour or per-GB fee.
+**Cost-sensitive IPv6 egress** -- NAT gateway cost scales with hours provisioned and gigabytes processed; moving traffic that can run IPv6 end to end onto the egress-only gateway takes it off that meter.
 
-**Brownfield attachment** -- attach a Planton-managed gateway to a dual-stack VPC created outside Planton by supplying its literal vpc-id. Start from the **Attach to Existing VPC** preset.
+**Brownfield attachment** -- attach a Planton-managed gateway to a dual-stack VPC created outside Planton by supplying its literal vpc-id. Start from the **Attach to an Existing VPC (brownfield)** preset.
 
 ## Works With
 
@@ -105,5 +119,5 @@ An egress-only internet gateway sits between a dual-stack VPC and the private su
 
 - [**AWS VPC**](/cloud-catalog/aws-vpc) -- the dual-stack network the gateway attaches to, referenced by `status.outputs.vpc_id`
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- routes an IPv6 default route (`::/0`) to this gateway's `egress_only_internet_gateway_id` for outbound IPv6
-- [**AWS NAT Gateway**](/cloud-catalog/aws-nat-gateway) -- the IPv4 equivalent: outbound-only access for private IPv4 subnets (bills per hour and per GB)
+- [**AWS NAT Gateway**](/cloud-catalog/aws-nat-gateway) -- the IPv4 equivalent: outbound-only access for private IPv4 subnets, with cost driven by hours and traffic volume
 - [**AWS Internet Gateway**](/cloud-catalog/aws-internet-gateway) -- full bidirectional internet access for a VPC, the counterpart when inbound reachability is wanted

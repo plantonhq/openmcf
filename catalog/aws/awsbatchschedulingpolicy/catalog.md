@@ -1,6 +1,6 @@
 # AWS Batch Scheduling Policy
 
-Deploys an AWS Batch fair-share scheduling policy: the rules that divide a job queue's compute capacity across share identifiers instead of processing jobs strictly first-in-first-out. Without one, a single team's burst of ten thousand jobs starves every other submitter on the queue. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an AWS Batch fair-share scheduling policy: the rules that divide a job queue's compute capacity across share identifiers instead of processing jobs strictly first-in-first-out. Without one, a single team's burst of ten thousand jobs starves every other submitter on the queue.
 
 ## What Gets Created
 
@@ -9,7 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Batch Scheduling Policy** -- a fair-share policy with the configured compute reservation, share decay window, and per-share weight distributions
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
-One policy is a standalone, shareable object: many [AWS Batch Job Queues](/cloud-catalog/aws-batch-job-queue) can reference the same policy, so an organization's fairness rules are defined once and reused. Every dial updates in place on a live policy.
+One policy is a standalone, shareable object: many job queues can reference the same policy, so an organization's fairness rules are defined once and reused. Every dial updates in place on a live policy.
 
 ## Before You Deploy
 
@@ -33,7 +33,7 @@ Open the deployment store, find **AWS Batch Scheduling Policy**, and click **Dep
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchSchedulingPolicy
 metadata:
   name: team-fair-share
@@ -44,7 +44,7 @@ spec:
   computeReservation: 50
   shareDecaySeconds: 3600
   shareDistributions:
-    - shareIdentifier: ml-training
+    - shareIdentifier: mltraining
       weightFactor: 0.5
     - shareIdentifier: analytics*
       weightFactor: 1
@@ -54,29 +54,13 @@ spec:
 planton apply -f batch-scheduling-policy.yaml
 ```
 
-This creates a policy that reserves headroom for quiet teams, remembers one hour of usage history, and gives ML training twice the capacity of the analytics share family. A Stack Job tracks the provisioning and streams progress in real time.
-
-### InfraChart
-
-When deploying as part of a multi-resource environment, the policy typically deploys before the job queue that references it:
-
-```yaml
-# On the AwsBatchJobQueue:
-spec:
-  schedulingPolicy:
-    valueFrom:
-      kind: AwsBatchSchedulingPolicy
-      name: team-fair-share
-      fieldPath: status.outputs.scheduling_policy_arn
-```
-
-The InfraPipeline resolves the dependency graph, deploys the policy first, then provisions the queue with the resolved ARN.
+This creates a policy that reserves headroom for quiet teams, remembers one hour of usage history, and gives ML training twice the capacity of the analytics share family. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a scheduling policy. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Share weights** -- the counter-intuitive core rule: LOWER weight means MORE capacity. A share with `weightFactor: 0.5` receives twice the capacity of a weight-1.0 share. Shares absent from the list weigh 1.0. End an identifier with `*` to treat a prefix family (e.g. `analytics*`) as one share. AWS allows up to 500 entries.
+**Share weights** -- the counter-intuitive core rule: LOWER weight means MORE capacity. A share with `weightFactor: 0.5` receives twice the capacity of a weight-1.0 share. Shares absent from the list weigh 1.0. Identifiers are alphanumeric (no hyphens or underscores); end one with `*` to treat a prefix family (e.g. `analytics*`) as one share. AWS allows up to 500 entries.
 
 **Compute reservation** -- the percentage (0-99) of queue capacity held back for shares with NO currently-running jobs, so a quiet team's first job does not wait behind a busy team's backlog. The effective slice is `(reservation/100)^N` for N active shares — the headroom self-adjusts as more shares wake up.
 
@@ -88,7 +72,7 @@ These are the most important decisions when configuring a scheduling policy. Exp
 
 ### What This Component Consumes
 
-Nothing — the policy is self-contained.
+This component has no foreign key dependencies — the policy is self-contained, and the relationship runs the other way: job queues reference it through their `schedulingPolicy` field.
 
 ### What This Component Provides
 
