@@ -18,9 +18,10 @@ The snippet NAME is the identity: Cloudflare's create call is an upsert, so
 deploying a snippet whose name already exists in the zone silently adopts and
 overwrites it. Pick names deliberately, and treat renaming as
 delete-and-recreate (the provider replaces the resource when the name
-changes). Plan limits apply to snippet COUNT per zone (free plans allow a
-small number; higher plans more) -- the limit is Cloudflare's, checked at
-create.
+changes). Snippets are a PAID-PLAN product: a free-plan zone refuses every
+snippet upload with "snippets are not allowed" (measured live 2026-08-27 on
+pending and active free zones alike); Pro and above include them at no
+extra cost, with per-plan COUNT limits checked at create.
 
 Code travels INLINE in the manifest as file content strings -- the same
 convention as the Worker kind's script. Cloudflare caps snippet code size

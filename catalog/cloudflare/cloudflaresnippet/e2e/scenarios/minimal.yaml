@@ -1,16 +1,24 @@
 # The minimal live arm: one byte-stable single-file snippet. The snippet name
 # uses the underscore run-ID variant -- snippet names forbid hyphens, and the
 # plain token carries the runner's hyphenated engine suffix.
+#
+# MEASURED WALL (live, 2026-08-27): Snippets are a PAID-PLAN product -- a
+# free-plan zone refuses every upload with "snippets are not allowed"
+# (probe-proven on a fresh pending zone AND an active free zone; the same
+# upload succeeds the moment the zone is Pro). The run-scoped fixture zone is
+# always free, so this arm is env-gated on the operator-sanctioned paid test
+# zone (PLANTON_E2E_CLOUDFLARE_ZONE_ID) and skips honestly when unset. The
+# registry's CloudflareDnsZone prerequisite still installs its (unused)
+# fixture -- prerequisites are unconditional by framework design.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareSnippet
 metadata:
   name: e2e-snippet-minimal-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
 spec:
   zone_id:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: planton-oss-e2e-cloudflarednszone-prereq
-      fieldPath: status.outputs.zone_id
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
   snippet_name: e2e_snip_${E2E_RUN_ID_UNDERSCORE}
   files:
     - name: main.js

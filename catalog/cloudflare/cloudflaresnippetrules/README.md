@@ -38,7 +38,7 @@ Destroying this resource deletes ALL snippet rules in the zone -- including any 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `expression` | string | Cloudflare Rules language (wirefilter), e.g. `http.request.uri.path starts_with "/legacy"`. |
+| `expression` | string | Cloudflare Rules language (wirefilter), e.g. `starts_with(http.request.uri.path, "/legacy")`. Use the function form for prefix/suffix matches -- the operator form (`... starts_with "..."`) is rejected with error 20127 outside the paid grammar extension (measured even on Pro). |
 | `snippet_name` | StringValueOrRef | The snippet to invoke. Can reference a `CloudflareSnippet` via `value_from` (defaults to `status.outputs.snippet_name`). |
 | `description` | string | Shown in the dashboard. |
 | `enabled` | bool | Defaults to **true** in this spec. Cloudflare's provider default is false -- omit it here and the rule still runs. Set `false` explicitly to stage a rule. |
@@ -62,7 +62,7 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   rules:
-    - expression: 'http.request.uri.path starts_with "/legacy"'
+    - expression: 'starts_with(http.request.uri.path, "/legacy")'
       snippet_name:
         value: redirect_legacy
       description: Redirect legacy paths

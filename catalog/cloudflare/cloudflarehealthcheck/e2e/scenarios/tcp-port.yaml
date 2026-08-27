@@ -1,17 +1,22 @@
 # The TCP arm: a connection_established probe on a database port, proving the
-# tcp_config branch and the config-matches-type wall live.
+# tcp_config branch and the config-matches-type wall live. Same measured
+# walls as the HTTP arm (paid-plan zone via env; publicly routable address
+# required -- TEST-NET rejected 400/1002). The probe target never needs to
+# accept the connection; an unhealthy check is a fine check.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareHealthcheck
 metadata:
   name: e2e-hc-tcp-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
 spec:
   zone_id:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: planton-oss-e2e-cloudflarednszone-prereq
-      fieldPath: status.outputs.zone_id
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
   name: e2e-hc-tcp-${E2E_RUN_ID}
-  address: "203.0.113.51"
+  address: "1.0.0.1"
+  # Declared explicitly -- the declare-it-or-drift class (see http-minimal).
+  check_regions:
+    - WNAM
   type: TCP
   tcp_config:
     port: 5432

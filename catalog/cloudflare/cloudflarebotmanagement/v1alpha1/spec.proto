@@ -46,7 +46,12 @@ message CloudflareBotManagementSpec {
 
   // Bot Fight Mode (free plans): challenge requests matching known bot patterns.
   // Mutually exclusive with Super Bot Fight Mode at Cloudflare -- zones on SBFM
-  // plans manage the sbfm_* fields instead.
+  // plans manage the sbfm_* fields instead. Cloudflare refuses to enable Fight
+  // Mode while the zone's JavaScript detections are off (400 code 10400 "cannot
+  // enable Fight_Mode while EnableJS is disabled", measured live 2026-08-27):
+  // when enabling from scratch, declare enable_js: true alongside. A zone whose
+  // JS detections are already on accepts fight_mode alone -- the constraint is
+  // zone-state-dependent, which is why it is not a validation rule here.
   optional bool fight_mode = 2;
 
   // Super Bot Fight Mode: action on requests Cloudflare scores as DEFINITELY
@@ -96,8 +101,10 @@ message CloudflareBotManagementSpec {
   // the Bot Management cookie.
   optional bool suppress_session_score = 9;
 
-  // Enterprise Bot Management: run Cloudflare's lightweight invisible JavaScript
-  // detections to sharpen bot scoring.
+  // Run Cloudflare's lightweight invisible JavaScript detections to sharpen bot
+  // scoring. Writable on every plan (measured live on a free zone 2026-08-27,
+  // despite older docs labeling it Enterprise-only) and REQUIRED to be on
+  // before or with fight_mode -- see that field's pair rule.
   optional bool enable_js = 10;
 
   // Enterprise Bot Management: allow the Bot Management cookie to be placed on

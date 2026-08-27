@@ -51,9 +51,11 @@ type API interface {
 	// presence (200) vs absence (404, or one of Cloudflare's 400
 	// unknown-object answers: code 7003 "could not route", code 1001
 	// "Invalid zone identifier" -- the zones/{id} answer for a deleted
-	// zone, and code 1103 "Location ID is invalid" -- the
-	// gateway/locations/{id} answer for a deleted DNS location, all
-	// measured live); any other status is an error.
+	// zone, code 1103 "Location ID is invalid" -- the
+	// gateway/locations/{id} answer for a deleted DNS location, and the
+	// CODE-LESS "requested snippet not found" -- the snippets endpoint's
+	// deleted answer carries a message but no numeric code, all measured
+	// live); any other status is an error.
 	ResourceExists(ctx context.Context, path string) (bool, error)
 	// ResourceActive is the soft-delete-aware sibling: a 200 whose envelope
 	// carries a non-null result.deleted_at counts as ABSENT. Used only by
@@ -120,6 +122,15 @@ type apiPathVerifier struct {
 	// is_deleted as a required numeric field (not deleted_at), so neither
 	// the plain 404 probe nor softDeleted would see the deletion.
 	isDeletedFlag bool
+	// zonePathFormat opts a DUAL-SCOPE resource into scope-aware probing:
+	// when the deploy's outputs carry a non-empty zone_id, the probe uses
+	// this zone-rooted template (zone_id fills its first placeholder, then
+	// the declared outputKeys) instead of the account-rooted pathFormat.
+	// Cloudflare's dual-scope objects (IP access rules) live in separate
+	// per-scope collections -- an account GET cannot see a zone-scoped rule
+	// -- and the outputs contract publishes exactly one non-empty scope id
+	// per deployment precisely so consumers can derive the scope.
+	zonePathFormat string
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -194,8 +205,17 @@ func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool
 // -- a blank segment would probe the wrong endpoint and report a false
 // absence.
 func (v *apiPathVerifier) buildPath(api API, outputs map[string]string) (string, error) {
+	pathFormat := v.pathFormat
+	accountScoped := v.accountScoped
 	values := make([]interface{}, 0, len(v.outputKeys)+1)
-	if v.accountScoped {
+	if v.zonePathFormat != "" && outputs["zone_id"] != "" {
+		// Dual-scope resource deployed zone-scoped: probe the zone
+		// collection (the account collection cannot see this object).
+		pathFormat = v.zonePathFormat
+		accountScoped = false
+		values = append(values, outputs["zone_id"])
+	}
+	if accountScoped {
 		if api.AccountID() == "" {
 			return "", errors.Errorf("%s is account-scoped but the harness has no account ID", v.component)
 		}
@@ -208,7 +228,7 @@ func (v *apiPathVerifier) buildPath(api API, outputs map[string]string) (string,
 		}
 		values = append(values, value)
 	}
-	return fmt.Sprintf(v.pathFormat, values...), nil
+	return fmt.Sprintf(pathFormat, values...), nil
 }
 
 // verifiers maps a component directory name to its verifier. A kind
@@ -504,13 +524,16 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"list_id"},
 		accountScoped: true,
 	},
-	// IP Access rules delete for real and 404 honestly. Live scenarios
-	// are account-scoped (the zone arm is scenario-edged).
+	// IP Access rules delete for real and 404 honestly. The kind is
+	// DUAL-SCOPE (account is canonical, the zone arm is scenario-edged) and
+	// the two scopes are separate API collections, so the probe follows the
+	// deploy's own scope: a non-empty zone_id output selects the zone path.
 	"cloudflareipaccessrule": &apiPathVerifier{
-		component:     "cloudflareipaccessrule",
-		pathFormat:    "accounts/%s/firewall/access_rules/rules/%s",
-		outputKeys:    []string{"rule_id"},
-		accountScoped: true,
+		component:      "cloudflareipaccessrule",
+		pathFormat:     "accounts/%s/firewall/access_rules/rules/%s",
+		zonePathFormat: "zones/%s/firewall/access_rules/rules/%s",
+		outputKeys:     []string{"rule_id"},
+		accountScoped:  true,
 	},
 	// Bot Management is a zone settings singleton: destroy is a NO-OP
 	// (empty Delete body). Verify-absent asserts the surface still

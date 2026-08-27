@@ -1,6 +1,6 @@
 # Cloudflare Waiting Room Event
 
-A scheduled window on a waiting room during which optional overrides temporarily replace the room's settings. Events live on their own cadence -- created and deleted per launch while the room persists. Unset overrides inherit the room. Times are RFC3339; start must be at least one minute before end.
+A scheduled window on a waiting room during which optional overrides temporarily replace the room's settings. Scheduled events are an Enterprise ADVANCED add-on feature per Cloudflare's plan matrix (the room itself is Business+). Events live on their own cadence -- created and deleted per launch while the room persists. Unset overrides inherit the room. Times are RFC3339; start must be at least one minute before end.
 
 ## What Gets Created
 

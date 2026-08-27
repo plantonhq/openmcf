@@ -98,9 +98,14 @@ type CloudflareZeroTrustTunnelSpec struct {
 	// ingress rules below as desired state from the control plane; `local` leaves ingress
 	// to a cloudflared YAML file on the origin and manages only the tunnel object + token.
 	ConfigSrc *CloudflareZeroTrustTunnelConfigSource `protobuf:"varint,3,opt,name=config_src,json=configSrc,proto3,enum=dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1.CloudflareZeroTrustTunnelConfigSource,oneof" json:"config_src,omitempty"`
-	// Optional secret used to run a locally-managed tunnel, as a base64 string encoding at
-	// least 32 bytes. Omit to let Cloudflare generate one (recommended); the run token is
-	// always available in `status.outputs.tunnel_token` regardless.
+	// Optional secret used to run a locally-managed tunnel. The RAW value is a
+	// base64 string encoding at least 32 bytes -- but no value-content rule is
+	// enforced here, because this field is sensitive: consuming platforms store
+	// a managed-secret REFERENCE in its place (plaintext is rejected at
+	// create/update), and a content rule written for the raw value could never
+	// match the stored reference. Cloudflare validates the decoded secret at
+	// apply. Omit to let Cloudflare generate one (recommended); the run token
+	// is always available in `status.outputs.tunnel_token` regardless.
 	TunnelSecret string `protobuf:"bytes,4,opt,name=tunnel_secret,json=tunnelSecret,proto3" json:"tunnel_secret,omitempty"`
 	// Public-hostname ingress rules, evaluated top to bottom. Each rule maps a hostname
 	// (and optional path) to a local service. The final rule MUST be a catch-all (a
@@ -514,15 +519,15 @@ var File_catalog_cloudflare_cloudflarezerotrusttunnel_v1alpha1_spec_proto protor
 
 const file_catalog_cloudflare_cloudflarezerotrusttunnel_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1/spec.proto\x129dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb3\b\n" +
+	"@catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1/spec.proto\x129dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x91\b\n" +
 	"\x1dCloudflareZeroTrustTunnelSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12 \n" +
 	"\x04name\x18\x02 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18dR\x04name\x12\x94\x01\n" +
 	"\n" +
 	"config_src\x18\x03 \x01(\x0e2`.dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1.CloudflareZeroTrustTunnelConfigSourceB\x0e\x8a\xa6\x1d\n" +
-	"cloudflareH\x00R\tconfigSrc\x88\x01\x01\x12K\n" +
-	"\rtunnel_secret\x18\x04 \x01(\tB&\xbaH\x1f\xd8\x01\x01r\x1a\x10 2\x16^[A-Za-z0-9+/]+={0,2}$\xa0\xa6\x1d\x01R\ftunnelSecret\x12y\n" +
+	"cloudflareH\x00R\tconfigSrc\x88\x01\x01\x12)\n" +
+	"\rtunnel_secret\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\ftunnelSecret\x12y\n" +
 	"\aingress\x18\x05 \x03(\v2_.dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1.CloudflareZeroTrustTunnelIngressRuleR\aingress\x12\x88\x01\n" +
 	"\x0eorigin_request\x18\x06 \x01(\v2a.dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1.CloudflareZeroTrustTunnelOriginRequestR\roriginRequest:\xb7\x03\xbaH\xb3\x03\x1a\xd8\x01\n" +
 	"%tunnel.ingress_requires_remote_config\x12~ingress rules require config_src 'cloudflare' (remote management); a 'local' tunnel is configured by a YAML file on the origin\x1a/size(this.ingress) == 0 || this.config_src != 1\x1a\xd5\x01\n" +

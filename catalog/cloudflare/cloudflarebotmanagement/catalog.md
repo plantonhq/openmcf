@@ -29,13 +29,14 @@ spec:
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   fightMode: true
+  enableJs: true
 ```
 
 ```shell
 planton apply -f bot-management.yaml
 ```
 
-Every other Bot Management field stays exactly as it was -- unset means unmanaged. Destroy will not turn Fight Mode off; apply `fightMode: false` first if you want it off.
+Every other Bot Management field stays exactly as it was -- unset means unmanaged. Destroy will not turn Fight Mode off; apply `fightMode: false` first if you want it off. The `enableJs: true` pair is required when enabling Fight Mode on a zone whose JavaScript detections are off (Cloudflare rejects Fight Mode alone with "cannot enable Fight_Mode while EnableJS is disabled").
 
 ## Configuration Reference
 
@@ -82,6 +83,7 @@ spec:
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   fightMode: true
+  enableJs: true
 ```
 
 ### Super Bot Fight Mode (Pro/Business)

@@ -112,7 +112,11 @@ A short name for the health check (shown in the dashboard and alerts).
 
 `string` · required
 
-The origin being probed: a hostname or IP address.
+The origin being probed: a hostname or IP address. Cloudflare validates
+this is a real, publicly routable origin at create: documentation-range
+addresses (TEST-NET, e.g. 203.0.113.x) are rejected with 400 code 1002
+"origin address is invalid" (measured live 2026-08-27). The origin does
+not need to answer the probe -- it needs to be routable.
 
 - rule: {"required":true}
 
@@ -131,7 +135,12 @@ deliberate tightening to the documented protocol set.
 
 `[]string`
 
-Regions to probe from. Unset lets Cloudflare pick a default region.
+Regions to probe from. Unset lets Cloudflare pick a default region --
+BUT declare it explicitly on Terraform-managed checks: Cloudflare echoes
+its chosen default (measured live 2026-08-27: ["WNAM"] on a Pro zone)
+into an attribute the provider models optional-not-computed, so an
+omitted list re-plans a no-op update forever (the declare-it-or-drift
+class; upstream modeling defect at v5.23.0).
 ALL_REGIONS (Enterprise only) probes from everywhere.
 
 - rule: {"repeated":{"items":{"string":{"in":["WNAM","ENAM","WEU","EEU","NSAM","SSAM","OC","ME","NAF","SAF","IN","SEAS","NEAS","ALL_REGIONS"]}}}}

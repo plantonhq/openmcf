@@ -10,6 +10,8 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   fight_mode: true
+  # Cloudflare requires the zone's JS detections on before Fight Mode enables.
+  enable_js: true
   ai_bots_protection: block
   crawler_protection: enabled
   is_robots_txt_managed: true

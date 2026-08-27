@@ -721,20 +721,47 @@ spec:
     - terraform_type: cloudflare_access_rule
       pulumi_type: cloudflare:index/accessRule:AccessRule
       id_format: "accounts/{account_id}/{rule_id}"
+      notes: >-
+        The upstream importer parses one dual-format ID --
+        "<{accounts|zones}/{account_id|zone_id}>/<rule_id>" (resource.go
+        ImportState at v5.23.0) -- so a ZONE-scoped rule imports as
+        "zones/<zone_id>/<rule_id>". The recorded format is the account form
+        because the catalog carries one format per type and no blind
+        derivation can discriminate scope per deployment; zone-scoped
+        adopters substitute the zones/ prefix and the rule's zone id
+        (both on the rule's stack outputs).
     - terraform_type: cloudflare_bot_management
       pulumi_type: cloudflare:index/botManagement:BotManagement
       id_format: "{zone_id}"
     - terraform_type: cloudflare_snippet
       pulumi_type: cloudflare:index/snippet:Snippet
-      id_format: "{zone_id}/{snippet_name}"
+      not_importable_upstream_reason: >-
+        The upstream importer CRASHES the provider at v5.23.0 (unchanged
+        through v5.24.0 and master, checked 2026-08-27): ImportState seeds
+        only zone_id/snippet_name, and the Read path then dereferences
+        data.Metadata -- a pointer tagged no_refresh that only a create
+        populates -- so every imported snippet's first refresh panics with
+        "Plugin did not respond" (measured live; the panic is
+        internal/services/snippet/resource.go setting Metadata.MainModule).
+        Adoption needs no import anyway: the create call is an UPSERT by
+        snippet name, so applying the manifest adopts and overwrites the
+        live snippet in place -- the round-trip proves exactly that
+        re-create path.
+      notes: >-
+        The documented import ID is {zone_id}/{snippet_name}; recorded here
+        for the day the upstream importer stops crashing.
     - terraform_type: cloudflare_snippet_rules
       pulumi_type: cloudflare:index/snippetRules:SnippetRules
       id_format: "{zone_id}"
+      write_normalized_attributes:
+        - rules
       notes: >-
-        Import populates only zone_id. The provider's Read discards the
-        response body (rules carry a no_refresh tag), so a blind
-        round-trip must re-assert the rule list from configuration --
-        safe, because the write is a full-replacement PUT.
+        Import populates only zone_id. rules is no_refresh at v5.23.0
+        (snippet_rules/model.go) -- the provider's Read discards the
+        response body, so import restores nothing for it and the
+        post-import plan re-asserts the configured list (declared above;
+        the round-trip oracle keys on the machine field). Safe, because
+        the write is a full-replacement PUT.
     # --- Health -------------------------------------------------------------------
     - terraform_type: cloudflare_healthcheck
       pulumi_type: cloudflare:index/healthcheck:Healthcheck

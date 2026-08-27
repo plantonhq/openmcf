@@ -23,7 +23,10 @@ survive; only the routing table empties.
 Rules evaluate in list order against Cloudflare's Rules language
 (https://developers.cloudflare.com/ruleset-engine/rules-language/) -- the same
 wirefilter expressions rulesets use, e.g.
-`http.request.uri.path starts_with "/legacy"`.
+`starts_with(http.request.uri.path, "/legacy")`. Use the FUNCTION form for
+prefix/suffix matches: the operator form (`... starts_with "/legacy"`) is a
+paid-grammar extension the API rejects with error 20127 on most plans
+(measured live 2026-08-27 -- rejected even on a Pro zone).
 
 ## Example
 
@@ -39,7 +42,7 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   rules:
-    - expression: 'http.request.uri.path starts_with "/legacy"'
+    - expression: 'starts_with(http.request.uri.path, "/legacy")'
       snippet_name:
         value: redirect_legacy_urls
       description: "Send legacy URLs to the redirect snippet"
@@ -87,8 +90,11 @@ every apply replaces all snippet rules in the zone with exactly this list.
 `string` · required
 
 The match expression in Cloudflare's Rules language (wirefilter), e.g.
-`http.request.uri.path starts_with "/api/legacy"`. Validated by Cloudflare
-at apply time.
+`starts_with(http.request.uri.path, "/api/legacy")`. Validated by
+Cloudflare at apply time. Prefer the always-legal FUNCTION form for
+prefix/suffix matches -- the operator form (`... starts_with "..."`) is
+rejected with error 20127 outside the paid grammar extension (measured
+live 2026-08-27, rejected even on a Pro zone).
 
 - rule: {"required":true}
 

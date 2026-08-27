@@ -55,7 +55,12 @@ type CloudflareBotManagementSpec struct {
 	ZoneId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// Bot Fight Mode (free plans): challenge requests matching known bot patterns.
 	// Mutually exclusive with Super Bot Fight Mode at Cloudflare -- zones on SBFM
-	// plans manage the sbfm_* fields instead.
+	// plans manage the sbfm_* fields instead. Cloudflare refuses to enable Fight
+	// Mode while the zone's JavaScript detections are off (400 code 10400 "cannot
+	// enable Fight_Mode while EnableJS is disabled", measured live 2026-08-27):
+	// when enabling from scratch, declare enable_js: true alongside. A zone whose
+	// JS detections are already on accepts fight_mode alone -- the constraint is
+	// zone-state-dependent, which is why it is not a validation rule here.
 	FightMode *bool `protobuf:"varint,2,opt,name=fight_mode,json=fightMode,proto3,oneof" json:"fight_mode,omitempty"`
 	// Super Bot Fight Mode: action on requests Cloudflare scores as DEFINITELY
 	// automated. Pro plans and above.
@@ -80,8 +85,10 @@ type CloudflareBotManagementSpec struct {
 	// Enterprise Bot Management: stop tracking the session's highest bot score in
 	// the Bot Management cookie.
 	SuppressSessionScore *bool `protobuf:"varint,9,opt,name=suppress_session_score,json=suppressSessionScore,proto3,oneof" json:"suppress_session_score,omitempty"`
-	// Enterprise Bot Management: run Cloudflare's lightweight invisible JavaScript
-	// detections to sharpen bot scoring.
+	// Run Cloudflare's lightweight invisible JavaScript detections to sharpen bot
+	// scoring. Writable on every plan (measured live on a free zone 2026-08-27,
+	// despite older docs labeling it Enterprise-only) and REQUIRED to be on
+	// before or with fight_mode -- see that field's pair rule.
 	EnableJs *bool `protobuf:"varint,10,opt,name=enable_js,json=enableJs,proto3,oneof" json:"enable_js,omitempty"`
 	// Enterprise Bot Management: allow the Bot Management cookie to be placed on
 	// end-user devices (Cloudflare defaults this to true).

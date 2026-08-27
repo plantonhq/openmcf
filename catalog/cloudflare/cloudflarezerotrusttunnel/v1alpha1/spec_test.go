@@ -168,10 +168,16 @@ var _ = ginkgo.Describe("CloudflareZeroTrustTunnelSpec Validation", func() {
 			gomega.Expect(protovalidate.Validate(tn)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects a tunnel_secret that is not base64", func() {
+		// tunnel_secret carries NO value-content rule by design: the field is
+		// sensitive, so consuming platforms store a managed-secret REFERENCE in
+		// its place, and a base64 rule written for the raw value could never
+		// match the reference (the sensitive-field value-rule class, corrected
+		// 2026-08-27 per the secret-coverage gate). Cloudflare validates the
+		// decoded secret at apply.
+		ginkgo.It("accepts a tunnel_secret in any stored form (reference or raw)", func() {
 			tn := validTunnel()
-			tn.Spec.TunnelSecret = "not valid base64 !!!"
-			gomega.Expect(protovalidate.Validate(tn)).ToNot(gomega.BeNil())
+			tn.Spec.TunnelSecret = "${secrets-group/cloudflare/tunnel-secret}"
+			gomega.Expect(protovalidate.Validate(tn)).To(gomega.BeNil())
 		})
 	})
 })

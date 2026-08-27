@@ -4,6 +4,8 @@
 
 `CloudflareWaitingRoom` is a virtual queue in front of a host+path that admits visitors at a controlled rate and parks the overflow on a branded queue page. The room's thresholds (new users per minute, total active users) decide when queueing kicks in; everything else shapes the queueing experience.
 
+Waiting Room is a **Business+ product**: a Free or Pro zone rejects every room create with "Zone not entitled to this functionality" (code 1034, measured live). The `bypass_rules` list and scheduled events additionally require the Enterprise advanced add-on.
+
 The room's bypass rules ride along in this spec (`bypass_rules`). Cloudflare models them as a separate per-room rules list with full-replacement updates, and this kind manages that list as part of the room -- every apply replaces the room's whole rules list with exactly what the manifest declares.
 
 ## Key Features

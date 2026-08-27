@@ -15,11 +15,22 @@ spec:
   # migration tests quietly tolerate non-empty plans here (their plan check
   # is a debug printer) -- if the re-plan drifts, it is this class, not the
   # module. (b) Create is an UPSERT: a name collision silently adopts an
-  # existing snippet -- the run-scoped name prevents it. Snippets are
-  # free-plan objects (count limits per plan), created in seconds.
+  # existing snippet -- the run-scoped name prevents it. (c) MEASURED
+  # 2026-08-27: Snippets are a PAID-PLAN product ("snippets are not allowed"
+  # on any free zone) -- the live arm is env-gated on the operator's paid
+  # test zone (PLANTON_E2E_CLOUDFLARE_ZONE_ID) and skips honestly when
+  # unset. Objects create in seconds at no per-object cost on an entitled
+  # zone.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # PROVEN live 2026-08-27 on the Pro test zone: minimal on both engines
+  # through the full lifecycle. The round-trip runs the ADOPTER path: the
+  # upstream importer crashes the provider (nil Metadata dereference on the
+  # import read, v5.23.0..master -- catalog row has the evidence), so the
+  # catalog declares not-importable and the runner proved the upsert
+  # re-create converges instead. Verify-absent consumed the code-less 400
+  # "requested snippet not found" absence class (harness client extended).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

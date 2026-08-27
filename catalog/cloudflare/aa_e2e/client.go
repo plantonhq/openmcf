@@ -66,7 +66,7 @@ type cloudflareEnvelope struct {
 }
 
 // unknownObjectError reports whether a 400 body carries one of Cloudflare's
-// deleted-or-unknown-object error codes -- the answers several endpoints give
+// deleted-or-unknown-object error answers -- what several endpoints give
 // for a GET on an identifier that no longer exists, instead of a clean 404:
 //   - 7003 "could not route to that endpoint" (many collection endpoints)
 //   - 1001 "Invalid zone identifier" (zones/{zone_id} after the zone is
@@ -74,6 +74,11 @@ type cloudflareEnvelope struct {
 //   - 1103 "Location ID is invalid." (gateway/locations/{id} after the
 //     location is deleted -- measured live on the DNS location destroy
 //     verification)
+//   - code-less "requested snippet not found" (zones/{id}/snippets/{name}
+//     after the snippet is deleted -- the snippets endpoint's errors carry
+//     a message but NO numeric code, measured live 2026-08-27 on the
+//     snippet destroy verification; matched on the exact message because
+//     there is no code to match)
 func unknownObjectError(body []byte) bool {
 	var envelope cloudflareEnvelope
 	if json.Unmarshal(body, &envelope) != nil {
@@ -81,6 +86,9 @@ func unknownObjectError(body []byte) bool {
 	}
 	for _, e := range envelope.Errors {
 		if e.Code == 7003 || e.Code == 1001 || e.Code == 1103 {
+			return true
+		}
+		if e.Code == 0 && e.Message == "requested snippet not found" {
 			return true
 		}
 	}

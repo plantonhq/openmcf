@@ -18,9 +18,9 @@ Validation enforces the same philosophy at the floor: a spec with only `zone_id`
 
 Fields group into four families. Setting a field the zone's plan does not include fails at the API, not here -- the plan walls move, and they are Cloudflare's.
 
-- **Free:** `fight_mode`. Mutually exclusive with Super Bot Fight Mode -- zones on SBFM plans manage the `sbfm_*` fields instead.
+- **Free:** `fight_mode`, `enable_js`. Fight Mode is mutually exclusive with Super Bot Fight Mode -- zones on SBFM plans manage the `sbfm_*` fields instead. Cloudflare refuses to enable Fight Mode while the zone's JavaScript detections are off ("cannot enable Fight_Mode while EnableJS is disabled", measured live): when enabling from scratch, declare `enable_js: true` alongside `fight_mode: true`. Once the zone's detections are on, `fight_mode` alone applies fine.
 - **Pro/Business (Super Bot Fight Mode):** `sbfm_definitely_automated`, `sbfm_likely_automated` (Business+), `sbfm_verified_bots`, `sbfm_static_resource_protection`, `optimize_wordpress`.
-- **Enterprise Bot Management:** `auto_update_model`, `suppress_session_score`, `enable_js`, `bm_cookie_enabled`.
+- **Enterprise Bot Management:** `auto_update_model`, `suppress_session_score`, `bm_cookie_enabled`. (`enable_js` was long documented in this family but is writable on every plan -- measured live on a free zone.)
 - **AI and crawler controls:** `ai_bots_protection`, `crawler_protection`, `content_bots_protection`, `cf_robots_variant`, `is_robots_txt_managed`.
 
 Blocking `sbfm_verified_bots` blocks search indexing -- `allow` is the safe default posture. `sbfm_static_resource_protection` can catch legitimate hotlinked-asset traffic; Cloudflare's own docs caution the same.

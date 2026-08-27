@@ -38,13 +38,15 @@ message CloudflareZeroTrustTunnelSpec {
   // to a cloudflared YAML file on the origin and manages only the tunnel object + token.
   optional CloudflareZeroTrustTunnelConfigSource config_src = 3 [(dev.planton.shared.options.default) = "cloudflare"];
 
-  // Optional secret used to run a locally-managed tunnel, as a base64 string encoding at
-  // least 32 bytes. Omit to let Cloudflare generate one (recommended); the run token is
-  // always available in `status.outputs.tunnel_token` regardless.
+  // Optional secret used to run a locally-managed tunnel. The RAW value is a
+  // base64 string encoding at least 32 bytes -- but no value-content rule is
+  // enforced here, because this field is sensitive: consuming platforms store
+  // a managed-secret REFERENCE in its place (plaintext is rejected at
+  // create/update), and a content rule written for the raw value could never
+  // match the stored reference. Cloudflare validates the decoded secret at
+  // apply. Omit to let Cloudflare generate one (recommended); the run token
+  // is always available in `status.outputs.tunnel_token` regardless.
   string tunnel_secret = 4 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.min_len = 32,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9+/]+={0,2}$",
     (dev.planton.shared.options.sensitive) = true
   ];
 

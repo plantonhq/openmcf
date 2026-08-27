@@ -827,6 +827,25 @@ create-time UUID generation. The sibling `SqlRoleDefinition` needs the
 same explicit-GUID treatment for `role_definition_id` when unset; its
 logical name can stay on `metadata.name`.
 
+### Plan-gated Cloudflare products: probe the wall, run on an operator-arranged paid zone
+
+Several Cloudflare products refuse EVERY create on a free-plan zone, each
+with its own error shape (all measured live 2026-08-27): Snippets answer a
+code-less "snippets are not allowed", standalone Health Checks answer 400
+code 1002 "health checks disabled for zone", Waiting Rooms answer 400 code
+1034 "Zone not entitled to this functionality". Two disciplines: (1) probe
+the wall on BOTH a throwaway zone and the operator's sanctioned ACTIVE zone
+before concluding -- the same refusal on both proves plan tier, a
+difference proves delegation state (the DNSSEC precedent); (2) when the
+operator arranges a paid-plan zone, the lanes run on it through the
+env-gated arm (`planton.dev/e2e-required-env` +
+`${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}`) -- run-scoped fixture zones
+are always free-plan, so a registry zone prerequisite cannot carry a
+paid-product lane, and any registry-installed fixture of a plan-gated kind
+(the snippet fixture consumed by snippet rules) must itself reference the
+env-injected zone. Products the account's plans cannot reach stay recorded
+entitlement deferrals with the plan named as the unblock.
+
 ### Front Door: fast creates, ~18-minute profile deletes
 
 Azure Front Door (Standard/Premium) inverts the usual timing profile:
@@ -1010,7 +1029,14 @@ upstream importer whose re-create the cloud REFUSES while the live object
 exists. A not-importable type normally rides the catalog's
 `not_importable_upstream_reason` -- the round-trip skips its import and
 proves the adopter's re-create path instead -- but that tolerance is
-honest only for upsert-convergent creates (idempotent PUTs). When the
+honest only for upsert-convergent creates (idempotent PUTs). "No upstream
+importer" includes an importer that EXISTS but cannot run: measured
+2026-08-27, cloudflare_snippet's ImportState seeds identity only and the
+resource's Read then dereferences a pointer field tagged no_refresh that
+only a create populates -- every imported snippet panics the provider
+("Plugin did not respond"). A crashing importer is declared with the
+same machine field, evidence in the reason, and the upsert-adopt path
+carries the proof (snippet create is an upsert by name). When the
 create is a plain POST and the service enforces one-per-parent, the
 re-create is rejected with the object still live, so NO recipe can
 converge: the companion-bearing scenario opts out with the annotation

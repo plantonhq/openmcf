@@ -11,6 +11,7 @@ Turns on Bot Fight Mode -- the one Bot Management field every plan carries -- an
 ## Key Configuration Choices
 
 - **fight_mode: true** -- free-plan Bot Fight Mode. Mutually exclusive with Super Bot Fight Mode at Cloudflare; zones on SBFM plans manage the `sbfm_*` fields instead.
+- **enable_js: true** -- required alongside `fight_mode` when the zone's JavaScript detections are off (a fresh zone's default): Cloudflare rejects Fight Mode alone with "cannot enable Fight_Mode while EnableJS is disabled".
 - **Unset fields stay unmanaged** -- the module only sends what you set. Do not add SBFM or Enterprise fields on a free zone (the API omits them from responses and refresh reads as drift).
 - **No-op destroy** -- deleting this resource leaves Fight Mode on. Revert before you retire.
 

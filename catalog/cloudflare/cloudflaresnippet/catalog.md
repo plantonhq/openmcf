@@ -13,7 +13,7 @@ When you deploy this resource, the IaC module provisions:
 - **A Cloudflare zone** -- typically a CloudflareDnsZone whose `zone_id` output this resource references
 - **A Cloudflare API token** with Zone → Snippets → Edit
 - **A unique `snippetName`** -- deploying a name that already exists in the zone silently overwrites it
-- **Headroom under the plan's snippet-count limit** -- free plans allow a small number; the API enforces the cap at create
+- **A paid-plan zone (Pro+)** -- free zones refuse every snippet upload with "snippets are not allowed" (measured live); Pro and above include Snippets at no extra cost, with per-plan count limits the API enforces at create
 
 ## Quick Start
 

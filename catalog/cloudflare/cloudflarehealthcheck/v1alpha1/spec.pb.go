@@ -41,13 +41,22 @@ type CloudflareHealthcheckSpec struct {
 	ZoneId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// A short name for the health check (shown in the dashboard and alerts).
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// The origin being probed: a hostname or IP address.
+	// The origin being probed: a hostname or IP address. Cloudflare validates
+	// this is a real, publicly routable origin at create: documentation-range
+	// addresses (TEST-NET, e.g. 203.0.113.x) are rejected with 400 code 1002
+	// "origin address is invalid" (measured live 2026-08-27). The origin does
+	// not need to answer the probe -- it needs to be routable.
 	Address string `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
 	// The probe protocol. Cloudflare's own schema accepts any string here and
 	// rejects bad values only at the API -- this wall (HTTP, HTTPS, TCP) is a
 	// deliberate tightening to the documented protocol set.
 	Type *string `protobuf:"bytes,4,opt,name=type,proto3,oneof" json:"type,omitempty"`
-	// Regions to probe from. Unset lets Cloudflare pick a default region.
+	// Regions to probe from. Unset lets Cloudflare pick a default region --
+	// BUT declare it explicitly on Terraform-managed checks: Cloudflare echoes
+	// its chosen default (measured live 2026-08-27: ["WNAM"] on a Pro zone)
+	// into an attribute the provider models optional-not-computed, so an
+	// omitted list re-plans a no-op update forever (the declare-it-or-drift
+	// class; upstream modeling defect at v5.23.0).
 	// ALL_REGIONS (Enterprise only) probes from everywhere.
 	CheckRegions []string `protobuf:"bytes,5,rep,name=check_regions,json=checkRegions,proto3" json:"check_regions,omitempty"`
 	// Consecutive failed probes before the origin is marked unhealthy

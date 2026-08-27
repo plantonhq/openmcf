@@ -1,6 +1,6 @@
 # Cloudflare Waiting Room
 
-A virtual queue in front of a host+path that admits visitors at a controlled rate. Bypass rules ride along in the same manifest and replace the room's entire rule list on every apply. Advanced add-on fields fail at the API on plans without the add-on.
+A virtual queue in front of a host+path that admits visitors at a controlled rate. Waiting Room is a Business+ product -- a Free or Pro zone rejects every room with "Zone not entitled" (code 1034, measured live). Bypass rules ride along in the same manifest and replace the room's entire rule list on every apply; the rules themselves need the Enterprise advanced add-on, as do scheduled events. Advanced add-on fields fail at the API on plans without the add-on.
 
 ## What Gets Created
 

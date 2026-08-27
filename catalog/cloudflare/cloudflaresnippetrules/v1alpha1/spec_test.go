@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("CloudflareSnippetRulesSpec Custom Validation Tests", fu
 				ZoneId: zoneRef(),
 				Rules: []*CloudflareSnippetRule{
 					{
-						Expression:  `http.request.uri.path starts_with "/legacy"`,
+						Expression:  `starts_with(http.request.uri.path, "/legacy")`,
 						SnippetName: snippetRef("redirect_legacy_urls"),
 					},
 				},
@@ -61,7 +61,7 @@ var _ = ginkgo.Describe("CloudflareSnippetRulesSpec Custom Validation Tests", fu
 				ZoneId: zoneRef(),
 				Rules: []*CloudflareSnippetRule{
 					{
-						Expression:  `http.request.uri.path starts_with "/legacy"`,
+						Expression:  `starts_with(http.request.uri.path, "/legacy")`,
 						SnippetName: snippetRef("redirect_legacy_urls"),
 						Description: "send legacy URLs to the redirect snippet",
 					},
@@ -99,7 +99,7 @@ var _ = ginkgo.Describe("CloudflareSnippetRulesSpec Custom Validation Tests", fu
 			input := validRules(&CloudflareSnippetRulesSpec{
 				ZoneId: zoneRef(),
 				Rules: []*CloudflareSnippetRule{
-					{Expression: `http.request.uri.path starts_with "/legacy"`},
+					{Expression: `starts_with(http.request.uri.path, "/legacy")`},
 				},
 			})
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("CloudflareSnippetRulesSpec Custom Validation Tests", fu
 			input := validRules(&CloudflareSnippetRulesSpec{
 				Rules: []*CloudflareSnippetRule{
 					{
-						Expression:  `http.request.uri.path starts_with "/legacy"`,
+						Expression:  `starts_with(http.request.uri.path, "/legacy")`,
 						SnippetName: snippetRef("redirect_legacy_urls"),
 					},
 				},

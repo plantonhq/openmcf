@@ -17,8 +17,21 @@ spec:
   # traffic to prove its lifecycle -- thresholds at Cloudflare's floor of
   # 200 keep the object inert. Rooms create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Entitlement-blocked, measured live 2026-08-27: POST
+    zones/{zone_id}/waiting_rooms answers 400 code 1034 "Zone not entitled to
+    this functionality" on a free-plan zone (probe on a throwaway zone; the
+    account's ACTIVE test zones are also free-plan). Cloudflare's own plan
+    matrix (developers.cloudflare.com/waiting-room/plans, read 2026-08-27)
+    gates Waiting Room availability at BUSINESS and above -- the authoring
+    assumption "basic rooms are free-plan" was wrong -- and gates Waiting
+    Room RULES and SCHEDULED EVENTS behind the Enterprise advanced add-on,
+    so even a Business zone (~$250/mo) proves only a rule-less basic room.
+    The offline bar (validate + the advanced-plan arm) remains this kind's
+    shape proof. Unblock: a Business-plan (or Enterprise) zone injected via
+    the env-gated ACTIVE-zone form -- redesign the scenario's zone reference
+    to ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID} with a
+    planton.dev/e2e-required-env gate, drop the bypass rule unless the zone
+    carries the Enterprise advanced add-on, then both lanes unchanged.
   timeout_minutes: 10

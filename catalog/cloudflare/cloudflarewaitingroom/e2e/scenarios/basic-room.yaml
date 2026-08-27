@@ -1,4 +1,8 @@
-# The free-plan live arm: a basic room with one bypass rule (proving the
+# The basic live arm -- NOTE the measured plan wall (2026-08-27): Waiting
+# Room needs a BUSINESS+ zone (free zones answer 400 code 1034 "Zone not
+# entitled"), and the bypass rule below needs the Enterprise advanced add-on
+# on top. See the profile's deferred_reason for the unblock recipe.
+# Original intent: a basic room with one bypass rule (proving the
 # folded per-room rules list live). The host is the run-scoped fixture zone's
 # own domain -- both manifests expand the same ${E2E_RUN_ID} token, so they
 # always agree within a lane.

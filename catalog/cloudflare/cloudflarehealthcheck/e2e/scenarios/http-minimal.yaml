@@ -1,19 +1,30 @@
-# The HTTP arm: a minimal probe against a documentation-range origin (the
-# target never needs to answer -- the object's lifecycle is what the lane
-# proves). Plan-gate watch item: health checks are Pro+; a 403/402 on the
-# free fixture zone is the entitlement deferral class.
+# The HTTP arm: a minimal probe. MEASURED WALLS (live, 2026-08-27):
+# (1) health checks are a PAID-PLAN product -- a free zone answers 400 code
+# 1002 "health checks disabled for zone" (Pro is the floor: 10 checks), so
+# this arm runs on the env-injected paid test zone and skips honestly when
+# the token is unset; (2) Cloudflare validates the ADDRESS is publicly
+# routable -- documentation-range origins (TEST-NET 203.0.113.x) are
+# rejected with 400 code 1002 "origin address is invalid", so the probe
+# targets a real routable IP (it never needs to ANSWER -- the lifecycle is
+# what the lane proves; an unhealthy check is a fine check).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareHealthcheck
 metadata:
   name: e2e-hc-http-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
 spec:
   zone_id:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: planton-oss-e2e-cloudflarednszone-prereq
-      fieldPath: status.outputs.zone_id
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
   name: e2e-hc-http-${E2E_RUN_ID}
-  address: "203.0.113.50"
+  address: "1.1.1.1"
+  # Declared explicitly: Cloudflare echoes a server-picked default region
+  # into an optional-not-computed provider attribute when omitted, and the
+  # Terraform re-plan drifts forever (measured 2026-08-27) -- the
+  # declare-it-or-drift class, taught on the spec field.
+  check_regions:
+    - WNAM
+    - ENAM
   http_config:
     path: /healthz
     expected_codes:

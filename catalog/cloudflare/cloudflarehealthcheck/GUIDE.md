@@ -2,6 +2,10 @@
 
 The judgment this guide protects you from: this is not a load-balancer monitor, it is a paid zone feature, and the config block must match the type. Reach for the wrong sibling -- or send `http_config` on a TCP check -- and the failure is at apply or as refresh drift.
 
+## Declare check_regions, and give it a real address
+
+Two walls measured live (2026-08-27): (1) always declare `check_regions` explicitly on Terraform-managed checks -- when omitted, Cloudflare picks and echoes a default region (measured: `WNAM`) into a provider attribute modeled optional-not-computed, so every later plan proposes a no-op update forever; (2) the `address` must be a real, publicly routable IP or hostname -- documentation-range addresses (TEST-NET) are rejected at create with "origin address is invalid" (code 1002). The origin does not have to answer the probe; an unhealthy check is still a fully manageable check.
+
 ## This is not CloudflareLoadBalancerMonitor
 
 Standalone health checks watch an origin and record status. They need no load balancer. `CloudflareLoadBalancerMonitor` is the account-scoped monitor a pool consumes to drive failover. They do not share IDs, APIs, or import formats. If you are about to paste a monitor id into a pool, you are on the wrong kind.
