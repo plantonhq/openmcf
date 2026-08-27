@@ -1,0 +1,28 @@
+# OFFLINE-PLAN ARM (not live until a sanctioned ACM-subscribed zone exists):
+# the Advanced Certificate Manager surfaces. MEASURED (live, 2026-08-27):
+# every per-hostname override write (min_tls_version, http2, ciphers) AND the
+# Total TLS toggle answer 401 code 1450 "Access to configure this resource
+# has not been granted for this zone. This feature is available with the
+# Advanced Certificate Manager" -- on a pending Free zone and an active Pro
+# zone alike (ACM is a ~$10/mo per-zone subscription independent of plan
+# tier; the authoring assumption that per-hostname overrides were free was
+# wrong, and the profile's Total-TLS-entitlement watch item is now measured).
+# Unblock: ACM on the sanctioned test zone, then these arms move to an
+# env-gated live scenario unchanged.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: test-tls-acm-arms
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  total_tls:
+    enabled: true
+    certificate_authority: google
+  hostname_settings:
+    - hostname: api.example.com
+      min_tls_version: "1.3"
+      http2: true
+    - hostname: legacy.example.com
+      ciphers:
+        - "ECDHE-RSA-AES128-GCM-SHA256"

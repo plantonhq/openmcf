@@ -1,8 +1,12 @@
-# OFFLINE-PLAN ARM (never a live scenario from the authoring lane): the two
-# PAID toggles. cache_reserve bills storage while on; argo_smart_routing
-# bills monthly plus per-GB and KEEPS BILLING after destroy (its provider
-# Delete is a no-op). Both arms are plan-proven offline and deferred to a
-# budget-approved proof lane -- the deferral reason lives in the profile.
+# OFFLINE-PLAN ARM (never a live scenario): the plan-gated toggles. The two
+# PAID-billing toggles were offline-only from authoring: cache_reserve bills
+# storage while on; argo_smart_routing bills monthly plus per-GB and KEEPS
+# BILLING after destroy (its provider Delete is a no-op). regional_tiered_cache
+# joined them on measured evidence (live, 2026-08-27): its surface answers
+# 1135 "not available for your plan type" on Free AND Pro zones -- the
+# Enterprise entitlement class -- so no sanctioned zone on this account can
+# run it live. All three arms are plan-proven offline; the deferral reasons
+# and unblock conditions live in the profile.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareCacheSettings
 metadata:
@@ -11,4 +15,5 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   cache_reserve: true
+  regional_tiered_cache: true
   argo_smart_routing: true

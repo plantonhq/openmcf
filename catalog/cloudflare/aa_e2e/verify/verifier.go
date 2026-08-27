@@ -438,8 +438,14 @@ var verifiers = map[string]Verifier{
 		pathFormat: "zones/%s/settings",
 	},
 	"cloudflarecachesettings": &settingsSingletonVerifier{
-		component:  "cloudflarecachesettings",
-		pathFormat: "zones/%s/cache/cache_reserve",
+		component: "cloudflarecachesettings",
+		// Smart tiered cache is the family's one surface measured answering
+		// on EVERY plan (editable:true on a Free zone even before any
+		// write). The natural-looking cache_reserve surface is plan-gated
+		// even for reads -- 1135 "not available for your plan type" on Free
+		// AND Pro zones (measured 2026-08-27) -- so probing it would fail
+		// every honest verify on the free fixture zone.
+		pathFormat: "zones/%s/cache/tiered_cache_smart_topology_enable",
 	},
 	"cloudflarezonetlssettings": &settingsSingletonVerifier{
 		component:  "cloudflarezonetlssettings",

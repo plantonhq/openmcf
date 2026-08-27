@@ -1,8 +1,12 @@
-# The defaults posture AND the revert: turns the no-op-destroy toggles back
-# off. Because four of the six settings survive destroy, running this
+# The defaults posture AND the revert: turns the managed toggle back off.
+# Because most of the family's settings survive destroy, running this
 # scenario AFTER free-tiered-cache returns the zone to its default posture --
 # the ordering IS the revert discipline (the run-scoped fixture zone's
-# destroy is the backstop).
+# destroy is the backstop). Only the measured-free surface appears here:
+# regional tiered cache is Enterprise-gated (1135 on Free AND Pro, measured
+# 2026-08-27), so a revert write for it would fail the same way the forward
+# write does. The pro-variants-arm needs no revert row -- variants has a real
+# delete and its own lane's destroy resets the shared zone.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareCacheSettings
 metadata:
@@ -14,4 +18,3 @@ spec:
       name: planton-oss-e2e-cloudflarednszone-prereq
       fieldPath: status.outputs.zone_id
   smart_tiered_cache: false
-  regional_tiered_cache: false

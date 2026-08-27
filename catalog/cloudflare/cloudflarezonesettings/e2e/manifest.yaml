@@ -1,3 +1,7 @@
+# Offline shape proof across every value class. NOTE: ciphers stays here as
+# the list value class's shape proof, but it is NOT free-plan-deployable --
+# writing it requires the zone's Advanced Certificate Manager subscription
+# (400 code 1023 measured live, 2026-08-27), so the live scenarios omit it.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZoneSettings
 metadata:

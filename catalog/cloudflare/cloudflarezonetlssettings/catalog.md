@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - A Cloudflare API token with SSL and Certificates edit access on the target zone
 - An existing zone, either as a literal zone ID or a `CloudflareDnsZone` resource to reference via `valueFrom`
-- Total TLS may require the zone's Advanced Certificate Manager subscription
+- Total TLS and per-hostname overrides require the zone's Advanced Certificate Manager subscription (the API answers 401 code 1450 without it); `autoOriginTlsKex` needs an ACTIVE zone
 - An mTLS certificate (literal ID or a `CloudflareMtlsCertificate` resource) if managing per-certificate CA hostname associations
 
 ## Quick Start
@@ -59,7 +59,7 @@ At the spec level, at least one of the six optional surfaces below must be confi
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `universalSslEnabled` | bool | unset (not managed) | Universal SSL certificate issuance. Setting false STOPS issuance and can make proxied hostnames unreachable over HTTPS unless other certificates cover them. No delete at Cloudflare. |
-| `totalTls.enabled` | bool | unset (not managed) | Whether Total TLS issues per-hostname certificates for the zone. May require the zone's Advanced Certificate Manager subscription. No delete at Cloudflare. |
+| `totalTls.enabled` | bool | unset (not managed) | Whether Total TLS issues per-hostname certificates for the zone. Requires the zone's Advanced Certificate Manager subscription. No delete at Cloudflare. |
 | `totalTls.certificateAuthority` | string | Cloudflare chooses | The CA issuing Total TLS certificates. One of `google`, `lets_encrypt`, `ssl_com`. Certificate validity is fixed by Cloudflare at 90 days and is not configurable. |
 | `autoOriginTlsKex` | bool | unset (not managed) | Automatic origin TLS key exchange on origin-facing TLS. No delete at Cloudflare. |
 | `originTlsComplianceModes` | list(string) | unset (not managed) | Compliance modes required on Cloudflare-to-origin connections. Cloudflare documents `fips` and `pqh` (post-quantum hybrid); unknown strings pass through unvalidated as an open vocabulary. Real delete. |

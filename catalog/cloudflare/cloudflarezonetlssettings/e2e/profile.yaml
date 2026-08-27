@@ -11,22 +11,28 @@ spec:
   # SSL, Total TLS, auto origin key exchange, and CA hostname associations
   # have literally empty provider Deletes, so verify-destroyed asserts the
   # settings surface still answers -- never absence. Zero-orphan cleanup
-  # comes from the run-scoped zone fixture. Live scenarios: the
-  # hostname-overrides arm (per-hostname min_tls_version/http2/ciphers +
-  # compliance modes -- free surface) and the total-tls arm (SEPARATE
-  # scenario so an entitlement failure never sinks the base lane: whether
-  # Total TLS needs the zone's Advanced Certificate Manager subscription is
-  # UNVERIFIED offline -- the recorded watch item). NEVER in a live lane:
-  # the universal-ssl-disable arm (offline-plan-proven via
+  # comes from the run-scoped zone fixture. THE MEASURED ENTITLEMENT MAP
+  # (live, 2026-08-27) rewrote the authoring free-surface claim: the
+  # per-hostname override fan-out AND Total TLS are both ACM-GATED -- 401
+  # code 1450 on a pending Free zone and an active Pro zone alike (Advanced
+  # Certificate Manager is a per-zone subscription independent of plan) --
+  # so both live in e2e/acm-arms-plan.yaml as offline arms (unblock: ACM on
+  # the sanctioned test zone, then an env-gated live scenario unchanged).
+  # auto_origin_tls_kex is free but ACTIVE-ZONE-ONLY: a pending zone answers
+  # 400 code 1000 with the misleading "Invalid zone identifier" (the kex
+  # setting does not exist until activation) -- its arm is env-gated on the
+  # sanctioned active zone and deliberately writes the default value
+  # (no-op-destroy class on a shared zone: never leave a value flipped).
+  # Live scenarios: compliance-modes (origin_tls_compliance_modes, the one
+  # pending-zone-free surface) and kex-active-zone-arm. NEVER in a live
+  # lane: the universal-ssl-disable arm (offline-plan-proven via
   # e2e/universal-ssl-disable-plan.yaml) -- disabling issuance on a zone is
   # the unreachability class, and even a throwaway zone stays reachable for
-  # the lane's own verification. Import caution for the proving session:
-  # the provider's hostname_tls_setting ImportState is defective at v5.23.0
-  # (never restores hostname; a post-import plan replaces) -- the import map
-  # documents re-assert-from-config. Settings apply in seconds at zero cost.
+  # the lane's own verification. Import: the provider's hostname_tls_setting
+  # ImportState is DEFECTIVE at v5.23.0 (never restores hostname) -- the
+  # import catalog marks it not-importable and the GUIDE teaches
+  # apply-adopts. Settings apply in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

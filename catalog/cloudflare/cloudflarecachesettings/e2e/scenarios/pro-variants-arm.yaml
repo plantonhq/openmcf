@@ -1,0 +1,25 @@
+# The cache-variants arm, env-gated on the operator-sanctioned paid test
+# zone. MEASURED WALL (live, 2026-08-27): variants is PLAN-GATED -- a Free
+# zone answers GET 1135 "not available for your plan type", while a Pro zone
+# answers 1142 "the zone setting does not exist" (available, just never
+# written). The run-scoped fixture zone is always Free, so this arm runs on
+# the sanctioned Pro zone (PLANTON_E2E_CLOUDFLARE_ZONE_ID) and skips honestly
+# when unset. Variants has a REAL delete (destroy resets to defaults), so the
+# shared zone comes back clean from the lane's own destroy. The registry's
+# CloudflareDnsZone prerequisite still installs its (unused) fixture --
+# prerequisites are unconditional by framework design. Sorts between
+# free-tiered-cache and revert-defaults, keeping the revert last.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCacheSettings
+metadata:
+  name: e2e-cache-variants-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
+spec:
+  zone_id:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
+  cache_variants:
+    jpg:
+      - image/webp
+    jpeg:
+      - image/webp

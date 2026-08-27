@@ -51,11 +51,17 @@ type CloudflareZoneTlsSettingsSpec struct {
 	UniversalSslEnabled *bool `protobuf:"varint,2,opt,name=universal_ssl_enabled,json=universalSslEnabled,proto3,oneof" json:"universal_ssl_enabled,omitempty"`
 	// Total TLS: automatically issue individual certificates for every proxied
 	// hostname in the zone, including deep subdomains Universal SSL's wildcard does
-	// not cover. No delete at Cloudflare: destroy abandons the last-applied value.
+	// not cover. ENTITLEMENT-GATED: the zone must carry an Advanced Certificate
+	// Manager subscription or every write answers 401 code 1450 (measured at
+	// v5.23.0 on Free and Pro zones alike -- ACM is a per-zone add-on, not a plan
+	// tier). No delete at Cloudflare: destroy abandons the last-applied value.
 	TotalTls *CloudflareZoneTlsSettingsTotalTls `protobuf:"bytes,3,opt,name=total_tls,json=totalTls,proto3" json:"total_tls,omitempty"`
 	// Automatic origin TLS key exchange: let Cloudflare negotiate the strongest key
-	// exchange the origin supports on origin-facing TLS. No delete at Cloudflare:
-	// destroy abandons the last-applied value.
+	// exchange the origin supports on origin-facing TLS. ACTIVE ZONES ONLY: on a
+	// pending (undelegated) zone the write answers 400 code 1000 with the
+	// misleading message "Invalid zone identifier" -- the zone id is fine, the
+	// setting simply does not exist until the zone activates (measured at
+	// v5.23.0). No delete at Cloudflare: destroy abandons the last-applied value.
 	AutoOriginTlsKex *bool `protobuf:"varint,4,opt,name=auto_origin_tls_kex,json=autoOriginTlsKex,proto3,oneof" json:"auto_origin_tls_kex,omitempty"`
 	// Origin TLS compliance modes required on Cloudflare-to-origin connections.
 	// Cloudflare documents fips and pqh (post-quantum hybrid) and may add values;
@@ -66,7 +72,10 @@ type CloudflareZoneTlsSettingsSpec struct {
 	OriginTlsComplianceModes []string `protobuf:"bytes,5,rep,name=origin_tls_compliance_modes,json=originTlsComplianceModes,proto3" json:"origin_tls_compliance_modes,omitempty"`
 	// Per-hostname TLS overrides within the zone. Each row targets one hostname and
 	// sets any of the three overridable settings; each set setting becomes its own
-	// per-hostname override object at Cloudflare. Real delete: destroying the
+	// per-hostname override object at Cloudflare. ENTITLEMENT-GATED: the zone must
+	// carry an Advanced Certificate Manager subscription or every override write
+	// answers 401 code 1450 (measured at v5.23.0 on Free and Pro zones alike --
+	// ACM is a per-zone add-on, not a plan tier). Real delete: destroying the
 	// resource removes the overrides and the hostnames fall back to zone-wide
 	// settings.
 	HostnameSettings []*CloudflareZoneTlsSettingsHostnameSetting `protobuf:"bytes,6,rep,name=hostname_settings,json=hostnameSettings,proto3" json:"hostname_settings,omitempty"`
@@ -302,6 +311,8 @@ type CloudflareZoneTlsSettingsCaHostnameAssociation struct {
 	// unset to manage the zone's managed-CA association list instead. Accepts a
 	// literal certificate id or a reference to a CloudflareMtlsCertificate
 	// resource's certificate_id output.
+	// When using value_from, defaults to CloudflareMtlsCertificate kind and
+	// status.outputs.certificate_id field path.
 	MtlsCertificateId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=mtls_certificate_id,json=mtlsCertificateId,proto3" json:"mtls_certificate_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -378,10 +389,10 @@ const file_catalog_cloudflare_cloudflarezonetlssettings_v1alpha1_spec_proto_rawD
 	"\aciphers\x18\x04 \x03(\tR\aciphers:\xf4\x01\xbaH\xf0\x01\x1a\xed\x01\n" +
 	"&hostname_setting.at_least_one_override\x12zset at least one of min_tls_version, http2, or ciphers on the hostname row -- a row that overrides nothing manages nothing\x1aGhas(this.min_tls_version) || has(this.http2) || this.ciphers.size() > 0B\x12\n" +
 	"\x10_min_tls_versionB\b\n" +
-	"\x06_http2\"\xbc\x01\n" +
+	"\x06_http2\"\xe5\x01\n" +
 	".CloudflareZoneTlsSettingsCaHostnameAssociation\x12&\n" +
-	"\thostnames\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\thostnames\x12b\n" +
-	"\x13mtls_certificate_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x11mtlsCertificateIdB\xc9\x03\n" +
+	"\thostnames\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\thostnames\x12\x8a\x01\n" +
+	"\x13mtls_certificate_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xf07\x92\xd4a\x1dstatus.outputs.certificate_idR\x11mtlsCertificateIdB\xc9\x03\n" +
 	"=com.dev.planton.cloudflare.cloudflarezonetlssettings.v1alpha1B\tSpecProtoP\x01Ztgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarezonetlssettings/v1alpha1;cloudflarezonetlssettingsv1alpha1\xa2\x02\x04DPCC\xaa\x029Dev.Planton.Cloudflare.Cloudflarezonetlssettings.V1alpha1\xca\x029Dev\\Planton\\Cloudflare\\Cloudflarezonetlssettings\\V1alpha1\xe2\x02EDev\\Planton\\Cloudflare\\Cloudflarezonetlssettings\\V1alpha1\\GPBMetadata\xea\x02=Dev::Planton::Cloudflare::Cloudflarezonetlssettings::V1alpha1b\x06proto3"
 
 var (

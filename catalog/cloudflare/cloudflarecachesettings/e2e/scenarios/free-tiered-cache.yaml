@@ -1,8 +1,13 @@
-# The free-surface arm: smart tiered cache, regional tiered cache, and cache
-# variants (all free on every plan). The paid toggles (cache_reserve,
-# argo_smart_routing) never enter a live lane from authoring -- see
-# e2e/paid-arms-plan.yaml and the profile prose. Runs FIRST (filename
-# order); revert-defaults runs last.
+# The free-surface arm: smart tiered cache -- the ONE cache toggle measured
+# free on every plan (GET answers editable:true on a Free zone, 2026-08-27).
+# The authoring assumption that regional tiered cache and cache variants are
+# free was MEASURED WRONG the same day: regional answers 1135 "not available
+# for your plan type" on Free AND Pro zones (Enterprise class -- offline arm
+# in e2e/paid-arms-plan.yaml), and variants answers 1135 on Free but exists
+# on Pro (its live arm is the env-gated pro-variants-arm scenario). The paid
+# toggles (cache_reserve, argo_smart_routing) never enter a live lane from
+# authoring -- see e2e/paid-arms-plan.yaml and the profile prose. Runs FIRST
+# (filename order); revert-defaults runs last.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareCacheSettings
 metadata:
@@ -14,9 +19,3 @@ spec:
       name: planton-oss-e2e-cloudflarednszone-prereq
       fieldPath: status.outputs.zone_id
   smart_tiered_cache: true
-  regional_tiered_cache: true
-  cache_variants:
-    jpg:
-      - image/webp
-    jpeg:
-      - image/webp

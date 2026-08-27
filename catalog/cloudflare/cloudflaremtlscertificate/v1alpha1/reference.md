@@ -108,6 +108,14 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareMtlsCe
 | `status.outputs.expires_on` | `string` | When the certificate expires (RFC3339). |
 | `status.outputs.serial_number` | `string` | The certificate's serial number. |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| CloudflareZoneTlsSettings | `spec.caHostnameAssociations[].mtlsCertificateId` | `status.outputs.certificate_id` |
+
 ## See Also
 
 - [Overview](../README.md)

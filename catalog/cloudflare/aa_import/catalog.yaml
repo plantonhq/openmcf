@@ -653,15 +653,16 @@ spec:
       id_format: "{zone_id}"
     - terraform_type: cloudflare_hostname_tls_setting
       pulumi_type: cloudflare:index/hostnameTlsSetting:HostnameTlsSetting
-      id_format: "{zone_id}/{setting_id}"
-      notes: >-
-        The provider's ImportState is DEFECTIVE at v5.23.0: it parses only
-        zone_id/setting_id and never restores the Required hostname (and its
-        Read consults the zone-wide list endpoint through a single-object
-        envelope). A blind round-trip must expect the post-import plan to
-        replace the resource; re-assert the overrides from configuration
-        instead -- safe, because the per-hostname write is idempotent for
-        identical values.
+      not_importable_upstream_reason: >-
+        The provider ships an ImportState but it is DEFECTIVE at v5.23.0: it
+        parses only "{zone_id}/{setting_id}" and never restores the Required
+        hostname (and its Read consults the zone-wide list endpoint through a
+        single-object envelope), so every post-import plan destroys and
+        recreates the override -- no configuration can dodge a defective
+        import read (the crashing-snippet-importer class). Adopt by
+        re-asserting the override from configuration instead: the
+        per-(setting, hostname) write is an idempotent upsert for identical
+        values, so a plain apply adopts the live override without churn.
     - terraform_type: cloudflare_certificate_authorities_hostname_associations
       pulumi_type: cloudflare:index/certificateAuthoritiesHostnameAssociations:CertificateAuthoritiesHostnameAssociations
       id_format: "{zone_id}/{mtls_certificate_id}"

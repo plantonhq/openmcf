@@ -75,7 +75,7 @@ The remaining settings group by shape; see the API reference for the full field 
 | On/off toggles | 39 booleans: `automaticHttpsRewrites`, `brotli`, `earlyHints`, `http2`, `websockets`, `zeroRtt` (setting id `0rtt`), `browserCheck`, `emailObfuscation`, `hotlinkProtection`, `ipGeolocation`, `rocketLoader`, `mirage`, `webp`, `developmentMode`, `sslRecommender`, `tlsClientAuth`, `waf`, `longLivedGrpc`, and the plan-gated toggles, among others | Sent to the API as `"on"`/`"off"` |
 | Enum settings | `polish`, `tls13`, `h2Prioritization`, `imageResizing`, `pseudoIpv4`, `cnameFlattening`, `originMaxHttpVersion`, `transformations`, plus free-string `transformationsAllowedOrigins` | Validated against Cloudflare's accepted values at manifest validation time |
 | Numeric settings | `challengeTtl`, `edgeCacheTtl`, `maxUpload`, `originH2MaxStreams`, `proxyReadTimeout` | Cloudflare validates each against a fixed accepted value set |
-| Object settings | `nel`, `aegis`, `automaticPlatformOptimization`, `ciphers` (list) | APO requires every field of its object on writes; `aegis` needs an Aegis entitlement |
+| Object settings | `nel`, `aegis`, `automaticPlatformOptimization`, `ciphers` (list) | APO requires every field of its object on writes; `aegis` needs an Aegis entitlement; `ciphers` writes need the zone's Advanced Certificate Manager subscription (API code 1023 without it) |
 | Companions | `managedRequestHeaders`, `managedResponseHeaders`, `urlNormalization`, `originCloudRegions`, `waitingRoomCrawlerBypass` | Zone-wide serving configuration living outside the settings API |
 
 ## Examples
@@ -163,7 +163,7 @@ spec:
 
 ### Full Zone Posture
 
-Security, performance, TLS ciphers, and the waiting-room crawler bypass in one manifest.
+Security, performance, TLS ciphers, and the waiting-room crawler bypass in one manifest. The `ciphers` list needs the zone's Advanced Certificate Manager subscription -- drop it on zones without ACM.
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1

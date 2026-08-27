@@ -846,6 +846,47 @@ paid-product lane, and any registry-installed fixture of a plan-gated kind
 env-injected zone. Products the account's plans cannot reach stay recorded
 entitlement deferrals with the plan named as the unblock.
 
+Three refinements to the same class (all measured live 2026-08-27):
+
+- **`editable=true` in the zone-settings list is NOT a write guarantee.**
+  The flag describes the settings class's plan-editability; a setting can
+  still carry a separate product gate. `ciphers` reads editable=true on a
+  Free zone yet every write answers 400 code 1023 "Advanced Certificate
+  Manager is required". Probe the WRITE, not the read, before calling a
+  setting free.
+- **Per-zone SUBSCRIPTIONS gate independently of plan tier.** Advanced
+  Certificate Manager gates Total TLS and every per-hostname TLS override
+  with 401 code 1450 on Free and Pro zones alike -- upgrading the plan
+  does not open them; only the per-zone ACM subscription does. Name the
+  subscription (not a plan) as the unblock in these deferrals.
+- **A pending zone can answer 400 code 1000 "Invalid zone identifier" for
+  a setting that does not exist until activation** (`auto_origin_tls_kex`).
+  The zone id is fine -- the same write succeeds on an ACTIVE zone. Treat
+  1000-on-a-fresh-fixture-zone as a delegation-state suspect, not an id
+  bug, and settle it with one write probe on the sanctioned active zone.
+
+### Settings-singleton verifiers: pick a surface that answers on every plan
+
+A settings-family verifier probes ONE endpoint as the family's existence
+surface, and that endpoint must answer on the cheapest zone a lane can
+run on. The natural-looking choice can be read-gated: Cloudflare's
+`cache_reserve` GET answers 400 code 1135 "not available for your plan
+type" on Free AND Pro zones, so a verifier registered on it would fail
+every honest verify phase against a free fixture zone. Probe the
+verifier's own GET on a free zone before registering (the cache-settings
+verifier probes `cache/tiered_cache_smart_topology_enable`, measured
+answering editable:true on every plan even before any write).
+
+### No-op-destroy singletons on a SHARED zone: write the default value
+
+An env-gated arm that manages a no-op-destroy singleton on the operator's
+sanctioned (shared, long-lived) zone abandons whatever it wrote when the
+lane destroys. The hygiene idiom: declare Cloudflare's DEFAULT value in
+the scenario -- the lane still proves the full lifecycle (deploy, verify,
+idempotency, blind import round-trip, destroy) while the shared zone ends
+exactly as it started. Never write a non-default value to a no-op-destroy
+surface on a zone the lane does not own.
+
 ### Front Door: fast creates, ~18-minute profile deletes
 
 Azure Front Door (Standard/Premium) inverts the usual timing profile:

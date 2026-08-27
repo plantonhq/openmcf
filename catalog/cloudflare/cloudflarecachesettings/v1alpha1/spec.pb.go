@@ -63,7 +63,10 @@ type CloudflareCacheSettingsSpec struct {
 	CacheReserve *bool `protobuf:"varint,4,opt,name=cache_reserve,json=cacheReserve,proto3,oneof" json:"cache_reserve,omitempty"`
 	// Regional Tiered Cache: add a regional tier between lower tiers and the
 	// upper tier, cutting long-haul trips for cache misses in distant regions.
-	// No delete at Cloudflare -- destroy abandons the last-applied value.
+	// ENTERPRISE-GATED: zones below Enterprise answer 1135 "not available for
+	// your plan type" on every read and write (measured on Free and Pro zones
+	// at v5.23.0) -- manage this only on an Enterprise-entitled zone. No delete
+	// at Cloudflare -- destroy abandons the last-applied value.
 	RegionalTieredCache *bool `protobuf:"varint,5,opt,name=regional_tiered_cache,json=regionalTieredCache,proto3,oneof" json:"regional_tiered_cache,omitempty"`
 	// Argo Smart Routing: route origin-bound traffic over Cloudflare's measured
 	// fastest paths. PAID: a monthly base fee plus per-GB usage. Cloudflare has no
@@ -72,8 +75,10 @@ type CloudflareCacheSettingsSpec struct {
 	ArgoSmartRouting *bool `protobuf:"varint,6,opt,name=argo_smart_routing,json=argoSmartRouting,proto3,oneof" json:"argo_smart_routing,omitempty"`
 	// Cache variants: which additional Accept-header content types Cloudflare may
 	// serve for cached image extensions (for example serving image/webp variants
-	// of .jpg URLs when Polish/WebP is active). Real delete at Cloudflare:
-	// destroying the resource resets variants to defaults.
+	// of .jpg URLs when Polish/WebP is active). PLAN-GATED at Free: a Free zone
+	// answers 1135 "not available for your plan type" (measured at v5.23.0);
+	// Pro and above accept it. Real delete at Cloudflare: destroying the
+	// resource resets variants to defaults.
 	CacheVariants *CloudflareCacheSettingsVariants `protobuf:"bytes,7,opt,name=cache_variants,json=cacheVariants,proto3" json:"cache_variants,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

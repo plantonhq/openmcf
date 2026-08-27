@@ -16,11 +16,17 @@ A `hostnameSettings` row is a convenience grouping. At Cloudflare, each set attr
 
 ## Provider import defect on hostname TLS settings (v5.23.0)
 
-The pinned provider's `cloudflare_hostname_tls_setting` resource does not restore the hostname on import -- an imported override comes back without the attribute that identifies it, so import cannot faithfully adopt existing per-hostname overrides. If you must adopt a zone with existing overrides, re-assert the desired state from config after import (an apply from your manifest converges everything) rather than trusting the imported state. For everything else in this kind, fresh applies are unaffected; this only bites import workflows.
+The pinned provider's `cloudflare_hostname_tls_setting` resource does not restore the hostname on import -- an imported override comes back without the attribute that identifies it, so every post-import plan destroys and recreates the override. The import catalog therefore marks this resource NOT IMPORTABLE, and the right way to adopt existing per-hostname overrides is to skip import entirely: declare the overrides in your manifest and apply. The per-(setting, hostname) write is an idempotent upsert, so an apply that matches the live values adopts them without churn, and one that differs converges them. For everything else in this kind, fresh applies are unaffected; this only bites import workflows.
 
 ## Total TLS validity is not yours to set
 
-Total TLS certificates live for 90 days, fixed by Cloudflare. The provider exposes the validity period as a computed-only attribute, so the spec deliberately does not model it -- there is nothing to decide. Choose the `certificateAuthority` if compliance cares, and note that enabling Total TLS may require the zone's Advanced Certificate Manager subscription.
+Total TLS certificates live for 90 days, fixed by Cloudflare. The provider exposes the validity period as a computed-only attribute, so the spec deliberately does not model it -- there is nothing to decide. Choose the `certificateAuthority` if compliance cares.
+
+## Two surfaces need Advanced Certificate Manager; one needs an active zone
+
+Measured live (2026-08-27): enabling Total TLS AND writing any per-hostname override (`hostnameSettings`) both fail with 401 code 1450 -- "This feature is available with the Advanced Certificate Manager" -- unless the zone carries the ACM subscription (a per-zone add-on, roughly $10/month, independent of the zone's plan tier; a Pro zone without ACM fails the same way a Free zone does). If an apply hits 1450, the fix is to buy ACM for that zone or drop the field, not to retry.
+
+Separately, `autoOriginTlsKex` exists only on ACTIVE zones: writing it on a pending (undelegated) zone fails with 400 code 1000 and the misleading message "Invalid zone identifier". The zone id is fine -- activate the zone first.
 
 ## Compliance modes are an open vocabulary on purpose
 
