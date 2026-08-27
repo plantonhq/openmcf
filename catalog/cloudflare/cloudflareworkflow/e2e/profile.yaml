@@ -5,19 +5,20 @@ metadata:
 spec:
   # Workflow under live E2E: account-scoped registration of a workflow class
   # exported by a deployed Worker script (the Worker fixture installs via the
-  # consumer-scoped profile in this kind's e2e/prerequisites/ -- its first
-  # live use). Watch items for the proving session: (a) the post-destroy
-  # probe reads the is_deleted flag (the Workflows soft-delete variant) --
-  # its live behavior is unconfirmed; (b) create IS a PUT (name-as-upsert),
-  # so a leaked earlier workflow of the same name is silently adopted, never
-  # a conflict; (c) whether registration validates the class exists in the
-  # script is unknown -- the fixture exports a real WorkflowEntrypoint
-  # subclass so the lane answers it either way; (d) production instance
-  # runs need Workers Paid -- registration itself is expected free,
-  # verify at proof.
+  # consumer-scoped profile in this kind's e2e/prerequisites/ -- first live
+  # use 2026-08-27, worked as designed). Live answers to the authoring watch
+  # items: (a) a deleted workflow answered an honest 404 code 10200, not the
+  # GET-200-with-is_deleted form upstream models (the flag probe stays
+  # enabled as a superset); (b) create IS a PUT -- run-scoped names remain
+  # the only collision guard; (c) registration ACCEPTED the class without
+  # error against a real exported WorkflowEntrypoint subclass (whether a
+  # bogus class name is rejected stays unmeasured -- the lane never sent
+  # one); (d) registration is free -- no paid wall fired.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-27: minimal on both engines, full lifecycle; the
+  # blind import round-trip passed consuming exactly the declared limits
+  # tolerance (no_refresh at v5.23.0 -- import restores nothing for it, the
+  # re-assert is the same-body upsert PUT).
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -1,0 +1,39 @@
+# Tuned CloudflareAiGateway scenario: the gateway's CONVERGENT optional
+# knobs -- retries, log management, gateway authentication, and the sliding
+# rate-limit technique. These are every optional surface the provider can
+# hold drift-free at v5.23.0: guardrails, spend_limits, otel, and
+# dynamic_routes are write-only at the API (no read returns them), so any
+# config carrying them re-plans forever on Terraform -- those shapes are
+# offline-plan-proven at e2e/routing-plan.yaml, whose header records the
+# measured wall and the unblock condition. Free tier.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: planton-oss-e2e-cloudflareaigateway-tuned
+  id: planton-oss-e2e-cloudflareaigateway-tuned
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  gateway_id: e2e-aig-tun-${E2E_RUN_ID}
+  cache_invalidate_on_update: true
+  cache_ttl: 0
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 100
+  rate_limiting_technique: sliding
+  retry:
+    backoff: exponential
+    delay: 500
+    max_attempts: 2
+  log_management:
+    max_records: 10000
+    strategy: DELETE_OLDEST
+  authentication: true

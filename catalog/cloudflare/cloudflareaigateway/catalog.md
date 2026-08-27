@@ -114,22 +114,32 @@ spec:
               elementId: smart
           properties:
             conditions: '{"metadata.tier": {"$eq": "free"}}'
+        # Model nodes require a fallback edge plus timeout and retries --
+        # Cloudflare rejects the create (400 code 7001) without them.
         - id: cheap
           type: model
           outputs:
             success:
               elementId: done
+            fallback:
+              elementId: smart
           properties:
             model: "@cf/meta/llama-3.1-8b-instruct"
             provider: workers-ai
+            retries: 1
+            timeout: 30000
         - id: smart
           type: model
           outputs:
             success:
               elementId: done
+            fallback:
+              elementId: done
           properties:
             model: gpt-4o
             provider: openai
+            retries: 2
+            timeout: 60000
         - id: done
           type: end
           outputs: {}

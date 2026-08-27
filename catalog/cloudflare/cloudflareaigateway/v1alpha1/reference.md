@@ -80,22 +80,34 @@ spec:
               element_id: smart
           properties:
             conditions: '{"metadata.tier": {"$eq": "free"}}'
+        # Model nodes REQUIRE a fallback edge plus timeout and retries --
+        # Cloudflare rejects the create with 400 code 7001 "Required"
+        # without them (live-measured 2026-08-27; the provider schema
+        # wrongly calls all three optional).
         - id: cheap
           type: model
           outputs:
             success:
               element_id: done
+            fallback:
+              element_id: smart
           properties:
             model: "@cf/meta/llama-3.1-8b-instruct"
             provider: workers-ai
+            retries: 1
+            timeout: 30000
         - id: smart
           type: model
           outputs:
             success:
               element_id: done
+            fallback:
+              element_id: done
           properties:
             model: gpt-4o
             provider: openai
+            retries: 2
+            timeout: 60000
         - id: done
           type: end
           outputs: {}
@@ -340,7 +352,10 @@ The maximum number of attempts (1-5).
 Log-storage management for this gateway: a cap on stored log records
 and what happens when the cap is reached. The provider models these as
 two flat arguments (log_management / log_management_strategy); this spec
-groups them and the modules fan them out.
+groups them and the modules fan them out. Omit to keep Cloudflare's
+defaults (100000 records, DELETE_OLDEST) -- Cloudflare echoes those
+defaults on every read, so the modules send them explicitly when unset
+to stay refresh-stable (live-measured).
 
 ### spec.logManagement.maxRecords
 
@@ -365,13 +380,16 @@ DELETE_OLDEST evicts the oldest to make room.
 
 Require callers to present a gateway authentication token (the
 cf-aig-authorization header) on every request. Without it the gateway
-endpoint is callable by anyone who knows the URL slug.
+endpoint is callable by anyone who knows the URL slug. Cloudflare
+echoes this toggle as false when never set, so the modules always send
+it (unset means false, Cloudflare's own default).
 
 ### spec.logpush
 
 `bool` · optional (explicit presence)
 
 Push this gateway's logs to the account's Logpush destination.
+Echoed as false when never set; the modules always send it.
 
 ### spec.logpushPublicKey
 
@@ -387,7 +405,8 @@ encryption is desired.
 Zero Data Retention: prevent Cloudflare from storing request and
 response bodies for this gateway. Mutually constraining with logging
 features at the API (bodies cannot be both unretained and logged) --
-Cloudflare enforces the combination server-side.
+Cloudflare enforces the combination server-side. Echoed as false when
+never set; the modules always send it.
 
 ### spec.workersAiBillingMode
 
@@ -492,7 +511,12 @@ The DLP profile IDs this policy evaluates.
 `CloudflareAiGatewayGuardrails`
 
 Content guardrails: per-hazard-category FLAG/BLOCK controls evaluated
-on prompts and on model responses.
+on prompts and on model responses. WRITE-ONLY AT THE API: Cloudflare
+accepts guardrails on create/update but no read ever returns them
+(live-measured), so at terraform-provider-cloudflare v5.23.0-v5.24.0 a
+Terraform configuration carrying guardrails re-plans an in-place update
+forever (every apply re-delivers the same values; the settings DO take
+effect at Cloudflare). Pulumi is unaffected.
 
 ### spec.guardrails.prompt
 
@@ -686,7 +710,9 @@ Hazard category S13.
 
 `[]CloudflareAiGatewayOtel`
 
-OpenTelemetry export destinations for gateway telemetry.
+OpenTelemetry export destinations for gateway telemetry. Write-only at
+the API like guardrails (no read returns it) -- see that field's
+Terraform re-plan caveat.
 
 ### spec.otel[].url
 
@@ -763,7 +789,9 @@ The event payload template.
 `CloudflareAiGatewaySpendLimits`
 
 Spend limits: cost budgets over configurable windows, optionally
-filtered by model, provider, or request metadata.
+filtered by model, provider, or request metadata. Write-only at the API
+like guardrails (no read returns it) -- see that field's Terraform
+re-plan caveat.
 
 - rule: every spend-limit rule needs its own unique id -- Cloudflare's API defaults omitted ids to one shared placeholder value, which silently collapses multiple rules into one
 
@@ -908,7 +936,13 @@ Dynamic request routes: named routing graphs (condition, percentage,
 rate, and model nodes) that requests can address by route name. Each
 route is its own provider object keyed by name; a route's elements list
 is CREATE-ONLY at the provider, so editing a graph recreates that route
-(in-flight requests re-resolve on the next call).
+(in-flight requests re-resolve on the next call). At
+terraform-provider-cloudflare v5.23.0-v5.24.0 the route resource's Read
+cannot restore elements (the API returns the graph only under
+version.data), so a Terraform-managed route is DESTROYED AND RECREATED
+on every apply -- prefer Pulumi for dynamic routes until a provider
+release fixes the Read (live-measured; the kind's e2e profile carries
+the full evidence).
 
 ### spec.dynamicRoutes[].name
 
@@ -1021,6 +1055,10 @@ The id of the element this edge leads to.
 
 The branch taken on failure or when a limit trips (model and rate
 nodes).
+REQUIRED on model nodes: Cloudflare rejects a model element without a
+fallback edge with 400 code 7001 "Required" (live-measured; the
+provider schema wrongly calls it optional). Point it at the element to
+try when the model call fails -- the end node when there is no backup.
 
 ### spec.dynamicRoutes[].elements[].outputs.fallback.elementId
 
@@ -1093,13 +1131,17 @@ Model nodes: the model provider (wire name "provider").
 
 `double` · optional (explicit presence)
 
-Model nodes: retry attempts toward this model.
+Model nodes: retry attempts toward this model. REQUIRED on model nodes
+(400 code 7001 without it -- live-measured; the provider schema wrongly
+calls it optional).
 
 ### spec.dynamicRoutes[].elements[].properties.timeout
 
 `double` · optional (explicit presence)
 
-Model nodes: the request timeout, in milliseconds.
+Model nodes: the request timeout, in milliseconds. REQUIRED on model
+nodes (400 code 7001 without it -- live-measured; the provider schema
+wrongly calls it optional).
 
 ## Outputs
 

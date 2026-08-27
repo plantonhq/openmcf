@@ -2,10 +2,12 @@
 # CloudflareSecretsStoreSecret (its registry prerequisite): every secret
 # lives inside a store, so one must exist before the secret's lane deploys.
 # The store name is run-scoped; metadata.name stays stable -- it is the key
-# consumers' valueFrom references resolve against. KNOWN LANE HAZARD:
-# Cloudflare allows ONE store per account, so this install fails on any
-# account that already has a store (dashboard-created or a leaked earlier
-# fixture) -- the proof lane's watch-list carries it.
+# consumers' valueFrom references resolve against. KNOWN LANE HAZARD
+# (measured 2026-08-27): Cloudflare allows ONE store per account -- this
+# install fails with error 1003 maximum_stores_exceeded on any account that
+# already has a store, including the EMPTY auto-provisioned
+# default_secrets_store; the store kind's e2e profile records the measured
+# slot discipline (verify empty, escalate, delete, restore after).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareSecretsStore
 metadata:

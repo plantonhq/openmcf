@@ -72,13 +72,19 @@ type CloudflareAiGatewaySpec struct {
 	// Log-storage management for this gateway: a cap on stored log records
 	// and what happens when the cap is reached. The provider models these as
 	// two flat arguments (log_management / log_management_strategy); this spec
-	// groups them and the modules fan them out.
+	// groups them and the modules fan them out. Omit to keep Cloudflare's
+	// defaults (100000 records, DELETE_OLDEST) -- Cloudflare echoes those
+	// defaults on every read, so the modules send them explicitly when unset
+	// to stay refresh-stable (live-measured).
 	LogManagement *CloudflareAiGatewayLogManagement `protobuf:"bytes,10,opt,name=log_management,json=logManagement,proto3" json:"log_management,omitempty"`
 	// Require callers to present a gateway authentication token (the
 	// cf-aig-authorization header) on every request. Without it the gateway
-	// endpoint is callable by anyone who knows the URL slug.
+	// endpoint is callable by anyone who knows the URL slug. Cloudflare
+	// echoes this toggle as false when never set, so the modules always send
+	// it (unset means false, Cloudflare's own default).
 	Authentication *bool `protobuf:"varint,11,opt,name=authentication,proto3,oneof" json:"authentication,omitempty"`
 	// Push this gateway's logs to the account's Logpush destination.
+	// Echoed as false when never set; the modules always send it.
 	Logpush *bool `protobuf:"varint,12,opt,name=logpush,proto3,oneof" json:"logpush,omitempty"`
 	// The public key used to encrypt logpushed log bodies, when logpush
 	// encryption is desired.
@@ -86,7 +92,8 @@ type CloudflareAiGatewaySpec struct {
 	// Zero Data Retention: prevent Cloudflare from storing request and
 	// response bodies for this gateway. Mutually constraining with logging
 	// features at the API (bodies cannot be both unretained and logged) --
-	// Cloudflare enforces the combination server-side.
+	// Cloudflare enforces the combination server-side. Echoed as false when
+	// never set; the modules always send it.
 	Zdr *bool `protobuf:"varint,14,opt,name=zdr,proto3,oneof" json:"zdr,omitempty"`
 	// How Workers AI inference calls routed through this gateway are billed.
 	// Cloudflare currently supports only "postpaid" (also the default) -- the
@@ -100,21 +107,36 @@ type CloudflareAiGatewaySpec struct {
 	// account's DLP profiles.
 	Dlp *CloudflareAiGatewayDlp `protobuf:"bytes,17,opt,name=dlp,proto3" json:"dlp,omitempty"`
 	// Content guardrails: per-hazard-category FLAG/BLOCK controls evaluated
-	// on prompts and on model responses.
+	// on prompts and on model responses. WRITE-ONLY AT THE API: Cloudflare
+	// accepts guardrails on create/update but no read ever returns them
+	// (live-measured), so at terraform-provider-cloudflare v5.23.0-v5.24.0 a
+	// Terraform configuration carrying guardrails re-plans an in-place update
+	// forever (every apply re-delivers the same values; the settings DO take
+	// effect at Cloudflare). Pulumi is unaffected.
 	Guardrails *CloudflareAiGatewayGuardrails `protobuf:"bytes,18,opt,name=guardrails,proto3" json:"guardrails,omitempty"`
-	// OpenTelemetry export destinations for gateway telemetry.
+	// OpenTelemetry export destinations for gateway telemetry. Write-only at
+	// the API like guardrails (no read returns it) -- see that field's
+	// Terraform re-plan caveat.
 	Otel []*CloudflareAiGatewayOtel `protobuf:"bytes,19,rep,name=otel,proto3" json:"otel,omitempty"`
 	// Stripe usage-based billing integration: report gateway usage events to
 	// Stripe.
 	Stripe *CloudflareAiGatewayStripe `protobuf:"bytes,20,opt,name=stripe,proto3" json:"stripe,omitempty"`
 	// Spend limits: cost budgets over configurable windows, optionally
-	// filtered by model, provider, or request metadata.
+	// filtered by model, provider, or request metadata. Write-only at the API
+	// like guardrails (no read returns it) -- see that field's Terraform
+	// re-plan caveat.
 	SpendLimits *CloudflareAiGatewaySpendLimits `protobuf:"bytes,21,opt,name=spend_limits,json=spendLimits,proto3" json:"spend_limits,omitempty"`
 	// Dynamic request routes: named routing graphs (condition, percentage,
 	// rate, and model nodes) that requests can address by route name. Each
 	// route is its own provider object keyed by name; a route's elements list
 	// is CREATE-ONLY at the provider, so editing a graph recreates that route
-	// (in-flight requests re-resolve on the next call).
+	// (in-flight requests re-resolve on the next call). At
+	// terraform-provider-cloudflare v5.23.0-v5.24.0 the route resource's Read
+	// cannot restore elements (the API returns the graph only under
+	// version.data), so a Terraform-managed route is DESTROYED AND RECREATED
+	// on every apply -- prefer Pulumi for dynamic routes until a provider
+	// release fixes the Read (live-measured; the kind's e2e profile carries
+	// the full evidence).
 	DynamicRoutes []*CloudflareAiGatewayDynamicRoute `protobuf:"bytes,22,rep,name=dynamic_routes,json=dynamicRoutes,proto3" json:"dynamic_routes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1448,6 +1470,10 @@ type CloudflareAiGatewayRouteElementOutputs struct {
 	Success *CloudflareAiGatewayRouteElementBranch `protobuf:"bytes,4,opt,name=success,proto3" json:"success,omitempty"`
 	// The branch taken on failure or when a limit trips (model and rate
 	// nodes).
+	// REQUIRED on model nodes: Cloudflare rejects a model element without a
+	// fallback edge with 400 code 7001 "Required" (live-measured; the
+	// provider schema wrongly calls it optional). Point it at the element to
+	// try when the model call fails -- the end node when there is no backup.
 	Fallback *CloudflareAiGatewayRouteElementBranch `protobuf:"bytes,5,opt,name=fallback,proto3" json:"fallback,omitempty"`
 	// A bare next-element id, for node types that take the edge directly
 	// rather than as a named branch.
@@ -1594,9 +1620,13 @@ type CloudflareAiGatewayRouteElementProperties struct {
 	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
 	// Model nodes: the model provider (wire name "provider").
 	Provider string `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
-	// Model nodes: retry attempts toward this model.
+	// Model nodes: retry attempts toward this model. REQUIRED on model nodes
+	// (400 code 7001 without it -- live-measured; the provider schema wrongly
+	// calls it optional).
 	Retries *float64 `protobuf:"fixed64,8,opt,name=retries,proto3,oneof" json:"retries,omitempty"`
-	// Model nodes: the request timeout, in milliseconds.
+	// Model nodes: the request timeout, in milliseconds. REQUIRED on model
+	// nodes (400 code 7001 without it -- live-measured; the provider schema
+	// wrongly calls it optional).
 	Timeout       *float64 `protobuf:"fixed64,9,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

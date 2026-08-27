@@ -588,9 +588,12 @@ var verifiers = map[string]Verifier{
 		outputKeys:     []string{"zone_id", "certificate_id"},
 		absentStatuses: []string{"pending_deletion", "deleted"},
 	},
-	// Workflows delete for real, but the API keeps answering GET 200 for
-	// deleted workflows with a required numeric is_deleted marker (the
-	// Workflows variant of soft-delete; neither deleted_at nor a 404).
+	// Workflows delete for real. Upstream's model documents a GET-200-with-
+	// is_deleted answer for deleted workflows, but live (2026-08-27) a
+	// deleted workflow answered an honest 404 with code 10200
+	// "workflows.api.error.workflow.not_found" -- the flag probe never
+	// fired. It stays enabled because it is a strict superset (a 404 is
+	// always absent) and upstream's modeling says the flag form exists.
 	// Identity is the workflow NAME -- the provider's Read is
 	// GET accounts/{a}/workflows/{name}.
 	"cloudflareworkflow": &apiPathVerifier{

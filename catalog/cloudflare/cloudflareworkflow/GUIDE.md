@@ -14,9 +14,9 @@ This resource binds a name to a class exported by an ALREADY-DEPLOYED Worker scr
 
 `error_retention` / `success_retention` accept integer milliseconds ("86400000") or duration expressions ("1 day"). Cloudflare normalizes internally and the provider suppresses equivalent-value diffs, but mixed forms across manifests make review harder than it needs to be. Choose the duration-expression form for anything a human reads.
 
-## Deletion is real but the API never says 404
+## Deletion is real -- and the API's answer for a deleted workflow has two documented forms
 
-Deleted workflows keep answering GET with a non-zero `is_deleted` marker. Tooling that probes for existence (including our own E2E verifier) reads the marker, not the status code. Do not be surprised by dashboard-API responses for workflows you deleted -- the record is a tombstone, not a survivor.
+Live-measured 2026-08-27: a just-deleted workflow answers GET with an honest 404 (error code 10200, "workflow not found"). Cloudflare's own API models a second form -- GET 200 with a non-zero `is_deleted` tombstone marker -- and tooling that probes for existence (including our own E2E verifier) accepts either. If you script against this API, treat "404" and "200 with is_deleted set" as the same fact: the workflow is gone.
 
 ## Instances outlive your apply
 

@@ -4,18 +4,19 @@ metadata:
   name: cloudflaresecretsstoresecret
 spec:
   # Store secret under live E2E: the secret deploys into the run-scoped
-  # store fixture (the store's install profile -- its first live use, and
-  # the ONE-store-per-account limit applies to the fixture install too).
-  # The scenario's value is a throwaway run-scoped literal, not a real
-  # credential. Watch items for the proving session: (a) the value is
-  # write-only -- the blind import round-trip lands with an empty value and
-  # must re-assert it from configuration; (b) scopes are CEL-walled to
-  # canonical alphabetical order at the spec, which should make the
-  # provider's documented ordered-list drift unreachable -- confirm the
-  # re-plan is clean.
+  # store fixture (first live use 2026-08-27, worked as designed; the
+  # ONE-store-per-account limit applies to the fixture install too -- see
+  # the store profile for the measured slot discipline). The scenario's
+  # value is a throwaway run-scoped literal, not a real credential. Live
+  # answers to the authoring watch items: (a) the write-only value fired
+  # exactly as declared -- the blind round-trip consumed the catalog row's
+  # value tolerance (the re-assert is idempotent); (b) the canonical-order
+  # scopes CEL held -- the idempotency re-plan measured clean, the
+  # provider's documented ordered-list drift never fired.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-27: minimal on both engines, full lifecycle, all
+  # first-run; the blind import round-trip passed consuming exactly the
+  # declared write-only value tolerance.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

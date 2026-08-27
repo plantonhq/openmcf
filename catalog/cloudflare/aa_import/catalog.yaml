@@ -757,11 +757,19 @@ spec:
     - terraform_type: cloudflare_workflow
       pulumi_type: cloudflare:index/workflow:Workflow
       id_format: "{account_id}/{workflow_name}"
+      write_normalized_attributes:
+        - limits
       notes: >-
-        Identity is the workflow NAME, not a UUID. The API answers GET for
-        deleted workflows with a numeric is_deleted marker instead of a 404,
-        and create is a PUT -- importing an existing name and re-applying is
-        always an adopt, never a conflict.
+        Identity is the workflow NAME, not a UUID. Create is a PUT --
+        importing an existing name and re-applying is always an adopt,
+        never a conflict. (Upstream models a GET-200-with-is_deleted answer
+        for deleted workflows; live 2026-08-27 a deleted workflow answered
+        an honest 404 code 10200 instead.) limits is no_refresh at v5.23.0
+        (workflow/model.go) so import restores nothing for it (live-measured
+        2026-08-27: the post-import plan re-asserts a configured limits) --
+        the re-apply is the same-body upsert PUT, a no-op against the cloud.
+        default_retention is the same no_refresh class but stays undeclared
+        until an arm measures it (unused tolerances are never declared).
     - terraform_type: cloudflare_secrets_store
       pulumi_type: cloudflare:index/secretsStore:SecretsStore
       id_format: "{account_id}/{store_id}"
@@ -773,23 +781,39 @@ spec:
     - terraform_type: cloudflare_secrets_store_secret
       pulumi_type: cloudflare:index/secretsStoreSecret:SecretsStoreSecret
       id_format: "{account_id}/{store_id}/{secret_id}"
+      write_normalized_attributes:
+        - value
       notes: >-
-        value is write-only (never returned by the API) -- the round-trip
-        lands with an empty value and must re-assert it from configuration.
+        value is write-only (never returned by the API; upstream's own
+        import test ignores it -- secrets_store_secret/resource_test.go at
+        v5.23.0 lists value, modified, status) -- the round-trip lands with
+        an empty value and the post-import re-assert from configuration is
+        the tolerated write. modified/status are computed (the oracle prunes
+        them) and stay undeclared.
     # --- AI ---------------------------------------------------------------------
     - terraform_type: cloudflare_ai_gateway
       pulumi_type: cloudflare:index/aiGateway:AiGateway
       id_format: "{account_id}/{gateway_id}"
       notes: >-
         The gateway id is the user-chosen URL slug (the resource's own id
-        argument), not a server-generated UUID.
+        argument), not a server-generated UUID. ADOPTER WARNING (measured
+        2026-08-27 at v5.23.0, identical at v5.24.0): the API never returns
+        guardrails/spend_limits/otel and the provider models
+        otel/spend_limits computed, so EVERY imported (or created) gateway
+        re-plans an in-place no-op update forever on Terraform -- the kind
+        is deferred on this defect; evidence on its e2e profile.
     - terraform_type: cloudflare_ai_gateway_dynamic_routing
       pulumi_type: cloudflare:index/aiGatewayDynamicRouting:AiGatewayDynamicRouting
       id_format: "{account_id}/{gateway_id}/{route_id}"
       notes: >-
         The elements list forces replacement on any change, so a post-import
         graph edit plans a replace, never an update -- renaming the route is
-        the only in-place change.
+        the only in-place change. ADOPTER WARNING (measured 2026-08-27 at
+        v5.23.0, identical at v5.24.0): the provider's Read cannot restore
+        elements (the API returns the graph only under version.data), so an
+        imported route holds a null graph and EVERY subsequent apply
+        destroys and recreates the route -- do not adopt routes into
+        Terraform until an upstream release fixes the Read.
     # --- Logs -------------------------------------------------------------------
     # Logpush jobs are dual-scope: the import id carries the scope
     # discriminator, so an account job imports as

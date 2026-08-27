@@ -21,8 +21,21 @@ locals {
   retry_max_attempts = try(var.spec.retry.max_attempts, null)
 
   # Same for log_management{} -> log_management + log_management_strategy.
-  log_management          = try(var.spec.log_management.max_records, null)
-  log_management_strategy = try(var.spec.log_management.strategy, "") != "" ? var.spec.log_management.strategy : null
+  # Cloudflare echoes SERVER DEFAULTS (100000 records, DELETE_OLDEST) on
+  # every read when the pair was never set (live-measured 2026-08-27), so an
+  # omitted send drifts forever against the echo -- send the defaults
+  # explicitly instead; semantics are unchanged because they are what
+  # Cloudflare applies anyway.
+  log_management          = coalesce(try(var.spec.log_management.max_records, null), 100000)
+  log_management_strategy = coalesce(try(var.spec.log_management.strategy, "") != "" ? var.spec.log_management.strategy : null, "DELETE_OLDEST")
+
+  # Cloudflare echoes these three toggles as booleans on every read (false
+  # when never set), so an omitted send drifts forever against the echo --
+  # always send them; proto3's unset false IS Cloudflare's default
+  # (live-measured 2026-08-27).
+  authentication = coalesce(try(var.spec.authentication, null), false)
+  logpush        = coalesce(try(var.spec.logpush, null), false)
+  zdr            = coalesce(try(var.spec.zdr, null), false)
 
   # DLP: drop the empty-string default action and empty collections so the
   # API sees only what the manifest states.

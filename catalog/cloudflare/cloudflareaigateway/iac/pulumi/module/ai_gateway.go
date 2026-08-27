@@ -50,27 +50,33 @@ func aiGateway(
 	}
 
 	// log_management{} fans out to the flat log_management (record cap) and
-	// log_management_strategy arguments.
+	// log_management_strategy arguments. Cloudflare echoes SERVER DEFAULTS
+	// (100000 records, DELETE_OLDEST) on every read when the pair was never
+	// set (live-measured 2026-08-27), so an omitted send drifts forever
+	// against the echo -- send the documented defaults explicitly instead;
+	// semantics are unchanged because they are what Cloudflare applies anyway.
+	logManagement := 100000
+	logManagementStrategy := "DELETE_OLDEST"
 	if spec.LogManagement != nil {
 		if spec.LogManagement.MaxRecords != nil {
-			args.LogManagement = pulumi.IntPtr(int(spec.LogManagement.GetMaxRecords()))
+			logManagement = int(spec.LogManagement.GetMaxRecords())
 		}
 		if spec.LogManagement.Strategy != "" {
-			args.LogManagementStrategy = pulumi.StringPtr(spec.LogManagement.Strategy)
+			logManagementStrategy = spec.LogManagement.Strategy
 		}
 	}
+	args.LogManagement = pulumi.Int(logManagement)
+	args.LogManagementStrategy = pulumi.String(logManagementStrategy)
 
-	if spec.Authentication != nil {
-		args.Authentication = pulumi.BoolPtr(spec.GetAuthentication())
-	}
-	if spec.Logpush != nil {
-		args.Logpush = pulumi.BoolPtr(spec.GetLogpush())
-	}
+	// Cloudflare echoes these three toggles as booleans on every read (false
+	// when never set), so a guarded send drifts forever against the echo --
+	// always send them; proto3's unset false IS Cloudflare's default
+	// (live-measured 2026-08-27).
+	args.Authentication = pulumi.Bool(spec.GetAuthentication())
+	args.Logpush = pulumi.Bool(spec.GetLogpush())
+	args.Zdr = pulumi.Bool(spec.GetZdr())
 	if spec.LogpushPublicKey != "" {
 		args.LogpushPublicKey = pulumi.StringPtr(spec.LogpushPublicKey)
-	}
-	if spec.Zdr != nil {
-		args.Zdr = pulumi.BoolPtr(spec.GetZdr())
 	}
 	if spec.WorkersAiBillingMode != "" {
 		args.WorkersAiBillingMode = pulumi.StringPtr(spec.WorkersAiBillingMode)

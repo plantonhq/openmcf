@@ -1068,9 +1068,25 @@ echo -- and if all drift, the honest outcome is a DEFERRAL on the upstream
 defect, never a weakened idempotency gate. First measured user:
 `cloudflare_zero_trust_gateway_policy` at v5.23.0 (upstream issue #7106;
 every shape drifts via `rule_settings.ignore_cname_category_matches` and
-friends). Contrast with the decode-over-prior-state class above: that one is
+friends). Second measured user (live 2026-08-27): `cloudflare_ai_gateway` --
+the WRITE-ONLY-BODY variant, where the API accepts whole object surfaces on
+write but no read EVER returns them (`otel`/`spend_limits`; probe by direct
+POST-then-GET) while the provider models them computed_optional and
+refreshes them, so the unknown-flip fires even on configurations that never
+set the fields, and a SET value is worse (refresh nulls state, planning a
+REAL update forever). Its folded sibling `cloudflare_ai_gateway_dynamic_routing`
+escalates the same asymmetry into a perpetual DESTROY-AND-RECREATE: the read
+returns the graph only under a response path the provider never consults
+(`version.data`), and the un-restorable attribute is RequiresReplace. Both
+remedies re-measured non-fixing there, matching #7106. Contrast with the
+decode-over-prior-state class above: that one is
 import-only and tolerable by declaration; this one breaks the NORMAL
 lifecycle and no catalog declaration can absorb an idempotency failure.
+When only SOME of a resource's attributes are in this class, the deferral
+still takes the whole kind on the affected engine -- but fix the honest
+echo classes first (always-send booleans, server-default coalesces): the
+diagnosis is only clean once every config-carried diff is dead and the
+surviving drift is provably the provider's own unknown promotion.
 
 ### A PURE-computed attribute planning a phantom update: the ignore-changes class (module-fixable)
 
@@ -1153,7 +1169,16 @@ it is, recorded), after which every run-scoped object creates as
 non-default and lifecycles cleanly. Never point the placeholder dance at a
 customer account without teaching it in the kind's GUIDE -- customers hit
 the same wall on their first object. First measured user (live 2026-08-26):
-Gateway DNS locations (`gateway/locations`).
+Gateway DNS locations (`gateway/locations`). The DELETABLE mirror of this
+class (measured 2026-08-27): an AUTO-PROVISIONED default container occupying
+a hard singleton slot -- the Secrets Store's `default_secrets_store` fills
+the account's only slot (a second create answers 1003
+maximum_stores_exceeded) even on accounts that never used the product. When
+the auto-provisioned object is verifiably EMPTY, the honest lane pattern is
+delete-to-free-the-slot under owner approval, run the run-scoped lifecycles,
+and recreate the same-named container at session end (the recreated id
+differs -- record it); when it is not empty, it is production state and the
+kinds defer.
 
 ### Terraform outputs: never null-guard a partially-sensitive object
 
