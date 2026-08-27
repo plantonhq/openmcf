@@ -1072,6 +1072,40 @@ friends). Contrast with the decode-over-prior-state class above: that one is
 import-only and tolerable by declaration; this one breaks the NORMAL
 lifecycle and no catalog declaration can absorb an idempotency failure.
 
+### A PURE-computed attribute planning a phantom update: the ignore-changes class (module-fixable)
+
+The fixable sibling of the perpetual re-plan class above. Some auto-generated
+resources ship ONE pure-Computed attribute (never user-set, stable
+server-side) with no `UseStateForUnknown` modifier, and the provider proposes
+an in-place update on EVERY plan solely to re-mark it "(known after apply)" --
+with a clean refresh (`plan -refresh-only` reports no changes) and zero config
+drift. Two things distinguish it from the deferral class: the attribute is
+NEVER SENT (pure computed, so ignoring it cannot mask a real write), and
+`ignore_changes` DOES fix it (the unknown is the framework's computed-null
+promotion on that one attribute, not a provider-planned value under a config
+merge). The remedy is `lifecycle.ignore_changes` on exactly that attribute in
+the Terraform module AND `pulumi.IgnoreChanges` on the same property in the
+Pulumi module -- the BRIDGED provider surfaces the same phantom update in
+previews (a preview never refreshes, but it DOES run the provider's plan
+against stored state, so "Pulumi previews hide refresh drift" is NOT immunity
+to this class). The stack output still reads the real value from state.
+First measured user (live 2026-08-27, v5.23.0):
+`cloudflare_zero_trust_device_default_profile.policy_id` -- both engines
+measured drifting, both converged by the ignore.
+
+### Schema-level static defaults that BLANK unset fields: restore must diff ALL fields
+
+A settings-singleton trap for capture-and-restore lanes. Auto-generated
+schemas may attach a static default (`stringdefault.StaticString("")`) to an
+Optional field, so ANY apply that omits the field actively writes the empty
+value -- resetting live account state the scenario never mentioned. Measured
+live 2026-08-27: a default-WARP-profile apply that omitted `tunnel_protocol`
+blanked the account's `masque` setting to `""`. Two duties follow: the
+VERIFY-CLN restore diff must compare EVERY field of the captured body against
+the live read (a restore that only re-asserts the fields the scenarios set
+silently ships the reset), and the spec field that carries such a default
+must teach that unset means reset-to-default, never leave-untouched.
+
 ### Computed-optional attributes with RAW model types: the unknown-crash class (module-fixable)
 
 A sibling of the perpetual re-plan class, but FIXABLE module-side. Some

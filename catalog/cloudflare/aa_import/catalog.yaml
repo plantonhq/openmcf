@@ -451,18 +451,25 @@ spec:
       id_format: "{account_id}"
     - terraform_type: cloudflare_zero_trust_device_default_profile_certificates
       pulumi_type: cloudflare:index/zeroTrustDeviceDefaultProfileCertificates:ZeroTrustDeviceDefaultProfileCertificates
-      id_format: "{zone_id}"
-      notes: >-
+      not_importable_upstream_reason: >-
         The v5.23.0 terraform provider ships NO importer for this resource
         (the package has no ImportState, and its plan modifier warns the
-        resource "cannot be destroyed from Terraform"). The id_format
-        records the API identity (GET /zones/{zone_id}/devices/policy/
-        certificates). A blind round-trip must expect the import step to
-        fail for this address and instead re-assert the toggle from
-        configuration -- the write is an idempotent PUT.
-    # Custom profiles import by their server-assigned policy id; the
-    # provider's own import tests ignore exclude/include on verify --
-    # re-assert split-tunnel routes from configuration after import.
+        resource "cannot be destroyed from Terraform").
+      notes: >-
+        The API identity is /zones/{zone_id}/devices/policy/certificates (a
+        zone-scoped settings toggle; the provider writes it with PATCH). A
+        blind round-trip skips the import for this address and re-asserts
+        the toggle from configuration. CREDENTIAL WALL, measured live
+        2026-08-27: the endpoint refuses ACCOUNT-OWNED API tokens on both
+        reads and writes (401 code 1039 "malformed actor email claim") --
+        adopting or managing this fold needs a user-actor credential (a
+        user-owned token or API key + email), which is also why upstream's
+        own acceptance test blanks CLOUDFLARE_API_TOKEN.
+    # Custom profiles import by their server-assigned policy id. Upstream's
+    # own import tests ignore exclude/include on verify, but the live blind
+    # round-trip (2026-08-27, v5.23.0) measured BOTH surviving import at a
+    # clean no-op plan -- no tolerance is declared because none was consumed
+    # (upstream's ignore list is a hint, not a proof).
     - terraform_type: cloudflare_zero_trust_device_custom_profile
       pulumi_type: cloudflare:index/zeroTrustDeviceCustomProfile:ZeroTrustDeviceCustomProfile
       id_format: "{account_id}/{policy_id}"

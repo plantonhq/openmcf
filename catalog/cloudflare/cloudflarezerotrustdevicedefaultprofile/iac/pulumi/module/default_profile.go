@@ -128,25 +128,38 @@ func defaultProfile(
 		}
 	}
 
-	if len(spec.DnsSearchSuffixes) > 0 {
-		suffixes := cloudflare.ZeroTrustDeviceDefaultProfileDnsSearchSuffixArray{}
-		for _, row := range spec.DnsSearchSuffixes {
-			suffix := cloudflare.ZeroTrustDeviceDefaultProfileDnsSearchSuffixArgs{
-				Suffix: pulumi.String(row.Suffix),
-			}
-			if row.Description != "" {
-				suffix.Description = pulumi.String(row.Description)
-			}
-			suffixes = append(suffixes, suffix)
+	// Always send the list, empty included. The API echoes [] for an empty
+	// suffix list, and the provider's Computed+Optional attribute carries no
+	// state-preserving plan modifier -- a null config re-plans an in-place
+	// update forever on refresh-inclusive plans (measured live 2026-08-27 at
+	// v5.23.0 on the Terraform engine; previews hide the same latent class
+	// here). Sending [] matches the spec's documented contract (an empty
+	// list clears the account's list; proto3 cannot distinguish unset from
+	// empty), and converges.
+	suffixes := cloudflare.ZeroTrustDeviceDefaultProfileDnsSearchSuffixArray{}
+	for _, row := range spec.DnsSearchSuffixes {
+		suffix := cloudflare.ZeroTrustDeviceDefaultProfileDnsSearchSuffixArgs{
+			Suffix: pulumi.String(row.Suffix),
 		}
-		args.DnsSearchSuffixes = suffixes
+		if row.Description != "" {
+			suffix.Description = pulumi.String(row.Description)
+		}
+		suffixes = append(suffixes, suffix)
 	}
+	args.DnsSearchSuffixes = suffixes
 
+	// policy_id is a pure-computed server echo (the singleton's stable id)
+	// with no state-preserving plan modifier at v5.23.0: the bridged
+	// provider proposes a phantom no-op update on every preview against
+	// stored state (measured live 2026-08-27; the value never actually
+	// changes). Ignoring it is safe -- the attribute is never sent, and the
+	// stack output still reads the real value after apply.
 	createdProfile, err := cloudflare.NewZeroTrustDeviceDefaultProfile(
 		ctx,
 		"default_profile",
 		args,
 		pulumi.Provider(cloudflareProvider),
+		pulumi.IgnoreChanges([]string{"policyId"}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to apply default device profile")

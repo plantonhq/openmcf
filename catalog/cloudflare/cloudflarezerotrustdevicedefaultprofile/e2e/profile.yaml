@@ -5,22 +5,29 @@ metadata:
 spec:
   # The default device profile under live E2E: an ACCOUNT-SCOPED SINGLETON
   # (PATCH upsert) with a NO-OP destroy -- the lane MUTATES THE ACCOUNT'S
-  # REAL DEFAULT WARP PROFILE. Watch items for the proving session:
-  # (1) capture the profile's prior values (GET accounts/{a}/devices/policy)
-  # BEFORE the lane and restore them in VERIFY-CLN -- destroy reverts
-  # nothing; (2) the fallback-domains scenario FULL-REPLACES the account's
-  # local-DNS fallback list, which Cloudflare seeds with defaults on every
-  # account -- capture the prior list (GET
-  # accounts/{a}/devices/policy/fallback_domains) and restore it the same
-  # way; (3) the API-token defect class covers the fallback and certificate
-  # companions (their upstream tests blank CLOUDFLARE_API_TOKEN): a 403 on
-  # those writes under our token credential is the expected ambush, and a
-  # recorded deferral is the honest outcome; (4) the zone-certificates
-  # scenario toggles certificate provisioning on the run-scoped zone fixture
-  # only -- never on a real zone.
+  # REAL DEFAULT WARP PROFILE. PROVEN live 2026-08-27 (session 031):
+  # safe-toggles + fallback-domains on both engines, all phases, blind
+  # round-trips (incl. the two-resource bare-account-id import of profile +
+  # fallback list) at ZERO tolerances; both account singletons captured
+  # before the lanes and restored field-identical after (verified by API).
+  # Two provider walls were fixed module-side during the proof: the
+  # dns_search_suffixes always-send (a null send re-plans forever) and the
+  # policy_id phantom-update ignore (both engines; comments in the modules).
+  # THE zone-certificates ARM IS OFFLINE-PLAN-ONLY (e2e/
+  # zone-certificates-plan.yaml): the endpoint refuses ACCOUNT-OWNED API
+  # tokens on reads AND writes with 401 code 1039 "malformed actor email
+  # claim" (measured on a pending fixture zone and the active test zone --
+  # a credential-class wall, not zone state; the first REAL firing of the
+  # API-token defect class in this program). Unblock: a user-actor
+  # credential lane (user-owned token or API key + email), then the arm
+  # returns to scenarios/ unchanged. Standing walls for any future lane:
+  # (1) capture-and-restore both singleton surfaces -- destroy reverts
+  # nothing, and the restore diff must cover ALL fields (tunnel_protocol is
+  # blanked by any apply that omits it -- the provider sends "" by schema
+  # default; measured and restored this session); (2) the fallback list is
+  # SEEDED by Cloudflare -- the seeded rows are part of the restore
+  # contract; (3) zone-scoped folds ride the run-scoped zone fixture only.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

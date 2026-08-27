@@ -4,16 +4,16 @@ metadata:
   name: cloudflarezerotrustdeviceposturerule
 spec:
   # Posture rules under live E2E: plain CRUD objects (real create, update,
-  # delete), account-scoped, free tier -- self-cleaning lanes. Watch items
-  # for the proving session: (1) the API-token defect class -- every one of
-  # the provider's own posture-rule acceptance tests blanks
-  # CLOUDFLARE_API_TOKEN, so a 403 under our token credential is the
-  # expected ambush and a recorded deferral is the honest outcome; (2) the
+  # delete), account-scoped, free tier -- self-cleaning lanes. PROVEN live
+  # 2026-08-27 (session 031): both scenarios (os-version, file-check) on
+  # both engines, all phases first-run, blind import round-trips at ZERO
+  # tolerances. The API-token defect class -- every one of the provider's
+  # own posture-rule acceptance tests blanks CLOUDFLARE_API_TOKEN -- never
+  # fired under the account-owned token credential (the stale-ambush
+  # finding of sessions 029/030 holds here too). Standing watch item: the
   # rule's enabled flag is server-computed (false only for deprecated
   # Kolide issue_count rules) -- never assert it.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

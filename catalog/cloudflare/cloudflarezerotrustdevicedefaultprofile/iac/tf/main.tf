@@ -54,12 +54,28 @@ resource "cloudflare_zero_trust_device_default_profile" "main" {
     default = var.spec.virtual_networks.default_virtual_network_id
   } : null
 
-  dns_search_suffixes = length(try(var.spec.dns_search_suffixes, [])) > 0 ? [
-    for row in var.spec.dns_search_suffixes : {
+  # Always send the list, empty included. The API echoes [] for an empty
+  # suffix list, and the provider's Computed+Optional attribute carries no
+  # state-preserving plan modifier -- a null config re-plans an in-place
+  # update forever (measured live 2026-08-27 at v5.23.0). Sending [] matches
+  # the spec's documented contract (an empty list clears the account's
+  # list; proto3 cannot distinguish unset from empty), and converges.
+  dns_search_suffixes = [
+    for row in try(var.spec.dns_search_suffixes, []) : {
       suffix      = row.suffix
       description = try(row.description, "") != "" ? row.description : null
     }
-  ] : null
+  ]
+
+  # policy_id is a pure-computed server echo (the singleton's stable id)
+  # with no UseStateForUnknown modifier at v5.23.0: every refresh-inclusive
+  # plan re-marks it "(known after apply)" and proposes a no-op update
+  # forever (measured live 2026-08-27; the value never actually changes).
+  # Ignoring it is safe -- the attribute is never sent, and the stack
+  # output still reads the real value from state after apply.
+  lifecycle {
+    ignore_changes = [policy_id]
+  }
 }
 
 # The profile's local-DNS fallback list. The profile resource reports

@@ -49,13 +49,13 @@ planton apply -f default-profile.yaml
 | `exclude` / `include` | list | Split-tunnel routes. | Mutually exclusive lists; each entry address XOR host. |
 | `serviceModeV2` | object | The client mode. | `mode` required when set; `port` 1-65535. |
 | `virtualNetworks` | object | Reachable Zero Trust virtual networks. | `allowed` min 1 (vnet references); `defaultVirtualNetworkId` required. |
-| `dnsSearchSuffixes` | list | Short-hostname resolution suffixes. | `suffix` required per row. |
+| `dnsSearchSuffixes` | list | Short-hostname resolution suffixes. | `suffix` required per row; the list is fully managed -- empty clears the account's list. |
 | `fallbackDomains` | list | The folded local-DNS fallback list. | FULL REPLACEMENT -- the declared list is exactly what exists. |
-| `zoneCertificates` | object | Per-zone WARP client certificates. | `zoneId` reference + explicit `enabled` (no delete exists). |
+| `zoneCertificates` | object | Per-zone WARP client certificates. | `zoneId` reference + explicit `enabled` (no delete exists); the endpoint needs a user-actor credential -- account-owned tokens get 401 code 1039. |
 | `autoConnect`, `captivePortal` | int | Reconnect/captive-portal timers (seconds). | >= 0. |
 | `lanAllowMinutes`, `lanAllowSubnetSize` | int | The LAN access window. | >= 0; subnet size <= 128. |
 | `switchLocked`, `allowedToLeave`, `allowModeSwitch`, `allowUpdates`, ... | bool | The toggle body. | Unset never sends (keeps Cloudflare's default). |
-| `tunnelProtocol` | string | wireguard or masque. | API-owned value set; empty keeps the account default. |
+| `tunnelProtocol` | string | wireguard or masque. | API-owned value set; empty RESETS the account to Cloudflare's default protocol -- declare it explicitly on accounts running a non-default one. |
 
 ## Destroy Semantics
 

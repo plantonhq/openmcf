@@ -223,11 +223,14 @@ Cloudflare's default (off -- users may disconnect).
 
 `string`
 
-The tunnel transport protocol: wireguard or masque. Cloudflare's API
-accepts the value it currently supports for the account; empty keeps
-the account default. Deliberately not CEL-walled -- the provider schema
-carries no value list at v5.23.0 and Cloudflare has grown this set
-before.
+The tunnel transport protocol: wireguard or masque. Deliberately not
+CEL-walled -- the provider schema carries no value list at v5.23.0 and
+Cloudflare has grown this set before. CAUTION: leaving this empty does
+NOT preserve the account's current protocol -- the provider defaults an
+unset value to the empty string and sends it, resetting the account to
+Cloudflare's default protocol (measured live 2026-08-27: an apply that
+omitted this field blanked an account's masque setting). Declare the
+protocol explicitly on any account running a non-default one.
 
 ### spec.lanAllowMinutes
 
@@ -367,7 +370,10 @@ allowed entries (Cloudflare enforces the containment at the API).
 `[]CloudflareZeroTrustDeviceDefaultProfileDnsSearchSuffix`
 
 DNS search suffixes appended when devices resolve short hostnames,
-evaluated in order. Declaring an empty list clears the account's list.
+evaluated in order. This list is FULLY MANAGED by this field: leaving
+it empty clears the account's list (unset and empty are the same
+declaration, and the modules always send the list -- the provider's
+attribute re-plans forever on an omitted send, measured at v5.23.0).
 
 ### spec.dnsSearchSuffixes[].suffix
 
@@ -423,7 +429,11 @@ Per-zone WARP client certificate provisioning: devices get a client
 certificate from the zone, letting origins verify traffic really came
 through WARP. The one zone-scoped surface on this account-scoped kind.
 Cloudflare offers no delete and no import for it -- unset means "not
-managed here", never "disabled".
+managed here", never "disabled". CREDENTIAL WALL (measured live
+2026-08-27): the endpoint refuses ACCOUNT-OWNED API tokens on both
+reads and writes with 401 code 1039 "malformed actor email claim" --
+managing this fold needs a user-actor credential (a user-owned token
+or API key + email).
 
 ### spec.zoneCertificates.zoneId
 

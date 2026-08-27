@@ -199,6 +199,15 @@ func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) 
 // live 2026-08-25). Both engines accept either form as a plain bearer
 // credential, so the harness must too: try the user endpoint first, fall
 // back to the account endpoint, and fail only when both reject.
+//
+// A verified account-owned token is still NOT universal: a small class of
+// endpoints demands a USER-ACTOR credential and refuses account-owned tokens
+// on every verb with 401 code 1039 "malformed actor email claim" (first
+// measured live 2026-08-27 on zones/{zone}/devices/policy/certificates --
+// GET and PATCH alike, on active and pending zones). An upstream acceptance
+// test that blanks CLOUDFLARE_API_TOKEN is the tell for this class; a lane
+// arm that hits 1039 is credential-blocked, not broken, and its honest
+// outcome is an offline plan arm whose unblock is a user-actor credential.
 func (c *Client) VerifyConnectivity(ctx context.Context) error {
 	resp, userBody, err := c.get(ctx, "user/tokens/verify")
 	if err != nil {
