@@ -51,12 +51,26 @@ type CloudflareZeroTrustOrganizationSpec struct {
 	// account_id. NOTE: a zone-scoped organization cannot be adopted by
 	// import -- the provider's importer is account-only.
 	ZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
-	// The team domain users sign in through, WITHOUT the .cloudflareaccess.com
-	// suffix (e.g. "acme" serves acme.cloudflareaccess.com). This is the
-	// closest thing the organization has to an identity: the upsert mutates
-	// whatever organization exists, keyed only by the account or zone.
+	// The FULL team domain users sign in through, including the
+	// .cloudflareaccess.com suffix (e.g. "acme.cloudflareaccess.com" -- the
+	// form Cloudflare's API returns and the provider's own tests write).
+	// This is the closest thing the organization has to an identity: the
+	// upsert mutates whatever organization exists, keyed only by the account
+	// or zone.
+	//
+	// REQUIRED because Cloudflare requires it on EVERY write: the upsert is
+	// a full-body PUT, and omitting auth_domain is rejected with API error
+	// 11004 "access.api.error.invalid_auth_domain" (live-measured). Declare
+	// your CURRENT team domain unless you deliberately intend to rename it
+	// -- a rename changes the login URL for every Access user.
 	AuthDomain string `protobuf:"bytes,3,opt,name=auth_domain,json=authDomain,proto3" json:"auth_domain,omitempty"`
 	// The organization's display name, shown on the Access login page.
+	//
+	// Declare it on any account whose organization already carries a name
+	// (live-measured): the API echoes the existing name on every read, so a
+	// manifest that omits this field sees a permanent "name -> null" re-plan
+	// -- the same declare-it-or-accept-drift class as other echoed optional
+	// fields on singleton upserts.
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// How long an Access session lasts before users re-authenticate, as a Go
 	// duration (e.g. "24h", "2h45m"; ns/us/ms/s/m/h units).
@@ -582,13 +596,13 @@ var File_catalog_cloudflare_cloudflarezerotrustorganization_v1alpha1_spec_proto 
 
 const file_catalog_cloudflare_cloudflarezerotrustorganization_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/cloudflare/cloudflarezerotrustorganization/v1alpha1/spec.proto\x12?dev.planton.cloudflare.cloudflarezerotrustorganization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x85\x11\n" +
+	"Fcatalog/cloudflare/cloudflarezerotrustorganization/v1alpha1/spec.proto\x12?dev.planton.cloudflare.cloudflarezerotrustorganization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8d\x11\n" +
 	"#CloudflareZeroTrustOrganizationSpec\x12\x96\x01\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tBw\xbaHt\xba\x01q\n" +
 	"\x10account_id.hex32\x12,account_id must be a 32-character hex string\x1a/this == '' || this.matches('^[0-9a-fA-F]{32}$')R\taccountId\x12l\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1f\n" +
-	"\vauth_domain\x18\x03 \x01(\tR\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12'\n" +
+	"\vauth_domain\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"authDomain\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12)\n" +
 	"\x10session_duration\x18\x05 \x01(\tR\x0fsessionDuration\x12;\n" +

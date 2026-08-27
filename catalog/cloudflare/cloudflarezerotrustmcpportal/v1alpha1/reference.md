@@ -98,6 +98,10 @@ The portal's identifier, chosen by you (a URL-friendly slug, e.g.
 The hostname the portal is served on. Mutable, unlike the MCP server's
 hostname -- moving a portal keeps its id and server rows.
 
+The hostname MUST belong to a domain the account serves (the portal is
+hosted by Cloudflare on your zone): a hostname on an unowned domain is
+rejected at create with API error 7012 "invalid_domain" (live-measured).
+
 - rule: {"required":true}
 
 ### spec.name
@@ -174,6 +178,12 @@ Per-prompt overrides applied for THIS portal, on top of the server's
 own overrides. Cloudflare refreshes only name and enabled from the API
 for these rows -- alias and description are write-only per portal.
 
+Cloudflare VALIDATES every override name against the server's
+actually-synced inventory: an override naming a prompt the server has
+not synced is rejected at write with API error 7001 (live-measured on
+tools; e.g. "Tool 'x' does not exist on server"). Overrides can only
+be declared after the server's background sync has succeeded.
+
 ### spec.servers[].updatedPrompts[].name
 
 `string` · required
@@ -210,7 +220,8 @@ default is enabled; set false to hide it.
 `[]CloudflareZeroTrustMcpPortalItemOverride`
 
 Per-tool overrides applied for THIS portal, on top of the server's own
-overrides. Same write-only behavior as updated_prompts.
+overrides. Same write-only behavior AND the same synced-inventory
+validation as updated_prompts.
 
 ### spec.servers[].updatedTools[].name
 

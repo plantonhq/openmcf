@@ -2,12 +2,25 @@ package module
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/pkg/errors"
 	cloudflarezerotrustgatewaysettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1"
 	"github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+// nonSlugCharacters matches everything a PAC-file slug may not carry; the
+// tofu module applies the identical substitution (cross-engine parity).
+var nonSlugCharacters = regexp.MustCompile(`[^A-Za-z0-9-]`)
+
+// slugFromName derives the deterministic PAC-file slug the modules send
+// when a row leaves slug unset (see the fan-out comment below for why an
+// omitted slug cannot be left to the server).
+func slugFromName(name string) string {
+	return strings.ToLower(nonSlugCharacters.ReplaceAllString(name, "-"))
+}
 
 // gatewaySettings applies the three folded Gateway surfaces:
 //
@@ -56,12 +69,23 @@ func gatewaySettings(
 	}
 
 	// PAC files fan out one provider resource per row, keyed by name so a
-	// row edit replaces only its own file.
+	// row edit replaces only its own file. The server-assigned file ids are
+	// collected keyed by that same name for the pacfile_ids stack output.
+	//
+	// The slug is ALWAYS sent, derived deterministically from the row's
+	// name when unset: an omitted slug gets a RANDOM server-generated one
+	// that the refresh echoes into state, and since slug is
+	// replace-forcing, every subsequent plan proposes destroying and
+	// recreating the file -- breaking its public URL (live-measured at
+	// provider v5.23.0). A deterministic name-derived slug keeps config and
+	// state equal forever.
+	pacfileIds := pulumi.StringMap{}
 	for _, pacFile := range spec.PacFiles {
 		pacArgs := &cloudflare.ZeroTrustGatewayPacfileArgs{
 			AccountId: pulumi.String(spec.AccountId),
 			Name:      pulumi.String(pacFile.Name),
 			Contents:  pulumi.String(pacFile.Contents),
+			Slug:      pulumi.String(slugFromName(pacFile.Name)),
 		}
 		if pacFile.Slug != "" {
 			pacArgs.Slug = pulumi.String(pacFile.Slug)
@@ -69,17 +93,20 @@ func gatewaySettings(
 		if pacFile.Description != "" {
 			pacArgs.Description = pulumi.String(pacFile.Description)
 		}
-		if _, err := cloudflare.NewZeroTrustGatewayPacfile(
+		createdPacFile, err := cloudflare.NewZeroTrustGatewayPacfile(
 			ctx,
 			fmt.Sprintf("pac_file_%s", pacFile.Name),
 			pacArgs,
 			pulumi.Provider(cloudflareProvider),
-		); err != nil {
+		)
+		if err != nil {
 			return errors.Wrapf(err, "failed to create pac file %s", pacFile.Name)
 		}
+		pacfileIds[pacFile.Name] = createdPacFile.ID()
 	}
 
 	ctx.Export(OpAccountId, pulumi.String(spec.AccountId))
+	ctx.Export(OpPacfileIds, pacfileIds)
 
 	return nil
 }

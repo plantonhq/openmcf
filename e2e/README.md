@@ -1072,6 +1072,55 @@ friends). Contrast with the decode-over-prior-state class above: that one is
 import-only and tolerable by declaration; this one breaks the NORMAL
 lifecycle and no catalog declaration can absorb an idempotency failure.
 
+### Computed-optional attributes with RAW model types: the unknown-crash class (module-fixable)
+
+A sibling of the perpetual re-plan class, but FIXABLE module-side. Some
+auto-generated resources declare an attribute `Optional+Computed` with a
+customfield type in the SCHEMA while the Go MODEL types it as a raw pointer
+or raw slice that cannot hold "unknown". A config that leaves the attribute
+null plans it as unknown (computed-null promotion), and the apply CRASHES
+decoding the plan into the model: `Value Conversion Error ... Received
+unknown value, however the target type cannot handle unknown values`. The
+offline bar never sees it -- plan alone doesn't run the conversion. The
+remedy is a module-side coalesce to the attribute's DOCUMENTED server
+default so the planned value stays known (an explicit `{mode = "inherit"}`
+where omission means inherit; an empty list where absence means
+no-restriction) -- semantics unchanged, crash unreachable. Diagnose by
+reading the resource's model.go: any `computed_optional` field typed
+`*Model` / `*[]*Model` instead of `customfield.NestedObject[...]` is a
+carrier. First measured user (live 2026-08-26, unfixed through v5.24.0 and
+provider main): `cloudflare_zero_trust_dns_location` (`max_ttl`, top-level
+`networks`, and every endpoint `networks`).
+
+### Empty lists the API drops on read: [] beats null, real rows beat both
+
+The companion trap to the unknown-crash class: after coalescing a null list
+to `[]` to keep the plan known, the refresh may STILL drift when the API
+omits empty lists from its read answer -- state refreshes the list to null,
+config re-asserts `[]`, and the re-plan proposes a cosmetic `+ networks =
+[]` forever. No module change can fix a refresh decode. The hierarchy: a
+scenario (or customer config) that declares REAL rows is drift-free and
+proves more; `[]` is the correct module behavior anyway (a cosmetic no-op
+diff beats an apply crash); document the permanent-diff wall on the spec
+field and GUIDE so nobody reads the diff as their own bug. First measured
+user (live 2026-08-26): the DNS location's endpoint `networks` lists.
+
+### Singletons by ACCRETION: the first object becomes an undeletable account default
+
+Some Cloudflare families auto-promote the first object ever created on an
+account to a mandatory account default that the API then refuses to delete
+(error 1217) or demote in place (error 1216) -- the default can only be
+MOVED by promoting another object, so the account can never return to zero
+objects. A lane running on a previously-empty account trips this on
+whichever scenario runs first: its destroy fails, and the "orphan" cannot
+be swept by any API call. The honest pattern: park the default on ONE
+permanent, clearly-named placeholder object (created once, named for what
+it is, recorded), after which every run-scoped object creates as
+non-default and lifecycles cleanly. Never point the placeholder dance at a
+customer account without teaching it in the kind's GUIDE -- customers hit
+the same wall on their first object. First measured user (live 2026-08-26):
+Gateway DNS locations (`gateway/locations`).
+
 ### Terraform outputs: never null-guard a partially-sensitive object
 
 An output expression like `x.scim_config != null ? x.scim_config.base_url :

@@ -17,8 +17,19 @@ spec:
   # CLOUDFLARE_API_TOKEN): a 403 on the PUT under our token credential is
   # the expected ambush, and a recorded deferral is the honest outcome.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-27: login-design on both engines, full lifecycle,
+  # with the two-resource blind round-trip (organization + key
+  # configuration, both bare account-id imports) consuming exactly the two
+  # declared deny_unmatched_requests* tolerances. Three walls measured and
+  # taught: (1) auth_domain is REQUIRED on every write (11004
+  # invalid_auth_domain when omitted) -- the spec now requires it and the
+  # scenario sends the account's real team domain UNCHANGED via
+  # PLANTON_E2E_CLOUDFLARE_TEAM_DOMAIN; (2) the org's display name echoes
+  # on read, so an omitted name re-plans "name -> null" forever -- the
+  # scenario declares a run-scoped name; (3) capture-and-restore held: org
+  # values, login design, session duration, and the 42-day key-rotation
+  # cadence all verified restored byte-for-byte after the lanes. The
+  # API-token 403 ambush never fired.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

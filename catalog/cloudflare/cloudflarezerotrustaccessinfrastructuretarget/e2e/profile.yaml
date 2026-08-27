@@ -14,8 +14,11 @@ spec:
   # the scenario-prerequisite channel -- collision-free by construction.
   tier: 1
   cost_class: cheap_ephemeral
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: minimal (default vnet) + isolated-vnet (own
+  # vnet fixture) on both engines, full lifecycle, ALL FIRST-RUN -- the
+  # provider's first real-world exercise of this resource anywhere ran
+  # clean, and both blind import round-trips passed at ZERO declared
+  # tolerances. Deleted targets 404 honestly.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -20,7 +20,7 @@ The provider has a recorded defect: `block_page.mode`, `include_context`, `suppr
 
 ## PAC slugs are URLs
 
-A PAC file's `slug` is baked into its public download URL and forces replacement on change -- every device configured with the old URL breaks. Set the slug deliberately on day one (or accept the name-derived one) and never touch it.
+A PAC file's `slug` is baked into its public download URL and forces replacement on change -- every device configured with the old URL breaks. Set the slug deliberately on day one (or accept the name-derived one the modules generate) and never touch it. The modules never leave the slug to Cloudflare: a server-generated slug is random, and at provider v5.23.0 that combination makes every subsequent plan propose recreating the file (live-measured) -- so an omitted slug becomes the file's name, lowercased with non-alphanumerics as hyphens.
 
 ## Pairs well with
 

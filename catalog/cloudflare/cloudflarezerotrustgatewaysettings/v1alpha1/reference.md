@@ -582,8 +582,12 @@ The PAC file body (JavaScript with a FindProxyForURL function).
 
 The URL-friendly slug the file is served under. IMMUTABLE: the slug is
 baked into the file's public URL, so changing it replaces the file
-(clients configured with the old URL break). Omit to let Cloudflare
-derive it from the name.
+(clients configured with the old URL break). When omitted, the modules
+derive a deterministic slug from the file's name (lowercased,
+non-alphanumerics become hyphens) -- NOT the server's choice, because a
+server-generated slug is RANDOM and, being replace-forcing, would make
+every subsequent plan propose recreating the file and breaking its URL
+(live-measured at provider v5.23.0).
 
 ### spec.pacFiles[].description
 
@@ -598,6 +602,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareZeroTr
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.account_id` | `string` | The Cloudflare account the configuration was applied to (the singleton's identity -- the harness and import recipes key on it). |
+| `status.outputs.pacfile_ids` | `map<string, string>` | Cloudflare-assigned ids of the PAC files, keyed by each file's name (the same key the modules' per-row resources use). PAC-file ids are server-assigned at creation, so import recipes derive per-file import IDs ("{account_id}/{pacfile_id}") from this map instead of sending adopters to list the API collection. |
 
 ## See Also
 

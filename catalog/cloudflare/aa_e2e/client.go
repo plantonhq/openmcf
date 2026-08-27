@@ -71,13 +71,16 @@ type cloudflareEnvelope struct {
 //   - 7003 "could not route to that endpoint" (many collection endpoints)
 //   - 1001 "Invalid zone identifier" (zones/{zone_id} after the zone is
 //     deleted -- measured live on the zone destroy verification)
+//   - 1103 "Location ID is invalid." (gateway/locations/{id} after the
+//     location is deleted -- measured live on the DNS location destroy
+//     verification)
 func unknownObjectError(body []byte) bool {
 	var envelope cloudflareEnvelope
 	if json.Unmarshal(body, &envelope) != nil {
 		return false
 	}
 	for _, e := range envelope.Errors {
-		if e.Code == 7003 || e.Code == 1001 {
+		if e.Code == 7003 || e.Code == 1001 || e.Code == 1103 {
 			return true
 		}
 	}

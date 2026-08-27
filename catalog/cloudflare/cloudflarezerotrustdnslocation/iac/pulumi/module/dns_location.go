@@ -8,13 +8,23 @@ import (
 )
 
 // dnsLocation creates the Gateway DNS location. A plain CRUD resource (real
-// create/update/delete; only the account forces replacement). Two provider
+// create/update/delete; only the account forces replacement). Provider
 // behaviors the mapping honors:
 //   - Update is a full replace at the API: the spec's max_ttl is sent
 //     whenever declared, and its omission genuinely resets the behavior to
 //     inherit (documented on the spec field).
 //   - dns_destination_ips_id is only sent when set -- unset lets Cloudflare
 //     auto-assign the shared IPv4 destination pair.
+//   - max_ttl and every networks list are ALWAYS sent as known values
+//     (max_ttl coalesces to the documented server default {mode: inherit};
+//     an absent networks list is sent empty). At provider v5.23.0/v5.24.0
+//     the Go model types these computed-optional attributes as raw pointers
+//     that cannot hold "unknown", so leaving any of them null plans it as
+//     unknown and CRASHES the apply-time conversion ("Value Conversion
+//     Error ... target type cannot handle unknown values"; measured live
+//     2026-08-26 through this bridged provider too, unfixed on provider
+//     main). The explicit server defaults keep the planned value known and
+//     change nothing semantically.
 func dnsLocation(
 	ctx *pulumi.Context,
 	locals *Locals,
@@ -41,25 +51,24 @@ func dnsLocation(
 		args.Endpoints = buildEndpoints(spec.Endpoints)
 	}
 
-	if len(spec.Networks) > 0 {
-		networks := cloudflare.ZeroTrustDnsLocationNetworkArray{}
-		for _, network := range spec.Networks {
-			networks = append(networks, cloudflare.ZeroTrustDnsLocationNetworkArgs{
-				Network: pulumi.String(network.Network),
-			})
-		}
-		args.Networks = networks
+	networks := cloudflare.ZeroTrustDnsLocationNetworkArray{}
+	for _, network := range spec.Networks {
+		networks = append(networks, cloudflare.ZeroTrustDnsLocationNetworkArgs{
+			Network: pulumi.String(network.Network),
+		})
 	}
+	args.Networks = networks
 
+	maxTtl := cloudflare.ZeroTrustDnsLocationMaxTtlArgs{
+		Mode: pulumi.String("inherit"),
+	}
 	if spec.MaxTtl != nil {
-		maxTtl := cloudflare.ZeroTrustDnsLocationMaxTtlArgs{
-			Mode: pulumi.String(spec.MaxTtl.Mode),
-		}
+		maxTtl.Mode = pulumi.String(spec.MaxTtl.Mode)
 		if spec.MaxTtl.TtlSecs != nil {
 			maxTtl.TtlSecs = pulumi.IntPtr(int(spec.MaxTtl.GetTtlSecs()))
 		}
-		args.MaxTtl = maxTtl
 	}
+	args.MaxTtl = maxTtl
 
 	createdLocation, err := cloudflare.NewZeroTrustDnsLocation(
 		ctx,
@@ -96,29 +105,25 @@ func buildEndpoints(endpoints *cloudflarezerotrustdnslocationv1alpha1.Cloudflare
 	if endpoints.Doh.RequireToken != nil {
 		doh.RequireToken = pulumi.BoolPtr(endpoints.Doh.GetRequireToken())
 	}
-	if len(endpoints.Doh.Networks) > 0 {
-		dohNetworks := cloudflare.ZeroTrustDnsLocationEndpointsDohNetworkArray{}
-		for _, network := range networkRows(endpoints.Doh.Networks) {
-			dohNetworks = append(dohNetworks, cloudflare.ZeroTrustDnsLocationEndpointsDohNetworkArgs{
-				Network: pulumi.String(network),
-			})
-		}
-		doh.Networks = dohNetworks
+	dohNetworks := cloudflare.ZeroTrustDnsLocationEndpointsDohNetworkArray{}
+	for _, network := range networkRows(endpoints.Doh.Networks) {
+		dohNetworks = append(dohNetworks, cloudflare.ZeroTrustDnsLocationEndpointsDohNetworkArgs{
+			Network: pulumi.String(network),
+		})
 	}
+	doh.Networks = dohNetworks
 
 	dot := cloudflare.ZeroTrustDnsLocationEndpointsDotArgs{}
 	if endpoints.Dot.Enabled != nil {
 		dot.Enabled = pulumi.BoolPtr(endpoints.Dot.GetEnabled())
 	}
-	if len(endpoints.Dot.Networks) > 0 {
-		dotNetworks := cloudflare.ZeroTrustDnsLocationEndpointsDotNetworkArray{}
-		for _, network := range networkRows(endpoints.Dot.Networks) {
-			dotNetworks = append(dotNetworks, cloudflare.ZeroTrustDnsLocationEndpointsDotNetworkArgs{
-				Network: pulumi.String(network),
-			})
-		}
-		dot.Networks = dotNetworks
+	dotNetworks := cloudflare.ZeroTrustDnsLocationEndpointsDotNetworkArray{}
+	for _, network := range networkRows(endpoints.Dot.Networks) {
+		dotNetworks = append(dotNetworks, cloudflare.ZeroTrustDnsLocationEndpointsDotNetworkArgs{
+			Network: pulumi.String(network),
+		})
 	}
+	dot.Networks = dotNetworks
 
 	ipv4 := cloudflare.ZeroTrustDnsLocationEndpointsIpv4Args{}
 	if endpoints.Ipv4.Enabled != nil {
@@ -129,15 +134,13 @@ func buildEndpoints(endpoints *cloudflarezerotrustdnslocationv1alpha1.Cloudflare
 	if endpoints.Ipv6.Enabled != nil {
 		ipv6.Enabled = pulumi.BoolPtr(endpoints.Ipv6.GetEnabled())
 	}
-	if len(endpoints.Ipv6.Networks) > 0 {
-		ipv6Networks := cloudflare.ZeroTrustDnsLocationEndpointsIpv6NetworkArray{}
-		for _, network := range networkRows(endpoints.Ipv6.Networks) {
-			ipv6Networks = append(ipv6Networks, cloudflare.ZeroTrustDnsLocationEndpointsIpv6NetworkArgs{
-				Network: pulumi.String(network),
-			})
-		}
-		ipv6.Networks = ipv6Networks
+	ipv6Networks := cloudflare.ZeroTrustDnsLocationEndpointsIpv6NetworkArray{}
+	for _, network := range networkRows(endpoints.Ipv6.Networks) {
+		ipv6Networks = append(ipv6Networks, cloudflare.ZeroTrustDnsLocationEndpointsIpv6NetworkArgs{
+			Network: pulumi.String(network),
+		})
 	}
+	ipv6.Networks = ipv6Networks
 
 	return cloudflare.ZeroTrustDnsLocationEndpointsArgs{
 		Doh:  doh,

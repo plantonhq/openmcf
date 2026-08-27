@@ -12,7 +12,10 @@ resource "cloudflare_zero_trust_organization" "main" {
   account_id = var.spec.account_id != "" ? var.spec.account_id : null
   zone_id    = try(var.spec.zone_id, "") != "" ? var.spec.zone_id : null
 
-  auth_domain                        = try(var.spec.auth_domain, "") != "" ? var.spec.auth_domain : null
+  # Always sent: Cloudflare rejects any organization write without
+  # auth_domain (API error 11004 invalid_auth_domain, live-measured) --
+  # the spec requires it.
+  auth_domain                        = var.spec.auth_domain
   name                               = try(var.spec.name, "") != "" ? var.spec.name : null
   session_duration                   = try(var.spec.session_duration, "") != "" ? var.spec.session_duration : null
   warp_auth_session_duration         = try(var.spec.warp_auth_session_duration, "") != "" ? var.spec.warp_auth_session_duration : null

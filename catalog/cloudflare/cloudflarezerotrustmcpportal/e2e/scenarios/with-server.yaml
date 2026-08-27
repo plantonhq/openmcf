@@ -1,7 +1,19 @@
 # With-server scenario: publishes a scenario-declared MCP server fixture
 # through the portal (a portal does not REQUIRE servers, so the edge is
-# per-scenario). Proves the servers[].server_id FK live, plus a per-portal
-# tool override.
+# per-scenario). Proves the servers[].server_id FK and on_behalf live.
+#
+# The hostname sits on the operator-sanctioned ACTIVE zone (env-gated on
+# PLANTON_E2E_CLOUDFLARE_ZONE_NAME, honest skip when unset): portal
+# hostnames must belong to a domain the account serves -- an unowned domain
+# is rejected with 400 code 7012 "invalid_domain" (measured live
+# 2026-08-26; the minimal scenario carries the full finding).
+#
+# NO updated_tools row DELIBERATELY: Cloudflare validates every tool
+# override against the server's actually-synced tool inventory (measured
+# live 2026-08-26: 400 code 7001 "Tool 'example_tool' does not exist on
+# server"), and a throwaway fixture server never syncs any tools. The
+# tool-override shape is plan-proven offline by e2e/manifest.yaml; proving
+# it live needs a real, reachable MCP server whose sync succeeds.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustMcpPortal
 metadata:
@@ -15,12 +27,13 @@ metadata:
   annotations:
     planton.dev/e2e: "true"
     planton.dev/e2e-prerequisites: CloudflareZeroTrustMcpServer
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_NAME
   tags:
     - planton-e2e
 spec:
   account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
   portal_id: e2e-portal-srv-${E2E_RUN_ID}
-  hostname: mcp-e2e-srv-${E2E_RUN_ID}.example.com
+  hostname: mcp-e2e-srv-${E2E_RUN_ID}.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}
   name: Planton E2E Portal with server ${E2E_RUN_ID}
   servers:
     - server_id:
@@ -29,6 +42,3 @@ spec:
           name: planton-oss-e2e-cloudflarezerotrustmcpserver-prereq
           fieldPath: status.outputs.server_id
       on_behalf: true
-      updated_tools:
-        - name: example_tool
-          enabled: false

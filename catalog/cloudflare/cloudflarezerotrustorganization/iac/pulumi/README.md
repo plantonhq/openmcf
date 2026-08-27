@@ -21,7 +21,7 @@ Mirrors the Terraform module's contract exactly. Both folded resources are singl
 
 | Name | Description |
 |------|-------------|
-| `auth_domain` | The team domain (without `.cloudflareaccess.com`) |
+| `auth_domain` | The full team domain (including `.cloudflareaccess.com`) |
 | `account_id` | The account the organization was applied to (empty for zone scope) |
 
 ## Provider Version

@@ -25,7 +25,7 @@ metadata:
   env: prod
 spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  authDomain: acme
+  authDomain: acme.cloudflareaccess.com
   name: Acme Zero Trust
   sessionDuration: 24h
 ```
@@ -47,7 +47,7 @@ planton apply -f organization.yaml
 
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
-| `authDomain` | string | Team domain without `.cloudflareaccess.com`. | Changing it breaks every Access login -- see GUIDE. |
+| `authDomain` | string | FULL team domain including `.cloudflareaccess.com`; required on every write. | Changing it breaks every Access login -- see GUIDE. |
 | `name` | string | Display name on the login page. | |
 | `sessionDuration` | string | Access session lifetime. | Go duration (e.g. `24h`, `2h45m`). |
 | `warpAuthSessionDuration` | string | WARP session lifetime. | Minutes/hours only. |

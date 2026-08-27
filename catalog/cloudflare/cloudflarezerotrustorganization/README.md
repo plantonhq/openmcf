@@ -39,7 +39,7 @@ Two hard provider facts shape this resource: it is a SINGLETON UPSERT (Cloudflar
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `auth_domain` | string | The team domain, without `.cloudflareaccess.com`. |
+| `auth_domain` | string | The FULL team domain, including `.cloudflareaccess.com` (required on every write). |
 | `name` | string | The display name on the login page. |
 | `session_duration` | string | Access session lifetime (Go duration, e.g. `24h`). |
 | `login_design` | object | Colors, logo, header/footer of the login page. |
@@ -63,7 +63,7 @@ metadata:
   name: acme-zero-trust-org
 spec:
   account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  auth_domain: acme
+  auth_domain: acme.cloudflareaccess.com
   name: Acme Zero Trust
   session_duration: 24h
   login_design:

@@ -44,6 +44,10 @@ type CloudflareZeroTrustMcpPortalSpec struct {
 	PortalId string `protobuf:"bytes,2,opt,name=portal_id,json=portalId,proto3" json:"portal_id,omitempty"`
 	// The hostname the portal is served on. Mutable, unlike the MCP server's
 	// hostname -- moving a portal keeps its id and server rows.
+	//
+	// The hostname MUST belong to a domain the account serves (the portal is
+	// hosted by Cloudflare on your zone): a hostname on an unowned domain is
+	// rejected at create with API error 7012 "invalid_domain" (live-measured).
 	Hostname string `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// The portal's display name, shown to users.
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
@@ -166,9 +170,16 @@ type CloudflareZeroTrustMcpPortalServer struct {
 	// Per-prompt overrides applied for THIS portal, on top of the server's
 	// own overrides. Cloudflare refreshes only name and enabled from the API
 	// for these rows -- alias and description are write-only per portal.
+	//
+	// Cloudflare VALIDATES every override name against the server's
+	// actually-synced inventory: an override naming a prompt the server has
+	// not synced is rejected at write with API error 7001 (live-measured on
+	// tools; e.g. "Tool 'x' does not exist on server"). Overrides can only
+	// be declared after the server's background sync has succeeded.
 	UpdatedPrompts []*CloudflareZeroTrustMcpPortalItemOverride `protobuf:"bytes,4,rep,name=updated_prompts,json=updatedPrompts,proto3" json:"updated_prompts,omitempty"`
 	// Per-tool overrides applied for THIS portal, on top of the server's own
-	// overrides. Same write-only behavior as updated_prompts.
+	// overrides. Same write-only behavior AND the same synced-inventory
+	// validation as updated_prompts.
 	UpdatedTools  []*CloudflareZeroTrustMcpPortalItemOverride `protobuf:"bytes,5,rep,name=updated_tools,json=updatedTools,proto3" json:"updated_tools,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

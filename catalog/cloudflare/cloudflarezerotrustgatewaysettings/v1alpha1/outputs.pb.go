@@ -27,7 +27,13 @@ type CloudflareZeroTrustGatewaySettingsStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The Cloudflare account the configuration was applied to (the
 	// singleton's identity -- the harness and import recipes key on it).
-	AccountId     string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// Cloudflare-assigned ids of the PAC files, keyed by each file's name
+	// (the same key the modules' per-row resources use). PAC-file ids are
+	// server-assigned at creation, so import recipes derive per-file import
+	// IDs ("{account_id}/{pacfile_id}") from this map instead of sending
+	// adopters to list the API collection.
+	PacfileIds    map[string]string `protobuf:"bytes,2,rep,name=pacfile_ids,json=pacfileIds,proto3" json:"pacfile_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,14 +75,26 @@ func (x *CloudflareZeroTrustGatewaySettingsStackOutputs) GetAccountId() string {
 	return ""
 }
 
+func (x *CloudflareZeroTrustGatewaySettingsStackOutputs) GetPacfileIds() map[string]string {
+	if x != nil {
+		return x.PacfileIds
+	}
+	return nil
+}
+
 var File_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Lcatalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1/outputs.proto\x12Bdev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1\"O\n" +
+	"Lcatalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1/outputs.proto\x12Bdev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1\"\xb5\x02\n" +
 	".CloudflareZeroTrustGatewaySettingsStackOutputs\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountIdB\x8c\x04\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12\xa4\x01\n" +
+	"\vpacfile_ids\x18\x02 \x03(\v2\x82\x01.dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1.CloudflareZeroTrustGatewaySettingsStackOutputs.PacfileIdsEntryR\n" +
+	"pacfileIds\x1a=\n" +
+	"\x0fPacfileIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x8c\x04\n" +
 	"Fcom.dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1B\fOutputsProtoP\x01Z\x86\x01github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1;cloudflarezerotrustgatewaysettingsv1alpha1\xa2\x02\x04DPCC\xaa\x02BDev.Planton.Cloudflare.Cloudflarezerotrustgatewaysettings.V1alpha1\xca\x02BDev\\Planton\\Cloudflare\\Cloudflarezerotrustgatewaysettings\\V1alpha1\xe2\x02NDev\\Planton\\Cloudflare\\Cloudflarezerotrustgatewaysettings\\V1alpha1\\GPBMetadata\xea\x02FDev::Planton::Cloudflare::Cloudflarezerotrustgatewaysettings::V1alpha1b\x06proto3"
 
 var (
@@ -91,16 +109,18 @@ func file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs
 	return file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_goTypes = []any{
 	(*CloudflareZeroTrustGatewaySettingsStackOutputs)(nil), // 0: dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1.CloudflareZeroTrustGatewaySettingsStackOutputs
+	nil, // 1: dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1.CloudflareZeroTrustGatewaySettingsStackOutputs.PacfileIdsEntry
 }
 var file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1.CloudflareZeroTrustGatewaySettingsStackOutputs.pacfile_ids:type_name -> dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1.CloudflareZeroTrustGatewaySettingsStackOutputs.PacfileIdsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_init() }
@@ -114,7 +134,7 @@ func file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_rawDesc), len(file_catalog_cloudflare_cloudflarezerotrustgatewaysettings_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

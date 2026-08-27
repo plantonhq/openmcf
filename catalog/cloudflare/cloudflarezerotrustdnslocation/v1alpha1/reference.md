@@ -110,6 +110,15 @@ The location's name, shown in the dashboard and matched by policies.
 When true, this location is the account's default: traffic from
 unregistered sources is attributed to it.
 
+Two Cloudflare walls, both live-measured: the FIRST location created on
+an account is auto-promoted to default even when this field is unset;
+and the current default can neither be deleted (API error 1217) nor
+demoted in place (error 1216) -- the only way to move the default is
+setting client_default true on ANOTHER location. Consequence: an
+account's first DNS location is effectively permanent until a
+replacement default exists, and destroying a resource that holds the
+default FAILS until the default is transferred.
+
 ### spec.ecsSupport
 
 `bool` · optional (explicit presence)
@@ -160,7 +169,11 @@ anonymous resolvers pointed at the subdomain).
 `[]CloudflareZeroTrustDnsLocationNetwork`
 
 The source networks allowed to query this endpoint, as IPs or CIDRs.
-Empty allows any source.
+Empty allows any source -- but note that at Terraform provider
+v5.23.0/v5.24.0 a DECLARED endpoint with an empty network list re-plans
+a cosmetic in-place update forever (Cloudflare drops empty lists on
+read; live-measured): declare real networks for a drift-free plan, or
+accept the no-op diff.
 
 ### spec.endpoints.doh.networks[].network
 
@@ -189,7 +202,11 @@ Whether the endpoint accepts queries.
 `[]CloudflareZeroTrustDnsLocationNetwork`
 
 The source networks allowed to query this endpoint, as IPs or CIDRs.
-Empty allows any source.
+Empty allows any source -- but note that at Terraform provider
+v5.23.0/v5.24.0 a DECLARED endpoint with an empty network list re-plans
+a cosmetic in-place update forever (Cloudflare drops empty lists on
+read; live-measured): declare real networks for a drift-free plan, or
+accept the no-op diff.
 
 ### spec.endpoints.dot.networks[].network
 
@@ -234,7 +251,11 @@ Whether the endpoint accepts queries.
 `[]CloudflareZeroTrustDnsLocationNetwork`
 
 The source networks allowed to query this endpoint, as IPs or CIDRs.
-Empty allows any source.
+Empty allows any source -- but note that at Terraform provider
+v5.23.0/v5.24.0 a DECLARED endpoint with an empty network list re-plans
+a cosmetic in-place update forever (Cloudflare drops empty lists on
+read; live-measured): declare real networks for a drift-free plan, or
+accept the no-op diff.
 
 ### spec.endpoints.ipv6.networks[].network
 

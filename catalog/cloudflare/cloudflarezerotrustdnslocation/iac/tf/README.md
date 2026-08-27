@@ -16,6 +16,8 @@ outputs.tf    — location_id, doh_subdomain, ip
 
 A plain CRUD resource: real create/update/delete; only the account forces replacement. Update is a full replace at the API — `max_ttl` is sent whenever the spec declares it, and omitting it genuinely resets the TTL behavior to inherit. The endpoints tree declares ALL FOUR types at once (spec validation mirrors the provider schema). `dns_destination_ips_id` is only sent when set; unset lets Cloudflare auto-assign the shared IPv4 destination pair. Import as `{account_id}/{location_id}`.
 
+The module ALWAYS sends `max_ttl` and every networks list as known values — an unset `max_ttl` coalesces to the documented server default `{mode = "inherit"}` and absent lists are sent empty. At provider v5.23.0/v5.24.0 these computed-optional attributes carry raw Go model types that cannot hold "unknown", so a null in config crashes the apply-time conversion (measured live; unfixed on provider main). The coalesce changes nothing semantically. One residue no module can fix: a declared endpoint with an EMPTY networks list re-plans a cosmetic in-place update forever (Cloudflare drops empty lists on read) — declare real networks or accept the no-op diff.
+
 ## Outputs
 
 | Name | Description |

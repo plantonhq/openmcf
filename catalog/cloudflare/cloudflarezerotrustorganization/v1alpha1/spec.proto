@@ -57,13 +57,27 @@ message CloudflareZeroTrustOrganizationSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 
-  // The team domain users sign in through, WITHOUT the .cloudflareaccess.com
-  // suffix (e.g. "acme" serves acme.cloudflareaccess.com). This is the
-  // closest thing the organization has to an identity: the upsert mutates
-  // whatever organization exists, keyed only by the account or zone.
-  string auth_domain = 3;
+  // The FULL team domain users sign in through, including the
+  // .cloudflareaccess.com suffix (e.g. "acme.cloudflareaccess.com" -- the
+  // form Cloudflare's API returns and the provider's own tests write).
+  // This is the closest thing the organization has to an identity: the
+  // upsert mutates whatever organization exists, keyed only by the account
+  // or zone.
+  //
+  // REQUIRED because Cloudflare requires it on EVERY write: the upsert is
+  // a full-body PUT, and omitting auth_domain is rejected with API error
+  // 11004 "access.api.error.invalid_auth_domain" (live-measured). Declare
+  // your CURRENT team domain unless you deliberately intend to rename it
+  // -- a rename changes the login URL for every Access user.
+  string auth_domain = 3 [(buf.validate.field).required = true];
 
   // The organization's display name, shown on the Access login page.
+  //
+  // Declare it on any account whose organization already carries a name
+  // (live-measured): the API echoes the existing name on every read, so a
+  // manifest that omits this field sees a permanent "name -> null" re-plan
+  // -- the same declare-it-or-accept-drift class as other echoed optional
+  // fields on singleton upserts.
   string name = 4;
 
   // How long an Access session lasts before users re-authenticate, as a Go

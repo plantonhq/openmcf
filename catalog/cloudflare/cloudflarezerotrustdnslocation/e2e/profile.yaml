@@ -14,8 +14,20 @@ spec:
   # re-plan.
   tier: 1
   cost_class: cheap_ephemeral
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: minimal + endpoints-doh on both engines, full
+  # lifecycle, blind import round-trips at ZERO declared tolerances. Three
+  # walls measured and taught: (1) the provider's raw-typed
+  # computed-optional attributes (max_ttl, every networks list) CRASH the
+  # apply when null -- both modules coalesce to documented server defaults
+  # ({mode: inherit}, empty lists); (2) declared endpoints with EMPTY
+  # network lists re-plan forever (API drops empty lists on read) -- the
+  # endpoints-doh scenario declares real rows; (3) the account's FIRST
+  # location is auto-promoted to an undeletable, undemotable default
+  # (errors 1217/1216) -- the e2e account carries the permanent
+  # planton-default-location-placeholder so run-scoped locations lifecycle
+  # cleanly. Deleted locations answer GET 400 code 1103 (absence-classified
+  # in the harness client). The upstream test's API-token blanking did not
+  # reproduce -- no 403 anywhere.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

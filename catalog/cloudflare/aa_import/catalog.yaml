@@ -340,12 +340,20 @@ spec:
     # populates zone_id, so a zone-scoped organization cannot be imported
     # (its docs page claims no import support at all; the code ships an
     # account-scoped ImportState, exercised by the provider's own tests).
-    # The provider also records an import gap on deny_unmatched_requests
-    # (the API returns false where config carried null) -- re-assert from
-    # configuration after import.
+    # deny_unmatched_requests and its exempted-zone-names sibling are
+    # write-normalized: import bypasses the provider's false/null
+    # normalization, so the raw API answers (false; an empty list) land in
+    # state where config carried null (the boolean is in the provider's own
+    # import-test ignore list -- zero_trust_organization resource_test.go,
+    # ImportStateVerifyIgnore, v5.23.0; the list measured live 2026-08-27,
+    # same direction). The first post-adoption apply re-asserts both as
+    # no-ops.
     - terraform_type: cloudflare_zero_trust_organization
       pulumi_type: cloudflare:index/zeroTrustOrganization:ZeroTrustOrganization
       id_format: "{account_id}"
+      write_normalized_attributes:
+        - deny_unmatched_requests
+        - deny_unmatched_requests_exempted_zone_names
     # The key-rotation cadence is an account singleton like the org itself.
     - terraform_type: cloudflare_zero_trust_access_key_configuration
       pulumi_type: cloudflare:index/zeroTrustAccessKeyConfiguration:ZeroTrustAccessKeyConfiguration
@@ -357,9 +365,17 @@ spec:
     # The server's auth_credentials and client_secret are write-only and
     # never round-trip; last_synced moves server-side between apply and
     # import (the provider's own test ignores it on verify).
+    # The portal's servers rows are write-normalized: the GET returns server
+    # rows in a different shape than the config writes (measured live
+    # 2026-08-26: a blind import restores rows WITHOUT server_id and with
+    # the server-echoed default_disabled), so import cannot reconstruct the
+    # configured rows. The first post-adoption apply re-asserts them -- an
+    # idempotent replace of the portal's server list.
     - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_portal
       pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpPortal:ZeroTrustAccessAiControlsMcpPortal
       id_format: "{account_id}/{portal_id}"
+      write_normalized_attributes:
+        - servers
     - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_server
       pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpServer:ZeroTrustAccessAiControlsMcpServer
       id_format: "{account_id}/{server_id}"
