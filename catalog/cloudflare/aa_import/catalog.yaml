@@ -681,22 +681,40 @@ spec:
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
         certificate and private_key are write-only (never returned by the
-        API) -- the round-trip re-asserts them from configuration. status is
-        asynchronous (pending before active) and never round-trips cleanly.
+        API) AND RequiresReplace (v5.23.0 schema) -- a blind import lands
+        without them, the config supplies them, and the only reconcile plan
+        is a REPLACE, so the automated round-trip is scenario-skipped
+        (rotating certificate material is SUPPOSED to replace the upload;
+        ignore_changes must never paper over it). Adopt an existing upload
+        by importing, then accepting the one replace on the next apply --
+        Cloudflare serves the previous certificate until the replacement
+        deploys. Deployment status is asynchronous (pending before active).
     - terraform_type: cloudflare_mtls_certificate
       pulumi_type: cloudflare:index/mtlsCertificate:MtlsCertificate
       id_format: "{account_id}/{certificate_id}"
       notes: >-
         private_key is write-only (never returned by the API); CA uploads
         carry no key at all. Every argument is create-only, so a post-import
-        value change plans a replace, never an update.
+        value change plans a replace, never an update. Cloudflare
+        canonicalizes the stored PEM to end with exactly one trailing newline
+        and echoes that form on every read (measured 2026-08-28), and the
+        store is content-addressed (uploading identical content returns the
+        existing certificate id) -- the modules canonicalize certificates the
+        same way before sending, so imports round-trip at zero tolerance;
+        hand-written configs adopting an import must carry the trailing
+        newline or face a never-converging update.
     - terraform_type: cloudflare_authenticated_origin_pulls
       pulumi_type: cloudflare:index/authenticatedOriginPulls:AuthenticatedOriginPulls
       id_format: "{zone_id}/{hostname}"
+      write_normalized_attributes:
+        - config
       notes: >-
-        The config list never survives import (no_refresh) even though it is
-        Required -- re-assert the association row from configuration; the
-        write is idempotent for identical values.
+        The config list never survives import (no_refresh at v5.23.0) even
+        though it is Required -- import restores nothing for it and the
+        post-import plan re-asserts the configured row (declared above; the
+        round-trip oracle keys on the machine field, measured live
+        2026-08-28). Safe, because the write is an idempotent upsert for
+        identical values.
     - terraform_type: cloudflare_authenticated_origin_pulls_settings
       pulumi_type: cloudflare:index/authenticatedOriginPullsSettings:AuthenticatedOriginPullsSettings
       id_format: "{zone_id}"
@@ -704,18 +722,28 @@ spec:
       pulumi_type: cloudflare:index/authenticatedOriginPullsCertificate:AuthenticatedOriginPullsCertificate
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
-        certificate and private_key are write-only -- the round-trip
-        re-asserts them from configuration. Deletion is asynchronous
-        (pending_deletion/deleted statuses answer 200 before the record
-        goes).
+        certificate and private_key are write-only, and this ZONE-scoped
+        surface ships an EMPTY provider Update whose private_key does not
+        force replacement (measured defect at v5.23.0) -- a post-import
+        re-assert of the key silently no-ops, so never adopt this surface
+        expecting the write to converge; replace the whole upload instead
+        (key and certificate always rotate together). Deletion is
+        asynchronous (pending_deletion/deleted statuses answer 200 before
+        the record goes).
     - terraform_type: cloudflare_authenticated_origin_pulls_hostname_certificate
       pulumi_type: cloudflare:index/authenticatedOriginPullsHostnameCertificate:AuthenticatedOriginPullsHostnameCertificate
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
-        certificate and private_key are write-only -- the round-trip
-        re-asserts them from configuration. Deletion is asynchronous
-        (pending_deletion/deleted statuses answer 200 before the record
-        goes).
+        certificate and private_key are write-only AND RequiresReplace
+        (v5.23.0 schema) -- a blind import lands without them, the config
+        supplies them, and the only reconcile plan is a REPLACE, so the
+        automated round-trip is scenario-skipped (rotating key material is
+        SUPPOSED to replace the upload; ignore_changes must never paper over
+        it, and key and certificate must always rotate together -- the
+        zone-scoped surface silently ignores key-only changes). Adopt an
+        existing upload by importing, then accepting the one replace on the
+        next apply. Deletion is asynchronous (pending_deletion/deleted
+        statuses answer 200 before the record goes).
     # --- Zone security ------------------------------------------------------------
     # Access rules are dual-scope: the documented import ID carries a literal
     # "accounts/" or "zones/" prefix. Live scenarios are account-scoped.

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -94,11 +95,20 @@ func ExpandManifestTokens(manifestPath, runID, scenario string) (string, error) 
 
 	if hasEnvTokens {
 		var missing []string
+		multiline := map[string]string{}
 		expanded = envTokenPattern.ReplaceAllStringFunc(expanded, func(token string) string {
 			name := envTokenPattern.FindStringSubmatch(token)[1]
 			value := os.Getenv(name)
 			if value == "" {
 				missing = append(missing, name)
+			}
+			// A multi-line value (certificate/key PEM material) cannot be
+			// spliced as plain text -- its second line would land outside
+			// the field's YAML scalar and corrupt the document. Leave the
+			// token for the position-aware pass below.
+			if strings.Contains(value, "\n") {
+				multiline[name] = value
+				return token
 			}
 			return value
 		})
@@ -106,6 +116,12 @@ func ExpandManifestTokens(manifestPath, runID, scenario string) (string, error) 
 			return "", errors.Errorf(
 				"manifest %s uses environment tokens whose variables are unset: %s (exported by the real-cluster batch bootstrap)",
 				manifestPath, strings.Join(missing, ", "))
+		}
+		for name, value := range multiline {
+			expanded, err = expandMultilineEnvToken(expanded, name, value)
+			if err != nil {
+				return "", errors.Wrapf(err, "manifest %s", manifestPath)
+			}
 		}
 		// A residual ${E2E_ENV: token means the name fell outside the
 		// allowed prefix or its syntax is malformed — never deploy it as
@@ -136,6 +152,37 @@ func ExpandManifestTokens(manifestPath, runID, scenario string) (string, error) 
 		return "", errors.Wrap(err, "failed to write expanded manifest")
 	}
 	return tmpPath, nil
+}
+
+// expandMultilineEnvToken substitutes one env token whose value spans multiple
+// lines (PEM certificates and keys are the motivating class). Plain text
+// splicing would corrupt the YAML document -- every line after the first
+// would sit outside the field's scalar -- so a multi-line value is rendered
+// as a double-quoted single-line YAML scalar, and ONLY when the token
+// occupies a whole mapping value ("field: ${E2E_ENV:...}"). Any other
+// placement (mid-string, block scalar, list item) has no safe mechanical
+// rendering and fails loudly instead of writing an unparseable manifest.
+func expandMultilineEnvToken(expanded, name, value string) (string, error) {
+	token := "${E2E_ENV:" + name + "}"
+	// strconv.Quote emits \n, \", \\ and \t escapes -- the exact subset YAML
+	// double-quoted scalars share with Go string literals. Values here are
+	// printable ASCII plus newlines (PEM), so no Go-only escape form (\xNN)
+	// is ever produced for them.
+	quoted := strconv.Quote(value)
+	wholeValue := regexp.MustCompile(`^(\s*[^:#\s][^:]*:\s*)` + regexp.QuoteMeta(token) + `\s*$`)
+	lines := strings.Split(expanded, "\n")
+	for i, line := range lines {
+		if m := wholeValue.FindStringSubmatch(line); m != nil {
+			lines[i] = m[1] + quoted
+		}
+	}
+	rejoined := strings.Join(lines, "\n")
+	if strings.Contains(rejoined, token) {
+		return "", errors.Errorf(
+			"environment token %s carries a multi-line value, which is only supported when the token is a whole mapping value (\"field: %s\")",
+			token, token)
+	}
+	return rejoined, nil
 }
 
 // ScenarioSlug derives the ScenarioToken expansion from a scenario manifest

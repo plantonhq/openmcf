@@ -25,7 +25,6 @@ func certificate(
 
 	var certificateId pulumi.StringOutput
 	var expiresOn pulumi.StringOutput
-	var status pulumi.StringOutput
 
 	if isZoneScope {
 		createdCertificate, err := cloudflare.NewAuthenticatedOriginPullsCertificate(
@@ -43,7 +42,6 @@ func certificate(
 		}
 		certificateId = createdCertificate.ID().ToStringOutput()
 		expiresOn = createdCertificate.ExpiresOn
-		status = createdCertificate.Status
 	} else {
 		createdCertificate, err := cloudflare.NewAuthenticatedOriginPullsHostnameCertificate(
 			ctx,
@@ -60,13 +58,15 @@ func certificate(
 		}
 		certificateId = createdCertificate.ID().ToStringOutput()
 		expiresOn = createdCertificate.ExpiresOn
-		status = createdCertificate.Status
 	}
 
 	ctx.Export(OpCertificateId, certificateId)
 	ctx.Export(OpZoneId, pulumi.String(spec.ZoneId.GetValue()))
 	ctx.Export(OpExpiresOn, expiresOn)
-	ctx.Export(OpStatus, status)
+	// status is deliberately NOT exported: deployment is asynchronous
+	// (pending_deployment -> active seconds after create), so a
+	// point-in-time phase flips on the first refresh after the transition
+	// and re-plans forever (measured live 2026-08-28).
 
 	return nil
 }

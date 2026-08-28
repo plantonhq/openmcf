@@ -49,7 +49,8 @@ The scope decides the blast radius: a `zone` upload replaces Cloudflare's shared
 | `certificate_id` | The uploaded certificate's ID -- what per-hostname associations reference |
 | `zone_id` | The zone the certificate belongs to |
 | `expires_on` | When the certificate expires (RFC3339) |
-| `status` | Deployment status (deployment and deletion are asynchronous) |
+
+Deployment status is deliberately not a stack output: deployment and deletion are asynchronous (pending_deployment to active seconds after create), so a point-in-time phase would flip on the first refresh and re-plan forever. Read it from the Cloudflare API or dashboard.
 
 ## Example Manifest
 

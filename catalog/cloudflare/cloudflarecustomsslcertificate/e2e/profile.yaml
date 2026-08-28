@@ -7,19 +7,39 @@ spec:
   # prerequisite, resolves zone_id, uploads the env-supplied certificate,
   # verifies via the zone's custom_certificates API, destroys (real delete).
   # Watch items for the proving session: (a) THE PLAN GATE -- custom
-  # certificates are a Business/Enterprise zone feature; on a free fixture
-  # zone the create 402/403s, which is the entitlement deferral class, not a
-  # module bug; (b) THE TRUST GATE -- Cloudflare rejects certificates not
-  # issued by a CA on its trust list, so the env-supplied pair must be a real
-  # issued certificate covering the run zone's hostnames (self-signed will
-  # not do); without the env vars the lane skips honestly; (c) deployment is
-  # ASYNC -- status may read pending before active, and the policy field has
-  # a request/response asymmetry (sent as policy, read as
-  # policy_restrictions) the provider normalizes; a non-empty re-plan on
-  # policy is upstream's SECENG-12729 class, not ours.
+  # certificates are a Business/Enterprise zone feature; on a free zone the
+  # create answers 400 code 1011 "Plan level does not allow custom
+  # certificates with type sni_custom" (measured live 2026-08-28 -- the
+  # plan gate fires BEFORE any certificate-trust validation), which is the
+  # entitlement deferral class, not a module bug; (b) THE TRUST GATE --
+  # Cloudflare rejects certificates not issued by a CA on its trust list,
+  # so the env-supplied pair must be a real issued certificate covering the
+  # run zone's hostnames (self-signed will not do); without the env vars
+  # the lane skips honestly; (c) the policy field has a request/response
+  # asymmetry (sent as policy, read as policy_restrictions) the provider
+  # normalizes; a non-empty re-plan on policy is upstream's SECENG-12729
+  # class, not ours. Deployment status is asynchronous and deliberately NOT
+  # a stack output (the async-phase-output class measured live 2026-08-28
+  # on the sibling AOP certificate).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Entitlement-blocked, measured live 2026-08-28: POST
+    zones/{zone_id}/custom_certificates answers 400 code 1011 "Plan level
+    does not allow custom certificates with type sni_custom" on a free-plan
+    throwaway zone AND on the Pro test zone alike (both probe-measured) --
+    custom certificates are BUSINESS/Enterprise, and even the LIST endpoint
+    answers 1011 on lower plans (the read-gated entitlement class). Behind
+    the plan gate sits a second wall: Cloudflare only accepts certificates
+    from publicly trusted CAs covering the zone's hostnames, so the lane
+    also needs a real issued certificate (Let's Encrypt DNS-validated
+    against the zone is the cheapest path), never the self-signed throwaway
+    pairs the sibling lanes mint. The offline e2e/manifest.yaml plan
+    remains this kind's shape proof. Unblock: a Business-plan (or
+    Enterprise) zone via the env-gated ACTIVE-zone form -- point the
+    scenario's zone reference at ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID},
+    supply PLANTON_E2E_CUSTOM_SSL_CERT_PEM/_KEY_PEM with a real issued
+    certificate for that zone, then both lanes unchanged (the import
+    round-trip stays scenario-skipped: certificate and private_key are
+    write-only RequiresReplace).
   timeout_minutes: 10

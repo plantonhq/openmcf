@@ -100,7 +100,8 @@ Destroy is a real delete. The zone falls back to Universal SSL / Advanced certif
 | `certificate_id` | string | The uploaded certificate's ID |
 | `zone_id` | string | The zone the certificate belongs to |
 | `expires_on` | string | Expiry timestamp (RFC3339) |
-| `status` | string | Deployment status (asynchronous -- pending before active) |
+
+Deployment status is deliberately not a stack output: deployment is asynchronous (pending before active), so a point-in-time phase would flip on the first refresh and re-plan forever. Read deployment status from the Cloudflare API or dashboard.
 
 ## Related Components
 

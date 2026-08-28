@@ -1173,6 +1173,43 @@ fields) plus null-safe outputs -- not by a read-after-create, which cannot
 conjure an object the API never creates. Run the probe on BOTH identity
 variants before concluding which class you have.
 
+### A transitioning phase is never a stack output: the async-phase-output class
+
+Distinct from the read-after-create class above (where a stable value
+merely arrives late): some resources carry a status attribute that
+GENUINELY TRANSITIONS server-side after create (a certificate deployment
+moving pending_deployment -> active seconds later). Exporting it as a
+stack output makes strict idempotency structurally unpassable -- the
+refresh after the transition flips the output, `-detailed-exitcode`
+answers 2 on a "Changes to Outputs"-only diff, and a real customer sees a
+phantom pending change on every plan after the transition. No
+read-after-create fixes it (the create-time read captures the WRONG
+phase), and no catalog tolerance can absorb an idempotency failure. The
+fix is contract-level, in both engines: transitioning phases are not
+deployment facts, so they are not stack outputs -- drop the output and
+teach readers to query the provider's API for live phase. Outputs carry
+only values that are stable once the apply returns (ids, names, expiry
+timestamps). First measured user (live 2026-08-28):
+`cloudflare_authenticated_origin_pulls_hostname_certificate` `status`
+(the sibling `cloudflare_custom_ssl` `status` is the same class).
+
+### Multi-line ${E2E_ENV:...} values render as quoted YAML scalars, whole-value position only
+
+Scenario token expansion is plain text substitution -- which corrupts the
+manifest the first time an env value spans lines (PEM certificate/key
+material: the second line lands outside the field's YAML scalar and
+parsing fails at load). The framework renders a multi-line env value as a
+double-quoted single-line YAML scalar (`\n` escapes) instead, and ONLY
+when the token occupies a whole mapping value (`certificates:
+${E2E_ENV:...}`); any other placement (mid-string, inside a block
+scalar) has no safe mechanical rendering and fails loudly at expansion.
+Authoring rule: give a PEM-carrying field the token as its entire value,
+never compose it into a larger string. Single-line values keep
+byte-identical plain substitution. Shell corollary: `$(cat cert.pem)`
+strips the trailing newline -- harmless where modules canonicalize (the
+mTLS certificate store), but keep it in mind when a service is
+byte-exact about PEM form.
+
 ### Computed attributes without state-preserving plan modifiers: the perpetual re-plan class
 
 Some auto-generated resources ship Computed (and Computed+Optional)

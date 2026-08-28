@@ -9,7 +9,7 @@ provider.tf   — Cloudflare provider configuration (~> 5.23)
 variables.tf  — Input variables mirroring CloudflareCustomSslCertificateSpec
 locals.tf     — Empty-string drops (policy, custom_csr_id) and geo_restrictions shaping
 main.tf       — cloudflare_custom_ssl
-outputs.tf    — certificate_id, zone_id, expires_on, status
+outputs.tf    — certificate_id, zone_id, expires_on
 ```
 
 ## Behavior
@@ -23,7 +23,8 @@ Certificate, private key, and zone changes force replacement (rotation is destro
 | `certificate_id` | The uploaded certificate's ID |
 | `zone_id` | The zone the certificate belongs to |
 | `expires_on` | Expiry timestamp (RFC3339) |
-| `status` | Deployment status (asynchronous) |
+
+Deployment status is deliberately not an output: it transitions asynchronously (pending before active), so a point-in-time phase would flip on the first refresh and re-plan forever (the class was measured live on the sibling AOP certificate).
 
 ## Provider Version
 

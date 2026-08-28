@@ -9,14 +9,20 @@ spec:
   # delete). A self-signed CA is the product's own use case here, so the
   # proof session mints one at setup (openssl, documented in the program's
   # account-setup guide); without the env var the lane skips honestly.
-  # Watch items for the proving session: (a) EVERY field is create-only at
-  # the API -- the idempotency re-plan must be empty, and any in-place
-  # change plan is a replace; (b) the private key never returns from the
-  # API -- the blind import round-trip lands with an empty key and must
-  # re-assert it from configuration (CA uploads carry no key at all).
+  # Measured truths from the proving session (2026-08-28): (a) EVERY field
+  # is create-only at the API -- any in-place change plans a replace;
+  # (b) Cloudflare canonicalizes the stored PEM to end with exactly one
+  # trailing newline and the store is content-addressed (identical content
+  # returns the existing certificate id; a live duplicate upload answers
+  # 400 code 1471 "This certificate already exists") -- both modules
+  # canonicalize certificates before sending, so the blind round-trip
+  # proved at ZERO tolerances (the CA upload carries no key at all);
+  # (c) a deleted certificate answers 400 code 1472 "Certificate not
+  # found.", which the harness client classifies as absent.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines through the full lifecycle on the
+  # real account, plus the blind import round-trip on the Terraform lane at
+  # zero tolerances.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -1,3 +1,7 @@
+---
+display_name: One-Time PIN
+---
+
 # One-time PIN
 
 Cloudflare's own one-time PIN identity provider -- no IdP application, no client secret. Users receive a PIN at the Access login page. This is the smallest useful identity provider and the safest starting point.

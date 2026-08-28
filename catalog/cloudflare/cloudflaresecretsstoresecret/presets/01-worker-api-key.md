@@ -1,3 +1,7 @@
+---
+display_name: Worker API Key
+---
+
 # Shared provider API key
 
 An AI provider's API key stored once and readable by both Workers and the AI Gateway -- the classic Bring-Your-Own-Keys shape. The value arrives as a managed-secret reference (never plaintext) and rotates in one place for every consumer.

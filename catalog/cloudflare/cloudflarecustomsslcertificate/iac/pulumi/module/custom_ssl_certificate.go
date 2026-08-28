@@ -59,7 +59,10 @@ func customSslCertificate(
 	ctx.Export(OpCertificateId, createdCertificate.ID())
 	ctx.Export(OpZoneId, pulumi.String(spec.ZoneId.GetValue()))
 	ctx.Export(OpExpiresOn, createdCertificate.ExpiresOn)
-	ctx.Export(OpStatus, createdCertificate.Status)
+	// status is deliberately NOT exported: deployment is asynchronous
+	// (pending before active), so a point-in-time phase flips on the first
+	// refresh after the transition and re-plans forever (the class was
+	// measured live 2026-08-28 on the sibling AOP certificate).
 
 	return nil
 }

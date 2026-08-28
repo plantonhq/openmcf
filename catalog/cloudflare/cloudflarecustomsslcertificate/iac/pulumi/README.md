@@ -14,7 +14,7 @@ module/outputs.go                    — Stack output keys
 
 ## Behavior
 
-Mirrors the Terraform module's contract exactly: replacement-on-rotation semantics, empty-string drops for `policy`/`custom_csr_id`, the nested geo restriction sent only when the label is present, and the `certificate_id` / `zone_id` / `expires_on` / `status` stack outputs. `priority` is deliberately absent (read-only at provider v5.23.0).
+Mirrors the Terraform module's contract exactly: replacement-on-rotation semantics, empty-string drops for `policy`/`custom_csr_id`, the nested geo restriction sent only when the label is present, and the `certificate_id` / `zone_id` / `expires_on` stack outputs. `priority` is deliberately absent (read-only at provider v5.23.0).
 
 ## Outputs
 
@@ -23,7 +23,8 @@ Mirrors the Terraform module's contract exactly: replacement-on-rotation semanti
 | `certificate_id` | The uploaded certificate's ID |
 | `zone_id` | The zone the certificate belongs to |
 | `expires_on` | Expiry timestamp (RFC3339) |
-| `status` | Deployment status (asynchronous) |
+
+Deployment status is deliberately not an output: it transitions asynchronously (pending before active), so a point-in-time phase would flip on the first refresh and re-plan forever (the class was measured live on the sibling AOP certificate).
 
 ## Provider Version
 

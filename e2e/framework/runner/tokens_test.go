@@ -117,6 +117,50 @@ func TestExpandManifestTokens_ExpandsEnvTokens(t *testing.T) {
 	}
 }
 
+// Multi-line env values (PEM certificate/key material) must render as a
+// double-quoted single-line YAML scalar -- plain splicing would put every
+// line after the first outside the field's scalar and corrupt the manifest.
+func TestExpandManifestTokens_MultilineEnvValueAsQuotedScalar(t *testing.T) {
+	pem := "-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----"
+	t.Setenv("PLANTON_E2E_TEST_CERT_PEM", pem)
+	src := writeTempManifest(t, strings.Join([]string{
+		"spec:",
+		"  certificates: ${E2E_ENV:PLANTON_E2E_TEST_CERT_PEM}",
+		"  name: e2e-${E2E_RUN_ID}",
+	}, "\n"))
+
+	out, err := ExpandManifestTokens(src, "ab12cd34", "minimal")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(out) })
+
+	expanded, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("failed to read expanded manifest: %v", err)
+	}
+	got := string(expanded)
+	want := `  certificates: "-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----"`
+	if !strings.Contains(got, want) {
+		t.Errorf("multi-line env value not rendered as a quoted scalar:\n%s", got)
+	}
+	if !strings.Contains(got, "name: e2e-ab12cd34") {
+		t.Errorf("run-id token must still expand alongside a multi-line env token:\n%s", got)
+	}
+}
+
+// A multi-line value has no safe rendering outside the whole-mapping-value
+// position -- embedding it mid-string must fail loudly, never write an
+// unparseable manifest.
+func TestExpandManifestTokens_ErrorsOnEmbeddedMultilineEnvToken(t *testing.T) {
+	t.Setenv("PLANTON_E2E_TEST_MULTILINE", "line1\nline2")
+	src := writeTempManifest(t, "spec:\n  v: prefix-${E2E_ENV:PLANTON_E2E_TEST_MULTILINE}\n")
+
+	if _, err := ExpandManifestTokens(src, "ab12cd34", "minimal"); err == nil {
+		t.Fatal("expected an error for a multi-line env token embedded mid-string")
+	}
+}
+
 func TestExpandManifestTokens_ErrorsOnUnsetEnvToken(t *testing.T) {
 	src := writeTempManifest(t, "spec:\n  arn: ${E2E_ENV:PLANTON_E2E_DEFINITELY_UNSET_VAR}\n")
 

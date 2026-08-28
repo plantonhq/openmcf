@@ -1,0 +1,38 @@
+# Consumer-scoped CloudflareAuthenticatedOriginPullsCertificate install
+# profile for the hostname-association scenario: Cloudflare rejects an
+# association write without a certificate id (400 code 1404 "Certificate ID
+# required in the request", measured 2026-08-28 -- unconditionally, even
+# when zone-level certificate material exists), so the association lane
+# needs a real hostname-scoped upload to reference. This profile lives in
+# the CONSUMER's folder (the resolver prefers
+# <consumer>/e2e/prerequisites/<dep>.yaml) because the certificate kind's
+# own folder publishes no install profile. The PEM material enters by env
+# reference -- the consuming scenario's e2e-required-env gate skips the
+# whole scenario honestly when the vars are unset. The certificate must be
+# a LEAF (Cloudflare answers 400 code 1412 "Missing leaf certificate." for
+# CA-flagged uploads, measured 2026-08-28). metadata.name stays stable --
+# it is the key the scenario's valueFrom reference resolves against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAuthenticatedOriginPullsCertificate
+metadata:
+  name: planton-oss-e2e-cloudflareauthenticatedoriginpullscertificate-prereq
+  id: planton-oss-e2e-cloudflareauthenticatedoriginpullscertificate-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareauthenticatedoriginpullscertificate
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  scope: hostname
+  certificate: ${E2E_ENV:PLANTON_E2E_AOP_CLIENT_CERT_PEM}
+  private_key:
+    value: ${E2E_ENV:PLANTON_E2E_AOP_CLIENT_KEY_PEM}

@@ -5742,9 +5742,12 @@ func TestStackOutputsConformance(t *testing.T) {
 				"certificate_id": "7e7b8deba8538af625850b7b2530034c",
 				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
 				"expires_on":     "2027-02-01T05:20:00Z",
-				"status":         "active",
 			},
-			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+			// status is deliberately not an output: deployment is
+			// asynchronous, so the phase flips on the first refresh after
+			// the transition and re-plans forever (measured live 2026-08-28
+			// on the sibling AOP certificate).
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on"},
 		},
 		{
 			name: "CloudflareMtlsCertificate",
@@ -5771,9 +5774,12 @@ func TestStackOutputsConformance(t *testing.T) {
 				"certificate_id": "9e13e848-3aa1-4a4e-b222-e5e79e15fc1a",
 				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
 				"expires_on":     "2027-01-01T00:00:00Z",
-				"status":         "active",
 			},
-			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+			// status is deliberately not an output: deployment is
+			// asynchronous (pending_deployment -> active seconds after
+			// create), so the phase flips on the first refresh after the
+			// transition and re-plans forever (measured live 2026-08-28).
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on"},
 		},
 		{
 			name: "CloudflareWorkflow",

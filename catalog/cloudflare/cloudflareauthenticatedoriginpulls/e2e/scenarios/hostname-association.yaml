@@ -1,14 +1,19 @@
-# The hostname-association arm: pin one fixture-zone hostname WITHOUT a
-# certificate id (the association then rides the zone-level certificate
-# material) and with enabled omitted -- proving the module's send-true
-# default (Cloudflare treats null as "void the association"). The uploaded
-# per-hostname certificate edge is proven offline by e2e/manifest.yaml --
-# wiring it live would chain this lane onto the certificate kind's env-gated
-# PEM supply for no extra lifecycle coverage.
+# The hostname-association arm: pin one fixture-zone hostname to a real
+# hostname-scoped client certificate, with enabled omitted -- proving the
+# module's send-true default (Cloudflare treats null as "void the
+# association"). The certificate edge is LOAD-BEARING, not optional:
+# Cloudflare rejects an association write without a certificate id (400
+# code 1404, measured 2026-08-28 -- even when zone-level certificate
+# material exists), so the certificate fixture deploys first via the
+# consumer-scoped install profile in e2e/prerequisites/. The PEM env gate
+# skips the lane honestly when the material is unset.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareAuthenticatedOriginPulls
 metadata:
   name: e2e-aop-assoc-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_AOP_CLIENT_CERT_PEM,PLANTON_E2E_AOP_CLIENT_KEY_PEM
+    planton.dev/e2e-prerequisites: CloudflareAuthenticatedOriginPullsCertificate
 spec:
   zone_id:
     valueFrom:
@@ -17,3 +22,8 @@ spec:
       fieldPath: status.outputs.zone_id
   hostname_associations:
     - hostname: origin.planton-e2e-${E2E_RUN_ID}.com
+      certificate_id:
+        valueFrom:
+          kind: CloudflareAuthenticatedOriginPullsCertificate
+          name: planton-oss-e2e-cloudflareauthenticatedoriginpullscertificate-prereq
+          fieldPath: status.outputs.certificate_id

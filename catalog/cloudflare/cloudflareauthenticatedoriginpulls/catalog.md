@@ -50,7 +50,7 @@ At least one of `zoneEnabled` / `hostnameAssociations` must be set.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `zoneEnabled` | bool | unset (not managed) | The zone-wide toggle. Presence, not truthiness, decides whether the module manages it. |
-| `hostnameAssociations` | list | `[]` | Rows of `{hostname, certificateId, enabled}`. `certificateId` references a CloudflareAuthenticatedOriginPullsCertificate; unset rides the zone-level material. `enabled` unset is sent as true (Cloudflare treats null as "void the association"). |
+| `hostnameAssociations` | list | `[]` | Rows of `{hostname, certificateId, enabled}`. `certificateId` is REQUIRED and references a CloudflareAuthenticatedOriginPullsCertificate -- Cloudflare rejects an association write without a certificate id (400 code 1404), even when zone-level certificate material exists. `enabled` unset is sent as true (Cloudflare treats null as "void the association"). |
 
 ## Examples
 
@@ -77,6 +77,10 @@ spec:
           kind: CloudflareAuthenticatedOriginPullsCertificate
           name: app-client-certificate
     - hostname: legacy.example.com
+      certificateId:
+        valueFrom:
+          kind: CloudflareAuthenticatedOriginPullsCertificate
+          name: legacy-client-certificate
       enabled: false
 ```
 

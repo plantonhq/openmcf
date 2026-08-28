@@ -11,6 +11,16 @@ metadata:
   name: e2e-cssl-min-${E2E_RUN_ID}
   annotations:
     planton.dev/e2e-required-env: PLANTON_E2E_CUSTOM_SSL_CERT_PEM,PLANTON_E2E_CUSTOM_SSL_KEY_PEM
+    # certificate AND private_key are write-only at the API and
+    # RequiresReplace in the provider (v5.23.0 schema): a blind import
+    # necessarily lands without them, the config supplies them, and the
+    # only reconcile plan is a replace -- which the round-trip oracle
+    # rightly refuses (the class was measured live 2026-08-28 on the
+    # sibling AOP hostname certificate).
+    planton.dev/e2e-import-roundtrip-skip: >-
+      certificate and private_key are write-only and RequiresReplace -- a
+      blind import cannot restore them and the only reconcile is a replace;
+      the adoption recipe lives on the import catalog row.
 spec:
   zone_id:
     valueFrom:

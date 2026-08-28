@@ -1,6 +1,10 @@
 # CloudflareAuthenticatedOriginPulls guide
 
-The judgment this guide protects you from: this kind is only HALF of a security control, its destroy does not turn anything off, and the association's remove path depends on state you might not expect.
+The judgment this guide protects you from: this kind is only HALF of a security control, its destroy does not turn anything off, every association row must carry a certificate, and the association's remove path depends on state you might not expect.
+
+## Every association needs its certificate
+
+Cloudflare rejects an association write without a certificate id -- 400 code 1404 "Certificate ID required in the request" -- even when zone-level certificate material exists (measured live 2026-08-28). The spec walls this at validate time so the failure never reaches deploy: wire each row's `certificate_id` to a hostname-scoped `CloudflareAuthenticatedOriginPullsCertificate` via `value_from`.
 
 ## The origin side is your job
 

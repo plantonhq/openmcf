@@ -93,7 +93,8 @@ Real delete on both surfaces, settling asynchronously (200 with `pending_deletio
 | `certificate_id` | string | The uploaded certificate's ID -- what associations reference |
 | `zone_id` | string | The zone the certificate belongs to |
 | `expires_on` | string | Expiry timestamp (RFC3339) |
-| `status` | string | Deployment status (asynchronous) |
+
+Deployment status is deliberately not a stack output: it transitions asynchronously (pending_deployment to active seconds after create), so a point-in-time phase would flip on the first refresh and re-plan forever. Read deployment status from the Cloudflare API or dashboard.
 
 ## Related Components
 

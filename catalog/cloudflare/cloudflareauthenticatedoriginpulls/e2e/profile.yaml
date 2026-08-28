@@ -11,15 +11,20 @@ spec:
   # Cloudflare; verify-absent asserts the surface STILL answers (the
   # settings-singleton contract), and zero-orphan cleanup rides the
   # run-scoped zone fixture's own destroy; (b) an association "delete" is a
-  # revert-PUT (enabled: null) the provider issues FROM STATE, and it sends
-  # the cert_id state holds -- an association created without a certificate
-  # must still revert cleanly (the void call sends an empty cert_id; watch
-  # for a 4xx there); (c) the association's config list never survives
-  # import (no_refresh) -- the blind round-trip must re-assert it from
-  # configuration.
+  # revert-PUT (enabled: null) the provider issues FROM STATE, sending the
+  # cert_id state holds -- every association carries one (Cloudflare
+  # rejects cert-less association writes with 400 code 1404, measured
+  # 2026-08-28; the spec CEL walls it), and the void write with a cert_id
+  # answers 202 (probe-proven); (c) the association's config list never
+  # survives import (no_refresh) -- the blind round-trip must re-assert it
+  # from configuration. The whole origin_tls_client_auth family answers
+  # every verb with 202 Accepted, including GETs (measured 2026-08-28).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines across both scenarios (zone-toggle
+  # + hostname-association through the consumer-scoped certificate fixture),
+  # plus both blind import round-trips on the Terraform lane -- the settings
+  # singleton at zero tolerances, the association consuming exactly the
+  # declared no_refresh config tolerance.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

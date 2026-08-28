@@ -11,9 +11,12 @@ spec:
         Cloudflare dashboard -> the zone's Overview page (Zone ID in the
         right-hand API panel), or `GET /zones?name=<domain>` on the
         Cloudflare v4 API (the id field).
-    # No mechanical derivation: the hostname lives inside the repeated
-    # association rows, one import per row.
     - name: hostname
+      derivations:
+        # The module fans out one cloudflare_authenticated_origin_pulls per
+        # association row, keyed by the row's hostname (unique per zone) --
+        # the enumerated address's instance key IS the hostname segment.
+        - from_address_key: true
       where_to_find: >-
         The hostname the association covers -- one import per association
         row. `GET /zones/<zone_id>/origin_tls_client_auth/hostnames` on the

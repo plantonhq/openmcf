@@ -1,3 +1,7 @@
+---
+display_name: Total TLS
+---
+
 # Total TLS with Google Trust Services
 
 Enables Total TLS for the zone so every proxied hostname gets its own certificate, including deep subdomains that Universal SSL's wildcard does not cover. Certificates are issued by Google Trust Services and auto-renewed by Cloudflare on a fixed 90-day validity. Automatic origin TLS key exchange is also enabled, letting Cloudflare negotiate the strongest key exchange the origin supports. Everything else in the zone's TLS posture is left unmanaged and keeps its current values.

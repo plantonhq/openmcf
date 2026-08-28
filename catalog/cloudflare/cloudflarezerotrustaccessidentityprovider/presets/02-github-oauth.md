@@ -1,3 +1,7 @@
+---
+display_name: GitHub OAuth
+---
+
 # GitHub OAuth
 
 Connects Access to a GitHub OAuth App so users sign in with their GitHub identity. Creation validates the credential shape, not that users can complete a login -- a dummy client id/secret is enough to create the provider.

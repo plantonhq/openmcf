@@ -16,7 +16,12 @@ message CloudflareAuthenticatedOriginPullsCertificateStackOutputs {
   // When the certificate expires (RFC3339).
   string expires_on = 3;
 
-  // The certificate's deployment status (for example active or
-  // pending_deployment). Deployment and deletion are asynchronous.
-  string status = 4;
+  // Field 4 (status) was removed: deployment is asynchronous (a fresh
+  // upload transitions pending_deployment -> active seconds later), so a
+  // point-in-time phase can never be a stable stack output -- it flips on
+  // the first refresh after the transition and re-plans forever (measured
+  // live 2026-08-28). Read deployment status from the Cloudflare API or
+  // dashboard instead.
+  reserved 4;
+  reserved "status";
 }

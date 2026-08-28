@@ -52,10 +52,11 @@ type API interface {
 	// unknown-object answers: code 7003 "could not route", code 1001
 	// "Invalid zone identifier" -- the zones/{id} answer for a deleted
 	// zone, code 1103 "Location ID is invalid" -- the
-	// gateway/locations/{id} answer for a deleted DNS location, and the
-	// CODE-LESS "requested snippet not found" -- the snippets endpoint's
-	// deleted answer carries a message but no numeric code, all measured
-	// live); any other status is an error.
+	// gateway/locations/{id} answer for a deleted DNS location, code 1472
+	// "Certificate not found." -- the mtls_certificates/{id} answer for a
+	// deleted certificate, and the CODE-LESS "requested snippet not found"
+	// -- the snippets endpoint's deleted answer carries a message but no
+	// numeric code, all measured live); any other status is an error.
 	ResourceExists(ctx context.Context, path string) (bool, error)
 	// ResourceActive is the soft-delete-aware sibling: a 200 whose envelope
 	// carries a non-null result.deleted_at counts as ABSENT. Used only by
@@ -64,7 +65,7 @@ type API interface {
 	// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 	ResourceActive(ctx context.Context, path string) (bool, error)
 	// ResourcePresent is the envelope-aware probe: 404 / the 400
-	// unknown-object codes (7003, 1001, 1103) are
+	// unknown-object codes (7003, 1001, 1103, 1472) are
 	// always absent; a 200 is absent when SoftDeleted sees deleted_at or
 	// result.status matches AbsentStatuses. Parses the v4 envelope --
 	// never use on raw-body endpoints.
@@ -591,8 +592,9 @@ var verifiers = map[string]Verifier{
 		outputKeys:     []string{"zone_id", "certificate_id"},
 		absentStatuses: []string{"deleted"},
 	},
-	// mTLS certificates are account-scoped uploads with a real delete and
-	// an honest 404.
+	// mTLS certificates are account-scoped uploads with a real delete;
+	// a deleted certificate answers 400 code 1472 "Certificate not found."
+	// (measured 2026-08-28), which the client classifies as absent.
 	"cloudflaremtlscertificate": &apiPathVerifier{
 		component:     "cloudflaremtlscertificate",
 		pathFormat:    "accounts/%s/mtls_certificates/%s",

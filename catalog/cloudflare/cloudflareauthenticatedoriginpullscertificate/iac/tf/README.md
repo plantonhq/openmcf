@@ -10,7 +10,7 @@ variables.tf  — Input variables mirroring CloudflareAuthenticatedOriginPullsCe
 locals.tf     — Scope resolution (zone vs hostname)
 main.tf       — cloudflare_authenticated_origin_pulls_certificate (zone scope)
                 XOR cloudflare_authenticated_origin_pulls_hostname_certificate (hostname scope)
-outputs.tf    — certificate_id, zone_id, expires_on, status
+outputs.tf    — certificate_id, zone_id, expires_on
 ```
 
 ## Behavior
@@ -24,7 +24,8 @@ The `scope` selects which provider resource is created -- exactly one of the two
 | `certificate_id` | The uploaded certificate's ID -- what associations reference |
 | `zone_id` | The zone the certificate belongs to |
 | `expires_on` | Expiry timestamp (RFC3339) |
-| `status` | Deployment status (asynchronous) |
+
+Deployment status is deliberately not an output: it transitions asynchronously (pending_deployment to active seconds after create), so a point-in-time phase would flip on the first refresh and re-plan forever.
 
 ## Provider Version
 

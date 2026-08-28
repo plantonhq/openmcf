@@ -74,6 +74,9 @@ type cloudflareEnvelope struct {
 //   - 1103 "Location ID is invalid." (gateway/locations/{id} after the
 //     location is deleted -- measured live on the DNS location destroy
 //     verification)
+//   - 1472 "Certificate not found." (accounts/{a}/mtls_certificates/{id}
+//     after the certificate is deleted -- measured live 2026-08-28 on the
+//     mTLS certificate destroy verification)
 //   - code-less "requested snippet not found" (zones/{id}/snippets/{name}
 //     after the snippet is deleted -- the snippets endpoint's errors carry
 //     a message but NO numeric code, measured live 2026-08-27 on the
@@ -85,7 +88,7 @@ func unknownObjectError(body []byte) bool {
 		return false
 	}
 	for _, e := range envelope.Errors {
-		if e.Code == 7003 || e.Code == 1001 || e.Code == 1103 {
+		if e.Code == 7003 || e.Code == 1001 || e.Code == 1103 || e.Code == 1472 {
 			return true
 		}
 		if e.Code == 0 && e.Message == "requested snippet not found" {
@@ -96,9 +99,12 @@ func unknownObjectError(body []byte) bool {
 }
 
 // ResourceExists reports whether a GET on the given path (relative to
-// /client/v4/, e.g. "zones/abc123") finds a resource. 200 means present;
-// 404 means absent; a 400 carrying one of the unknown-object error codes
-// (see unknownObjectError) also means absent. Anything else is a real error.
+// /client/v4/, e.g. "zones/abc123") finds a resource. 200 means present --
+// and so does 202: the origin_tls_client_auth family answers EVERY verb
+// with 202 Accepted, including a plain GET on its settings surface
+// (measured live 2026-08-28). 404 means absent; a 400 carrying one of the
+// unknown-object error codes (see unknownObjectError) also means absent.
+// Anything else is a real error.
 func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -106,7 +112,7 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK:
+	case http.StatusOK, http.StatusAccepted:
 		return true, nil
 	case http.StatusNotFound:
 		return false, nil
@@ -122,11 +128,13 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 
 // ResourcePresent reports whether a GET finds a resource that is still
 // present after applying opts. 404 and Cloudflare's 400 unknown-object
-// answers (see unknownObjectError) are always absent. A 200 is present
-// unless SoftDeleted sees a non-null result.deleted_at, IsDeletedFlag sees a
-// non-zero result.is_deleted, or result.status matches AbsentStatuses.
-// Parses the v4 envelope, so it must never replace ResourceExists on
-// raw-body endpoints (e.g. the KV value endpoint).
+// answers (see unknownObjectError) are always absent. A 200 (or a 202 --
+// the origin_tls_client_auth family answers every verb with 202 Accepted,
+// measured live 2026-08-28) is present unless SoftDeleted sees a non-null
+// result.deleted_at, IsDeletedFlag sees a non-zero result.is_deleted, or
+// result.status matches AbsentStatuses. Parses the v4 envelope, so it must
+// never replace ResourceExists on raw-body endpoints (e.g. the KV value
+// endpoint).
 func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -134,7 +142,7 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK:
+	case http.StatusOK, http.StatusAccepted:
 		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag {
 			return true, nil
 		}
