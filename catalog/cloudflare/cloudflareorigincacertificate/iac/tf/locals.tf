@@ -9,4 +9,13 @@ locals {
   # Generate a key + CSR only when the user did not supply their own CSR.
   generate_key  = try(var.spec.csr, "") == ""
   key_algorithm = local.request_type == "origin-ecc" ? "ECDSA" : "RSA"
+
+  # Cloudflare stores the certificate's hostnames LEXICOGRAPHICALLY SORTED
+  # ("*.sub.zone" sorts before "sub.zone" -- measured live 2026-08-28 by
+  # creating with a scrambled order and reading back). hostnames is a
+  # RequiresReplace attribute the provider refreshes, so sending them in any
+  # other order makes every refresh-inclusive plan propose a destructive
+  # replace forever. Sorting here keeps plans converged regardless of the
+  # order the manifest lists them in (the set of names is what matters).
+  hostnames_canonical = sort(var.spec.hostnames)
 }

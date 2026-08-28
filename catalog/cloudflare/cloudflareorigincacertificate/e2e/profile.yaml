@@ -6,17 +6,24 @@ spec:
   # An Origin CA certificate under live E2E: user-scoped (no account_id, no
   # zone_id on the spec) -- deploy -> GET certificates/{certificate_id}
   # verify -> destroy (revoke) -> verify-destroyed. The live scenario lets
-  # the module mint the key and CSR (the one-click path); hostnames belong
-  # to the run-scoped pending zone, which is a SCENARIO-declared
-  # CloudflareDnsZone edge (hostnames are plain strings, not a zone FK, so
-  # the edge is per-scenario, never a registry prerequisite). Watch: delete
-  # is a revoke, and the provider's own destroy check tolerates the cert
-  # remaining readable -- the plain 404 probe is the honest starting point.
-  # The SDK accepts an API token for this endpoint (Origin CA Key is the
-  # legacy alternative). Free; objects create in seconds.
+  # the module mint the key and CSR (the one-click path); hostnames are
+  # run-scoped under the sanctioned ACTIVE zone via the env-gated arm
+  # (PLANTON_E2E_CLOUDFLARE_ZONE_NAME) -- the API validates hostnames
+  # against ACTIVE zones only, answering a misleading 400/1010 for
+  # pending-zone hostnames (measured live 2026-08-28, probe-proven both
+  # ways). Delete is a REVOKE: the revoked certificate keeps answering GET
+  # 200 with revoked_at set (measured live 2026-08-28), so the verifier
+  # reads revoked_at as absence. The account-owned API token works on this
+  # endpoint (Origin CA Key is the legacy alternative). Free; objects
+  # create in seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines ran generated-key (env-gated on the
+  # sanctioned ACTIVE zone after the pending-zone 400/1010 wall was measured)
+  # through the full lifecycle with the apply-idempotency re-plan green after
+  # the canonical hostname-sort fix landed in both modules. The import
+  # round-trip is scenario-skipped with reason (the tls helpers ship no
+  # upstream importers; adoption re-issues the certificate). Destroy verified
+  # through the revoked_at absence probe.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

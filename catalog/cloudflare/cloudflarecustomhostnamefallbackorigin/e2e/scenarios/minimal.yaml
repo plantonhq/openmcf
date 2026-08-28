@@ -1,10 +1,11 @@
 # Minimal CloudflareCustomHostnameFallbackOrigin scenario: the zone
 # singleton that every custom hostname routes to unless overridden. The
 # origin hostname composes the fixture zone's run token. There is no
-# DNS-record fixture (the DNS-record kind is already in the proof queue
-# and has no reusable install profile) -- the API may reject an origin
-# with no record; that is on the proof-queue watch-list, alongside the
-# token-PUT risk.
+# DNS-record fixture yet -- the API may reject an origin with no record;
+# if the lane measures that, author the cloudflarednsrecord install
+# profile (the kind is proven and released) and declare it here. The
+# whole surface is gated on Cloudflare for SaaS enrollment (400/1456
+# measured 2026-08-28) -- see the profile for the unblock.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareCustomHostnameFallbackOrigin
 metadata:

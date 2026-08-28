@@ -42,6 +42,12 @@ type EnvelopePresence struct {
 	// response carries is_deleted as a required numeric field instead of the
 	// deleted_at timestamp the SoftDeleted probe reads.
 	IsDeletedFlag bool
+	// RevokedAt: a 200 whose result.revoked_at is set counts as absent.
+	// The Origin CA variant of soft-delete: DELETE /certificates/{id} is a
+	// REVOKE, and the revoked certificate keeps answering GET 200 with the
+	// full body plus revoked_at (measured live 2026-08-28) -- neither the
+	// plain 404 probe nor SoftDeleted (deleted_at) sees the revocation.
+	RevokedAt bool
 }
 
 // API is the surface verifiers need from the harness client: an
@@ -123,6 +129,11 @@ type apiPathVerifier struct {
 	// is_deleted as a required numeric field (not deleted_at), so neither
 	// the plain 404 probe nor softDeleted would see the deletion.
 	isDeletedFlag bool
+	// revokedAt opts into the revoked_at-aware absence probe: a 200 whose
+	// result.revoked_at is set counts as gone. Origin CA certificates
+	// REVOKE rather than delete, and a revoked certificate keeps answering
+	// GET 200 with revoked_at set (measured live 2026-08-28).
+	revokedAt bool
 	// zonePathFormat opts a DUAL-SCOPE resource into scope-aware probing:
 	// when the deploy's outputs carry a non-empty zone_id, the probe uses
 	// this zone-rooted template (zone_id fills its first placeholder, then
@@ -190,12 +201,13 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 // probe selects the existence check: the plain status-code probe, or the
 // envelope-aware one for soft-deleting / status-enum families.
 func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
-	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray || v.isDeletedFlag {
+	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray || v.isDeletedFlag || v.revokedAt {
 		return api.ResourcePresent(ctx, path, EnvelopePresence{
 			SoftDeleted:      v.softDeleted,
 			AbsentStatuses:   v.absentStatuses,
 			EmptyResultArray: v.emptyResultArray,
 			IsDeletedFlag:    v.isDeletedFlag,
+			RevokedAt:        v.revokedAt,
 		})
 	}
 	return api.ResourceExists(ctx, path)
@@ -489,13 +501,18 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"sitekey"},
 		accountScoped: true,
 	},
-	// User-scoped (no accounts/ or zones/ prefix). Delete is a revoke;
-	// a post-destroy 200 is possible and recorded on the watch-list --
-	// the plain 404 probe is the honest starting point.
+	// User-scoped (no accounts/ or zones/ prefix). Delete is a REVOKE, and
+	// a revoked certificate keeps answering GET 200 with revoked_at set
+	// (measured live 2026-08-28: revoke succeeded, the immediate GET
+	// returned the full body plus revoked_at) -- the probe reads revoked_at
+	// as absence. Revocation reaches reads within seconds (measured 4-15s
+	// live 2026-08-28); the retry budget rides out that beat.
 	"cloudflareorigincacertificate": &apiPathVerifier{
-		component:  "cloudflareorigincacertificate",
-		pathFormat: "certificates/%s",
-		outputKeys: []string{"certificate_id"},
+		component:     "cloudflareorigincacertificate",
+		pathFormat:    "certificates/%s",
+		outputKeys:    []string{"certificate_id"},
+		revokedAt:     true,
+		absentRetries: 15,
 	},
 	// Access identity providers and service tokens delete for real and 404
 	// honestly on the read after (the account-scoped arm is the one the live

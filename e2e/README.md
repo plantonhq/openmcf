@@ -886,6 +886,26 @@ Five refinements to the same class (all measured live 2026-08-27):
   The zone id is fine -- the same write succeeds on an ACTIVE zone. Treat
   1000-on-a-fresh-fixture-zone as a delegation-state suspect, not an id
   bug, and settle it with one write probe on the sanctioned active zone.
+- **Product ENROLLMENT gates fire before everything -- even reads -- and
+  neither plan tier nor a subscription opens them** (measured live
+  2026-08-28). Cloudflare for SaaS answers 400 code 1404 "No quota has
+  been allocated for this zone or for this account" on custom-hostname
+  creates AND the bare LIST, identically on a pending fixture zone and the
+  active Pro zone; the fallback-origin PUT answers its own 400 code 1456
+  "This feature is available with SSL for SaaS". The unblock is a
+  dashboard enrollment on the zone (SSL/TLS -> Custom Hostnames, card on
+  file; free tier included), not a plan upgrade -- name the enrollment as
+  the unblock, and expect the gate to mask every downstream risk (the
+  fallback origin's documented token-PUT 403 cannot even fire until the
+  enrollment opens the surface).
+- **The delegation-state wall can wear an OWNERSHIP message.** Origin CA
+  certificate requests for a hostname under a PENDING zone answer 400
+  code 1010 "This zone is either not part of your account, or you do not
+  have access to it" -- even though the zone IS on the account; the
+  identical request for an ACTIVE-zone hostname succeeds with the same
+  token (probe-proven both ways, 2026-08-28). Same discipline as the
+  1000 class: settle ownership-flavored refusals on fresh fixture zones
+  with one probe against the sanctioned active zone.
 
 ### Settings-singleton verifiers: pick a surface that answers on every plan
 
@@ -1379,6 +1399,29 @@ log exposure is inert for lanes built on run-scoped fixtures -- but
 never point a round-trip-enabled lane at a long-lived credential
 expecting log hygiene, and treat captured lane logs as
 credential-bearing until the run's objects are destroyed.
+
+### Revoke-is-not-delete surfaces, and the every-dispatch rule for new absence shapes
+
+Origin CA certificates never 404: destroy is a REVOKE, and the revoked
+certificate keeps answering GET 200 with its full body plus `revoked_at`
+set, indefinitely (measured live 2026-08-28 -- revoked certificates from
+hours earlier still answer). The verifier's `RevokedAt` envelope probe
+reads a non-empty `result.revoked_at` as absence, the fourth absence
+shape after `deleted_at` (tunnels), `is_deleted` (Workflows), and the
+status enums (certificate packs / custom hostnames).
+
+The lesson that cost an hour of misdiagnosis when this shape landed: **a
+new `EnvelopePresence` field must join EVERY dispatch site, including the
+client's fast-path guard** -- the short-circuit that returns "present" on
+any 2xx when no absence shape is requested. A shape missing from that
+guard is silently bypassed: the probe never parses the body, every
+destroy reports a false "still exists", and the failure masquerades as
+server-side propagation lag (this shipped once and was chased through
+fresh-connection and cache-busting theories before the two-line direct
+client probe against a known-revoked id exposed it). When a new absence
+shape misbehaves, FIRST prove the client parses it -- one `go run` with
+the real client against a known-absent object -- before theorizing about
+the cloud.
 
 ### "no stack named ..." for a fixture that just deployed: backend state loss, not a module defect
 

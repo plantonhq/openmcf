@@ -3,7 +3,7 @@
 resource "cloudflare_pages_project" "main" {
   account_id        = var.spec.account_id
   name              = var.spec.name
-  production_branch  = var.spec.production_branch
+  production_branch = var.spec.production_branch
 
   build_config       = local.build_config
   source             = local.source

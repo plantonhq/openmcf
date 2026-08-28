@@ -2,6 +2,10 @@
 
 Operational judgment for SaaS custom hostnames. The README covers what each field is; this covers how the pieces interact.
 
+## The account must be enrolled in Cloudflare for SaaS first
+
+Every custom-hostname API call — creates AND reads — answers 400 code 1404 "No quota has been allocated for this zone or for this account" until Cloudflare for SaaS is enabled on the zone (measured live on Free and Pro zones alike; plan tier does not matter). Enrollment is a dashboard action on the zone (SSL/TLS → Custom Hostnames) with a payment method on file; the first 100 hostnames are free, beyond that ~$0.10/hostname/month. Nothing in this kind works before that toggle.
+
 ## Ownership proof is the customer's job
 
 Onboarding a hostname does not make it live. Cloudflare returns TXT (and sometimes HTTP) ownership-verification records; the customer must create them on *their* DNS (or serve the HTTP body) before the hostname activates. The stack outputs those records so a chart or a ticket can hand them over. Until then the hostname sits in `pending` / `pending_validation`.

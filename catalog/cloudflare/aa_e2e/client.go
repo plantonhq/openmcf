@@ -131,10 +131,10 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 // answers (see unknownObjectError) are always absent. A 200 (or a 202 --
 // the origin_tls_client_auth family answers every verb with 202 Accepted,
 // measured live 2026-08-28) is present unless SoftDeleted sees a non-null
-// result.deleted_at, IsDeletedFlag sees a non-zero result.is_deleted, or
-// result.status matches AbsentStatuses. Parses the v4 envelope, so it must
-// never replace ResourceExists on raw-body endpoints (e.g. the KV value
-// endpoint).
+// result.deleted_at, IsDeletedFlag sees a non-zero result.is_deleted,
+// RevokedAt sees a non-empty result.revoked_at, or result.status matches
+// AbsentStatuses. Parses the v4 envelope, so it must never replace
+// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -143,7 +143,13 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusAccepted:
-		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag {
+		// Fast path: no absence shape requested, any 2xx is present. EVERY
+		// EnvelopePresence field must appear in this guard -- a new probe
+		// shape missing here is silently bypassed and its family reports a
+		// false "still exists" on every destroy (shipped once with
+		// RevokedAt: the lane polled for minutes while the body it never
+		// parsed carried revoked_at the whole time).
+		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag && !opts.RevokedAt {
 			return true, nil
 		}
 		var envelope struct {
@@ -158,16 +164,22 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 				return false, nil
 			}
 		}
-		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 || opts.IsDeletedFlag {
+		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 || opts.IsDeletedFlag || opts.RevokedAt {
 			var object struct {
 				DeletedAt *string  `json:"deleted_at"`
 				Status    string   `json:"status"`
 				IsDeleted *float64 `json:"is_deleted"`
+				RevokedAt *string  `json:"revoked_at"`
 			}
 			if err := json.Unmarshal(envelope.Result, &object); err != nil {
 				return false, errors.Errorf("GET %s returned 200 with an unparseable result object: %s", path, body)
 			}
 			if opts.SoftDeleted && object.DeletedAt != nil && *object.DeletedAt != "" {
+				return false, nil
+			}
+			// Origin CA's revoke-is-not-delete: the revoked certificate keeps
+			// answering GET 200 with revoked_at set (measured live 2026-08-28).
+			if opts.RevokedAt && object.RevokedAt != nil && *object.RevokedAt != "" {
 				return false, nil
 			}
 			// The Workflows API's soft-delete variant: is_deleted is a

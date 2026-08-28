@@ -7,6 +7,7 @@
 package cloudflareturnstilewidgetv1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -100,10 +101,10 @@ var File_catalog_cloudflare_cloudflareturnstilewidget_v1alpha1_outputs_proto pro
 
 const file_catalog_cloudflare_cloudflareturnstilewidget_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/cloudflare/cloudflareturnstilewidget/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflareturnstilewidget.v1alpha1\"\x99\x01\n" +
+	"Ccatalog/cloudflare/cloudflareturnstilewidget/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflareturnstilewidget.v1alpha1\x1a\x1cshared/options/options.proto\"\x9f\x01\n" +
 	"%CloudflareTurnstileWidgetStackOutputs\x12\x18\n" +
-	"\asitekey\x18\x01 \x01(\tR\asitekey\x12\x16\n" +
-	"\x06secret\x18\x02 \x01(\tR\x06secret\x12\x1d\n" +
+	"\asitekey\x18\x01 \x01(\tR\asitekey\x12\x1c\n" +
+	"\x06secret\x18\x02 \x01(\tB\x04\xa0\xa6\x1d\x01R\x06secret\x12\x1d\n" +
 	"\n" +
 	"created_on\x18\x03 \x01(\tR\tcreatedOn\x12\x1f\n" +
 	"\vmodified_on\x18\x04 \x01(\tR\n" +

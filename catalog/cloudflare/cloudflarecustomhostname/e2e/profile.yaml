@@ -13,8 +13,16 @@ spec:
   # verification will sit pending on an undelegated zone -- that is the
   # lifecycle we can prove. The verifier treats GET 200 with status
   # pending_deletion/deleted as gone. Deliberately not live: BYO certificate
-  # (Enterprise + secrets). Cloudflare for SaaS is free-tier; whether a
-  # PENDING zone accepts the create is unverified offline.
+  # (Enterprise + secrets). MEASURED WALL (live, 2026-08-28): the account is
+  # NOT enrolled in Cloudflare for SaaS -- every custom-hostname call,
+  # creates AND reads, answers 400 code 1404 "No quota has been allocated
+  # for this zone or for this account", identical on the pending fixture
+  # zone and the ACTIVE Pro test zone (plan tier is not the gate). Unblock:
+  # enroll Cloudflare for SaaS on the test zone (dashboard, SSL/TLS ->
+  # Custom Hostnames; free for the first 100 hostnames) -- the enablement
+  # ask went to the owner 2026-08-28. Both lanes run unchanged once
+  # enrolled; whether a PENDING zone then accepts the create is still
+  # unverified.
   tier: 1
   # Authored to the full offline bar; awaiting the first live proof session
   # (no Cloudflare account exists yet). The proving session flips this to

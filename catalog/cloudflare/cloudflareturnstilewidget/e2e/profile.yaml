@@ -14,8 +14,12 @@ spec:
   # confirms it exists and logs must never print it. Free; objects create in
   # seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines ran managed + invisible through the
+  # full lifecycle with the apply-idempotency re-plan green, plus blind
+  # import round-trips on both Terraform scenarios at zero tolerances -- all
+  # first-run. The secret output stayed masked in every human-readable
+  # surface, and the machine-readable (sensitive) option landed on
+  # outputs.secret in the same session.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

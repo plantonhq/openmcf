@@ -103,10 +103,15 @@ func pagesProject(
 	}
 
 	// Attach custom domains; each must be a hostname in a zone on this account.
-	for i, domain := range spec.Domains {
+	// Keyed by HOSTNAME (never by list position) for parity with the Terraform
+	// module's for_each map: the hostname is the resource's stable identity, so
+	// reordering or removing one spec.domains entry replaces only that domain
+	// -- positional names would rename (and delete/recreate) every later one.
+	// The import map's domain_name also derives from this address key.
+	for _, domain := range spec.Domains {
 		if _, err := cloudfl.NewPagesDomain(
 			ctx,
-			fmt.Sprintf("pages-domain-%d", i),
+			fmt.Sprintf("pages-domain-%s", domain),
 			&cloudfl.PagesDomainArgs{
 				AccountId:   pulumi.String(spec.AccountId),
 				ProjectName: createdProject.Name,

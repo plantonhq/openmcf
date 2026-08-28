@@ -17,15 +17,20 @@ resource "tls_cert_request" "origin" {
   private_key_pem = tls_private_key.origin[0].private_key_pem
 
   subject {
+    # The CN stays the manifest's FIRST hostname (the user's primary name);
+    # only the API-facing hostnames list needs Cloudflare's canonical order.
     common_name = var.spec.hostnames[0]
   }
 
-  dns_names = var.spec.hostnames
+  dns_names = local.hostnames_canonical
 }
 
 resource "cloudflare_origin_ca_certificate" "main" {
-  csr                = local.generate_key ? tls_cert_request.origin[0].cert_request_pem : var.spec.csr
-  hostnames          = var.spec.hostnames
+  csr = local.generate_key ? tls_cert_request.origin[0].cert_request_pem : var.spec.csr
+  # Canonically sorted -- see locals.tf: Cloudflare reorders hostnames on
+  # write and the attribute forces replacement, so an unsorted send
+  # replace-loops on every refresh-inclusive plan.
+  hostnames          = local.hostnames_canonical
   request_type       = local.request_type
   requested_validity = local.requested_validity
 }

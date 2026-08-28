@@ -20,6 +20,15 @@ func listItem(
 	if spec.ListId != nil {
 		listId = spec.ListId.GetValue()
 	}
+	// list_id is spec-required; an empty value here means the valueFrom
+	// reference never resolved. Fail loudly like the Terraform module's null
+	// required attribute would -- deploying with "" would create the item
+	// against a malformed API path and export an empty list_id output that
+	// poisons every downstream consumer (import derivation, the E2E verifier's
+	// probe path).
+	if listId == "" {
+		return nil, errors.New("spec.list_id resolved to an empty value -- the CloudflareList reference did not resolve")
+	}
 
 	args := &cloudflare.ListItemArgs{
 		AccountId: pulumi.String(spec.AccountId),
