@@ -34,9 +34,12 @@ func webAnalyticsSite(
 	if spec.ZoneTag.GetValue() != "" {
 		args.ZoneTag = pulumi.StringPtr(spec.ZoneTag.GetValue())
 	}
-	if spec.AutoInstall != nil {
-		args.AutoInstall = pulumi.BoolPtr(spec.GetAutoInstall())
-	}
+	// auto_install is ALWAYS sent: Cloudflare echoes a server-side false
+	// for it even when never sent (measured on host AND zone sites), so an
+	// omitted send drifts forever on Terraform and unset-means-false is
+	// exactly Cloudflare's default. enabled/lite stay conditional: they are
+	// no_refresh (never read back), so no echo can drift them.
+	args.AutoInstall = pulumi.BoolPtr(spec.GetAutoInstall())
 	if spec.Enabled != nil {
 		args.Enabled = pulumi.BoolPtr(spec.GetEnabled())
 	}
@@ -57,24 +60,47 @@ func webAnalyticsSite(
 		return errors.Wrap(err, "failed to create web analytics site")
 	}
 
-	rulesetId := createdSite.Ruleset.Id().Elem()
+	// Read-after-create (measured 2026-08-27): the create response omits
+	// `snippet` (GET-only), so the snippet/ruleset_id outputs and the
+	// folded rules ride this lookup, not the resource. The `ruleset`
+	// object itself is IDENTITY-DEPENDENT: zone-linked sites carry it in
+	// every response; host-identified sites have NO ruleset, ever (the
+	// spec walls rules to zone_tag sites for exactly that reason -- on a
+	// host site the lookup's Ruleset() is a zero struct and the
+	// ruleset_id export is ""). NOTE: reading site_info requires the
+	// Account Settings READ permission -- Account Settings Write alone
+	// creates sites but cannot read them back (measured 403/10000).
+	lookedUpSite := cloudflare.LookupWebAnalyticsSiteOutput(
+		ctx,
+		cloudflare.LookupWebAnalyticsSiteOutputArgs{
+			AccountId: pulumi.StringPtr(spec.AccountId),
+			SiteId:    createdSite.ID().ToStringPtrOutput(),
+		},
+		pulumi.Provider(cloudflareProvider),
+	)
 
+	rulesetId := lookedUpSite.Ruleset().Id()
+
+	// Every rule field is ALWAYS sent (measured 2026-08-27): Cloudflare's
+	// rule form validates each field's presence and rejects omissions one
+	// by one (400 code 10001 "form.host.invalid" / "form.is_paused.invalid"
+	// -- the provider passes nulls straight through because upstream never
+	// exercises rules). An empty spec host means "every host", which the
+	// API spells "*".
 	for index, row := range spec.Rules {
+		ruleHost := row.Host
+		if ruleHost == "" {
+			ruleHost = "*"
+		}
 		ruleArgs := &cloudflare.WebAnalyticsRuleArgs{
 			AccountId: pulumi.String(spec.AccountId),
 			RulesetId: rulesetId,
-		}
-		if row.Host != "" {
-			ruleArgs.Host = pulumi.StringPtr(row.Host)
+			Host:      pulumi.StringPtr(ruleHost),
+			Inclusive: pulumi.BoolPtr(row.GetInclusive()),
+			IsPaused:  pulumi.BoolPtr(row.GetIsPaused()),
 		}
 		if len(row.Paths) > 0 {
 			ruleArgs.Paths = pulumi.ToStringArray(row.Paths)
-		}
-		if row.Inclusive != nil {
-			ruleArgs.Inclusive = pulumi.BoolPtr(row.GetInclusive())
-		}
-		if row.IsPaused != nil {
-			ruleArgs.IsPaused = pulumi.BoolPtr(row.GetIsPaused())
 		}
 
 		if _, err := cloudflare.NewWebAnalyticsRule(
@@ -88,9 +114,14 @@ func webAnalyticsSite(
 		}
 	}
 
-	ctx.Export(OpSiteTag, createdSite.SiteTag)
-	ctx.Export(OpSiteToken, createdSite.SiteToken)
-	ctx.Export(OpSnippet, createdSite.Snippet)
+	// The site tag is the one value the create response returns (the
+	// resource id IS the tag); token and snippet come from the
+	// read-after-create lookup and are re-marked secret explicitly --
+	// AdditionalSecretOutputs on the resource does not cover lookup
+	// results.
+	ctx.Export(OpSiteTag, createdSite.ID())
+	ctx.Export(OpSiteToken, pulumi.ToSecret(lookedUpSite.SiteToken()))
+	ctx.Export(OpSnippet, pulumi.ToSecret(lookedUpSite.Snippet()))
 	ctx.Export(OpRulesetId, rulesetId)
 
 	return nil

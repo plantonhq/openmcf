@@ -7,17 +7,17 @@ spec:
   # update, delete), account-scoped, free -- self-cleaning lanes. THE
   # API-TOKEN DEFECT CLASS COVERS THIS KIND TOO: the provider's own policy
   # tests blank CLOUDFLARE_API_TOKEN (resource_test.go lines 74-75 and
-  # 134-135), same as its webhooks sibling -- a 403 under our token
-  # credential is the expected ambush and a recorded deferral is the honest
-  # outcome. Both live arms deliver to EMAIL only, deliberately: the
-  # webhook-mechanism shape is plan-proven offline so a policy lane never
-  # stacks a second kind's 403 risk on top of its own. Watch item: many
-  # alert types are plan- or product-gated at create time -- the chosen
-  # live types (tunnel_health_event, incident_alert) are free-tier facts
-  # to verify.
+  # 134-135), same as its webhooks sibling. MEASURED (live, 2026-08-27):
+  # the ambush did NOT fire under the account-owned token -- both arms
+  # (tunnel_health_event email, incident_alert with incident_impact
+  # filters) passed create/read/update/delete on both engines first-run,
+  # confirming both alert types are free-tier. Both blind import
+  # round-trips converge at zero tolerances, the filters tree included
+  # (the upstream "no import acceptance test" caveat proved benign). Both
+  # live arms deliver to EMAIL only, deliberately: the webhook-mechanism
+  # shape is plan-proven offline so a policy lane never stacks a second
+  # kind's risk on top of its own.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

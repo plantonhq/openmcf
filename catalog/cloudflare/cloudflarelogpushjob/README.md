@@ -93,7 +93,7 @@ spec:
 
 ## Prerequisites
 
-- **A Logpush entitlement** -- most datasets require an Enterprise plan (see cost.yaml)
+- **A Logpush entitlement** -- most datasets require an Enterprise plan (see cost.yaml). Below Enterprise the create fails with 403 code 1004 "exceeded max jobs allowed" even on a zone with zero jobs -- the plan's job quota is zero; the message is not a real quota overrun.
 - **A destination you control**, with its write credentials
 - **A Cloudflare API token** with the Logs Write permission for the chosen scope
 

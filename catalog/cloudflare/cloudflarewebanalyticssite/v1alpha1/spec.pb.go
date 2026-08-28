@@ -33,7 +33,12 @@ const (
 // The optional `rules[]` narrow WHAT gets measured: include or exclude
 // traffic by host and path. Cloudflare manages rules as separate objects
 // under the site's ruleset; this kind folds them in, and the modules manage
-// one rule object per row.
+// one rule object per row. RULES REQUIRE A ZONE-LINKED SITE (measured
+// live): Cloudflare creates the ruleset -- the container rules attach to --
+// only for zone_tag-identified sites; a host-identified site has no
+// ruleset in any API response, ever, so there is nothing to attach a rule
+// to. A CEL wall enforces it here so the impossible combination fails at
+// validation, not mid-deploy.
 //
 // One provider truth this spec teaches: the provider never reads rules back
 // after writing them (its refresh is deliberately blind), so rule edits
@@ -46,7 +51,9 @@ type CloudflareWebAnalyticsSiteSpec struct {
 	AccountId string `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
 	// The hostname to measure (e.g. www.example.com). Use for sites not on
 	// Cloudflare, or when you embed the snippet yourself. Set this OR
-	// zone_tag, never both.
+	// zone_tag, never both. A host-identified site carries NO ruleset
+	// (measured live), so it cannot carry rules and its ruleset_id output is
+	// empty.
 	Host string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
 	// The Cloudflare zone to measure. Set this OR host, never both.
 	// When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
@@ -62,7 +69,8 @@ type CloudflareWebAnalyticsSiteSpec struct {
 	Lite *bool `protobuf:"varint,6,opt,name=lite,proto3,oneof" json:"lite,omitempty"`
 	// Include/exclude rules narrowing what gets measured. Cloudflare manages
 	// each as its own object under the site's ruleset; the modules keep one
-	// object per row, in order.
+	// object per row, in order. Zone-linked sites only (see the message
+	// wall): host-identified sites have no ruleset to attach rules to.
 	Rules         []*CloudflareWebAnalyticsSiteRule `protobuf:"bytes,7,rep,name=rules,proto3" json:"rules,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -148,18 +156,24 @@ func (x *CloudflareWebAnalyticsSiteSpec) GetRules() []*CloudflareWebAnalyticsSit
 }
 
 // CloudflareWebAnalyticsSiteRule includes or excludes traffic from
-// measurement by host and paths.
+// measurement by host and paths. Cloudflare's rule form requires EVERY
+// field present on the wire (measured live: omissions answer 400 code
+// 10001 per field), so the modules always send all four -- the defaults
+// below are what an unset field becomes.
 type CloudflareWebAnalyticsSiteRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The hostname the rule applies to (e.g. shop.example.com; empty applies
-	// to every host of the site).
+	// The hostname the rule applies to (e.g. shop.example.com). Empty means
+	// every host of the site -- the API spells that "*", and the modules
+	// translate (a literally empty host is rejected by Cloudflare).
 	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
 	// The paths the rule applies to (e.g. /checkout/*; * wildcards allowed).
 	Paths []string `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"`
 	// Whether matching traffic is measured (true, an include rule) or
-	// dropped from measurement (false, an exclude rule).
+	// dropped from measurement (false, an exclude rule). Unset means false
+	// -- an exclude rule; the committed examples always set it explicitly.
 	Inclusive *bool `protobuf:"varint,3,opt,name=inclusive,proto3,oneof" json:"inclusive,omitempty"`
-	// Whether the rule is currently paused (kept but not applied).
+	// Whether the rule is currently paused (kept but not applied). Unset
+	// means false (the rule is active).
 	IsPaused      *bool `protobuf:"varint,4,opt,name=is_paused,json=isPaused,proto3,oneof" json:"is_paused,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -227,7 +241,7 @@ var File_catalog_cloudflare_cloudflarewebanalyticssite_v1alpha1_spec_proto proto
 
 const file_catalog_cloudflare_cloudflarewebanalyticssite_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xdd\x05\n" +
+	"Acatalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/spec.proto\x12:dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc6\a\n" +
 	"\x1eCloudflareWebAnalyticsSiteSpec\x12\x8b\x01\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tBl\xbaHi\xba\x01c\n" +
@@ -237,8 +251,9 @@ const file_catalog_cloudflare_cloudflarewebanalyticssite_v1alpha1_spec_proto_raw
 	"\fauto_install\x18\x04 \x01(\bH\x00R\vautoInstall\x88\x01\x01\x12\x1d\n" +
 	"\aenabled\x18\x05 \x01(\bH\x01R\aenabled\x88\x01\x01\x12\x17\n" +
 	"\x04lite\x18\x06 \x01(\bH\x02R\x04lite\x88\x01\x01\x12p\n" +
-	"\x05rules\x18\a \x03(\v2Z.dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1.CloudflareWebAnalyticsSiteRuleR\x05rules:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
-	"\x1espec.site_identity_exactly_one\x12^set exactly one of host (measure any site by hostname) or zone_tag (measure a Cloudflare zone)\x1a'(this.host != '') != has(this.zone_tag)B\x0f\n" +
+	"\x05rules\x18\a \x03(\v2Z.dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1.CloudflareWebAnalyticsSiteRuleR\x05rules:\x99\x03\xbaH\x95\x03\x1a\xa9\x01\n" +
+	"\x1espec.site_identity_exactly_one\x12^set exactly one of host (measure any site by hostname) or zone_tag (measure a Cloudflare zone)\x1a'(this.host != '') != has(this.zone_tag)\x1a\xe6\x01\n" +
+	"\x17spec.rules_require_zone\x12\x9c\x01rules require a zone_tag-identified site: Cloudflare only creates the ruleset rules attach to for zone-linked sites -- a host-identified site has no ruleset\x1a,this.rules.size() == 0 || has(this.zone_tag)B\x0f\n" +
 	"\r_auto_installB\n" +
 	"\n" +
 	"\b_enabledB\a\n" +

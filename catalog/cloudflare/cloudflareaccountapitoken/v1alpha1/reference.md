@@ -213,7 +213,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareAccoun
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.token_id` | `string` | The Cloudflare-assigned token ID (the token's identity for management calls -- NOT the credential itself). |
-| `status.outputs.value` | `string` | The token's secret value -- the credential. Returned by Cloudflare EXACTLY ONCE, on create: it can never be fetched again, and an imported token has no value at all. Secret-marked by the modules. If the value is lost, rotate: roll the token (or delete and recreate) to mint a new one. |
+| `status.outputs.value` | `string` | The token's secret value -- the credential. Returned by Cloudflare EXACTLY ONCE, on create: it can never be fetched again, and an imported token has no value at all. Sensitive both here (machine-readable) and in the modules' output registration. If the value is lost, rotate: roll the token (or delete and recreate) to mint a new one. |
 
 ## See Also
 

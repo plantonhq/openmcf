@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1;
 
+import "shared/options/options.proto";
+
 // CloudflareAccountApiTokenStackOutputs captures the observable outputs
 // after creating the token.
 message CloudflareAccountApiTokenStackOutputs {
@@ -11,8 +13,8 @@ message CloudflareAccountApiTokenStackOutputs {
 
   // The token's secret value -- the credential. Returned by Cloudflare
   // EXACTLY ONCE, on create: it can never be fetched again, and an imported
-  // token has no value at all. Secret-marked by the modules. If the value
-  // is lost, rotate: roll the token (or delete and recreate) to mint a new
-  // one.
-  string value = 2;
+  // token has no value at all. Sensitive both here (machine-readable) and
+  // in the modules' output registration. If the value is lost, rotate:
+  // roll the token (or delete and recreate) to mint a new one.
+  string value = 2 [(dev.planton.shared.options.sensitive) = true];
 }

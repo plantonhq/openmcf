@@ -59,9 +59,14 @@ var _ = ginkgo.Describe("CloudflareWebAnalyticsSiteSpec Custom Validation Tests"
 			gomega.Expect(protovalidate.Validate(validSite(spec))).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept measurement rules", func() {
-			spec := hostSpec()
-			spec.Lite = proto.Bool(true)
+		ginkgo.It("should accept measurement rules on a zone-identified site", func() {
+			// Rules require zone_tag: Cloudflare only creates the ruleset
+			// (the container rules attach to) for zone-linked sites.
+			spec := &CloudflareWebAnalyticsSiteSpec{
+				AccountId: testAccountID,
+				ZoneTag:   zoneRef("023e105f4ecef8ad9ca31a8372d0c353"),
+				Lite:      proto.Bool(true),
+			}
 			spec.Rules = []*CloudflareWebAnalyticsSiteRule{
 				{Host: "www.example.com", Paths: []string{"/checkout/*"}, Inclusive: proto.Bool(false)},
 				{Paths: []string{"/*"}, Inclusive: proto.Bool(true)},
@@ -80,6 +85,16 @@ var _ = ginkgo.Describe("CloudflareWebAnalyticsSiteSpec Custom Validation Tests"
 
 		ginkgo.It("should reject neither host nor zone_tag set", func() {
 			spec := &CloudflareWebAnalyticsSiteSpec{AccountId: testAccountID}
+			gomega.Expect(protovalidate.Validate(validSite(spec))).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject rules on a host-identified site", func() {
+			// Measured live: host-identified sites have NO ruleset in any
+			// API response, so rules have nothing to attach to.
+			spec := hostSpec()
+			spec.Rules = []*CloudflareWebAnalyticsSiteRule{
+				{Paths: []string{"/*"}, Inclusive: proto.Bool(true)},
+			}
 			gomega.Expect(protovalidate.Validate(validSite(spec))).NotTo(gomega.BeNil())
 		})
 

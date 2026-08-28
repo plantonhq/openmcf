@@ -48,7 +48,7 @@ planton apply -f web-analytics-site.yaml
 | `autoInstall` | bool | Inject the beacon at the edge. | Proxied zones only (pair with `zoneTag`). |
 | `enabled` | bool | Whether measurement is active. | Cloudflare's default is enabled. |
 | `lite` | bool | Lightweight beacon variant. | Reduced metric set. |
-| `rules` | list | Include/exclude rows. | `host`, `paths[]`, `inclusive`, `isPaused`; managed as one provider object per row. |
+| `rules` | list | Include/exclude rows. Zone-identified sites only: a host-identified site has no ruleset to attach rules to (validation enforces this). | `host`, `paths[]`, `inclusive`, `isPaused`; managed as one provider object per row. |
 
 ## Destroy Semantics
 
@@ -61,7 +61,7 @@ Real delete for the site and every rule. Measurement stops; the site's historica
 | `siteTag` | string | The Cloudflare-assigned site tag |
 | `siteToken` | string | The beacon's measurement token (secret-marked) |
 | `snippet` | string | The ready-to-embed script tag (secret-marked) |
-| `rulesetId` | string | The parent object the rules live under |
+| `rulesetId` | string | The parent object the rules live under (empty for host-identified sites -- they have no ruleset) |
 
 ## Related Components
 

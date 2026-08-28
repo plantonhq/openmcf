@@ -1,21 +1,25 @@
 output "site_tag" {
   description = "The Cloudflare-assigned site tag (the site's identity in every RUM API path)"
-  value       = cloudflare_web_analytics_site.main.site_tag
+  # The resource's id IS the site tag (the id attribute is a copy of the
+  # tag) and is the one value the create response does return.
+  value       = cloudflare_web_analytics_site.main.id
 }
 
 output "site_token" {
   description = "The site's measurement token, embedded by the JavaScript beacon (treated as a credential in outputs)"
-  value       = cloudflare_web_analytics_site.main.site_token
+  # From the read-after-create data source, never the resource: the create
+  # response omits everything but the tag (see main.tf).
+  value       = data.cloudflare_web_analytics_site.main.site_token
   sensitive   = true
 }
 
 output "snippet" {
   description = "The ready-to-embed JavaScript snippet (carries the site token, so secret-marked like it)"
-  value       = cloudflare_web_analytics_site.main.snippet
+  value       = data.cloudflare_web_analytics_site.main.snippet
   sensitive   = true
 }
 
 output "ruleset_id" {
-  description = "The site's ruleset ID (the parent object the include/exclude rules live under)"
-  value       = cloudflare_web_analytics_site.main.ruleset.id
+  description = "The site's ruleset ID (the parent object the include/exclude rules live under; empty for host-identified sites, which have no ruleset)"
+  value       = try(data.cloudflare_web_analytics_site.main.ruleset.id, "")
 }

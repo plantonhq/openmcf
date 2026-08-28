@@ -13,3 +13,15 @@ resource "cloudflare_notification_policy_webhooks" "main" {
 
   secret = try(var.spec.secret, "") != "" ? var.spec.secret : null
 }
+
+# Cloudflare's create response returns ONLY the id (measured 2026-08-27:
+# POST answers {"result":{"id":...}} while the GET returns the full body),
+# so the resource's computed `type` is null in state after the first apply
+# and the first refresh backfills it -- an output riding the resource
+# attribute would be empty on first deploy and flip on the next plan. This
+# read-after-create performs the GET the create response omitted; the
+# `type` stack output rides it instead of the resource.
+data "cloudflare_notification_policy_webhooks" "main" {
+  account_id = var.spec.account_id
+  webhook_id = cloudflare_notification_policy_webhooks.main.id
+}

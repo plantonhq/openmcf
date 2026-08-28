@@ -128,7 +128,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareZeroTr
 |---|---|---|
 | `status.outputs.service_token_id` | `string` | The UUID of the service token (the API identity used for import and policy `service_token` rules). |
 | `status.outputs.client_id` | `string` | The Client ID the machine client presents in the CF-Access-Client-ID request header. |
-| `status.outputs.client_secret` | `string` | Sensitive. The Client Secret the machine client presents in the CF-Access-Client-Secret request header. Cloudflare returns it ONLY at creation and at rotation -- it can never be read back later, and it does not survive an import. Capture it into a secret store at deploy time. |
+| `status.outputs.client_secret` | `string` | The Client Secret the machine client presents in the CF-Access-Client-Secret request header -- sensitive both here (machine-readable) and in the modules' output registration. Cloudflare returns it ONLY at creation and at rotation -- it can never be read back later, and it does not survive an import. Capture it into a secret store at deploy time. |
 | `status.outputs.expires_at` | `string` | When the token expires, as an RFC3339 timestamp. |
 
 ## References

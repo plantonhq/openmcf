@@ -11,7 +11,7 @@ When you deploy this resource, the IaC module provisions:
 
 ## Prerequisites
 
-- **A Logpush entitlement** -- most datasets are Enterprise-gated
+- **A Logpush entitlement** -- most datasets are Enterprise-gated (measured: below Enterprise the create fails with 403 code 1004 "exceeded max jobs allowed" even on a zone with zero jobs -- the plan's job quota is zero, not a real quota overrun)
 - **A destination you control** (R2, S3-compatible, GCS, Splunk, Datadog, HTTPS) with write credentials
 - **A Cloudflare API token** with Logs → Write on the chosen scope
 

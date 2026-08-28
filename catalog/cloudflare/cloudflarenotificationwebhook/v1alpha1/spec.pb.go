@@ -38,7 +38,11 @@ type CloudflareNotificationWebhookSpec struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The endpoint URL alerts are POSTed to (for Slack/Google Chat/Discord
 	// and kin, the integration's incoming-webhook URL; for Datadog/Splunk/
-	// Opsgenie, the vendor's intake endpoint).
+	// Opsgenie, the vendor's intake endpoint). Cloudflare sends a TEST POST
+	// to this URL at registration and rejects the create (HTTP 422) unless
+	// the endpoint answers 2xx -- the receiver must be live and accepting
+	// POSTs BEFORE this resource deploys; a GET-only or not-yet-deployed
+	// endpoint can never register.
 	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
 	// Optional shared secret sent with each delivery so the receiver can
 	// authenticate Cloudflare (for Datadog/Splunk/Opsgenie this carries the

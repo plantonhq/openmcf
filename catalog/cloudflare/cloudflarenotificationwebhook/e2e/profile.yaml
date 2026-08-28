@@ -9,14 +9,17 @@ spec:
   # blank CLOUDFLARE_API_TOKEN for this resource with the comment "the
   # notification service does not yet support the API tokens" -- and the
   # sibling notification_policy tests blank it too, so the class covers the
-  # whole alerting/v3 family. Our harness authenticates with an API token,
-  # so a 403 on create is the expected ambush and a recorded deferral is
-  # the honest outcome. Second watch item: whether Cloudflare probes the
-  # URL at registration (the generic destination is an https example
-  # endpoint).
+  # whole alerting/v3 family. MEASURED (live, 2026-08-27): the ambush did
+  # NOT fire under the account-owned token -- create/read/update/delete all
+  # accepted. Two walls it DID measure: (1) Cloudflare sends a TEST POST to
+  # the URL at registration and rejects the create with 422 unless it
+  # answers 2xx (a GET-only host answers 405 and can never register); (2)
+  # the create response returns ONLY {id} -- type exists only on the GET,
+  # so both modules perform a read-after-create for the type output (the
+  # resource attribute is empty until the first refresh, which broke
+  # strict idempotency before the fix). Blind import round-trip converges
+  # at zero tolerances.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

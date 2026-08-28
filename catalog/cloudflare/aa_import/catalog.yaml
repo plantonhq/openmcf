@@ -855,7 +855,12 @@ spec:
         be re-asserted from configuration after import. kind cannot be changed
         on an existing job -- Cloudflare rejects the update with HTTP 400 even
         though the provider plans it in place -- and a legacy job may read
-        back kind "instant-logs", which the provider normalizes to "".
+        back kind "instant-logs", which the provider normalizes to "". The
+        scope discriminator makes this id blind-underivable (no resolver arm
+        can pick accounts vs zones from a manifest), so the human recipe is
+        the import path: an account job imports as
+        accounts/<account_id>/<job_id>, a zone job as
+        zones/<zone_id>/<job_id>, both ids in the where_to_find entries.
     - terraform_type: cloudflare_logpush_ownership_challenge
       pulumi_type: cloudflare:index/logpushOwnershipChallenge:LogpushOwnershipChallenge
       not_importable_upstream_reason: >-
@@ -884,18 +889,34 @@ spec:
     - terraform_type: cloudflare_web_analytics_site
       pulumi_type: cloudflare:index/webAnalyticsSite:WebAnalyticsSite
       id_format: "{account_id}/{site_tag}"
+      # enabled/host/lite are no_refresh at v5.23.0 (web_analytics_site/
+      # model.go tags all four; the importer hand-backfills only zone_tag
+      # from the computed ruleset) -- a blind import restores none of them,
+      # so the first post-import plan re-asserts whichever the configuration
+      # sets. That update is the documented adoption shape, not a wrong
+      # import.
+      write_normalized_attributes:
+        - enabled
+        - host
+        - lite
       notes: >-
         The import id uses the site TAG (the resource's real key; its id
         attribute is a copy). Four attributes -- enabled, host, lite, zone_tag
         -- are never read back from the API, so an imported site carries them
         only from configuration; the provider hand-backfills zone_tag from the
-        computed ruleset during import.
+        computed ruleset during import, and the first post-import apply
+        re-asserts the other three from configuration (an idempotent write).
     - terraform_type: cloudflare_web_analytics_rule
       pulumi_type: cloudflare:index/webAnalyticsRule:WebAnalyticsRule
       not_importable_upstream_reason: >-
         The provider ships no ImportState, and its Read is an empty stub, so
-        rules are write-only from IaC's perspective -- an adopted site
-        re-asserts its declared rules on the next apply.
+        rules are write-only from IaC's perspective. The re-assert path has a
+        measured wall: the rule create REJECTS duplicates (409 code 10010
+        duplicateFound against surviving rule objects), so adopting a site
+        whose ruleset already carries rules requires deleting the existing
+        rules first (dashboard -> Web Analytics -> the site's rules, or
+        DELETE /accounts/{account_id}/rum/v2/{ruleset_id}/rule/{rule_id}),
+        after which the first apply re-creates exactly the declared rows.
     # --- Accounts, IAM & organization ------------------------------------------
     - terraform_type: cloudflare_account_token
       pulumi_type: cloudflare:index/accountToken:AccountToken

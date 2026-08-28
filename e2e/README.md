@@ -846,7 +846,29 @@ paid-product lane, and any registry-installed fixture of a plan-gated kind
 env-injected zone. Products the account's plans cannot reach stay recorded
 entitlement deferrals with the plan named as the unblock.
 
-Three refinements to the same class (all measured live 2026-08-27):
+Five refinements to the same class (all measured live 2026-08-27):
+
+- **The entitlement refusal can wear QUOTA clothing.** Logpush job creation
+  below Enterprise answers 403 code 1004 "creating a new job (for
+  http_requests dataset) is not allowed: exceeded max jobs allowed" -- on
+  zones carrying ZERO jobs, Free and Pro alike. A plan without the product
+  entitlement has a job quota of zero, so the "quota exceeded" message IS
+  the plan wall. Read a quota message on a fresh fixture as an entitlement
+  suspect and settle it with one probe on the sanctioned paid zone.
+- **A full-WRITE token policy is not full access: some product families
+  split read from write.** The harness token carries every write
+  permission group and its creates/deletes succeed everywhere -- but Web
+  Analytics (RUM) reads answer 403 code 10000 "Authentication error" under
+  it: `Account Settings Write` creates sites while reading them back needs
+  the separate `Account Settings Read` group (probe-proven by minting a
+  temporary token with just that group). Consequences: a 403 on a READ
+  under a write-loaded token is a missing READ GROUP suspect before it is
+  a user-actor-endpoint suspect -- distinguish them by probing with a
+  purpose-built temporary token (cheap, self-cleaning, and decisive),
+  because the two diagnoses have opposite outcomes (a token edit vs an
+  honest deferral). Terraform providers need the read side for EVERY
+  refresh, so a read-walled family breaks mid-lane with orphans that only
+  direct API DELETEs (writes -- which still work) can sweep.
 
 - **`editable=true` in the zone-settings list is NOT a write guarantee.**
   The flag describes the settings class's plan-editability; a setting can
@@ -1116,6 +1138,41 @@ application `auto_redirect_to_identity`/`enable_binding_cookie`/
 list is the map: check it during the PRE-LANE pass and declare from
 measurement, never blanket-tolerate.
 
+### The create response omits computed attributes the GET returns: the read-after-create class (module-fixable)
+
+Some Cloudflare create endpoints answer with a MINIMAL body (the alerting
+webhook POST returns only `{id}`; the Web Analytics site POST omits the
+`ruleset` object -- both measured by direct POST-then-GET, 2026-08-27),
+while the resource GET returns the full body. Auto-generated providers
+decode create responses without a read-after-create, so every computed
+attribute the create response omitted sits NULL in state until the first
+refresh backfills it. Three failure shapes, worst first: (1) a module
+expression dereferencing the attribute (`resource.ruleset.id` feeding a
+folded child resource) HARD-FAILS the apply; (2) a stack output riding the
+attribute ships EMPTY on first deploy on both engines -- a wrong output,
+not just noise; (3) on Terraform, the first refresh backfills the value
+and flips the output, failing the strict idempotency re-plan with a
+"Changes to Outputs"-only diff. The fix is module-side and cross-engine: a
+read-after-create (Terraform data source keyed by the created resource's
+id; the Pulumi Lookup...Output invoke) carries those attributes instead of
+the resource -- and on Pulumi the lookup results need explicit
+`pulumi.ToSecret` re-marking, because `AdditionalSecretOutputs` on the
+resource does not cover lookup results. Diagnose in one probe: direct API
+POST, inspect the create response body, GET the object, diff the two.
+First measured users: `cloudflare_notification_policy_webhooks` (`type`),
+`cloudflare_web_analytics_site` (`snippet`).
+
+The same diagnosis can uncover a sharper sibling truth: a null sub-object
+may be IDENTITY-DEPENDENT rather than read-dependent. The Web Analytics
+site's `ruleset` is not omitted-by-create -- it NEVER exists for
+host-identified sites and ALWAYS exists (create response included) for
+zone-linked ones, which makes any host+rules configuration structurally
+undeployable (the rules attach to the ruleset). That class is fixed in the
+SPEC (a CEL wall forbidding the impossible combination, taught on the
+fields) plus null-safe outputs -- not by a read-after-create, which cannot
+conjure an object the API never creates. Run the probe on BOTH identity
+variants before concluding which class you have.
+
 ### Computed attributes without state-preserving plan modifiers: the perpetual re-plan class
 
 Some auto-generated resources ship Computed (and Computed+Optional)
@@ -1260,6 +1317,19 @@ direct leaf access carries only the leaf's own sensitivity and degrades to
 null when the object is absent. First measured user (live 2026-08-26): the
 Cloudflare Access identity provider's `scim_base_url` output (`scim_config`
 carries the sensitive `secret` member).
+
+### VERIFY-CLN is per-id; only a NAME-based census catches duplicate-create leaks
+
+The verify-destroyed phase GETs the stack's recorded object id and can pass
+honestly while a LEAKED DUPLICATE of the same object survives under a
+different id (measured 2026-08-28: an account-token Pulumi lane passed
+every phase including VERIFY-CLN, yet the end-of-session census found a
+second ACTIVE token carrying the same run-scoped name and an id the stack
+never knew -- most plausibly a create retry that succeeded twice). The
+end-of-session sweep must therefore census by RUN-SCOPED NAME across every
+object family the session touched, never only re-check the ids the lanes
+verified; anything wearing a run id that the lanes did not destroy is an
+orphan to delete by API.
 
 ### The round-trip's plan echo prints sensitive output VALUES to the local test log
 

@@ -41,8 +41,22 @@ func notificationWebhook(
 		return errors.Wrap(err, "failed to create notification webhook")
 	}
 
+	// Cloudflare's create response returns ONLY the id (measured 2026-08-27:
+	// POST answers {"result":{"id":...}} while the GET returns the full
+	// body), so the resource's computed `type` is empty after create. This
+	// read-after-create performs the GET the create response omitted; the
+	// type stack output rides it instead of the resource attribute.
+	lookedUp := cloudflare.LookupNotificationPolicyWebhooksOutput(
+		ctx,
+		cloudflare.LookupNotificationPolicyWebhooksOutputArgs{
+			AccountId: pulumi.StringPtr(spec.AccountId),
+			WebhookId: createdWebhook.ID(),
+		},
+		pulumi.Provider(cloudflareProvider),
+	)
+
 	ctx.Export(OpWebhookId, createdWebhook.ID())
-	ctx.Export(OpType, createdWebhook.Type)
+	ctx.Export(OpType, lookedUp.Type())
 
 	return nil
 }

@@ -4,20 +4,20 @@ metadata:
   name: cloudflareaccountapitoken
 spec:
   # Account API tokens under live E2E: plain CRUD objects (real create,
-  # update, delete), account-scoped, free -- self-cleaning lanes. Watch
-  # items for the proving session: (1) creating tokens requires the harness
-  # token to carry "Account API Tokens Write" -- add it to the token
-  # template if absent; (2) both live arms need a real permission-group
-  # UUID, provided by env (one-line fetch:
-  # GET /accounts/{account_id}/tokens/permission_groups?name=DNS%20Read);
-  # (3) the token value is returned exactly once on create and both engines
-  # secret-mark it -- verify the outputs map carries it without logging it;
-  # (4) Cloudflare canonically re-orders policies and permission groups --
-  # the idempotency re-plan is the drift probe for the provider's
-  # order-matching machinery.
+  # update, delete), account-scoped, free -- self-cleaning lanes.
+  # MEASURED (live, 2026-08-27): both arms (whole-resource grant; nested
+  # sub-resources + request-IP condition + expiry) passed all phases on
+  # both engines first-run. The harness token's "Account API Tokens Write"
+  # sufficed for the full lifecycle; the permission-group UUID enters by
+  # env (one-line fetch:
+  # GET /accounts/{account_id}/tokens/permission_groups?name=DNS%20Read).
+  # Cloudflare's canonical re-ordering of policies/permission groups never
+  # surfaced a diff: the idempotency re-plans came back clean and both
+  # blind import round-trips converged at ZERO tolerances -- the provider's
+  # order-matching machinery and upstream's ImportStateVerifyIgnore
+  # "policies" hint both proved unnecessary for single-policy shapes. The
+  # secret value reached the outputs map without landing in logs.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

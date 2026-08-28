@@ -66,7 +66,11 @@ The destination's name, shown in the dashboard's destinations list.
 
 The endpoint URL alerts are POSTed to (for Slack/Google Chat/Discord
 and kin, the integration's incoming-webhook URL; for Datadog/Splunk/
-Opsgenie, the vendor's intake endpoint).
+Opsgenie, the vendor's intake endpoint). Cloudflare sends a TEST POST
+to this URL at registration and rejects the create (HTTP 422) unless
+the endpoint answers 2xx -- the receiver must be live and accepting
+POSTs BEFORE this resource deploys; a GET-only or not-yet-deployed
+endpoint can never register.
 
 - rule: {"required":true}
 
