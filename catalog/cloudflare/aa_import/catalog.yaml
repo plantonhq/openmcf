@@ -522,6 +522,11 @@ spec:
     - terraform_type: cloudflare_list_item
       pulumi_type: cloudflare:index/listItem:ListItem
       id_format: "{account_id}/{list_id}/{item_id}"
+      notes: >-
+        Locating a REDIRECT item's id requires percent-encoding its
+        source_url wherever the URL is used as a lookup key -- the raw
+        value contains `/` and `:`, which collide with URL and id-segment
+        delimiters. ip/asn/hostname items match on their plain values.
     # --- Load Balancing: monitor and pool ---------------------------------------
     # Account-scoped; the zone-scoped load balancer itself is recorded above
     # under Load Balancing. Requires the Load Balancing add-on.
