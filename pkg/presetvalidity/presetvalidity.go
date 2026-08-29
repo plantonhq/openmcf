@@ -43,7 +43,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 
 	"buf.build/go/protovalidate"
 
@@ -71,26 +70,29 @@ const (
 	RuleInvalidPreset = "invalid-preset"
 )
 
-// walkValidator is one lazily-compiling validator shared across the whole
-// walk. The manifest package's ValidateLoaded builds (and rule-compiles) a
-// fresh validator per call -- the right trade for validating one user
-// manifest in the CLI, and the wrong one for 1,800 presets in a gate, where
-// it recompiles the same kinds' rules over and over. Sharing one validator
-// caches each kind's compiled rules on first encounter; the rules evaluated
-// are byte-identical to the CLI path's.
-var walkValidator = sync.OnceValues(func() (protovalidate.Validator, error) {
-	return protovalidate.New()
-})
-
 // CheckPreset validates one preset's bytes as a manifest of its own kind.
 // path is the repo-root-relative preset path used in violation IDs.
 func CheckPreset(path string, content []byte) []Violation {
+	v, err := protovalidate.New()
+	if err != nil {
+		return []Violation{{Path: path, Rule: RuleInvalidPreset,
+			Detail: fmt.Sprintf("validator init: %v", err)}}
+	}
+	return checkPresetWith(v, path, content)
+}
+
+// checkPresetWith validates one preset with a caller-owned validator. The
+// walk hands each KIND its own validator (see Check) so a kind's presets
+// share one rule compilation while the compiled programs stay collectible
+// once the walk moves on -- a whole-catalog validator accumulates every
+// kind's compiled CEL programs and has been observed to exhaust a CI
+// runner's memory, while a per-preset validator recompiles the same kind's
+// rules once per preset. The rules evaluated are byte-identical to the CLI
+// validation path's.
+func checkPresetWith(v protovalidate.Validator, path string, content []byte) []Violation {
 	loaded, err := manifest.LoadManifestBytes(content, path)
 	if err == nil {
-		var v protovalidate.Validator
-		if v, err = walkValidator(); err == nil {
-			err = v.Validate(loaded)
-		}
+		err = v.Validate(loaded)
 	}
 	if err == nil {
 		return nil
@@ -107,6 +109,10 @@ func CheckPreset(path string, content []byte) []Violation {
 // Preset PRESENCE (and the .md sidecar) is pkg/anatomy's rule, so only
 // existing presets are checked; the _test provider's fixtures are not
 // product presets.
+//
+// Presets are checked kind by kind (the sorted walk groups a kind's presets
+// naturally), each kind under its own short-lived validator -- see
+// checkPresetWith for why.
 func Check(repoRoot string) ([]Violation, error) {
 	presets, err := filepath.Glob(filepath.Join(repoRoot, "catalog", "*", "*", "presets", "*.yaml"))
 	if err != nil {
@@ -114,6 +120,8 @@ func Check(repoRoot string) ([]Violation, error) {
 	}
 	sort.Strings(presets)
 	var vs []Violation
+	var kindDir string
+	var v protovalidate.Validator
 	for _, preset := range presets {
 		rel, err := filepath.Rel(repoRoot, preset)
 		if err != nil {
@@ -122,11 +130,17 @@ func Check(repoRoot string) ([]Violation, error) {
 		if strings.HasPrefix(rel, filepath.Join("catalog", "_test")+string(filepath.Separator)) {
 			continue
 		}
+		if dir := filepath.Dir(rel); dir != kindDir {
+			kindDir = dir
+			if v, err = protovalidate.New(); err != nil {
+				return nil, err
+			}
+		}
 		content, err := os.ReadFile(preset)
 		if err != nil {
 			return nil, err
 		}
-		vs = append(vs, CheckPreset(filepath.ToSlash(rel), content)...)
+		vs = append(vs, checkPresetWith(v, filepath.ToSlash(rel), content)...)
 	}
 	sort.Slice(vs, func(i, j int) bool { return vs[i].ID() < vs[j].ID() })
 	return vs, nil
