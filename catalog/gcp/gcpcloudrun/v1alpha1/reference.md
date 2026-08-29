@@ -1669,6 +1669,7 @@ Reference an output from another manifest as `valueFrom: {kind: GcpCloudRun, nam
 | `status.outputs.location` | `string` | Region the service is deployed in (plain region name). |
 | `status.outputs.uid` | `string` | Server-assigned unique identifier of the service, stable across its lifetime and never reused after deletion. |
 | `status.outputs.urls` | `[]string` | Every URL serving this service: the canonical run.app URL plus any deterministic URLs. |
+| `status.outputs.project_id` | `string` | GCP project the service is created in — with location and service_name, the service's full provider-side coordinate (projects/{project}/locations/{location}/services/{name}). |
 
 ## References
 
