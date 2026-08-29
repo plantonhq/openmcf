@@ -78,10 +78,15 @@ type GcpSslCertificateSpec struct {
 	// handshake material presented to every client, so it is deliberately not
 	// marked sensitive; only the private key is secret. Immutable.
 	Certificate string `protobuf:"bytes,5,opt,name=certificate,proto3" json:"certificate,omitempty"`
-	// The private key matching the certificate, in PEM format. GCP accepts
-	// RSA-2048 (and larger) and ECDSA P-256 keys; the key must be unencrypted
-	// (no passphrase). Write-only in GCP — the API never returns it, and it
-	// never appears in stack outputs. Immutable.
+	// The private key matching the certificate, in PEM format (-----BEGIN
+	// PRIVATE KEY----- / -----BEGIN RSA PRIVATE KEY----- / -----BEGIN EC
+	// PRIVATE KEY-----). GCP accepts RSA-2048 (and larger) and ECDSA P-256
+	// keys; the key must be unencrypted (no passphrase). Write-only in GCP —
+	// the API never returns it, and it never appears in stack outputs.
+	// Immutable. The PEM framing is taught here rather than enforced by a
+	// validation rule, because sensitive fields hold a managed-secret
+	// reference on consuming platforms and a content-shape rule would
+	// reject every reference.
 	PrivateKey string `protobuf:"bytes,6,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
 	// Deletion policy — what happens when this resource is destroyed:
 	//
@@ -181,7 +186,7 @@ var File_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpsslcertificate/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb0\v\n" +
+	"1catalog/gcp/gcpsslcertificate/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdf\b\n" +
 	"\x15GcpSslCertificateSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9f\x02\n" +
@@ -191,9 +196,8 @@ const file_catalog_gcp_gcpsslcertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\fvalid_region\x12aregion must be a valid GCP region name such as us-central1, or empty for a global SSL certificate\x1a:this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')R\x06region\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xc3\x01\n" +
 	"\vcertificate\x18\x05 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x94\x01\n" +
-	"\x0fcertificate_pem\x12Qcertificate must be a PEM-encoded certificate chain (-----BEGIN CERTIFICATE-----)\x1a.this.startsWith('-----BEGIN CERTIFICATE-----')r\x02\x10\x01R\vcertificate\x12\xfc\x02\n" +
-	"\vprivate_key\x18\x06 \x01(\tB\xda\x02\xbaH\xd2\x02\xba\x01\xca\x02\n" +
-	"\x0fprivate_key_pem\x12\x9a\x01private_key must be a PEM-encoded unencrypted private key (-----BEGIN PRIVATE KEY----- / -----BEGIN RSA PRIVATE KEY----- / -----BEGIN EC PRIVATE KEY-----)\x1a\x99\x01this.startsWith('-----BEGIN PRIVATE KEY-----') || this.startsWith('-----BEGIN RSA PRIVATE KEY-----') || this.startsWith('-----BEGIN EC PRIVATE KEY-----')r\x02\x10\x01\xa0\xa6\x1d\x01R\n" +
+	"\x0fcertificate_pem\x12Qcertificate must be a PEM-encoded certificate chain (-----BEGIN CERTIFICATE-----)\x1a.this.startsWith('-----BEGIN CERTIFICATE-----')r\x02\x10\x01R\vcertificate\x12,\n" +
+	"\vprivate_key\x18\x06 \x01(\tB\v\xbaH\x04r\x02\x10\x01\xa0\xa6\x1d\x01R\n" +
 	"privateKey\x12\xbb\x01\n" +
 	"\x0fdeletion_policy\x18\a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
 	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xe7\x02\n" +

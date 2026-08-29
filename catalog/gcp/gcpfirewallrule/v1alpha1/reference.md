@@ -162,7 +162,8 @@ or an IANA protocol number (e.g., "6" for TCP).
 
 `[]string`
 
-Ports or port ranges to match. Only applicable when protocol is "tcp" or "udp".
+Ports or port ranges to match. Only applicable when protocol is "tcp",
+"udp", or "sctp" — including their IANA numbers ("6", "17", "132").
 Each entry is a single port (e.g., "80") or a range (e.g., "8000-9000").
 Omit for protocols that do not use ports (icmp, esp, ah, etc.).
 

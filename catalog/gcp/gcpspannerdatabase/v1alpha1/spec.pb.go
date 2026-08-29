@@ -129,6 +129,7 @@ type GcpSpannerDatabaseSpec struct {
 	// The GCP project that owns the parent Spanner instance. Accepts a
 	// literal project ID or a reference to a GcpProject resource. If
 	// omitted, the provider's default project is used.
+	// Immutable: changing the project destroys and recreates the database.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The Spanner instance to create the database on. This determines the
 	// compute capacity and geographic configuration available to the

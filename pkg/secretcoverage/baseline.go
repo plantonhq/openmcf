@@ -127,10 +127,10 @@ func writeIDList(b *strings.Builder, key string, ids []string) {
 
 // GateResult is the verdict of comparing live findings to the checked-in baseline.
 type GateResult struct {
-	NewGaps              []string  // gaps not in the baseline -- new unannotated secret fields
-	StaleEntries         []string  // baseline gap ids that are no longer gaps -- remove them
-	AnnotationViolations []Finding // non-baselined findings whose annotations contradict each other or the field's rules
-	StaleViolationEntries []string // baseline violation ids no longer violating -- remove them
+	NewGaps               []string  // gaps not in the baseline -- new unannotated secret fields
+	StaleEntries          []string  // baseline gap ids that are no longer gaps -- remove them
+	AnnotationViolations  []Finding // non-baselined findings whose annotations contradict each other or the field's rules
+	StaleViolationEntries []string  // baseline violation ids no longer violating -- remove them
 }
 
 func (g GateResult) OK() bool {

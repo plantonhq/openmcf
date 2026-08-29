@@ -79,6 +79,7 @@ spec:
 The GCP project to create the certificate in.
 Can be a literal project ID or a reference to a GcpProject resource.
 If omitted, the provider's default project is used.
+Immutable: changing the project destroys and recreates the certificate.
 
 - references: GcpProject (`status.outputs.project_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse
@@ -184,10 +185,13 @@ secret. Updating the pair in place rotates the certificate.
 
 `string` · required · sensitive
 
-The leaf certificate's private key in PEM form. Secret material —
-never logged, masked in outputs.
+The leaf certificate's private key in PEM form — a PRIVATE KEY block
+(take care not to swap the certificate and the key). Secret material —
+never logged, masked in outputs. The PEM framing is taught here rather
+than enforced by a validation rule, because sensitive fields hold a
+managed-secret reference on consuming platforms and a content-shape
+rule would reject every reference.
 
-- rule: pem_private_key must be a PEM PRIVATE KEY block (did you swap the certificate and private key?)
 - rule: {"required":true}
 
 ### spec.labels

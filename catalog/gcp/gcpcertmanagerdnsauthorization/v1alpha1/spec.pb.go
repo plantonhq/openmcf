@@ -47,6 +47,7 @@ type GcpCertManagerDnsAuthorizationSpec struct {
 	// Name of the authorization in GCP. Must be 1-64 characters: start with
 	// a letter, then letters, digits, hyphens, or underscores.
 	// If not specified, defaults to metadata.name.
+	// Immutable: renaming destroys and recreates the authorization.
 	AuthorizationName string `protobuf:"bytes,2,opt,name=authorization_name,json=authorizationName,proto3" json:"authorization_name,omitempty"`
 	// The domain being authorized. Covers the domain itself and its
 	// wildcard: authorizing "example.com" issues certificates for
@@ -58,6 +59,8 @@ type GcpCertManagerDnsAuthorizationSpec struct {
 	// The Certificate Manager location. Defaults to "global" — the correct
 	// choice for classic external HTTPS load balancers. Regional
 	// authorizations pair with regional certificates only.
+	// Immutable: changing the location destroys and recreates the
+	// authorization.
 	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
 	// How the validation record is scoped:
 	//

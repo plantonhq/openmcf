@@ -638,8 +638,9 @@ OVERALL health.
 
 `int32`
 
-TCP port for the probe. Required when port_specification is
-USE_FIXED_PORT or unset. Must be 1-65535.
+TCP port for the probe when port_specification is USE_FIXED_PORT or
+unset. Must be 1-65535 when set. Optional — the provider does not
+require it; set it explicitly for a deterministic probe target.
 
 - rule: port must be between 1 and 65535
 

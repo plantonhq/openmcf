@@ -206,10 +206,14 @@ behavior.
 `string`
 
 How long the autoscaler waits between evaluations, letting the
-cluster settle after a scaling event. Bounds: 2 minutes to 1 day.
-Format: duration in seconds with "s" suffix. Default: "120s".
+cluster settle after a scaling event. Bounds: 2 minutes (120s) to
+1 day (86400s) — the Dataproc API's own limits, enforced below so
+an out-of-range value fails at spec time instead of at the
+provider. Format: duration in seconds with "s" suffix.
+Default: "120s".
 
 - rule: cooldown_period must be a duration in seconds (e.g., '120s')
+- rule: cooldown_period must be between 2 minutes (120s) and 1 day (86400s)
 
 ### spec.basicAlgorithm.yarnConfig
 
@@ -225,9 +229,12 @@ YARN memory-based scaling behavior.
 
 How long the autoscaler waits for a graceful YARN decommission
 before forcefully removing a worker during scale-down. Running
-tasks get this window to finish. Bounds: 0s to 1 day.
+tasks get this window to finish. Bounds: 0s to 1 day (86400s) —
+the Dataproc API's own limit, enforced below so an out-of-range
+value fails at spec time instead of at the provider.
 Format: duration in seconds with "s" suffix (e.g., "3600s").
 
+- rule: graceful_decommission_timeout must be at most 1 day (86400s)
 - rule: {"required":true,"string":{"pattern":"^[0-9]+s$"}}
 
 ### spec.basicAlgorithm.yarnConfig.scaleUpFactor

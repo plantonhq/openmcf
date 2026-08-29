@@ -416,9 +416,12 @@ with: head -c 16 /dev/urandom | base64 | tr '+/' '-_'. 22 characters of
 base64url, with or without the trailing == padding. Anyone holding this
 value can mint valid signed URLs, so it is handled as a secret.
 Immutable per key name: rotating means adding a new key and removing
-the old.
+the old. The base64url shape is taught here rather than enforced by a
+validation rule, because sensitive fields hold a managed-secret
+reference on consuming platforms and a content-shape rule would
+reject every reference.
 
-- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_-]{22}(==)?$"}}
+- rule: {"required":true}
 
 ### spec.resourceManagerTags
 

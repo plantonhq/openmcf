@@ -371,6 +371,46 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 		gomega.Expect(err.Error()).To(gomega.ContainSubstring("cooldown_period"))
 	})
 
+	ginkgo.It("should reject a cooldown_period below 2 minutes", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.CooldownPeriod = "10s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be between 2 minutes"))
+	})
+
+	ginkgo.It("should reject a cooldown_period above 1 day", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.CooldownPeriod = "90000s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be between 2 minutes"))
+	})
+
+	ginkgo.It("should accept cooldown_period at both bounds", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.CooldownPeriod = "86400s"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.HaveOccurred())
+		msg.Spec.BasicAlgorithm.CooldownPeriod = "120s"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a graceful_decommission_timeout above 1 day", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.YarnConfig.GracefulDecommissionTimeout = "90000s"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be at most 1 day"))
+	})
+
+	ginkgo.It("should accept graceful_decommission_timeout at both bounds", func() {
+		msg := minimal()
+		msg.Spec.BasicAlgorithm.YarnConfig.GracefulDecommissionTimeout = "0s"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.HaveOccurred())
+		msg.Spec.BasicAlgorithm.YarnConfig.GracefulDecommissionTimeout = "86400s"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject a scale_up_factor above 1.0", func() {
 		msg := minimal()
 		msg.Spec.BasicAlgorithm.YarnConfig.ScaleUpFactor = f64(1.5)

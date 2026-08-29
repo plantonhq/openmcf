@@ -389,6 +389,7 @@ type GcpFirestoreIndexSpec struct {
 	// GCP project owning the database. Can be a literal project ID or a
 	// reference to a GcpProject resource. If omitted, the provider's
 	// default project is used.
+	// Immutable: changing the project destroys and recreates the index.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The Firestore database the index belongs to — the database name (a
 	// GcpFirestoreDatabase reference resolves to it). Empty falls back to

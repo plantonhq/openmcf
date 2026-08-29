@@ -641,15 +641,6 @@ var _ = ginkgo.Describe("GcpBackendServiceSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should reject a signed-URL key that is not base64url", func() {
-		target := minimal()
-		target.Spec.SignedUrlKeys = []*GcpBackendServiceSignedUrlKey{
-			{Name: "key-a", KeyValue: "not/valid+base64url!"},
-		}
-		err := validator.Validate(target)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
 	ginkgo.It("should reject a custom request header without a colon", func() {
 		target := minimal()
 		target.Spec.CustomRequestHeaders = []string{"X-Broken-Header"}

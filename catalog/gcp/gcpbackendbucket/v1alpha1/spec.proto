@@ -310,10 +310,12 @@ message GcpBackendBucketSignedUrlKey {
   // base64url, with or without the trailing == padding. Anyone holding this
   // value can mint valid signed URLs, so it is handled as a secret.
   // Immutable per key name: rotating means adding a new key and removing
-  // the old.
+  // the old. The base64url shape is taught here rather than enforced by a
+  // validation rule, because sensitive fields hold a managed-secret
+  // reference on consuming platforms and a content-shape rule would
+  // reject every reference.
   string key_value = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9_-]{22}(==)?$",
     (dev.planton.shared.options.sensitive) = true
   ];
 }

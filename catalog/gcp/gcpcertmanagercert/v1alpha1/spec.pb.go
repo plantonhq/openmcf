@@ -52,6 +52,7 @@ type GcpCertManagerCertSpec struct {
 	// The GCP project to create the certificate in.
 	// Can be a literal project ID or a reference to a GcpProject resource.
 	// If omitted, the provider's default project is used.
+	// Immutable: changing the project destroys and recreates the certificate.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Name of the certificate in GCP. Must be 1-64 characters: start with a
 	// letter, then letters, digits, hyphens, or underscores. Certificate
@@ -268,8 +269,12 @@ type GcpCertManagerCertSelfManaged struct {
 	// any intermediates. Certificate material is public — only the key is
 	// secret. Updating the pair in place rotates the certificate.
 	PemCertificate string `protobuf:"bytes,1,opt,name=pem_certificate,json=pemCertificate,proto3" json:"pem_certificate,omitempty"`
-	// The leaf certificate's private key in PEM form. Secret material —
-	// never logged, masked in outputs.
+	// The leaf certificate's private key in PEM form — a PRIVATE KEY block
+	// (take care not to swap the certificate and the key). Secret material —
+	// never logged, masked in outputs. The PEM framing is taught here rather
+	// than enforced by a validation rule, because sensitive fields hold a
+	// managed-secret reference on consuming platforms and a content-shape
+	// rule would reject every reference.
 	PemPrivateKey string `protobuf:"bytes,2,opt,name=pem_private_key,json=pemPrivateKey,proto3" json:"pem_private_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -349,12 +354,12 @@ const file_catalog_gcp_gcpcertmanagercert_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12dns_authorizations\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xac\x18\x92\xd4a\x1fstatus.outputs.authorization_idR\x11dnsAuthorizations\x12'\n" +
 	"\x0fissuance_config\x18\x03 \x01(\tR\x0eissuanceConfig:\xcc\x03\xbaH\xc8\x03\x1a\xcb\x01\n" +
 	"\x1bmanaged.auth_mode_exclusive\x12idns_authorizations and issuance_config are mutually exclusive (omit both for load-balancer authorization)\x1aAthis.dns_authorizations.size() == 0 || this.issuance_config == ''\x1a\xf7\x01\n" +
-	"\x1fmanaged.wildcards_need_dns_auth\x12cwildcard domains require dns_authorizations (load-balancer authorization cannot validate wildcards)\x1ao!this.domains.exists(d, d.startsWith('*.')) || this.dns_authorizations.size() > 0 || this.issuance_config != ''\"\xc8\x03\n" +
+	"\x1fmanaged.wildcards_need_dns_auth\x12cwildcard domains require dns_authorizations (load-balancer authorization cannot validate wildcards)\x1ao!this.domains.exists(d, d.startsWith('*.')) || this.dns_authorizations.size() > 0 || this.issuance_config != ''\"\xa9\x02\n" +
 	"\x1dGcpCertManagerCertSelfManaged\x12\xd3\x01\n" +
 	"\x0fpem_certificate\x18\x01 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\x9e\x01\n" +
-	"\x17pem_certificate.framing\x12_pem_certificate must be a PEM CERTIFICATE block (did you swap the certificate and private key?)\x1a\"this.contains('BEGIN CERTIFICATE')\xc8\x01\x01R\x0epemCertificate\x12\xd0\x01\n" +
-	"\x0fpem_private_key\x18\x02 \x01(\tB\xa7\x01\xbaH\x9f\x01\xba\x01\x98\x01\n" +
-	"\x17pem_private_key.framing\x12_pem_private_key must be a PEM PRIVATE KEY block (did you swap the certificate and private key?)\x1a\x1cthis.contains('PRIVATE KEY')\xc8\x01\x01\xa0\xa6\x1d\x01R\rpemPrivateKeyB\xee\x02\n" +
+	"\x17pem_certificate.framing\x12_pem_certificate must be a PEM CERTIFICATE block (did you swap the certificate and private key?)\x1a\"this.contains('BEGIN CERTIFICATE')\xc8\x01\x01R\x0epemCertificate\x122\n" +
+	"\x0fpem_private_key\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\rpemPrivateKeyB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpcertmanagercert.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpcertmanagercert/v1alpha1;gcpcertmanagercertv1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpcertmanagercert.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpcertmanagercert\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpcertmanagercert\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpcertmanagercert::V1alpha1b\x06proto3"
 
 var (

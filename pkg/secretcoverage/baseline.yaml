@@ -49,11 +49,8 @@ gaps:
   - KubernetesSecret:spec.ssh_auth.ssh_private_key
 violations:
   # Sensitive fields still carrying a value-content rule, found when the check was
-  # introduced (the Azure catalog's two instances were fixed in the same change).
-  # Owners: gcp entries -> the GCP catalog maintainers; cloudflare -> the Cloudflare
-  # catalog maintainers. Fix = drop the rule, teach the shape in the field comment.
+  # introduced (the Azure catalog's two instances were fixed in the same change;
+  # the GCP catalog's four were fixed subsequently). Owner: cloudflare -> the
+  # Cloudflare catalog maintainers. Fix = drop the rule, teach the shape in the
+  # field comment.
   - CloudflareZeroTrustTunnel:spec.tunnel_secret
-  - GcpBackendBucket:spec.signed_url_keys.key_value
-  - GcpBackendService:spec.signed_url_keys.key_value
-  - GcpCertManagerCert:spec.self_managed.pem_private_key
-  - GcpSslCertificate:spec.private_key

@@ -99,6 +99,7 @@ spec:
 GCP project owning the Bigtable instance. Can be a literal project
 ID or a reference to a GcpProject resource. If omitted, the
 provider's default project is used.
+Immutable: changing the project destroys and recreates the table.
 
 - references: GcpProject (`status.outputs.project_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse

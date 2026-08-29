@@ -253,4 +253,14 @@ var _ = ginkgo.Describe("GcpGlobalAddressSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should reject INTERNAL address_type without purpose", func() {
+		msg := minimalVpcPeering()
+		msg.Spec.Purpose = ""
+		// GCP rejects a purpose-less internal global reservation; the
+		// internal_requires_purpose rule holds that truth at spec time.
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("purpose is required when address_type is INTERNAL"))
+	})
 })
