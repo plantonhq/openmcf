@@ -1,8 +1,14 @@
 # Deploy, Promote, and Rollback — The Delivery Verbs
 
-A service's version reaches an environment two ways: a push builds it and deploys it, or someone delivers a version that already exists. This file is about the second way — the three verbs that deploy without a build of their own.
+A service's version reaches an environment two ways: a push builds it and deploys it, or someone delivers a version that already exists. This file is about the second way — the three verbs that deploy without a build of their own — plus the two build-and-deliver shapes people ask for by name: releasing by tag, and trying a branch in one environment.
 
-Read this when someone wants a version that runs in one environment to run in another, when something is wrong in an environment and the previous version should come back, when someone has an image built elsewhere (their CI, their laptop) and wants it running, or when a deployment you started refuses and you need to explain why in terms the person can act on.
+Read this when someone wants a version that runs in one environment to run in another, when something is wrong in an environment and the previous version should come back, when someone has an image built elsewhere (their CI, their laptop) and wants it running, when someone wants a tag push to BE the release or a feature branch running in dev, or when a deployment you started refuses and you need to explain why in terms the person can act on.
+
+## Releasing by tag, and trying a branch
+
+**Tag releases**: with `build.triggers.tags.deploy: true` on the service (optionally narrowed by `tags.patterns` like `["v*"]`), a matching tag push builds and rides the FULL promotion-ordered environment walk — gates, protection, and approvals exactly as a default-branch push. A tag is a release; without the flag, tag pushes build only, and the run says so.
+
+**Branch deploys** (`planton service run <service> --branch <branch> --deploy-env <env>`): builds the branch's head and deploys it into exactly ONE environment — no promotion walk. A branch outside the service's trigger branches NEVER walks the promotion order: without `--deploy-env` it builds and stops, with the reason on the run ("name a deploy environment"). This is the try-my-feature-branch-in-dev shape. An explicit `--commit <sha>` is different — the deliberate release act: it keeps the full walk, and its branch label is empty unless `--branch` states the claim (the record never claims a branch it cannot prove).
 
 ## What the verbs actually do
 
