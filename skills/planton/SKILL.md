@@ -576,6 +576,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/deployment-model.md` | What happens after deploy (projects, pipelines, stack jobs, IaC modules); explaining or diagnosing it |
 | `references/machine-deploy.md` | Deployment is the next step on a signed-in instance; offering the machine's own cloud login as the deploy path; performing a consented deploy |
 | `references/service-delivery-verbs.md` | Moving a service version between environments: promoting what runs in one environment into another, rolling an environment back to its previous deployment, explaining a refused delivery |
+| `references/service-urls-and-rollout-verification.md` | Where a deployed service answers: the URLs on a deployment record, reading the rollout verdict (verified/failed/unverifiable) accurately, answering "where is my service running?" |
 | `references/deployed-projects.md` | The folder has `.planton/project.yaml`; fixing a failed deployment; saving changes to a deployed project |
 | `references/state-import.md` | A deploy failed saying a resource ALREADY EXISTS; adopting an orphaned cloud resource into IaC state |
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |
