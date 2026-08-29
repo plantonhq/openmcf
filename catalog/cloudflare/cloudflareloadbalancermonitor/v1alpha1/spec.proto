@@ -38,6 +38,16 @@ message CloudflareLoadBalancerMonitorSpec {
     expression: "!(this.type in [3, 4, 6]) || this.port > 0"
   };
 
+  // Cloudflare rejects http/https monitor creation with 400 code 1002
+  // ("expected_body or expected_codes is required for HTTP monitors") unless at
+  // least one of the two expectations is set — measured live on both types.
+  // The unspecified type (0) defaults to http, so it carries the same wall.
+  option (buf.validate.message).cel = {
+    id: "monitor.http_expectation_required"
+    message: "expected_codes or expected_body is required for http and https monitors"
+    expression: "!(this.type in [0, 1, 2]) || this.expected_codes != '' || this.expected_body != ''"
+  };
+
   // The Cloudflare account ID that owns this monitor. Must match the account of
   // every pool that references it.
   string account_id = 1 [
@@ -60,11 +70,14 @@ message CloudflareLoadBalancerMonitorSpec {
   string path = 4;
 
   // The expected HTTP response code or range that marks an origin healthy
-  // (e.g. "200", "2xx", "200-299"). Only valid for http/https monitors.
+  // (e.g. "200", "2xx", "200-299"). Only valid for http/https monitors — and
+  // for those types Cloudflare REQUIRES this or expected_body (the API answers
+  // 400 code 1002 when both are empty; measured live).
   string expected_codes = 5 [(dev.planton.shared.options.recommended_default) = "2xx"];
 
   // A case-insensitive substring that must appear in the response body for the
-  // origin to be considered healthy. Only valid for http/https monitors.
+  // origin to be considered healthy. Only valid for http/https monitors; either
+  // this or expected_codes must be set for those types (Cloudflare 400/1002).
   string expected_body = 6;
 
   // The HTTP method for the health check. Leave empty to use the protocol

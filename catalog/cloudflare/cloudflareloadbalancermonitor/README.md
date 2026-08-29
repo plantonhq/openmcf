@@ -44,8 +44,8 @@ spec:
 | `type` | no | `http` (default), `https`, `tcp`, `udp_icmp`, `icmp_ping`, `smtp` |
 | `description` | no | Human-readable description |
 | `path` | no | Endpoint path to check (http/https only) |
-| `expectedCodes` | no | Expected response code/range, e.g. `2xx` (http/https only) |
-| `expectedBody` | no | Substring that must appear in the body (http/https only) |
+| `expectedCodes` | http/https: this or `expectedBody` | Expected response code/range, e.g. `2xx` (http/https only; Cloudflare rejects http/https monitors with neither expectation — 400 code 1002) |
+| `expectedBody` | http/https: this or `expectedCodes` | Substring that must appear in the body (http/https only) |
 | `method` | no | HTTP method (default `GET`; tcp uses `connection_established`) |
 | `headers` | no | Request headers (name -> values); set a `Host` header (http/https only) |
 | `port` | conditional | Required for `tcp`, `udp_icmp`, `smtp`; optional for http/https |

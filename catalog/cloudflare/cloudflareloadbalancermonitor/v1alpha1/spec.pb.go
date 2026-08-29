@@ -110,10 +110,13 @@ type CloudflareLoadBalancerMonitorSpec struct {
 	// http/https monitors.
 	Path string `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"`
 	// The expected HTTP response code or range that marks an origin healthy
-	// (e.g. "200", "2xx", "200-299"). Only valid for http/https monitors.
+	// (e.g. "200", "2xx", "200-299"). Only valid for http/https monitors — and
+	// for those types Cloudflare REQUIRES this or expected_body (the API answers
+	// 400 code 1002 when both are empty; measured live).
 	ExpectedCodes string `protobuf:"bytes,5,opt,name=expected_codes,json=expectedCodes,proto3" json:"expected_codes,omitempty"`
 	// A case-insensitive substring that must appear in the response body for the
-	// origin to be considered healthy. Only valid for http/https monitors.
+	// origin to be considered healthy. Only valid for http/https monitors; either
+	// this or expected_codes must be set for those types (Cloudflare 400/1002).
 	ExpectedBody string `protobuf:"bytes,6,opt,name=expected_body,json=expectedBody,proto3" json:"expected_body,omitempty"`
 	// The HTTP method for the health check. Leave empty to use the protocol
 	// default ("GET" for http/https, "connection_established" for tcp). Only
@@ -363,7 +366,7 @@ var File_catalog_cloudflare_cloudflareloadbalancermonitor_v1alpha1_spec_proto pr
 
 const file_catalog_cloudflare_cloudflareloadbalancermonitor_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/cloudflare/cloudflareloadbalancermonitor/v1alpha1/spec.proto\x12=dev.planton.cloudflare.cloudflareloadbalancermonitor.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xf2\f\n" +
+	"Dcatalog/cloudflare/cloudflareloadbalancermonitor/v1alpha1/spec.proto\x12=dev.planton.cloudflare.cloudflareloadbalancermonitor.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xb5\x0e\n" +
 	"!CloudflareLoadBalancerMonitorSpec\x12=\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12\x86\x01\n" +
@@ -390,8 +393,9 @@ const file_catalog_cloudflare_cloudflareloadbalancermonitor_v1alpha1_spec_proto_
 	"\x10follow_redirects\x18\x0f \x01(\bR\x0ffollowRedirects\x12%\n" +
 	"\x0eallow_insecure\x18\x10 \x01(\bR\rallowInsecure\x12\x1d\n" +
 	"\n" +
-	"probe_zone\x18\x11 \x01(\tR\tprobeZone:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
-	"\x1cmonitor.port_required_for_l4\x127a port is required for tcp, udp_icmp, and smtp monitors\x1a*!(this.type in [3, 4, 6]) || this.port > 0\"c\n" +
+	"probe_zone\x18\x11 \x01(\tR\tprobeZone:\xcd\x02\xbaH\xc9\x02\x1a\x83\x01\n" +
+	"\x1cmonitor.port_required_for_l4\x127a port is required for tcp, udp_icmp, and smtp monitors\x1a*!(this.type in [3, 4, 6]) || this.port > 0\x1a\xc0\x01\n" +
+	"!monitor.http_expectation_required\x12Gexpected_codes or expected_body is required for http and https monitors\x1aR!(this.type in [0, 1, 2]) || this.expected_codes != '' || this.expected_body != ''\"c\n" +
 	"#CloudflareLoadBalancerMonitorHeader\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12 \n" +
 	"\x06values\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values*\x86\x01\n" +

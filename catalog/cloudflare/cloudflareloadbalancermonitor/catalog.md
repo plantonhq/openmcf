@@ -65,7 +65,7 @@ These are the most important decisions when configuring a monitor. Explore the f
 
 **Protocol (`type`)** -- Determines what a check measures. `http`/`https` validate the application response (path, status codes, body, headers) and catch "up but broken" origins. `tcp`, `udp_icmp`, and `smtp` confirm a port accepts connections. `icmp_ping` checks raw reachability only. Prefer an application-layer check whenever clients use HTTP(S).
 
-**Expected codes** -- For HTTP(S), `expectedCodes` is the response code or range (e.g. `200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body.
+**Expected codes** -- For HTTP(S), `expectedCodes` is the response code or range (e.g. `200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body. Cloudflare requires `expectedCodes` or `expectedBody` on every http/https monitor -- creation fails with a 400 (code 1002) when both are empty.
 
 **Port** -- Required for `tcp`, `udp_icmp`, and `smtp` monitors; optional for HTTP(S) where it defaults to 80/443. Set it to a non-standard port only when origins listen elsewhere.
 

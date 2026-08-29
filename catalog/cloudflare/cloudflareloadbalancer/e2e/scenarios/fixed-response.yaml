@@ -1,0 +1,51 @@
+# Fixed-response CloudflareLoadBalancer scenario: ONE terminating
+# fixed-response rule (answers matched requests at the edge; a 503 maintenance
+# page). This rule mode lives in its own scenario because Basic Load Balancing
+# caps rules at 1 per load balancer -- a second rule answers 400 code 1002
+# "rule count 2 exceeds limit 1" (measured live 2026-08-28); the
+# steering-overrides mode rides the sibling `rules-steering` scenario.
+# Gray-clouded with an explicit ttl (ttl is only legal on non-proxied load
+# balancers). The hostname is FULLY QUALIFIED, composed from the fixture
+# zone's run-scoped name -- Cloudflare rejects bare labels (400/1002 "invalid
+# hostname", measured live).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancer
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancer-fixedresp
+  id: planton-oss-e2e-cloudflareloadbalancer-fixedresp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  hostname: e2e-lb-fixedresp.planton-e2e-${E2E_RUN_ID}.com
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  defaultPools:
+    - valueFrom:
+        kind: CloudflareLoadBalancerPool
+        name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+        fieldPath: status.outputs.pool_id
+  fallbackPool:
+    valueFrom:
+      kind: CloudflareLoadBalancerPool
+      name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+      fieldPath: status.outputs.pool_id
+  proxied: false
+  ttl: 30
+  rules:
+    - name: maintenance-page
+      condition: http.request.uri.path contains "/maintenance"
+      priority: 1
+      fixedResponse:
+        contentType: text/html
+        messageBody: "<h1>Down for maintenance</h1>"
+        statusCode: 503

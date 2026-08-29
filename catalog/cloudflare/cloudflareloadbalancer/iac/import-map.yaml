@@ -4,10 +4,11 @@ metadata:
   name: cloudflareloadbalancer
 spec:
   # A load balancer's import identity is compound: the zone it lives in plus
-  # the load balancer's own Cloudflare-assigned id (with a literal "zones/"
-  # scope prefix recorded in the provider catalog's id_format). Both values
-  # are discoverable from a prior deploy's stack outputs; neither is derivable
-  # from metadata.
+  # the load balancer's own Cloudflare-assigned id, joined as plain
+  # "{zone_id}/{load_balancer_id}" -- the provider importer REJECTS a literal
+  # "zones/" scope prefix with "invalid ID" (measured live; the prefix exists
+  # only in the API path). Both values are discoverable from a prior deploy's
+  # stack outputs; neither is derivable from metadata.
   values:
     - name: zone_id
       derivations:

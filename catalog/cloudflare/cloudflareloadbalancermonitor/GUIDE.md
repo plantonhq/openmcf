@@ -8,7 +8,7 @@ Monitors, pools, and load balancers all ride the Load Balancing add-on. Without 
 
 ## Type decides which fields matter
 
-`http`/`https` use `path`, `method`, `expected_codes`, `expected_body`, `follow_redirects`, `allow_insecure`, and headers. `tcp` (and `udp_icmp` / `smtp`) require a `port > 0` and ignore the HTTP knobs. A tcp monitor with no port fails validation; an http monitor with a port is fine (it overrides the default 80/443).
+`http`/`https` use `path`, `method`, `expected_codes`, `expected_body`, `follow_redirects`, `allow_insecure`, and headers. `tcp` (and `udp_icmp` / `smtp`) require a `port > 0` and ignore the HTTP knobs. A tcp monitor with no port fails validation; an http monitor with a port is fine (it overrides the default 80/443). One expectation is mandatory for http/https: Cloudflare rejects creation with `400` code `1002` ("expected_body or expected_codes is required") unless `expected_codes` or `expected_body` is set — there is no server-side default (measured live on both types). `expected_codes: "2xx"` is the sensible baseline.
 
 ## Zero means "Cloudflare's default"
 

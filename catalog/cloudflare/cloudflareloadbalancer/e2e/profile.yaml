@@ -8,23 +8,22 @@ spec:
   # prerequisites), resolves the zone and pool references against their
   # outputs, then runs deploy -> GET zones/{zone_id}/load_balancers/{id}
   # verify -> destroy -> verify-destroyed on both provisioners. The minimal
-  # scenario proves the static-failover path; the rules-steering scenario
-  # proves the traffic-rules surface (a fixed-response rule plus a
-  # steering-overrides rule) and session affinity.
+  # scenario proves the static-failover path; rules-steering proves the
+  # steering-overrides rule mode plus session affinity; fixed-response proves
+  # the terminating rule mode. The two rule modes live in SEPARATE scenarios
+  # because Basic Load Balancing caps rules at 1 per load balancer (400/1002
+  # "rule count 2 exceeds limit 1", measured live 2026-08-28).
   #
   # Entitlement gate: Cloudflare Load Balancing is a paid account add-on
-  # (~$5/mo + per-origin) and it gates the WHOLE chain -- pools included. The
-  # proving session enables the subscription before running these lanes.
-  # Watch: whether Cloudflare accepts load balancer creation on a PENDING
-  # (undelegated) fixture zone is unverified offline; if the live lane finds
-  # it needs an ACTIVE zone, the fallback is the env-gated arm pattern
-  # (planton.dev/e2e-required-env + PLANTON_E2E_CLOUDFLARE_ZONE_ID).
+  # (~$5/mo + per-origin) and it gates the WHOLE chain -- pools included.
+  # A PENDING (undelegated) zone ACCEPTS load balancer creation (measured
+  # live 2026-08-28 by direct-API probe on a throwaway pending zone), so the
+  # run-scoped pending fixture zone serves these lanes as-is -- no env-gated
+  # ACTIVE-zone arm is needed.
   # Deliberately not in the live scenarios: pop_pools (Enterprise-only
   # entitlement) and networks (needs a private-network setup; the send path
   # is proven by the offline plan).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

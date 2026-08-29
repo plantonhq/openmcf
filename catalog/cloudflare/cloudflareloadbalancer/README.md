@@ -98,7 +98,7 @@ spec:
 
 | Field | Required | Description |
 |---|---|---|
-| `hostname` | yes | DNS hostname for the load balancer |
+| `hostname` | yes | Fully-qualified DNS hostname for the load balancer (`app.example.com`; Cloudflare rejects a bare label with 400 code 1002) |
 | `zoneId` | yes | Zone that owns the hostname (ID or `CloudflareDnsZone` ref) |
 | `defaultPools[]` | yes | Ordered pools by failover priority (pool IDs/refs) |
 | `fallbackPool` | yes | Pool of last resort when all others are unhealthy |
@@ -113,7 +113,7 @@ spec:
 | `adaptiveRouting` | no | Zero-downtime failover across pools |
 | `locationStrategy` | no | Location steering for non-proxied requests |
 | `randomSteering` | no | Pool weights for random/least-* policies |
-| `rules[]` | no | Traffic rules: condition -> steering overrides or a fixed response |
+| `rules[]` | no | Traffic rules: condition -> steering overrides or a fixed response (rule count is capped by the Load Balancing subscription tier — Basic allows 1) |
 | `networks` | no | Private networks the load balancer is enabled on |
 
 ## Traffic rules

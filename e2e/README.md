@@ -1290,7 +1290,35 @@ First measured user (live 2026-08-27, v5.23.0):
 `cloudflare_zero_trust_device_default_profile.policy_id` -- both engines
 measured drifting, both converged by the ignore.
 
-### Schema-level static defaults that BLANK unset fields: restore must diff ALL fields
+### IMPORT-ONLY convergence gaps: schema defaults and API auto-marks that refresh forgives but import does not
+
+A lane can pass DEPLOY and the refresh-inclusive IDEMPOTENCY plan on every
+scenario and still fail the blind import round-trip with a genuine in-place
+update -- because Optional+Computed semantics forgive an omitted config
+against a refreshed state (prior value kept, no diff) while the post-import
+plan compares the raw imported read against the config's DEFAULTS. Two
+measured shapes (live 2026-08-28, `cloudflare_load_balancer` at v5.23.0/24.0):
+(1) the provider's schema `Default` differs from the API's CANONICAL stored
+value -- `steering_policy` defaults to `""` while the API stores `"off"` (or
+`"geo"` with geo-pool maps), so an omitted policy re-plans `"off" -> null`
+only after import; contrast `session_affinity`, whose default `"none"` equals
+the canonical echo and never diffs. (2) the API AUTO-MARKS a member inside a
+list attribute -- a `fixed_response` rule is stored with `terminates: true`,
+so a module that omits `terminates` re-plans the whole `rules` list only
+after import. Both are MODULE-FIXABLE by sending the canonical value
+explicitly (mirror the API's documented mapping; send `terminates: true`
+exactly when the rule carries a `fixed_response`) -- prefer that over a
+catalog tolerance, because these are real steering semantics a tolerance
+would blind the oracle to. Diagnosis note: ONE real diff makes the provider's
+plan flip every other Optional+Computed attribute to "(known after apply)",
+so the round-trip oracle's changed-list looks enormous -- find the entries
+whose before/after are concrete values (not unknown-flips), fix those, and
+the rest of the list collapses to a no-op. Related teardown hazard: a failed
+import round-trip aborts the lane BEFORE its DESTROY phase, so the deployed
+object outlives the lane and can block fixture teardown (a live load
+balancer holds its pool -- the pool's delete 400s until the zone cascade
+removes the LB); sweep the account after any import-RT failure instead of
+trusting retry exhaustion.
 
 A settings-singleton trap for capture-and-restore lanes. Auto-generated
 schemas may attach a static default (`stringdefault.StaticString("")`) to an

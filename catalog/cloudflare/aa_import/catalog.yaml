@@ -86,9 +86,13 @@ spec:
     # The load balancer's documented import ID carries a literal scope prefix
     # ("{accounts|zones}/{scope_id}/{lb_id}"); the catalog kind is zone-scoped,
     # so the zones/ arm is the one recorded here.
+    # The importer parses plain "<zone_id>/<load_balancer_id>" (ImportState in
+    # the provider's load_balancer resource) -- a literal "zones/" scope prefix
+    # is REJECTED with "invalid ID" (measured live 2026-08-28; the prefix
+    # appears only in the API path, never in the import ID).
     - terraform_type: cloudflare_load_balancer
       pulumi_type: cloudflare:index/loadBalancer:LoadBalancer
-      id_format: "zones/{zone_id}/{load_balancer_id}"
+      id_format: "{zone_id}/{load_balancer_id}"
     # --- Email Routing ----------------------------------------------------------
     # Settings, the managed DNS records, and the catch-all rule are zone
     # singletons -- their import identity is the bare zone id. Rules are

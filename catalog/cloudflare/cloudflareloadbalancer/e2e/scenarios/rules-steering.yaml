@@ -1,12 +1,14 @@
 # Flagship CloudflareLoadBalancer scenario: the traffic-rules surface plus
-# session affinity. Two rules prove the two rule modes -- a terminating
-# fixed-response rule (answers matched requests at the edge; a 503 maintenance
-# page) and a steering-overrides rule (explicit steering_policy "off" and
-# session_affinity "none", proving the override-presence semantics: an
-# explicit default-valued override is SENT, not dropped). Proxied, with
+# session affinity. ONE steering-overrides rule (explicit steering_policy
+# "off" and session_affinity "none", proving the override-presence semantics:
+# an explicit default-valued override is SENT, not dropped). Proxied, with
 # cookie affinity at the top level so the override has something real to
-# override. Deliberately absent: pop_pools (Enterprise entitlement) and
-# networks (needs a private-network setup; offline plan proves the send path).
+# override. Exactly one rule by design: Basic Load Balancing caps rules at 1
+# per load balancer -- a second rule answers 400 code 1002 "rule count 2
+# exceeds limit 1" (measured live 2026-08-28); the terminating fixed-response
+# mode lives in its own `fixed-response` scenario for the same reason.
+# Deliberately absent: pop_pools (Enterprise entitlement) and networks (needs
+# a private-network setup; offline plan proves the send path).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancer
 metadata:
@@ -22,7 +24,9 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  hostname: e2e-lb-rules
+  # Fully qualified, composed with the fixture zone's run token -- Cloudflare
+  # rejects bare labels (400/1002 "invalid hostname", measured live).
+  hostname: e2e-lb-rules.planton-e2e-${E2E_RUN_ID}.com
   zoneId:
     valueFrom:
       kind: CloudflareDnsZone
@@ -46,13 +50,6 @@ spec:
     secure: Auto
     zeroDowntimeFailover: temporary
   rules:
-    - name: maintenance-page
-      condition: http.request.uri.path contains "/maintenance"
-      priority: 1
-      fixedResponse:
-        contentType: text/html
-        messageBody: "<h1>Down for maintenance</h1>"
-        statusCode: 503
     - name: api-no-affinity
       condition: http.request.uri.path contains "/api"
       priority: 2

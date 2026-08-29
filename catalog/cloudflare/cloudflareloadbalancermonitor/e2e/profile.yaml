@@ -13,9 +13,7 @@ spec:
   # same gate already on the load-balancer proof group). Objects create in
   # seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
   cost_class: cheap_ephemeral

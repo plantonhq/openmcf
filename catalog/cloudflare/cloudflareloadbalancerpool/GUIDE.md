@@ -12,7 +12,7 @@ A pool with no monitor treats every origin as healthy. That is acceptable for a 
 
 ## Origins under a monitor must be globally routable
 
-Cloudflare's health checks run from its data centers. RFC 5737 documentation ranges and other non-routable addresses are rejected once a monitor is attached. TEST-NET addresses are fine for an unmonitored pool and wrong for a monitored one.
+Cloudflare's health checks run from its data centers. RFC 5737 documentation ranges and other non-routable addresses are rejected once a monitor is attached — the create fails with `400` code `1002` "Origin address is invalid or is not globally routable and has health monitoring enabled" (measured live). TEST-NET addresses are fine for an unmonitored pool and wrong for a monitored one.
 
 ## Names are short and unique per account
 
