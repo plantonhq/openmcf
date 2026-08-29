@@ -7,7 +7,7 @@ import (
 )
 
 // fallbackOrigin sets the default origin all of a SaaS zone's custom hostnames route
-// to (one per zone) and exports its status.
+// to (one per zone).
 func fallbackOrigin(
 	ctx *pulumi.Context,
 	locals *Locals,
@@ -28,7 +28,6 @@ func fallbackOrigin(
 		return errors.Wrap(err, "failed to create cloudflare custom hostname fallback origin")
 	}
 
-	ctx.Export(OpStatus, created.Status)
 	ctx.Export(OpCreatedAt, created.CreatedAt)
 	ctx.Export(OpUpdatedAt, created.UpdatedAt)
 	ctx.Export(OpErrors, created.Errors)

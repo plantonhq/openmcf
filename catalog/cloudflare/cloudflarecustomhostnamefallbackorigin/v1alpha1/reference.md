@@ -64,7 +64,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.status` | `string` | The status of the fallback origin (e.g. "pending_deployment", "active"). |
 | `status.outputs.created_at` | `string` | RFC3339 timestamp of when the fallback origin was created. |
 | `status.outputs.updated_at` | `string` | RFC3339 timestamp of when the fallback origin was last updated. |
 | `status.outputs.errors` | `[]string` | Any errors reported while deploying the fallback origin. |

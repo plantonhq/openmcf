@@ -49,7 +49,6 @@ func certificatePack(
 	}
 
 	ctx.Export(OpCertificatePackId, created.ID())
-	ctx.Export(OpStatus, created.Status)
 	ctx.Export(OpPrimaryCertificate, created.PrimaryCertificate)
 	ctx.Export(OpZoneId, created.ZoneId)
 

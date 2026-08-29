@@ -3,10 +3,10 @@ output "custom_hostname_id" {
   value       = cloudflare_custom_hostname.main.id
 }
 
-output "status" {
-  description = "The activation status"
-  value       = cloudflare_custom_hostname.main.status
-}
+# No status output: hostname activation is asynchronous (pending ->
+# pending_validation -> active), and a point-in-time phase is never a stable
+# stack output -- it flips on the first refresh after the transition and
+# re-plans forever. Read activation status from the Cloudflare API instead.
 
 output "ownership_verification_name" {
   description = "The DNS record name for ownership verification"

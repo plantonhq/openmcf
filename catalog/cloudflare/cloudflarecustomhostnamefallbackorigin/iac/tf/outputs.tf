@@ -1,7 +1,7 @@
-output "status" {
-  description = "The status of the fallback origin"
-  value       = cloudflare_custom_hostname_fallback_origin.main.status
-}
+# No status output: fallback-origin deployment is asynchronous
+# (pending_deployment -> active), and a point-in-time phase is never a stable
+# stack output -- it flips on the first refresh after the transition and
+# re-plans forever. Read deployment status from the Cloudflare API instead.
 
 output "created_at" {
   description = "RFC3339 timestamp of when the fallback origin was created"

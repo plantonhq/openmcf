@@ -189,8 +189,10 @@ spec:
 `string` · required
 
 The DNS hostname to associate with this load balancer (e.g.
-"app.example.com"). If a DNS record with this name already exists, the load
-balancer takes precedence.
+"app.example.com"). Must be the FULLY QUALIFIED name -- Cloudflare rejects
+a bare label like "app" with 400 code 1002 "Invalid load balancer name:
+invalid hostname" (measured live). If a DNS record with this name already
+exists, the load balancer takes precedence.
 
 - rule: {"required":true}
 
@@ -511,9 +513,13 @@ other pools in this load balancer.
 Ordered list of traffic rules evaluated per request (the dashboard's
 "Custom Rules"). Each rule has a condition expression; when it matches, the
 rule either overrides this load balancer's steering for that request or
-answers directly with a fixed response. Note: the provider schema labels
-this field "BETA Field Not General Access", but load-balancing rules are a
-long-standing GA Cloudflare product feature in production use.
+answers directly with a fixed response. The rule COUNT is capped by the
+account's Load Balancing subscription tier -- Basic allows exactly 1 rule
+per load balancer, and exceeding the cap fails the write with 400 code
+1002 "rule count N exceeds limit M" (measured live). Note: the provider
+schema labels this field "BETA Field Not General Access", but
+load-balancing rules are a long-standing GA Cloudflare product feature in
+production use.
 
 ### spec.rules[].name
 

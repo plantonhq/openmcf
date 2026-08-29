@@ -59,6 +59,12 @@ spec:
 The hostnames the certificate is valid for, e.g. "example.com" and
 "*.example.com". These are the Subject Alternative Names on the issued
 certificate. At least one is required. Changing them re-issues the certificate.
+Every hostname must belong to an ACTIVE zone on the account: the API rejects
+hostnames of pending (undelegated) zones with a misleading 400 code 1010
+"zone not part of your account". Order does not matter — Cloudflare stores
+the list lexicographically sorted and the IaC modules send it that way, so
+list your primary hostname first purely for readability (it becomes the
+CSR's common name on the generated-key path).
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 

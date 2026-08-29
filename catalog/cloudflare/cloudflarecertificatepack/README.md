@@ -49,8 +49,10 @@ spec:
 | Output | Description |
 |---|---|
 | `certificate_pack_id` | The certificate pack identifier |
-| `status` | The order/issuance status |
 | `primary_certificate` | The primary certificate identifier |
+| `zone_id` | The zone the pack was ordered in (its API identity is `zone_id` + `certificate_pack_id`) |
+
+There is no `status` output: pack issuance is asynchronous (`initializing` → `pending_validation` → `active`), and a point-in-time phase is never a stable stack output. Read issuance status from the Cloudflare API or dashboard.
 
 ## Notes
 

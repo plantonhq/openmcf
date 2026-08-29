@@ -9,8 +9,15 @@ message CloudflareCustomHostnameStackOutputs {
   // The custom hostname identifier.
   string custom_hostname_id = 1;
 
-  // The activation status (e.g. "pending", "pending_validation", "active").
-  string status = 2;
+  // Field 2 (status) was removed: hostname activation is asynchronous (a
+  // fresh hostname transitions pending -> pending_validation -> active as
+  // ownership verification and DCV complete), so a point-in-time phase can
+  // never be a stable stack output -- it flips on the first refresh after
+  // the transition and re-plans forever (the same class measured live on
+  // the Authenticated Origin Pulls certificate, 2026-08-28). Read
+  // activation status from the Cloudflare API or dashboard instead.
+  reserved 2;
+  reserved "status";
 
   // The DNS record NAME the customer must create for ownership verification.
   string ownership_verification_name = 3;

@@ -46,7 +46,6 @@ func customHostname(
 	}
 
 	ctx.Export(OpCustomHostnameId, created.ID())
-	ctx.Export(OpStatus, created.Status)
 	ctx.Export(OpOwnershipVerificationName, created.OwnershipVerification.Name())
 	ctx.Export(OpOwnershipVerificationType, created.OwnershipVerification.Type())
 	ctx.Export(OpOwnershipVerificationValue, created.OwnershipVerification.Value())

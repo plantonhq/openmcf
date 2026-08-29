@@ -277,7 +277,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.custom_hostname_id` | `string` | The custom hostname identifier. |
-| `status.outputs.status` | `string` | The activation status (e.g. "pending", "pending_validation", "active"). |
 | `status.outputs.ownership_verification_name` | `string` | The DNS record NAME the customer must create for ownership verification. |
 | `status.outputs.ownership_verification_type` | `string` | The DNS record TYPE for ownership verification (typically "txt"). |
 | `status.outputs.ownership_verification_value` | `string` | The DNS record VALUE for ownership verification. |

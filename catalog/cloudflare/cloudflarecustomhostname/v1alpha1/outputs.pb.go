@@ -28,8 +28,6 @@ type CloudflareCustomHostnameStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The custom hostname identifier.
 	CustomHostnameId string `protobuf:"bytes,1,opt,name=custom_hostname_id,json=customHostnameId,proto3" json:"custom_hostname_id,omitempty"`
-	// The activation status (e.g. "pending", "pending_validation", "active").
-	Status string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	// The DNS record NAME the customer must create for ownership verification.
 	OwnershipVerificationName string `protobuf:"bytes,3,opt,name=ownership_verification_name,json=ownershipVerificationName,proto3" json:"ownership_verification_name,omitempty"`
 	// The DNS record TYPE for ownership verification (typically "txt").
@@ -86,13 +84,6 @@ func (*CloudflareCustomHostnameStackOutputs) Descriptor() ([]byte, []int) {
 func (x *CloudflareCustomHostnameStackOutputs) GetCustomHostnameId() string {
 	if x != nil {
 		return x.CustomHostnameId
-	}
-	return ""
-}
-
-func (x *CloudflareCustomHostnameStackOutputs) GetStatus() string {
-	if x != nil {
-		return x.Status
 	}
 	return ""
 }
@@ -157,10 +148,9 @@ var File_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto prot
 
 const file_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\xa7\x04\n" +
+	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\x9d\x04\n" +
 	"$CloudflareCustomHostnameStackOutputs\x12,\n" +
-	"\x12custom_hostname_id\x18\x01 \x01(\tR\x10customHostnameId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12>\n" +
+	"\x12custom_hostname_id\x18\x01 \x01(\tR\x10customHostnameId\x12>\n" +
 	"\x1bownership_verification_name\x18\x03 \x01(\tR\x19ownershipVerificationName\x12>\n" +
 	"\x1bownership_verification_type\x18\x04 \x01(\tR\x19ownershipVerificationType\x12@\n" +
 	"\x1cownership_verification_value\x18\x05 \x01(\tR\x1aownershipVerificationValue\x12E\n" +
@@ -170,7 +160,7 @@ const file_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto_ra
 	"\n" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x17\n" +
 	"\azone_id\x18\n" +
-	" \x01(\tR\x06zoneIdB\xc5\x03\n" +
+	" \x01(\tR\x06zoneIdJ\x04\b\x02\x10\x03R\x06statusB\xc5\x03\n" +
 	"<com.dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1B\fOutputsProtoP\x01Zrgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1;cloudflarecustomhostnamev1alpha1\xa2\x02\x04DPCC\xaa\x028Dev.Planton.Cloudflare.Cloudflarecustomhostname.V1alpha1\xca\x028Dev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\xe2\x02DDev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\\GPBMetadata\xea\x02<Dev::Planton::Cloudflare::Cloudflarecustomhostname::V1alpha1b\x06proto3"
 
 var (

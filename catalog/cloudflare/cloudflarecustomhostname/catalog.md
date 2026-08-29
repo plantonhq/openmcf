@@ -79,11 +79,13 @@ After provisioning, `status.outputs` contains:
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `custom_hostname_id` | The Cloudflare-assigned identifier | Verification, dashboards |
-| `status` | The activation status | Monitoring onboarding |
 | `ownership_verification_name` / `type` / `value` | The DNS record the customer adds to prove control | Customer onboarding hand-off |
 | `ownership_verification_http_url` / `http_body` | The HTTP alternative for ownership verification | Customer onboarding hand-off |
 | `verification_errors` | Any verification errors reported by Cloudflare | Troubleshooting |
 | `created_at` | RFC3339 creation timestamp | Auditing |
+| `zone_id` | The SaaS zone the hostname belongs to | Verification, imports, composition |
+
+Activation status is deliberately not an output — it transitions asynchronously (`pending` → `pending_validation` → `active`); read it from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

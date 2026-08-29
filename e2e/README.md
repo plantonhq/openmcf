@@ -1213,6 +1213,20 @@ timestamps). First measured user (live 2026-08-28):
 `cloudflare_authenticated_origin_pulls_hostname_certificate` `status`
 (the sibling `cloudflare_custom_ssl` `status` is the same class).
 
+The class LURKS in kinds authored before the lesson existed: a
+pre-lane verification pass caught it dormant in three certificate/SaaS
+kinds (certificate pack, custom hostname, fallback origin) authored
+weeks before the first live measurement. Before running any kind's
+first lanes, grep its outputs for phase-named fields (`status`,
+`state`, `phase`) whose provider docs describe an asynchronous
+transition, and remove them proto-side (reserve the field number and
+name) BEFORE the lane measures the failure for you. One honest nuance:
+a phase output survives live proof when the transition never happens
+inside a lane (a run-scoped zone's `status` stays `pending` for the
+lane's whole life) -- that green is real but conditional on the
+fixture's lifecycle, so leave proven kinds alone and catch the class in
+kinds that have not yet run.
+
 ### Multi-line ${E2E_ENV:...} values render as quoted YAML scalars, whole-value position only
 
 Scenario token expansion is plain text substitution -- which corrupts the

@@ -37,10 +37,12 @@ spec:
 
 | Output | Description |
 |---|---|
-| `status` | Deployment status |
 | `created_at` | Creation timestamp |
 | `updated_at` | Last-update timestamp |
 | `errors` | Any deployment errors |
+| `zone_id` | The SaaS zone this singleton belongs to (its API identity IS the zone) |
+
+There is no `status` output: deployment is asynchronous (`pending_deployment` → `active`), and a point-in-time phase is never a stable stack output. Read deployment status from the Cloudflare API or dashboard.
 
 ## Related components
 

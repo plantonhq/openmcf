@@ -84,8 +84,10 @@ After provisioning, `status.outputs` contains:
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `certificate_pack_id` | The Cloudflare-assigned pack identifier | Verification, dashboards |
-| `status` | The order/issuance status | Monitoring activation |
 | `primary_certificate` | Identifier of the primary certificate in the pack | Auditing |
+| `zone_id` | The zone the pack was ordered in | Verification, imports, composition |
+
+Issuance status is deliberately not an output — it transitions asynchronously (`initializing` → `pending_validation` → `active`); read it from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

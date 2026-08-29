@@ -1,9 +1,11 @@
 package module
 
 const (
-	// OpStatus is the exported stack output containing the fallback origin status.
-	OpStatus = "status"
 	// OpCreatedAt is the exported stack output containing the creation timestamp.
+	// No status output: fallback-origin deployment is asynchronous
+	// (pending_deployment -> active), and a point-in-time phase is never a
+	// stable stack output -- it flips on the first refresh after the
+	// transition and re-plans forever.
 	OpCreatedAt = "created_at"
 	// OpUpdatedAt is the exported stack output containing the last-update timestamp.
 	OpUpdatedAt = "updated_at"
