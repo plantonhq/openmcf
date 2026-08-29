@@ -1,6 +1,7 @@
 package stackinput
 
 import (
+	"encoding/json"
 	"os"
 
 	"github.com/pkg/errors"
@@ -8,7 +9,6 @@ import (
 	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 // ProviderConfigKey is the key used in stack input for provider configuration.
@@ -29,8 +29,12 @@ func addProviderConfig(
 		return nil, errors.Wrapf(err, "failed to read provider config file: %s", providerConfig.Path)
 	}
 
+	providerConfigJson, err := protobufyaml.YAMLToJSON(providerConfigContent)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to unmarshal provider config file")
+	}
 	var providerConfigContentMap map[string]interface{}
-	if err := sigsyaml.Unmarshal(providerConfigContent, &providerConfigContentMap); err != nil {
+	if err := json.Unmarshal(providerConfigJson, &providerConfigContentMap); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal provider config file")
 	}
 

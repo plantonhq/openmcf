@@ -71,7 +71,7 @@ This creates a two-widget dashboard named `CheckoutHealth` in us-east-1 — a ma
 
 These are the most important decisions when configuring a dashboard. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Quote the widget position key `"y"`** — Manifests parse under YAML 1.1 rules, where a bare `y` is the boolean `true`. An unquoted `y: 2` in a widget reaches AWS as `"true": 2`, and PutDashboard rejects the body with "Should have property y when property x is present" — identical on both engines. Quote any YAML-boolean token (`y`, `n`, `yes`, `no`, `on`, `off`) used as a key or string value inside the body. Pasting the console's JSON verbatim is always safe: JSON keys are quoted by definition.
+**Widget keys write naturally** — Manifests parse under YAML 1.2 rules, so the widget position key `y` (like `yes`, `no`, `on`, `off`) is an ordinary string with or without quotes; only `true` and `false` are booleans. Pasting the console's JSON verbatim is always safe: JSON keys are quoted by definition.
 
 **Prototype in the console, own it in the manifest** — The fastest authoring loop is building the dashboard visually in the CloudWatch console, opening Actions → View/edit source, and pasting the document into `dashboardBody`. From then on the manifest is the source of truth; every apply is an idempotent upsert, so console-side edits show as drift and the next apply restores the manifest's layout.
 

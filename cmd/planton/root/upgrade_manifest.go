@@ -1,6 +1,7 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,8 +12,8 @@ import (
 	"github.com/plantonhq/planton/pkg/conversion"
 	"github.com/plantonhq/planton/pkg/conversion/embedded"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/yaml"
 )
 
 var UpgradeManifest = &cobra.Command{
@@ -101,8 +102,12 @@ func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading manifest: %w", err)
 	}
+	docJson, err := protobufyaml.YAMLToJSON(raw)
+	if err != nil {
+		return nil, nil, fmt.Errorf("the manifest is not valid YAML: %w", err)
+	}
 	var doc map[string]any
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
+	if err := json.Unmarshal(docJson, &doc); err != nil {
 		return nil, nil, fmt.Errorf("the manifest is not valid YAML: %w", err)
 	}
 
@@ -163,7 +168,11 @@ func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss
 		losses = append(losses, stepLosses...)
 	}
 
-	out, err := yaml.Marshal(converted)
+	convertedJson, err := json.Marshal(converted)
+	if err != nil {
+		return nil, nil, fmt.Errorf("serializing the converted manifest: %w", err)
+	}
+	out, err := protobufyaml.JSONToYAML(convertedJson)
 	if err != nil {
 		return nil, nil, fmt.Errorf("serializing the converted manifest: %w", err)
 	}

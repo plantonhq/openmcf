@@ -7,9 +7,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/manifest/manifestprotobuf"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"sigs.k8s.io/yaml"
 )
 
 func LoadWithOverrides(manifestPath string, valueOverrides map[string]string) (proto.Message, error) {
@@ -51,7 +51,7 @@ func ApplyOverridesToFile(manifestPath string, valueOverrides map[string]string)
 		return "", false, errors.Wrap(err, "failed to marshal manifest to json")
 	}
 
-	yamlBytes, err := yaml.JSONToYAML(jsonBytes)
+	yamlBytes, err := protobufyaml.JSONToYAML(jsonBytes)
 	if err != nil {
 		return "", false, errors.Wrap(err, "failed to convert json to yaml")
 	}

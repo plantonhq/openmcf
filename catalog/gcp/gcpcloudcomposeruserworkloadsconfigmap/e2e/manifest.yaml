@@ -18,8 +18,9 @@ spec:
   # Kubernetes ConfigMap name — what DAGs reference.
   configMapName: test-dag-config
 
-  # Plain configuration data. YAML 1.1 traps (on/off/yes/no, bare
-  # numbers) must be quoted to stay strings.
+  # Plain configuration data. Values are strings: quote numerals and
+  # true/false so they stay strings (on/off/yes/no need no quoting -
+  # manifests parse under YAML 1.2).
   data:
     api_endpoint: https://api.example.com/v2
     batch_size: "500"

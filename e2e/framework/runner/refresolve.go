@@ -8,12 +8,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/outputs"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"sigs.k8s.io/yaml"
 )
 
 const stringValueOrRefFullName = "dev.planton.shared.foreignkey.v1.StringValueOrRef"
@@ -103,7 +103,7 @@ func ResolveManifestRefs(manifestPath string, depOutputs DependencyOutputs) (str
 	if err != nil {
 		return "", errors.Wrap(err, "failed to marshal resolved manifest")
 	}
-	yamlBytes, err := yaml.JSONToYAML(jsonBytes)
+	yamlBytes, err := protobufyaml.JSONToYAML(jsonBytes)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to convert resolved manifest to yaml")
 	}

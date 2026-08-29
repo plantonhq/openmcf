@@ -215,7 +215,9 @@ if isTemp {
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 3: YAML → JSON Conversion                               │
-│ - Convert YAML to JSON (yaml.YAMLToJSON)                    │
+│ - Convert YAML to JSON (protobufyaml.YAMLToJSON)            │
+│ - YAML 1.2 semantics: only true/false are booleans, so      │
+│   keys/values like y, no, off stay strings                  │
 │ - JSON is easier to unmarshal into protos                   │
 └────────────────┬────────────────────────────────────────────┘
                  │

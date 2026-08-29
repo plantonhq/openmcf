@@ -1609,22 +1609,21 @@ fails the manifest at deploy with "invalid environment token"
 documentation comment). Name the token in prose; never write the
 `${...}` shape in a comment unless it is a complete, valid token.
 
-**Manifests parse under YAML 1.1 rules — a bare `y` KEY inside a
-raw-JSON Struct field silently becomes the key `"true"`.** The
-manifest loader's YAML-to-JSON step resolves the YAML 1.1 boolean
-tokens (`y`, `n`, `yes`, `no`, `on`, `off`) even in KEY position, so a
-CloudWatch dashboard widget authored `y: 2` reaches AWS as `"true": 2`
-and PutDashboard 400s with the misdirecting "Should have property y
-when property x is present" — while `x`, `width`, `height` survive
-untouched (live-caught 2026-08-25, identical on both engines; the
-engine's own plan shows `+ true = 2`, which is the fastest diagnosis).
-The class is ANY Struct-typed field whose open schema uses a
-YAML-boolean token as a key or expects one as a string value — the
-Norway problem, key edition. Fix shape: QUOTE the ambiguous scalar in
-every authored surface (scenario, canonical manifest, presets) and
-teach it on the spec field; pasted JSON is immune (JSON keys are
-quoted by definition). A loader-level fix (YAML 1.2 semantics) is a
-platform-wide decision, not a lane fix.
+**Manifests parse under YAML 1.2 rules — only `true`/`false` are
+booleans, and duplicate mapping keys are load errors.** The manifest
+loader's YAML-to-JSON step (`pkg/protobufyaml`) keeps `y`, `n`, `yes`,
+`no`, `on`, and `off` as ordinary strings in both key and value
+position, so a CloudWatch dashboard widget authored `y: 2` reaches AWS
+exactly as written and `country: NO` stays the string `NO`. History
+worth knowing when diagnosing old records: the loader spoke YAML 1.1
+until 2026-08-29, which silently rewrote a bare `y` key to `"true"`
+(live-caught 2026-08-25 — PutDashboard 400'd with the misdirecting
+"Should have property y when property x is present" while the engine's
+plan showed `+ true = 2`). Quoting those tokens remains legal and
+harmless; it is no longer required. Pasted JSON is always safe (JSON
+keys are quoted by definition). One behavior the 1.2 loader ADDS: a
+manifest that repeats a mapping key now fails loudly at load instead
+of silently keeping the last value.
 
 **A kind whose manifests can deploy OFF the ambient region must export
 `region` in its stack outputs — the harness verifies where the outputs

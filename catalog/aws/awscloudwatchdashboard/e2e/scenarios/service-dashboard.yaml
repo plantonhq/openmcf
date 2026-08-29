@@ -2,9 +2,9 @@
 # widget path and the metric graph proves the metric widget path
 # (charting a metric requires no data to exist). Dashboards above the
 # free tier bill ~$3/month prorated - a minutes-lived lane costs ~$0.
-# The widget position key "y" is QUOTED: manifests parse under YAML
-# 1.1 rules where a bare y is the boolean true, and an unquoted y key
-# reaches AWS as "true" (PutDashboard 400s - live-caught).
+# The widget position key "y" is quoted for readability only:
+# manifests parse under YAML 1.2 rules, where a bare y is an ordinary
+# string.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchDashboard
 metadata:

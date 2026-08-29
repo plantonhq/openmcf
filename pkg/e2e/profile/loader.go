@@ -4,9 +4,9 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"sigs.k8s.io/yaml"
 
 	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 	providerv1 "github.com/plantonhq/planton/qa/providere2eprofile/v1"
@@ -39,14 +39,14 @@ func LoadComponentProfile(repoRoot, provider, component string) (*componentv1.Co
 }
 
 // loadYAMLProto reads a YAML file and unmarshals it into a proto message.
-// Uses sigs.k8s.io/yaml to convert YAML→JSON, then protojson to parse into proto.
+// Uses the canonical YAML 1.2 conversion, then protojson to parse into proto.
 func loadYAMLProto(path string, msg proto.Message) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading %s", path)
 	}
 
-	jsonBytes, err := yaml.YAMLToJSON(data)
+	jsonBytes, err := protobufyaml.YAMLToJSON(data)
 	if err != nil {
 		return errors.Wrapf(err, "converting YAML to JSON from %s", path)
 	}

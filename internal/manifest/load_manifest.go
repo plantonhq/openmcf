@@ -15,12 +15,12 @@ import (
 	"github.com/plantonhq/planton/internal/cli/workspace"
 	"github.com/plantonhq/planton/internal/manifest/protodefaults"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/plantonhq/planton/pkg/ulidgen"
 	"github.com/plantonhq/planton/pkg/yamldiag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	goyaml "gopkg.in/yaml.v3"
-	"sigs.k8s.io/yaml"
 )
 
 // ManifestLoadError represents an error when loading a manifest fails due to proto issues.
@@ -96,7 +96,7 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 // what rendered-template validation (e.g. infra-chart templates) relies on. sourceName is
 // used only in error messages (a file path, or a "chart/template.yaml[docN]" style label).
 func LoadManifestBytes(manifestYamlBytes []byte, sourceName string) (proto.Message, error) {
-	jsonBytes, err := yaml.YAMLToJSON(manifestYamlBytes)
+	jsonBytes, err := protobufyaml.YAMLToJSON(manifestYamlBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load yaml to json")
 	}

@@ -1,15 +1,24 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "protobufyaml",
-    srcs = ["protobuf_yaml.go"],
+    srcs = [
+        "protobuf_yaml.go",
+        "yaml_json.go",
+    ],
     importpath = "github.com/plantonhq/planton/pkg/protobufyaml",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/fileutil",
         "@com_github_pkg_errors//:errors",
-        "@io_k8s_sigs_yaml//:yaml",
+        "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
     ],
+)
+
+go_test(
+    name = "protobufyaml_test",
+    srcs = ["yaml_json_test.go"],
+    embed = [":protobufyaml"],
 )

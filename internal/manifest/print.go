@@ -3,9 +3,9 @@ package manifest
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"sigs.k8s.io/yaml"
 )
 
 func Print(input proto.Message) error {
@@ -13,7 +13,7 @@ func Print(input proto.Message) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to yaml marshalJsonBytes")
 	}
-	marshalYamlBytes, err := yaml.JSONToYAML(marshalJsonBytes)
+	marshalYamlBytes, err := protobufyaml.JSONToYAML(marshalJsonBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal json to yaml")
 	}

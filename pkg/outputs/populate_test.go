@@ -4,6 +4,7 @@
 package outputs
 
 import (
+	"strings"
 	"testing"
 
 	auth0v1 "github.com/plantonhq/planton/catalog/auth0/auth0resourceserver/v1alpha1"
@@ -244,5 +245,39 @@ func TestPopulate_EmptyRepeatedField(t *testing.T) {
 	}
 	if len(msg.GetNameservers()) != 0 {
 		t.Errorf("expected empty nameservers, got %d entries", len(msg.GetNameservers()))
+	}
+}
+
+func TestPopulate_MaskedSecretRepeatedFieldIsDiagnosed(t *testing.T) {
+	// A secret-marked repeated output read WITHOUT secrets shown arrives as
+	// the literal "[secret]" on the bare key (no indexes to flatten) — e.g.
+	// awssesemailidentity's dkim_tokens, observed live 2026-08-12. Every
+	// sanctioned reader now unmasks; this locks the diagnosis so a reader
+	// regression names its real cause instead of "no array index provided".
+	msg := &gcpdnsv1.GcpDnsZoneStackOutputs{}
+
+	err := setFieldRecursively(msg.ProtoReflect(), []string{"nameservers"}, "[secret]", 0)
+	if err == nil {
+		t.Fatal("expected a masked repeated value to be rejected, got nil")
+	}
+	if !strings.Contains(err.Error(), "--show-secrets") {
+		t.Errorf("the error must teach the reader contract (--show-secrets); got: %v", err)
+	}
+	if len(msg.GetNameservers()) != 0 {
+		t.Errorf("the masked placeholder must never populate the list; got %d entries", len(msg.GetNameservers()))
+	}
+
+	// populateMessage stays non-fatal for the whole map: the masked field is
+	// skipped with the diagnosis, sibling fields still populate.
+	msg2 := &gcpdnsv1.GcpDnsZoneStackOutputs{}
+	outputs := map[string]string{
+		"zone_id":     "zone-123",
+		"nameservers": "[secret]",
+	}
+	if err := populateMessage(msg2, outputs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if msg2.GetZoneId() != "zone-123" {
+		t.Errorf("sibling field must still populate; got %q", msg2.GetZoneId())
 	}
 }

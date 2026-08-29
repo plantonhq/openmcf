@@ -12,12 +12,12 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/crkreflect",
+        "//pkg/protobufyaml",
         "//qa/componente2eprofile/v1:componente2eprofile",
         "//qa/providere2eprofile/v1:providere2eprofile",
         "//shared",
         "//shared/cloudresourcekind",
         "@com_github_pkg_errors//:errors",
-        "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
     ],
