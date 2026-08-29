@@ -78,3 +78,7 @@ Real delete. Deleting the destination drops it from every notification policy th
 
 - [Cloudflare Notification Policy](/docs/catalog/cloudflare/cloudflarenotificationpolicy) -- the alert rules that deliver here
 - [Cloudflare Logpush Job](/docs/catalog/cloudflare/cloudflarelogpushjob) -- log delivery, the record-level counterpart to alerting
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

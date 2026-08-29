@@ -99,3 +99,7 @@ Real delete. The credential stops working immediately -- anything still using it
 
 - [Cloudflare Zero Trust Access Service Token](/docs/catalog/cloudflare/cloudflarezerotrustaccessservicetoken) -- machine credentials for Access-protected applications, a different trust domain
 - [Cloudflare Secrets Store Secret](/docs/catalog/cloudflare/cloudflaresecretsstoresecret) -- where a minted token value can be stored for Workers to consume
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

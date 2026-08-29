@@ -90,3 +90,7 @@ Real delete for both the site and its rules. Measurement stops and historical an
 - [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- the zone a zone-measured site points at
 - [Cloudflare Logpush Job](/docs/catalog/cloudflare/cloudflarelogpushjob) -- edge-side request logs, the server's view of the same traffic
 - [Cloudflare Notification Policy](/docs/catalog/cloudflare/cloudflarenotificationpolicy) -- the web-analytics metrics alert family
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
