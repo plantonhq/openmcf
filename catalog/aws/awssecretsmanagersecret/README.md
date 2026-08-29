@@ -37,11 +37,14 @@ Create a file `secret.yaml`:
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecretsManagerSecret
 metadata:
-  name: prod/payments/db
+  name: payments-db-credentials
   annotations:
     planton.dev/provisioner: pulumi
 spec:
   region: us-west-2
+  # The hierarchical AWS name lives here -- omit secretName to name the
+  # secret after metadata.name instead.
+  secretName: prod/payments/db
   description: Payments database credentials
   stringValue: $secret/payments-db-credentials
 ```

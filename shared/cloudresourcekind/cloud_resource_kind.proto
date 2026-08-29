@@ -210,7 +210,7 @@ enum CloudResourceKind {
   AwsCertManagerCert = 1001 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "acmcert"
+    id_prefix: "awsacm"
     service_group: aws_security_identity_compliance
   }];
   AwsCloudFront = 1002 [(kind_meta) = {
@@ -228,13 +228,13 @@ enum CloudResourceKind {
   AwsEcrRepo = 1004 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecr"
+    id_prefix: "awsecr"
     service_group: aws_containers
   }];
   AwsEcsCluster = 1005 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecsclu"
+    id_prefix: "awsecsc"
     container_kind: true
     service_group: aws_containers
   }];
@@ -245,7 +245,7 @@ enum CloudResourceKind {
   AwsEcsService = 1006 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecssvc"
+    id_prefix: "awsecss"
     prerequisites: [
       AwsEcsCluster,
       AwsEcsTaskDefinition,
@@ -259,7 +259,7 @@ enum CloudResourceKind {
   AwsEksCluster = 1007 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "eks"
+    id_prefix: "awseks"
     container_kind: true
     prerequisites: [
       AwsSubnet,
@@ -270,41 +270,41 @@ enum CloudResourceKind {
   AwsIamRole = 1008 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "air"
+    id_prefix: "awsiamr"
     service_group: aws_security_identity_compliance
   }];
   AwsLambda = 1009 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lambda"
+    id_prefix: "awslam"
     prerequisites: [AwsIamRole]
     service_group: aws_compute
   }];
   AwsRdsCluster = 1010 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "rdsclu"
+    id_prefix: "awsrdsc"
     prerequisites: [AwsSubnet]
     service_group: aws_database
   }];
   AwsRdsInstance = 1011 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "rdsins"
+    id_prefix: "awsrdsi"
     prerequisites: [AwsSubnet]
     service_group: aws_database
   }];
   AwsRoute53Zone = 1012 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "r53z"
+    id_prefix: "awsr53z"
     container_kind: true
     service_group: aws_networking_content_delivery
   }];
   AwsS3Bucket = 1013 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "s3bkt"
+    id_prefix: "awss3"
     service_group: aws_storage
   }];
   // AwsVpc is a prerequisite because a target group's health checks and
@@ -313,7 +313,7 @@ enum CloudResourceKind {
   AwsLbTargetGroup = 1014 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lbtg"
+    id_prefix: "awslbtg"
     prerequisites: [AwsVpc]
     service_group: aws_networking_content_delivery
   }];
@@ -339,7 +339,7 @@ enum CloudResourceKind {
   AwsEksNodeGroup = 1017 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "eksng"
+    id_prefix: "awseksng"
     prerequisites: [
       AwsEksCluster,
       AwsIamRole,
@@ -362,7 +362,7 @@ enum CloudResourceKind {
   AwsEc2Instance = 1020 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ec2inst"
+    id_prefix: "awsec2"
     service_group: aws_compute
   }];
   // Every Client VPN endpoint requires an ACM server certificate at create
@@ -379,7 +379,7 @@ enum CloudResourceKind {
   AwsDocumentDb = 1022 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "docdb"
+    id_prefix: "awsdocdb"
     prerequisites: [AwsSubnet]
     service_group: aws_database
   }];
@@ -389,7 +389,7 @@ enum CloudResourceKind {
   AwsRoute53DnsRecord = 1023 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "r53rec"
+    id_prefix: "awsr53d"
     prerequisites: [AwsRoute53Zone]
     service_group: aws_networking_content_delivery
   }];
@@ -398,7 +398,7 @@ enum CloudResourceKind {
   AwsS3ObjectSet = 1024 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "s3objs"
+    id_prefix: "awss3o"
     prerequisites: [AwsS3Bucket]
     service_group: aws_storage
   }];
@@ -430,13 +430,13 @@ enum CloudResourceKind {
   AwsIamOidcProvider = 1029 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "oidcp"
+    id_prefix: "awsoidc"
     service_group: aws_security_identity_compliance
   }];
   AwsIamPolicy = 1030 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "iampol"
+    id_prefix: "awsiamp"
     service_group: aws_security_identity_compliance
   }];
   // AwsIamRole is a prerequisite because an instance profile is a wrapper that
@@ -445,7 +445,7 @@ enum CloudResourceKind {
   AwsIamInstanceProfile = 1031 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "iamip"
+    id_prefix: "awsiamip"
     prerequisites: [AwsIamRole]
     service_group: aws_security_identity_compliance
   }];
@@ -456,7 +456,7 @@ enum CloudResourceKind {
   AwsLbListener = 1032 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lbl"
+    id_prefix: "awslbl"
     prerequisites: [
       AwsAlb,
       AwsLbTargetGroup
@@ -469,14 +469,14 @@ enum CloudResourceKind {
   AwsLbListenerRule = 1033 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lblr"
+    id_prefix: "awslblr"
     prerequisites: [AwsLbListener]
     service_group: aws_networking_content_delivery
   }];
   AwsLaunchTemplate = 1034 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lt"
+    id_prefix: "awslt"
     service_group: aws_compute
   }];
   // AwsSubnet and AwsLaunchTemplate are prerequisites because a group
@@ -486,7 +486,7 @@ enum CloudResourceKind {
   AwsAutoScalingGroup = 1035 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "asg"
+    id_prefix: "awsasg"
     prerequisites: [
       AwsSubnet,
       AwsLaunchTemplate
@@ -499,7 +499,7 @@ enum CloudResourceKind {
   AwsEksAddon = 1036 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "eksaddon"
+    id_prefix: "awseksad"
     prerequisites: [AwsEksCluster]
     service_group: aws_containers
   }];
@@ -510,7 +510,7 @@ enum CloudResourceKind {
   AwsEksFargateProfile = 1037 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "eksfp"
+    id_prefix: "awseksfp"
     prerequisites: [
       AwsEksCluster,
       AwsIamRole,
@@ -524,7 +524,7 @@ enum CloudResourceKind {
   AwsEksAccessEntry = 1038 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "eksae"
+    id_prefix: "awseksae"
     prerequisites: [
       AwsEksCluster,
       AwsIamRole
@@ -537,14 +537,14 @@ enum CloudResourceKind {
   AwsEcsTaskDefinition = 1039 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecstd"
+    id_prefix: "awsecstd"
     prerequisites: [AwsIamRole]
     service_group: aws_containers
   }];
   AwsHttpApiGateway = 1040 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awshttpapigw"
+    id_prefix: "awshttp"
     service_group: aws_networking_content_delivery
   }];
   // AwsIamRole is a prerequisite because a state machine cannot be created
@@ -564,7 +564,7 @@ enum CloudResourceKind {
   AwsHttpApiVpcLink = 1156 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awshttpvpcl"
+    id_prefix: "awshttpv"
     prerequisites: [AwsSubnet]
     service_group: aws_networking_content_delivery
   }];
@@ -574,7 +574,7 @@ enum CloudResourceKind {
   AwsHttpApiDomain = 1157 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awshttpdom"
+    id_prefix: "awshttpd"
     prerequisites: [AwsCertManagerCert]
     service_group: aws_networking_content_delivery
   }];
@@ -585,7 +585,7 @@ enum CloudResourceKind {
   AwsVpcEndpoint = 1042 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "vpce"
+    id_prefix: "awsvpce"
     prerequisites: [
       AwsVpc,
       AwsSubnet
@@ -595,7 +595,7 @@ enum CloudResourceKind {
   AwsElasticacheUser = 1043 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecuser"
+    id_prefix: "awsecu"
     service_group: aws_database
   }];
   // AwsElasticacheUser is a genuine prerequisite: AWS refuses to create a
@@ -604,14 +604,14 @@ enum CloudResourceKind {
   AwsElasticacheUserGroup = 1044 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "ecug"
+    id_prefix: "awsecug"
     prerequisites: [AwsElasticacheUser]
     service_group: aws_database
   }];
   AwsRedshiftServerlessNamespace = 1045 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "rsns"
+    id_prefix: "awsrsns"
     container_kind: true
     service_group: aws_analytics
   }];
@@ -623,7 +623,7 @@ enum CloudResourceKind {
   AwsRedshiftServerlessWorkgroup = 1046 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "rswg"
+    id_prefix: "awsrswg"
     prerequisites: [
       AwsRedshiftServerlessNamespace,
       AwsSubnet
@@ -649,14 +649,14 @@ enum CloudResourceKind {
   AwsMemcachedElasticache = 1052 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsmemcached"
+    id_prefix: "awsmemc"
     prerequisites: [AwsSubnet]
     service_group: aws_database
   }];
   AwsServerlessElasticache = 1053 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsslselc"
+    id_prefix: "awsslec"
     prerequisites: [AwsSubnet]
     service_group: aws_database
   }];
@@ -798,7 +798,7 @@ enum CloudResourceKind {
   AwsFsxOntapStorageVirtualMachine = 1095 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsfxosvm"
+    id_prefix: "awsfxos"
     prerequisites: [AwsFsxOntapFileSystem]
     container_kind: true
     service_group: aws_storage
@@ -836,7 +836,7 @@ enum CloudResourceKind {
   AwsCognitoIdentityProvider = 1102 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awscogidp"
+    id_prefix: "awscogid"
     prerequisites: [AwsCognitoUserPool]
     service_group: aws_security_identity_compliance
   }];
@@ -847,7 +847,7 @@ enum CloudResourceKind {
   AwsCognitoUserPoolClient = 1158 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awscogclient"
+    id_prefix: "awscogcl"
     prerequisites: [AwsCognitoUserPool]
     service_group: aws_security_identity_compliance
   }];
@@ -875,14 +875,14 @@ enum CloudResourceKind {
   AwsWafIpSet = 1161 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awswafips"
+    id_prefix: "awswafi"
     service_group: aws_security_identity_compliance
   }];
 
   AwsWafRegexPatternSet = 1162 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awswafregex"
+    id_prefix: "awswafr"
     service_group: aws_security_identity_compliance
   }];
 
@@ -939,7 +939,7 @@ enum CloudResourceKind {
   AwsKinesisStreamConsumer = 1062 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awskincon"
+    id_prefix: "awskinc"
     prerequisites: [AwsKinesisStream]
     service_group: aws_analytics
   }];
@@ -973,7 +973,7 @@ enum CloudResourceKind {
   AwsSagemakerDomain = 1070 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "sgmkd"
+    id_prefix: "awssgmd"
     prerequisites: [
       AwsSubnet,
       AwsIamRole
@@ -1144,7 +1144,7 @@ enum CloudResourceKind {
   AwsMemorydbUser = 1173 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsmdbuser"
+    id_prefix: "awsmdbu"
     service_group: aws_database
   }];
   // An empty ACL is valid (MemoryDB has no mandatory "default" member), so
@@ -1153,7 +1153,7 @@ enum CloudResourceKind {
   AwsMemorydbAcl = 1174 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsmdbacl"
+    id_prefix: "awsmdba"
     service_group: aws_database
   }];
 
@@ -1190,7 +1190,7 @@ enum CloudResourceKind {
   AwsLambdaEventSourceMapping = 1152 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "lambdaesm"
+    id_prefix: "awsesm"
     prerequisites: [AwsLambda]
     service_group: aws_compute
   }];
@@ -1203,7 +1203,7 @@ enum CloudResourceKind {
   AwsSnsSubscription = 1153 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awssnssub"
+    id_prefix: "awssnss"
     prerequisites: [AwsSnsTopic]
     service_group: aws_application_integration
   }];
@@ -1221,7 +1221,7 @@ enum CloudResourceKind {
   AwsRoute53HealthCheck = 1176 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "r53hc"
+    id_prefix: "awsr53hc"
     service_group: aws_networking_content_delivery
   }];
 
@@ -1570,7 +1570,7 @@ enum CloudResourceKind {
   AwsRestApiGateway = 1230 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsrestgw"
+    id_prefix: "awsrest"
     service_group: aws_networking_content_delivery
   }];
 
@@ -1581,7 +1581,7 @@ enum CloudResourceKind {
   AwsRestApiDomain = 1231 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsrestdm"
+    id_prefix: "awsrestd"
     prerequisites: [AwsCertManagerCert]
     service_group: aws_networking_content_delivery
   }];
@@ -1593,7 +1593,7 @@ enum CloudResourceKind {
   AwsRestApiUsagePlan = 1232 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsrestup"
+    id_prefix: "awsrestu"
     service_group: aws_networking_content_delivery
   }];
 
@@ -1603,7 +1603,7 @@ enum CloudResourceKind {
   AwsRestApiVpcLink = 1233 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsrestvl"
+    id_prefix: "awsrestv"
     prerequisites: [AwsNlb]
     service_group: aws_networking_content_delivery
   }];
@@ -1685,7 +1685,7 @@ enum CloudResourceKind {
   AwsConfigAggregator = 1245 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awscfgagg"
+    id_prefix: "awscfga"
     service_group: aws_management_governance
   }];
 
@@ -2135,7 +2135,7 @@ enum CloudResourceKind {
   AwsVpcPeering = 1320 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsvpcpeer"
+    id_prefix: "awsvpcp"
     prerequisites: [AwsVpc]
     service_group: aws_networking_content_delivery
   }];
@@ -2172,7 +2172,7 @@ enum CloudResourceKind {
   AwsEbsVolume = 1330 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsebsvol"
+    id_prefix: "awsebsv"
     service_group: aws_storage
   }];
 
@@ -2182,7 +2182,7 @@ enum CloudResourceKind {
   AwsEbsSnapshot = 1331 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsebssnap"
+    id_prefix: "awsebss"
     service_group: aws_storage
   }];
 
@@ -2192,7 +2192,7 @@ enum CloudResourceKind {
   AwsS3DirectoryBucket = 1332 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awss3dirb"
+    id_prefix: "awss3db"
     service_group: aws_storage
   }];
 
@@ -2202,7 +2202,7 @@ enum CloudResourceKind {
   AwsS3TableBucket = 1333 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awss3tblb"
+    id_prefix: "awss3tb"
     service_group: aws_storage
   }];
 
@@ -2212,7 +2212,7 @@ enum CloudResourceKind {
   AwsS3VectorBucket = 1334 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awss3vecb"
+    id_prefix: "awss3vb"
     service_group: aws_storage
   }];
 
@@ -2253,7 +2253,7 @@ enum CloudResourceKind {
   AwsRoute53ResolverFirewall = 1341 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsr53rfw"
+    id_prefix: "awsr53rf"
     prerequisites: [AwsVpc]
     service_group: aws_networking_content_delivery
   }];
@@ -2265,7 +2265,7 @@ enum CloudResourceKind {
   AwsRoute53ResolverQueryLog = 1342 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
-    id_prefix: "awsr53rql"
+    id_prefix: "awsr53rq"
     prerequisites: [AwsVpc]
     service_group: aws_networking_content_delivery
   }];

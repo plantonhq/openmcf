@@ -12,8 +12,9 @@ message AwsSecretsManagerSecretStackOutputs {
   // (arn:...:secret:name-AbCdEf), so the ARN is not derivable from the name.
   string secret_arn = 1;
 
-  // The name of the secret. Matches metadata.name. Consumers that resolve
-  // secrets by name (SDK GetSecretValue calls) join on this.
+  // The secret's AWS name (spec.secret_name, else metadata.name).
+  // Consumers that resolve secrets by name (SDK GetSecretValue calls)
+  // join on this.
   string secret_name = 2;
 
   // The version ID of the secret version this deployment manages (the

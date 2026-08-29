@@ -42,7 +42,7 @@ registry snapshot: after adding entries, regenerate
 same change.
 
 ID PREFIX PATTERNS
-- AWS: typically "aws" prefix + 2-6 char abbreviation (e.g., "awsvpc", "ecr", "s3bkt")
+- AWS: the "aws" head + a 2-5 char abbreviation (e.g., "awsvpc", "awsecr", "awss3")
 - Azure: typically "az" prefix + 2-6 char abbreviation (e.g., "aks", "azdns", "azkv")
 - GCP: typically "gcp" prefix + 3-7 char abbreviation (e.g., "gcpdns", "gcpsql", "gcpcert")
 - Kubernetes: descriptive + "k8s" suffix (e.g., "k8sms", "pgk8s", "cmk8s")

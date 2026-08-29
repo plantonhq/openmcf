@@ -10,7 +10,7 @@ This preset creates a Secrets Manager secret holding an application's credential
 
 ## Key Configuration Choices
 
-- **Hierarchical name** (`<env>/<app>/credentials`) — Secrets Manager names support `/`, and path-style names keep IAM policies simple (`secretsmanager:GetSecretValue` on `arn:...:secret:prod/*`)
+- **Hierarchical AWS name via `secretName`** (`prod/myapp/credentials` — replace the example segments) — Secrets Manager names support `/`, and path-style names keep IAM policies simple (`secretsmanager:GetSecretValue` on `arn:...:secret:prod/*`); resource names cannot carry slashes, so the path lives in `secretName`, and omitting the field names the secret after the resource instead
 - **Managed-secret reference** (`$secret/...`) — the value is resolved just-in-time at deploy; plaintext never lives in the control plane
 - **7-day recovery window** — recoverable after an accidental destroy without reserving the name for the default 30 days
 

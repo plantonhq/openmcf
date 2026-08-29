@@ -300,4 +300,34 @@ var _ = ginkgo.Describe("AwsSecretsManagerSecretSpec validations", func() {
 			})
 		})
 	})
+
+	// The explicit AWS-side name: empty defaults to metadata.name; when
+	// set, it carries the shapes metadata.name cannot -- hierarchical
+	// paths and service-required prefixes.
+	ginkgo.Describe("secret_name", func() {
+
+		ginkgo.It("accepts the empty default (metadata.name naming)", func() {
+			spec := minimalSecret()
+			spec.SecretName = ""
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a hierarchical path", func() {
+			spec := minimalSecret()
+			spec.SecretName = "prod/payments/db"
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a service-required prefix name", func() {
+			spec := minimalSecret()
+			spec.SecretName = "ecr-pullthroughcache/dockerhub"
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects characters outside AWS's secret-name charset", func() {
+			spec := minimalSecret()
+			spec.SecretName = "prod secrets/db"
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+	})
 })

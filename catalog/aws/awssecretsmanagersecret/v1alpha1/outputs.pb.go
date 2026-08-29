@@ -31,8 +31,9 @@ type AwsSecretsManagerSecretStackOutputs struct {
 	// Note AWS appends a random 6-character suffix to secret ARNs
 	// (arn:...:secret:name-AbCdEf), so the ARN is not derivable from the name.
 	SecretArn string `protobuf:"bytes,1,opt,name=secret_arn,json=secretArn,proto3" json:"secret_arn,omitempty"`
-	// The name of the secret. Matches metadata.name. Consumers that resolve
-	// secrets by name (SDK GetSecretValue calls) join on this.
+	// The secret's AWS name (spec.secret_name, else metadata.name).
+	// Consumers that resolve secrets by name (SDK GetSecretValue calls)
+	// join on this.
 	SecretName string `protobuf:"bytes,2,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// The version ID of the secret version this deployment manages (the
 	// AWSCURRENT version when a value arm is set; empty for a shell secret

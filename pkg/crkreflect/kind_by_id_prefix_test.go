@@ -15,7 +15,7 @@ func TestKindByIdPrefix(t *testing.T) {
 	}{
 		{
 			name:     "AWS ECS Service",
-			idPrefix: "ecssvc",
+			idPrefix: "awsecss",
 			want:     cloudresourcekind.CloudResourceKind_AwsEcsService,
 			wantErr:  false,
 		},

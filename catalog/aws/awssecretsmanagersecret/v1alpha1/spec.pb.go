@@ -30,13 +30,14 @@ const (
 // credential material (database passwords, API keys, tokens, key/value JSON
 // documents) with optional automatic rotation and cross-region replication.
 //
-// The secret's name is taken from `metadata.name`. AWS itself allows
-// alphanumeric plus /_+=.@- (hierarchical names like "prod/payments/db"),
-// but `metadata.name` carries only flat resource names - so secrets
-// created through this kind always have FLAT AWS names. Prefixed AWS name
-// shapes some services demand (e.g. ECR pull-through-cache credentials
-// under "ecr-pullthroughcache/") cannot be expressed here today. The name
-// is ForceNew - changing it destroys and recreates the secret.
+// The secret's AWS name defaults to `metadata.name` and can be overridden
+// with `secret_name` when the name needs shapes `metadata.name` cannot
+// carry: AWS allows alphanumeric plus /_+=.@-, so hierarchical names like
+// "prod/payments/db" and service-required prefixes like
+// "ecr-pullthroughcache/dockerhub" (ECR pull-through-cache credentials)
+// are expressed through `secret_name`. Either way the name is ForceNew -
+// changing it (including setting `secret_name` on a secret already
+// deployed under `metadata.name`) destroys and recreates the secret.
 //
 // The secret VALUE is set through exactly one of `string_value` (text or
 // JSON key/value document - the common case) or `binary_value`
@@ -53,9 +54,9 @@ const (
 // window requires waiting or force deletion (the modules retry create
 // through AWS's "scheduled for deletion" window).
 //
-// Create-time-immutable (ForceNew) fields: the name (metadata.name) and
-// `type`. Everything else - value, KMS key, policy, replicas, rotation -
-// updates in place.
+// Create-time-immutable (ForceNew) fields: the name (secret_name, else
+// metadata.name) and `type`. Everything else - value, KMS key, policy,
+// replicas, rotation - updates in place.
 //
 // Credentials, region, and deployment workflow live outside this spec in
 // stack inputs.
@@ -64,6 +65,17 @@ type AwsSecretsManagerSecretSpec struct {
 	// The AWS region where the secret will be created.
 	// Example: "us-west-2", "eu-west-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// The explicit AWS-side secret name. Empty (the common case) means the
+	// secret is named after `metadata.name`. Set it when the AWS name needs
+	// shapes `metadata.name` cannot carry - hierarchical paths
+	// ("prod/payments/db") or service-required prefixes
+	// ("ecr-pullthroughcache/dockerhub"). The catalog's convention:
+	// explicit-name fields are REQUIRED only on kinds whose AWS names can
+	// never come from `metadata.name` (hierarchy-dominant or
+	// charset-incompatible ones); where `metadata.name` is a legal default,
+	// the field is optional so the common case stays terse. ForceNew:
+	// setting or changing it replaces the secret.
+	SecretName string `protobuf:"bytes,14,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
 	// Human-readable description shown in the AWS console and
 	// ListSecrets/DescribeSecret responses. Updates in place.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
@@ -192,6 +204,13 @@ func (*AwsSecretsManagerSecretSpec) Descriptor() ([]byte, []int) {
 func (x *AwsSecretsManagerSecretSpec) GetRegion() string {
 	if x != nil {
 		return x.Region
+	}
+	return ""
+}
+
+func (x *AwsSecretsManagerSecretSpec) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
 	}
 	return ""
 }
@@ -524,9 +543,11 @@ var File_catalog_aws_awssecretsmanagersecret_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_aws_awssecretsmanagersecret_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/aws/awssecretsmanagersecret/v1alpha1/spec.proto\x120dev.planton.aws.awssecretsmanagersecret.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9\r\n" +
+	"7catalog/aws/awssecretsmanagersecret/v1alpha1/spec.proto\x120dev.planton.aws.awssecretsmanagersecret.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xae\x0e\n" +
 	"\x1bAwsSecretsManagerSecretSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12 \n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12C\n" +
+	"\vsecret_name\x18\x0e \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a\x18\x80\x042\x15^[A-Za-z0-9/_+=.@-]+$R\n" +
+	"secretName\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12'\n" +

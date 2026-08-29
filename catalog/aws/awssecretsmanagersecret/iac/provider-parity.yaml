@@ -13,11 +13,18 @@ resources:
       # (region + per-replica kms_key_id map one-to-one beneath it).
       - arg: replica
         spec: spec.replica_regions
-    exclusions:
+      # REOPENED from a recorded exclusion ("platform naming, never
+      # free-form spec surface"): AWS itself REQUIRES name shapes
+      # metadata.name cannot carry -- hierarchical paths and
+      # service-mandated prefixes (ECR pull-through-cache credentials must
+      # live under "ecr-pullthroughcache/"). spec.secret_name carries
+      # those; empty still defaults to metadata.name, so the platform
+      # naming posture remains the common case.
       - arg: name
-        reason: wired by the module from metadata.name -- the secret name is platform naming, never free-form spec surface
+        spec: spec.secret_name
+    exclusions:
       - arg: name_prefix
-        reason: provider auto-naming (random suffix) -- unused by design; the secret name is metadata.name on both engines
+        reason: provider auto-naming (random suffix) -- unused by design; the secret name is spec.secret_name (else metadata.name) on both engines
       - arg: tags
         reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
       - arg: tags_all

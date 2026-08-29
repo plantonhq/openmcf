@@ -9,10 +9,13 @@ spec:
       upstreamRegistryUrl: registry-1.docker.io
       # ECR requires credentialed pull-through-cache secrets to be NAMED
       # under the `ecr-pullthroughcache/` prefix (slash, not hyphen).
-      # Create the Secrets Manager secret with exactly that name shape and
-      # replace the region, account id, and suffix in this ARN.
+      # Deploy an AwsSecretsManagerSecret with
+      # `secretName: ecr-pullthroughcache/dockerhub` and reference it here.
       credentialArn:
-        value: arn:aws:secretsmanager:us-east-1:123456789012:secret:ecr-pullthroughcache/dockerhub-AbCdEf
+        valueFrom:
+          kind: AwsSecretsManagerSecret
+          name: <dockerhub-credential-resource-name>
+          fieldPath: status.outputs.secret_arn
     - ecrRepositoryPrefix: k8s
       upstreamRegistryUrl: registry.k8s.io
     - ecrRepositoryPrefix: quay

@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `aws@6.58.0` |
 | Kinds in the catalog | 205 |
 | Distinct provider resources consumed | 524 |
-| Spec fields authored across all kinds | 7460 |
+| Spec fields authored across all kinds | 7461 |
 | Module pins on `aws` | `~> 6.58` × 205 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
@@ -244,7 +244,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSagemakerModelRegistry | 8 | 1 | 3 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSagemakerNotebookInstance | 23 | 9 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSagemakerPipeline | 12 | 2 | 7 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSecretsManagerSecret | 34 | 14 | 11 | 9 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSecretsManagerSecret | 34 | 14 | 12 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesAccountSettings | 6 | 0 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |

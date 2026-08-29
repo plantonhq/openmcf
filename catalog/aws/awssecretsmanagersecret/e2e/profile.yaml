@@ -39,6 +39,16 @@ spec:
   # full-surface scenario rides a run-scoped name + recovery window 7
   # (which also live-proves the DeletedDate-absent contract); truths on
   # the spec fields, both modules, GUIDE, and the harness manual.
+  #
+  # 2026-08-29 (post-proof surface change, offline-proven): the AWS-side
+  # name gained an optional explicit override -- spec.secret_name, empty
+  # defaulting to metadata.name -- so hierarchical paths and
+  # service-required prefixes (ecr-pullthroughcache/...) are expressible;
+  # both engines resolve the name identically. The proven lanes rode the
+  # default path, which is byte-identical after the change (offline plans
+  # confirm a no-op); import identity rides the ARN and is unaffected. The
+  # secret_name arm's live proof (deploy + blind round-trip of a
+  # slash-named secret) rides the next lane that touches this kind.
   tier: 1
   status: green
   validated_provisioners: [pulumi, terraform]

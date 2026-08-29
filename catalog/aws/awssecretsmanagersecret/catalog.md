@@ -1,6 +1,6 @@
 # AWS Secrets Manager Secret
 
-Deploys an AWS Secrets Manager secret — a named, versioned, KMS-encrypted container for credential material with optional automatic rotation and cross-region replication. The secret value is supplied as a managed-secret reference and resolved just-in-time at deploy, so plaintext never lives in the control plane. The secret's name comes from `metadata.name` (hierarchical names like `prod/payments/db` are legal) and is create-only; the value, key, policy, replicas, and rotation all update in place.
+Deploys an AWS Secrets Manager secret — a named, versioned, KMS-encrypted container for credential material with optional automatic rotation and cross-region replication. The secret value is supplied as a managed-secret reference and resolved just-in-time at deploy, so plaintext never lives in the control plane. The secret's AWS name defaults to `metadata.name`, and `spec.secretName` overrides it when the name needs shapes a resource name cannot carry — hierarchical paths like `prod/payments/db` or service-required prefixes like `ecr-pullthroughcache/dockerhub`; either way the name is create-only, while the value, key, policy, replicas, and rotation all update in place.
 
 ## What Gets Created
 
@@ -38,11 +38,12 @@ Create a manifest and apply it:
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecretsManagerSecret
 metadata:
-  name: prod/payments/db
+  name: payments-db-credentials
   org: acme-corp
   env: prod
 spec:
   region: us-west-2
+  secretName: prod/payments/db
   description: Payments database credentials
   stringValue: $secret/payments-db-credentials
 ```
@@ -51,7 +52,7 @@ spec:
 planton apply -f secret.yaml
 ```
 
-This creates a secret named `prod/payments/db` encrypted under the AWS-managed key, its JSON credential document pulled from the org secret at deploy time and staged `AWSCURRENT`. A Stack Job tracks the provisioning in real time.
+This creates a secret named `prod/payments/db` (the hierarchical AWS name lives in `secretName`; omit it to name the secret after the resource) encrypted under the AWS-managed key, its JSON credential document pulled from the org secret at deploy time and staged `AWSCURRENT`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -112,7 +113,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `secret_arn` | The secret's ARN (with AWS's random suffix) | IAM policy statements, ECS/Lambda secret injection, cross-service references |
-| `secret_name` | The secret's name (matches `metadata.name`) | Consumers resolving secrets by name via SDK GetSecretValue calls |
+| `secret_name` | The secret's AWS name (`spec.secretName`, else `metadata.name`) | Consumers resolving secrets by name via SDK GetSecretValue calls |
 
 `version_id` is also exposed — the version this deployment manages (the `AWSCURRENT` version when a value arm is set; empty for a shell secret). It is useful for auditing which version a deploy published rather than as a composition input.
 
