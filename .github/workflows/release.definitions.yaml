@@ -1,11 +1,12 @@
 # =============================================================================
 # Definitions Release (Reusable Workflow)
 # =============================================================================
-# Packages the skill and agent definition trees (skills/, agents/) into a
+# Packages the definition trees (skills/, agents/, automations/) into a
 # definitions release and uploads it to Cloudflare R2 (downloads.planton.dev):
-# one deterministic zip per skill, each agent's instructions file, and a
-# definitions-manifest.json carrying the release version, per-artifact
-# SHA-256 checksums, and the compatibility floor from skills/compat.yaml.
+# one deterministic zip per skill, each agent's instructions file, each
+# automation's definition file, and a definitions-manifest.json carrying the
+# release version, per-artifact SHA-256 checksums, and the compatibility
+# floor from skills/compat.yaml.
 #
 # Consumers resolve the manifest at a pinned tag and verify every artifact's
 # checksum before installing -- which is why the manifest publishes checksums
@@ -14,9 +15,12 @@
 # Job shape -- the Actions UI shows exactly what a release ships:
 #   package                  builds everything ONCE (the manifest's checksums
 #                            cover all artifacts, so packaging is atomic) and
-#                            discovers the skill/agent slugs from the output
+#                            discovers the skill/agent/automation slugs from
+#                            the output
 #   skill (<slug>)           one job per skill, uploads skill-<slug>.zip
 #   agent (<slug>)           one job per agent, uploads agent-<slug>-instructions.md
+#   automation (<slug>)      one job per automation, uploads automation-<slug>.yaml
+#                            (skipped entirely when the release carries none)
 #   publish-manifest         uploads definitions-manifest.json, then moves the
 #                            stable channel pointer -- it needs every upload
 #                            job, so the DAG itself enforces that the pointer
@@ -66,6 +70,7 @@ jobs:
     outputs:
       skills: ${{ steps.discover.outputs.skills }}
       agents: ${{ steps.discover.outputs.agents }}
+      automations: ${{ steps.discover.outputs.automations }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,16 +89,16 @@ jobs:
           go run ./pkg/skills/defspack -version "$TAG" -out build/definitions -embed-catalog-pack
 
       # The slug lists are derived from what defspack actually built, so a
-      # new skill or agent gets its own upload job with zero workflow edits.
-      # Any file outside the three contractual name patterns fails the
-      # release -- a straggler would upload nowhere.
-      - name: Discover skills and agents
+      # new skill, agent, or automation gets its own upload job with zero
+      # workflow edits. Any file outside the four contractual name patterns
+      # fails the release -- a straggler would upload nowhere.
+      - name: Discover skills, agents, and automations
         id: discover
         run: |
           cd build/definitions
           for f in *; do
             case "$f" in
-              definitions-manifest.json|skill-*.zip|agent-*-instructions.md) ;;
+              definitions-manifest.json|skill-*.zip|agent-*-instructions.md|automation-*.yaml) ;;
               *)
                 echo "ERROR: unexpected artifact '$f' matches no upload job"
                 exit 1
@@ -102,10 +107,13 @@ jobs:
           done
           skills=$(find . -maxdepth 1 -name 'skill-*.zip' | sed -E 's|^\./skill-(.+)\.zip$|\1|' | sort | jq -R . | jq -cs .)
           agents=$(find . -maxdepth 1 -name 'agent-*-instructions.md' | sed -E 's|^\./agent-(.+)-instructions\.md$|\1|' | sort | jq -R . | jq -cs .)
+          automations=$(find . -maxdepth 1 -name 'automation-*.yaml' | sed -E 's|^\./automation-(.+)\.yaml$|\1|' | sort | jq -R . | jq -cs .)
           echo "skills=$skills" >> "$GITHUB_OUTPUT"
           echo "agents=$agents" >> "$GITHUB_OUTPUT"
+          echo "automations=$automations" >> "$GITHUB_OUTPUT"
           echo "skills: $skills"
           echo "agents: $agents"
+          echo "automations: $automations"
 
       - name: Share the packaged release with the upload jobs
         uses: actions/upload-artifact@v4
@@ -164,12 +172,48 @@ jobs:
             --endpoint-url "${AWS_ENDPOINT_URL}"
           echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
 
+  automation:
+    needs: package
+    # A matrix over an empty list fails the workflow outright, so a release
+    # carrying zero automations skips this job instead; publish-manifest's
+    # condition below accepts exactly this skip and nothing else.
+    if: needs.package.outputs.automations != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.package.outputs.automations) }}
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Upload automation-${{ matrix.slug }}.yaml to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/definitions/automation-${{ matrix.slug }}.yaml"
+          aws s3 cp "automation-${{ matrix.slug }}.yaml" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
   # Runs only after EVERY artifact upload succeeded: the manifest that names
   # the artifacts, then the channel pointer that names the release. A consumer
   # can never resolve a tag whose content is missing -- the ordering is
-  # enforced by the job DAG, not by step order inside one job.
+  # enforced by the job DAG, not by step order inside one job. The automation
+  # job may legitimately SKIP (zero automations in the release); any other
+  # non-success still refuses the pointer move.
   publish-manifest:
-    needs: [skill, agent]
+    needs: [skill, agent, automation]
+    if: |
+      always()
+      && needs.skill.result == 'success'
+      && needs.agent.result == 'success'
+      && (needs.automation.result == 'success' || needs.automation.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -1,0 +1,76 @@
+# Stack Job Failure Investigation
+#
+# DRAFT — the proving case for the automation definition machinery. The
+# definition is fully valid and publishable, but nothing can dispatch it yet
+# (the platform's trigger bridge is not built), so publishing it is inert by
+# construction. Two seams are finalized by the platform work that consumes
+# them, and are marked DRAFT CONTRACT below:
+#   1. The runtime env names (PLANTON_*) the trigger bridge threads into each
+#      run — the bridge binds these when it ships.
+#   2. How the investigation's conclusion lands on the run's finding record —
+#      the run reconciler defines that contract.
+slug: stack-job-failure-investigation
+displayName: Stack Job Failure Investigation
+description: >-
+  When a deployment fails, the assistant investigates immediately: it reads
+  the failed stack job's diagnostics — the error messages, the per-resource
+  failures, the operation summary — reasons over what actually went wrong,
+  and writes up a finding with the likely root cause and suggested next
+  steps. Read-only: it never touches your infrastructure, it only
+  investigates and reports.
+automationClass: automation_class_read
+triggerBindings:
+  - resourceKind: stack_job
+    eventType: status_updated
+    # DRAFT CONTRACT: declarative predicate over the event's resource
+    # document (protobuf-JSON field paths and enum names); the trigger
+    # bridge binds the grammar when it ships. Intent: fire only when the
+    # job's execution has completed with a failed result.
+    predicate: '.status.progress.status == "completed" && .status.progress.result == "failed"'
+budget:
+  # $2.00 per run, engine-enforced, terminate on exceeded (the publish lane
+  # applies the terminate policy; it is deliberately not authorable here).
+  maxCostMicros: 2000000
+# DRAFT: model slug finalized against the engine's model registry when the
+# first automation ships end to end.
+pinnedModel: gpt-4o-mini
+dailyRunCapDefault: 25
+workflow:
+  description: |
+    Two steps, deterministic hands then agent judgment: an http_call fetches
+    the failed stack job's full document (diagnostics, per-operation errors,
+    progress snapshot) from the platform API using the run's own read-only
+    credential; an agent_call then reasons over the fetched bundle and
+    produces the investigation finding. The agent never fetches — every fact
+    it sees was retrieved deterministically first.
+  tasks:
+    - name: fetch_stack_job
+      kind: http_call
+      config:
+        method: POST
+        endpoint:
+          # DRAFT CONTRACT: the platform API base URL and the run-scoped
+          # credential arrive in the run's env, threaded by the trigger
+          # bridge (PLANTON_API_BASE_URL, PLANTON_RUN_CREDENTIAL,
+          # PLANTON_TRIGGER_RESOURCE_ID).
+          uri: ${PLANTON_API_BASE_URL}/ai.planton.infrahub.stackjob.v1alpha1.StackJobQueryController/get
+        headers:
+          Authorization: Bearer ${PLANTON_RUN_CREDENTIAL}
+          Content-Type: application/json
+        body:
+          value: ${PLANTON_TRIGGER_RESOURCE_ID}
+    - name: investigate
+      kind: agent_call
+      config:
+        # org/slug reference form; the run executes in the org's own engine
+        # workspace, so the org segment resolves per run.
+        agent: ${PLANTON_ENGINE_ORG}/planton-assistant
+        message: |
+          A deployment just failed. The complete stack job document,
+          including diagnostics and per-operation errors, is in this run's
+          context from the fetch_stack_job task. Investigate the failure:
+          identify the likely root cause, distinguish infrastructure causes
+          (quota, permission, provider outage) from configuration causes
+          (bad input, missing dependency), and write a concise finding with
+          the root cause and the concrete next step you recommend. Do not
+          attempt any fix — this is a read-only investigation.

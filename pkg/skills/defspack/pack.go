@@ -26,11 +26,16 @@ type Manifest struct {
 	Floor   CompatFloor `json:"compatibilityFloor"`
 	Skills  []Artifact  `json:"skills"`
 	Agents  []Artifact  `json:"agents"`
+	// omitempty keeps older-shaped manifests byte-identical for releases
+	// carrying no automations; consumers treat the absent field as zero
+	// automations rather than an error.
+	Automations []Artifact `json:"automations,omitempty"`
 }
 
 // Artifact is one downloadable file in a definitions release. Skills ship
 // as zip archives (SKILL.md at the archive root, references/ beside it);
-// agents ship their instructions as a bare markdown file.
+// agents ship their instructions as a bare markdown file; automations ship
+// their definition as a bare YAML file.
 type Artifact struct {
 	Slug      string `json:"slug"`
 	File      string `json:"file"`
@@ -121,6 +126,14 @@ func PackageRelease(tree *Tree, version, outDir string) (*Manifest, error) {
 			return nil, fmt.Errorf("writing %s: %w", fileName, err)
 		}
 		manifest.Agents = append(manifest.Agents, describe(agent.Slug, fileName, agent.Instructions))
+	}
+
+	for _, automation := range tree.Automations {
+		fileName := fmt.Sprintf("automation-%s.yaml", automation.Slug)
+		if err := os.WriteFile(filepath.Join(outDir, fileName), automation.Content, 0o644); err != nil {
+			return nil, fmt.Errorf("writing %s: %w", fileName, err)
+		}
+		manifest.Automations = append(manifest.Automations, describe(automation.Slug, fileName, automation.Content))
 	}
 
 	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")

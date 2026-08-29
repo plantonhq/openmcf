@@ -91,6 +91,27 @@ func TestValidateCatchesBrokenTrees(t *testing.T) {
 			},
 			wantErr: "is not a vX.Y.Z version",
 		},
+		{
+			name: "automation document slug does not match its file name",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = "slug: other\ndisplayName: Investigate\n"
+			},
+			wantErr: "must equal the file name",
+		},
+		{
+			name: "automation file is not valid yaml",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = "slug: [unclosed\n"
+			},
+			wantErr: "not valid YAML",
+		},
+		{
+			name: "automation file is empty",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = ""
+			},
+			wantErr: "file is empty",
+		},
 	}
 
 	for _, tc := range cases {
@@ -199,7 +220,8 @@ func TestPackageReleaseManifest(t *testing.T) {
 		t.Fatalf("manifest does not parse: %v", err)
 	}
 
-	for _, artifact := range append(reread.Skills, reread.Agents...) {
+	artifacts := append(append(reread.Skills, reread.Agents...), reread.Automations...)
+	for _, artifact := range artifacts {
 		content, err := os.ReadFile(filepath.Join(outDir, artifact.File))
 		if err != nil {
 			t.Errorf("%s: manifest lists a file that was not written: %v", artifact.File, err)
@@ -213,8 +235,36 @@ func TestPackageReleaseManifest(t *testing.T) {
 			t.Errorf("%s: checksum does not match manifest", artifact.File)
 		}
 	}
-	if len(reread.Skills) != 1 || len(reread.Agents) != 1 {
-		t.Errorf("manifest lists %d skill(s) and %d agent(s), want 1 and 1", len(reread.Skills), len(reread.Agents))
+	if len(reread.Skills) != 1 || len(reread.Agents) != 1 || len(reread.Automations) != 1 {
+		t.Errorf("manifest lists %d skill(s), %d agent(s), %d automation(s), want 1 of each",
+			len(reread.Skills), len(reread.Agents), len(reread.Automations))
+	}
+	if reread.Automations[0].File != "automation-investigate.yaml" {
+		t.Errorf("automation artifact file = %q, want the automation-<slug>.yaml contract", reread.Automations[0].File)
+	}
+}
+
+// TestManifestOmitsEmptyAutomations pins the compatibility posture: a
+// release carrying zero automations writes a manifest with NO automations
+// field at all (older-shaped, byte-compatible), never an empty array.
+func TestManifestOmitsEmptyAutomations(t *testing.T) {
+	files := validFixtureTree()
+	delete(files, "automations/investigate.yaml")
+	delete(files, "automations/README.md")
+	tree, err := LoadTree(writeTree(t, files))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	outDir := t.TempDir()
+	if _, err := PackageRelease(tree, "v9.9.9", outDir); err != nil {
+		t.Fatalf("packaging: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(outDir, ManifestFileName))
+	if err != nil {
+		t.Fatalf("manifest not written: %v", err)
+	}
+	if strings.Contains(string(raw), "automations") {
+		t.Fatalf("manifest of an automation-less release must omit the automations field, got:\n%s", raw)
 	}
 }
 
@@ -454,6 +504,10 @@ func validFixtureTree() map[string]string {
 		"skills/demo/references/topic.md": "The topic, explained.\n",
 		"skills/compat.yaml":              "minimum_daemon_version: v0.0.0\nminimum_cli_version: v0.0.0\n",
 		"agents/helper/instructions.md":   "You are the helper.\n",
+		"automations/investigate.yaml":    "slug: investigate\ndisplayName: Investigate\n",
+		// README.md must be ignored by the loader -- only *.yaml files are
+		// definitions.
+		"automations/README.md": "The automations tree.\n",
 	}
 }
 
