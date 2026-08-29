@@ -1,12 +1,17 @@
 # Stack Job Failure Investigation
 #
-# The proving case for the automation definition machinery. The trigger
-# grammar and the runtime env contract are BOUND (see the README's authoring
-# contract): the predicate is CEL over the event resource's document, and
-# runtime values ride the engine's `${.env_vars.KEY}` / `${.secrets.KEY}`
-# placeholder form, verified against the live engine. One seam remains
-# DRAFT CONTRACT below: how the investigation's conclusion lands on the
-# run's finding record — the run reconciler defines that contract.
+# The proving case for the automation definition machinery. Every seam of
+# this definition is BOUND (see the README's authoring contracts): the
+# predicate is CEL over the event resource's document; runtime values ride
+# the engine's `${.env_vars.KEY}` / `${.secrets.KEY}` placeholder form; the
+# fetched document reaches the agent through task chaining (a task's input
+# IS the previous task's output -- the agent_call message embeds it with an
+# inline jq expression, because the engine passes the agent ONLY the
+# resolved message, never the task input); and the investigation's
+# conclusion lands through the structured output contract below -- the
+# engine extracts and validates `{title, summary, content}` from the
+# agent's answer, and the platform's run reconciler writes it onto the
+# run's finding record.
 slug: stack-job-failure-investigation
 displayName: Stack Job Failure Investigation
 description: >-
@@ -31,9 +36,11 @@ budget:
   # $2.00 per run, engine-enforced, terminate on exceeded (the publish lane
   # applies the terminate policy; it is deliberately not authorable here).
   maxCostMicros: 2000000
-# DRAFT: model slug finalized against the engine's model registry when the
-# first automation ships end to end.
-pinnedModel: gpt-4o-mini
+# Automation agent_calls run the engine's NATIVE harness, whose model
+# registry uses dot-form ids (claude-haiku-4.5; the cursor harness's
+# dash-form ids are a different namespace). Verified against the live
+# registry and executed live.
+pinnedModel: claude-haiku-4.5
 dailyRunCapDefault: 25
 workflow:
   description: |
@@ -66,12 +73,51 @@ workflow:
         # org/slug reference form; the run executes in the org's own engine
         # workspace, so the org segment resolves per run.
         agent: ${.env_vars.PLANTON_ENGINE_ORG}/planton-assistant
+        # The fetched stack job document is this task's INPUT (a task's
+        # input is the previous task's output), embedded below with the
+        # jq expression form `${ . | tojson }` — a space after `${`
+        # distinguishes jq expressions from the runtime placeholder
+        # grammar. The engine passes the agent only this resolved message.
         message: |
-          A deployment just failed. The complete stack job document,
-          including diagnostics and per-operation errors, is in this run's
-          context from the fetch_stack_job task. Investigate the failure:
+          A deployment just failed. The complete stack job document —
+          including its diagnostics, per-operation errors, and progress
+          snapshot — is included below as JSON. Investigate the failure:
           identify the likely root cause, distinguish infrastructure causes
           (quota, permission, provider outage) from configuration causes
-          (bad input, missing dependency), and write a concise finding with
-          the root cause and the concrete next step you recommend. Do not
-          attempt any fix — this is a read-only investigation.
+          (bad input, missing dependency), and recommend one concrete next
+          step. Do not attempt any fix — this is a read-only investigation.
+
+          Answer with your structured finding:
+          - title: one line (under 90 characters) naming the root cause,
+            specific enough to tell two different failures apart at a glance.
+          - summary: one short paragraph — what failed, why, and the next
+            step — readable on its own in an activity feed.
+          - content: the full investigation as markdown, with sections for
+            what happened, the root cause, the evidence (quote the exact
+            error lines you relied on), and the recommended next step.
+            Be thorough but bounded: keep it under roughly 2000 words.
+
+          The stack job document:
+
+          ${ . | tojson }
+        # The finding contract: the engine extracts structured JSON from the
+        # agent's answer and validates it against this schema before the
+        # task completes; the platform reads the validated object into the
+        # run's finding record. The engine enforces a schema SUBSET (type,
+        # required, properties, enum) — length guidance lives in the message
+        # above, deliberately not in unenforced schema constraints.
+        output:
+          schema:
+            type: object
+            required: [title, summary, content]
+            properties:
+              title:
+                type: string
+              summary:
+                type: string
+              content:
+                type: string
+          # Each retry re-runs the full agent call — real spend inside the
+          # run's budget — so one retry is the deliberate ceiling.
+          on_invalid: ON_INVALID_RETRY
+          max_retries: 1

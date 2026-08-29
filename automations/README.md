@@ -78,6 +78,45 @@ read-only credential — always reference it through `${.secrets....}`),
 run), and `PLANTON_ENGINE_ORG` (the org's engine workspace). A plain
 `${KEY}` matches nothing and passes through as literal text.
 
+Two grammars, one hazard: a space after `${` makes a jq expression
+(`${ . | tojson }`), evaluated over the task's input; no space makes a
+runtime placeholder (`${.env_vars.KEY}`). A task's input is the previous
+task's output — that chaining, not any implicit context, is how a fetch
+task's document reaches the task after it. And an `agent_call` passes
+the agent ONLY its resolved `message`: facts the agent must see are
+embedded in the message (jq's `tojson` renders an object as JSON text),
+never assumed present.
+
+## The finding output contract
+
+An investigation's conclusion becomes a finding record the organization
+reads — a card with a title, a one-glance summary, and a full markdown
+body. The `agent_call` that produces it declares the engine's structured
+output contract so the answer is extracted and validated, never parsed
+from prose:
+
+```yaml
+output:
+  schema:
+    type: object
+    required: [title, summary, content]
+    properties:
+      title: { type: string }     # one line naming the root cause
+      summary: { type: string }   # one paragraph, readable alone in a feed
+      content: { type: string }   # the full finding, markdown
+  on_invalid: ON_INVALID_RETRY
+  max_retries: 1
+```
+
+Three authoring rules ride it: the engine validates a schema SUBSET
+(`type`, `required`, `properties`, `enum`) — put length guidance in the
+message, never in schema constraints that would silently not be
+enforced; each `on_invalid` retry re-runs the full agent call (real
+spend inside the run's budget), so keep `max_retries` at 1; and keep the
+whole answer bounded (roughly 2000 words) — oversized task outputs are
+truncated or offloaded by the engine, and a bounded answer stays inline
+where the platform reads it directly.
+
 ## Contributing
 
 Pull requests proposing new automations are welcome — this tree is
