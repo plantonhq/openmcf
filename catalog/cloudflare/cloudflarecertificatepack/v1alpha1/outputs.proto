@@ -18,8 +18,16 @@ message CloudflareCertificatePackStackOutputs {
   reserved 2;
   reserved "status";
 
-  // The identifier of the primary certificate in the pack.
-  string primary_certificate = 3;
+  // Field 3 (primary_certificate) was removed: the server populates it
+  // asynchronously after the order (measured live 2026-08-29: absent in the
+  // create response, "0" appears on the first read seconds later, and it
+  // becomes the real certificate identifier as issuance progresses), so it
+  // can never be a stable stack output -- an output-only change fails every
+  // refresh-inclusive idempotency re-plan (the async-phase-output class,
+  // scalar form). Read the pack's certificates from the Cloudflare API or
+  // dashboard instead.
+  reserved 3;
+  reserved "primary_certificate";
 
   // The Cloudflare Zone ID the pack was ordered in. A pack's API identity is
   // (zone_id, certificate_pack_id), so downstream consumers -- verification

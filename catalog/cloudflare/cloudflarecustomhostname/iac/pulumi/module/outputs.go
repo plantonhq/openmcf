@@ -17,8 +17,10 @@ const (
 	OpOwnershipVerificationHttpUrl = "ownership_verification_http_url"
 	// OpOwnershipVerificationHttpBody is the HTTP verification body.
 	OpOwnershipVerificationHttpBody = "ownership_verification_http_body"
-	// OpVerificationErrors are any verification errors reported by Cloudflare.
-	OpVerificationErrors = "verification_errors"
+	// No verification_errors output: the server populates the list
+	// asynchronously after apply ("zone is not active yet" measured appearing
+	// seconds post-create) and clears it on activation -- a transient
+	// diagnostic is never a stable stack output.
 	// OpCreatedAt is the creation timestamp.
 	OpCreatedAt = "created_at"
 	// OpZoneId is the exported stack output containing the Cloudflare zone ID

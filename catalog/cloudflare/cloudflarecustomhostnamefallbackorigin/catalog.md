@@ -74,10 +74,9 @@ After provisioning, `status.outputs` contains:
 |--------|-------------|----------------------|
 | `created_at` | RFC3339 creation timestamp | Auditing |
 | `updated_at` | RFC3339 last-updated timestamp | Auditing |
-| `errors` | Any errors reported while deploying | Troubleshooting |
 | `zone_id` | The SaaS zone this singleton belongs to | Verification, imports, composition |
 
-Deployment status is deliberately not an output — it transitions asynchronously (`pending_deployment` → `active`); read it from the Cloudflare API or dashboard.
+Deployment status and the deployment-errors list are deliberately not outputs — both transition asynchronously server-side; read them from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

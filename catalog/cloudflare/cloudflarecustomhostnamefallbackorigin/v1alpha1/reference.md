@@ -66,7 +66,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 |---|---|---|
 | `status.outputs.created_at` | `string` | RFC3339 timestamp of when the fallback origin was created. |
 | `status.outputs.updated_at` | `string` | RFC3339 timestamp of when the fallback origin was last updated. |
-| `status.outputs.errors` | `[]string` | Any errors reported while deploying the fallback origin. |
 | `status.outputs.zone_id` | `string` | The Cloudflare Zone ID this singleton belongs to. The fallback origin has no resource id of its own -- its API identity IS the zone (GET zones/{zone_id}/custom_hostnames/fallback_origin) -- so this is the handle verification, import, and chart blocks consume. |
 
 ## References

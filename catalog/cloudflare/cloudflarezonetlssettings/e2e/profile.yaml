@@ -15,9 +15,16 @@ spec:
   # (live, 2026-08-27) rewrote the authoring free-surface claim: the
   # per-hostname override fan-out AND Total TLS are both ACM-GATED -- 401
   # code 1450 on a pending Free zone and an active Pro zone alike (Advanced
-  # Certificate Manager is a per-zone subscription independent of plan) --
-  # so both live in e2e/acm-arms-plan.yaml as offline arms (unblock: ACM on
-  # the sanctioned test zone, then an env-gated live scenario unchanged).
+  # Certificate Manager is a per-zone subscription independent of plan).
+  # The gate FELL 2026-08-29 when the owner subscribed the sanctioned zone.
+  # Total TLS now runs live via the env-gated
+  # scenarios/total-tls-acm-arm.yaml (which teaches the measured 400/1467
+  # no-op-write wall and its restore duty). The hostname overrides stay an
+  # OFFLINE arm (e2e/hostname-overrides-plan.yaml) DEFERRED on the
+  # provider's broken Read -- v5.23.0 silently zeroes state from the LIST
+  # endpoint (measured drifting in the live lane), v5.24.0 GETs a
+  # per-hostname path Cloudflare answers with 405 (probe-measured); the
+  # API itself is healthy. Unblock on the arm file.
   # auto_origin_tls_kex is free but ACTIVE-ZONE-ONLY: a pending zone answers
   # 400 code 1000 with the misleading "Invalid zone identifier" (the kex
   # setting does not exist until activation) -- its arm is env-gated on the

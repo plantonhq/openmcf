@@ -686,6 +686,11 @@ spec:
         re-asserting the override from configuration instead: the
         per-(setting, hostname) write is an idempotent upsert for identical
         values, so a plain apply adopts the live override without churn.
+        Upstream v5.24.0 fixed ImportState (it parses
+        "{zone_id}/{setting_id}/{hostname}") but broke Read differently --
+        it GETs a per-hostname path Cloudflare answers with 405 (measured
+        live 2026-08-29) -- so this row stays not-importable until a
+        release ships a working Read AND the canonical pin bumps.
     - terraform_type: cloudflare_certificate_authorities_hostname_associations
       pulumi_type: cloudflare:index/certificateAuthoritiesHostnameAssociations:CertificateAuthoritiesHostnameAssociations
       id_format: "{zone_id}/{mtls_certificate_id}"

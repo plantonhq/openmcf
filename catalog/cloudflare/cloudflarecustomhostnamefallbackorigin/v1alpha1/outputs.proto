@@ -21,8 +21,15 @@ message CloudflareCustomHostnameFallbackOriginStackOutputs {
   // RFC3339 timestamp of when the fallback origin was last updated.
   string updated_at = 3;
 
-  // Any errors reported while deploying the fallback origin.
-  repeated string errors = 4;
+  // Field 4 (errors) was removed: like the sibling custom hostname's
+  // verification_errors (measured live 2026-08-29), it is a transient
+  // diagnostic the server populates and clears asynchronously after apply,
+  // so it can never be a stable stack output -- an output-only change fails
+  // every refresh-inclusive idempotency re-plan (the async-phase-output
+  // class, list form). Read deployment errors from the Cloudflare API or
+  // dashboard instead.
+  reserved 4;
+  reserved "errors";
 
   // The Cloudflare Zone ID this singleton belongs to. The fallback origin has
   // no resource id of its own -- its API identity IS the zone

@@ -1227,6 +1227,21 @@ lane's whole life) -- that green is real but conditional on the
 fixture's lifecycle, so leave proven kinds alone and catch the class in
 kinds that have not yet run.
 
+The class is not only enum-shaped phases -- it has a DIAGNOSTIC-LIST
+form and a SCALAR form, both measured live 2026-08-29: a custom
+hostname's `verification_errors` list deploys EMPTY and the server
+appends "zone is not active yet" seconds later (the failing re-plan is
+"Changes to Outputs"-only, with the resource itself converged), and a
+certificate pack's `primary_certificate` is absent in the create
+response, reads "0" seconds later, and becomes the real certificate id
+as issuance progresses. The phase-name grep therefore under-catches:
+audit every output whose value the SERVER can move without a config
+change (error/warning lists, progress counters, ids of objects the
+service creates asynchronously). A watched-and-cleared suspect list is
+not a defect record -- the first lane decides; these two were left in
+deliberately by the session that removed the `status` outputs, and the
+next session's first lane convicted both.
+
 ### Multi-line ${E2E_ENV:...} values render as quoted YAML scalars, whole-value position only
 
 Scenario token expansion is plain text substitution -- which corrupts the
@@ -1303,6 +1318,59 @@ to this class). The stack output still reads the real value from state.
 First measured user (live 2026-08-27, v5.23.0):
 `cloudflare_zero_trust_device_default_profile.policy_id` -- both engines
 measured drifting, both converged by the ignore.
+
+A second, judgment-heavier member (live 2026-08-29):
+`cloudflare_custom_hostname.ssl.certificate_authority`. Not pure-computed --
+the field is USER-SETTABLE, but only on Enterprise (400 code 1459 rejects an
+explicit value on any other plan, probe-measured), and when unset the server
+assigns a CA AT RANDOM per create (consecutive identical creates measured
+`ssl_com` then `google`), so config can never mirror the stored value and
+always-send / server-default-coalesce fixes are impossible. The deciding
+evidence for the scoped ignore was UPSTREAM'S OWN acceptance tests: every
+ssl-bearing config in the provider's test suite wraps
+`ignore_changes = [ssl.certificate_authority, ...]` -- the provider's authors
+know the attribute cannot converge. When you mirror that recipe, document the
+one real trade-off ON THE SPEC FIELD: an in-place change of the ignored field
+no longer applies (here: Enterprise users changing CA must recreate). Never
+widen the ignore beyond the attributes upstream's own tests convict.
+
+### Settings endpoints that REJECT identical writes: the no-op-write wall (probe before reusing the write-the-default discipline)
+
+The shared-zone discipline for no-op-destroy settings ("write the default
+value -- prove the lifecycle while leaving the zone as found") silently
+assumes the endpoint ACCEPTS a write that changes nothing. Not all do:
+Cloudflare's Total TLS configure answers 400 code 1467 "No state between
+current settings and new settings has changed" to a value identical to the
+stored record (measured live 2026-08-29 -- the zone's first-ever configure
+of the as-found value succeeded because it CREATED the record, and the
+identical rewrite minutes later was refused, so the trap fires only from
+the second run onward). A write-the-default arm on such an endpoint is
+green exactly once and then fails every re-run at deploy. The re-runnable
+shape is a REAL-CHANGE arm with a documented restore duty: write a value
+that differs from the captured baseline, and restore the baseline
+out-of-band after EACH engine's lane (also BETWEEN engines -- the second
+engine's identical write hits the same wall). Contrast the zone-settings
+PATCH surfaces and the kex toggle, which tolerate identical rewrites
+(measured across many lanes) -- the wall is per-endpoint, so probe the
+rewrite before designing the arm.
+
+### The canonical LOCK decides the engine, not the pin RANGE -- and an upstream "fix" can change the failure mode
+
+Every Terraform module here carries a committed `.terraform.lock.hcl`
+pinning the exact provider build; the `~> X.Y` constraint in provider.tf
+only bounds what a DELIBERATE pin bump may select. Two traps measured live
+2026-08-29 on `cloudflare_hostname_tls_setting`: (1) a defect fix released
+within the pin range (v5.24.0 fixing the v5.23.0 Read) is NOT in your lane
+-- the lock still selects v5.23.0 from the shared plugin cache, so verify
+defect claims against the LOCKED version and record unblocks as "a release
+carrying the fix + the canonical pin bump", never "already fixed upstream";
+and (2) before citing a newer release as the unblock, RUN it once in a
+disposable workdir (copy the module, drop the lock, pin the exact version)
+-- v5.24.0's rewritten Read turned out to GET a per-hostname path Cloudflare
+answers with 405 Method Not Allowed, replacing v5.23.0's silent
+state-zeroing with a hard refresh error: the failure mode changed, the
+defect did not close, and an unblock recorded from the diff alone would
+have been false.
 
 ### IMPORT-ONLY convergence gaps: schema defaults and API auto-marks that refresh forgives but import does not
 

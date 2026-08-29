@@ -1,0 +1,42 @@
+# OFFLINE-PLAN ARM (deferred on an upstream provider defect): the
+# per-hostname TLS overrides (min_tls_version, http2, ciphers).
+#
+# The ENTITLEMENT gate is OPEN: writes answered 401 code 1450 without ACM
+# (measured 2026-08-27) and succeeded the day the owner subscribed the
+# sanctioned zone (2026-08-29) -- the API is healthy end to end (PUT echoes
+# the full body, the per-setting LIST returns the hostname row immediately,
+# rows flip pending_deployment -> active in seconds, DELETE works).
+#
+# What blocks the live arm is cloudflare_hostname_tls_setting's READ, broken
+# differently at BOTH available releases (measured live 2026-08-29):
+#   - v5.23.0 (the canonical pin): Read GETs the per-setting LIST endpoint
+#     and decodes the array into a single object, silently ZEROING value/
+#     created_at/status/updated_at in state -- every refresh-inclusive plan
+#     re-proposes the update forever (the lane measured all three settings
+#     drifting `null -> value` after a clean apply).
+#   - v5.24.0: Read was rewritten to GET a per-hostname path
+#     (/zones/{z}/hostnames/settings/{setting}/{hostname}) that Cloudflare
+#     does not serve for GET -- every refresh answers 405 Method Not Allowed
+#     (probe-measured against a live setting).
+# v5.24.0 DID fix ImportState (it now parses <zone_id>/<setting_id>/
+# <hostname>; v5.23.0 never restored hostname) -- moot while its Read 405s.
+#
+# UNBLOCK: an upstream release whose Read resolves the hostname row (the
+# LIST endpoint filtered by state's hostname, or a server-side per-hostname
+# GET), then the program's canonical pin bump; the arm below then moves to
+# an env-gated live scenario unchanged, and the import-catalog row flips
+# back to importable.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: test-tls-hostname-overrides
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  hostname_settings:
+    - hostname: api.example.com
+      min_tls_version: "1.3"
+      http2: true
+    - hostname: legacy.example.com
+      ciphers:
+        - "ECDHE-RSA-AES128-GCM-SHA256"

@@ -1,0 +1,33 @@
+# The Total TLS arm, env-gated on the sanctioned ACM-subscribed zone (ACM is
+# a PER-ZONE ~$10/mo subscription). MEASURED (live, 2026-08-27): without ACM
+# the toggle answers 401 code 1450 on Free and Pro zones alike; the gate FELL
+# when the owner subscribed the sanctioned zone (2026-08-29) -- the toggle's
+# full lifecycle passed the same day. Skips honestly when the env is unset.
+#
+# Why this arm writes `enabled: true` when the kex arm writes the default:
+# the total_tls endpoint REJECTS a no-op write with 400 code 1467 "No state
+# between current settings and new settings has changed" (measured live
+# 2026-08-29: the zone's first-ever configure of the as-found value was
+# accepted -- it creates the record -- and the identical rewrite minutes
+# later was refused). Writing the default is therefore not re-runnable here;
+# the arm must write a real change every run.
+#
+# RESTORE DUTY (shared-zone hygiene, and re-runnability): Total TLS has NO
+# delete at Cloudflare, so after EACH engine's lane the session restores the
+# captured default out-of-band -- also BETWEEN the two engines' runs, or the
+# second engine's identical write hits the 1467 wall:
+#   POST /zones/{zone_id}/acm/total_tls  {"enabled": false}
+# Enabling Total TLS on the unused sanctioned zone issues no certificates
+# (issuance is per proxied hostname; the zone carries none).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: e2e-tls-totaltls-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
+spec:
+  zone_id:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
+  total_tls:
+    enabled: true
+    certificate_authority: google

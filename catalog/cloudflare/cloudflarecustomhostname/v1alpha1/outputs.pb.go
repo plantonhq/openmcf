@@ -38,8 +38,6 @@ type CloudflareCustomHostnameStackOutputs struct {
 	OwnershipVerificationHttpUrl string `protobuf:"bytes,6,opt,name=ownership_verification_http_url,json=ownershipVerificationHttpUrl,proto3" json:"ownership_verification_http_url,omitempty"`
 	// The body the customer must serve at the HTTP verification URL.
 	OwnershipVerificationHttpBody string `protobuf:"bytes,7,opt,name=ownership_verification_http_body,json=ownershipVerificationHttpBody,proto3" json:"ownership_verification_http_body,omitempty"`
-	// Any verification errors reported by Cloudflare.
-	VerificationErrors []string `protobuf:"bytes,8,rep,name=verification_errors,json=verificationErrors,proto3" json:"verification_errors,omitempty"`
 	// RFC3339 timestamp of when the custom hostname was created.
 	CreatedAt string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// The Cloudflare Zone ID the hostname was onboarded onto. A custom hostname's
@@ -123,13 +121,6 @@ func (x *CloudflareCustomHostnameStackOutputs) GetOwnershipVerificationHttpBody(
 	return ""
 }
 
-func (x *CloudflareCustomHostnameStackOutputs) GetVerificationErrors() []string {
-	if x != nil {
-		return x.VerificationErrors
-	}
-	return nil
-}
-
 func (x *CloudflareCustomHostnameStackOutputs) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
@@ -148,19 +139,18 @@ var File_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto prot
 
 const file_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\x9d\x04\n" +
+	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\x87\x04\n" +
 	"$CloudflareCustomHostnameStackOutputs\x12,\n" +
 	"\x12custom_hostname_id\x18\x01 \x01(\tR\x10customHostnameId\x12>\n" +
 	"\x1bownership_verification_name\x18\x03 \x01(\tR\x19ownershipVerificationName\x12>\n" +
 	"\x1bownership_verification_type\x18\x04 \x01(\tR\x19ownershipVerificationType\x12@\n" +
 	"\x1cownership_verification_value\x18\x05 \x01(\tR\x1aownershipVerificationValue\x12E\n" +
 	"\x1fownership_verification_http_url\x18\x06 \x01(\tR\x1cownershipVerificationHttpUrl\x12G\n" +
-	" ownership_verification_http_body\x18\a \x01(\tR\x1downershipVerificationHttpBody\x12/\n" +
-	"\x13verification_errors\x18\b \x03(\tR\x12verificationErrors\x12\x1d\n" +
+	" ownership_verification_http_body\x18\a \x01(\tR\x1downershipVerificationHttpBody\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x17\n" +
 	"\azone_id\x18\n" +
-	" \x01(\tR\x06zoneIdJ\x04\b\x02\x10\x03R\x06statusB\xc5\x03\n" +
+	" \x01(\tR\x06zoneIdJ\x04\b\x02\x10\x03J\x04\b\b\x10\tR\x06statusR\x13verification_errorsB\xc5\x03\n" +
 	"<com.dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1B\fOutputsProtoP\x01Zrgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1;cloudflarecustomhostnamev1alpha1\xa2\x02\x04DPCC\xaa\x028Dev.Planton.Cloudflare.Cloudflarecustomhostname.V1alpha1\xca\x028Dev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\xe2\x02DDev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\\GPBMetadata\xea\x02<Dev::Planton::Cloudflare::Cloudflarecustomhostname::V1alpha1b\x06proto3"
 
 var (

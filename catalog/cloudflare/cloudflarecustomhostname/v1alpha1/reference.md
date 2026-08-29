@@ -140,8 +140,15 @@ modify the chain).
 `string`
 
 The certificate authority that issues the certificate: "digicert", "google",
-"lets_encrypt", or "ssl_com". Selectable CA is an Enterprise feature; leave
-empty to use the account default.
+"lets_encrypt", or "ssl_com". CA selection is Enterprise-gated: on any other
+plan the API rejects an explicit value with 400 code 1459 "Certificate
+Authority selection is only available on an Enterprise plan" (measured live
+2026-08-29). Leave empty on non-Enterprise accounts -- Cloudflare then
+assigns a CA at random per create (measured: ssl_com and google on
+consecutive creates). Because that server pick can never be mirrored in
+config, both IaC modules ignore post-create drift on this field; an
+in-place CHANGE of an already-issued hostname's CA is therefore not
+applied -- recreate the hostname to change CA (Enterprise).
 
 - rule: certificate_authority must be empty or one of digicert, google, lets_encrypt, ssl_com
 
@@ -282,7 +289,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 | `status.outputs.ownership_verification_value` | `string` | The DNS record VALUE for ownership verification. |
 | `status.outputs.ownership_verification_http_url` | `string` | The URL the customer can serve for HTTP-based ownership verification. |
 | `status.outputs.ownership_verification_http_body` | `string` | The body the customer must serve at the HTTP verification URL. |
-| `status.outputs.verification_errors` | `[]string` | Any verification errors reported by Cloudflare. |
 | `status.outputs.created_at` | `string` | RFC3339 timestamp of when the custom hostname was created. |
 | `status.outputs.zone_id` | `string` | The Cloudflare Zone ID the hostname was onboarded onto. A custom hostname's API identity is (zone_id, custom_hostname_id), so downstream consumers -- verification tooling, imports, chart blocks composing on the hostname -- need the zone alongside the hostname's own id. |
 

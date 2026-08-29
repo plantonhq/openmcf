@@ -27,8 +27,6 @@ type CloudflareCertificatePackStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The certificate pack identifier.
 	CertificatePackId string `protobuf:"bytes,1,opt,name=certificate_pack_id,json=certificatePackId,proto3" json:"certificate_pack_id,omitempty"`
-	// The identifier of the primary certificate in the pack.
-	PrimaryCertificate string `protobuf:"bytes,3,opt,name=primary_certificate,json=primaryCertificate,proto3" json:"primary_certificate,omitempty"`
 	// The Cloudflare Zone ID the pack was ordered in. A pack's API identity is
 	// (zone_id, certificate_pack_id), so downstream consumers -- verification
 	// tooling, imports, chart blocks composing on the pack -- need the zone
@@ -75,13 +73,6 @@ func (x *CloudflareCertificatePackStackOutputs) GetCertificatePackId() string {
 	return ""
 }
 
-func (x *CloudflareCertificatePackStackOutputs) GetPrimaryCertificate() string {
-	if x != nil {
-		return x.PrimaryCertificate
-	}
-	return ""
-}
-
 func (x *CloudflareCertificatePackStackOutputs) GetZoneId() string {
 	if x != nil {
 		return x.ZoneId
@@ -93,11 +84,10 @@ var File_catalog_cloudflare_cloudflarecertificatepack_v1alpha1_outputs_proto pro
 
 const file_catalog_cloudflare_cloudflarecertificatepack_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/cloudflare/cloudflarecertificatepack/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflarecertificatepack.v1alpha1\"\xaf\x01\n" +
+	"Ccatalog/cloudflare/cloudflarecertificatepack/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflarecertificatepack.v1alpha1\"\x99\x01\n" +
 	"%CloudflareCertificatePackStackOutputs\x12.\n" +
-	"\x13certificate_pack_id\x18\x01 \x01(\tR\x11certificatePackId\x12/\n" +
-	"\x13primary_certificate\x18\x03 \x01(\tR\x12primaryCertificate\x12\x17\n" +
-	"\azone_id\x18\x04 \x01(\tR\x06zoneIdJ\x04\b\x02\x10\x03R\x06statusB\xcc\x03\n" +
+	"\x13certificate_pack_id\x18\x01 \x01(\tR\x11certificatePackId\x12\x17\n" +
+	"\azone_id\x18\x04 \x01(\tR\x06zoneIdJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04R\x06statusR\x13primary_certificateB\xcc\x03\n" +
 	"=com.dev.planton.cloudflare.cloudflarecertificatepack.v1alpha1B\fOutputsProtoP\x01Ztgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarecertificatepack/v1alpha1;cloudflarecertificatepackv1alpha1\xa2\x02\x04DPCC\xaa\x029Dev.Planton.Cloudflare.Cloudflarecertificatepack.V1alpha1\xca\x029Dev\\Planton\\Cloudflare\\Cloudflarecertificatepack\\V1alpha1\xe2\x02EDev\\Planton\\Cloudflare\\Cloudflarecertificatepack\\V1alpha1\\GPBMetadata\xea\x02=Dev::Planton::Cloudflare::Cloudflarecertificatepack::V1alpha1b\x06proto3"
 
 var (

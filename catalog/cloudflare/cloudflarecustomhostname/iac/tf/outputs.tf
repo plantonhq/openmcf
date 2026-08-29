@@ -33,10 +33,11 @@ output "ownership_verification_http_body" {
   value       = try(cloudflare_custom_hostname.main.ownership_verification_http.http_body, "")
 }
 
-output "verification_errors" {
-  description = "Any verification errors reported by Cloudflare"
-  value       = try(cloudflare_custom_hostname.main.verification_errors, [])
-}
+# No verification_errors output: the server populates the list
+# asynchronously after apply ("zone is not active yet" measured appearing
+# seconds post-create) and clears it on activation -- a transient diagnostic
+# is never a stable stack output (output-only changes fail idempotent
+# re-plans). Read it from the Cloudflare API instead.
 
 output "created_at" {
   description = "RFC3339 timestamp of when the custom hostname was created"

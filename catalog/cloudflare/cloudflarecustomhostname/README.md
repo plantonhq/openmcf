@@ -48,11 +48,10 @@ spec:
 | `custom_hostname_id` | The custom hostname identifier |
 | `ownership_verification_name` / `_type` / `_value` | The DNS record the customer adds to verify control |
 | `ownership_verification_http_url` / `_http_body` | The HTTP alternative for verification |
-| `verification_errors` | Any verification errors |
 | `created_at` | Creation timestamp |
 | `zone_id` | The SaaS zone the hostname was onboarded onto (its API identity is `zone_id` + `custom_hostname_id`) |
 
-There is no `status` output: activation is asynchronous (`pending` → `pending_validation` → `active`), and a point-in-time phase is never a stable stack output. Read activation status from the Cloudflare API or dashboard.
+There is no `status` output: activation is asynchronous (`pending` → `pending_validation` → `active`), and a point-in-time phase is never a stable stack output. There is no `verification_errors` output for the same reason: Cloudflare populates that list asynchronously after apply (measured live: "zone is not active yet" appears seconds post-create) and clears it on activation. Read both from the Cloudflare API or dashboard.
 
 ## Prerequisites
 

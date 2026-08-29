@@ -39,7 +39,6 @@ This is a zone singleton: one fallback origin per zone, and its API identity IS 
 |------|-------------|
 | `created_at` | RFC3339 creation timestamp |
 | `updated_at` | RFC3339 last-updated timestamp |
-| `errors` | Errors reported while deploying the fallback origin |
 | `zone_id` | The zone this singleton belongs to |
 
 There is no `status` output: deployment is asynchronous (`pending_deployment` → `active`), and a point-in-time phase is never a stable stack output — it flips on the first refresh after the transition and re-plans forever.

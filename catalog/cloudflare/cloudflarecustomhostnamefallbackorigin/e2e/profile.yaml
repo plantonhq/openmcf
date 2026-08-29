@@ -7,22 +7,17 @@ spec:
   # per SaaS zone). The harness installs the CloudflareDnsZone prerequisite
   # first, then deploy -> GET zones/{zone_id}/custom_hostnames/fallback_origin
   # verify -> destroy -> verify-destroyed. The origin hostname composes the
-  # fixture zone's run token. MEASURED WALL (live, 2026-08-28): the account
-  # is NOT enrolled in Cloudflare for SaaS -- the fallback-origin PUT
-  # answers 400 code 1456 "This feature is available with SSL for SaaS"
-  # before either watch-list risk can fire. Unblock: enroll Cloudflare for
-  # SaaS on the test zone (same gate and ask as CloudflareCustomHostname,
-  # sent 2026-08-28); both lanes then run unchanged. Standing watches for
-  # that run: the provider's own test unsets CLOUDFLARE_API_TOKEN because
-  # the PUT "does not yet support API tokens" (Create=Update, so the
-  # idempotency re-apply may 403), and the API may reject an origin with no
-  # DNS record (if measured, author a cloudflarednsrecord install profile
-  # -- that kind is PROVEN and released, so its fixture is legal now). The
-  # verifier treats GET 200 with status pending_deletion as gone (async
-  # delete).
+  # fixture zone's run token. The 1456 wall (measured 2026-08-28: the
+  # account was NOT enrolled in Cloudflare for SaaS -- the PUT answered 400
+  # code 1456) FELL 2026-08-29 when the owner enrolled the account
+  # (account-wide `ssl_for_saas_basic`): the fallback PUT succeeds on a
+  # run-scoped PENDING zone with NO DNS record for the origin
+  # (write-probe-measured -- the no-record rejection risk did not fire).
+  # Standing watch for the lanes: the provider's own test unsets
+  # CLOUDFLARE_API_TOKEN because the PUT "does not yet support API tokens"
+  # (Create=Update, so the idempotency re-apply may 403). The verifier
+  # treats GET 200 with status pending_deletion as gone (async delete).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
