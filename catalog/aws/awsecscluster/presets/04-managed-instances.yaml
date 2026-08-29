@@ -18,6 +18,10 @@ spec:
           subnets:
             - value: "<private-subnet-1-id>"  # or reference AwsSubnet subnet_id outputs
             - value: "<private-subnet-2-id>"
+          # AWS rejects a managed-instances network configuration without
+          # security groups -- at least one entry is required.
+          securityGroups:
+            - value: "<security-group-id>"  # or reference an AwsSecurityGroup's security_group_id output
         instanceRequirements:
           memoryMib:
             min: 2048  # at least 2 GiB per instance; leave max unset for no ceiling

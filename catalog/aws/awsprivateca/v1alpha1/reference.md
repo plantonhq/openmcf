@@ -334,7 +334,12 @@ DNS/proxy; AWS still answers).
 `AwsPrivateCaValidity`
 
 The validity of a ROOT CA's self-signed certificate. Unset means
-10 years (the console's default posture). ROOT only.
+10 years (the console's default posture). ROOT only. Read at
+activation time ONLY: the issue request is the certificate's
+birth certificate (AWS never returns it), so both engines ignore
+later edits - changing this after activation does nothing.
+Reissuing a CA certificate is an operational act via ACM PCA,
+never a manifest edit.
 
 - rule: validity value must be a positive integer for DAYS/MONTHS/YEARS/ABSOLUTE, or an RFC3339 timestamp (e.g. "2036-01-01T00:00:00Z") for END_DATE
 
@@ -394,7 +399,9 @@ common case - means this CA signs only end-entity certificates.
 `AwsPrivateCaValidity` · required
 
 The subordinate CA certificate's validity. Must end before the
-parent's own certificate expires.
+parent's own certificate expires. Read at activation time ONLY
+(the birth-certificate contract - see root_ca_validity): both
+engines ignore later edits.
 
 - rule: {"required":true}
 - rule: validity value must be a positive integer for DAYS/MONTHS/YEARS/ABSOLUTE, or an RFC3339 timestamp (e.g. "2036-01-01T00:00:00Z") for END_DATE
@@ -535,7 +542,11 @@ organization the right to issue from this CA via RAM sharing.
 Days the deleted CA stays restorable, 7-30. Unset means 30 (the
 provider default). Billing stops at delete either way; a shorter
 window frees the CA's name-and-subject slot sooner. E2E and
-ephemeral environments should use 7.
+ephemeral environments should use 7. FIXED AT CREATE: AWS stores
+nothing (only the delete call consumes it) and the provider
+cannot apply a window-only change (an empty update the API
+rejects), so both engines read this at create and ignore later
+edits - the delete uses the create-time window.
 
 - rule: permanent_deletion_time_in_days must be between 7 and 30 (unset defaults to 30)
 

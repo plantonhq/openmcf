@@ -21,7 +21,10 @@ spec:
     enabled: true
   deletionProtectionEnabled: true
   replicas:
-    - regionName: <replica-region>
+    # Replica regions must be real region codes (the field's own pattern
+    # rejects placeholders) -- replace with your replica region, which must
+    # differ from spec.region.
+    - regionName: us-west-2
       pointInTimeRecovery: true
       deletionProtectionEnabled: true
       propagateTags: true

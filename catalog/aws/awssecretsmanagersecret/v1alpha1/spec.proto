@@ -12,10 +12,13 @@ import "shared/options/options.proto";
 // credential material (database passwords, API keys, tokens, key/value JSON
 // documents) with optional automatic rotation and cross-region replication.
 //
-// The secret's name is taken from `metadata.name` (up to 512 characters;
-// AWS allows alphanumeric plus /_+=.@- so hierarchical names like
-// "prod/payments/db" are legal). The name is ForceNew - changing it
-// destroys and recreates the secret.
+// The secret's name is taken from `metadata.name`. AWS itself allows
+// alphanumeric plus /_+=.@- (hierarchical names like "prod/payments/db"),
+// but `metadata.name` carries only flat resource names - so secrets
+// created through this kind always have FLAT AWS names. Prefixed AWS name
+// shapes some services demand (e.g. ECR pull-through-cache credentials
+// under "ecr-pullthroughcache/") cannot be expressed here today. The name
+// is ForceNew - changing it destroys and recreates the secret.
 //
 // The secret VALUE is set through exactly one of `string_value` (text or
 // JSON key/value document - the common case) or `binary_value`

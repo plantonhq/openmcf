@@ -229,8 +229,11 @@ resource "aws_codebuild_project" "this" {
       dynamic "s3_logs" {
         for_each = logs_config.value.s3_logs != null ? [logs_config.value.s3_logs] : []
         content {
-          status              = s3_logs.value.status
-          location            = s3_logs.value.location != "" ? s3_logs.value.location : null
+          status = s3_logs.value.status
+          # AWS stores S3 build logs only under a prefix -- the provider
+          # takes one "bucket/prefix" string, composed here from the
+          # spec's two halves.
+          location            = s3_logs.value.bucket != "" ? "${s3_logs.value.bucket}/${s3_logs.value.prefix}" : null
           encryption_disabled = s3_logs.value.encryption_disabled
           bucket_owner_access = s3_logs.value.bucket_owner_access != "" ? s3_logs.value.bucket_owner_access : null
         }

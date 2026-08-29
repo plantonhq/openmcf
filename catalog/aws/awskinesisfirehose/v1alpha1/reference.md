@@ -583,7 +583,7 @@ spec:
 | `spec.iceberg` | `AwsKinesisFirehoseIcebergDestination` |  |  |  |
 | `spec.iceberg.catalogArn` | `string \| valueFrom` | yes |  |  |
 | `spec.iceberg.roleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
-| `spec.iceberg.destinationTables` | `[]AwsKinesisFirehoseIcebergDestinationTable` |  |  |  |
+| `spec.iceberg.destinationTables` | `[]AwsKinesisFirehoseIcebergDestinationTable` | yes |  |  |
 | `spec.iceberg.destinationTables[].databaseName` | `string` | yes |  |  |
 | `spec.iceberg.destinationTables[].tableName` | `string` | yes |  |  |
 | `spec.iceberg.destinationTables[].s3ErrorOutputPrefix` | `string` |  |  |  |
@@ -5078,14 +5078,19 @@ location, plus the S3 backup bucket.
 
 ### spec.iceberg.destinationTables
 
-`[]AwsKinesisFirehoseIcebergDestinationTable`
+`[]AwsKinesisFirehoseIcebergDestinationTable` · required
 
-Destination tables for delivered records. When exactly one table is
-listed, all records land there. When multiple tables are listed,
-records must carry routing metadata (produced by a metadata_extraction
-or Lambda processor) selecting the target table per record.
+Destination tables for delivered records -- at least one is required
+(an Iceberg destination with no table cannot route records; AWS
+rejects it at apply time, so it is rejected here at validation time).
+When exactly one table is listed, all records land there. When
+multiple tables are listed, records must carry routing metadata
+(produced by a metadata_extraction or Lambda processor) selecting the
+target table per record.
 
 ForceNew -- changing the table routing replaces the delivery stream.
+
+- rule: {"repeated":{"minItems":"1"}}
 
 ### spec.iceberg.destinationTables[].databaseName
 

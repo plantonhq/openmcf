@@ -18,7 +18,7 @@ This preset provisions an ACM certificate for a single domain using automated DN
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<your-domain.com>` | The domain name to secure (e.g., `api.example.com`) | Your domain registrar or DNS provider |
+| `replaceme.example.com` | The domain name to secure (e.g., `api.example.com`) — a real DNS shape; the field's pattern rejects placeholders | Your domain registrar or DNS provider |
 | `<route53-hosted-zone-id>` | ID of the Route53 hosted zone matching your domain | AWS Route53 console or `AwsRoute53Zone` status outputs |
 
 ## Related Presets

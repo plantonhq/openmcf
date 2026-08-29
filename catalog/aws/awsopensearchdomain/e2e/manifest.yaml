@@ -33,8 +33,10 @@ spec:
     enabled: true
     internalUserDatabaseEnabled: true
     masterUserName: admin
+    # An obvious throwaway that still satisfies FGAC's complexity rule
+    # (upper/lower/digit/special) -- never a real-looking credential.
     masterUserPassword:
-      value: "Sup3r$ecret!"
+      value: "E2e-Replace-Me-0!"
   samlOptions:
     idpEntityId: https://idp.example.com/saml/metadata
     idpMetadataContent: |

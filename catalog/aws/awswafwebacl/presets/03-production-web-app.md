@@ -33,7 +33,7 @@ Rules are evaluated by priority (lowest first):
 | Placeholder | Description |
 |-------------|-------------|
 | `<acl-name>` | Unique name for the Web ACL |
-| `<country-code-1>`, `<country-code-2>` | ISO 3166-1 alpha-2 country codes to block (e.g., RU, CN, KP) |
+| `US`, `CA` (example codes) | Replace with the ISO 3166-1 alpha-2 country codes to block (e.g., RU, CN, KP) — the field's pattern requires real two-letter uppercase codes |
 | `<log-group-arn>` | ARN of a CloudWatch Logs log group (name must start with `aws-waf-logs-`) |
 
 ## Tuning Recommendations

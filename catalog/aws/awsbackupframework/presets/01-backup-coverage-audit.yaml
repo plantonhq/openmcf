@@ -7,7 +7,15 @@ spec:
   frameworkName: backup_coverage_audit
   description: Are resources protected by a plan and retained long enough
   controls:
+    # Resource-scoped controls declare an EXPLICIT scope: a scope-less
+    # control is valid at AWS, but AWS materializes its default
+    # all-supported-types scope server-side and every later plan proposes
+    # stripping it -- declare the types you actually back up.
     - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+      scope:
+        complianceResourceTypes:
+          - EBS
+          - RDS
     - name: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
       inputParameters:
         - name: requiredRetentionDays

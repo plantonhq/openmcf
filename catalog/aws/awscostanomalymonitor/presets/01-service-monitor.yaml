@@ -17,8 +17,10 @@ spec:
     - name: finops-daily-summary
       frequency: DAILY
       subscribers:
+        # AWS validates the address at apply time -- replace with a real
+        # email (angle brackets would be rejected as part of the address).
         - address:
-            value: <finops-team@your-company.com>
+            value: finops-team@replaceme.example.com
           type: EMAIL
       thresholdExpression:
         dimension:

@@ -1407,7 +1407,7 @@ var File_catalog_aws_awscodepipeline_v1alpha1_spec_proto protoreflect.FileDescri
 
 const file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/aws/awscodepipeline/v1alpha1/spec.proto\x12(dev.planton.aws.awscodepipeline.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x92\x10\n" +
+	"/catalog/aws/awscodepipeline/v1alpha1/spec.proto\x12(dev.planton.aws.awscodepipeline.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbf\x10\n" +
 	"\x13AwsCodePipelineSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
 	"\rpipeline_type\x18\x02 \x01(\tB\x13\xbaH\n" +
@@ -1419,12 +1419,14 @@ const file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fartifact_stores\x18\x05 \x03(\v2F.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStoreB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0eartifactStores\x12c\n" +
 	"\x06stages\x18\x06 \x03(\v2>.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02R\x06stages\x12f\n" +
 	"\btriggers\x18\a \x03(\v2@.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTriggerB\b\xbaH\x05\x92\x01\x02\x102R\btriggers\x12_\n" +
-	"\tvariables\x18\b \x03(\v2A.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariableR\tvariables:\xf3\t\xbaH\xef\t\x1a\xde\x01\n" +
+	"\tvariables\x18\b \x03(\v2A.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariableR\tvariables:\xa0\n" +
+	"\xbaH\x9c\n" +
+	"\x1a\xde\x01\n" +
 	"\x13triggers_require_v2\x12Wtriggers are only supported on V2 pipelines; set pipeline_type to V2 or remove triggers\x1ansize(this.triggers) == 0 || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'\x1a\xe2\x01\n" +
 	"\x14variables_require_v2\x12Yvariables are only supported on V2 pipelines; set pipeline_type to V2 or remove variables\x1aosize(this.variables) == 0 || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'\x1a\xa2\x02\n" +
 	"#advanced_execution_mode_requires_v2\x12Eexecution_mode QUEUED and PARALLEL are only supported on V2 pipelines\x1a\xb3\x01!has(this.execution_mode) || this.execution_mode == '' || this.execution_mode == 'SUPERSEDED' || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'\x1a\xa8\x02\n" +
-	"\x1bstage_conditions_require_v2\x12\\stage before_entry, on_success, and on_failure conditions are only supported on V2 pipelines\x1a\xaa\x01this.stages.all(s, !has(s.before_entry) && !has(s.on_success) && !has(s.on_failure)) || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'\x1a\xd6\x01\n" +
-	"\x1cartifact_stores_region_shape\x12fa single artifact store must omit region; multiple (cross-region) artifact stores must each set region\x1aNsize(this.artifact_stores) <= 1 || this.artifact_stores.all(s, s.region != '')B\x10\n" +
+	"\x1bstage_conditions_require_v2\x12\\stage before_entry, on_success, and on_failure conditions are only supported on V2 pipelines\x1a\xaa\x01this.stages.all(s, !has(s.before_entry) && !has(s.on_success) && !has(s.on_failure)) || !has(this.pipeline_type) || this.pipeline_type == '' || this.pipeline_type == 'V2'\x1a\x83\x02\n" +
+	"\x1cartifact_stores_region_shape\x12fa single artifact store must omit region; multiple (cross-region) artifact stores must each set region\x1a{size(this.artifact_stores) <= 1 ? this.artifact_stores.all(s, s.region == '') : this.artifact_stores.all(s, s.region != '')B\x10\n" +
 	"\x0e_pipeline_typeB\x11\n" +
 	"\x0f_execution_mode\"\xb0\x02\n" +
 	"\x1cAwsCodePipelineArtifactStore\x12w\n" +

@@ -11,7 +11,9 @@ spec:
   httpEndpoint:
     url: https://http-intake.logs.datadoghq.com/v1/input
     name: Datadog Logs
-    accessKey: "<your-datadog-api-key>"
+    # The access key is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext API key in the manifest.
+    accessKey: $secret/datadog-api-key
     roleArn:
       value: arn:aws:iam::123456789012:role/firehose-http-delivery-role
     s3BackupMode: FailedDataOnly

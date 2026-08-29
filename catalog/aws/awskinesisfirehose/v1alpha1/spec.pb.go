@@ -3642,10 +3642,13 @@ type AwsKinesisFirehoseIcebergDestination struct {
 	// tables: Glue table read/update and S3 read/write on the warehouse
 	// location, plus the S3 backup bucket.
 	RoleArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
-	// Destination tables for delivered records. When exactly one table is
-	// listed, all records land there. When multiple tables are listed,
-	// records must carry routing metadata (produced by a metadata_extraction
-	// or Lambda processor) selecting the target table per record.
+	// Destination tables for delivered records -- at least one is required
+	// (an Iceberg destination with no table cannot route records; AWS
+	// rejects it at apply time, so it is rejected here at validation time).
+	// When exactly one table is listed, all records land there. When
+	// multiple tables are listed, records must carry routing metadata
+	// (produced by a metadata_extraction or Lambda processor) selecting the
+	// target table per record.
 	//
 	// ForceNew -- changing the table routing replaces the delivery stream.
 	DestinationTables []*AwsKinesisFirehoseIcebergDestinationTable `protobuf:"bytes,3,rep,name=destination_tables,json=destinationTables,proto3" json:"destination_tables,omitempty"`
@@ -4227,12 +4230,12 @@ const file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc = "" +
 	"-metadata_column_required_for_variant_metadata\x12Imetadata_column_name is required for VARIANT_CONTENT_AND_METADATA_MAPPING\x1aethis.data_loading_option != 'VARIANT_CONTENT_AND_METADATA_MAPPING' || this.metadata_column_name != ''\x1a\xcd\x01\n" +
 	"\x14retry_duration_range\x12=retry_duration_in_seconds must be between 0 and 7200 when set\x1avthis.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)\x1a\xa8\x01\n" +
 	"\x14s3_backup_mode_valid\x12=s3_backup_mode must be 'FailedDataOnly' or 'AllData' when set\x1aQthis.s3_backup_mode == '' || this.s3_backup_mode in ['FailedDataOnly', 'AllData']\x1a\xf4\x01\n" +
-	"\x12s3_only_processors\x12frecord_deaggregation and append_delimiter processors are only supported on the extended_s3 destination\x1av!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))\"\xaf\f\n" +
+	"\x12s3_only_processors\x12frecord_deaggregation and append_delimiter processors are only supported on the extended_s3 destination\x1av!has(this.processing) || !this.processing.processors.exists(p, has(p.record_deaggregation) || has(p.append_delimiter))\"\xb9\f\n" +
 	"$AwsKinesisFirehoseIcebergDestination\x12[\n" +
 	"\vcatalog_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"catalogArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x85\x01\n" +
-	"\x12destination_tables\x18\x03 \x03(\v2V.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTableR\x11destinationTables\x12\x1f\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x8f\x01\n" +
+	"\x12destination_tables\x18\x03 \x03(\v2V.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTableB\b\xbaH\x05\x92\x01\x02\b\x01R\x11destinationTables\x12\x1f\n" +
 	"\vappend_only\x18\x04 \x01(\bR\n" +
 	"appendOnly\x12k\n" +
 	"\tbuffering\x18\x05 \x01(\v2M.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHintsR\tbuffering\x129\n" +

@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "presetvalidity",
+    srcs = [
+        "baseline.go",
+        "presetvalidity.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/presetvalidity",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/manifest",
+        "@build_buf_go_protovalidate//:protovalidate",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "presetvalidity_test",
+    srcs = ["presetvalidity_test.go"],
+    embed = [":presetvalidity"],
+)

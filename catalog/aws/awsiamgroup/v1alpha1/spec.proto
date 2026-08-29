@@ -58,9 +58,12 @@ message AwsIamGroupSpec {
   // Managed policies attached to this group. Reference an
   // AwsIamPolicy's policy_arn output or a literal ARN (literals are
   // how AWS-managed policies like arn:aws:iam::aws:policy/
-  // ReadOnlyAccess attach). Prefer managed policies for anything
-  // reusable; use inline_policies for permissions unique to this one
-  // group.
+  // ReadOnlyAccess attach). Attachments are reconciled in place:
+  // adding or removing an entry attaches or detaches without touching
+  // the group, and a policy attached outside this resource stays
+  // attached (unlike `users`, which IS authoritative). Prefer managed
+  // policies for anything reusable; use inline_policies for
+  // permissions unique to this one group.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef managed_policy_arns = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamPolicy,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_arn"

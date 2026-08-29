@@ -18,7 +18,9 @@ spec:
     - value: "<security-group-id>"
   kms_key_id:
     value: arn:aws:kms:us-east-1:123456789012:key/your-kms-key-id
-  fsx_admin_password: <REPLACE_WITH_8_TO_50_CHAR_PASSWORD>
+  # The fsxadmin password is sensitive: reference a managed secret
+  # ($secret/<slug>) -- never a plaintext value.
+  fsx_admin_password: $secret/fsx-admin-password
   disk_iops_configuration:
     mode: USER_PROVISIONED
     iops: 160000

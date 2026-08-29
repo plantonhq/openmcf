@@ -248,20 +248,22 @@ message AwsSagemakerDomainSpec {
   // A space's idle timeout is legal only where idle shutdown resolves ENABLED
   // through the inheritance chain — CreateSpace rejects it otherwise
   // ("Idle Shutdown is disabled for this space", live-verified 2026-08-13).
-  // These rules enforce the directly expressible half: a space must not set
-  // an idle timeout when its owner profile in THIS manifest explicitly
-  // disables that app plane's lifecycle management. (Enablement inherited
-  // from default_user_settings or from profiles managed outside the manifest
-  // resolves server-side and cannot be checked here.)
+  // These rules resolve the chain the way AWS does, as far as the manifest
+  // can see it: the owner profile's EXPLICIT lifecycle_management wins;
+  // an owner profile that is silent on the plane inherits the domain's
+  // default_user_settings value. A space whose plane resolves 'DISABLED'
+  // through either step is rejected here instead of at CreateSpace. (An
+  // owner profile managed OUTSIDE this manifest resolves server-side and
+  // cannot be checked — those spaces pass validation and rely on AWS.)
   option (buf.validate.message).cel = {
     id: "space_idle_requires_owner_lifecycle_jupyterlab"
-    message: "a space may not set jupyter_lab_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for JupyterLab — AWS rejects SpaceIdleSettings on a disabled plane"
-    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.jupyter_lab_app_settings) || !has(s.space_settings.jupyter_lab_app_settings.idle_settings) || !has(s.ownership_settings) || !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.jupyter_lab_app_settings) && has(p.user_settings.jupyter_lab_app_settings.idle_settings) && p.user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management == 'DISABLED'))"
+    message: "a space may not set jupyter_lab_app_settings.idle_settings when JupyterLab lifecycle_management resolves 'DISABLED' for its owner profile (the profile's explicit setting, else the domain's default_user_settings) — AWS rejects SpaceIdleSettings on a disabled plane"
+    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.jupyter_lab_app_settings) || !has(s.space_settings.jupyter_lab_app_settings.idle_settings) || !has(s.ownership_settings) || !(this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.jupyter_lab_app_settings) && has(p.user_settings.jupyter_lab_app_settings.idle_settings) && p.user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management == 'DISABLED') || (this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name) && !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.jupyter_lab_app_settings) && has(p.user_settings.jupyter_lab_app_settings.idle_settings) && p.user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management != '') && has(this.default_user_settings.jupyter_lab_app_settings) && has(this.default_user_settings.jupyter_lab_app_settings.idle_settings) && this.default_user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management == 'DISABLED')))"
   };
   option (buf.validate.message).cel = {
     id: "space_idle_requires_owner_lifecycle_codeeditor"
-    message: "a space may not set code_editor_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for Code Editor — AWS rejects SpaceIdleSettings on a disabled plane"
-    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.code_editor_app_settings) || !has(s.space_settings.code_editor_app_settings.idle_settings) || !has(s.ownership_settings) || !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.code_editor_app_settings) && has(p.user_settings.code_editor_app_settings.idle_settings) && p.user_settings.code_editor_app_settings.idle_settings.lifecycle_management == 'DISABLED'))"
+    message: "a space may not set code_editor_app_settings.idle_settings when Code Editor lifecycle_management resolves 'DISABLED' for its owner profile (the profile's explicit setting, else the domain's default_user_settings) — AWS rejects SpaceIdleSettings on a disabled plane"
+    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.code_editor_app_settings) || !has(s.space_settings.code_editor_app_settings.idle_settings) || !has(s.ownership_settings) || !(this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.code_editor_app_settings) && has(p.user_settings.code_editor_app_settings.idle_settings) && p.user_settings.code_editor_app_settings.idle_settings.lifecycle_management == 'DISABLED') || (this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name) && !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.code_editor_app_settings) && has(p.user_settings.code_editor_app_settings.idle_settings) && p.user_settings.code_editor_app_settings.idle_settings.lifecycle_management != '') && has(this.default_user_settings.code_editor_app_settings) && has(this.default_user_settings.code_editor_app_settings.idle_settings) && this.default_user_settings.code_editor_app_settings.idle_settings.lifecycle_management == 'DISABLED')))"
   };
 }
 

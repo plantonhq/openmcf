@@ -4,7 +4,9 @@ metadata:
   name: app-log-level
 spec:
   region: <aws-region>
-  parameterName: /<app>/config/log-level
+  # Parameter names allow only letters, digits, and _.-/ -- replace the
+  # example path segments with your own.
+  parameterName: /myapp/config/log-level
   type: String
   value: info
   description: Application log level

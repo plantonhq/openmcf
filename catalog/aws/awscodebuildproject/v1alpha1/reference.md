@@ -126,8 +126,9 @@ spec:
       streamName: builds
     s3Logs:
       status: ENABLED
-      location:
-        value: my-log-bucket/build-logs
+      bucket:
+        value: my-log-bucket
+      prefix: build-logs
       bucketOwnerAccess: FULL
   vpcConfig:
     vpcId:
@@ -295,9 +296,10 @@ spec:
 | `spec.logsConfig.cloudwatchLogs.streamName` | `string` |  |  |  |
 | `spec.logsConfig.s3Logs` | `AwsCodeBuildS3Logs` |  |  |  |
 | `spec.logsConfig.s3Logs.status` | `string` |  | `DISABLED` |  |
-| `spec.logsConfig.s3Logs.location` | `string \| valueFrom` |  |  | AwsS3Bucket (`status.outputs.bucket_id`) |
+| `spec.logsConfig.s3Logs.bucket` | `string \| valueFrom` |  |  | AwsS3Bucket (`status.outputs.bucket_id`) |
 | `spec.logsConfig.s3Logs.encryptionDisabled` | `bool` |  |  |  |
 | `spec.logsConfig.s3Logs.bucketOwnerAccess` | `string` |  |  |  |
+| `spec.logsConfig.s3Logs.prefix` | `string` |  |  |  |
 | `spec.vpcConfig` | `AwsCodeBuildVpcConfig` |  |  |  |
 | `spec.vpcConfig.vpcId` | `string \| valueFrom` | yes |  | AwsVpc (`status.outputs.vpc_id`) |
 | `spec.vpcConfig.subnetIds` | `[]string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
@@ -1275,6 +1277,8 @@ If omitted, CodeBuild generates a default stream name.
 
 s3_logs configures S3 logging for build output.
 
+- rule: an ENABLED s3_logs requires bucket and prefix — AWS stores S3 build logs only under "bucket/prefix"
+
 ### spec.logsConfig.s3Logs.status
 
 `string` · optional (explicit presence)
@@ -1285,14 +1289,15 @@ Default: DISABLED.
 - default: `DISABLED`
 - rule: {"string":{"in":["ENABLED","DISABLED"]}}
 
-### spec.logsConfig.s3Logs.location
+### spec.logsConfig.s3Logs.bucket
 
 `string | valueFrom`
 
-location is the S3 bucket and prefix for log storage. AWS requires the
-prefix — the format is "bucket-name/prefix" (or the bucket ARN); a bare
-bucket name is rejected. When composing from an AwsS3Bucket reference,
-append the prefix to the referenced bucket_id.
+bucket is the S3 bucket receiving build logs — a reference to an
+AwsS3Bucket's bucket_id output, a literal bucket name, or the bucket
+ARN. AWS stores S3 build logs only under a prefix, so the bucket and
+`prefix` are separate fields here and both IaC modules compose the
+provider's single location argument as "{bucket}/{prefix}".
 
 - references: AwsS3Bucket (`status.outputs.bucket_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsS3Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_id}} -- a bare string does not parse
@@ -1311,6 +1316,15 @@ bucket_owner_access grants the owning account of the log bucket access
 to the uploaded log files (for centralized cross-account log buckets).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["NONE","READ_ONLY","FULL"]}}
+
+### spec.logsConfig.s3Logs.prefix
+
+`string`
+
+prefix is the path under the bucket where log objects land. AWS
+REQUIRES it for S3 build logs — a bare bucket with no prefix is
+rejected at CreateProject, which is why it is a separate required
+companion to `bucket` rather than a "bucket/prefix" literal format.
 
 ### spec.vpcConfig
 
@@ -1693,7 +1707,7 @@ Fields that can point at another resource's outputs:
 | `spec.encryptionKey` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.cache.location` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.logsConfig.cloudwatchLogs.groupName` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
-| `spec.logsConfig.s3Logs.location` | AwsS3Bucket | `status.outputs.bucket_id` |
+| `spec.logsConfig.s3Logs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.vpcConfig.vpcId` | AwsVpc | `status.outputs.vpc_id` |
 | `spec.vpcConfig.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.vpcConfig.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |

@@ -2,6 +2,7 @@ package module
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 	awscodebuildprojectv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodebuildproject/v1alpha1"
@@ -220,8 +221,12 @@ func project(
 			if spec.LogsConfig.S3Logs.GetStatus() != "" {
 				s3Args.Status = pulumi.StringPtr(spec.LogsConfig.S3Logs.GetStatus())
 			}
-			if spec.LogsConfig.S3Logs.Location != nil && spec.LogsConfig.S3Logs.Location.GetValue() != "" {
-				s3Args.Location = pulumi.StringPtr(spec.LogsConfig.S3Logs.Location.GetValue())
+			// AWS stores S3 build logs only under a prefix -- the provider
+			// takes one "bucket/prefix" string, composed here from the
+			// spec's two halves.
+			if spec.LogsConfig.S3Logs.Bucket != nil && spec.LogsConfig.S3Logs.Bucket.GetValue() != "" {
+				s3Args.Location = pulumi.StringPtr(fmt.Sprintf("%s/%s",
+					spec.LogsConfig.S3Logs.Bucket.GetValue(), spec.LogsConfig.S3Logs.GetPrefix()))
 			}
 			if spec.LogsConfig.S3Logs.EncryptionDisabled {
 				s3Args.EncryptionDisabled = pulumi.BoolPtr(true)

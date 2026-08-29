@@ -8,7 +8,7 @@ spec:
     value: <https-issuer-url>
   clientIdList:
     - <audience>
-  # Supply thumbprints only when the issuer's root CA is NOT publicly trusted.
-  # For well-known CAs (EKS, GitHub, Google), omit this entirely and AWS derives it.
-  thumbprintList:
-    - <40-char-sha1-thumbprint>
+  # thumbprintList is deliberately omitted: leaving it empty is the correct
+  # default -- AWS derives thumbprints for publicly trusted root CAs. Supply
+  # entries (40-hex-char SHA-1 values) only when the issuer's root CA is NOT
+  # publicly trusted.

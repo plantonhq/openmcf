@@ -55,9 +55,11 @@ type AwsSagemakerNotebookInstanceSpec struct {
 	// replaces the instance.
 	SubnetId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
 	// Security groups applied to the notebook's ENI (requires
-	// `subnet_id`).
+	// `subnet_id`). Changing them replaces the instance -- the ML storage
+	// volume is destroyed with it.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// KMS key encrypting the ML storage volume at rest.
+	// KMS key encrypting the ML storage volume at rest. Changing it
+	// replaces the instance -- the ML storage volume is destroyed with it.
 	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
 	// "Enabled" (AWS default - the notebook gets a direct internet route)
 	// or "Disabled" (traffic flows only through your VPC - requires

@@ -4,4 +4,7 @@ metadata:
   name: iam-account-alias
 spec:
   region: us-east-1
-  accountAlias: <your-company-prod>
+  # The alias must be lowercase letters, digits, and hyphens (the field's
+  # own pattern rejects placeholders), globally unique across ALL AWS
+  # accounts, and it REPLACES your account's sign-in URL when applied.
+  accountAlias: replace-me-signin-alias

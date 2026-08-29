@@ -19,7 +19,7 @@ This preset registers any standards-compliant OIDC issuer as a trusted identity 
 - `<aws-region>` -- the AWS region used to configure the provider
 - `<https-issuer-url>` -- the issuer URL (must be HTTPS, no query/fragment)
 - `<audience>` -- the client ID / audience the issuer's tokens carry
-- `<40-char-sha1-thumbprint>` -- the SHA-1 thumbprint of the issuer's root CA (see the AWS guide on obtaining it)
+- `thumbprintList` is deliberately absent from the preset: leaving it empty is the correct default (AWS derives thumbprints for publicly trusted root CAs). Add 40-hex-char SHA-1 entries only when the issuer's root CA is NOT publicly trusted (see the AWS guide on obtaining one)
 
 ## Note
 

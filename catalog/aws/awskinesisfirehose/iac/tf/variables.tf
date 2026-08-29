@@ -578,12 +578,12 @@ variable "spec" {
     iceberg = optional(object({
       catalog_arn = string
       role_arn = string
-      destination_tables = optional(list(object({
+      destination_tables = list(object({
         database_name = string
         table_name = string
         s3_error_output_prefix = optional(string, "")
         unique_keys = optional(list(string), [])
-      })), [])
+      }))
       append_only = optional(bool, false)
       buffering = optional(object({
         interval_in_seconds = optional(number, 0)

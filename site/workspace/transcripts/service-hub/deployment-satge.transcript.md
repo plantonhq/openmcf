@@ -113,7 +113,7 @@ spec:
           ELASTICSEARCH_URL: $variables-group/elasticsearch/prod.external-endpoint
           LANGSMITH_PROJECT: "planton-cloud-local"
           ELASTICSEARCH_LOAD_VECTOR: false
-          COPILOT_AGENT_RUNTIME_API_TOKEN: pck_fVNVV-Gu1Cvqc
+          COPILOT_AGENT_RUNTIME_API_TOKEN: pak_fVNVV-Gu1Cvqc
           COPILOT_AGENT_RUNTIME: "test"
           COPILOT_AGENT_RUNTIME_ORG: "planton-cloud"
 

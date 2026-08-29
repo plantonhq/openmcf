@@ -1480,18 +1480,24 @@ type AwsCodeBuildS3Logs struct {
 	// status controls whether S3 logging is enabled.
 	// Default: DISABLED.
 	Status *string `protobuf:"bytes,1,opt,name=status,proto3,oneof" json:"status,omitempty"`
-	// location is the S3 bucket and prefix for log storage. AWS requires the
-	// prefix — the format is "bucket-name/prefix" (or the bucket ARN); a bare
-	// bucket name is rejected. When composing from an AwsS3Bucket reference,
-	// append the prefix to the referenced bucket_id.
-	Location *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=location,proto3" json:"location,omitempty"`
+	// bucket is the S3 bucket receiving build logs — a reference to an
+	// AwsS3Bucket's bucket_id output, a literal bucket name, or the bucket
+	// ARN. AWS stores S3 build logs only under a prefix, so the bucket and
+	// `prefix` are separate fields here and both IaC modules compose the
+	// provider's single location argument as "{bucket}/{prefix}".
+	Bucket *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bucket,proto3" json:"bucket,omitempty"`
 	// encryption_disabled disables server-side encryption for log files.
 	EncryptionDisabled bool `protobuf:"varint,3,opt,name=encryption_disabled,json=encryptionDisabled,proto3" json:"encryption_disabled,omitempty"`
 	// bucket_owner_access grants the owning account of the log bucket access
 	// to the uploaded log files (for centralized cross-account log buckets).
 	BucketOwnerAccess string `protobuf:"bytes,4,opt,name=bucket_owner_access,json=bucketOwnerAccess,proto3" json:"bucket_owner_access,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// prefix is the path under the bucket where log objects land. AWS
+	// REQUIRES it for S3 build logs — a bare bucket with no prefix is
+	// rejected at CreateProject, which is why it is a separate required
+	// companion to `bucket` rather than a "bucket/prefix" literal format.
+	Prefix        string `protobuf:"bytes,5,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsCodeBuildS3Logs) Reset() {
@@ -1531,9 +1537,9 @@ func (x *AwsCodeBuildS3Logs) GetStatus() string {
 	return ""
 }
 
-func (x *AwsCodeBuildS3Logs) GetLocation() *v1.StringValueOrRef {
+func (x *AwsCodeBuildS3Logs) GetBucket() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Location
+		return x.Bucket
 	}
 	return nil
 }
@@ -1548,6 +1554,13 @@ func (x *AwsCodeBuildS3Logs) GetEncryptionDisabled() bool {
 func (x *AwsCodeBuildS3Logs) GetBucketOwnerAccess() string {
 	if x != nil {
 		return x.BucketOwnerAccess
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildS3Logs) GetPrefix() string {
+	if x != nil {
+		return x.Prefix
 	}
 	return ""
 }
@@ -2338,12 +2351,14 @@ const file_catalog_aws_awscodebuildproject_v1alpha1_spec_proto_rawDesc = "" +
 	"group_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\tgroupName\x12\x1f\n" +
 	"\vstream_name\x18\x03 \x01(\tR\n" +
 	"streamNameB\t\n" +
-	"\a_status\"\xd7\x02\n" +
+	"\a_status\"\xef\x04\n" +
 	"\x12AwsCodeBuildS3Logs\x12A\n" +
-	"\x06status\x18\x01 \x01(\tB$\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\bDISABLEDH\x00R\x06status\x88\x01\x01\x12q\n" +
-	"\blocation\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\blocation\x12/\n" +
+	"\x06status\x18\x01 \x01(\tB$\xbaH\x15r\x13R\aENABLEDR\bDISABLED\x8a\xa6\x1d\bDISABLEDH\x00R\x06status\x88\x01\x01\x12m\n" +
+	"\x06bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12/\n" +
 	"\x13encryption_disabled\x18\x03 \x01(\bR\x12encryptionDisabled\x12O\n" +
-	"\x13bucket_owner_access\x18\x04 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04NONER\tREAD_ONLYR\x04FULLR\x11bucketOwnerAccessB\t\n" +
+	"\x13bucket_owner_access\x18\x04 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x04NONER\tREAD_ONLYR\x04FULLR\x11bucketOwnerAccess\x12\x16\n" +
+	"\x06prefix\x18\x05 \x01(\tR\x06prefix:\x81\x02\xbaH\xfd\x01\x1a\xfa\x01\n" +
+	"*s3_logs_enabled_requires_bucket_and_prefix\x12ean ENABLED s3_logs requires bucket and prefix — AWS stores S3 build logs only under \"bucket/prefix\"\x1ae(has(this.status) ? this.status : 'DISABLED') != 'ENABLED' || (has(this.bucket) && this.prefix != '')B\t\n" +
 	"\a_status\"\xa7\x03\n" +
 	"\x15AwsCodeBuildVpcConfig\x12o\n" +
 	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x81\x01\n" +
@@ -2464,7 +2479,7 @@ var file_catalog_aws_awscodebuildproject_v1alpha1_spec_proto_depIdxs = []int32{
 	13, // 25: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildLogsConfig.cloudwatch_logs:type_name -> dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildCloudWatchLogs
 	14, // 26: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildLogsConfig.s3_logs:type_name -> dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildS3Logs
 	24, // 27: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildCloudWatchLogs.group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // 28: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildS3Logs.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 28: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildS3Logs.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	24, // 29: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildVpcConfig.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	24, // 30: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	24, // 31: dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef

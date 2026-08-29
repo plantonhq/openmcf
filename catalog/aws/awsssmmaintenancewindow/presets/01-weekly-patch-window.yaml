@@ -22,10 +22,13 @@ spec:
       taskArn:
         value: AWS-RunPatchBaseline
       priority: 1
+      # Join the task to the REGISTERED window target by name: with
+      # allowUnassociatedTargets unset (false), AWS rejects ad-hoc task
+      # selectors at registration -- WindowTargetIds is the contract.
       targets:
-        - key: tag:env
+        - key: WindowTargetIds
           values:
-            - prod
+            - prod-instances
       maxConcurrency: 10%
       maxErrors: 5%
       cutoffBehavior: CANCEL_TASK

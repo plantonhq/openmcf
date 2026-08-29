@@ -123,7 +123,7 @@ These are the most important decisions when configuring a CodeBuild project. Exp
 | **AwsS3Bucket** (optional) | `artifacts.location` | `status.outputs.bucket_id` |
 | **AwsS3Bucket** (optional) | `cache.location` | `status.outputs.bucket_id` |
 | **AwsCloudwatchLogGroup** (optional) | `logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
-| **AwsS3Bucket** (optional) | `logsConfig.s3Logs.location` | `status.outputs.bucket_id` |
+| **AwsS3Bucket** (optional) | `logsConfig.s3Logs.bucket` | `status.outputs.bucket_id` |
 | **AwsVpc** (optional) | `vpcConfig.vpcId` | `status.outputs.vpc_id` |
 | **AwsSubnet** (optional) | `vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |

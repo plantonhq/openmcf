@@ -26,8 +26,10 @@ spec:
     - name: platform-alerts
       frequency: IMMEDIATE
       subscribers:
+        # AWS validates the ARN at apply time -- replace the region, account
+        # id, and topic name (angle brackets would malform the ARN).
         - address:
-            value: <arn:aws:sns:us-east-1:123456789012:platform-cost-alerts>
+            value: arn:aws:sns:us-east-1:123456789012:platform-cost-alerts
           type: SNS
       thresholdExpression:
         and:

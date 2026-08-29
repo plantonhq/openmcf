@@ -20,9 +20,11 @@ spec:
       action: block
       statement:
         geoMatch:
+          # Country codes must be two-letter uppercase ISO codes (the field's
+          # own pattern rejects placeholders) -- these are examples to replace.
           countryCodes:
-            - <country-code-1>
-            - <country-code-2>
+            - US
+            - CA
     - name: aws-ip-reputation
       priority: 10
       overrideAction: none

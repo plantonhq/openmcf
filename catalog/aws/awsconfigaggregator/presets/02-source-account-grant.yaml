@@ -5,5 +5,7 @@ metadata:
 spec:
   region: <aws-region>
   authorizations:
-    - accountId: "<aggregator-account-id>"
+    # Account ids must be 12 digits (the field's own pattern rejects
+    # placeholders) -- replace with the aggregator account's real id.
+    - accountId: "123456789012"
       authorizedAwsRegion: <aggregator-home-region>

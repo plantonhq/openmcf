@@ -34,7 +34,7 @@ standard production pattern for ElastiCache RBAC.
 | `<aws-region>` | AWS region code (e.g. `us-west-2`) | Your deployment region |
 | `<auth-user-name>` | Name clients present in AUTH (often matches the user id) | Your application identity |
 | `<key-prefix>` | Key namespace this user may touch (e.g. `orders`) | Your data model |
-| `<strong-password-16-to-128-chars>` | Password material (16–128 printable characters) | Your secret manager |
+| `$secret/elasticache-user-password` | A managed-secret reference to the password material (16–128 printable characters) — the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext | Your org's managed secrets |
 
 ## Common Additions
 

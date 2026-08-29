@@ -53,6 +53,17 @@ spec:
   # engine, alongside the governance dials (autoRetryLimit,
   # concurrentBuildLimit). The three converged Pulumi pass-through sends
   # rode the same lane clean.
+  #
+  # 2026-08-29 (post-proof surface change, offline-proven): s3_logs split
+  # its compound "bucket/prefix" location string into a reference-able
+  # `bucket` (AwsS3Bucket FK) plus a required `prefix`, with both engines
+  # composing the provider's single location argument -- reference-mode
+  # had been structurally unable to produce the "bucket/prefix" form AWS
+  # requires. Proven offline: spec/CEL suite, both engines' module verify
+  # conformance, and a tofu plan rendering the composed
+  # "my-log-bucket/build-logs". The s3_logs arm is already excluded from
+  # the live lane (bucket fixture class), so the live proof stands; the
+  # next lane that touches this kind inherits the new shape.
   tier: 1
   status: green
   validated_provisioners: [pulumi, terraform]

@@ -142,7 +142,7 @@ message AwsCodePipelineSpec {
   option (buf.validate.message).cel = {
     id: "artifact_stores_region_shape"
     message: "a single artifact store must omit region; multiple (cross-region) artifact stores must each set region"
-    expression: "size(this.artifact_stores) <= 1 || this.artifact_stores.all(s, s.region != '')"
+    expression: "size(this.artifact_stores) <= 1 ? this.artifact_stores.all(s, s.region == '') : this.artifact_stores.all(s, s.region != '')"
   };
 }
 

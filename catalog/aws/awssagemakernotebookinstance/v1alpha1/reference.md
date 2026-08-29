@@ -143,7 +143,8 @@ replaces the instance.
 `[]string | valueFrom`
 
 Security groups applied to the notebook's ENI (requires
-`subnet_id`).
+`subnet_id`). Changing them replaces the instance -- the ML storage
+volume is destroyed with it.
 
 - references: AwsSecurityGroup (`status.outputs.security_group_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
@@ -152,7 +153,8 @@ Security groups applied to the notebook's ENI (requires
 
 `string | valueFrom`
 
-KMS key encrypting the ML storage volume at rest.
+KMS key encrypting the ML storage volume at rest. Changing it
+replaces the instance -- the ML storage volume is destroyed with it.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse

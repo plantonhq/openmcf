@@ -19,7 +19,7 @@ This preset requests an ACM certificate for a domain whose DNS lives outside Rou
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<aws-region>` | Region for the certificate (`us-east-1` if this certificate fronts CloudFront) | Your architecture |
-| `<your-domain.com>` | The domain name to secure | Your DNS provider |
+| `replaceme.example.com` | The domain name to secure — a real DNS shape; the field's pattern rejects placeholders | Your DNS provider |
 
 ## After Deploying
 

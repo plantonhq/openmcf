@@ -19,7 +19,7 @@ Use this preset for high-volume, short-duration workflows that process events at
 ## What to Customize
 
 1. **`<workflow-name>`** — A descriptive name (e.g., `event-router`)
-2. **`<iam-execution-role-arn>`** — IAM role with permissions for all invoked services
+2. **`arn:aws:iam::123456789012:role/replace-me-stepfunctions-execution`** — replace with your IAM role ARN (permissions for all invoked services); literal values must start with `arn:`, or use the valueFrom reference form the production-workflow preset shows
 3. **`<enrichment-lambda-arn>`**, **`<urgent-lambda-arn>`**, **`<normal-lambda-arn>`** — Lambda function ARNs
 4. **`<cloudwatch-log-group-arn>`** — Log group for error logging
 5. **Choice conditions** — Adjust routing logic for your event types

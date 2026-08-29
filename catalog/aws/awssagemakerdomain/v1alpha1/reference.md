@@ -4304,8 +4304,8 @@ The EBS volume size in GB. Range: 5-16384.
 - `trusted_identity_propagation_requires_sso`: trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')
 - `user_profile_names_unique`: user_profiles names must be unique — each name keys one user profile
 - `space_names_unique`: spaces names must be unique — each name keys one space
-- `space_idle_requires_owner_lifecycle_jupyterlab`: a space may not set jupyter_lab_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for JupyterLab — AWS rejects SpaceIdleSettings on a disabled plane
-- `space_idle_requires_owner_lifecycle_codeeditor`: a space may not set code_editor_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for Code Editor — AWS rejects SpaceIdleSettings on a disabled plane
+- `space_idle_requires_owner_lifecycle_jupyterlab`: a space may not set jupyter_lab_app_settings.idle_settings when JupyterLab lifecycle_management resolves 'DISABLED' for its owner profile (the profile's explicit setting, else the domain's default_user_settings) — AWS rejects SpaceIdleSettings on a disabled plane
+- `space_idle_requires_owner_lifecycle_codeeditor`: a space may not set code_editor_app_settings.idle_settings when Code Editor lifecycle_management resolves 'DISABLED' for its owner profile (the profile's explicit setting, else the domain's default_user_settings) — AWS rejects SpaceIdleSettings on a disabled plane
 
 ## Outputs
 

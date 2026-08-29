@@ -19,8 +19,8 @@ Dual-protocol Storage Virtual Machine with MIXED security style and Active Direc
 
 ## What to Customize
 
-- Replace all `<REPLACE>` placeholders with actual values
-- **Critical**: Replace password placeholders with real credentials
+- Replace the angle-bracket placeholders with actual values
+- **Passwords are managed-secret references**: `svm_admin_password` and the AD `password` ship as `$secret/<slug>` references — create the referenced secrets (or rename the slugs to yours); never inline a plaintext password
 - Adjust AD configuration (`dns_ips`, `domain_name`, `organizational_unit_distinguished_name`)
 - Change `file_system_administrators_group` from "FSx Admins" to your AD group
 - Remove `svm_admin_password` if SVM CLI access is not needed

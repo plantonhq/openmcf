@@ -23,7 +23,9 @@ spec:
       - "10.0.0.10"
       - "10.0.0.11"
     username: svc-fsx-join
-    password: "<your-service-account-password>"
+    # The AD join password is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext value.
+    password: $secret/fsx-ad-join-password
     file_system_administrators_group: FSx Admins
   audit_log_configuration:
     file_access_audit_log_level: SUCCESS_AND_FAILURE

@@ -1089,5 +1089,27 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("with a single store omitting region", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.ArtifactStores = []*AwsCodePipelineArtifactStore{
+					{Location: svRef("artifacts-usw2")},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a single store carrying a region", func() {
+			ginkgo.It("should return a validation error -- a lone store must omit region", func() {
+				spec := minimalV2Spec()
+				spec.ArtifactStores = []*AwsCodePipelineArtifactStore{
+					{Location: svRef("artifacts-usw2"), Region: "us-west-2"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
 	})
 })

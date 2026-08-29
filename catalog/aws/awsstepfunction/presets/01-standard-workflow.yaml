@@ -8,8 +8,11 @@ metadata:
 spec:
   region: <aws-region>
   type: STANDARD
+  # Literal role ARNs must start with arn: (the kind's own rule rejects
+  # placeholders) -- replace the account id and role name, or use the
+  # valueFrom reference form the production-workflow preset demonstrates.
   roleArn:
-    value: <iam-execution-role-arn>
+    value: arn:aws:iam::123456789012:role/replace-me-stepfunctions-execution
   definition:
     StartAt: ProcessTask
     States:

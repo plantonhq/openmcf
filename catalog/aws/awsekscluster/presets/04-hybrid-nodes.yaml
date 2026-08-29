@@ -29,14 +29,16 @@ spec:
   # only when hybrid nodes register (per vCPU). Both ranges must be
   # routable from the VPC and must not overlap it.
   remoteNetworks:
+    # Both ranges must be real CIDR shapes (the fields' own patterns reject
+    # placeholders) -- replace these examples with your on-prem ranges.
     # Where the on-prem machines' own addresses live -- kubelet
     # registrations are accepted from these blocks.
     nodeCidrs:
-      - <on-prem-node-cidr>
+      - 10.80.0.0/16
     # Where the on-prem CNI assigns pod addresses -- needed when pods
     # must be directly routable from the cluster (webhooks, east-west).
     podCidrs:
-      - <on-prem-pod-cidr>
+      - 10.85.0.0/16
   enabledClusterLogTypes:
     - audit
     - authenticator

@@ -109,9 +109,12 @@ already exist - IAM rejects unknown names.
 Managed policies attached to this group. Reference an
 AwsIamPolicy's policy_arn output or a literal ARN (literals are
 how AWS-managed policies like arn:aws:iam::aws:policy/
-ReadOnlyAccess attach). Prefer managed policies for anything
-reusable; use inline_policies for permissions unique to this one
-group.
+ReadOnlyAccess attach). Attachments are reconciled in place:
+adding or removing an entry attaches or detaches without touching
+the group, and a policy attached outside this resource stays
+attached (unlike `users`, which IS authoritative). Prefer managed
+policies for anything reusable; use inline_policies for
+permissions unique to this one group.
 
 - references: AwsIamPolicy (`status.outputs.policy_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamPolicy, name: <that resource's name>, fieldPath: status.outputs.policy_arn}} -- a bare string does not parse

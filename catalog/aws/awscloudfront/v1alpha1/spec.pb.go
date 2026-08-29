@@ -96,7 +96,11 @@ type AwsCloudFrontSpec struct {
 	// or "PriceClass_100" (North America + Europe only, the cheapest).
 	// Viewers outside the selected class are served from the nearest
 	// included edge -- functional everywhere, just slower far away.
-	// Empty keeps PriceClass_All.
+	// Empty keeps PriceClass_All. The Terraform provider nominally also
+	// admits "None" (a shared SDK enum value for the legacy streaming and
+	// multi-tenant surfaces), but AWS rejects it on standard
+	// distributions -- the three values here mirror AWS's real contract,
+	// deliberately stricter than the provider.
 	PriceClass string `protobuf:"bytes,8,opt,name=price_class,json=priceClass,proto3" json:"price_class,omitempty"`
 	// The AWS WAF Web ACL protecting the distribution, by ARN.
 	// CloudFront-scope ACLs (scope CLOUDFRONT, which must live in

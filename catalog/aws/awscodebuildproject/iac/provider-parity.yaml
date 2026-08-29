@@ -27,6 +27,15 @@ resources:
       - spec: spec.vpc_config.subnet_ids
         arg: vpc_config.subnets
 
+      # AWS stores S3 build logs only under "bucket/prefix", so the spec
+      # carries the two halves separately (the bucket is a reference-able
+      # AwsS3Bucket FK; the prefix a required companion) and both modules
+      # compose the provider's single location argument from them.
+      - spec: spec.logs_config.s3_logs.bucket
+        arg: logs_config.s3_logs.location
+      - spec: spec.logs_config.s3_logs.prefix
+        arg: logs_config.s3_logs.location
+
     exclusions:
       - arg: name
         reason: wired by the module from metadata.name -- project names are create-time-immutable identity, never mutable spec surface

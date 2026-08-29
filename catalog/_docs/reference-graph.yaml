@@ -1008,7 +1008,7 @@ edges:
     to: "AwsCloudwatchLogGroup"
     target: "status.outputs.log_group_name"
   - from: "AwsCodeBuildProject"
-    field: "spec.logsConfig.s3Logs.location"
+    field: "spec.logsConfig.s3Logs.bucket"
     to: "AwsS3Bucket"
     target: "status.outputs.bucket_id"
   - from: "AwsCodeBuildProject"

@@ -4,7 +4,9 @@ metadata:
   name: my-external-dns-certificate
 spec:
   region: <aws-region>
-  primaryDomainName: <your-domain.com>
+  # Domain names must be real DNS shapes (the field's own pattern rejects
+  # angle brackets) -- replace with your domain.
+  primaryDomainName: replaceme.example.com
   # No route53HostedZoneId: DNS is managed outside Route53 (Cloudflare,
   # your registrar, ...). The deployment finishes with the certificate in
   # PENDING_VALIDATION and exports the required CNAME records as the
