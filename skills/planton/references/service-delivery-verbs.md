@@ -1,16 +1,20 @@
-# Promote and Rollback — Moving a Version Between Environments
+# Deploy, Promote, and Rollback — The Delivery Verbs
 
-A service's version reaches an environment two ways: a push builds it and deploys it, or someone moves a version that already exists. This file is about the second way — the two verbs that act on deployment history directly.
+A service's version reaches an environment two ways: a push builds it and deploys it, or someone delivers a version that already exists. This file is about the second way — the three verbs that deploy without a build of their own.
 
-Read this when someone wants a version that runs in one environment to run in another, when something is wrong in an environment and the previous version should come back, or when a deployment you started refuses and you need to explain why in terms the person can act on.
+Read this when someone wants a version that runs in one environment to run in another, when something is wrong in an environment and the previous version should come back, when someone has an image built elsewhere (their CI, their laptop) and wants it running, or when a deployment you started refuses and you need to explain why in terms the person can act on.
 
 ## What the verbs actually do
+
+**Deploy** (`planton service deploy <service> --env <env> --image <ref>`) takes a container image built ANYWHERE and deploys it into one environment, rendering the manifests from the service's current inline deploy declaration with the image injected. Optional `--commit`/`--branch` carry the image's provenance so the run's history reads honestly. This is the terminal twin of the external-CI deploy step; with `--follow` it exits non-zero unless the deployment verifiably succeeded (a failed run OR a failed rollout verdict fails the command — an honestly unverifiable one does not).
 
 **Promote** takes the artifact from an existing deployment and deploys it into another environment, together with the configuration that was captured alongside that artifact. It does not rebuild, and it does not read the service's current configuration. What ran in staging is what runs in production — the same image, the same settings, verified together.
 
 **Rollback** puts an environment's previous deployment back by re-applying that deployment's own artifact and configuration exactly as they ran. With no target named it restores the immediately preceding deployment, so rolling back twice returns to where you started. Naming a specific past deployment restores exactly that one.
 
-Both answer with a **run**, not a deployment record. A deployment takes time, can pause for an approval, and can fail — so what comes back is something to follow. The deployment record appears when the environment succeeds.
+All three answer with a **run**, not a deployment record. A deployment takes time, can pause for an approval, and can fail — so what comes back is something to follow. The deployment record appears when the environment succeeds.
+
+Deploy differs from promote in what configuration ships: deploy renders the service's CURRENT declaration (today's configuration, the named image); promote re-applies the CAPTURED configuration (the tested pair). When a version already runs in another environment, promote is the right verb; deploy is for versions Planton has never deployed.
 
 ## Why they are exact, and why that matters when explaining them
 
@@ -42,6 +46,8 @@ Each refusal names a real next step. Relay it rather than retrying:
 - **Deployments are turned off for this service.** The switch is deliberate — either the environment is still being prepared, or something outside Planton owns this service's deployment. Do not work around it.
 - **The deployment names no artifact**, or **did not record the configuration it applied.** There is nothing to redeploy exactly. Deploy the version you want from a build instead.
 - **Promoting into the environment it already runs in.** That is a rollback in place, not a promotion.
+- **The service renders its manifests with kustomize** (deploy verb only). Rendering happens on the build lane's runner, so the deploy verb cannot prepare the manifests — push to deploy it, or promote an existing deployment.
+- **The environment is not among the service's declared deploy environments** (deploy verb only). The refusal names the declared set; add the environment to the service's deploy declaration and apply it first.
 
 ## How a delivery run looks while it runs
 
