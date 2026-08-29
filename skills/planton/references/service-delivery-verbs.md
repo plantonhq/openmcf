@@ -1,0 +1,48 @@
+# Promote and Rollback — Moving a Version Between Environments
+
+A service's version reaches an environment two ways: a push builds it and deploys it, or someone moves a version that already exists. This file is about the second way — the two verbs that act on deployment history directly.
+
+Read this when someone wants a version that runs in one environment to run in another, when something is wrong in an environment and the previous version should come back, or when a deployment you started refuses and you need to explain why in terms the person can act on.
+
+## What the verbs actually do
+
+**Promote** takes the artifact from an existing deployment and deploys it into another environment, together with the configuration that was captured alongside that artifact. It does not rebuild, and it does not read the service's current configuration. What ran in staging is what runs in production — the same image, the same settings, verified together.
+
+**Rollback** puts an environment's previous deployment back by re-applying that deployment's own artifact and configuration exactly as they ran. With no target named it restores the immediately preceding deployment, so rolling back twice returns to where you started. Naming a specific past deployment restores exactly that one.
+
+Both answer with a **run**, not a deployment record. A deployment takes time, can pause for an approval, and can fail — so what comes back is something to follow. The deployment record appears when the environment succeeds.
+
+## Why they are exact, and why that matters when explaining them
+
+Every run captures the resolved manifests for each environment it planned, and every deployment record additionally carries the manifests it applied. Those captures are what make these verbs trustworthy: the platform is re-applying bytes that already ran rather than re-deriving them. Practical consequences worth stating to a person:
+
+- A rollback during an incident restores a state that genuinely existed. It cannot produce old code paired with configuration someone changed last week.
+- Neither verb needs the repository to be reachable or a build system to be healthy.
+- A promotion moves a tested pair. If the configuration for the target environment changed after the artifact was built, promotion still deploys the tested configuration — that is the promise, not a limitation to apologize for.
+
+If someone wants the same version with *current* configuration, that is a different intent. Say so plainly: the honest path today is a new build (for services whose configuration lives in git, a configuration change IS a commit, so pushing is the natural route).
+
+## Protection is never bypassed
+
+Promoting into a protected environment still stops at that environment's approval gate, and the person who promoted cannot be the person who approves. Report the gate and who can resolve it. Never attempt an approval on someone's behalf — approval is a human decision, and the assistant holds no approval rights anywhere.
+
+## Naming the source of a promotion
+
+Promotion needs to know which deployment moves. Name it one of two ways, never both: the deployment record itself, or the service plus the environment whose current deployment should move. Ambiguity is refused rather than guessed at, because guessing here deploys the wrong version.
+
+Before promoting, read the delivery history for the source environment and confirm which version is about to move. Say the version and the commit out loud in your answer — the person is about to change what production runs.
+
+## The refusals, and what each one means
+
+Each refusal names a real next step. Relay it rather than retrying:
+
+- **The target environment was never prepared for this artifact.** The run that produced this deployment did not resolve configuration for that environment, so there is nothing tested to promote. The fix is to add the environment to the service's deploy environments and push once; that build prepares it.
+- **A deployment to that environment is already waiting for approval.** Someone needs to decide on the run that is already there. Starting a second deployment would leave the first waiting forever, so the answer is to surface the pending gate.
+- **A deployment to that environment is already in progress.** Wait for it, and follow it.
+- **Deployments are turned off for this service.** The switch is deliberate — either the environment is still being prepared, or something outside Planton owns this service's deployment. Do not work around it.
+- **The deployment names no artifact**, or **did not record the configuration it applied.** There is nothing to redeploy exactly. Deploy the version you want from a build instead.
+- **Promoting into the environment it already runs in.** That is a rollback in place, not a promotion.
+
+## How a delivery run looks while it runs
+
+It is an ordinary run with no build stage: one environment, and the deploy work inside it. Follow it exactly as you would a push-triggered run. If it is parked at an approval gate, the run reports itself as awaiting approval — that is the truth to relay, along with the fact that nothing is executing until a person decides.
