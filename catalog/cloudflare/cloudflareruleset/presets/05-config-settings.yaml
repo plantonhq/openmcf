@@ -10,7 +10,7 @@ spec:
   name: "Per-path configuration settings"
   rules:
     - ref: "harden-admin"
-      expression: 'http.request.uri.path starts_with "/admin"'
+      expression: 'starts_with(http.request.uri.path, "/admin")'
       action: set_config
       description: "Raise security level and SSL strictness on the admin area"
       enabled: true
@@ -19,7 +19,7 @@ spec:
         ssl: strict
         email_obfuscation: true
     - ref: "optimize-marketing"
-      expression: 'http.request.uri.path starts_with "/blog"'
+      expression: 'starts_with(http.request.uri.path, "/blog")'
       action: set_config
       description: "Enable performance optimizations on marketing pages"
       enabled: true

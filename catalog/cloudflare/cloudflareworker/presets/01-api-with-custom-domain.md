@@ -1,3 +1,7 @@
+---
+display_name: API With Custom Domain
+---
+
 # Preset: Edge API with Custom Domain
 
 A production-shaped Worker: deployed from a CI-built bundle in R2, wired to KV and

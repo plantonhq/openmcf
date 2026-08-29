@@ -1,3 +1,7 @@
+---
+display_name: Weighted A/B Testing
+---
+
 # Weighted A/B Testing
 
 A monitor, two pools (control and variant), and a load balancer with

@@ -1,3 +1,7 @@
+---
+display_name: HTTP Session Check
+---
+
 # HTTP allow with a session check
 
 An HTTP Gateway policy that allows a host and requires a fresh Access session every 24 hours. Uses `block_page` / `check_session` -- settings that do not carry the first-apply drift of `add_headers` / `override_ips`.

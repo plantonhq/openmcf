@@ -1,3 +1,7 @@
+---
+display_name: Postgres mTLS
+---
+
 # Preset: PostgreSQL Hyperdrive with mTLS
 
 A Hyperdrive config that connects to a PostgreSQL origin requiring mutual TLS,

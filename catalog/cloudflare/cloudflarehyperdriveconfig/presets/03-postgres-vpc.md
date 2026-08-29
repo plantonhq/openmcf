@@ -1,3 +1,7 @@
+---
+display_name: Postgres VPC
+---
+
 # Preset: PostgreSQL Hyperdrive over a Workers VPC Service
 
 A Hyperdrive config that reaches a private PostgreSQL origin by egressing through

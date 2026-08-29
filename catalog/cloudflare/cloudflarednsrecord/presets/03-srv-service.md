@@ -1,3 +1,7 @@
+---
+display_name: SRV Service
+---
+
 # SRV Record for a Service
 
 Creates an SRV record that advertises the host and port of a service (SIP, XMPP,

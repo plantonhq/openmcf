@@ -1,3 +1,7 @@
+---
+display_name: DNSSEC Signed
+---
+
 # DNSSEC-Signed Zone
 
 Creates a zone with DNSSEC enabled. Cloudflare signs the zone, and the DS record

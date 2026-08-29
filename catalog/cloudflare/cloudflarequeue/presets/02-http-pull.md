@@ -1,3 +1,7 @@
+---
+display_name: HTTP Pull
+---
+
 # Preset: Queue with an HTTP (pull) consumer
 
 A queue consumed by external clients that pull and acknowledge messages over the

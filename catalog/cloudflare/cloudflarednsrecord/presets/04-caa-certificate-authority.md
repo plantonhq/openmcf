@@ -1,3 +1,7 @@
+---
+display_name: CAA Certificate Authority
+---
+
 # CAA Record to Restrict Certificate Issuance
 
 Creates a CAA record that controls which certificate authorities may issue

@@ -1,3 +1,7 @@
+---
+display_name: Block IP
+---
+
 # Block an IP
 
 An account-wide IP Access rule that blocks a single IPv4 address on every zone. Only `mode` and `notes` update in place -- changing the address later requires delete-and-recreate.

@@ -1,3 +1,7 @@
+---
+display_name: BYO Certificate
+---
+
 # Preset: Bring Your Own Certificate (Enterprise)
 
 For Enterprise accounts that upload their own certificate and key for the custom
