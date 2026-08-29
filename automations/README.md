@@ -42,6 +42,42 @@ of this tree; the laws that matter when authoring:
 - **Slugs are permanent.** Org switch records adopt an automation by
   its slug; rename the display name freely, never the slug.
 
+## The trigger predicate grammar (CEL)
+
+A trigger binding's optional `predicate` is a [CEL](https://cel.dev)
+expression evaluated by the platform's dispatcher against the event
+resource's document, bound as the variable `resource` in its
+protobuf-JSON form — field paths are camelCase-tolerant JSON paths and
+enum values read as their NAMES, as strings:
+
+```
+resource.status.progress.status == "completed" && resource.status.progress.result == "failed"
+```
+
+The predicate must evaluate to a boolean. A predicate that does not
+compile refuses to publish; a predicate that errors at evaluation (a
+path the document lacks) fails closed — the run simply does not
+dispatch. Predicates see the state the EVENT announced, never a
+re-read, and they must tolerate refires: events carry no previous
+state, so a re-saved terminal record fires its binding again (the
+dispatcher's deterministic run identity makes refires idempotent).
+
+## Runtime values in workflow tasks
+
+Task configs reference per-run values the platform threads into each
+execution using the engine's runtime placeholder grammar — no space
+after `${`, namespaced by sensitivity:
+
+- `${.env_vars.KEY}` for plain values
+- `${.secrets.KEY}` for secret values (encrypted at rest, redacted in logs)
+
+The platform threads these names into every run: `PLANTON_API_BASE_URL`
+(the platform API), `PLANTON_RUN_CREDENTIAL` (the run's short-lived
+read-only credential — always reference it through `${.secrets....}`),
+`PLANTON_TRIGGER_RESOURCE_ID` (the resource whose event triggered the
+run), and `PLANTON_ENGINE_ORG` (the org's engine workspace). A plain
+`${KEY}` matches nothing and passes through as literal text.
+
 ## Contributing
 
 Pull requests proposing new automations are welcome — this tree is
