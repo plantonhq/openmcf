@@ -106,7 +106,7 @@ planton infra pipeline logs <infpipe_id> --node <slug> # a specific node (slug f
 # 4. Deeper: the stack job record carries the full error detail:
 planton infra stack-job list <cloud-resource-id> -o json
 planton get stack-job <sj_id> -o json
-planton infra stack-job logs <sj_id>      # tail the engine output directly
+planton infra stack-job stream-progress-events <sj_id>   # tail the engine output directly
 ```
 
 Typical reading of `status` output: a node with result `failed` and a
