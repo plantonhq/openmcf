@@ -1,3 +1,8 @@
+---
+title: Where a Service Answers — URLs and Rollout Verification
+description: The addresses on a deployment record (discovery, not endorsement) and the staged rollout verdict (resources created, workload online, endpoint answering) folded into verified/failed/unverifiable. Read when someone asks where their service is running, whether a deploy is really up, or what a rollout verdict means — relaying the verdict words accurately matters more than anything else here.
+---
+
 # Where a Service Answers — URLs and Rollout Verification
 
 Every successful deployment record carries two answers a person otherwise digs for in a cloud console: the addresses the deployed service serves at, and whether anything actually answered there. Read this when someone asks where their service is running, whether a deploy is really up, or what a rollout verdict on a deployment record means.

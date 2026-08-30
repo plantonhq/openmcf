@@ -561,6 +561,8 @@ shared state and needs the user's explicit go-ahead:
 
 ## References
 
+Service delivery -- registering services, push-to-deploy pipelines, deploy/promote/rollback, service URLs and rollout verdicts, keyless CI, local env vars, and service deletion -- is the sibling `planton-service` skill's domain, not this one's. This skill is about composing and operating INFRASTRUCTURE charts.
+
 | File | Read when |
 |------|-----------|
 | `references/chart-format.md` | Writing Chart.yaml or values.yaml; naming things |
@@ -575,12 +577,6 @@ shared state and needs the user's explicit go-ahead:
 | `references/cloud-exploration.md` | Running aws/kubectl/planton commands; the read-only and mutation rules |
 | `references/deployment-model.md` | What happens after deploy (projects, pipelines, stack jobs, IaC modules); explaining or diagnosing it |
 | `references/machine-deploy.md` | Deployment is the next step on a signed-in instance; offering the machine's own cloud login as the deploy path; performing a consented deploy |
-| `references/service-delivery-verbs.md` | Delivering a version without a build: deploying an image built anywhere (`planton service deploy`), promoting what runs in one environment into another, rolling an environment back to its previous deployment, explaining a refused delivery; releasing by tag (`tags.deploy`), trying a feature branch in one environment (`service run --branch --deploy-env`), and standing branch-to-environment mappings (`deploy.branchDeployments` — develop deploys dev, promote by merging) |
-| `references/service-urls-and-rollout-verification.md` | Where a deployed service answers: the URLs on a deployment record, reading the rollout verdict (verified/failed/unverifiable) accurately, answering "where is my service running?" |
-| `references/service-external-ci-registration.md` | Keyless CI: workload identity bindings (trusting GitHub Actions / gitlab.com to act as a service account), the `planton iam federate` exchange, registering and deploying from a CI step with proven repository identity, the Planton GitHub Action, walking a federation refusal |
-| `references/service-push-to-register.md` | Registering a service by committing a `service.yaml` to its repository; why a pushed manifest did or didn't land; reading a service's manifest-sync status; the default-branch and own-repository laws; why pushing a manifest never redeploys |
-| `references/service-delete-cascade.md` | Retiring a service (`planton service delete` / `delete_service`): the teardown cascade that destroys deployed resources before removing records, the retain-the-resources hand-over arm, the protected-environment refusal, retrying a failed deletion, following the narrated timeline |
-| `references/service-local-env-vars.md` | Running a service locally with real config (`planton service env run\|pull\|check`, the old `dot-env`): the derived environment, `_kustomize/dev/<flavor>` dev flavors, `.env.local` and `--set` layering, explaining a resolved value, per-key resolution failures, the contract-only `get_service_env_contract` tool |
 | `references/deployed-projects.md` | The folder has `.planton/project.yaml`; fixing a failed deployment; saving changes to a deployed project |
 | `references/state-import.md` | A deploy failed saying a resource ALREADY EXISTS; adopting an orphaned cloud resource into IaC state |
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |

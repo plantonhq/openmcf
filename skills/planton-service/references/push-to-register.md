@@ -1,3 +1,8 @@
+---
+title: Push-to-Register — the service.yaml in the Repository IS the Registration
+description: A connected repository registers and maintains its own Service record by carrying a service.yaml on its default branch — the file is the opt-in, content decides ownership, the record follows the source of truth. Read when someone asks how to register from a repository, why a pushed manifest did or didn't land, what manifest-sync status means, or whether pushing a manifest redeploys anything (it never does).
+---
+
 # Push-to-Register — the `service.yaml` in the Repository IS the Registration
 
 A repository connected to a Planton org registers and maintains its own Service record by carrying a `service.yaml`: push the file to the default branch, the service appears in the catalog; change the file, the record follows; the same push can start the service's first build. Read this when someone asks how to register a service from a repository, why their pushed `service.yaml` did or didn't land, what the manifest-sync status on a service means, or whether pushing a manifest will redeploy anything (it won't).

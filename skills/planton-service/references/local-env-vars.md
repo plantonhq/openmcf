@@ -1,3 +1,8 @@
+---
+title: Running a Service Locally — The Derived Environment
+description: Local environment variables are DERIVED from the service's own deploy declaration (the same manifests the deploy lane applies), so local can never drift from deployed — planton service env run|pull|check, dev flavors under _kustomize/dev, .env.local and --set layering, per-key partial failures, and the contract-only get_service_env_contract tool. Read when someone wants to run their service on their laptop with real config, generate a .env, or asks why a value resolved the way it did.
+---
+
 # Running a Service Locally — The Derived Environment
 
 Planton derives a developer's local environment variables from the service's own deploy declaration — the same manifests the deploy lane applies, resolved through the same server seams — so local configuration can never drift from deployed configuration. Read this when someone wants to run their service on their laptop with real config, generate a `.env`, keep local config fresh, or asks why a value resolved the way it did.

@@ -1,0 +1,37 @@
+---
+name: planton-service
+description: Help users register, deliver, and operate SERVICES on Planton -- the push-to-deploy surface where a git repository (or a manually declared catalog entry) becomes a running workload on the user's own cloud. Covers registering a service through any of its three doors (console/agent apply, a service.yaml pushed to the repository, a CI step with proven repository identity), the build-and-deploy pipeline runs a push births, the delivery verbs (deploy an image built anywhere, promote what runs in one environment into another, roll an environment back), release semantics (tag releases, feature-branch deploys, standing branch-to-environment mappings), where a deployed service answers (URLs on the deployment record, the staged rollout verdict), keyless CI through workload identity federation and the Planton GitHub Action, local development with derived environment variables, authoring the deployment configuration as a git-owned kustomize tree (eject/init/checkout), and retiring a service through the destroy-then-delete cascade. Use when a user asks to set up or register a service, connect a repo so pushes deploy, deploy/promote/rollback a version, find where their service is running, wire GitHub Actions or GitLab CI to Planton without secrets, run their service locally with real config, move service configuration into or out of their repository, delete a service, or explain why any of these was refused. Never approve a deployment gate on anyone's behalf -- approval is a human decision and the assistant holds no approval rights anywhere. Never work around a refusal; every refusal names its working path, so relay it. Do not use for composing multi-resource infra charts or general cloud infrastructure (the planton skill), or for authoring cloud resource component schemas.
+---
+
+# Planton Service Delivery
+
+A **Service** is Planton's unit of push-to-deploy: a record declaring where the code lives (`spec.gitRepo`), how it builds (`spec.build`), and what runs in each environment (`spec.deploy.environments` -- full cloud-resource manifests per environment, the ONE home every surface reads). The `service.yaml` a repository carries IS the Service record's YAML -- the same document the console shows, the API accepts, and the CLI submits. A push births a **run** (build, then promotion-ordered deploys through gated environments); every environment that succeeds writes a **deployment record** -- an immutable receipt carrying the exact artifact, the applied manifests, the URLs, and a staged rollout verdict.
+
+Hold these invariants in every answer:
+
+- **One configuration home, two writers.** `deploy.environments` carries every service's per-environment configuration. On a git-maintained service (one that declares `deploy.kustomize`), the platform's own build lane writes it -- a push on a branch that drives an environment syncs that environment's entry, provenance stamped (branch, commit); user applies preserve the stored section rather than overwrite it. On a manually-declared service, the caller writes it. Nothing else ever does.
+- **Environments are the organization's, ordered by promotion rank**; protection and approval are the ENVIRONMENT's properties, never the service's. The person who initiated a delivery can never be its approver, and the assistant can never approve anything.
+- **Receipts are exact.** Promote re-applies a captured artifact+configuration pair; rollback restores a receipt byte-for-byte. Neither re-renders, neither needs the repository reachable.
+- **Refusals name their working paths.** Every door (apply, deploy, promote, rollback, run, delete, webhook) refuses with the reason and the fix -- relay them, never retry around them.
+
+## The three registration doors
+
+1. **Console or agent apply** -- `planton service register -f service.yaml` (or the generic apply / the `apply_service` tool). A pure catalog entry (no repo, no build) is valid: registration is a declaration, not a deployment.
+2. **The repository registers itself** -- push a `service.yaml` to the connected repository's default branch (`references/push-to-register.md`).
+3. **A CI step with proven identity** -- `planton iam federate` exchanges the CI provider's OIDC token for a short-lived credential whose repository claim is verified, then `planton service register` (`references/external-ci.md`).
+
+## Know your instruments
+
+On a machine with the `planton` CLI, the commands in these references run as written. On platform-tool surfaces (hosted agents), the same capabilities ride the service tools -- `get_service`, `apply_service`, `run_service_pipeline`, `deploy_service`, `promote_service_deployment`, `rollback_service_deployment`, `get_service_env_contract`, `delete_service`, and their siblings; each reference names its tool twins where they differ from the CLI. The organization comes from your standing context -- never ask for an identifier the session already carries.
+
+## References
+
+| File | Read when |
+|------|-----------|
+| `references/delivery-verbs.md` | Deploying an image built anywhere, promoting between environments, rolling back, releasing by tag, feature-branch deploys, standing branch-to-environment mappings, explaining a refused delivery |
+| `references/urls-and-rollout-verification.md` | Where a deployed service answers: the URLs on a deployment record, reading the rollout verdict (verified/failed/unverifiable) accurately, answering "where is my service running?" |
+| `references/push-to-register.md` | Registering a service by committing a `service.yaml`; why a pushed manifest did or didn't land; the manifest-sync status; the default-branch and own-repository laws |
+| `references/external-ci.md` | Keyless CI: workload identity bindings, the `planton iam federate` exchange, registering and deploying from a CI step, the Planton GitHub Action, walking a federation refusal |
+| `references/local-env-vars.md` | Running a service locally with real config (`planton service env run\|pull\|check`), dev flavors, `.env.local` layering, per-key resolution failures, the contract-only `get_service_env_contract` tool |
+| `references/kustomize-authoring.md` | Moving a service's configuration into its repository (`planton service kustomize eject`), scaffolding a fresh tree (`init`), materializing the record into files (`checkout`), the `_kustomize` tree conventions, taking authorship back |
+| `references/delete-cascade.md` | Retiring a service: the destroy-then-delete cascade, the retain-the-resources hand-over arm, the protected-environment refusal, retrying a failed deletion |

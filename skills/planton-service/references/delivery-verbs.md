@@ -1,3 +1,8 @@
+---
+title: Deploy, Promote, and Rollback — The Delivery Verbs
+description: The three verbs that deliver a version without a build of their own (deploy an image built anywhere, promote a captured pair between environments, roll an environment back), plus tag releases, feature-branch deploys, and standing branch-to-environment mappings. Read when someone wants a version moved between environments, an image they built running, a tag push to be the release, or a refused delivery explained.
+---
+
 # Deploy, Promote, and Rollback — The Delivery Verbs
 
 A service's version reaches an environment two ways: a push builds it and deploys it, or someone delivers a version that already exists. This file is about the second way — the three verbs that deploy without a build of their own — plus the two build-and-deliver shapes people ask for by name: releasing by tag, and trying a branch in one environment.

@@ -1,3 +1,8 @@
+---
+title: Keyless CI — Workload Identity Bindings, CI-Step Registration, and the Deploy Step
+description: External CI (GitHub Actions, gitlab.com) calls Planton with zero stored secrets — the org registers one workload identity binding, the CI job exchanges its provider's OIDC token via planton iam federate, and the credential can register and deploy exactly the service its token proves. Read when someone asks how CI authenticates, how to deploy from a CI step, how to use the Planton GitHub Action, or why a federation exchange was refused (every refusal is deliberately identical — walk the checklist, not the message).
+---
+
 # Keyless CI — Workload Identity Bindings, CI-Step Registration, and the Deploy Step
 
 External CI (GitHub Actions, gitlab.com CI) can call Planton without any stored secret: the CI job presents its provider's own short-lived OIDC token, and Planton exchanges it for a short-lived scoped credential that can register and deploy the one service the token proves. Read this when someone asks how CI authenticates to Planton, how to register or deploy a service from a CI step, how to use the Planton GitHub Action, why a federation exchange was refused, or how to stop trusting a repository.
