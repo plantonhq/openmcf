@@ -50,6 +50,24 @@ type Artifact struct {
 // format's MS-DOS timestamp can represent.
 var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 
+// skillEntries is the ONE definition of what a skill's published content
+// is, keyed by archive-relative path. Both carriers of that content -- the
+// zip archive (BuildSkillArchive) and the browse manifest (see browse.go)
+// -- compose from this seam, which is what makes "an exploded file is the
+// archive entry, byte for byte" a structural fact rather than a promise:
+// the release workflow derives the browsable exploded tree by unzipping
+// the archives and verifies it against the browse manifest before upload.
+func skillEntries(skill Skill) map[string][]byte {
+	entries := map[string][]byte{"SKILL.md": skill.SkillMD}
+	for name, content := range skill.ReferenceFiles {
+		entries["references/"+name] = content
+	}
+	for path, content := range skill.PackFiles {
+		entries[path] = content
+	}
+	return entries
+}
+
 // BuildSkillArchive packs one skill into a deterministic zip: lexically
 // ordered entries, the fixed timestamp, stored (uncompressed) content, and
 // CreateRaw with pre-computed sizes -- descriptor-free entries are the
@@ -60,13 +78,7 @@ var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 // verifier, and the serving engine's content-addressed storage -- agree on
 // one checksum for one content state.
 func BuildSkillArchive(skill Skill) ([]byte, error) {
-	entries := map[string][]byte{"SKILL.md": skill.SkillMD}
-	for name, content := range skill.ReferenceFiles {
-		entries["references/"+name] = content
-	}
-	for path, content := range skill.PackFiles {
-		entries[path] = content
-	}
+	entries := skillEntries(skill)
 	var paths []string
 	for path := range entries {
 		paths = append(paths, path)
@@ -143,6 +155,14 @@ func PackageRelease(tree *Tree, version, outDir string) (*Manifest, error) {
 	manifestJSON = append(manifestJSON, '\n')
 	if err := os.WriteFile(filepath.Join(outDir, ManifestFileName), manifestJSON, 0o644); err != nil {
 		return nil, fmt.Errorf("writing %s: %w", ManifestFileName, err)
+	}
+
+	browseJSON, err := EncodeBrowseManifest(BuildBrowseManifest(tree, version))
+	if err != nil {
+		return nil, fmt.Errorf("encoding browse manifest: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outDir, BrowseManifestFileName), browseJSON, 0o644); err != nil {
+		return nil, fmt.Errorf("writing %s: %w", BrowseManifestFileName, err)
 	}
 
 	return manifest, nil

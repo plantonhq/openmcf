@@ -90,3 +90,19 @@ func BuildTerraformDownloadURL(component, releaseVersion string) string {
 func BuildDefinitionsDownloadURL(releaseVersion, file string) string {
 	return fmt.Sprintf("%s/%s/definitions/%s", BaseURL, releaseVersion, file)
 }
+
+// BuildDefinitionsExplodedFileURL constructs the R2 download URL for one
+// file of a skill's exploded layout -- the same bytes as the skill
+// archive's entry, published individually so reading surfaces fetch one
+// file per click instead of the whole archive. The release's
+// definitions-browse.json lists every path this shape serves.
+//
+// URL format: https://downloads.planton.dev/releases/{version}/definitions/exploded/{skillSlug}/{path}
+//
+// Examples:
+//
+//	BuildDefinitionsExplodedFileURL("v0.4.0", "planton", "references/chart-format.md")
+//	  -> https://downloads.planton.dev/releases/v0.4.0/definitions/exploded/planton/references/chart-format.md
+func BuildDefinitionsExplodedFileURL(releaseVersion, skillSlug, path string) string {
+	return fmt.Sprintf("%s/%s/definitions/exploded/%s/%s", BaseURL, releaseVersion, skillSlug, path)
+}

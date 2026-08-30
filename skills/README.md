@@ -46,6 +46,15 @@ embedded copy — it resolves a stable release-channel pointer at boot and
 seeds the pointed-at release into its engine, verifying each artifact's
 checksum, the compatibility floor, and content shape before adopting it.
 
+Each release also ships in a second, browsable shape for reading surfaces:
+every skill's files individually fetchable under
+`releases/{tag}/definitions/exploded/{slug}/`, described by a
+`definitions-browse.json` file tree with per-file checksums, and a releases
+index at `definitions/releases/index.json` naming every complete release.
+The exploded files are the archive entries byte for byte (the archives are
+deterministic stored zips), verified against the browse manifest before
+upload — so browsing a release reads exactly what installers install.
+
 ## The authoring bar
 
 Every skill in this tree is crafted individually, grounded in thorough

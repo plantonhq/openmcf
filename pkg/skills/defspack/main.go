@@ -1,9 +1,11 @@
 // Command defspack validates the skills/, agents/, and automations/
 // definition trees and packages a definitions release: one deterministic zip
 // per skill, each agent's instructions file, each automation's definition
-// file, and a definitions-manifest.json carrying the release version,
+// file, a definitions-manifest.json carrying the release version,
 // per-artifact SHA-256 checksums, and the compatibility floor from
-// skills/compat.yaml.
+// skills/compat.yaml -- plus a definitions-browse.json describing the
+// release as a per-file tree (see browse.go), which the release workflow
+// verifies the browsable exploded layout against before uploading it.
 //
 // Run `go run ./pkg/skills/defspack` to validate only (the lint gate), or
 // add -version and -out to package a release (the release workflow):

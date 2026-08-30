@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "defspack_lib",
     srcs = [
+        "browse.go",
         "catalogpack.go",
         "main.go",
         "pack.go",
