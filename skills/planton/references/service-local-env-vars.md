@@ -18,7 +18,7 @@ The WORKING TREE first — uncommitted changes count:
 
 - An inline-declared service: the `service.yaml` in the current directory, the named `--env` entry.
 - A kustomize-sourced service: the `_kustomize` tree — `--env <slug>` renders `overlays/<slug>`, `--flavor <name>` renders `dev/<name>`.
-- A console-managed service with no local checkout: `--service <slug> --env <env>` reads the record's inline declaration.
+- A service with no local checkout: `--service <slug> --env <env>` reads the record's declared configuration — which now serves git-maintained services too, once an authoritative push has synced their entries onto the record.
 
 **Dev flavors** are the local-development convention for kustomize trees: `_kustomize/dev/<flavor>/` stacks on a real overlay and patches only the laptop deltas (external endpoints instead of cluster-internal ones, an isolation suffix so a laptop process never steals deployed work). Flavors never deploy — anything under `overlays/` IS a deploy environment, which is exactly why flavors live outside it. Someone typing `--env local` from old muscle memory gets a refusal that names the tree's overlays and its flavors.
 
@@ -42,4 +42,4 @@ ECS task definitions add one honest gap: their provider-managed secrets (AWS Sec
 
 ## The agent tool
 
-`get_service_env_contract` returns the CONTRACT for one environment — every declared env var and secret with its `$var`/`$secret` reference string and the manifest that declares it — NEVER resolved values, so no secret material passes through an agent conversation. Its answer names its source: the service record's inline declaration, or (for kustomize services) the latest deployment receipt's applied manifests. A hosted agent cannot see a working tree, so uncommitted changes are visible only to the local CLI — when freshness against the checkout matters, direct the person to `planton service env` locally.
+`get_service_env_contract` returns the CONTRACT for one environment — every declared env var and secret with its `$var`/`$secret` reference string and the manifest that declares it — NEVER resolved values, so no secret material passes through an agent conversation. Its answer names its source: the record's declared configuration (with the syncing branch and commit named for git-maintained entries), or the latest deployment receipt for a git-maintained service no push has synced yet. A hosted agent cannot see a working tree, so uncommitted changes are visible only to the local CLI — when freshness against the checkout matters, direct the person to `planton service env` locally.
