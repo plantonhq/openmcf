@@ -30,4 +30,11 @@ enum TerraformBackendType {
 
   // Azure Resource Manager backend using Azure Blob Storage.
   azurerm = 4;
+
+  // TFE-protocol backend (Terraform Cloud / HCP Terraform, Terraform Enterprise,
+  // Scalr) used for STATE STORAGE ONLY: execution stays on the local engine, and
+  // workspaces are expected to be in local execution mode. The enum value's name is
+  // the HCL backend name (`backend "remote"`), and the backend's `workspaces` block
+  // is part of the declaration -- an HCL block cannot ride -backend-config flags.
+  remote = 5;
 }

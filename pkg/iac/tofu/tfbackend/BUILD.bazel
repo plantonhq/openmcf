@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "tfbackend",
@@ -9,4 +9,11 @@ go_library(
         "//shared/iac/terraform",
         "@com_github_pkg_errors//:errors",
     ],
+)
+
+go_test(
+    name = "tfbackend_test",
+    srcs = ["tf_backend_test.go"],
+    embed = [":tfbackend"],
+    deps = ["//shared/iac/terraform"],
 )

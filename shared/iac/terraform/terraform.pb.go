@@ -96,6 +96,12 @@ const (
 	TerraformBackendType_gcs TerraformBackendType = 3
 	// Azure Resource Manager backend using Azure Blob Storage.
 	TerraformBackendType_azurerm TerraformBackendType = 4
+	// TFE-protocol backend (Terraform Cloud / HCP Terraform, Terraform Enterprise,
+	// Scalr) used for STATE STORAGE ONLY: execution stays on the local engine, and
+	// workspaces are expected to be in local execution mode. The enum value's name is
+	// the HCL backend name (`backend "remote"`), and the backend's `workspaces` block
+	// is part of the declaration -- an HCL block cannot ride -backend-config flags.
+	TerraformBackendType_remote TerraformBackendType = 5
 )
 
 // Enum value maps for TerraformBackendType.
@@ -106,6 +112,7 @@ var (
 		2: "s3",
 		3: "gcs",
 		4: "azurerm",
+		5: "remote",
 	}
 	TerraformBackendType_value = map[string]int32{
 		"terraform_backend_type_unspecified": 0,
@@ -113,6 +120,7 @@ var (
 		"s3":                                 2,
 		"gcs":                                3,
 		"azurerm":                            4,
+		"remote":                             5,
 	}
 )
 
@@ -154,13 +162,15 @@ const file_shared_iac_terraform_terraform_proto_rawDesc = "" +
 	"\arefresh\x10\x02\x12\b\n" +
 	"\x04plan\x10\x03\x12\t\n" +
 	"\x05apply\x10\x04\x12\v\n" +
-	"\adestroy\x10\x05*g\n" +
+	"\adestroy\x10\x05*s\n" +
 	"\x14TerraformBackendType\x12&\n" +
 	"\"terraform_backend_type_unspecified\x10\x00\x12\t\n" +
 	"\x05local\x10\x01\x12\x06\n" +
 	"\x02s3\x10\x02\x12\a\n" +
 	"\x03gcs\x10\x03\x12\v\n" +
-	"\aazurerm\x10\x04B\x8f\x02\n" +
+	"\aazurerm\x10\x04\x12\n" +
+	"\n" +
+	"\x06remote\x10\x05B\x8f\x02\n" +
 	"$com.dev.planton.shared.iac.terraformB\x0eTerraformProtoP\x01Z1github.com/plantonhq/planton/shared/iac/terraform\xa2\x02\x05DPSIT\xaa\x02 Dev.Planton.Shared.Iac.Terraform\xca\x02 Dev\\Planton\\Shared\\Iac\\Terraform\xe2\x02,Dev\\Planton\\Shared\\Iac\\Terraform\\GPBMetadata\xea\x02$Dev::Planton::Shared::Iac::Terraformb\x06proto3"
 
 var (

@@ -9,16 +9,33 @@ import (
 	"github.com/plantonhq/planton/shared/iac/terraform"
 )
 
-// WriteBackendFile creates a `backend.tf` file in projectDir using the backend type specified by tofuBackendType.
-func WriteBackendFile(projectDir string, tofuBackendType terraform.TerraformBackendType) error {
+// WriteBackendFile creates a `backend.tf` file in projectDir declaring the state backend.
+// The enum value's NAME is the HCL backend name (`backend "s3"`, `backend "remote"`), so
+// TerraformBackendType entries must be spelled exactly as the engine spells the backend.
+//
+// body lines, when given, are rendered inside the backend block, indented one level.
+// Most backends need no body -- their settings ride `-backend-config` key=value flags.
+// The exception is the remote (TFE-protocol) backend: its `workspaces { name = "..." }`
+// is an HCL BLOCK, and blocks cannot be expressed as -backend-config flags (the engine's
+// override mechanism looks up attributes only), so the workspace identity belongs here,
+// in the declaration itself. With no body the output is byte-identical to the historical
+// `backend "<type>" {}` form.
+func WriteBackendFile(projectDir string, tofuBackendType terraform.TerraformBackendType, body ...string) error {
 	backendName := tofuBackendType.String()
 
-	// Construct a minimal backend configuration.
-	// The user can further configure the backend by editing this file or using -backend-config flags.
+	inner := ""
+	if len(body) > 0 {
+		inner = "\n"
+		for _, line := range body {
+			inner += "    " + line + "\n"
+		}
+		inner += "  "
+	}
+
 	backendContent := fmt.Sprintf(`terraform {
-  backend "%s" {}
+  backend "%s" {%s}
 }
-`, backendName)
+`, backendName, inner)
 
 	backendFilePath := filepath.Join(projectDir, "backend.tf")
 	if err := os.WriteFile(backendFilePath, []byte(backendContent), 0644); err != nil {
@@ -26,6 +43,17 @@ func WriteBackendFile(projectDir string, tofuBackendType terraform.TerraformBack
 	}
 
 	return nil
+}
+
+// WorkspacesNameBody renders the body lines for a remote backend pinned to a single
+// named workspace -- the standard TFE state-storage shape. Callers pass the result to
+// WriteBackendFile (or through tofumodule.Init) as the backend body.
+func WorkspacesNameBody(workspaceName string) []string {
+	return []string{
+		"workspaces {",
+		fmt.Sprintf("  name = %q", workspaceName),
+		"}",
+	}
 }
 
 func BackendTypeFromString(backendTypeStr string) terraform.TerraformBackendType {
@@ -38,6 +66,8 @@ func BackendTypeFromString(backendTypeStr string) terraform.TerraformBackendType
 		return terraform.TerraformBackendType_gcs
 	case "azurerm":
 		return terraform.TerraformBackendType_azurerm
+	case "remote":
+		return terraform.TerraformBackendType_remote
 	default:
 		return terraform.TerraformBackendType_terraform_backend_type_unspecified
 	}

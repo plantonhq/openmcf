@@ -22,7 +22,7 @@ cross-prefix fallback.
 
 | Annotation (prefix `terraform.` or `tofu.`) | Required | Purpose |
 |---------------------------------------------|----------|---------|
-| `<prefix>planton.dev/backend.type` | Yes | Backend type: `s3`, `gcs`, `azurerm`, `local` |
+| `<prefix>planton.dev/backend.type` | Yes | Backend type: `s3`, `gcs`, `azurerm`, `remote`, `local` |
 | `<prefix>planton.dev/backend.bucket` | For remote backends | Bucket / container name |
 | `<prefix>planton.dev/backend.key` | For remote backends | State file path within the bucket |
 | `<prefix>planton.dev/backend.region` | S3 only (or `auto`) | AWS region, or `auto` for S3-compatible stores |
@@ -36,7 +36,7 @@ Key constants are built by `pkg/iac/tofu/tofuannotationkeys`.
 
 ```go
 type TofuBackendConfig struct {
-    BackendType     string // "s3", "gcs", "azurerm", "local"
+    BackendType     string // "s3", "gcs", "azurerm", "remote", "local"
     BackendBucket   string // bucket or container name for remote backends
     BackendKey      string // state file path within the bucket
     BackendRegion   string // region for S3 backends ("auto" for S3-compatible)

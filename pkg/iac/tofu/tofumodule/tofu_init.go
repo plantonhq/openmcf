@@ -17,6 +17,10 @@ import (
 //
 // ctx controls the lifetime of the child process (see newReapableCommand): cancelling it
 // terminates the whole tofu process group so a cancelled init is never orphaned.
+//
+// backendBody lines, when given, are rendered inside the backend.tf declaration (see
+// tfbackend.WriteBackendFile) -- the remote backend's `workspaces { name = ... }` block
+// travels this way because HCL blocks cannot ride -backend-config flags.
 func Init(
 	ctx context.Context,
 	binaryName string,
@@ -28,8 +32,9 @@ func Init(
 	isReconfigure bool,
 	isJsonOutput bool,
 	jsonLogEventsChan chan string,
+	backendBody ...string,
 ) (err error) {
-	if err := tfbackend.WriteBackendFile(modulePath, backendType); err != nil {
+	if err := tfbackend.WriteBackendFile(modulePath, backendType, backendBody...); err != nil {
 		return errors.Wrapf(err, "failed to write backend file")
 	}
 
