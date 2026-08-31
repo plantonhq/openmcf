@@ -28,6 +28,7 @@ On a machine with the `planton` CLI, the commands in these references run as wri
 
 | File | Read when |
 |------|-----------|
+| `references/reading-a-run.md` | Reading one run and reporting it in the user's words: the two run shapes (build vs delivery), the status vocabulary, per-task build errors, the per-environment deploy graph and its deployment-record join, gate state and who can resolve it, and the deploy-skip explanations relayed verbatim |
 | `references/delivery-verbs.md` | Deploying an image built anywhere, promoting between environments, rolling back, releasing by tag, feature-branch deploys, standing branch-to-environment mappings, explaining a refused delivery |
 | `references/urls-and-rollout-verification.md` | Where a deployed service answers: the URLs on a deployment record, reading the rollout verdict (verified/failed/unverifiable) accurately, answering "where is my service running?" |
 | `references/serving-domains.md` | A service on the customer's own domain: the environment's serving-domain declaration (verbatim suffix, no prefixing convention), the service's hostname label and its collision law, how the hostname reaches carriers (fill-blank injection, never synthesis), reading a `domain_serving` check's three statuses |

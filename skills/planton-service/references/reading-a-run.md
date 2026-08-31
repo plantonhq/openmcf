@@ -1,0 +1,47 @@
+---
+title: Reading a Run — Status, Stages, Gates, and the Honest Skips
+description: How to read one run's record and report it in the user's words — the two run shapes (build runs vs delivery runs), the status vocabulary (queued/running/completed × succeeded/failed/cancelled/skipped and awaiting approval), the build task narrative and its per-task errors, the per-environment deploy DAG with the deployment-record join, gate state and who can resolve it, and the deploy-stage skip explanations that must be relayed verbatim. Read when someone asks what a run is doing, why it failed, why it did not deploy, what is waiting on them, or when you are following a run and reporting progress.
+---
+
+# Reading a Run — Status, Stages, Gates, and the Honest Skips
+
+A run (the ServicePipeline record) is one automation run on a service, and its record is written to be READ: real diagnoses in `status_reason` fields, per-task errors on the build graph, per-resource reasons on the deploy graph, and explained skips instead of silent absences. This file is how to read one and answer in the user's words — "your push is building", "staging is waiting on Priya's approval", "it built but didn't deploy, and here is why".
+
+Get one run with `get_service_pipeline` (the FULL record, including the compiled pipeline YAML and the captured per-environment manifests); list a service's runs with `list_service_pipelines` (projections — everything except those two bulky captures). The record answers most questions without any other read.
+
+## The two run shapes
+
+Read `spec.trigger.type` FIRST — it decides which stages exist:
+
+- **Build runs** — `webhook`, `manual`, `rerun` — build first (`status.build_stage`), then deploy what they produced. Their story leads with the commit: `spec.git_commit` carries the message, branch, sha, author, and — for pull requests — the PR number and URL.
+- **Delivery runs** — `promote`, `rollback`, `cli_deploy` — deploy an artifact that ALREADY exists and have **no build stage at all**. The artifact rides `spec.trigger.artifact` (stamped at birth by the door that created the run), with its source commit as provenance; `spec.trigger.source_service_deployment_id` names the deployment it promoted from or rolled back to. Never report a delivery run as "build missing" — nothing is missing; that is its shape.
+
+`spec.deploy_environment`, when set, scopes the run to exactly ONE environment — no promotion walk. A pull-request run with it set is deploying into its preview environment (the slug is `{service}-pr-{number}`).
+
+## The status vocabulary
+
+Every level — run, stage, environment, build task, deploy resource — speaks the same two enums: a status (`queued`, `running`, `completed`, `awaiting_approval`) and, once completed, a result (`succeeded`, `failed`, `cancelled`, `skipped`). Report them plainly: queued means waiting for a runner; `awaiting_approval` means a HUMAN decision is pending (see gates); `cancelled` carries who and when in the run's `status_reason`.
+
+The `status_reason` at each level is the engine's real diagnosis, written for the user. Prefer the deepest one that exists — a failed run's stage reason names the failed environment; a failed task's `execution.error` on the build graph is the actual error text. Relay these; never summarize a diagnosis into vagueness.
+
+## Reading the build stage
+
+`status.build_stage.dag` is the task graph in execution order (`topological_order` is authoritative). Each task node's `execution` carries its status, result, timings, and — on failure — `error`, the failing step's real output. The build's product is `build_stage.artifact`: the exact image reference the deploys reference, with its source commit.
+
+## Reading the deploy stage
+
+`status.deployment_stage.environments` renders the promotion walk in order. Each environment carries its own status/result/reason, its resource DAG (each node a cloud resource with per-resource status, its stack job id, and outputs), and — the join that answers "so what is running now" — `service_deployment_id`: the deployment record this environment's deploy produced, where the URLs and the rollout verdict live. An environment may also carry its serving hostname; trust `serving_hostname_carried` before treating it as a working address.
+
+## The skips are explanations, not absences
+
+A deploy stage (or one environment) with result `skipped` ALWAYS carries the reason in its `status_reason`, authored in the user's language: pull-request runs without preview deploys enabled, tag builds without tag deploys enabled, a branch outside the trigger set, deployments disabled on the service, no deploy configuration, no artifact produced. **Relay the explanation verbatim** — each names its own remedy, the classes grow over time, and a paraphrase that drops the remedy turns an explained skip back into a mystery.
+
+## Gates: what is waiting, and on whom
+
+A protected environment pauses its run with status `awaiting_approval` and `requires_manual_gate: true`; individual resources can pause the same way on node gates declared in the deploy graph. `list_service_pipelines_awaiting_my_approval`-shaped reads (the queue is organization-scoped) answer "what is waiting on ME" with the exact predicate the resolve guard enforces.
+
+Resolution is a human act: `resolve_service_pipeline_env_gate` / `resolve_service_pipeline_node_gate` (CLI: `planton service resolve-env-manual-gate` / `resolve-node-manual-gate <run-id> <env> [node-id] yes|no`, node ids as `{KindName}/{slug}`). Resolution is idempotent — re-resolving reads back as already resolved, never an error — and separation of duties is the server's law: the person who set the run in motion cannot approve it into a protected environment, and the ASSISTANT can never approve anything, anywhere. When a gate resolves, the environment records the decision, the resolver, and their note — the durable "approved by" answer.
+
+## Following a live run
+
+`run`/`rerun`/`cancel` act; reading reports. A rerun re-executes the source run's stamped pipeline definition byte-identically and answers with the NEW run's id — follow that one. The status stream (the CLI's `follow`, the console's live page) carries status only; anything from the spec — the compiled definition, the captured manifests — comes from the one full get. The compiled definition (`spec.resolved_pipeline`: the exact YAML, its source, and its pin) is the forensic answer to "what actually executed", stamped at dispatch and immune to later changes in the repository or the platform.
