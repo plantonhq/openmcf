@@ -19,7 +19,9 @@ A service that never sets this sees zero new records, zero new surface, zero cos
 - **Open or push** (opened, synchronize, reopened, ready for review): the build runs, and the platform ensures the PR's preview environment — named `{service}-pr-{number}` (e.g. `storefront-pr-123`) — minting it on the first push and refreshing its expiry on every later one. Only an abandoned pull request ages toward its expiry.
 - **The base environment** is where the PR's target branch deploys: a branch mapped to an environment previews that environment; a PR against a trigger branch previews the first environment of the promotion walk.
 - **Configuration stays live**: config references name their environment inside the reference itself, so the base environment's variables and secrets serve the preview for its whole life — nothing is copied, and a rotated value is what the preview reads next.
-- **The preview deploy itself is not yet open.** A preview run currently completes at its build terminal with an explained skip naming its preview environment. Relay that honestly — never suggest the preview URL exists yet.
+- **Close tears it down** (merged or not): the preview's cloud resources are destroyed first, then its records — its deployment receipts and the environment record itself — while the pull request's builds stay browsable in the run history. A preview whose expiry passes with no close (a laptop closed on a Friday) is torn down by a scheduled sweep, so an abandoned pull request never leaks cloud spend.
+- **A push racing the teardown builds without a preview**, with the reason on the run; the next push after the teardown completes mints a fresh preview.
+- **The preview deploy itself is not yet open.** A preview run currently completes at its build terminal with an explained skip naming its preview environment, and today's teardowns settle record-only (nothing is deployed yet to destroy). Relay that honestly — never suggest the preview URL exists yet.
 
 ## Reading a preview run's deploy state
 
@@ -35,4 +37,8 @@ A preview outcome never fails the BUILD: a capped-out or refused preview degrade
 
 ## Inspecting previews
 
-`list_environments` and `get_environment` (CLI: the environment read commands) show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
+`list_environments` and `get_environment` (CLI: the environment read commands) show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. A preview whose `spec.is_delete_in_progress` is true is being torn down right now and will disappear shortly. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
+
+## A preview is never deleted by hand
+
+`delete_environment` (CLI: `planton env delete`) REFUSES a preview, marked or not — the direct delete removes records only, which would orphan the preview's cloud resources. A preview dies only through the platform's own teardown: close the pull request, or let the expiry pass. If a user asks to remove a preview, close its pull request — that IS the delete button.
