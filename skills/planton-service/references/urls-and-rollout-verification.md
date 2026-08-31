@@ -37,3 +37,5 @@ Any HTTP status code counts as an answer — a 404 from a load balancer's defaul
 ## Answering "where is my service?"
 
 The one-command answer is `planton service urls <service>` — each environment's current deployment with its addresses and verdict. For the full story on one deployment (per-address outcomes, the probe's vantage, the staged checks), read the deployment record itself. Promotions and rollbacks produce records with the same URLs and verdicts as any push-triggered deploy — no special case.
+
+For a pull request's PREVIEW, prefer `list_service_previews` (CLI: `planton service previews <service> --pr <n>`) — it carries these same URLs and the same verdict joined with the preview's life state and the run's explanations, so one call answers "is my preview live, and where?" (see `preview-environments.md`).

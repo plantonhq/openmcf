@@ -66,9 +66,27 @@ The run record's deployment stage carries exactly one of these explanations:
 
 A preview outcome never fails the BUILD: a capped-out or refused preview degrades the run to build-only, with the reason in the delivery log.
 
-## Inspecting previews
+## Inspecting previews: one call answers everything
 
-`list_environments` and `get_environment` (CLI: the environment read commands) show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. A preview whose `spec.is_delete_in_progress` is true is being torn down right now and will disappear shortly. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
+`list_service_previews` (CLI: `planton service previews <service>`) is THE read for a pull request's preview — one composed answer per pull request: the preview environment's life facts (base environment, expiry), the latest pull-request run's outcome with skips and failures explained verbatim, and the standing deployment's URLs and rollout verdict. Never join environment and deployment reads yourself; this read exists so the answer is computed once, honestly.
+
+The `phase` field says where the preview stands, in the user's words:
+
+| Phase | It means |
+|---|---|
+| `preview_not_enabled` | The service never opted in — the reason names the flag to set |
+| `preview_not_born` | The mint was refused (cap, missing base environment, name collision) or nothing has happened yet — the reason explains |
+| `preview_building` / `preview_deploying` | The pull request's latest run is in flight |
+| `preview_build_failed` / `preview_deploy_skipped` / `preview_deploy_failed` | The latest run's honest outcome, reason verbatim (the deploy-state table above) |
+| `preview_live` | Deployed — read `rollout_status` (verified / failed / unverifiable) and `urls` for the addresses |
+| `preview_tearing_down` | Close or expiry started the teardown; the record disappears shortly |
+| `preview_torn_down` | It lived and died; a new push mints a fresh preview |
+
+Ask without a pull request number to list a service's live previews; ask with one to get that pull request's whole story — including `preview_not_born` and `preview_torn_down`, which have no environment record to show and therefore never appear in the plain list. `deployed_commit_sha` beside `latest_commit_sha` tells you when the URLs still answer with an older commit while a newer push builds.
+
+**The agent journey this enables**: an agent that authored a pull request verifies its own preview before asking for review — push, poll `list_service_previews` with the PR number until the phase settles, confirm `rollout_status` is `verified`, then hand reviewers the working URL (paste it into the PR description). No baseline platform gives the authoring agent this loop.
+
+`list_environments` and `get_environment` (CLI: the environment read commands) still show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
 
 ## A preview is never deleted by hand
 
