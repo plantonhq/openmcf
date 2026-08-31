@@ -1,6 +1,6 @@
 ---
 title: Reading a Run — Status, Stages, Gates, and the Honest Skips
-description: How to read one run's record and report it in the user's words — the two run shapes (build runs vs delivery runs), the status vocabulary (queued/running/completed × succeeded/failed/cancelled/skipped and awaiting approval), the build task narrative and its per-task errors, the per-environment deploy DAG with the deployment-record join, gate state and who can resolve it, and the deploy-stage skip explanations that must be relayed verbatim. Read when someone asks what a run is doing, why it failed, why it did not deploy, what is waiting on them, or when you are following a run and reporting progress.
+description: How to read one run's record and report it in the user's words — the two run shapes (build runs vs delivery runs), the status vocabulary (queued/running/completed × succeeded/failed/cancelled/skipped and awaiting approval), the build task narrative and its per-task errors, the build logs and how to relay them, the per-environment deploy DAG with the deployment-record join, gate state and who can resolve it, and the deploy-stage skip explanations that must be relayed verbatim. Read when someone asks what a run is doing, why it failed, why it did not deploy, what is waiting on them, or when you are following a run and reporting progress.
 ---
 
 # Reading a Run — Status, Stages, Gates, and the Honest Skips
@@ -27,6 +27,10 @@ The `status_reason` at each level is the engine's real diagnosis, written for th
 ## Reading the build stage
 
 `status.build_stage.dag` is the task graph in execution order (`topological_order` is authoritative). Each task node's `execution` carries its status, result, timings, and — on failure — `error`, the failing step's real output. The build's product is `build_stage.artifact`: the exact image reference the deploys reference, with its source commit.
+
+## Reading the build logs
+
+When the task's `error` summary is not enough — "why did yarn build fail", "what did the migration print" — read the actual build output with `get_service_pipeline_logs`. One call serves both eras: a finished build returns its complete log (the logs outlive the run's infrastructure), and an in-flight build returns everything so far — call again for updates. Lines are attributed per task (the same task names the build graph carries), arrive in true output order, and are RAW: relay the relevant lines verbatim, exactly as the tool returned them — the build's own words are the diagnosis, and a paraphrase drops the detail the developer needs. The console renders these same logs on the run page, where each build step expands into its log and every line has a shareable link — when pointing a human at a specific line, the run page's line link is the better handoff than a quoted wall of text. Scope honesty: these are BUILD logs only; a deploy node's logs live with its stack job (read the node's `stack_job_id` from the run and use the stack-job tools). A run with no retrievable logs answers plainly that none are available — report that as the fact it is, never as an error.
 
 ## Reading the deploy stage
 
