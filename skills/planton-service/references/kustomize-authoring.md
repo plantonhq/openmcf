@@ -33,6 +33,9 @@ _kustomize/
     <resource>.yaml            # full cloud-resource manifests
   dev/<flavor>/                # local-development flavors: NEVER deployed, never synced
     kustomization.yaml         #   (compose an overlay, patch laptop deltas)
+  previews/<env>/              # pull-request preview deltas for that environment: rendered
+    kustomization.yaml         #   per PR run, never synced (compose the env's overlay,
+                               #   patch what previews change — see preview-environments.md)
 ```
 
 Ejected trees are written self-contained: each overlay carries complete manifests, no computed base/patches. Factoring shared configuration into a `base/` with strategic-merge patches is the human's own refactor — the platform renders whatever the tree says, so any refactor that renders the same is equally valid. When someone refactors, the schema matters (next section).
