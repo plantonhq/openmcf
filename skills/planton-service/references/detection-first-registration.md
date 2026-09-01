@@ -30,6 +30,18 @@ The registration door for "I have code, get it on the platform": the platform re
 - Detection failing is not a dead end: the error names the real cause (a revoked installation, a wrong repository name) — relay it verbatim, and fall back to composing the Service manifest by hand from what the user tells you (the apply grammar is unchanged).
 - Monorepos register one service per directory: detection scoped to `project_root` ignores sibling services' Dockerfiles, and the proposed name is the directory's.
 
+## Registering WITH deployment configuration (the inline posture)
+
+A registration may carry real per-environment deployment configuration from birth: `spec.deploy.environments` entries (each a list of full cloud-resource manifests) with NO `spec.deploy.kustomize` block — that absence IS the declaration that the configuration is manually authored (console, agent, apply) rather than git-maintained. The authoring contract when composing these manifests:
+
+- The workload's container **image stays absent** — the blank field is the injection slot the delivery engine fills with the built artifact at deploy time. Never invent a placeholder.
+- `metadata.env` names the entry's environment explicitly, and `metadata.name` follows `{service}-{env}`.
+- Which kinds can RECEIVE the built artifact is the `list_service_deployment_targets` catalog's `service_deployable` fact; supporting resources (an ALB, an ingress, a domain mapping) ride the same environment list beside the receiver — an environment is a resource SET.
+- Deploys resolve provider credentials from the environment's default provider connection — manifests carry none.
+- Pull-request previews are NOT available for inline-authored configuration (preview deploys ride the repository's kustomize previews tree); say so instead of wiring the toggle.
+
+The console's guided flow offers this as its "Configure Here" posture: pick the target platform, pick environments, size each with dials (untouched dials keep platform defaults — the manifests carry only what the user set), add the boot-level environment variables. An agent doing the same conversationally asks the same few questions and composes the same manifests.
+
 ## Where the human-visible twin lives
 
-The console's guided flow (services directory → Add New → the guided door, or `/orgs/{org}/services/new`) walks the same beats visually: source, a one-screen proposal with each finding named, review with the exact YAML. Point humans there when they prefer clicking; everything the flow proposes is this same detection read.
+The console's guided flow (services directory → Add New → the guided door, or `/orgs/{org}/services/new`) walks the same beats visually: source, a one-screen proposal with each finding named, an Environments screen when the inline posture is chosen (target platform, environment chips, sizing dials, variables), review with the exact YAML. Point humans there when they prefer clicking; everything the flow proposes is this same detection read.
