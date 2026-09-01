@@ -167,6 +167,10 @@ Ask without a pull request number to list a service's live previews; ask with on
 
 `list_environments` and `get_environment` (CLI: the environment read commands) still show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
 
-## A preview is never deleted by hand
+## A preview has exactly one writer: its pull request
 
-`delete_environment` (CLI: `planton env delete`) REFUSES a preview, marked or not — the direct delete removes records only, which would orphan the preview's cloud resources. A preview dies only through the platform's own teardown: close the pull request, or let the expiry pass. If a user asks to remove a preview, close its pull request — that IS the delete button.
+Every door except the pull request's own pushes refuses a preview, each naming the working path:
+
+- **Delete**: `delete_environment` (CLI: `planton env delete`) REFUSES a preview, marked or not — the direct delete removes records only, which would orphan the preview's cloud resources. A preview dies only through the platform's own teardown: close the pull request, or let the expiry pass. If a user asks to remove a preview, close its pull request — that IS the delete button.
+- **The delivery verbs**: promote, rollback, and deploy all refuse a preview target — a preview deploys only from its own pull request's pushes. Promoting FROM a preview's deployment refuses too: merge the pull request to take the change to the durable environments, or deploy its image directly.
+- **Ordinary pushes**: a declared deploy entry, overlay directory, or branch mapping that happens to name a live preview's slug never deploys there — the run's environment entry fails carrying this same truth.
