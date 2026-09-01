@@ -23,7 +23,11 @@ An entry's `resources` are the exact manifests that deploy — plus two injectio
 - **A blank image IS the injection slot.** The deploy fills it with the built artifact. On `KubernetesDeployment` the injection is unconditional (a declared image is REPLACED at deploy); on multi-container kinds like `GcpCloudRun`, only blank-image containers receive the artifact (declared images — sidecars — deploy as written).
 - **Config references stay unresolved.** `$var/...` and `$secret/...` values in manifests resolve just-in-time at deploy; the declaration never carries secret material.
 
-The console renders all of this on the service page's **Configuration tab**: the writer story with sync provenance, each environment's resources with their facts and exact YAML, and — for platform-authored services — the editor. When a person would rather look than read JSON, point them there.
+The console renders all of this on the service page's **Configuration tab**: the writer story with sync provenance, each environment's resources with their facts and exact YAML, a resource diagram when an environment declares two or more resources (wires drawn from the declaration's own `valueFrom` references), and — for platform-authored services — the editors. When a person would rather look than read JSON, point them there.
+
+## What the console can edit (so you never undersell it)
+
+On a platform-authored service the Configuration tab edits ANY declared resource, one editor per shape: the simple single-resource Kubernetes/Cloud Run shape gets the guided dials; every other resource — any catalog kind, any member of a multi-resource set — edits through that kind's own authored form, or as YAML in place for kinds without one. The tab also adds a resource to an environment (the catalog picker honors the org's catalog policy by omission — a policy-disabled kind is simply not offered) and removes one (never the last — removing the environment's configuration is that door). Environment variables edit as three row classes: literal text, secret references through the platform's secret picker (the manifest stores the `$secret/...` pointer, and a key-value secret asks for its key), and locked rows for `valueFrom` wiring, which stays YAML-authored for now. A declaration carrying content outside the kind's schema as this console knows it stays read-only with the reason named — so if a person says the console "won't let them edit" something, that sentence is the reason to relay, not a bug to work around.
 
 ## Changing configuration: get, edit surgically, apply
 
