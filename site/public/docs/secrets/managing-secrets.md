@@ -1,173 +1,95 @@
 ---
 title: "Managing Secrets"
-description: "Store sensitive values with immutable versioning, envelope encryption, and just-in-time decryption — scoped to your organization or individual environments"
+description: "Create, scope, reference, reveal, and audit sensitive values — with environment-level governance and a read trail that answers who read what, when"
 icon: key
 order: 20
 tags:
   - Secrets
-  - Encryption
   - Configuration
+  - Audit
 ---
 
-# Secrets
+# Managing Secrets
 
-A secret in Planton is a named container for sensitive data — API keys, database passwords, service account tokens, private certificates, or any value that should never appear in plaintext in a database, log file, or configuration repository. Secrets are scoped to an organization or a specific environment, versioned immutably, and encrypted before they touch any storage system.
-
-If you have used GitHub Organization Secrets, GitLab CI/CD Variables (protected), or AWS Secrets Manager, the model is familiar. Planton adds envelope encryption with customer-managed key support, immutable versioning, and just-in-time decryption within your own infrastructure.
-
-## Why Secrets Exist
-
-In a typical DevOps setup, sensitive values end up scattered across the stack. AWS keys live in CI/CD environment variables. Database passwords are hardcoded in Kubernetes Secrets. API tokens are duplicated across repositories. When someone rotates a credential, they have to track down every place it was used — and hope they did not miss one.
-
-Planton's Secrets Manager gives sensitive values a single, secure home. You create a secret once, scope it to the right environments, and reference it from services and infrastructure deployments. The platform handles encryption, versioning, and just-in-time delivery. Engineers consuming the secret never see the underlying value — they reference it by name, and the platform resolves it at runtime.
+A secret in Planton is a named container for sensitive data — API keys, database passwords, service account tokens, private certificates. Secrets are scoped to an organization or a single environment, versioned through a [live provider-backed timeline](/docs/secrets/versions), stored [provider-native in your own backend](/docs/secrets/where-secrets-live), and read-audited.
 
 ## Scoping: Organization vs Environment
 
-Every secret has a scope that determines where it is available:
+**Organization secrets** are available across all environments. Use these for values that do not change between environments — a third-party API key, a shared monitoring token.
 
-**Organization secrets** are available across all environments in your organization. Use these for values that do not change between environments — a third-party API key, a shared monitoring token, or a license key.
-
-**Environment secrets** are specific to a single environment. Use these for values that differ between environments — the production database password, the staging API endpoint, or an environment-specific service account.
-
-The scoping model mirrors how teams naturally think about configuration: some things are global, others are environment-specific. When a service references a secret, Planton resolves it within the appropriate scope.
+**Environment secrets** belong to a single environment — the production database password, the staging service account. Environment scoping is real governance, not a naming convention: a teammate granted access to only the staging environment can manage staging's secrets and only staging's, and marking production as protected protects production's secrets exactly as it protects production's infrastructure.
 
 ## Creating a Secret
 
 ### Using the Web Console
 
-Navigate to **Secrets** in the sidebar. Click **Create Secret** and provide:
+Settings → Secrets → **Create Secret** walks a short wizard:
 
-- **Name** — A human-readable identifier (e.g., `stripe-api-key`, `production-db-password`). This becomes the secret's slug, used for referencing it throughout the platform.
-- **Scope** — Organization (available everywhere) or Environment (specific to one environment).
-- **Description** — What this secret contains and what it is used for. Future engineers will thank you.
-- **Backend** — Which [secret backend](/docs/secrets/encryption) stores this secret's versions. Leave empty to use the organization's default backend.
+1. **Scope** — organization-wide, or pick the environment.
+2. **Destination** — which [backend](/docs/secrets/backends) stores the value (the organization default is preselected).
+3. **Data** — a single text value, or key-value pairs. Creating the container without a value is legitimate — seed the value later or out-of-band.
+4. **Review** — shows the logical path the secret will live under before anything is created.
 
-<!-- SCREENSHOT: Create secret form
-  Page: /orgs/{org}/secrets (create dialog)
-  Action: Show the secret creation form with name, scope, description, and backend fields
-  Focus: The complete form with scope selection visible
-  Alt: Secret creation form showing name field, scope selector (organization/environment), description field, and backend selector
--->
+The success screen shows the secret's **real remote name** with a copy button, a deep link to your provider's console, and the full [integration snippet catalog](/docs/secrets/integrations).
 
 ### Using the CLI
 
 ```bash
-# List all secrets in the organization
-planton service secrets
+# Create or update a text secret's value
+planton secret set stripe-api-key 'sk_live_...'
 
-# Filter secrets by text
-planton service secrets --filter "database"
+# Key-value secrets take KEY=VALUE pairs
+planton secret set cloudflare r2.access-key-id=... r2.secret-access-key=...
+
+# Environment-scoped secrets take the environment flag
+planton secret set db-password 'the-value' --env production
+
+# List, inspect, read
+planton secret list
+planton secret describe db-password    # includes the remote identity
+planton secret get db-password -o plain
 ```
 
-The `upsert` command creates a new secret or updates an existing one through an interactive editor:
+## Referencing Secrets
+
+Anything on the platform that consumes configuration accepts the `$secret/` reference grammar:
+
+```
+$secret/<slug>                    # org-scoped text secret
+$secret/<slug>/<key>              # one key of an org-scoped key-value secret
+$secret/@<env>/<slug>             # environment-scoped text secret
+$secret/@<env>/<slug>/<key>       # one key of an environment-scoped key-value secret
+```
+
+References live in service manifests, infrastructure resource definitions, and connection fields; the value never does. At deployment time the [Runner](/docs/runner) resolves references just-in-time inside your infrastructure — "latest" being the [backend's latest](/docs/secrets/versions) — uses the value, and discards it. Planton's own database never stores a secret value for provider-backed secrets.
+
+For local development the CLI mirrors the same resolution:
 
 ```bash
-# Create or update a secret (opens interactive YAML editor)
-planton service secrets upsert
+planton service env run     # run with resolved configuration
+planton service env pull    # write .env files (git-ignore verified, 0600)
+planton service env check   # per-reference resolution report
 ```
 
-## Secret Versions
+## The Read Story
 
-Secret values are stored as **versions**. Each version is an immutable snapshot — once created, it cannot be modified. To change a secret's value, you create a new version. The previous versions remain available for audit and rollback.
+Every read of a secret's **value** — a console reveal, a CLI read, a deploy-time resolution — writes one immutable audit entry in the same breath as serving the value. Each entry records who (the person, the API key, or the exact platform work such as a specific stack job), through which surface, when, and **exactly which version was served**. A read whose record cannot be written is refused.
 
-This immutability is deliberate:
+The feed rides the same permission as reading the value itself:
 
-- **Audit trail.** Every change to a secret is a discrete event with a timestamp and the identity of who created it. There is no "someone changed the password, but we don't know when or what it was before."
-- **Safe rollback.** If a new secret value breaks something, the previous version still exists. You can identify what changed and when.
-- **Natural key rotation.** Because each version gets its own encryption key (see [envelope encryption](/docs/secrets/encryption#envelope-encryption)), creating a new version is inherently a cryptographic key rotation.
+- **Console** — the Recent Access card on the secret's detail page.
+- **CLI** — `planton secret access <slug>` (alias `reads`).
 
-### Version Lifecycle
+Entries carry coordinates and actors, never values.
 
-1. **Create** — Provide key-value pairs. Planton encrypts the data with a fresh AES-256 encryption key, encrypts that key with the backend's Key Encryption Key, and stores both in the backend. The plaintext encryption key is discarded immediately.
-2. **Read** — Retrieve a specific version or the latest version. Decryption happens on demand — the stored data is ciphertext until you explicitly request it.
-3. **List** — View all versions of a secret (metadata only — timestamps, version identifiers). Secret data is not included in list responses.
-4. **Delete** — Remove a specific version. The encrypted data is deleted from the backend and the metadata is removed from Planton.
+## Permissions
 
-### Managing Versions via CLI
-
-```bash
-# Get the current value of a secret
-planton service secrets get-value --group my-secrets --name API_KEY
-
-# Create or update a secret value (opens interactive editor)
-planton service secrets upsert
-
-# Delete a secret entry
-planton service secrets delete --group my-secrets --name API_KEY
-```
-
-## How Secrets Flow to Runtime
-
-When a service deployment or infrastructure operation needs a secret, the following happens:
-
-```mermaid
-sequenceDiagram
-    participant Planton as Planton Control Plane
-    participant Backend as Secret Backend
-    participant Runner as Planton Runner
-
-    Planton->>Backend: Retrieve encrypted secret version
-    Backend-->>Planton: Encrypted data + encrypted DEK
-    Planton->>Runner: Send encrypted payload through secure tunnel
-    Runner->>Runner: Decrypt DEK using KEK
-    Runner->>Runner: Decrypt secret data using DEK
-    Runner->>Runner: Use plaintext value for operation
-    Runner->>Runner: Discard plaintext after use
-```
-
-1. Planton's control plane retrieves the encrypted secret from the backend.
-2. The encrypted payload is sent to the [Planton Runner](/docs/runner) through the authenticated secure tunnel.
-3. The Runner — which runs in your infrastructure, not Planton's — decrypts the secret just-in-time using the appropriate encryption key.
-4. The plaintext value is used for the operation (injected into a deployment, passed to a cloud API, etc.).
-5. After the operation completes, the plaintext is discarded.
-
-**The critical point: Planton's control plane never sees the decrypted secret.** The entire decryption and usage happens within the Runner, which runs in your infrastructure. This means:
-
-- A compromise of Planton's control plane does not expose your secret values
-- Planton engineers cannot read your secrets — they can only see encrypted ciphertext
-- Your secrets exist in plaintext only within your own infrastructure, only for the duration of the operation
-
-## Referencing Secrets from Services
-
-Services in Service Hub reference secrets by name. During the deployment pipeline, Planton resolves the references and injects the values into the runtime environment.
-
-The reference syntax uses the secret's group and name:
-
-```
-$secrets-group/<group-name>/<secret-name>
-```
-
-The CLI provides tools for working with resolved references:
-
-```bash
-# View resolved environment variables (includes secrets) for a service
-planton service env-vars --env production
-
-# Generate .env files for local development
-planton service dot-env --env production
-
-# Override specific values for local use
-planton service dot-env --env production --set DATABASE_PASSWORD=localdev123
-```
-
-The `env-vars` command displays a table showing each variable and secret reference with its resolution status — whether it resolved successfully or encountered an error. The `dot-env` command writes `.env` and `.env_export` files to the current directory for running services locally with the same configuration as deployed environments.
-
-## Future Platform Integrations
-
-Secrets Manager is designed to become the universal source of truth for sensitive values across the entire Planton platform. The following integrations represent the platform's design direction:
-
-**Connection fields** — Sensitive fields in [connections](/docs/connect) (such as AWS secret access keys, GCP service account keys, or Azure client secrets) will be stored as secret references rather than inline values. The connection stores a reference to the secret; the actual value lives in the Secrets Manager, encrypted and versioned.
-
-**Cloud Resource inputs** — Any input field on a Cloud Resource that contains sensitive data will support secret references. Instead of storing a database password in plaintext as part of a resource definition, you store a reference to a secret. The value is resolved just-in-time before the deployment executes in the Runner.
-
-**Sensitive outputs** — Infrastructure deployments often produce sensitive outputs (database connection strings, generated API keys, private endpoints). These will be automatically routed to the Secrets Manager instead of stored as plaintext in resource outputs.
-
-These integrations are under active development. The specific details may evolve as the design matures, but the direction is clear: sensitive values belong in the Secrets Manager, not scattered across resource definitions and connection configurations.
+Reading a secret's **metadata** and reading its **value** are separate permissions, so a teammate can see that a secret exists without being able to reveal it. API keys can be clamped to entries-only. Agent surfaces can write secret values but never read them back.
 
 ## Related Documentation
 
 - [Secret Backends](/docs/secrets/backends) — Where secrets are stored
-- [Encryption](/docs/secrets/encryption) — Envelope encryption and customer-managed keys
+- [Where Secrets Live](/docs/secrets/where-secrets-live) — Naming, labels, and remote identity
+- [Version History](/docs/secrets/versions) — The live timeline, out-of-band edits, rollback
+- [Consuming Secrets Anywhere](/docs/secrets/integrations) — Ready-to-paste snippets
 - [Variables](/docs/variables) — Non-sensitive configuration management
-- [Runner: Security Model](/docs/runner/security-model) — How the Runner protects secrets during execution
-- [Connections](/docs/connections) — Managing connections where secrets will be referenced

@@ -119,9 +119,9 @@
                                         "NEXTAUTH_URL_INTERNAL": "$variables-group/web-console/prod.next-auth-url"
                                     },
                                     "secrets": {
-                                        "GITLAB_OAUTH_GROUP_APP_CLIENT_SECRET": "$secrets-group/gitlab/oauth.client-secret",
-                                        "IAM_CLIENT_SECRET": "$secrets-group/auth0-prod/web-console-client-secret",
-                                        "NEXTAUTH_SECRET": "$secrets-group/web-console/next-auth-secret"
+                                        "GITLAB_OAUTH_GROUP_APP_CLIENT_SECRET": "$secret/@app-prod/gitlab/oauth.client-secret",
+                                        "IAM_CLIENT_SECRET": "$secret/@app-prod/auth0/web-console-client-secret",
+                                        "NEXTAUTH_SECRET": "$secret/@app-prod/planton-web/next-auth-secret"
                                     }
                                 },
                                 "ports": [

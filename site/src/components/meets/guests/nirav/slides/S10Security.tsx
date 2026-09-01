@@ -29,9 +29,9 @@ export default function S10Security(_props: SlideComponentProps) {
           <CardTitle className="mb-3 !text-base sm:!text-lg">Execution Isolation</CardTitle>
           <Checklist
             items={[
-              'Just-in-Time Secret Resolution — decrypted only at execution time',
-              'Secrets are resolved only in the runner, inside your network',
-              'Control plane never sees decrypted credentials',
+              'Just-in-Time Secret Resolution — references become values only at execution time',
+              'Deploy-time secrets are resolved only in the runner, inside your network',
+              'Secret values are never stored in the control plane',
               'Runner operates with outbound-only connectivity',
             ]}
           />

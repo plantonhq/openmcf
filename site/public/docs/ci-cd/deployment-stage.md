@@ -129,7 +129,7 @@ spec:
         variables:
           LOG_LEVEL: warn
         secrets:
-          DATABASE_PASSWORD: $secrets-group/database/password
+          DATABASE_PASSWORD: $secret/@production/database/password
   availability:
     minReplicas: 3
     horizontalPodAutoscaling:
@@ -143,7 +143,7 @@ The `metadata.env` field determines which Planton environment receives this depl
 
 Overlay manifests can reference organization-scoped secrets and variables using a substitution syntax:
 
-- `$secrets-group/<group>/<key>` — Resolved at deployment time. The value is decrypted just-in-time in the Runner, never stored in plain text.
+- `$secret/<slug>` (or `$secret/@<env>/<slug>/<key>`) — Resolved at deployment time. The value is read just-in-time in the Runner from your secret backend, never stored in the platform's database.
 - `$variables-group/<group>/<key>` — Resolved at deployment time. Variables support literal values or dynamic references to infrastructure outputs.
 
 See [Secrets](/docs/secrets) for the full scoping model, backends, and lifecycle.

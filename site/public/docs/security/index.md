@@ -37,15 +37,13 @@ For full details, see [Runner Security Model](/docs/runner/security-model) and [
 
 ### Data at Rest
 
-Every secret stored in Planton's [Secrets Manager](/docs/secrets) is protected by envelope encryption — the same pattern used by AWS KMS, GCP Cloud KMS, and Azure Key Vault for their own services.
+Secrets stored through Planton's [Secrets Manager](/docs/secrets) live in the secret backend you choose — your AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault, or OpenBAO — as native values protected by that store's own encryption, IAM, and audit. Planton's own database holds metadata, never values, so a full copy of it yields no secrets.
 
-Each secret version gets a unique AES-256 data encryption key (DEK). That DEK is encrypted by a key encryption key (KEK) before being stored alongside the ciphertext. Even with direct access to the storage backend, an attacker sees only encrypted data and an encrypted key.
+Because the values are native citizens of your store, your encryption controls apply directly: customer-managed keys are your provider's own setting (for example CMEK on GCP Secret Manager or a KMS key on AWS Secrets Manager), not a platform layer between you and your data.
 
-By default, Planton manages the KEK. Organizations that require cryptographic control can bring their own key from AWS KMS, GCP Cloud KMS, or Azure Key Vault — Customer-Managed Encryption Keys (CMEK). Revoking a CMEK renders all encrypted secrets permanently unreadable, including by Planton.
+The one deliberate exception is a single-machine local instance's built-in store, where the instance's own database is the storage medium: those values are envelope-encrypted with an AES-256 key held in the machine's OS keychain, outside the database.
 
-There is no option to disable encryption. You choose who controls the key, not whether encryption happens.
-
-For full details, see [Secret Backends and Encryption](/docs/secrets/backends).
+For full details, see [Where Secrets Live](/docs/secrets/where-secrets-live) and [Secret Backends](/docs/secrets/backends).
 
 ### Data in Transit
 
@@ -120,7 +118,7 @@ The Runner's network model eliminates the need for inbound firewall rules, VPN t
 | Layer | Mechanism | Details |
 |-------|-----------|---------|
 | **Credentials** | Architectural isolation via Runner | [Runner Security Model](/docs/runner/security-model) |
-| **Secrets** | Envelope encryption (AES-256 + KEK) with CMEK support | [Secret Backends](/docs/secrets/backends) |
+| **Secrets** | Provider-native storage in your own vault; read-audited; never stored in the platform's database | [Where Secrets Live](/docs/secrets/where-secrets-live) |
 | **Authentication** | OAuth + PKCE (interactive), API keys (automation), service accounts (machines) | [Authentication and Authorization](/docs/security/authentication-and-authorization) |
 | **Authorization** | OpenFGA relationship-based access control | [Authentication and Authorization](/docs/security/authentication-and-authorization) |
 | **Audit** | Immutable version records with diffs | [Audit Trails](/docs/security/audit-trails) |
@@ -133,6 +131,6 @@ The Runner's network model eliminates the need for inbound firewall rules, VPN t
 - [Authentication and Authorization](/docs/security/authentication-and-authorization) — How users authenticate and how permissions are evaluated
 - [Audit Trails](/docs/security/audit-trails) — Immutable change tracking and version history
 - [Runner Security Model](/docs/runner/security-model) — Credential isolation, mTLS, and authentication modes
-- [Secrets](/docs/secrets) — Envelope encryption, CMEK, and secret backends
+- [Secrets](/docs/secrets) — Provider-native storage, live version history, and secret backends
 - [Connections](/docs/connections) — Credential management and environment authorization
 - [Teams and Access](/docs/teams-and-access) — Membership, teams, and role-based access

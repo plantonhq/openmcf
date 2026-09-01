@@ -248,8 +248,8 @@ const EnvConfigDeepDive = () => (
       <Box className="text-center mb-8">
         <SectionTitle>Local dev, production secrets</SectionTitle>
         <SectionSubtitle className="mx-auto">
-          Pull environment variables for local development. Secrets resolved from your vault via the Runner &mdash;
-          the control plane never sees plaintext credentials.
+          Pull environment variables for local development. Secrets resolve straight from your own
+          vault &mdash; never stored in Planton&apos;s database.
         </SectionSubtitle>
       </Box>
     </ScrollReveal>

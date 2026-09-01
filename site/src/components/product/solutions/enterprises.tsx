@@ -73,7 +73,7 @@ const securityLevels: SecurityLevelProps[] = [
     level: 1,
     title: 'Encrypted Secret Backends',
     description:
-      'Store credentials in Planton\'s encrypted Vault, bring your own HashiCorp Vault, or use your own envelope key (AWS KMS / GCP KMS). Secrets resolved just-in-time, decrypted only during execution.',
+      'Keep secrets in your own store — AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, HashiCorp Vault, or OpenBAO — as native values under readable names your own tools can consume. Resolved just-in-time during execution.',
     module: 'Security',
   },
   {

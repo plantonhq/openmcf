@@ -1,7 +1,7 @@
 ---
 title: "Secret Backends"
 sidebar_title: "Backends"
-description: "Choose where secrets are stored — from zero-config built-in storage to bring-your-own backends in your own cloud accounts"
+description: "Choose where secrets live — from a zero-config default to your own AWS, GCP, Azure, Vault, or OpenBAO — with ambient authentication and a verify-before-save health probe"
 icon: database
 order: 30
 tags:
@@ -12,87 +12,63 @@ tags:
 
 # Secret Backends
 
-Every secret in Planton is stored in a **secret backend** — a dedicated storage system designed for sensitive data. The backend determines where your encrypted secret versions are persisted.
+Every secret in Planton is stored in a **secret backend** — the store that holds its value. The backend determines where your secrets physically live, and with a real provider backend they live there [as native citizens](/docs/secrets/where-secrets-live): real values, readable names, your IAM, your audit.
 
-Out of the box, every organization gets a built-in backend powered by [OpenBAO](https://openbao.org/) (an open-source secrets management engine) with zero configuration required. Organizations that need to keep secrets in their own infrastructure can bring their own backend — AWS Secrets Manager, HashiCorp Vault, GCP Secret Manager, Azure Key Vault, or a self-hosted OpenBAO instance.
+## The Built-In Default
 
-Regardless of which backend you choose, Planton encrypts every secret before it touches the backend. This is not optional. You choose **where** secrets are stored — not whether they are encrypted. See [Encryption](/docs/secrets/encryption) for how encryption works.
+Every organization starts with a working default and zero setup:
 
-## The Built-In Backend
+- **Hosted organizations** get a Planton-operated [OpenBAO](https://openbao.org/) vault. Values are stored as native KV entries with per-organization isolation.
+- **A local desktop instance** gets a built-in local store: values envelope-encrypted in the instance's own database, with the encryption key minted into the operating system's keychain — the one backend where Planton's database is the store, because there is nothing else on a laptop.
 
-The platform backend is the default for every organization. When you create a secret without specifying a backend, it is stored here.
-
-**What you get with zero configuration:**
-
-- Secrets encrypted with AES-256-GCM envelope encryption before storage
-- Per-organization encryption key isolation — each organization has its own key, managed by the platform
-- Automatic key rotation support
-- No infrastructure to deploy or maintain
-- Available immediately when you create your organization
-
-The built-in backend is a production-grade OpenBAO instance operated by Planton in high-availability mode. Your data is encrypted by Planton's encryption layer before it reaches OpenBAO, and then encrypted again by OpenBAO's own storage barrier. Two layers of encryption, zero configuration.
-
-For most teams, the built-in backend is the right choice. It provides production-ready security without the operational overhead of managing your own secrets infrastructure.
+For teams getting started, the default is the right choice. Connect your own store when you want secrets in your own account.
 
 ## Bring Your Own Backend
 
-Organizations that require secrets to remain within their own cloud accounts — for compliance, data residency, or policy reasons — can connect their own backend.
-
 | Backend | When to Use |
 |---------|-------------|
-| **AWS Secrets Manager** | Your organization standardizes on AWS for secrets management, or compliance requires secrets to stay in your AWS account |
+| **AWS Secrets Manager** | Your organization standardizes on AWS, or compliance requires secrets in your AWS account |
 | **GCP Secret Manager** | Your organization standardizes on GCP, or you need secrets co-located with GCP workloads |
-| **Azure Key Vault** | Your organization standardizes on Azure, or Azure policy requires secrets to stay in your tenant |
-| **HashiCorp Vault** | You already operate a Vault cluster and want to consolidate secrets management |
-| **Self-hosted OpenBAO** | You want the same technology as the built-in backend, but operated in your own infrastructure |
+| **Azure Key Vault** | Your organization standardizes on Azure, or policy requires secrets in your tenant |
+| **HashiCorp Vault** | You already operate a Vault cluster |
+| **Self-hosted OpenBAO** | The same technology as the hosted default, operated by you |
 
-### Setting Up a Custom Backend
+### Authentication: Inline or Ambient
 
-Each backend requires connection credentials so Planton can read and write secrets on your behalf. The setup varies by provider:
+**Inline credentials** — provide static credentials for the store (an AWS access key pair, a GCP service account key, an Azure service principal). They are moved into the platform's internal credential store on save and masked in every response — they never sit in the backend record.
 
-**AWS Secrets Manager** — Provide the AWS region, an access key ID, and a secret access key. The IAM user or role needs `secretsmanager:CreateSecret`, `secretsmanager:GetSecretValue`, `secretsmanager:PutSecretValue`, `secretsmanager:DeleteSecret`, and `secretsmanager:DescribeSecret` permissions.
+**Ambient identity** — provide no credentials at all. The deployment authenticates as itself: workload identity on a hosted or self-hosted install, or your own signed-in developer CLI on a local desktop instance. On a machine signed into several identities, per-backend handles pin one: an AWS profile, a gcloud configuration, or an az subscription — authenticated through the host's own CLI.
 
-**GCP Secret Manager** — Provide the GCP project ID and a service account key (JSON). The service account needs the `Secret Manager Admin` role on the project.
+### Coordinates and Naming
 
-**Azure Key Vault** — Provide the vault URL, tenant ID, client ID, and client secret. The service principal needs `Get`, `Set`, `Delete`, and `List` permissions on the Key Vault's secrets.
+- Region, project, vault URL, and tenant coordinates accept a literal value **or a reference to an org-level variable**, so a coordinate maintained in one place serves many backends.
+- An optional **name prefix** (default `planton`) leads every remote name the backend renders; it is immutable after creation because it is part of every stored secret's address.
+- The backend type and auth mode are likewise immutable — a backend is a stable address, never a moving target.
 
-**HashiCorp Vault** — Provide the Vault address, namespace (if using namespaces), a Vault token, and the KV v2 mount path. The token needs read/write access to the specified KV v2 mount.
+### Verify Before You Save
 
-**Self-hosted OpenBAO** — Same configuration as HashiCorp Vault (they share the same API).
+Backend creation ends with a **verification probe** you can run on the not-yet-saved backend: credential resolution, store reachability, and a real write/read/delete round-trip under the backend's own prefix. The verdict is per-check data, not a boolean — and when an ambient login is broken, the failing check names the exact remedy (`gcloud auth application-default login`, `aws sso login`, `az login`, or the specific config-file problem). The same probe is available any time:
 
-Backend connection credentials are themselves encrypted and stored securely — they never appear in plaintext in Planton's database.
+```bash
+planton secret backend verify my-backend    # exit 1 on unhealthy — scriptable
+```
 
 ### The Default Backend
 
-Each organization has a **default backend**. When you create a secret without explicitly choosing a backend, the default is used. The platform backend is the initial default. You can change the default to any backend you have configured.
-
-Once a secret is created with a specific backend, the backend cannot be changed. To move a secret to a different backend, create a new secret on the target backend and copy the value.
-
-<!-- SCREENSHOT: Secret backend configuration
-  Page: /orgs/{org}/secrets (backend settings)
-  Action: Show the backend configuration form with encryption options visible
-  Focus: The encryption key source selection and CMEK configuration fields
-  Alt: Secret backend configuration showing encryption key source dropdown with platform-managed and CMEK options
--->
+Each organization has a default backend, used when a secret does not name one explicitly. Change it to any configured backend. A secret's backend binding is immutable after creation — to move a secret, create it on the target backend and copy the value.
 
 ## Choosing the Right Backend
 
-For most organizations, the right choice is simple:
-
 | Scenario | Backend |
 |----------|---------|
-| **Getting started** | Built-in (default) |
-| **Enterprise compliance** | Built-in or custom |
-| **Data residency requirements** | Custom backend in your region |
-| **Existing Vault infrastructure** | HashiCorp Vault or OpenBAO |
-| **Multi-cloud secrets consolidation** | Built-in |
-
-Start with the defaults. The built-in backend provides production-ready security with zero configuration. Add custom backends when compliance or policy requires it.
+| **Getting started** | Built-in default |
+| **Secrets must stay in your account** | Your cloud's secret manager |
+| **Existing Vault estate** | HashiCorp Vault or OpenBAO |
+| **Zero-dependency laptop development** | The local instance's built-in store |
 
 ## Related Documentation
 
-- [Managing Secrets](/docs/secrets/managing-secrets) — Creating and managing secrets
-- [Encryption](/docs/secrets/encryption) — Envelope encryption and customer-managed keys
+- [Where Secrets Live](/docs/secrets/where-secrets-live) — What lands in your store, and under what name
+- [Managing Secrets](/docs/secrets/managing-secrets) — Creating and referencing secrets
 - [Variables](/docs/variables) — Non-sensitive configuration management
-- [Runner: Security Model](/docs/runner/security-model) — How secrets are protected during execution
-- [Connections: Cloud Providers](/docs/connections/cloud-providers) — Connecting cloud accounts where custom backends live
+- [Connections: Cloud Providers](/docs/connections/cloud-providers) — Connecting the cloud accounts your backends live in
