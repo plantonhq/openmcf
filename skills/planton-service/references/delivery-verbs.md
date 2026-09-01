@@ -27,6 +27,8 @@ Read this when someone wants a version that runs in one environment to run in an
 
 All three answer with a **run**, not a deployment record. A deployment takes time, can pause for an approval, and can fail — so what comes back is something to follow. The deployment record appears when the environment succeeds.
 
+Promote and rollback are also clickable: the console's service page carries them on its Deployments tab (each environment row offers Promote and Roll Back; a past deployment in the history offers Roll Back to This), confirming into the same run page. When a person would rather click than type — or wants to SEE what a rollback restores before committing to it — pointing them there is a complete answer.
+
 Deploy differs from promote in what configuration ships: deploy renders the service's CURRENT declaration (today's configuration, the named image); promote re-applies the CAPTURED configuration (the tested pair). When a version already runs in another environment, promote is the right verb; deploy is for versions Planton has never deployed.
 
 ## Why they are exact, and why that matters when explaining them
