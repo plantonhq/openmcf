@@ -64,7 +64,15 @@ By default, pushes to the service's default branch trigger a pipeline. You can c
 Pull request pipelines can be configured independently for two levels:
 
 - **Build only** — The pipeline builds the artifact but does not deploy it. Useful for validating that the code compiles and the image builds successfully before merging.
-- **Build and deploy** — The pipeline builds and deploys to configured environments. Useful for preview environments that let reviewers test changes before merging.
+- **Build and deploy** — Every pull request gets its own **preview environment**: a real, short-lived environment named `{service}-pr-{number}`, born from the environment the PR's target branch deploys to. The changed service deploys into it alone — configuration references resolve against the base environment's stable instances — and rollout verification stamps a working URL that you, or the agent that authored the pull request, can check before review. Closing the PR destroys the preview's cloud resources first and its records after; an untouched preview expires on its own (72 hours by default, tunable per service with `previewTtlHours`), so an abandoned pull request never leaks cloud spend.
+
+For kustomize-maintained services, preview deploys open when the repository authors a `previews/<env>` directory in its `_kustomize` tree declaring what previews change. Without one, PR pipelines build and skip the deploy, naming the exact path to author. Check any pull request's preview with one call:
+
+```bash
+planton service previews my-service --pr 123
+```
+
+The answer carries the preview's phase in plain words (building, live, torn down, …), the verified URL, and the rollout verdict.
 
 PR pipelines trigger when the pull request targets a configured branch.
 
@@ -173,7 +181,7 @@ planton service rerun-pipeline <pipeline-id>
 
 ### GitHub Integration
 
-For services connected to GitHub repositories, pipelines report status directly to GitHub. Build and deployment progress appear as status checks on commits and pull requests, giving your team visibility without leaving GitHub.
+Pipeline status does not currently appear on the GitHub commit or pull request page. A pipeline's progress, its deployment outcomes, and a pull request's preview URL reach you through the web console, the CLI (`planton service pipelines`, `planton service previews`), and the platform's agent tools.
 
 ## Related Documentation
 

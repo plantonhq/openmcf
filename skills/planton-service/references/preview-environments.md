@@ -51,6 +51,85 @@ Check a tree renders before pushing: `planton service env check --preview dev` (
 
 A service with the opt-in but NO previews tree still builds every PR; its deploy skips naming the authoring path. Inline-configured services (no kustomize tree) do not have preview deploys yet — the run says so plainly.
 
+## Previews on ECS: the shared-ALB recipe
+
+ECS has no namespace concept and needs none: deployed-resource identity is environment-scoped, so the service's own manifests deployed into `checkout-api-pr-88` are NEW resources beside dev's — same names, different environment, zero renaming. The recipe is the service's overlay following two authoring laws, plus a one-file previews tree.
+
+**The durable arrangement** (authored once, outside the service's tree): the environment's shared ALB, its HTTPS listener carrying a wildcard certificate (`*.dev.acme.com`), one wildcard DNS record in the zone pointing at the ALB, and the ECS cluster. The service's `overlays/dev` declares its own four resources — task definition, ECS service, target group, and listener rule (trimmed here to the wiring the recipe teaches; each kind's reference documents the full spec):
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsTaskDefinition
+metadata: {name: checkout-api, env: dev}
+spec:
+  region: us-west-2
+  containers:
+    - name: app
+      image: ""                                  # blank — the artifact slot every deploy fills
+      portMappings: [{containerPort: 8080}]
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsEcsService
+metadata: {name: checkout-api, env: dev}
+spec:
+  region: us-west-2
+  clusterArn:
+    valueFrom: {name: dev-cluster, env: dev}     # SHARED infrastructure: environment named
+  taskDefinition:
+    valueFrom: {name: checkout-api}              # OWN resource: env absent — rebinds per environment
+  loadBalancers:
+    - targetGroupArn:
+        valueFrom: {name: checkout-api}          # OWN resource
+      containerName: app
+      containerPort: 8080
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbTargetGroup
+metadata: {name: checkout-api, env: dev}
+spec:
+  region: us-west-2
+  targetType: ip                                 # awsvpc tasks register by IP
+  port: 8080
+  protocol: HTTP
+  vpcId:
+    valueFrom: {name: dev-vpc, env: dev}         # SHARED infrastructure
+---
+apiVersion: aws.planton.dev/v1
+kind: AwsLbListenerRule
+metadata: {name: checkout-api, env: dev}
+spec:
+  region: us-west-2
+  listenerArn:
+    valueFrom: {name: dev-alb-https, env: dev}   # SHARED infrastructure
+  conditions:
+    - hostHeader: {}                             # blank — the hostname slot every deploy fills
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom: {name: checkout-api}    # OWN resource
+```
+
+**The two authoring laws** that make this overlay preview-ready as it stands:
+
+1. **Blank slots serve both lanes.** The blank container image and the blank host-header condition are filled at every deploy — the durable lane fills dev's artifact and `checkout-api.dev.acme.com`, a preview run fills the PR's artifact and `checkout-api-pr-88.dev.acme.com`. Nothing is ever stored filled in git, and an uninjected blank refuses at apply naming the field — blankness is authoring intent, never an accident that ships.
+2. **Own resources reference each other with env absent; shared infrastructure names its environment.** A reference with no `env` binds to the environment the manifest deploys into — exactly right for the service's own target group and task definition, which must rebind inside each preview. The cluster, the listener, and the VPC live in the durable environment, so their references say `env: dev` (or use literal ARNs) and keep pointing there from every preview.
+
+**The previews tree is then one file** — nothing to patch:
+
+```
+previews/
+└── dev/
+    └── kustomization.yaml    # resources: [../../overlays/dev]
+```
+
+One optional patch is worth knowing: `AwsEcsService.spec.forceDelete: true` skips ECS's scale-to-zero dance on destroy — appropriate for ephemeral environments, so previews tear down faster while the durable overlay keeps the safer default.
+
+**What a pull request then does**: the platform re-stamps `env: dev → checkout-api-pr-88` on the four manifests, injects the PR's image into the task definition, and fills the rule's blank host with `checkout-api-pr-88.dev.acme.com`. Four fresh resources deploy beside dev's, riding the SHARED ALB — the preview hostname is exactly one label under the base domain, so the listener's wildcard certificate and the zone's wildcard record cover every preview with zero per-PR TLS or DNS work. Listener-rule priority can stay unset: AWS appends after the highest, and host-match rules on disjoint hostnames never shadow each other. Rollout verification watches the ECS service's own deployment state (the workload check), and the domain check probes the filled hostname. Closing the PR destroys the four preview resources; the shared ALB never notices.
+
+One honest limit: ECS exports no native endpoint of any kind — a preview whose base environment declares NO serving domain still deploys and verifies through the workload check, but discovers no URL. Give the base environment a serving domain and every preview gets an address for free.
+
 ## Reading a preview run's deploy state
 
 The run record's deployment stage carries exactly one of these explanations:

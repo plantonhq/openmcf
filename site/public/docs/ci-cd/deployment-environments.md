@@ -213,9 +213,21 @@ If your service is configured to deploy only to dev and stage, only those two en
 - Verify that the deployment environments list is not empty — an empty list means "deploy to all."
 - Confirm the configuration was saved successfully in the service settings.
 
+## Preview Environments per Pull Request
+
+Beside the durable environments you configure, the platform mints **preview environments** on its own: when a pull request opens on a service with `build.triggers.pullRequests.deploy` enabled, a real, short-lived environment named `{service}-pr-{number}` is born from the environment the PR's target branch deploys to, and the changed service deploys into it alone. Rollout verification stamps a working URL for the pull request's own copy of the service.
+
+Three things to know about them:
+
+- **They manage their own lifecycle.** A preview is created by the pull request and destroyed by it — closing the PR (merged or not) tears down its cloud resources and records, and an untouched preview expires on its own (72 hours by default, tunable per service with `previewTtlHours`). Deleting a preview environment by hand is refused; closing the pull request is the delete button.
+- **They never join promotion order.** Your dev → staging → production walk is unchanged no matter how many previews exist.
+- **They are capped.** At most five previews per service exist at once; a pull request beyond the cap still builds, and its deploy explains the skip.
+
+Check any pull request's preview — its phase, verified URL, and rollout verdict — with `planton service previews <service> --pr <n>`.
+
 ## Related Documentation
 
 - [Deployment Stage](/docs/ci-cd/deployment-stage) — How manifests are resolved and deployed, including the Kustomize model
 - [Deployment Targets](/docs/ci-cd/deployment-targets) — Supported platforms and Git-based vs inline configuration
 - [What is a Service?](/docs/ci-cd/what-is-a-service) — Service configuration overview
-- [Pipelines](/docs/ci-cd/pipelines) — The pipeline execution model
+- [Pipelines](/docs/ci-cd/pipelines) — The pipeline execution model, including pull-request previews

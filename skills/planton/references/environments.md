@@ -19,6 +19,27 @@ many clusters environments need.
   by `values.env`. This is how "multiple environments" works — one chart,
   many deployments — never one chart per environment.
 
+## Preview environments are environments too
+
+An environment whose name looks like `{service}-pr-{number}` (e.g.
+`storefront-pr-123`) is a **pull-request preview**: a real, short-lived
+Environment record the platform mints when a PR opens on a service that opted
+in via `build.triggers.pullRequests.deploy`, and destroys when the PR closes
+or its TTL expires. The `spec.preview` block on the record is the tell — base
+environment, service, pull request number, expiry — and it is server-managed
+(create, update, and apply refuse it). Two laws to relay:
+
+- **Never try to delete one by hand** — `planton env delete` REFUSES a
+  preview, because a record-only delete would orphan its cloud resources. If
+  a user asks to remove a preview, close its pull request — that IS the
+  delete button (or let the expiry pass).
+- **Previews never join promotion order** — they exist beside the durable
+  environments without changing any walk.
+
+Everything else about them (authoring the previews tree, the verified URL,
+the one-call read) lives in the `planton-service` skill's
+`preview-environments.md`.
+
 ## One cluster serves multiple environments (the default recommendation)
 
 A developer asking for "dev and prod environments" on Kubernetes does NOT
