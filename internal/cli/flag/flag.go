@@ -14,6 +14,7 @@ const (
 	BackendKey      Flag = "backend-key"
 	BackendRegion   Flag = "backend-region"
 	BackendType     Flag = "backend-type"
+	BackendUrl      Flag = "backend-url"
 	Clipboard       Flag = "clipboard"
 	Destroy         Flag = "destroy"
 	Diff            Flag = "diff"

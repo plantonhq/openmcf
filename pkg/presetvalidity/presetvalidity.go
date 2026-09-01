@@ -89,18 +89,43 @@ func CheckPreset(path string, content []byte) []Violation {
 // runner's memory, while a per-preset validator recompiles the same kind's
 // rules once per preset. The rules evaluated are byte-identical to the CLI
 // validation path's.
+//
+// A preset may deliberately hold SEVERAL documents (a composition preset
+// teaching a multi-resource pattern), so validation splits the stream and
+// checks every document -- the manifest loader itself accepts exactly one
+// document per call, and validating only the first would ship a preset
+// whose later steps were never checked.
 func checkPresetWith(v protovalidate.Validator, path string, content []byte) []Violation {
-	loaded, err := manifest.LoadManifestBytes(content, path)
-	if err == nil {
-		err = v.Validate(loaded)
+	docs, err := manifest.SplitDocuments(content)
+	if err != nil {
+		return []Violation{{
+			Path:   path,
+			Rule:   RuleInvalidPreset,
+			Detail: fmt.Sprintf("the preset does not validate against its own kind's rules: %s", firstMeaningfulLine(err.Error())),
+		}}
 	}
-	if err == nil {
+
+	var details []string
+	for i, doc := range docs {
+		loaded, err := manifest.LoadManifestBytes(doc, path)
+		if err == nil {
+			err = v.Validate(loaded)
+		}
+		if err != nil {
+			label := ""
+			if len(docs) > 1 {
+				label = fmt.Sprintf("document %d: ", i+1)
+			}
+			details = append(details, label+firstMeaningfulLine(err.Error()))
+		}
+	}
+	if len(details) == 0 {
 		return nil
 	}
 	return []Violation{{
 		Path:   path,
 		Rule:   RuleInvalidPreset,
-		Detail: fmt.Sprintf("the preset does not validate against its own kind's rules: %s", firstMeaningfulLine(err.Error())),
+		Detail: fmt.Sprintf("the preset does not validate against its own kind's rules: %s", strings.Join(details, "; ")),
 	}}
 }
 

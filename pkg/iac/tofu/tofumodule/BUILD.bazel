@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "tofumodule",
     srcs = [
+        "capture_outputs.go",
         "module_directory.go",
         "procattr_other.go",
         "procattr_unix.go",
@@ -10,6 +11,7 @@ go_library(
         "reapable_command.go",
         "run_command.go",
         "run_operation.go",
+        "run_options.go",
         "stream_output.go",
         "tofu_init.go",
     ],
@@ -31,6 +33,7 @@ go_library(
         "//pkg/iac/tofu/tfbackend",
         "//pkg/iac/tofu/tfoverride",
         "//pkg/iac/tofu/tofuzip",
+        "//pkg/outputs",
         "//shared/cloudresourcekind",
         "//shared/iac/terraform",
         "@com_github_pkg_errors//:errors",
@@ -42,9 +45,11 @@ go_library(
 go_test(
     name = "tofumodule_test",
     srcs = [
+        "capture_outputs_test.go",
         "module_directory_test.go",
         "reapable_command_test.go",
         "stream_output_test.go",
     ],
     embed = [":tofumodule"],
+    deps = ["@com_github_stretchr_testify//assert"],
 )

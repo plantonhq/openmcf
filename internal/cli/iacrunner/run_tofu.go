@@ -11,6 +11,7 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/provisioner"
 	"github.com/plantonhq/planton/pkg/iac/tofu/backendconfig"
 	"github.com/plantonhq/planton/pkg/iac/tofu/tofumodule"
+	"github.com/plantonhq/planton/pkg/outputs"
 	"github.com/plantonhq/planton/shared/iac/terraform"
 	"github.com/spf13/cobra"
 )
@@ -67,6 +68,15 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 
 	cliprint.PrintHandoff(binary.DisplayName())
 
+	// Apply captures the stack's outputs so they can be shown (masked) after
+	// success — the other operations have no fresh outputs to read.
+	var runOpts []tofumodule.RunOption
+	var captured *outputs.CaptureResult
+	if operation == terraform.TerraformOperationType_apply {
+		captured = &outputs.CaptureResult{}
+		runOpts = append(runOpts, tofumodule.WithOutputCapture(captured))
+	}
+
 	err = tofumodule.RunCommand(
 		string(binary),
 		ctx.ModuleDir,
@@ -81,6 +91,7 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 		ctx.KubeContext,
 		ctx.ProviderConfig,
 		backendCfg,
+		runOpts...,
 	)
 	if err != nil {
 		printHclExecutionError(binary, err)
@@ -88,6 +99,7 @@ func runHcl(ctx *Context, cmd *cobra.Command, operation terraform.TerraformOpera
 	}
 
 	printHclSuccess(binary)
+	ui.StackOutputsSummary(captured)
 	return nil
 }
 

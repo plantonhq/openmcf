@@ -37,7 +37,13 @@ func RunCommand(
 	kubeContext string,
 	providerConfig *stackinputproviderconfig.ProviderConfig,
 	backendConfig *backendconfig.TofuBackendConfig,
+	opts ...RunOption,
 ) error {
+	var cfg runConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
 		return errors.Wrapf(err, "failed to override values in target manifest file")
@@ -150,6 +156,20 @@ func RunCommand(
 		providerConfigEnvVars, false, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to run %s operation", binaryName)
+	}
+
+	// Capture must run here, before the deferred workspace cleanup and
+	// provider-override removal fire: `output -json` re-initializes the
+	// backend and providers, so it needs the workspace exactly as the apply
+	// left it. Only apply captures — plan writes no state, and destroy and
+	// refresh have no fresh outputs to read.
+	if cfg.captureSink != nil && terraformOperation == terraform.TerraformOperationType_apply {
+		if captureErr := captureOutputs(context.Background(), binaryName, modulePath, kindName,
+			providerConfigEnvVars, cfg.captureSink); captureErr != nil {
+			// The apply already succeeded; a capture failure must not turn a
+			// deployed stack into a failed command. Report and move on.
+			log.Warnf("stack outputs could not be captured after apply: %v", captureErr)
+		}
 	}
 
 	return nil

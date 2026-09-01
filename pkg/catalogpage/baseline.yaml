@@ -10,5 +10,4 @@
 #
 # Entry format: <repo-relative catalog.md path>:<rule>   (see pkg/catalogpage rule constants)
 # Regenerate with:  PLANTON_REGEN_CATALOG_PAGE_BASELINE=1 go test ./pkg/catalogpage/
-violations:
-  - catalog/gcp/gcpsslcertificate/catalog.md:invalid-manifest
+violations: []

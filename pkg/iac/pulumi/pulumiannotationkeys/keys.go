@@ -19,4 +19,11 @@ const (
 
 	// StackNameAnnotationKey is used when stack.fqdn is not present
 	StackNameAnnotationKey = "pulumi.planton.dev/stack.name"
+
+	// BackendUrlAnnotationKey pins the pulumi state backend for this manifest
+	// (s3://..., gs://..., azblob://..., file://..., or a Pulumi Cloud URL).
+	// Without it, pulumi uses whatever ambient `pulumi login` state the
+	// machine holds — fine interactively, ambiguous in CI. Precedence follows
+	// the tofu backend convention: CLI flag > this annotation > environment.
+	BackendUrlAnnotationKey = "pulumi.planton.dev/backend.url"
 )

@@ -15,4 +15,8 @@ func AddPulumiFlags(cmd *cobra.Command) {
 
 	cmd.PersistentFlags().Bool(string(flag.Diff), false,
 		"Show detailed resource diffs (Pulumi)")
+
+	cmd.PersistentFlags().String(string(flag.BackendUrl), "",
+		"pulumi state backend url (s3://..., gs://..., azblob://..., file://..., or a Pulumi Cloud url); "+
+			"overrides the manifest annotation and the PLANTON_BACKEND_URL environment variable")
 }

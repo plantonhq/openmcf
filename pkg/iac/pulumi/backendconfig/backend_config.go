@@ -2,12 +2,40 @@ package backendconfig
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumiannotationkeys"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"google.golang.org/protobuf/proto"
 )
+
+// BackendUrlEnvVar configures the pulumi state backend URL from the
+// environment — the lowest-priority layer, joining the PLANTON_BACKEND_*
+// family the tofu backend established. Pulumi's own PULUMI_BACKEND_URL is
+// what the engine ultimately reads; this variable exists so one Planton
+// convention configures state for both engines' env layers.
+const BackendUrlEnvVar = "PLANTON_BACKEND_URL"
+
+// ResolveBackendURL merges the pulumi backend URL from its three sources in
+// the same precedence direction the tofu backend follows: the CLI flag wins,
+// then the manifest annotation, then the environment. Empty means "no
+// backend pinned" — pulumi falls back to the machine's ambient login state.
+// The returned source names the winning layer for honest display.
+func ResolveBackendURL(manifest proto.Message, flagValue string) (url string, source string) {
+	if flagValue != "" {
+		return flagValue, "flag"
+	}
+	if annotations := metadatareflect.ExtractAnnotations(manifest); annotations != nil {
+		if annotated, ok := annotations[pulumiannotationkeys.BackendUrlAnnotationKey]; ok && annotated != "" {
+			return annotated, "manifest annotation"
+		}
+	}
+	if fromEnv := os.Getenv(BackendUrlEnvVar); fromEnv != "" {
+		return fromEnv, "environment (" + BackendUrlEnvVar + ")"
+	}
+	return "", ""
+}
 
 // PulumiBackendConfig represents the Pulumi backend configuration
 type PulumiBackendConfig struct {

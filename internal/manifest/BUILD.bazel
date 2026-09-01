@@ -6,6 +6,7 @@ go_library(
         "envelope.go",
         "load_manifest.go",
         "manifest_validator.go",
+        "multidoc.go",
         "print.go",
         "spec_extractor.go",
         "values_setter.go",
@@ -37,6 +38,8 @@ go_test(
     srcs = [
         "load_manifest_test.go",
         "manifest_validator_test.go",
+        "multidoc_test.go",
     ],
     embed = [":manifest"],
+    deps = ["@com_github_stretchr_testify//assert"],
 )

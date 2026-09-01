@@ -27,6 +27,7 @@ go_library(
         "//pkg/iac/tofu/backendconfig",
         "//pkg/iac/tofu/tofumodule",
         "//pkg/kubernetes/kubecontext",
+        "//pkg/outputs",
         "//shared",
         "//shared/iac/pulumi",
         "//shared/iac/terraform",
