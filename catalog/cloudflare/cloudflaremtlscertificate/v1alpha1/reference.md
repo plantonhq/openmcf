@@ -82,7 +82,13 @@ and the API cannot change it after upload.
 `string` · required
 
 The certificate (or CA chain) in PEM form. Keep the PEM byte-stable --
-a formatting-only change still replaces the upload.
+a formatting-only change still replaces the upload. Cloudflare stores
+the PEM canonicalized to end with exactly one trailing newline and the
+store is content-addressed (measured 2026-08-28): uploading identical
+content answers the EXISTING certificate id, and a duplicate upload
+while one is live is rejected (400 code 1471 "This certificate already
+exists for this account"). The modules canonicalize the trailing
+newline before sending, so trailing whitespace differences never churn.
 
 - rule: {"required":true}
 
@@ -107,6 +113,14 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareMtlsCe
 | `status.outputs.certificate_id` | `string` | The ID of the uploaded certificate -- what Authenticated Origin Pulls rows, zone TLS CA associations, and Workers mTLS bindings reference. |
 | `status.outputs.expires_on` | `string` | When the certificate expires (RFC3339). |
 | `status.outputs.serial_number` | `string` | The certificate's serial number. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| CloudflareZoneTlsSettings | `spec.caHostnameAssociations[].mtlsCertificateId` | `status.outputs.certificate_id` |
 
 ## See Also
 

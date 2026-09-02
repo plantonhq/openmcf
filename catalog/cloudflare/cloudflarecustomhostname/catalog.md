@@ -85,7 +85,7 @@ These are the most important decisions when configuring a custom hostname. Explo
 
 **Custom Metadata (`customMetadata`)** -- arbitrary key/values (e.g. a tenant id) readable by Workers and rules at request time. This is the hook for per-tenant routing logic at the edge.
 
-**Deletion is soft** -- a hostname in `pending_deletion` or `deleted` still answers API reads. Automation that treats "the id exists" as "the hostname is live" will lie after a destroy; key on `status` instead.
+**Deletion is soft** -- a hostname in `pending_deletion` or `deleted` still answers API reads. Automation that treats "the id exists" as "the hostname is live" will lie after a destroy; key on the hostname's activation status read from the Cloudflare API instead.
 
 ## Outputs and Dependencies
 
@@ -104,11 +104,12 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `custom_hostname_id` | The Cloudflare-assigned identifier | Verification tooling and imports -- paired with `zone_id`, since the hostname's API identity is the (zone, hostname) tuple |
-| `status` | The activation status (`pending`, `pending_validation`, `active`) | Gating tenant go-live automation on `active` |
 | `ownership_verification_name`, `ownership_verification_type`, `ownership_verification_value` | The DNS record the customer adds to prove control | Customer onboarding hand-off (tickets, emails, portals) |
 | `ownership_verification_http_url`, `ownership_verification_http_body` | The HTTP alternative for ownership verification | Customer onboarding hand-off when the customer cannot edit DNS |
-| `verification_errors` | Any verification errors reported by Cloudflare | Diagnosing stuck activations |
+| `created_at` | RFC3339 creation timestamp | Auditing |
 | `zone_id` | The SaaS zone the hostname was onboarded onto | Completes the hostname's API identity for tooling that composes on it |
+
+Activation status and verification errors are deliberately not outputs — both transition asynchronously server-side (status walks `pending` → `pending_validation` → `active`; the verification-errors list fills and empties as verification progresses); read them from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

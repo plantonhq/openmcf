@@ -48,6 +48,11 @@ type CloudflareWorkerSpec struct {
 	//	*CloudflareWorkerSpec_R2Bundle
 	Source isCloudflareWorkerSpec_Source `protobuf_oneof:"source"`
 	// The entrypoint module filename within the bundle (module-format workers).
+	// Both engines default it to "index.js" when unset (unless body_part marks
+	// service-worker syntax): an upload without a main module is treated by
+	// Cloudflare as a legacy service-worker script and ES-module code then
+	// fails deploy with "Uncaught SyntaxError: Unexpected token 'export'"
+	// (measured live).
 	MainModule string `protobuf:"bytes,6,opt,name=main_module,json=mainModule,proto3" json:"main_module,omitempty"`
 	// Runtime compatibility flags (e.g. "nodejs_compat"). See the Cloudflare
 	// compatibility-flags docs for the set valid on a given compatibility_date.
@@ -1788,6 +1793,10 @@ type CloudflareWorkerObservabilityTraces struct {
 	Persist          bool                   `protobuf:"varint,4,opt,name=persist,proto3" json:"persist,omitempty"`
 	// How inbound traceparent/tracestate headers are handled: "authenticated"
 	// (default) or "accept".
+	// Requires the account's trace-propagation feature: without it Cloudflare
+	// rejects the whole script upload with 403 code 100342 ("propagation_policy
+	// requires the trace propagation feature to be enabled") -- measured live.
+	// Leave unset unless the account carries the feature.
 	PropagationPolicy string `protobuf:"bytes,5,opt,name=propagation_policy,json=propagationPolicy,proto3" json:"propagation_policy,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache

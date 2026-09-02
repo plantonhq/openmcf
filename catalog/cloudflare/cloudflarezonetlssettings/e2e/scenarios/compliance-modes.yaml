@@ -1,0 +1,22 @@
+# The free-surface arm: origin TLS compliance modes on the run-scoped fixture
+# zone -- the ONE zone-TLS surface measured free-plan-writable on a pending
+# zone (live, 2026-08-27). The per-hostname override fan-out that used to
+# ride this arm is NOT free: every hostname_settings write answers 401 code
+# 1450 "available with the Advanced Certificate Manager" on ANY plan (probed
+# on a pending Free zone and an active Pro zone -- ACM is a per-zone
+# subscription, not a plan tier). The ACM-gated arms live in
+# e2e/acm-arms-plan.yaml until a sanctioned ACM-subscribed zone exists.
+# Compliance modes have a REAL delete, so the destroy phase genuinely clears
+# the requirement.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: e2e-tls-compliance-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  origin_tls_compliance_modes:
+    - fips

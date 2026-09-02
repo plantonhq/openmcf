@@ -1,3 +1,7 @@
+---
+display_name: DNS Block
+---
+
 # DNS block
 
 A Gateway DNS policy that blocks a domain and shows Cloudflare's block page. `enabled` and `precedence` are set explicitly -- omit `enabled: true` and the rule deploys disabled.

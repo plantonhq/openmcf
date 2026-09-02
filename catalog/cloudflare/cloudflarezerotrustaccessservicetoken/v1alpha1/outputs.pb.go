@@ -7,6 +7,7 @@
 package cloudflarezerotrustaccessservicetokenv1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -31,10 +32,12 @@ type CloudflareZeroTrustAccessServiceTokenStackOutputs struct {
 	// The Client ID the machine client presents in the CF-Access-Client-ID
 	// request header.
 	ClientId string `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
-	// Sensitive. The Client Secret the machine client presents in the
-	// CF-Access-Client-Secret request header. Cloudflare returns it ONLY at
-	// creation and at rotation -- it can never be read back later, and it does
-	// not survive an import. Capture it into a secret store at deploy time.
+	// The Client Secret the machine client presents in the
+	// CF-Access-Client-Secret request header -- sensitive both here
+	// (machine-readable) and in the modules' output registration. Cloudflare
+	// returns it ONLY at creation and at rotation -- it can never be read
+	// back later, and it does not survive an import. Capture it into a
+	// secret store at deploy time.
 	ClientSecret string `protobuf:"bytes,3,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
 	// When the token expires, as an RFC3339 timestamp.
 	ExpiresAt     string `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
@@ -104,11 +107,11 @@ var File_catalog_cloudflare_cloudflarezerotrustaccessservicetoken_v1alpha1_outpu
 
 const file_catalog_cloudflare_cloudflarezerotrustaccessservicetoken_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ocatalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1/outputs.proto\x12Edev.planton.cloudflare.cloudflarezerotrustaccessservicetoken.v1alpha1\"\xbe\x01\n" +
+	"Ocatalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1/outputs.proto\x12Edev.planton.cloudflare.cloudflarezerotrustaccessservicetoken.v1alpha1\x1a\x1cshared/options/options.proto\"\xc4\x01\n" +
 	"1CloudflareZeroTrustAccessServiceTokenStackOutputs\x12(\n" +
 	"\x10service_token_id\x18\x01 \x01(\tR\x0eserviceTokenId\x12\x1b\n" +
-	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12#\n" +
-	"\rclient_secret\x18\x03 \x01(\tR\fclientSecret\x12\x1d\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12)\n" +
+	"\rclient_secret\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret\x12\x1d\n" +
 	"\n" +
 	"expires_at\x18\x04 \x01(\tR\texpiresAtB\xa1\x04\n" +
 	"Icom.dev.planton.cloudflare.cloudflarezerotrustaccessservicetoken.v1alpha1B\fOutputsProtoP\x01Z\x8c\x01github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1;cloudflarezerotrustaccessservicetokenv1alpha1\xa2\x02\x04DPCC\xaa\x02EDev.Planton.Cloudflare.Cloudflarezerotrustaccessservicetoken.V1alpha1\xca\x02EDev\\Planton\\Cloudflare\\Cloudflarezerotrustaccessservicetoken\\V1alpha1\xe2\x02QDev\\Planton\\Cloudflare\\Cloudflarezerotrustaccessservicetoken\\V1alpha1\\GPBMetadata\xea\x02IDev::Planton::Cloudflare::Cloudflarezerotrustaccessservicetoken::V1alpha1b\x06proto3"

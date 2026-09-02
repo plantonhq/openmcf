@@ -10,20 +10,26 @@ spec:
   # accounts/{account_id}/access/apps/{app_id} verify -> destroy ->
   # verify-destroyed on both provisioners. Two scenarios: `bookmark-minimal`
   # (a bookmark tile -- the cheapest type, no domain ownership, no fixtures)
-  # and `self-hosted` (the flagship type on a hostname of the run-scoped
-  # pending-zone fixture, with a standalone policy attached by reference --
-  # proving the app->policy graph edge live; both fixtures are
-  # scenario-declared because an application requires neither). Deliberately
-  # not live: saas/oauth, scim, and IdP-coupled surfaces -- they need a
-  # configured identity provider no throwaway lane owns; they are
-  # preset-proven. Entitlement: requires the account's Zero Trust
-  # organization (team name) to exist -- one-time setup, Zero Trust Free.
-  # Whether Access accepts a self_hosted app on a PENDING (undelegated) zone
-  # is unverified offline -- the proof-queue watch-list carries it. Objects
-  # create in seconds at zero cost.
+  # and `self-hosted` (the flagship type on a run-scoped hostname of a real
+  # ACTIVE zone -- env-gated on PLANTON_E2E_CLOUDFLARE_ZONE_NAME -- with a
+  # standalone policy attached by reference, proving the app->policy graph
+  # edge live; the policy fixture is scenario-declared because an application
+  # requires no policy). MEASURED (live, 2026-08-26): Access REJECTS a
+  # self_hosted domain on a PENDING (undelegated) zone with 400
+  # "access.api.error.invalid_request: domain does not belong to zone" and
+  # accepts the identical create on an ACTIVE zone -- the wall is delegation
+  # state, which is why this arm rides the sanctioned active test zone, not
+  # the run-scoped pending-zone fixture. Deliberately not live: saas/oauth,
+  # scim, and IdP-coupled surfaces -- they need a configured identity
+  # provider no throwaway lane owns; they are preset-proven. Entitlement:
+  # requires the account's Zero Trust organization (team name) to exist --
+  # one-time setup, Zero Trust Free. Objects create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran bookmark-minimal + self-hosted
+  # through the full lifecycle (deploy -> REST-API verify -> destroy ->
+  # verify-absent) with the apply-idempotency re-plan green, plus blind
+  # import round-trips on the Terraform lanes (the self-hosted round-trip
+  # tolerates the three declared echo toggles -- see the import catalog row).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

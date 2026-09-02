@@ -128,10 +128,15 @@ resource "cloudflare_r2_bucket_event_notification" "main" {
   queue_id     = each.value.queue
   jurisdiction = local.jurisdiction
 
+  # Cloudflare serializes the FULL rule object on read -- an unset filter
+  # comes back as "" (measured live 2026-08-26: a rule created without
+  # suffix refreshed to suffix = "", so mapping empty -> null drifted
+  # forever). Pass the empty strings through; "" and absent mean the same
+  # thing to the API and the state then matches the echo.
   rules = [for r in each.value.rules : {
     actions     = r.actions
-    description = try(r.description, "") != "" ? r.description : null
-    prefix      = try(r.prefix, "") != "" ? r.prefix : null
-    suffix      = try(r.suffix, "") != "" ? r.suffix : null
+    description = try(r.description, "")
+    prefix      = try(r.prefix, "")
+    suffix      = try(r.suffix, "")
   }]
 }

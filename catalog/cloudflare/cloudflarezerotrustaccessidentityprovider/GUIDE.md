@@ -22,9 +22,13 @@ Enabling `scim_config` mints a bearer token. Cloudflare returns it on that creat
 
 `scim_config` is forbidden on `onetimepin`. Cloudflare rejects the combination; validation does too.
 
-## OTP and API-token auth
+## One-time PIN is an account singleton
 
-The OTP Access endpoint has historically rejected API-token auth on **update**. The provider's own OTP tests unset `CLOUDFLARE_API_TOKEN` for that reason. Create and destroy with a token work; an update (including an idempotency re-plan that Cloudflare treats as an update) may 403. If that happens, the fix is not to switch credentials in the harness -- record the defect and keep OTP as a create/destroy-only path until Cloudflare accepts tokens on that endpoint.
+Cloudflare allows exactly ONE `onetimepin` provider per account: a second create is refused with 409 "access.api.error.conflict: a onetimepin connection already exists" (measured live 2026-08-26). If your account already uses email-PIN login, do not declare a new one -- adopt the existing provider by import (`accounts/{account_id}/{identity_provider_id}`) and manage it from there. The historical worry that the OTP endpoint rejects API-token auth on update (the provider's own OTP tests unset `CLOUDFLARE_API_TOKEN`) did not reproduce for account-owned tokens on create; if an update ever 403s, record the defect rather than switching credentials.
+
+## Adopting an existing provider (import)
+
+Import restores the provider's identity and settings but never its secrets: `config.client_secret` comes back null (Cloudflare redacts it) and `scim_config.secret` is minted once and never re-readable. Keep the real client secret in your configuration -- the first post-import apply re-asserts it, a no-op write against the provider's actual state (measured live 2026-08-26).
 
 ## Read-only is a latch, not a suggestion
 

@@ -46,13 +46,19 @@ type CloudflareAuthenticatedOriginPullsCertificateSpec struct {
 	// replaces the zone-wide client certificate; hostname uploads a
 	// certificate for per-hostname associations to reference.
 	Scope *string `protobuf:"bytes,2,opt,name=scope,proto3,oneof" json:"scope,omitempty"`
-	// The client certificate in PEM form. Keep the PEM byte-stable (trailing
-	// newline included) -- a formatting-only change still replaces the upload.
+	// The client certificate in PEM form. Must be a LEAF certificate --
+	// Cloudflare rejects CA-flagged uploads (400 code 1412 "Missing leaf
+	// certificate.", measured 2026-08-28; a self-signed cert is fine, but
+	// mint it with basicConstraints CA:FALSE). Keep the PEM byte-stable
+	// (trailing newline included) -- a formatting-only change still replaces
+	// the upload.
 	Certificate string `protobuf:"bytes,3,opt,name=certificate,proto3" json:"certificate,omitempty"`
 	// The certificate's private key in PEM form. Provide a managed-secret
 	// reference; the platform resolves it just-in-time at deploy and never
-	// stores it in plaintext. The API never returns the key, so an imported or
-	// refreshed resource re-asserts it from configuration.
+	// stores it in plaintext. The API never returns the key, and on the
+	// hostname surface it forces replacement -- an imported resource cannot
+	// restore it, so the first post-import apply replaces the upload under a
+	// new certificate id (re-point associations; see the import catalog).
 	PrivateKey    *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

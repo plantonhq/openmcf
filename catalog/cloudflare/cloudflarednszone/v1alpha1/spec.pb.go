@@ -290,10 +290,21 @@ type CloudflareDnsZoneSpec struct {
 	// Enterprise plans; leave empty to use Cloudflare's assigned name servers.
 	VanityNameServers []string `protobuf:"bytes,6,rep,name=vanity_name_servers,json=vanityNameServers,proto3" json:"vanity_name_servers,omitempty"`
 	// Optional zone-wide DNS settings (CNAME flattening, zone mode, SOA, etc.).
-	// Omit to leave Cloudflare's defaults in place.
+	// Omit to leave Cloudflare's defaults in place. The non-default values are
+	// individually entitlement-gated: on an account/zone without the matching
+	// feature, Cloudflare rejects the write with 400 code 1003 "not available
+	// to this account or zone" (measured live for SOA tuning, ns_ttl, and
+	// flatten_all_cnames). On the terraform engine also note the v5.23.0
+	// provider echoes server defaults into unset optional fields on refresh,
+	// so a partial dns_settings block re-plans forever -- declare every field
+	// the server echoes, or omit the block.
 	DnsSettings *CloudflareDnsZoneDnsSettings `protobuf:"bytes,7,opt,name=dns_settings,json=dnsSettings,proto3" json:"dns_settings,omitempty"`
 	// Optional DNSSEC configuration. Enable to have Cloudflare sign the zone; the
 	// DS record material to hand to your registrar is published as stack outputs.
+	// DNSSEC activates only on an ACTIVE (registrar-delegated) zone: on a
+	// PENDING zone Cloudflare rejects the enable with 400 code 1017 "Invalid
+	// zone plan for action" (measured live; the same call succeeds on an
+	// active free-plan zone -- the wall is delegation state, not plan tier).
 	Dnssec *CloudflareDnsZoneDnssec `protobuf:"bytes,8,opt,name=dnssec,proto3" json:"dnssec,omitempty"`
 	// Optional zone hold. While enabled, Cloudflare blocks this zone's hostname
 	// (and optionally its subdomains) from being created as a zone in any other
@@ -438,6 +449,10 @@ type CloudflareDnsZoneRecord struct {
 	Ttl int32 `protobuf:"varint,5,opt,name=ttl,proto3" json:"ttl,omitempty"`
 	// Priority for MX records (lower is preferred). Required for MX; ignored for
 	// other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
+	// Declare priority in exactly one place: for SRV/URI the modules mirror the
+	// data-block priority into the provider's top-level field themselves,
+	// because Cloudflare reflects it there on read (live-measured; omitting the
+	// mirror re-plans forever).
 	Priority int32 `protobuf:"varint,6,opt,name=priority,proto3" json:"priority,omitempty"`
 	// Optional comment/note for the record. Has no effect on DNS responses.
 	Comment string `protobuf:"bytes,7,opt,name=comment,proto3" json:"comment,omitempty"`
@@ -463,9 +478,14 @@ type CloudflareDnsZoneRecord struct {
 	//	*CloudflareDnsZoneRecord_Uri
 	Data isCloudflareDnsZoneRecord_Data `protobuf_oneof:"data"`
 	// Custom tags for the record. Have no effect on DNS responses; useful for
-	// organizing and filtering records.
+	// organizing and filtering records. Entitlement-gated: accounts without the
+	// record-tags feature have a tag quota of 0 and the record create fails
+	// with 400 code 9300 (measured live on a free-plan account).
 	Tags []string `protobuf:"bytes,22,rep,name=tags,proto3" json:"tags,omitempty"`
 	// Optional record-level settings controlling how proxied records are served.
+	// Entitlement-gated: on zones without the feature, setting ipv4_only or
+	// ipv6_only fails the record create with 400 code 9227 "not available to
+	// this zone" (measured live on a free-plan zone).
 	Settings *CloudflareDnsZoneRecordSettings `protobuf:"bytes,23,opt,name=settings,proto3" json:"settings,omitempty"`
 	// Whether the record is restricted to Cloudflare's internal (private) routing
 	// and not served over the public internet — used for internal DNS / Magic WAN

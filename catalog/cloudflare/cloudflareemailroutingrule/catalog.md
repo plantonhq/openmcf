@@ -1,6 +1,6 @@
 # Cloudflare Email Routing Rule
 
-Defines a single Cloudflare Email Routing rule for a zone: match inbound mail -- by a specific recipient or all messages -- and then drop it, forward it to verified destinations, or hand it to an Email Worker. Rules require Email Routing to be enabled on the zone (a `CloudflareEmailRoutingZone`) and every forwarding destination must be a verified `CloudflareEmailRoutingAddress` -- the API rejects the rule otherwise. Rules are evaluated in priority order, so specific rules can take precedence over broad ones.
+Defines a single Cloudflare Email Routing rule for a zone: match inbound mail -- by a specific recipient or all messages -- and then drop it, forward it to verified destinations, or hand it to an Email Worker. Rules deploy on any zone but only take effect once the zone's Email Routing is enabled (a `CloudflareEmailRoutingZone`), and every forwarding destination must be a verified `CloudflareEmailRoutingAddress` -- the API rejects the rule otherwise. Rules are evaluated in priority order, so specific rules can take precedence over broad ones.
 
 ## What Gets Created
 

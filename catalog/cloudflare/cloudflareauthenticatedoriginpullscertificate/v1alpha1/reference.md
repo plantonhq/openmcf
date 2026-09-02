@@ -87,8 +87,12 @@ certificate for per-hostname associations to reference.
 
 `string` · required
 
-The client certificate in PEM form. Keep the PEM byte-stable (trailing
-newline included) -- a formatting-only change still replaces the upload.
+The client certificate in PEM form. Must be a LEAF certificate --
+Cloudflare rejects CA-flagged uploads (400 code 1412 "Missing leaf
+certificate.", measured 2026-08-28; a self-signed cert is fine, but
+mint it with basicConstraints CA:FALSE). Keep the PEM byte-stable
+(trailing newline included) -- a formatting-only change still replaces
+the upload.
 
 - rule: {"required":true}
 
@@ -98,8 +102,10 @@ newline included) -- a formatting-only change still replaces the upload.
 
 The certificate's private key in PEM form. Provide a managed-secret
 reference; the platform resolves it just-in-time at deploy and never
-stores it in plaintext. The API never returns the key, so an imported or
-refreshed resource re-asserts it from configuration.
+stores it in plaintext. The API never returns the key, and on the
+hostname surface it forces replacement -- an imported resource cannot
+restore it, so the first post-import apply replaces the upload under a
+new certificate id (re-point associations; see the import catalog).
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -113,7 +119,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareAuthen
 | `status.outputs.certificate_id` | `string` | The ID of the uploaded certificate -- what per-hostname associations reference. |
 | `status.outputs.zone_id` | `string` | The zone the certificate belongs to. |
 | `status.outputs.expires_on` | `string` | When the certificate expires (RFC3339). |
-| `status.outputs.status` | `string` | The certificate's deployment status (for example active or pending_deployment). Deployment and deletion are asynchronous. |
 
 ## References
 

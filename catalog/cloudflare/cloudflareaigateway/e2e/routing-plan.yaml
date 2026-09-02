@@ -1,0 +1,102 @@
+# OFFLINE PLAN ARM (never a live scenario at provider v5.23.0/v5.24.0):
+# guardrails, spend_limits, otel, and dynamic_routes are WRITE-ONLY AT THE
+# API -- Cloudflare accepts them on create/update but no read ever returns
+# them (live-measured 2026-08-27: neither the create response nor GET
+# carries any of the four; the dynamic route's graph comes back only under
+# version.data, a path the provider never reads). The provider still
+# refreshes all four, so state loses them on every refresh and a
+# refresh-inclusive plan re-proposes them forever -- and dynamic route
+# elements carry RequiresReplace, so that re-propose is a DESTROY-AND-
+# RECREATE of the route on every apply. No module send shape can fix a
+# refresh that nulls the attribute; verified unfixed at v5.24.0 and
+# provider main (zero upstream acceptance tests exist for either resource).
+# Pulumi converges (previews do not refresh) -- the walls are Terraform-
+# side. Unblock: a provider release whose gateway Read returns these
+# surfaces (or models them no_refresh) and whose routing Read restores
+# elements from version.data, plus its pulumi bridge -- then this file
+# returns to scenarios/ unchanged.
+#
+# This shape is proven offline through the real tfvars converter (plan-only,
+# token-substituted): the gateway with retries, log management, gateway
+# authentication, a guardrail, a spend cap, and one conditional dynamic
+# route. Model nodes REQUIRE outputs.fallback, properties.timeout, and
+# properties.retries (400 code 7001 without them -- live-measured; the
+# provider schema wrongly calls them optional).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: planton-oss-e2e-cloudflareaigateway-routing
+  id: planton-oss-e2e-cloudflareaigateway-routing
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  gateway_id: e2e-aig-rt-${E2E_RUN_ID}
+  cache_invalidate_on_update: true
+  cache_ttl: 0
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 100
+  rate_limiting_technique: sliding
+  retry:
+    backoff: exponential
+    delay: 500
+    max_attempts: 2
+  log_management:
+    max_records: 10000
+    strategy: DELETE_OLDEST
+  authentication: true
+  guardrails:
+    prompt:
+      p1: FLAG
+    response: {}
+  spend_limits:
+    enabled: true
+    rules:
+      - id: e2e-daily-cap
+        limit: 1
+        limit_type: cost
+        window: 86400
+  dynamic_routes:
+    - name: e2e-route
+      elements:
+        - id: start
+          type: start
+          outputs:
+            next:
+              element_id: check
+        - id: check
+          type: conditional
+          outputs:
+            on_true:
+              element_id: cheap
+            on_false:
+              element_id: done
+          properties:
+            conditions: '{"metadata.tier": {"$eq": "free"}}'
+        - id: cheap
+          type: model
+          outputs:
+            success:
+              element_id: done
+            # Cloudflare REQUIRES a fallback edge on model nodes (400 code
+            # 7001 "Required" without it -- live-measured 2026-08-27).
+            fallback:
+              element_id: done
+          properties:
+            model: "@cf/meta/llama-3.1-8b-instruct"
+            provider: workers-ai
+            # timeout and retries are REQUIRED on model nodes by the same
+            # measured API law (the provider schema calls them optional).
+            retries: 1
+            timeout: 30000
+        - id: done
+          type: end
+          outputs: {}

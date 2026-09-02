@@ -86,7 +86,7 @@ These are the most important decisions when configuring an AI Gateway. Explore t
 
 **Spend-limit rule IDs are identities** — every rule in `spendLimits.rules` requires its own unique `id`, and the spec enforces it because the provider's schema ships a leaked example value as the default: rules authored without IDs would share one identity and silently collapse into a single budget. Pick short stable slugs like `daily-cap`.
 
-**Route graphs replace, never update** — a dynamic route's `elements` list is create-only at the provider: any graph edit — one condition, one model swap — replaces that route object. This is safe (requests re-resolve the route by name on the next call), so a replace on a route in the plan is designed behavior, not a mistake. Renaming a route is its only in-place update.
+**Route graphs replace, never update** — a dynamic route's `elements` list is create-only at the provider: any graph edit — one condition, one model swap — replaces that route object. This is safe (requests re-resolve the route by name on the next call), so a replace on a route in the plan is designed behavior, not a mistake. Renaming a route is its only in-place update. Model elements carry a wiring contract of their own: every `model` node needs a `fallback` edge plus `timeout` and `retries` properties — Cloudflare rejects the create (400 code 7001) without them.
 
 **Guardrails take both sides** — `guardrails` requires both `prompt` and `response` objects; an empty object means "evaluate nothing on this side". Each control names a hazard-category code (`p1`, `s1`–`s13`) and takes FLAG (log the match) or BLOCK (refuse); an absent code leaves that category unevaluated.
 

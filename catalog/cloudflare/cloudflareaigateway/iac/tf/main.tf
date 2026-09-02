@@ -24,10 +24,10 @@ resource "cloudflare_ai_gateway" "main" {
   log_management          = local.log_management
   log_management_strategy = local.log_management_strategy
 
-  authentication          = var.spec.authentication
-  logpush                 = var.spec.logpush
+  authentication          = local.authentication
+  logpush                 = local.logpush
   logpush_public_key      = local.logpush_public_key
-  zdr                     = var.spec.zdr
+  zdr                     = local.zdr
   workers_ai_billing_mode = local.workers_ai_billing_mode
   store_id                = local.store_id
 

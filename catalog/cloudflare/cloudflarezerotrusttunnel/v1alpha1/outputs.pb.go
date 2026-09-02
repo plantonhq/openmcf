@@ -7,6 +7,7 @@
 package cloudflarezerotrusttunnelv1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -121,11 +122,11 @@ var File_catalog_cloudflare_cloudflarezerotrusttunnel_v1alpha1_outputs_proto pro
 
 const file_catalog_cloudflare_cloudflarezerotrusttunnel_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1\"\xef\x01\n" +
+	"Ccatalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflarezerotrusttunnel.v1alpha1\x1a\x1cshared/options/options.proto\"\xf5\x01\n" +
 	"%CloudflareZeroTrustTunnelStackOutputs\x12\x1b\n" +
 	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12!\n" +
-	"\ftunnel_cname\x18\x02 \x01(\tR\vtunnelCname\x12!\n" +
-	"\ftunnel_token\x18\x03 \x01(\tR\vtunnelToken\x12#\n" +
+	"\ftunnel_cname\x18\x02 \x01(\tR\vtunnelCname\x12'\n" +
+	"\ftunnel_token\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\vtunnelToken\x12#\n" +
 	"\rtunnel_status\x18\x04 \x01(\tR\ftunnelStatus\x12\x1f\n" +
 	"\vaccount_tag\x18\x05 \x01(\tR\n" +
 	"accountTag\x12\x1d\n" +

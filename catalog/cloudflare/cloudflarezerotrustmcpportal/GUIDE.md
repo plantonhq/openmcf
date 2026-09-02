@@ -10,9 +10,21 @@ Disable a tool at the SERVER (`CloudflareZeroTrustMcpServer.updated_tools`) when
 
 `portal_id` is immutable and (like the hostname) part of what clients configure. Renaming the slug replaces the portal -- every AI client configured against it breaks. Pick audience-stable slugs ("eng-tools", not "q3-pilot").
 
+## The hostname must be yours
+
+The portal is HOSTED by Cloudflare on your zone (unlike MCP servers, whose hostnames point at external upstreams), so the portal hostname must belong to a domain the account serves. A hostname on a domain the account does not own is rejected at create with API error 7012 "invalid_domain" (live-measured).
+
+## Overrides only work after the server has synced
+
+Cloudflare validates every prompt/tool override against the server's actually-synced inventory: an override naming a tool the server has not synced is rejected at write with error 7001 "Tool 'x' does not exist on server" (live-measured). Register the server, let its background sync succeed, then add overrides -- an override written in the same change as a brand-new server usually races the sync and fails.
+
 ## Rows are a set; some overrides are write-only
 
 Server rows carry no order -- the backend returns its own canonical order, and reordering manifest rows never plans a change. Within a row's prompt/tool overrides, `alias` and `description` are WRITE-ONLY per portal (the API returns them under different names, so the provider never reads them back): they cannot drift, and they land empty on import -- re-assert from configuration.
+
+## Adopting an existing portal
+
+Import restores the portal's scalars but NOT its configured server rows: the GET returns server rows in a different shape than the config writes (no `server_id`, server-echoed defaults), so the first post-adoption apply re-asserts the declared rows -- an idempotent replace of the portal's server list, not a real change (live-measured; the import recipes tolerate exactly this).
 
 ## on_behalf is a trust decision
 

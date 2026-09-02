@@ -157,8 +157,12 @@ message CloudflareDnsRecordSpec {
     expression: "this == 0 || this == 1 || (this >= 30 && this <= 86400)"
   }];
 
-  // Priority for MX records (lower is preferred). Required for MX; ignored for
-  // other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
+  // Priority for MX records (lower is preferred). Required for MX; never set it
+  // for other types (SRV/URI/HTTPS/SVCB carry their own priority inside their
+  // typed data). Cloudflare's API mirrors an SRV/URI data priority into the
+  // record's top-level priority field on its own; the IaC modules send that
+  // mirror so the deployed record never drifts -- authors declare priority in
+  // exactly one place.
   int32 priority = 7 [(buf.validate.field).cel = {
     id: "priority.valid_range"
     message: "priority must be between 0 and 65535"

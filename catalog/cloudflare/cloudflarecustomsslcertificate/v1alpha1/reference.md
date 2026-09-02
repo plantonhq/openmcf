@@ -185,7 +185,6 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCustom
 | `status.outputs.certificate_id` | `string` | The ID of the uploaded certificate. |
 | `status.outputs.zone_id` | `string` | The zone the certificate belongs to. |
 | `status.outputs.expires_on` | `string` | When the certificate expires (RFC3339). |
-| `status.outputs.status` | `string` | The certificate's deployment status (for example active or pending). Deployment is asynchronous -- a fresh upload may report a pending state before turning active. |
 
 ## References
 

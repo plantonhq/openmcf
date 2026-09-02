@@ -67,12 +67,13 @@ spec:
   zone_id: "your-zone-id-here"
   name: "_sip._tcp"
   type: SRV
-  data:
-    srv:
-      priority: 10
-      weight: 5
-      port: 5060
-      target: "sip.example.com"
+  # Typed record data sits at the spec top level (the active oneof case) --
+  # never under a `data:` wrapper key.
+  srv:
+    priority: 10
+    weight: 5
+    port: 5060
+    target: "sip.example.com"
 ```
 
 ### CAA Record (structured data)
@@ -86,11 +87,10 @@ spec:
   zone_id: "your-zone-id-here"
   name: "@"
   type: CAA
-  data:
-    caa:
-      flags: 0
-      tag: issue
-      value: "letsencrypt.org"
+  caa:
+    flags: 0
+    tag: issue
+    value: "letsencrypt.org"
 ```
 
 ## Configuration Reference
@@ -103,14 +103,14 @@ spec:
 | `name` | string | Record name (e.g., "www", "@" for the apex) |
 | `type` | enum | DNS record type (one of the 21 supported types) |
 
-Exactly one of `content` or a `data` block is required, and it must match the record `type`.
+Exactly one of `content` or a typed data block is required, and it must match the record `type`.
 
 ### Value Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `content` | string | Presentation-format value for **simple** types (A, AAAA, CNAME, MX, NS, PTR, TXT, OPENPGPKEY) |
-| `data` | oneof | Typed block for **structured** types (caa, cert, dnskey, ds, https, loc, naptr, smimea, srv, sshfp, svcb, tlsa, uri) |
+| `caa` ... `uri` | oneof | Typed block for **structured** types, written at the spec top level and named after the type (caa, cert, dnskey, ds, https, loc, naptr, smimea, srv, sshfp, svcb, tlsa, uri) — never under a `data:` wrapper key |
 
 ### Optional Fields
 
@@ -118,7 +118,7 @@ Exactly one of `content` or a `data` block is required, and it must match the re
 |-------|------|-------------|---------|
 | `proxied` | bool | Route through Cloudflare CDN/WAF (A, AAAA, CNAME only) | false |
 | `ttl` | int32 | Time to live: 0/1 (auto) or 30-86400 seconds | auto |
-| `priority` | int32 | Priority for MX records (0-65535) | 0 |
+| `priority` | int32 | Priority for MX records only (0-65535); SRV/URI declare priority inside their typed block and the modules mirror it to the API's top-level field automatically | 0 |
 | `comment` | string | Free-form note (no effect on DNS responses) | "" |
 | `tags` | []string | Custom tags for organizing/filtering records | [] |
 | `settings` | object | `ipv4_only`, `ipv6_only`, `flatten_cname` (proxied records only) | — |
@@ -138,7 +138,7 @@ Simple types use `content`:
 | TXT | `v=spf1 include:_spf.google.com ~all` |
 | OPENPGPKEY | base64 OpenPGP key |
 
-Structured types use the matching `data` block: CAA, CERT, DNSKEY, DS, HTTPS, LOC, NAPTR, SMIMEA, SRV, SSHFP, SVCB, TLSA, URI. SRV/URI/HTTPS/SVCB carry their own `priority` inside `data`.
+Structured types use the matching top-level typed block: CAA, CERT, DNSKEY, DS, HTTPS, LOC, NAPTR, SMIMEA, SRV, SSHFP, SVCB, TLSA, URI. SRV/URI/HTTPS/SVCB carry their own `priority` inside that block.
 
 ## Outputs
 

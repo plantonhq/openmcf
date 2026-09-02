@@ -1,0 +1,25 @@
+# The auto-origin-TLS-key-exchange arm, env-gated on the sanctioned ACTIVE
+# test zone. MEASURED WALL (live, 2026-08-27): the setting is free-plan
+# (write succeeded on an active Free zone) but ACTIVE-ZONE-ONLY -- on a
+# PENDING zone the PATCH answers 400 code 1000 with the MISLEADING message
+# "Invalid zone identifier" (the zone id is fine; the setting simply does
+# not exist until the zone activates). The run-scoped fixture zone is always
+# pending, so this arm runs on the sanctioned zone and skips honestly when
+# the env is unset.
+#
+# The declared value is DELIBERATELY false (Cloudflare's default): this
+# resource is the no-op-destroy class, so anything written here is abandoned
+# on the shared zone at destroy. Writing the default proves the full
+# lifecycle -- deploy, verify, idempotency, blind import round-trip, destroy
+# -- while leaving the shared zone exactly as found (the shared-zone hygiene
+# rule: never leave a live value flipped on a zone the lane does not own).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneTlsSettings
+metadata:
+  name: e2e-tls-kex-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
+spec:
+  zone_id:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
+  auto_origin_tls_kex: false

@@ -2,6 +2,19 @@
 
 The judgment this guide protects you from: the slug is the URL every client calls, route graphs replace rather than update, and one leaked provider default can silently collapse your spend budgets.
 
+## Known upstream blocker: Terraform plans never settle (v5.23.0-v5.24.0)
+
+Measured live 2026-08-27: the Cloudflare API is WRITE-ONLY for `guardrails`, `spend_limits`, `otel`, and a dynamic route's graph -- it accepts them on create/update but no read ever returns them (a route's graph comes back only under a `version.data` path the provider never consults). The provider still refreshes all of them, with two consequences on Terraform/OpenTofu at v5.23.0-v5.24.0:
+
+- **Every gateway re-plans forever** -- even one that sets none of these fields (the provider models `otel`/`spend_limits` as computed and re-marks them "known after apply" on every plan). Applies succeed and are no-ops at Cloudflare; plan-gated pipelines see a permanent diff. No configuration shape avoids it, and `ignore_changes` cannot suppress a provider-planned unknown.
+- **A Terraform-managed dynamic route is destroyed and recreated on every apply** (the un-restorable `elements` list forces replacement). Requests re-resolve by route name, but treat this as unusable for production routes.
+
+Pulumi is unaffected (previews do not refresh) -- all Pulumi lifecycles verified clean against the live API. Until a provider release fixes the reads, manage gateways carrying these surfaces through Pulumi, or accept the permanent diff and per-apply route churn knowingly.
+
+## Model nodes: fallback, timeout, and retries are required
+
+Cloudflare rejects a route's `model` node without an `outputs.fallback` edge, `properties.timeout`, and `properties.retries` -- 400 code 7001 "Required" (the provider schema wrongly calls all three optional). Point `fallback` at the element to try when the model call fails; use the end node when there is no backup model.
+
 ## The gateway id IS the endpoint URL
 
 `gateway_id` appears verbatim in the endpoint every client calls (`https://gateway.ai.cloudflare.com/v1/<account>/<gateway_id>/...`). It is create-only: renaming replaces the gateway AND breaks every client mid-flight. Choose the slug like a domain name -- boring, stable, forever.

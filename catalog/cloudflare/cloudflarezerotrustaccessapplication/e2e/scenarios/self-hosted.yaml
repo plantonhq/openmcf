@@ -1,15 +1,19 @@
 # Self-hosted CloudflareZeroTrustAccessApplication scenario: the flagship
-# type, protecting a hostname of the run-scoped pending-zone fixture, with a
+# type, protecting a run-scoped hostname of a REAL ACTIVE zone, with a
 # standalone Access policy attached by reference -- the app->policy graph
-# edge, proven live. BOTH fixtures are SCENARIO-declared
-# (planton.dev/e2e-prerequisites): an application requires neither a zone nor
-# a policy, so the edges are per-scenario, never registry prerequisites. The
-# domain cannot be a valueFrom (it is a plain string), so it composes the
-# SAME run token the zone fixture's name uses -- the two resolve to the same
-# domain by construction. Whether Access accepts a self_hosted app on a
-# PENDING (undelegated) zone is unverified offline; the proof-queue
-# watch-list carries it. Session policy: 24h explicit, proving the duration
-# path.
+# edge, proven live. MEASURED WALL (live, 2026-08-26): Access validates a
+# self_hosted domain against the account's ACTIVE zones only -- the create
+# answers 400 "access.api.error.invalid_request: domain does not belong to
+# zone" when the domain sits on a PENDING (undelegated) zone, and the
+# identical create succeeds on an ACTIVE zone (probe-proven both ways). A
+# run-scoped fixture zone is always pending, so this arm is env-gated on
+# PLANTON_E2E_CLOUDFLARE_ZONE_NAME (an ACTIVE zone the operator sanctions
+# for testing) and skips honestly when unset. The hostname stays run-scoped
+# under that zone, so concurrent runs cannot collide and no real DNS record
+# ever exists for it. The policy fixture is SCENARIO-declared
+# (planton.dev/e2e-prerequisites): an application does not require a policy,
+# so the edge is per-scenario, never a registry prerequisite. Session
+# policy: 24h explicit, proving the duration path.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustAccessApplication
 metadata:
@@ -22,14 +26,15 @@ metadata:
     e2e-component: cloudflarezerotrustaccessapplication
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: "CloudflareDnsZone, CloudflareZeroTrustAccessPolicy"
+    planton.dev/e2e-prerequisites: CloudflareZeroTrustAccessPolicy
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_NAME
   tags:
     - planton-e2e
 spec:
   accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
   name: planton-e2e-${E2E_RUN_ID}-app-sh
   type: self_hosted
-  domain: app.planton-e2e-${E2E_RUN_ID}.com
+  domain: planton-e2e-${E2E_RUN_ID}.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}
   sessionDuration: 24h
   policies:
     - policy:

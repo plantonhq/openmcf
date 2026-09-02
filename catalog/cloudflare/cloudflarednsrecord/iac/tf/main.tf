@@ -12,8 +12,8 @@ resource "cloudflare_dns_record" "main" {
   content = var.spec.content != "" ? var.spec.content : null
   data    = local.record_data
 
-  # Priority is only used for MX records
-  priority = local.requires_priority ? var.spec.priority : null
+  # Top-level priority mirrors the API contract for MX/SRV/URI (see locals.tf).
+  priority = local.top_priority
 
   # Comment for documentation
   comment = var.spec.comment != "" ? var.spec.comment : null

@@ -1,6 +1,9 @@
-# Http-minimal CloudflareLoadBalancerMonitor scenario: an HTTP health check
-# with provider defaults (type defaults to http, no port required). The
-# account comes from the harness env. Requires the Load Balancing add-on.
+# Http-minimal CloudflareLoadBalancerMonitor scenario: an HTTP health check at
+# the true API minimum. Cloudflare REQUIRES expected_codes or expected_body on
+# http/https monitors (400 code 1002 when both are empty -- measured live
+# 2026-08-28), so the minimal http monitor carries expectedCodes; everything
+# else rides provider defaults (type http, no port). The account comes from
+# the harness env. Requires the Load Balancing add-on.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancerMonitor
 metadata:
@@ -17,3 +20,4 @@ metadata:
     - planton-e2e
 spec:
   accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  expectedCodes: "2xx"

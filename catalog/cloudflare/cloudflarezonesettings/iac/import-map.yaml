@@ -16,12 +16,21 @@ spec:
         right-hand API panel), or `GET /zones?name=<domain>` on the
         Cloudflare v4 API (the id field).
     - name: setting_id
+      derivations:
+        # The module fans out one cloudflare_zone_setting per managed setting,
+        # keyed by the Cloudflare setting id itself -- the enumerated
+        # address's instance key IS the id segment.
+        - from_address_key: true
       where_to_find: >-
         The Cloudflare setting id being adopted (always_use_https, ssl,
         min_tls_version, ...) -- exactly the spec field name of the setting,
         except zero_rtt which maps to the API's "0rtt". Import one
         cloudflare_zone_setting address per managed setting.
     - name: origin_ip
+      derivations:
+        # The module keys the origin-cloud-region fan-out by origin IP (the
+        # row's API identity), so the address's instance key carries it.
+        - from_address_key: true
       where_to_find: >-
         The origin server IP of the cloudflare_origin_cloud_region row being
         adopted -- the spec's origin_cloud_regions[].origin_ip value, listed

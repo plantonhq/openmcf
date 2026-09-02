@@ -1,8 +1,10 @@
 # A complete, protovalidate-valid CloudflareAuthenticatedOriginPulls
 # example: the zone-wide toggle plus one hostname pinned to an uploaded
-# client certificate and one hostname kept present but inactive. Destroying
-# this resource abandons the zone toggle (no delete at Cloudflare) and
-# reverts the associations.
+# client certificate and one hostname kept present but inactive. Every
+# association row carries its certificate id -- Cloudflare rejects an
+# association write without one (400 code 1404), even when zone-level
+# certificate material exists. Destroying this resource abandons the zone
+# toggle (no delete at Cloudflare) and reverts the associations.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareAuthenticatedOriginPulls
 metadata:
@@ -16,4 +18,6 @@ spec:
       certificate_id:
         value: "2458ce5a0c354c7f82c78e9487d3ff60"
     - hostname: legacy.example.com
+      certificate_id:
+        value: "7f31b9c4d2a54e6f91c30ab8d5e2c477"
       enabled: false

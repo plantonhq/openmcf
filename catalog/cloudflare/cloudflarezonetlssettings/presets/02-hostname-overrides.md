@@ -9,6 +9,7 @@ Raises a single hostname's minimum TLS version to 1.3 and enables HTTP/2 for it,
 
 ## Key Configuration Choices
 
+- Per-hostname overrides require the zone's Advanced Certificate Manager subscription -- without it the API rejects every override write with 401 code 1450.
 - `minTlsVersion: "1.3"` sets the floor for this hostname only. Valid values are `"1.0"` through `"1.3"`, always quoted so YAML does not read them as numbers.
 - `http2: true` overrides the zone-wide HTTP/2 setting for this hostname.
 - Add more rows to `hostnameSettings` for more hostnames; each row must set at least one of `minTlsVersion`, `http2`, or `ciphers`. Editing one row never disturbs another hostname's overrides.

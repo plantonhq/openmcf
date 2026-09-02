@@ -17,6 +17,20 @@ metadata:
   annotations:
     planton.dev/e2e: "true"
     planton.dev/e2e-prerequisites: CloudflareQueue
+    # The notification STRUCTURALLY cannot round-trip: the upstream resource
+    # ships no ImportState at v5.23.0, and the re-create path the runner
+    # tolerates for not-importable types is refused while the live config
+    # exists -- the per-queue PUT MERGES rules instead of replacing them, so
+    # re-putting the identical rule answers 400 code 11020 "rules have
+    # invalid overlap" (measured 2026-08-26). The bucket's own importer is
+    # proven by the minimal and data-governance scenarios.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      cloudflare_r2_bucket_event_notification has no upstream importer and
+      its tolerated re-create is refused while the live config exists (the
+      per-queue PUT merges rules, so an identical re-put answers 400 code
+      11020 "rules have invalid overlap"; measured 2026-08-26) -- the
+      notification cannot round-trip on any recipe; the bucket importer is
+      proven by the minimal and data-governance scenarios.
   tags:
     - planton-e2e
 spec:

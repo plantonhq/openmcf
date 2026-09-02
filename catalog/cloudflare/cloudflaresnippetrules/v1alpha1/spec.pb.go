@@ -39,7 +39,10 @@ const (
 // Rules evaluate in list order against Cloudflare's Rules language
 // (https://developers.cloudflare.com/ruleset-engine/rules-language/) -- the same
 // wirefilter expressions rulesets use, e.g.
-// `http.request.uri.path starts_with "/legacy"`.
+// `starts_with(http.request.uri.path, "/legacy")`. Use the FUNCTION form for
+// prefix/suffix matches: the operator form (`... starts_with "/legacy"`) is a
+// paid-grammar extension the API rejects with error 20127 on most plans
+// (measured live 2026-08-27 -- rejected even on a Pro zone).
 type CloudflareSnippetRulesSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The zone whose snippet routing table is managed.
@@ -100,8 +103,11 @@ func (x *CloudflareSnippetRulesSpec) GetRules() []*CloudflareSnippetRule {
 type CloudflareSnippetRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The match expression in Cloudflare's Rules language (wirefilter), e.g.
-	// `http.request.uri.path starts_with "/api/legacy"`. Validated by Cloudflare
-	// at apply time.
+	// `starts_with(http.request.uri.path, "/api/legacy")`. Validated by
+	// Cloudflare at apply time. Prefer the always-legal FUNCTION form for
+	// prefix/suffix matches -- the operator form (`... starts_with "..."`) is
+	// rejected with error 20127 outside the paid grammar extension (measured
+	// live 2026-08-27, rejected even on a Pro zone).
 	Expression string `protobuf:"bytes,1,opt,name=expression,proto3" json:"expression,omitempty"`
 	// The snippet the rule invokes on matching requests.
 	// When using value_from, defaults to CloudflareSnippet kind and

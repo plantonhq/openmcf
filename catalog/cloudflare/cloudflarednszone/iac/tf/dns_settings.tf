@@ -28,6 +28,12 @@ locals {
 }
 
 # Zone-wide DNS settings, provisioned only when the spec supplies a dns_settings block.
+# Upstream modeling defect at v5.23.0 (live-measured): the provider echoes
+# server defaults (ns_ttl 86400, the SOA timer block, nameservers.type) into
+# state on refresh, but the schema marks those attributes Optional and NOT
+# Computed -- so any config that leaves them unset plans a perpetual removal.
+# A drift-free config must declare every field the server echoes; the spec
+# comment carries the same warning for manifest authors.
 resource "cloudflare_zone_dns_settings" "main" {
   count   = local.has_dns_settings ? 1 : 0
   zone_id = cloudflare_zone.main.id

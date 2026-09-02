@@ -3,6 +3,12 @@
 # infers "generic" from the URL). This lane is also the API-token
 # defect-class probe: the provider's own tests blank the token for this
 # resource, so a 403 here is the expected ambush (see the profile).
+#
+# MEASURED (2026-08-27): Cloudflare sends a TEST POST to the URL at
+# registration and rejects the create with 422 unless it answers 2xx --
+# a GET-only host (example.com answered 405) can never register. The
+# destination here is the same POST-echo endpoint the provider's own
+# acceptance tests use (notification_policy_webhooks/resource_test.go).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareNotificationWebhook
 metadata:
@@ -20,4 +26,4 @@ metadata:
 spec:
   account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
   name: e2e-webhook-${E2E_RUN_ID}
-  url: "https://example.com/planton-e2e-hook"
+  url: "https://postman-echo.com/post"

@@ -2186,10 +2186,15 @@ const (
 	CloudResourceKind_CloudflareEmailRoutingZone CloudResourceKind = 7023
 	// CloudflareDnsZone is a prerequisite because a routing rule lives in a
 	// zone's email routing configuration -- the spec's zone_id reference must
-	// resolve first. CloudflareEmailRoutingZone is a prerequisite because the
-	// zone's Email Routing must be ENABLED before the API accepts rules.
-	// (Forward destinations reference CloudflareEmailRoutingAddress only for
-	// forward-type rules, so that edge is scenario-declared.)
+	// resolve first. CloudflareEmailRoutingZone is deliberately NOT a
+	// prerequisite: the API accepts rule creation on a zone whose Email
+	// Routing was never enabled (measured live 2026-08-26 -- POST
+	// zones/{id}/email/routing/rules answered 200 on a fresh zone with
+	// routing status "unconfigured"). Enablement gates mail FLOW, not rule
+	// lifecycle, so it is an operational concern the kind docs teach, not a
+	// create-time dependency. (Forward destinations reference
+	// CloudflareEmailRoutingAddress only for forward-type rules, so that
+	// edge is scenario-declared.)
 	CloudResourceKind_CloudflareEmailRoutingRule    CloudResourceKind = 7024
 	CloudResourceKind_CloudflareEmailRoutingAddress CloudResourceKind = 7025
 	CloudResourceKind_CloudflareOriginCaCertificate CloudResourceKind = 7026
@@ -4191,7 +4196,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x98\xdb\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x96\xdb\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4936,8 +4941,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0eCloudflareList\x10\xec6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x06cflistP\xbe\x05\x126\n" +
 	"\x12CloudflareListItem\x10\xed6\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\x04cfli:\x02\xec6P\xbe\x05\x12;\n" +
 	"\x19CloudflareTurnstileWidget\x10\xee6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x06cfturnP\xbe\x05\x12?\n" +
-	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x1e\xa2\xf7\x04\x1a\b\x0f\x12\bv1alpha1\"\x05cferz:\x02\xd86P\xbc\x05\x12A\n" +
-	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a \xa2\xf7\x04\x1c\b\x0f\x12\bv1alpha1\"\x05cferr:\x04\xd86\xef6P\xbc\x05\x12>\n" +
+	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x1e\xa2\xf7\x04\x1a\b\x0f\x12\bv1alpha1\"\x05cferz:\x02\xd86P\xbc\x05\x12?\n" +
+	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x1e\xa2\xf7\x04\x1a\b\x0f\x12\bv1alpha1\"\x05cferr:\x02\xd86P\xbc\x05\x12>\n" +
 	"\x1dCloudflareEmailRoutingAddress\x10\xf16\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x05cferaP\xbc\x05\x12>\n" +
 	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x05cfocaP\xbd\x05\x12@\n" +
 	"\x19CloudflareCertificatePack\x10\xf36\x1a \xa2\xf7\x04\x1c\b\x0f\x12\bv1alpha1\"\acfcertp:\x02\xd86P\xbd\x05\x12?\n" +

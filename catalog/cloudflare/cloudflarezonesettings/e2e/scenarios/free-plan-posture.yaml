@@ -1,9 +1,17 @@
-# The free-plan posture arm: manages a representative slice of every value
-# class (on/off toggle, enum, number, list, nested object) using only
-# free-plan-editable setting ids. Runs FIRST (filename order); the
+# The free-plan posture arm: manages a representative slice of the value
+# classes (on/off toggle, enum, number, nested object) using only
+# free-plan-writable setting ids. Runs FIRST (filename order); the
 # revert-defaults scenario runs last and returns the surface to Cloudflare
 # defaults -- the ordering is the revert discipline for the no-op-destroy
 # class (the fixture zone's own destroy is the zero-orphan backstop).
+#
+# MEASURED WALL (live, 2026-08-27): ciphers is NOT free-plan-writable -- the
+# API rejects the write with 400 code 1023 "Advanced Certificate Manager is
+# required to set custom cipher suites" even though the settings list
+# reports the id editable=true on a Free zone (editable describes the
+# settings class, not product entitlement). The list value class is
+# shape-proven by the offline e2e/manifest.yaml; a live ciphers arm needs an
+# ACM-subscribed zone via the env-gated form.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZoneSettings
 metadata:
@@ -18,9 +26,6 @@ spec:
   min_tls_version: "1.2"
   browser_cache_ttl: 14400
   security_level: medium
-  ciphers:
-    - "ECDHE-ECDSA-AES128-GCM-SHA256"
-    - "ECDHE-RSA-AES128-GCM-SHA256"
   security_header:
     enabled: true
     include_subdomains: true

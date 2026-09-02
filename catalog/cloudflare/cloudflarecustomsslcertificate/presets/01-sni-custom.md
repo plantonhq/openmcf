@@ -1,3 +1,7 @@
+---
+display_name: SNI Custom
+---
+
 # SNI custom certificate
 
 An SNI-class custom certificate upload with the compatibility-maximizing bundle method. Business/Enterprise zone feature; the certificate must be issued by a publicly trusted CA covering the zone's hostnames.

@@ -1,3 +1,7 @@
+---
+display_name: Origin Pull CA
+---
+
 # Origin-pull CA upload
 
 A CA certificate uploaded to the account mTLS store -- the trust anchor that per-hostname Authenticated Origin Pulls and zone TLS CA associations reference. Self-signed CAs are the normal case: your infrastructure validates these, not the public.

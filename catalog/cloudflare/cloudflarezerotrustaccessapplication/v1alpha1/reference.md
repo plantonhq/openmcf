@@ -246,7 +246,10 @@ Allowed values (use exactly as shown):
 
 The primary fully-qualified domain protected by this application (e.g.
 "app.example.com"). Required for self_hosted/ssh/vnc/rdp; ignored for types
-that don't front a single hostname.
+that don't front a single hostname. The hostname must sit on a zone this
+account owns AND that zone must be ACTIVE (registrar-delegated): Cloudflare
+rejects the create with "access.api.error.invalid_request: domain does not
+belong to zone" while the zone is still pending (measured live).
 
 ### spec.policies
 

@@ -2,9 +2,11 @@ package module
 
 const (
 	// OpCustomHostnameId is the exported stack output containing the custom hostname id.
+	// No status output: hostname activation is asynchronous (pending ->
+	// pending_validation -> active), and a point-in-time phase is never a
+	// stable stack output -- it flips on the first refresh after the
+	// transition and re-plans forever.
 	OpCustomHostnameId = "custom_hostname_id"
-	// OpStatus is the exported stack output containing the activation status.
-	OpStatus = "status"
 	// OpOwnershipVerificationName is the DNS record name for ownership verification.
 	OpOwnershipVerificationName = "ownership_verification_name"
 	// OpOwnershipVerificationType is the DNS record type for ownership verification.
@@ -15,8 +17,10 @@ const (
 	OpOwnershipVerificationHttpUrl = "ownership_verification_http_url"
 	// OpOwnershipVerificationHttpBody is the HTTP verification body.
 	OpOwnershipVerificationHttpBody = "ownership_verification_http_body"
-	// OpVerificationErrors are any verification errors reported by Cloudflare.
-	OpVerificationErrors = "verification_errors"
+	// No verification_errors output: the server populates the list
+	// asynchronously after apply ("zone is not active yet" measured appearing
+	// seconds post-create) and clears it on activation -- a transient
+	// diagnostic is never a stable stack output.
 	// OpCreatedAt is the creation timestamp.
 	OpCreatedAt = "created_at"
 	// OpZoneId is the exported stack output containing the Cloudflare zone ID

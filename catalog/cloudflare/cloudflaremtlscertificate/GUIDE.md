@@ -20,6 +20,10 @@ Skipping step 2 before step 3 leaves consumers referencing a deleted certificate
 
 Unlike zone-facing certificates, nothing here needs public trust -- your origin or your policy validates these. Mint CAs with your own PKI (or openssl) and keep the signing key outside Cloudflare entirely; the store only ever needs the certificate side of a CA.
 
+## The store is content-addressed
+
+Uploading content the store already deleted answers the SAME certificate id again, and uploading content that is currently LIVE is rejected outright (400 code 1471 "This certificate already exists for this account" -- both measured live 2026-08-28). Two consequences: you cannot stage a same-content replacement side by side (rotation needs genuinely new material), and automation that re-creates a just-deleted upload can rely on the id being stable. Cloudflare also canonicalizes the stored PEM to end with exactly one trailing newline; the modules send that form, so trailing-whitespace differences never churn the upload.
+
 ## The key never comes back
 
 The API never returns `private_key`. An imported or refreshed resource re-asserts it from configuration, which means your secret store is the real system of record -- an upload whose key you lost cannot be re-presented, only replaced.

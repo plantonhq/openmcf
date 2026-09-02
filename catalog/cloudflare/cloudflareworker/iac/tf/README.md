@@ -19,7 +19,7 @@ Provisions a Cloudflare Worker script and the companions that hang off it: worke
 
 ## PARITY-EXCEPTION (Pulumi-only gaps)
 
-This engine honors `cache_options`, `exports`, `package_dependencies`, rate-limit `mitigation_timeout`, and traces `propagation_policy`. Pulumi's Cloudflare SDK v6.17.0 has no matching inputs and skips them.
+This engine honors `cache_options`, `exports`, `package_dependencies`, rate-limit `mitigation_timeout`, and traces `propagation_policy`. Pulumi's Cloudflare SDK v6.17.0 has no matching inputs and skips them. Note `propagation_policy` is additionally feature-gated at Cloudflare: without the account's trace-propagation feature the script upload fails with 403 code 100342 (measured live).
 
 ## Usage
 

@@ -1,3 +1,7 @@
+---
+display_name: IP Allowlist
+---
+
 # IP Allowlist
 
 An `ip`-kind list to collect trusted IPs/CIDRs that WAF or custom rules reference

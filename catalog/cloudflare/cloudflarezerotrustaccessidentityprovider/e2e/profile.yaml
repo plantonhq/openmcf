@@ -13,15 +13,18 @@ spec:
   # API -- a one-time Phase-2 provisioning step. The github-oauth scenario
   # uses dummy OAuth credentials: creation validates SHAPE, not credentials
   # (users could not log in through it; the lane never needs them to). The
-  # SAML shape is offline-plan-proven via e2e/saml-plan.yaml. WATCH ITEM: the
-  # OTP Access endpoint rejects API-token auth on UPDATE (the provider's own
-  # OTP tests unset CLOUDFLARE_API_TOKEN) -- create and destroy are the lane's
-  # operations, but if the idempotency re-plan triggers an update that 403s,
-  # record the defect and defer the onetimepin arm with the reason.
+  # SAML shape is offline-plan-proven via e2e/saml-plan.yaml. The onetimepin
+  # shape is offline-plan-proven via e2e/onetimepin-plan.yaml: one-time PIN is
+  # an ACCOUNT SINGLETON (a second create answers 409 "a onetimepin connection
+  # already exists", measured live 2026-08-26 on both engines) and the shared
+  # test account permanently carries its production OTP provider. The
+  # upstream OTP API-token-auth watch item is therefore moot live (that arm
+  # never runs); it returns if a future account ever runs an OTP lane.
+  # LIVE-PROVEN 2026-08-26: github-oauth on both engines, full lifecycle +
+  # blind import round-trip; a tofu output-sensitivity taint on scim outputs
+  # was caught live and fixed (see iac/tf/outputs.tf).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
   cost_class: cheap_ephemeral

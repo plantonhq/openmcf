@@ -1,6 +1,6 @@
 # CloudflareWaitingRoomEvent guide
 
-The judgment this guide protects you from: overrides are null-means-inherit, and the time rules are real walls. An unset field does not mean "zero" -- it means the room stays in charge. A window that violates the minute/five-minute floors fails at manifest time.
+The judgment this guide protects you from: scheduled events are an Enterprise advanced add-on (the room itself is Business+ -- a Free/Pro zone rejects rooms with code 1034, measured live), overrides are null-means-inherit, and the time rules are real walls. An unset field does not mean "zero" -- it means the room stays in charge. A window that violates the minute/five-minute floors fails at manifest time.
 
 ## Own cadence: the event is not a field of the room
 

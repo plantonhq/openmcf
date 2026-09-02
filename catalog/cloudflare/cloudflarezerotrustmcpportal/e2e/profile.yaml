@@ -16,8 +16,16 @@ spec:
   # (Phase-2 account setup).
   tier: 1
   cost_class: cheap_ephemeral
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: minimal + with-server on both engines, full
+  # lifecycle, blind import round-trips green (the with-server round-trip
+  # consumes exactly the declared `servers` write-normalized tolerance --
+  # import restores rows without server_id). Two walls measured and taught:
+  # the portal hostname MUST sit on an account-served zone (400 code 7012
+  # "invalid_domain" on unowned domains; scenarios are env-gated on
+  # PLANTON_E2E_CLOUDFLARE_ZONE_NAME), and tool/prompt overrides are
+  # validated against the server's SYNCED inventory (400 code 7001 on a
+  # throwaway fixture server -- the override shape is offline-plan-proven
+  # by e2e/manifest.yaml). No AI Controls entitlement gate fired.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

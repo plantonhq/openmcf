@@ -1,6 +1,14 @@
 # CloudflareSnippet guide
 
-The judgment this guide protects you from: the snippet name is the identity, and create is an upsert. Deploying a name that already exists in the zone silently overwrites it -- there is no "already exists" error to catch the collision.
+The judgment this guide protects you from: Snippets need a paid-plan zone, the snippet name is the identity, and create is an upsert. Deploying a name that already exists in the zone silently overwrites it -- there is no "already exists" error to catch the collision.
+
+## Snippets are a paid-plan product
+
+A free-plan zone refuses every snippet upload with "snippets are not allowed" (measured live 2026-08-27, on pending and active free zones alike). Pro and above include Snippets at no extra cost, with per-plan count limits.
+
+## Adopting an existing snippet: apply, never import
+
+Do NOT `tofu import` a snippet: the provider's importer crashes at v5.23.0 (a nil-pointer panic in its own read path -- "Plugin did not respond"; unchanged through v5.24.0 and master, checked 2026-08-27). You do not need it: because create is an upsert by name, applying a manifest whose `snippet_name` matches the live snippet adopts and overwrites it in place. Make the manifest's content the truth you want, apply, done.
 
 ## Name is identity: create is an upsert
 

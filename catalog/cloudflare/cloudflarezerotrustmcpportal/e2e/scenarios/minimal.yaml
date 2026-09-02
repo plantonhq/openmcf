@@ -1,5 +1,15 @@
 # Minimal scenario: an empty portal (no server rows) on a run-scoped
-# hostname -- proves the portal lifecycle itself.
+# hostname of a real ACTIVE zone -- proves the portal lifecycle itself.
+#
+# MEASURED (live, 2026-08-26): the portal hostname MUST sit on a domain the
+# account serves -- a create on an unowned domain (example.com) is rejected
+# with 400 code 7012 "invalid_domain", and the identical create succeeds on
+# the account's active test zone (probe-proven both ways). The portal is
+# HOSTED by Cloudflare on your zone (unlike MCP servers, whose hostnames
+# are external URLs), so this arm is env-gated on
+# PLANTON_E2E_CLOUDFLARE_ZONE_NAME (an ACTIVE zone the operator sanctions
+# for testing) and skips honestly when unset. The hostname stays run-scoped
+# under that zone so concurrent runs cannot collide.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustMcpPortal
 metadata:
@@ -12,10 +22,11 @@ metadata:
     e2e-component: cloudflarezerotrustmcpportal
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_NAME
   tags:
     - planton-e2e
 spec:
   account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
   portal_id: e2e-portal-${E2E_RUN_ID}
-  hostname: mcp-e2e-${E2E_RUN_ID}.example.com
+  hostname: mcp-e2e-${E2E_RUN_ID}.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}
   name: Planton E2E Portal ${E2E_RUN_ID}

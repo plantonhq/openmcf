@@ -22,7 +22,7 @@ spec:
         requests_per_period: 10
         mitigation_timeout: 600
     - ref: "limit-api-by-key"
-      expression: 'http.request.uri.path starts_with "/api/"'
+      expression: 'starts_with(http.request.uri.path, "/api/")'
       action: managed_challenge
       description: "Challenge clients exceeding 100 requests/min per API key"
       enabled: true

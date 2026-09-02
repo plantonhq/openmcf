@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a Cloudflare DNS Zone resource by reference.
 - **A unique `snippetName`** -- because create is an upsert, a name that already exists in the zone is silently overwritten. Coordinate names across teams the way you coordinate Worker script names.
-- **Headroom under the plan's snippet-count limit** -- free plans allow a small number of snippets per zone; the cap is Cloudflare's, checked at create.
+- **A paid-plan zone (Pro+)** -- free zones refuse every snippet upload with "snippets are not allowed" (measured live); Pro and above include Snippets at no extra cost, with per-plan count limits the API enforces at create.
 
 ## Deploy
 

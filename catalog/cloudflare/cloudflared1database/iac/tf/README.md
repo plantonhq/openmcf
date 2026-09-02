@@ -108,8 +108,8 @@ The module maps the spec to Terraform's `cloudflare_d1_database` resource:
 |------------|-------------------|-------|
 | `account_id` | `account_id` | Required |
 | `database_name` | `name` | Required |
-| `region` | `primary_location_hint` | Optional string |
-| `read_replication.mode` | `read_replication.mode` | Optional, dynamic block |
+| `region` | `primary_location_hint` | Optional string; create-time only — post-create edits are ignored (`lifecycle.ignore_changes`) because the API never returns the hint and the attribute is replace-forcing |
+| `read_replication.mode` | `read_replication.mode` | Always sent — coalesces to the server default `"disabled"` when the spec omits the block |
 
 ### Region Values
 
@@ -125,18 +125,15 @@ If omitted, Cloudflare selects a default location.
 
 ### Read Replication
 
-The `read_replication` configuration uses a dynamic block:
+The module always sends `read_replication`, coalescing an omitted spec block to the server default:
 
 ```hcl
-dynamic "read_replication" {
-  for_each = var.spec.read_replication != null ? [var.spec.read_replication] : []
-  content {
-    mode = read_replication.value.mode
-  }
+read_replication = {
+  mode = var.spec.read_replication != null ? var.spec.read_replication.mode : "disabled"
 }
 ```
 
-This ensures the `read_replication` block is only added if `spec.read_replication` is non-null.
+Cloudflare always reports the mode on read ("disabled" when never configured) while the provider models the attribute as Optional-not-Computed, so omitting it from the resource would leave a refresh-vs-config diff that never converges (measured live 2026-08-26).
 
 ## Examples
 

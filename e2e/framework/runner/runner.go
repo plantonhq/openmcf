@@ -215,7 +215,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		phases = []lifecyclePhase{
 			{PhaseValidate, func() error { return runValidate(tc) }},
 			{PhaseExpectFail, func() error { return runExpectDeployFailure(verifyCtx, tc, harness, expectDeployFailure) }},
-			{PhaseDestroy, func() error { return runDestroy(tc) }},
+			{PhaseDestroy, func() error { return runDestroyMaybeRetry(tc) }},
 			{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
 		}
 	} else {
@@ -253,7 +253,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 			phases = append(phases, lifecyclePhase{PhaseImportRT, func() error { return runImportRoundTrip(tc) }})
 		}
 		phases = append(phases,
-			lifecyclePhase{PhaseDestroy, func() error { return runDestroy(tc) }},
+			lifecyclePhase{PhaseDestroy, func() error { return runDestroyMaybeRetry(tc) }},
 			lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
 		)
 	}
@@ -276,7 +276,7 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 				// A failed DEPLOY-EXPECT-FAIL needs the cleanup destroy on BOTH
 				// branches: an unexpected deploy success leaves live resources,
 				// and a failed post-mortem leaves the tainted partial stack.
-				cleanupErr := runDestroy(tc)
+				cleanupErr := runDestroyMaybeRetry(tc)
 				if cleanupErr != nil {
 					fmt.Printf("  [WARN] cleanup destroy also failed: %v\n", cleanupErr)
 				}
@@ -436,6 +436,52 @@ func runVerifyOutputs(tc *provider.ComponentTestContext) error {
 
 func runVerifyResources(ctx context.Context, tc *provider.ComponentTestContext, harness provider.Harness) error {
 	return harness.VerifyDeployed(ctx, tc.Component, tc.Outputs)
+}
+
+// DestroyRetryAnnotation opts ONE scenario into bounded destroy retries; its
+// value MUST state the reason (an empty value does not opt in). It exists for
+// resource classes whose provider DELETE is refused for a bounded window by
+// the cloud itself, so the engine's destroy fails no matter how correct the
+// module is and succeeds verbatim once the window passes -- exactly what a
+// human operator would do by re-running destroy. First user: Cloudflare
+// email-routing destination addresses, whose delete answers 400 code 2032
+// "Destination address has been created too recently" until ~10 minutes
+// after create (measured 2026-08-26: refused at 9m14s, accepted at 10m15s).
+// The retry is deliberately dumb -- full destroy re-runs on a fixed interval
+// under a fixed budget -- because parsing engine output for specific error
+// codes would couple the runner to provider error text. Scenarios without
+// the annotation keep the single-attempt behavior, so a genuine destroy bug
+// still fails loudly everywhere else.
+const DestroyRetryAnnotation = "planton.dev/e2e-destroy-retry"
+
+const (
+	destroyRetryInterval = 60 * time.Second
+	destroyRetryBudget   = 15 * time.Minute
+)
+
+// runDestroyMaybeRetry runs destroy once, then -- only for scenarios carrying
+// DestroyRetryAnnotation -- keeps re-running it on destroyRetryInterval until
+// it succeeds or destroyRetryBudget elapses. Every retry prints the declared
+// reason so the lane log records why the phase is waiting.
+func runDestroyMaybeRetry(tc *provider.ComponentTestContext) error {
+	err := runDestroy(tc)
+	if err == nil {
+		return nil
+	}
+	reason, annErr := ManifestAnnotation(tc.ManifestPath, DestroyRetryAnnotation)
+	if annErr != nil || reason == "" {
+		return err
+	}
+	deadline := time.Now().Add(destroyRetryBudget)
+	for attempt := 2; time.Now().Before(deadline); attempt++ {
+		fmt.Printf("  [destroy-retry] attempt %d in %s (scenario-declared: %s); last error: %v\n",
+			attempt, destroyRetryInterval, reason, err)
+		time.Sleep(destroyRetryInterval)
+		if err = runDestroy(tc); err == nil {
+			return nil
+		}
+	}
+	return errors.Wrapf(err, "destroy still failing after the %s retry budget", destroyRetryBudget)
 }
 
 func runDestroy(tc *provider.ComponentTestContext) error {

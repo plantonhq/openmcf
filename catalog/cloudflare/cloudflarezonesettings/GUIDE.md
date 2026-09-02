@@ -20,6 +20,8 @@ Validation enforces the same philosophy at the floor: a spec with only `zoneId` 
 
 Cloudflare reports a setting the zone's plan cannot edit as editable=false, and the module surfaces that as an apply error. Nothing is skipped and nothing is billed. `advancedDdos`, `orangeToOrange`, `prefetchPreload`, `responseBuffering`, `sortQueryStringForCache`, `trueClientIpHeader`, and `proxyReadTimeout` are Enterprise territory; `polish`, `mirage`, and `imageResizing` need Pro or above. If an apply fails on one of these, the fix is to remove the field or upgrade the plan (a `CloudflareDnsZone` `subscription` decision, and real money) -- not to retry.
 
+One gate hides behind a friendly flag: `ciphers` reads back editable=true on every plan, but the WRITE requires the zone's Advanced Certificate Manager subscription -- without it the API rejects the apply with 400 code 1023 "Advanced Certificate Manager is required to set custom cipher suites" (measured live, 2026-08-27). The editable flag tells you the settings class is plan-editable; it does not promise every setting is product-entitled. Treat a 1023 like any other plan gate: remove the field or buy ACM for the zone.
+
 ## The boundary with CloudflareDnsZone
 
 Two kinds touch "zone settings" and the split is deliberate: `CloudflareDnsZone`'s `dnsSettings` owns how the zone resolves (SOA tuning, NS TTL, DNS-level CNAME flattening behavior, DNSSEC); this kind owns how Cloudflare serves HTTP for the zone (terminate, cache, transform, protect). If you are reaching for a resolver-facing knob here, it lives on the zone resource. The `cnameFlattening` field in this spec is the serving-side setting id of the same name -- Cloudflare exposes it through the settings API, so it is managed here.

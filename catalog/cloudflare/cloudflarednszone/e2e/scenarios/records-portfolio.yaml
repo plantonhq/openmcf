@@ -1,13 +1,33 @@
 # Records-portfolio CloudflareDnsZone scenario: one zone carrying the folded
-# satellites -- inline records through BOTH value paths (simple `content`
-# records and typed structured-data records at the record level: srv/caa),
-# record tags and settings, zone-wide DNS settings (free-plan fields only),
-# and DNSSEC. Proves the zone's full send surface in one lane. The A record
-# stays gray-clouded (proxied=false): a proxied record on a pending zone
-# serves nothing and adds no verification value. Everything here is
-# free-plan-safe; the plan-gated levers (vanity nameservers, foundation_dns,
-# multi_provider) and the deliberately-offline hold/subscription are covered
-# by the kind's e2e/manifest.yaml offline plan.
+# record surface that is free-plan-safe on a run-scoped PENDING zone --
+# inline records through BOTH value paths (simple `content` records and typed
+# structured-data records at the record level: srv/caa) plus a record
+# comment. The A record stays gray-clouded (proxied=false): a proxied record
+# on a pending zone serves nothing and adds no verification value.
+#
+# Live-measured walls keep the dnsSettings singleton and three record
+# surfaces OUT of this scenario (all remain offline-plan-proven by the kind's
+# e2e/manifest.yaml; measured 2026-08-26 on the real account):
+#   - record tags: 400 code 9300 "DNS record has 1 tags, exceeding the quota
+#     of 0" (a paid entitlement);
+#   - record settings ipv4_only/ipv6_only: 400 code 9227 "not available to
+#     this zone";
+#   - dnsSettings (the whole singleton): its non-default values are
+#     entitlement-gated one by one (soa tuning, nsTtl, flattenAllCnames each
+#     answer 400 code 1003 "not available to this account or zone"), and even
+#     a defaults-only write (zoneMode: standard PATCHes fine) re-plans forever
+#     on the terraform engine: the v5.23.0 provider echoes server defaults
+#     (ns_ttl 86400, the SOA timer block, nameservers.type) into state on
+#     refresh while the schema marks those attributes Optional but NOT
+#     Computed, so an unset field plans a perpetual removal -- an upstream
+#     modeling defect the apply-idempotency gate rightly refuses. Pulumi's
+#     preview never refreshes, so only terraform detects it.
+#   - dnssec: 400 code 1017 "Invalid zone plan for action" on a PENDING zone
+#     -- the same PATCH succeeds on an ACTIVE free-plan zone, so the wall is
+#     delegation state, not plan tier; a zone this kind creates is always
+#     pending, so DNSSEC is provable live only on a registrar-delegated zone.
+# The plan-gated levers (vanity nameservers, foundation_dns, multi_provider)
+# were offline-only from authoring.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
@@ -31,10 +51,6 @@ spec:
       content: "192.0.2.10"
       ttl: 300
       comment: planton e2e portfolio scenario
-      tags:
-        - planton-e2e
-      settings:
-        ipv4Only: true
     - name: "@"
       type: MX
       content: mail.planton-e2e.example.com
@@ -55,13 +71,3 @@ spec:
     - name: "@"
       type: TXT
       content: "planton-e2e-verification=portfolio"
-  dnsSettings:
-    flattenAllCnames: true
-    zoneMode: standard
-    nsTtl: 3600
-    soa:
-      minTtl: 1800
-      ttl: 3600
-  dnssec:
-    enabled: true
-    useNsec3: true

@@ -24,7 +24,7 @@ Zone settings and the crawler-bypass toggle have no delete at Cloudflare, so des
 ### Cloudflare Account
 
 - **A zone on the account** — `zoneId` names the zone; reference a CloudflareDnsZone Cloud Resource or pass the zone ID from the dashboard.
-- **The right plan for gated settings** (only for those fields) — `advancedDdos`, `orangeToOrange`, `prefetchPreload`, `responseBuffering`, `sortQueryStringForCache`, `trueClientIpHeader`, and `proxyReadTimeout` need Enterprise; `polish`, `mirage`, and `imageResizing` need Pro or above. The apply fails with the API's editable=false error on a plan that lacks a setting; nothing is billed or upgraded.
+- **The right plan for gated settings** (only for those fields) — `advancedDdos`, `orangeToOrange`, `prefetchPreload`, `responseBuffering`, `sortQueryStringForCache`, `trueClientIpHeader`, and `proxyReadTimeout` need Enterprise; `polish`, `mirage`, and `imageResizing` need Pro or above. The apply fails with the API's editable=false error on a plan that lacks a setting; nothing is billed or upgraded. `ciphers` is gated by product, not plan: writes need the zone's Advanced Certificate Manager subscription (API code 1023 without it) even though the settings list reports it editable.
 
 ## Deploy
 

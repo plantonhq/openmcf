@@ -1,0 +1,25 @@
+# The custom-ciphers arm, env-gated on the sanctioned ACM-subscribed zone.
+# MEASURED WALL (live, 2026-08-27): the ciphers write answers 400 code 1023
+# "Advanced Certificate Manager is required to set custom cipher suites" on
+# any non-ACM zone even though the settings list reports editable=true; the
+# gate FELL when the owner subscribed the sanctioned zone (2026-08-29,
+# ~$10/mo per-zone). Skips honestly when the env is unset.
+#
+# RESTORE DUTY (shared-zone hygiene): zone-settings destroy is a no-op and
+# the modules deliberately omit an EMPTY ciphers list, so this kind cannot
+# express "revert ciphers to default" -- after this arm runs, the session
+# must restore the captured state out-of-band:
+#   PATCH /zones/{zone_id}/settings/ciphers  {"value": []}
+# The single cipher below only restricts TLS 1.2 handshakes (TLS 1.3 suites
+# are unaffected by this setting), so the zone stays reachable throughout.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZoneSettings
+metadata:
+  name: e2e-zoneset-ciphers-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
+spec:
+  zone_id:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
+  ciphers:
+    - "ECDHE-RSA-AES128-GCM-SHA256"

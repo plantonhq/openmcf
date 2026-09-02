@@ -10,7 +10,7 @@ spec:
   name: "Advanced cache key + reserve"
   rules:
     - ref: "cache-by-device-and-locale"
-      expression: 'http.request.uri.path starts_with "/shop"'
+      expression: 'starts_with(http.request.uri.path, "/shop")'
       action: set_cache_settings
       description: "Cache product pages keyed on device type and selected locale, with Cache Reserve"
       enabled: true

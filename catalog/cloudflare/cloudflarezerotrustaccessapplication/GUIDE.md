@@ -10,9 +10,11 @@ An Access application binds a protected resource (a hostname, an SSH target, a S
 
 `self_hosted` (and ssh/vnc/rdp) fronts a hostname and requires `domain`; `saas` federates identity to an external app and ignores `domain` entirely; `bookmark` is just a launcher tile; `app_launcher` styles the portal itself; `infrastructure` and `mcp` target non-HTTP surfaces. Most of the spec's fields apply to only some types — the field comments say which, and setting a field the type ignores does nothing rather than failing.
 
-## The domain must live in a zone this account controls
+## The domain must live in a zone this account controls — an ACTIVE one
 
 For self-hosted types, Cloudflare serves the Access login at the application's domain — which only works when that hostname's zone is in this account and its traffic actually flows through Cloudflare. Access on a hostname whose DNS points elsewhere protects nothing.
+
+The zone must also be ACTIVE (registrar-delegated to Cloudflare's nameservers), not merely added: the create is rejected with `400 access.api.error.invalid_request: domain does not belong to zone` when the domain sits on a PENDING zone, and the identical create succeeds the moment the zone is active (measured live, 2026-08-26). If a fresh zone was just added to the account, finish the nameserver delegation before creating self-hosted applications on it.
 
 ## Session duration is a trade, not a preference
 
@@ -21,3 +23,7 @@ For self-hosted types, Cloudflare serves the Access login at the application's d
 ## SaaS applications mint real credentials
 
 A `saas` application's outputs include the OIDC client secret Cloudflare generates — that is a live credential for your downstream app, marked sensitive in the outputs. Rotate it by re-keying the SaaS config, and treat every surface it lands on as secret storage.
+
+## Adopting an existing application: the first apply touches three echoed toggles
+
+Cloudflare's read API echoes `auto_redirect_to_identity`, `enable_binding_cookie`, and `options_preflight_bypass` as `false` on types that support them, while a manifest that never enabled them omits them entirely — so the first plan after adopting an existing self-hosted application shows an in-place update on exactly those attributes (measured live at provider v5.23.0). The apply converges to the same server state. Expected, harmless, once.

@@ -26,9 +26,11 @@ disable explicitly before destroying when the zone outlives this resource.
 ```yaml
 # A complete, protovalidate-valid CloudflareAuthenticatedOriginPulls
 # example: the zone-wide toggle plus one hostname pinned to an uploaded
-# client certificate and one hostname kept present but inactive. Destroying
-# this resource abandons the zone toggle (no delete at Cloudflare) and
-# reverts the associations.
+# client certificate and one hostname kept present but inactive. Every
+# association row carries its certificate id -- Cloudflare rejects an
+# association write without one (400 code 1404), even when zone-level
+# certificate material exists. Destroying this resource abandons the zone
+# toggle (no delete at Cloudflare) and reverts the associations.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareAuthenticatedOriginPulls
 metadata:
@@ -42,6 +44,8 @@ spec:
       certificate_id:
         value: "2458ce5a0c354c7f82c78e9487d3ff60"
     - hostname: legacy.example.com
+      certificate_id:
+        value: "7f31b9c4d2a54e6f91c30ab8d5e2c477"
       enabled: false
 ```
 
@@ -53,7 +57,7 @@ spec:
 | `spec.zoneEnabled` | `bool` |  |  |  |
 | `spec.hostnameAssociations` | `[]CloudflareAuthenticatedOriginPullsHostnameAssociation` |  |  |  |
 | `spec.hostnameAssociations[].hostname` | `string` | yes |  |  |
-| `spec.hostnameAssociations[].certificateId` | `string \| valueFrom` |  |  | CloudflareAuthenticatedOriginPullsCertificate (`status.outputs.certificate_id`) |
+| `spec.hostnameAssociations[].certificateId` | `string \| valueFrom` | yes |  | CloudflareAuthenticatedOriginPullsCertificate (`status.outputs.certificate_id`) |
 | `spec.hostnameAssociations[].enabled` | `bool` |  |  |  |
 
 ## Field Details
@@ -96,15 +100,19 @@ The hostname the association covers. Must belong to the zone.
 
 ### spec.hostnameAssociations[].certificateId
 
-`string | valueFrom`
+`string | valueFrom` · required
 
 The uploaded client certificate the hostname uses (a hostname-scoped
-upload from CloudflareAuthenticatedOriginPullsCertificate). Leave unset
-to toggle the hostname using the zone-level certificate material.
+upload from CloudflareAuthenticatedOriginPullsCertificate). REQUIRED at
+the API: Cloudflare rejects an association write without a certificate
+id (400 code 1404 "Certificate ID required in the request", measured
+2026-08-28 -- unconditionally, even when zone-level certificate
+material exists), so a row without one could never deploy.
 When using value_from, defaults to CloudflareAuthenticatedOriginPullsCertificate
 kind and status.outputs.certificate_id field path.
 
 - references: CloudflareAuthenticatedOriginPullsCertificate (`status.outputs.certificate_id`)
+- rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareAuthenticatedOriginPullsCertificate, name: <that resource's name>, fieldPath: status.outputs.certificate_id}} -- a bare string does not parse
 
 ### spec.hostnameAssociations[].enabled

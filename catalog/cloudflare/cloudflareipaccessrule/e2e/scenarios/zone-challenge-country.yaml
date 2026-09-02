@@ -8,6 +8,17 @@ metadata:
   name: e2e-ipar-zone-${E2E_RUN_ID}
   annotations:
     planton.dev/e2e-prerequisites: "CloudflareDnsZone"
+    # The catalog records the ACCOUNT import form (one id_format per resource
+    # type) and its account_id placeholder derives from the spec field, which
+    # this zone-scoped manifest leaves empty -- the blind derivation is
+    # structurally impossible for this arm. The account arm proves the import
+    # recipe on the same upstream importer (one dual-format ImportState parses
+    # both prefixes at v5.23.0); the zone form is documented on the catalog
+    # row for human adopters.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      dual-scope resource: the recorded account-form import ID cannot derive
+      from a zone-scoped manifest (account_id is empty); the account arm
+      carries the round-trip proof on the same importer
 spec:
   zone_id:
     valueFrom:

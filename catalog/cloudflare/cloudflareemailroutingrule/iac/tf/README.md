@@ -50,7 +50,7 @@ module "email_rule" {
 }
 ```
 
-Requires Email Routing to be enabled on the zone (the CloudflareEmailRoutingZone kind), and forward destinations must be VERIFIED addresses (the CloudflareEmailRoutingAddress kind).
+The API accepts rules on any zone (measured live 2026-08-26 — enablement is not a create-time requirement), but rules only take effect once the zone's Email Routing is enabled (the CloudflareEmailRoutingZone kind). Forward destinations must be VERIFIED addresses (the CloudflareEmailRoutingAddress kind).
 
 ## Outputs
 

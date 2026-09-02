@@ -1,8 +1,10 @@
 # CloudflareLoadBalancerMonitor install profile used as a scenario-declared
 # prerequisite by CloudflareLoadBalancerPool's `monitored` arm (a pool does
 # not require a monitor, so the edge is per-scenario, never registry). HTTP
-# defaults; no port. The existing load-balancer pool fixture does NOT use
-# this file. Requires the Load Balancing add-on.
+# defaults plus expectedCodes -- Cloudflare requires expected_codes or
+# expected_body on http/https monitors (400 code 1002, measured live). The
+# existing load-balancer pool fixture does NOT use this file. Requires the
+# Load Balancing add-on.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancerMonitor
 metadata:
@@ -19,3 +21,4 @@ metadata:
     - planton-e2e
 spec:
   accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  expectedCodes: "2xx"

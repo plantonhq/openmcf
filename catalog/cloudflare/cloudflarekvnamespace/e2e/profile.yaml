@@ -13,8 +13,10 @@ spec:
   # THIS kind's e2e/prerequisite.yaml as its fixture. Objects create in
   # seconds at zero cost (Workers Free includes KV).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal through the full
+  # lifecycle (deploy -> REST-API verify -> destroy -> verify-absent) with
+  # the apply-idempotency re-plan green, plus the blind import round-trip
+  # ({account_id}/{namespace_id}) on the Terraform lane -- all first-run.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

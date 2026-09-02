@@ -108,8 +108,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `certificate_pack_id` | The Cloudflare-assigned pack identifier | Verification tooling and imports -- always paired with `zone_id`, since a pack's API identity is the (zone, pack) tuple |
-| `status` | The order/issuance status (`pending_validation`, `active`) | Gating traffic cutover on `active` before pointing hostnames at the zone |
 | `zone_id` | The zone the pack was ordered in | Completes the pack's API identity for tooling that composes on it |
+
+Issuance status and the primary-certificate id are deliberately not outputs — both transition asynchronously server-side as issuance progresses; read them from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

@@ -144,8 +144,15 @@ type CloudflareCustomHostnameSsl struct {
 	// modify the chain).
 	BundleMethod *string `protobuf:"bytes,1,opt,name=bundle_method,json=bundleMethod,proto3,oneof" json:"bundle_method,omitempty"`
 	// The certificate authority that issues the certificate: "digicert", "google",
-	// "lets_encrypt", or "ssl_com". Selectable CA is an Enterprise feature; leave
-	// empty to use the account default.
+	// "lets_encrypt", or "ssl_com". CA selection is Enterprise-gated: on any other
+	// plan the API rejects an explicit value with 400 code 1459 "Certificate
+	// Authority selection is only available on an Enterprise plan" (measured live
+	// 2026-08-29). Leave empty on non-Enterprise accounts -- Cloudflare then
+	// assigns a CA at random per create (measured: ssl_com and google on
+	// consecutive creates). Because that server pick can never be mirrored in
+	// config, both IaC modules ignore post-create drift on this field; an
+	// in-place CHANGE of an already-issued hostname's CA is therefore not
+	// applied -- recreate the hostname to change CA (Enterprise).
 	CertificateAuthority string `protobuf:"bytes,2,opt,name=certificate_authority,json=certificateAuthority,proto3" json:"certificate_authority,omitempty"`
 	// Add Cloudflare branding (a sni.cloudflaressl.com subdomain as the Common Name).
 	CloudflareBranding bool `protobuf:"varint,3,opt,name=cloudflare_branding,json=cloudflareBranding,proto3" json:"cloudflare_branding,omitempty"`

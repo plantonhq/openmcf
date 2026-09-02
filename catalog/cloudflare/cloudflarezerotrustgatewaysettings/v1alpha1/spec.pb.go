@@ -1128,8 +1128,12 @@ type CloudflareZeroTrustGatewayPacFile struct {
 	Contents string `protobuf:"bytes,2,opt,name=contents,proto3" json:"contents,omitempty"`
 	// The URL-friendly slug the file is served under. IMMUTABLE: the slug is
 	// baked into the file's public URL, so changing it replaces the file
-	// (clients configured with the old URL break). Omit to let Cloudflare
-	// derive it from the name.
+	// (clients configured with the old URL break). When omitted, the modules
+	// derive a deterministic slug from the file's name (lowercased,
+	// non-alphanumerics become hyphens) -- NOT the server's choice, because a
+	// server-generated slug is RANDOM and, being replace-forcing, would make
+	// every subsequent plan propose recreating the file and breaking its URL
+	// (live-measured at provider v5.23.0).
 	Slug string `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
 	// A free-form description of the file.
 	Description   string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`

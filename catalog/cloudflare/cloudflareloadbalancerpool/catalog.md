@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Cloudflare Account
 
 - **Load Balancing add-on** -- Cloudflare Load Balancing is a paid feature and must be enabled on your account before deploying.
-- **A health monitor** -- create a CloudflareLoadBalancerMonitor first (or reference an existing monitor ID) so the pool's origins are actively health-checked.
+- **A health monitor** -- create a CloudflareLoadBalancerMonitor first (or reference an existing monitor ID) so the pool's origins are actively health-checked. Origins in a monitored pool must be globally routable addresses: Cloudflare rejects reserved/documentation ranges with a 400 (code 1002) the moment a monitor is attached.
 - **Reachable origins** -- each origin address (IP or unproxied hostname) must be reachable for health checks and traffic. Internal addresses require a virtual-network ID.
 
 ## Deploy

@@ -1,9 +1,15 @@
 # Offline development manifest exercising the full spec surface: zone core,
 # simple and structured inline records (typed data cases at the record level),
-# record tags/settings, zone-wide DNS settings, DNSSEC, zone hold, and the plan
-# subscription. Hold and subscription stay OUT of the live scenarios (billing
-# token scope; unverified hold semantics on a throwaway fixture zone) -- this
-# manifest is their offline tofu-plan proof.
+# record tags/settings, zone-wide DNS settings incl. SOA tuning, DNSSEC, zone
+# hold, and the plan subscription. Live-blocked surfaces stay OUT of the live
+# scenarios and this manifest is their offline tofu-plan proof: hold and
+# subscription (billing token scope; unverified hold semantics on a throwaway
+# fixture zone), plus four free-plan/pending-zone walls measured live
+# 2026-08-26 -- record tags (400 code 9300, tag quota 0), record-level
+# ipv4_only/ipv6_only settings (400 code 9227), custom SOA tuning (400 code
+# 1003), and DNSSEC on a PENDING zone (400 code 1017 "Invalid zone plan for
+# action"; the same PATCH succeeds on an ACTIVE free-plan zone, so the wall is
+# delegation state, not plan tier).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
@@ -48,6 +54,10 @@ spec:
   dnsSettings:
     flattenAllCnames: true
     zoneMode: standard
+    nsTtl: 3600
+    soa:
+      minTtl: 1800
+      ttl: 3600
   dnssec:
     enabled: true
   hold:

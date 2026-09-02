@@ -2,6 +2,13 @@
 # plus a TTL override -- proves the all-four-at-once endpoint write and the
 # max_ttl pairing live. max_ttl stays declared so the idempotency re-plan
 # is honest (update is a full replace; omitting it resets to inherit).
+#
+# Every networks-capable endpoint (doh/dot/ipv6) declares a real network row
+# DELIBERATELY: at provider v5.23.0/v5.24.0 a declared endpoint with an
+# EMPTY networks list cannot be represented stably (a null list crashes the
+# apply-time conversion; an empty list is dropped by the API on read and
+# re-plans forever -- both measured live 2026-08-26). Non-empty lists echo
+# back exactly and keep the re-plan clean.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustDnsLocation
 metadata:
@@ -24,12 +31,18 @@ spec:
     doh:
       enabled: true
       require_token: true
+      networks:
+        - network: 192.0.2.0/24
     dot:
-      enabled: false
+      enabled: true
+      networks:
+        - network: 198.51.100.0/24
     ipv4:
       enabled: false
     ipv6:
-      enabled: false
+      enabled: true
+      networks:
+        - network: 2001:db8::/32
   max_ttl:
     mode: override
     ttl_secs: 300

@@ -45,7 +45,13 @@ type CloudflareMtlsCertificateSpec struct {
 	// and the API cannot change it after upload.
 	Ca *bool `protobuf:"varint,3,opt,name=ca,proto3,oneof" json:"ca,omitempty"`
 	// The certificate (or CA chain) in PEM form. Keep the PEM byte-stable --
-	// a formatting-only change still replaces the upload.
+	// a formatting-only change still replaces the upload. Cloudflare stores
+	// the PEM canonicalized to end with exactly one trailing newline and the
+	// store is content-addressed (measured 2026-08-28): uploading identical
+	// content answers the EXISTING certificate id, and a duplicate upload
+	// while one is live is rejected (400 code 1471 "This certificate already
+	// exists for this account"). The modules canonicalize the trailing
+	// newline before sending, so trailing whitespace differences never churn.
 	Certificates string `protobuf:"bytes,4,opt,name=certificates,proto3" json:"certificates,omitempty"`
 	// The certificate's private key in PEM form, only needed when Cloudflare
 	// must present this certificate itself (leaf certificates). CA uploads used

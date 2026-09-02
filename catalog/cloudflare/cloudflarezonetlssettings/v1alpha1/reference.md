@@ -74,7 +74,7 @@ spec:
 | `spec.hostnameSettings[].ciphers` | `[]string` |  |  |  |
 | `spec.caHostnameAssociations` | `[]CloudflareZoneTlsSettingsCaHostnameAssociation` |  |  |  |
 | `spec.caHostnameAssociations[].hostnames` | `[]string` | yes |  |  |
-| `spec.caHostnameAssociations[].mtlsCertificateId` | `string \| valueFrom` |  |  |  |
+| `spec.caHostnameAssociations[].mtlsCertificateId` | `string \| valueFrom` |  |  | CloudflareMtlsCertificate (`status.outputs.certificate_id`) |
 
 ## Field Details
 
@@ -104,7 +104,10 @@ Cloudflare: destroy abandons the last-applied value.
 
 Total TLS: automatically issue individual certificates for every proxied
 hostname in the zone, including deep subdomains Universal SSL's wildcard does
-not cover. No delete at Cloudflare: destroy abandons the last-applied value.
+not cover. ENTITLEMENT-GATED: the zone must carry an Advanced Certificate
+Manager subscription or every write answers 401 code 1450 (measured at
+v5.23.0 on Free and Pro zones alike -- ACM is a per-zone add-on, not a plan
+tier). No delete at Cloudflare: destroy abandons the last-applied value.
 
 ### spec.totalTls.enabled
 
@@ -127,8 +130,11 @@ Cloudflare choose. The certificates' validity period is fixed by Cloudflare
 `bool` · optional (explicit presence)
 
 Automatic origin TLS key exchange: let Cloudflare negotiate the strongest key
-exchange the origin supports on origin-facing TLS. No delete at Cloudflare:
-destroy abandons the last-applied value.
+exchange the origin supports on origin-facing TLS. ACTIVE ZONES ONLY: on a
+pending (undelegated) zone the write answers 400 code 1000 with the
+misleading message "Invalid zone identifier" -- the zone id is fine, the
+setting simply does not exist until the zone activates (measured at
+v5.23.0). No delete at Cloudflare: destroy abandons the last-applied value.
 
 ### spec.originTlsComplianceModes
 
@@ -147,7 +153,10 @@ via the module's destroy; the module never sends an empty list.
 
 Per-hostname TLS overrides within the zone. Each row targets one hostname and
 sets any of the three overridable settings; each set setting becomes its own
-per-hostname override object at Cloudflare. Real delete: destroying the
+per-hostname override object at Cloudflare. ENTITLEMENT-GATED: the zone must
+carry an Advanced Certificate Manager subscription or every override write
+answers 401 code 1450 (measured at v5.23.0 on Free and Pro zones alike --
+ACM is a per-zone add-on, not a plan tier). Real delete: destroying the
 resource removes the overrides and the hostnames fall back to zone-wide
 settings.
 
@@ -210,8 +219,11 @@ The mTLS certificate whose hostname associations this row manages. Leave
 unset to manage the zone's managed-CA association list instead. Accepts a
 literal certificate id or a reference to a CloudflareMtlsCertificate
 resource's certificate_id output.
+When using value_from, defaults to CloudflareMtlsCertificate kind and
+status.outputs.certificate_id field path.
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: CloudflareMtlsCertificate (`status.outputs.certificate_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareMtlsCertificate, name: <that resource's name>, fieldPath: status.outputs.certificate_id}} -- a bare string does not parse
 
 ## Validation Rules
 
@@ -232,6 +244,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.zoneId` | CloudflareDnsZone | `status.outputs.zone_id` |
+| `spec.caHostnameAssociations[].mtlsCertificateId` | CloudflareMtlsCertificate | `status.outputs.certificate_id` |
 
 ## See Also
 

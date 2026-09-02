@@ -14,8 +14,14 @@ spec:
   # to stick (provider defect class, taught in the spec); (b) rules are
   # free-plan objects that create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # PROVEN live 2026-08-27: both scenarios on both engines through the full
+  # lifecycle; the account arm's blind import round-trip passed at zero
+  # tolerances; the zone arm skips the round-trip by scenario annotation
+  # (dual-scope id underivable -- see the scenario) and its lifecycle proved
+  # the dual-scope verifier's zone path. T1/managed_challenge accepted on a
+  # pending zone; account and zone deletes both 404 honestly.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

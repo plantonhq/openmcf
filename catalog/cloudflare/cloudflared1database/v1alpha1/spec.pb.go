@@ -158,12 +158,21 @@ type CloudflareD1DatabaseSpec struct {
 	// The unique name for the D1 database, unique within the account.
 	DatabaseName string `protobuf:"bytes,2,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
 	// Region hint for the database's primary instance (maps to
-	// primary_location_hint). Fixed at creation. Leave unspecified to let
-	// Cloudflare choose, or use jurisdiction for a data-residency constraint.
+	// primary_location_hint). Fixed at creation, and Cloudflare never returns
+	// it on read, so post-create edits are deliberately INERT in both engines
+	// (live-verified 2026-08-26: without the ignore, the replace-forcing hint
+	// would destroy the database -- data included -- to move a hint). To
+	// change placement, recreate the database deliberately. Leave unspecified
+	// to let Cloudflare choose, or use jurisdiction for a data-residency
+	// constraint.
 	Region CloudflareD1Region `protobuf:"varint,3,opt,name=region,proto3,enum=dev.planton.cloudflare.cloudflared1database.v1alpha1.CloudflareD1Region" json:"region,omitempty"`
 	// Configures D1 Read Replication: read-only replicas in multiple regions for
 	// lower global read latency. WARNING: enabling replication requires the Worker
-	// to use the D1 Sessions API for consistency; omit to disable.
+	// to use the D1 Sessions API for consistency; omit to disable. Omitting is
+	// exact, not approximate: Cloudflare always reports the mode ("disabled"
+	// when never configured), and both engines send that server default
+	// explicitly so an omitted block converges (live-verified 2026-08-26;
+	// `auto` is available on the free plan).
 	ReadReplication *CloudflareD1ReadReplication `protobuf:"bytes,4,opt,name=read_replication,json=readReplication,proto3" json:"read_replication,omitempty"`
 	// Data-residency jurisdiction, fixed at creation. One of "eu" (European Union)
 	// or "fedramp" (US FedRAMP). Constrains where the database is placed; mutually

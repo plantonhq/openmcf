@@ -1,6 +1,10 @@
 # CloudflareLogpushJob guide
 
-The judgment this guide protects you from: two of this resource's fields cannot be changed after the job exists, and the destination handshake deliberately routes through storage only you can read.
+The judgment this guide protects you from: the entitlement refusal wears a misleading message, two of this resource's fields cannot be changed after the job exists, and the destination handshake deliberately routes through storage only you can read.
+
+## "Exceeded max jobs allowed" means NO ENTITLEMENT, not too many jobs
+
+On a plan without the Logpush entitlement, creating a job fails with 403 code 1004: "creating a new job (for http_requests dataset) is not allowed: exceeded max jobs allowed" -- measured on zones carrying ZERO jobs, on Free and Pro plans alike. The quota it refers to is the plan's job allowance, which is zero below Enterprise for most datasets (http_requests included). If you see this message on a fresh zone, the fix is the plan entitlement, not deleting jobs. The destination side is NOT what is gated: destination validation (including R2 with embedded credentials) succeeds on any plan.
 
 ## The job variant is locked at creation -- and the plan will not warn you
 

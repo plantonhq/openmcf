@@ -175,6 +175,30 @@ service networking connection chain):
   state would otherwise make a later `up` a silent no-op while the actual
   cloud resource is gone.
 
+The SCENARIO's own DESTROY phase (distinct from the fixture-chain teardown
+above) is single-attempt by default — a destroy failure is usually a real
+module or provider bug and must fail loudly. A scenario whose resource class
+carries a CLOUD-SIDE delete guard (the provider's DELETE is refused for a
+bounded window no matter how correct the module is) opts into bounded destroy
+retries with the reason-carrying `planton.dev/e2e-destroy-retry` annotation
+on the scenario manifest ([runner.go](framework/runner/runner.go): full
+destroy re-runs 60s apart under a 15-minute budget, each retry printing the
+declared reason into the lane log). First user: Cloudflare email-routing
+destination addresses, whose delete answers 400 code 2032 "created too
+recently" until ~10 minutes after create (measured 2026-08-26: refused at
+9m14s, accepted at 10m15s). An empty annotation value does not opt in —
+state the guard, its error signature, and the measured window.
+
+**Run ONE live-lane process at a time per provider account.** Two `go test`
+processes hammering the same provider API concurrently can push a create into
+the retry path of the provider's HTTP client: the first POST lands
+server-side but the client sees a transient error, the automatic retry POSTs
+again, and a non-idempotent create answers "already exists" (Cloudflare zone
+error 1061, live-caught 2026-08-26 when two engine lanes ran as parallel
+processes) — the lane then fails its OWN fixture create against its own
+run-scoped name, which looks impossible from the log. Engine lanes within one
+process are already sequential; keep processes sequential too.
+
 Verifiers that read a resource through a *different* API than the one that
 created it should poll briefly before declaring it absent (see the
 service-networking-connection verifier: the peering is created via the
@@ -859,6 +883,109 @@ create-time UUID generation. The sibling `SqlRoleDefinition` needs the
 same explicit-GUID treatment for `role_definition_id` when unset; its
 logical name can stay on `metadata.name`.
 
+### Plan-gated Cloudflare products: probe the wall, run on an operator-arranged paid zone
+
+Several Cloudflare products refuse EVERY create on a free-plan zone, each
+with its own error shape (all measured live 2026-08-27): Snippets answer a
+code-less "snippets are not allowed", standalone Health Checks answer 400
+code 1002 "health checks disabled for zone", Waiting Rooms answer 400 code
+1034 "Zone not entitled to this functionality". Two disciplines: (1) probe
+the wall on BOTH a throwaway zone and the operator's sanctioned ACTIVE zone
+before concluding -- the same refusal on both proves plan tier, a
+difference proves delegation state (the DNSSEC precedent); (2) when the
+operator arranges a paid-plan zone, the lanes run on it through the
+env-gated arm (`planton.dev/e2e-required-env` +
+`${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}`) -- run-scoped fixture zones
+are always free-plan, so a registry zone prerequisite cannot carry a
+paid-product lane, and any registry-installed fixture of a plan-gated kind
+(the snippet fixture consumed by snippet rules) must itself reference the
+env-injected zone. Products the account's plans cannot reach stay recorded
+entitlement deferrals with the plan named as the unblock.
+
+Five refinements to the same class (all measured live 2026-08-27):
+
+- **The entitlement refusal can wear QUOTA clothing.** Logpush job creation
+  below Enterprise answers 403 code 1004 "creating a new job (for
+  http_requests dataset) is not allowed: exceeded max jobs allowed" -- on
+  zones carrying ZERO jobs, Free and Pro alike. A plan without the product
+  entitlement has a job quota of zero, so the "quota exceeded" message IS
+  the plan wall. Read a quota message on a fresh fixture as an entitlement
+  suspect and settle it with one probe on the sanctioned paid zone.
+- **A full-WRITE token policy is not full access: some product families
+  split read from write.** The harness token carries every write
+  permission group and its creates/deletes succeed everywhere -- but Web
+  Analytics (RUM) reads answer 403 code 10000 "Authentication error" under
+  it: `Account Settings Write` creates sites while reading them back needs
+  the separate `Account Settings Read` group (probe-proven by minting a
+  temporary token with just that group). Consequences: a 403 on a READ
+  under a write-loaded token is a missing READ GROUP suspect before it is
+  a user-actor-endpoint suspect -- distinguish them by probing with a
+  purpose-built temporary token (cheap, self-cleaning, and decisive),
+  because the two diagnoses have opposite outcomes (a token edit vs an
+  honest deferral). Terraform providers need the read side for EVERY
+  refresh, so a read-walled family breaks mid-lane with orphans that only
+  direct API DELETEs (writes -- which still work) can sweep.
+
+- **`editable=true` in the zone-settings list is NOT a write guarantee.**
+  The flag describes the settings class's plan-editability; a setting can
+  still carry a separate product gate. `ciphers` reads editable=true on a
+  Free zone yet every write answers 400 code 1023 "Advanced Certificate
+  Manager is required". Probe the WRITE, not the read, before calling a
+  setting free.
+- **Per-zone SUBSCRIPTIONS gate independently of plan tier.** Advanced
+  Certificate Manager gates Total TLS and every per-hostname TLS override
+  with 401 code 1450 on Free and Pro zones alike -- upgrading the plan
+  does not open them; only the per-zone ACM subscription does. Name the
+  subscription (not a plan) as the unblock in these deferrals.
+- **A pending zone can answer 400 code 1000 "Invalid zone identifier" for
+  a setting that does not exist until activation** (`auto_origin_tls_kex`).
+  The zone id is fine -- the same write succeeds on an ACTIVE zone. Treat
+  1000-on-a-fresh-fixture-zone as a delegation-state suspect, not an id
+  bug, and settle it with one write probe on the sanctioned active zone.
+- **Product ENROLLMENT gates fire before everything -- even reads -- and
+  neither plan tier nor a subscription opens them** (measured live
+  2026-08-28). Cloudflare for SaaS answers 400 code 1404 "No quota has
+  been allocated for this zone or for this account" on custom-hostname
+  creates AND the bare LIST, identically on a pending fixture zone and the
+  active Pro zone; the fallback-origin PUT answers its own 400 code 1456
+  "This feature is available with SSL for SaaS". The unblock is a
+  dashboard enrollment on the zone (SSL/TLS -> Custom Hostnames, card on
+  file; free tier included), not a plan upgrade -- name the enrollment as
+  the unblock, and expect the gate to mask every downstream risk (the
+  fallback origin's documented token-PUT 403 cannot even fire until the
+  enrollment opens the surface).
+- **The delegation-state wall can wear an OWNERSHIP message.** Origin CA
+  certificate requests for a hostname under a PENDING zone answer 400
+  code 1010 "This zone is either not part of your account, or you do not
+  have access to it" -- even though the zone IS on the account; the
+  identical request for an ACTIVE-zone hostname succeeds with the same
+  token (probe-proven both ways, 2026-08-28). Same discipline as the
+  1000 class: settle ownership-flavored refusals on fresh fixture zones
+  with one probe against the sanctioned active zone.
+
+### Settings-singleton verifiers: pick a surface that answers on every plan
+
+A settings-family verifier probes ONE endpoint as the family's existence
+surface, and that endpoint must answer on the cheapest zone a lane can
+run on. The natural-looking choice can be read-gated: Cloudflare's
+`cache_reserve` GET answers 400 code 1135 "not available for your plan
+type" on Free AND Pro zones, so a verifier registered on it would fail
+every honest verify phase against a free fixture zone. Probe the
+verifier's own GET on a free zone before registering (the cache-settings
+verifier probes `cache/tiered_cache_smart_topology_enable`, measured
+answering editable:true on every plan even before any write).
+
+### No-op-destroy singletons on a SHARED zone: write the default value
+
+An env-gated arm that manages a no-op-destroy singleton on the operator's
+sanctioned (shared, long-lived) zone abandons whatever it wrote when the
+lane destroys. The hygiene idiom: declare Cloudflare's DEFAULT value in
+the scenario -- the lane still proves the full lifecycle (deploy, verify,
+idempotency, blind import round-trip, destroy) while the shared zone ends
+exactly as it started. Never write a non-default value to a no-op-destroy
+surface on a zone the lane does not own.
+
+
 ### Long-running Azure components (Bastion hosts)
 
 A Bastion host is the ~10-minute duration class outside gateways:
@@ -1148,6 +1275,433 @@ docs teach the one-time convergence replace after adoption. Choose by
 asking "should editing this field replace the resource?" -- no
 (immutable creation history) means ignore_changes; yes (rotatable
 secret) means the annotation.
+
+The annotation's second structural class: a SINGLETON COMPANION with no
+upstream importer whose re-create the cloud REFUSES while the live object
+exists. A not-importable type normally rides the catalog's
+`not_importable_upstream_reason` -- the round-trip skips its import and
+proves the adopter's re-create path instead -- but that tolerance is
+honest only for upsert-convergent creates (idempotent PUTs). "No upstream
+importer" includes an importer that EXISTS but cannot run: measured
+2026-08-27, cloudflare_snippet's ImportState seeds identity only and the
+resource's Read then dereferences a pointer field tagged no_refresh that
+only a create populates -- every imported snippet panics the provider
+("Plugin did not respond"). A crashing importer is declared with the
+same machine field, evidence in the reason, and the upsert-adopt path
+carries the proof (snippet create is an upsert by name). When the
+create is a plain POST and the service enforces one-per-parent, the
+re-create is rejected with the object still live, so NO recipe can
+converge: the companion-bearing scenario opts out with the annotation
+(reason naming the measured error), the parent's importer keeps proving
+on a companion-free scenario, and the kind's docs teach the real adoption
+path (delete the live companion first, or leave it managed outside).
+First users, both measured 2026-08-26: Cloudflare queue consumers --
+POST `.../consumers` answers 400 code 11004 "already has a consumer"
+(one consumer per queue by design) -- and Cloudflare R2 bucket event
+notifications -- the per-queue PUT MERGES rules instead of replacing
+them, so an identical re-put answers 400 code 11020 "rules have invalid
+overlap".
+
+### The Stainless decode-over-prior-state asymmetry: import-only diffs in BOTH directions
+
+Auto-generated (Stainless-style) providers decode API responses OVER the
+prior model, so an attribute the GET omits keeps whatever the state
+already held. On the create path that means the configured value
+survives every refresh -- the IDEMPOTENCY re-plan stays clean and
+nothing looks wrong. On the import path there IS no prior value, so the
+same attribute lands null, and the post-import plan shows an in-place
+update the normal lifecycle never produces. The MIRROR direction also
+exists: an attribute the GET ECHOES (a server default like `false`)
+gets restored on import where a guarded module deliberately omitted it,
+and the plan proposes "unsetting" it. Both directions are the
+import-restore gap class: no module fix is right (the writes are no-ops
+against the cloud's real state), the remedy is a
+`write_normalized_attributes` declaration on the provider catalog row
+citing the upstream import test's own `ImportStateVerifyIgnore` list,
+plus a GUIDE note teaching adopters the one-time first-apply update.
+First measured users (Cloudflare v5.23.0, live 2026-08-26): Access group
+`is_default` and Access policy `approval_required`/`isolation_required`/
+`purpose_justification_required` (omitted-by-GET direction); Access
+application `auto_redirect_to_identity`/`enable_binding_cookie`/
+`options_preflight_bypass` (echoed-by-GET direction). The upstream ignore
+list is the map: check it during the PRE-LANE pass and declare from
+measurement, never blanket-tolerate.
+
+### The create response omits computed attributes the GET returns: the read-after-create class (module-fixable)
+
+Some Cloudflare create endpoints answer with a MINIMAL body (the alerting
+webhook POST returns only `{id}`; the Web Analytics site POST omits the
+`ruleset` object -- both measured by direct POST-then-GET, 2026-08-27),
+while the resource GET returns the full body. Auto-generated providers
+decode create responses without a read-after-create, so every computed
+attribute the create response omitted sits NULL in state until the first
+refresh backfills it. Three failure shapes, worst first: (1) a module
+expression dereferencing the attribute (`resource.ruleset.id` feeding a
+folded child resource) HARD-FAILS the apply; (2) a stack output riding the
+attribute ships EMPTY on first deploy on both engines -- a wrong output,
+not just noise; (3) on Terraform, the first refresh backfills the value
+and flips the output, failing the strict idempotency re-plan with a
+"Changes to Outputs"-only diff. The fix is module-side and cross-engine: a
+read-after-create (Terraform data source keyed by the created resource's
+id; the Pulumi Lookup...Output invoke) carries those attributes instead of
+the resource -- and on Pulumi the lookup results need explicit
+`pulumi.ToSecret` re-marking, because `AdditionalSecretOutputs` on the
+resource does not cover lookup results. Diagnose in one probe: direct API
+POST, inspect the create response body, GET the object, diff the two.
+First measured users: `cloudflare_notification_policy_webhooks` (`type`),
+`cloudflare_web_analytics_site` (`snippet`).
+
+The same diagnosis can uncover a sharper sibling truth: a null sub-object
+may be IDENTITY-DEPENDENT rather than read-dependent. The Web Analytics
+site's `ruleset` is not omitted-by-create -- it NEVER exists for
+host-identified sites and ALWAYS exists (create response included) for
+zone-linked ones, which makes any host+rules configuration structurally
+undeployable (the rules attach to the ruleset). That class is fixed in the
+SPEC (a CEL wall forbidding the impossible combination, taught on the
+fields) plus null-safe outputs -- not by a read-after-create, which cannot
+conjure an object the API never creates. Run the probe on BOTH identity
+variants before concluding which class you have.
+
+### A transitioning phase is never a stack output: the async-phase-output class
+
+Distinct from the read-after-create class above (where a stable value
+merely arrives late): some resources carry a status attribute that
+GENUINELY TRANSITIONS server-side after create (a certificate deployment
+moving pending_deployment -> active seconds later). Exporting it as a
+stack output makes strict idempotency structurally unpassable -- the
+refresh after the transition flips the output, `-detailed-exitcode`
+answers 2 on a "Changes to Outputs"-only diff, and a real customer sees a
+phantom pending change on every plan after the transition. No
+read-after-create fixes it (the create-time read captures the WRONG
+phase), and no catalog tolerance can absorb an idempotency failure. The
+fix is contract-level, in both engines: transitioning phases are not
+deployment facts, so they are not stack outputs -- drop the output and
+teach readers to query the provider's API for live phase. Outputs carry
+only values that are stable once the apply returns (ids, names, expiry
+timestamps). First measured user (live 2026-08-28):
+`cloudflare_authenticated_origin_pulls_hostname_certificate` `status`
+(the sibling `cloudflare_custom_ssl` `status` is the same class).
+
+The class LURKS in kinds authored before the lesson existed: a
+pre-lane verification pass caught it dormant in three certificate/SaaS
+kinds (certificate pack, custom hostname, fallback origin) authored
+weeks before the first live measurement. Before running any kind's
+first lanes, grep its outputs for phase-named fields (`status`,
+`state`, `phase`) whose provider docs describe an asynchronous
+transition, and remove them proto-side (reserve the field number and
+name) BEFORE the lane measures the failure for you. One honest nuance:
+a phase output survives live proof when the transition never happens
+inside a lane (a run-scoped zone's `status` stays `pending` for the
+lane's whole life) -- that green is real but conditional on the
+fixture's lifecycle, so leave proven kinds alone and catch the class in
+kinds that have not yet run.
+
+The class is not only enum-shaped phases -- it has a DIAGNOSTIC-LIST
+form and a SCALAR form, both measured live 2026-08-29: a custom
+hostname's `verification_errors` list deploys EMPTY and the server
+appends "zone is not active yet" seconds later (the failing re-plan is
+"Changes to Outputs"-only, with the resource itself converged), and a
+certificate pack's `primary_certificate` is absent in the create
+response, reads "0" seconds later, and becomes the real certificate id
+as issuance progresses. The phase-name grep therefore under-catches:
+audit every output whose value the SERVER can move without a config
+change (error/warning lists, progress counters, ids of objects the
+service creates asynchronously). A watched-and-cleared suspect list is
+not a defect record -- the first lane decides; these two were left in
+deliberately by the session that removed the `status` outputs, and the
+next session's first lane convicted both.
+
+### Multi-line ${E2E_ENV:...} values render as quoted YAML scalars, whole-value position only
+
+Scenario token expansion is plain text substitution -- which corrupts the
+manifest the first time an env value spans lines (PEM certificate/key
+material: the second line lands outside the field's YAML scalar and
+parsing fails at load). The framework renders a multi-line env value as a
+double-quoted single-line YAML scalar (`\n` escapes) instead, and ONLY
+when the token occupies a whole mapping value (`certificates:
+${E2E_ENV:...}`); any other placement (mid-string, inside a block
+scalar) has no safe mechanical rendering and fails loudly at expansion.
+Authoring rule: give a PEM-carrying field the token as its entire value,
+never compose it into a larger string. Single-line values keep
+byte-identical plain substitution. Shell corollary: `$(cat cert.pem)`
+strips the trailing newline -- harmless where modules canonicalize (the
+mTLS certificate store), but keep it in mind when a service is
+byte-exact about PEM form.
+
+### Computed attributes without state-preserving plan modifiers: the perpetual re-plan class
+
+Some auto-generated resources ship Computed (and Computed+Optional)
+attributes with NO `UseStateForUnknown`-style plan modifiers, and pair that
+with an API that echoes only the fields you sent. The combination is a
+resource that CANNOT pass a refresh-inclusive idempotent plan on any
+configuration shape: null computed members re-plan as "(known after apply)"
+forever, and the first one inside a config-provided nested object turns
+every plan into an in-place update. Know the two non-fixes before burning a
+lane on them (both measured live 2026-08-26): sending the field explicitly
+does not converge (the API accepts-and-drops the write, and the create
+path's computed decode nulls it right back), and `lifecycle.ignore_changes`
+cannot help (it filters the CONFIG merge, while this unknown is planned by
+the PROVIDER afterward). Diagnose with three probes -- config shape absent /
+empty-object / populated, plus a direct API POST-then-GET to see the sparse
+echo -- and if all drift, the honest outcome is a DEFERRAL on the upstream
+defect, never a weakened idempotency gate. First measured user:
+`cloudflare_zero_trust_gateway_policy` at v5.23.0 (upstream issue #7106;
+every shape drifts via `rule_settings.ignore_cname_category_matches` and
+friends). Second measured user (live 2026-08-27): `cloudflare_ai_gateway` --
+the WRITE-ONLY-BODY variant, where the API accepts whole object surfaces on
+write but no read EVER returns them (`otel`/`spend_limits`; probe by direct
+POST-then-GET) while the provider models them computed_optional and
+refreshes them, so the unknown-flip fires even on configurations that never
+set the fields, and a SET value is worse (refresh nulls state, planning a
+REAL update forever). Its folded sibling `cloudflare_ai_gateway_dynamic_routing`
+escalates the same asymmetry into a perpetual DESTROY-AND-RECREATE: the read
+returns the graph only under a response path the provider never consults
+(`version.data`), and the un-restorable attribute is RequiresReplace. Both
+remedies re-measured non-fixing there, matching #7106. Contrast with the
+decode-over-prior-state class above: that one is
+import-only and tolerable by declaration; this one breaks the NORMAL
+lifecycle and no catalog declaration can absorb an idempotency failure.
+When only SOME of a resource's attributes are in this class, the deferral
+still takes the whole kind on the affected engine -- but fix the honest
+echo classes first (always-send booleans, server-default coalesces): the
+diagnosis is only clean once every config-carried diff is dead and the
+surviving drift is provably the provider's own unknown promotion.
+
+### A PURE-computed attribute planning a phantom update: the ignore-changes class (module-fixable)
+
+The fixable sibling of the perpetual re-plan class above. Some auto-generated
+resources ship ONE pure-Computed attribute (never user-set, stable
+server-side) with no `UseStateForUnknown` modifier, and the provider proposes
+an in-place update on EVERY plan solely to re-mark it "(known after apply)" --
+with a clean refresh (`plan -refresh-only` reports no changes) and zero config
+drift. Two things distinguish it from the deferral class: the attribute is
+NEVER SENT (pure computed, so ignoring it cannot mask a real write), and
+`ignore_changes` DOES fix it (the unknown is the framework's computed-null
+promotion on that one attribute, not a provider-planned value under a config
+merge). The remedy is `lifecycle.ignore_changes` on exactly that attribute in
+the Terraform module AND `pulumi.IgnoreChanges` on the same property in the
+Pulumi module -- the BRIDGED provider surfaces the same phantom update in
+previews (a preview never refreshes, but it DOES run the provider's plan
+against stored state, so "Pulumi previews hide refresh drift" is NOT immunity
+to this class). The stack output still reads the real value from state.
+First measured user (live 2026-08-27, v5.23.0):
+`cloudflare_zero_trust_device_default_profile.policy_id` -- both engines
+measured drifting, both converged by the ignore.
+
+A second, judgment-heavier member (live 2026-08-29):
+`cloudflare_custom_hostname.ssl.certificate_authority`. Not pure-computed --
+the field is USER-SETTABLE, but only on Enterprise (400 code 1459 rejects an
+explicit value on any other plan, probe-measured), and when unset the server
+assigns a CA AT RANDOM per create (consecutive identical creates measured
+`ssl_com` then `google`), so config can never mirror the stored value and
+always-send / server-default-coalesce fixes are impossible. The deciding
+evidence for the scoped ignore was UPSTREAM'S OWN acceptance tests: every
+ssl-bearing config in the provider's test suite wraps
+`ignore_changes = [ssl.certificate_authority, ...]` -- the provider's authors
+know the attribute cannot converge. When you mirror that recipe, document the
+one real trade-off ON THE SPEC FIELD: an in-place change of the ignored field
+no longer applies (here: Enterprise users changing CA must recreate). Never
+widen the ignore beyond the attributes upstream's own tests convict.
+
+### Settings endpoints that REJECT identical writes: the no-op-write wall (probe before reusing the write-the-default discipline)
+
+The shared-zone discipline for no-op-destroy settings ("write the default
+value -- prove the lifecycle while leaving the zone as found") silently
+assumes the endpoint ACCEPTS a write that changes nothing. Not all do:
+Cloudflare's Total TLS configure answers 400 code 1467 "No state between
+current settings and new settings has changed" to a value identical to the
+stored record (measured live 2026-08-29 -- the zone's first-ever configure
+of the as-found value succeeded because it CREATED the record, and the
+identical rewrite minutes later was refused, so the trap fires only from
+the second run onward). A write-the-default arm on such an endpoint is
+green exactly once and then fails every re-run at deploy. The re-runnable
+shape is a REAL-CHANGE arm with a documented restore duty: write a value
+that differs from the captured baseline, and restore the baseline
+out-of-band after EACH engine's lane (also BETWEEN engines -- the second
+engine's identical write hits the same wall). Contrast the zone-settings
+PATCH surfaces and the kex toggle, which tolerate identical rewrites
+(measured across many lanes) -- the wall is per-endpoint, so probe the
+rewrite before designing the arm.
+
+### The canonical LOCK decides the engine, not the pin RANGE -- and an upstream "fix" can change the failure mode
+
+Every Terraform module here carries a committed `.terraform.lock.hcl`
+pinning the exact provider build; the `~> X.Y` constraint in provider.tf
+only bounds what a DELIBERATE pin bump may select. Two traps measured live
+2026-08-29 on `cloudflare_hostname_tls_setting`: (1) a defect fix released
+within the pin range (v5.24.0 fixing the v5.23.0 Read) is NOT in your lane
+-- the lock still selects v5.23.0 from the shared plugin cache, so verify
+defect claims against the LOCKED version and record unblocks as "a release
+carrying the fix + the canonical pin bump", never "already fixed upstream";
+and (2) before citing a newer release as the unblock, RUN it once in a
+disposable workdir (copy the module, drop the lock, pin the exact version)
+-- v5.24.0's rewritten Read turned out to GET a per-hostname path Cloudflare
+answers with 405 Method Not Allowed, replacing v5.23.0's silent
+state-zeroing with a hard refresh error: the failure mode changed, the
+defect did not close, and an unblock recorded from the diff alone would
+have been false.
+
+### IMPORT-ONLY convergence gaps: schema defaults and API auto-marks that refresh forgives but import does not
+
+A lane can pass DEPLOY and the refresh-inclusive IDEMPOTENCY plan on every
+scenario and still fail the blind import round-trip with a genuine in-place
+update -- because Optional+Computed semantics forgive an omitted config
+against a refreshed state (prior value kept, no diff) while the post-import
+plan compares the raw imported read against the config's DEFAULTS. Two
+measured shapes (live 2026-08-28, `cloudflare_load_balancer` at v5.23.0/24.0):
+(1) the provider's schema `Default` differs from the API's CANONICAL stored
+value -- `steering_policy` defaults to `""` while the API stores `"off"` (or
+`"geo"` with geo-pool maps), so an omitted policy re-plans `"off" -> null`
+only after import; contrast `session_affinity`, whose default `"none"` equals
+the canonical echo and never diffs. (2) the API AUTO-MARKS a member inside a
+list attribute -- a `fixed_response` rule is stored with `terminates: true`,
+so a module that omits `terminates` re-plans the whole `rules` list only
+after import. Both are MODULE-FIXABLE by sending the canonical value
+explicitly (mirror the API's documented mapping; send `terminates: true`
+exactly when the rule carries a `fixed_response`) -- prefer that over a
+catalog tolerance, because these are real steering semantics a tolerance
+would blind the oracle to. Diagnosis note: ONE real diff makes the provider's
+plan flip every other Optional+Computed attribute to "(known after apply)",
+so the round-trip oracle's changed-list looks enormous -- find the entries
+whose before/after are concrete values (not unknown-flips), fix those, and
+the rest of the list collapses to a no-op. Related teardown hazard: a failed
+import round-trip aborts the lane BEFORE its DESTROY phase, so the deployed
+object outlives the lane and can block fixture teardown (a live load
+balancer holds its pool -- the pool's delete 400s until the zone cascade
+removes the LB); sweep the account after any import-RT failure instead of
+trusting retry exhaustion.
+
+A settings-singleton trap for capture-and-restore lanes. Auto-generated
+schemas may attach a static default (`stringdefault.StaticString("")`) to an
+Optional field, so ANY apply that omits the field actively writes the empty
+value -- resetting live account state the scenario never mentioned. Measured
+live 2026-08-27: a default-WARP-profile apply that omitted `tunnel_protocol`
+blanked the account's `masque` setting to `""`. Two duties follow: the
+VERIFY-CLN restore diff must compare EVERY field of the captured body against
+the live read (a restore that only re-asserts the fields the scenarios set
+silently ships the reset), and the spec field that carries such a default
+must teach that unset means reset-to-default, never leave-untouched.
+
+### Computed-optional attributes with RAW model types: the unknown-crash class (module-fixable)
+
+A sibling of the perpetual re-plan class, but FIXABLE module-side. Some
+auto-generated resources declare an attribute `Optional+Computed` with a
+customfield type in the SCHEMA while the Go MODEL types it as a raw pointer
+or raw slice that cannot hold "unknown". A config that leaves the attribute
+null plans it as unknown (computed-null promotion), and the apply CRASHES
+decoding the plan into the model: `Value Conversion Error ... Received
+unknown value, however the target type cannot handle unknown values`. The
+offline bar never sees it -- plan alone doesn't run the conversion. The
+remedy is a module-side coalesce to the attribute's DOCUMENTED server
+default so the planned value stays known (an explicit `{mode = "inherit"}`
+where omission means inherit; an empty list where absence means
+no-restriction) -- semantics unchanged, crash unreachable. Diagnose by
+reading the resource's model.go: any `computed_optional` field typed
+`*Model` / `*[]*Model` instead of `customfield.NestedObject[...]` is a
+carrier. First measured user (live 2026-08-26, unfixed through v5.24.0 and
+provider main): `cloudflare_zero_trust_dns_location` (`max_ttl`, top-level
+`networks`, and every endpoint `networks`).
+
+### Empty lists the API drops on read: [] beats null, real rows beat both
+
+The companion trap to the unknown-crash class: after coalescing a null list
+to `[]` to keep the plan known, the refresh may STILL drift when the API
+omits empty lists from its read answer -- state refreshes the list to null,
+config re-asserts `[]`, and the re-plan proposes a cosmetic `+ networks =
+[]` forever. No module change can fix a refresh decode. The hierarchy: a
+scenario (or customer config) that declares REAL rows is drift-free and
+proves more; `[]` is the correct module behavior anyway (a cosmetic no-op
+diff beats an apply crash); document the permanent-diff wall on the spec
+field and GUIDE so nobody reads the diff as their own bug. First measured
+user (live 2026-08-26): the DNS location's endpoint `networks` lists.
+
+### Singletons by ACCRETION: the first object becomes an undeletable account default
+
+Some Cloudflare families auto-promote the first object ever created on an
+account to a mandatory account default that the API then refuses to delete
+(error 1217) or demote in place (error 1216) -- the default can only be
+MOVED by promoting another object, so the account can never return to zero
+objects. A lane running on a previously-empty account trips this on
+whichever scenario runs first: its destroy fails, and the "orphan" cannot
+be swept by any API call. The honest pattern: park the default on ONE
+permanent, clearly-named placeholder object (created once, named for what
+it is, recorded), after which every run-scoped object creates as
+non-default and lifecycles cleanly. Never point the placeholder dance at a
+customer account without teaching it in the kind's GUIDE -- customers hit
+the same wall on their first object. First measured user (live 2026-08-26):
+Gateway DNS locations (`gateway/locations`). The DELETABLE mirror of this
+class (measured 2026-08-27): an AUTO-PROVISIONED default container occupying
+a hard singleton slot -- the Secrets Store's `default_secrets_store` fills
+the account's only slot (a second create answers 1003
+maximum_stores_exceeded) even on accounts that never used the product. When
+the auto-provisioned object is verifiably EMPTY, the honest lane pattern is
+delete-to-free-the-slot under owner approval, run the run-scoped lifecycles,
+and recreate the same-named container at session end (the recreated id
+differs -- record it); when it is not empty, it is production state and the
+kinds defer.
+
+### Terraform outputs: never null-guard a partially-sensitive object
+
+An output expression like `x.scim_config != null ? x.scim_config.base_url :
+null` fails at APPLY time with "Output refers to sensitive values" whenever
+ANY member of the object is schema-sensitive: comparing the whole object
+yields a sensitive boolean, and a sensitive condition taints the entire
+conditional -- even though the selected leaf is not sensitive. Plan does not
+evaluate output sensitivity, so the offline bar cannot catch it; it fires on
+the first live apply. Write `try(x.scim_config.base_url, null)` instead --
+direct leaf access carries only the leaf's own sensitivity and degrades to
+null when the object is absent. First measured user (live 2026-08-26): the
+Cloudflare Access identity provider's `scim_base_url` output (`scim_config`
+carries the sensitive `secret` member).
+
+### VERIFY-CLN is per-id; only a NAME-based census catches duplicate-create leaks
+
+The verify-destroyed phase GETs the stack's recorded object id and can pass
+honestly while a LEAKED DUPLICATE of the same object survives under a
+different id (measured 2026-08-28: an account-token Pulumi lane passed
+every phase including VERIFY-CLN, yet the end-of-session census found a
+second ACTIVE token carrying the same run-scoped name and an id the stack
+never knew -- most plausibly a create retry that succeeded twice). The
+end-of-session sweep must therefore census by RUN-SCOPED NAME across every
+object family the session touched, never only re-check the ids the lanes
+verified; anything wearing a run id that the lanes did not destroy is an
+orphan to delete by API.
+
+### The round-trip's plan echo prints sensitive output VALUES to the local test log
+
+The IMPORT-RT phase's oracle plan runs through terratest's default
+logger, and `tofu show -json` exposes sensitive outputs in plaintext
+(`prior_state`/`planned_values` carry the real values -- only the
+`sensitive` flag marks them). Run-scoped throwaway credentials (tunnel
+run tokens and the like) die with their objects at DESTROY, so the local
+log exposure is inert for lanes built on run-scoped fixtures -- but
+never point a round-trip-enabled lane at a long-lived credential
+expecting log hygiene, and treat captured lane logs as
+credential-bearing until the run's objects are destroyed.
+
+### Revoke-is-not-delete surfaces, and the every-dispatch rule for new absence shapes
+
+Origin CA certificates never 404: destroy is a REVOKE, and the revoked
+certificate keeps answering GET 200 with its full body plus `revoked_at`
+set, indefinitely (measured live 2026-08-28 -- revoked certificates from
+hours earlier still answer). The verifier's `RevokedAt` envelope probe
+reads a non-empty `result.revoked_at` as absence, the fourth absence
+shape after `deleted_at` (tunnels), `is_deleted` (Workflows), and the
+status enums (certificate packs / custom hostnames).
+
+The lesson that cost an hour of misdiagnosis when this shape landed: **a
+new `EnvelopePresence` field must join EVERY dispatch site, including the
+client's fast-path guard** -- the short-circuit that returns "present" on
+any 2xx when no absence shape is requested. A shape missing from that
+guard is silently bypassed: the probe never parses the body, every
+destroy reports a false "still exists", and the failure masquerades as
+server-side propagation lag (this shipped once and was chased through
+fresh-connection and cache-busting theories before the two-line direct
+client probe against a known-revoked id exposed it). When a new absence
+shape misbehaves, FIRST prove the client parses it -- one `go run` with
+the real client against a known-absent object -- before theorizing about
+the cloud.
+
 
 ### Echo maps built from resource state are PARTIAL mid-import -- eager indexing kills the import
 

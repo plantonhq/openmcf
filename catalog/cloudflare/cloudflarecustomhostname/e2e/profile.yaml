@@ -13,11 +13,14 @@ spec:
   # verification will sit pending on an undelegated zone -- that is the
   # lifecycle we can prove. The verifier treats GET 200 with status
   # pending_deletion/deleted as gone. Deliberately not live: BYO certificate
-  # (Enterprise + secrets). Cloudflare for SaaS is free-tier; whether a
-  # PENDING zone accepts the create is unverified offline.
+  # (Enterprise + secrets). The 1404 wall (measured 2026-08-28: the account
+  # was NOT enrolled in Cloudflare for SaaS -- every call answered 400 code
+  # 1404 regardless of zone or plan tier) FELL 2026-08-29 when the owner
+  # enrolled the account. Enrollment is ACCOUNT-WIDE (`ssl_for_saas_basic`
+  # subscription): a custom-hostname CREATE succeeds on a run-scoped
+  # PENDING zone (write-probe-measured), so the run-scoped fixture-zone
+  # scenarios need no active-zone gating.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

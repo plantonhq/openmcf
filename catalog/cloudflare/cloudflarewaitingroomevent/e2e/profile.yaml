@@ -14,8 +14,16 @@ spec:
   # to prove overrides live. Events are free-plan objects on the room,
   # created in seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Entitlement-blocked, measured live 2026-08-27 through its prerequisite
+    chain: the CloudflareWaitingRoom fixture cannot install on any zone this
+    account carries (400 code 1034 "Zone not entitled" -- Waiting Room is
+    Business+), and SCHEDULED EVENTS specifically are an Enterprise advanced
+    add-on per Cloudflare's plan matrix
+    (developers.cloudflare.com/waiting-room/plans, read 2026-08-27) -- a
+    Business zone alone would not unblock this kind. The offline bar remains
+    the shape proof. Unblock: an Enterprise zone with the advanced Waiting
+    Room add-on, injected via the env-gated ACTIVE-zone form on both the
+    room fixture and this kind's scenario; then both lanes unchanged.
   timeout_minutes: 10

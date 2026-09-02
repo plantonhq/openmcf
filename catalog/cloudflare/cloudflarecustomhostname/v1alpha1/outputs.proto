@@ -9,8 +9,15 @@ message CloudflareCustomHostnameStackOutputs {
   // The custom hostname identifier.
   string custom_hostname_id = 1;
 
-  // The activation status (e.g. "pending", "pending_validation", "active").
-  string status = 2;
+  // Field 2 (status) was removed: hostname activation is asynchronous (a
+  // fresh hostname transitions pending -> pending_validation -> active as
+  // ownership verification and DCV complete), so a point-in-time phase can
+  // never be a stable stack output -- it flips on the first refresh after
+  // the transition and re-plans forever (the same class measured live on
+  // the Authenticated Origin Pulls certificate, 2026-08-28). Read
+  // activation status from the Cloudflare API or dashboard instead.
+  reserved 2;
+  reserved "status";
 
   // The DNS record NAME the customer must create for ownership verification.
   string ownership_verification_name = 3;
@@ -27,8 +34,17 @@ message CloudflareCustomHostnameStackOutputs {
   // The body the customer must serve at the HTTP verification URL.
   string ownership_verification_http_body = 7;
 
-  // Any verification errors reported by Cloudflare.
-  repeated string verification_errors = 8;
+  // Field 8 (verification_errors) was removed: it is a TRANSIENT DIAGNOSTIC
+  // the server populates asynchronously (measured live 2026-08-29: a fresh
+  // hostname deploys with the list empty, and "zone is not active yet"
+  // appears seconds later, flipping the first refresh-inclusive re-plan to
+  // "changes outside" plus an output change -- the idempotency failure is
+  // output-only). A value that transitions server-side without any config
+  // change is never a stable stack output (the async-phase-output class,
+  // list form). Read verification errors from the Cloudflare API or
+  // dashboard instead.
+  reserved 8;
+  reserved "verification_errors";
 
   // RFC3339 timestamp of when the custom hostname was created.
   string created_at = 9;

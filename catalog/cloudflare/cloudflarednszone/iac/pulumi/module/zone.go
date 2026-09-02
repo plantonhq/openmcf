@@ -68,9 +68,12 @@ func zone(
 		}
 	}
 
-	// Inline DNS records.
+	// Inline DNS records. The keyed id map is always exported (empty when the
+	// spec declares no records) so the stack output contract matches tofu.
+	recordIds := pulumi.StringMap{}
 	if len(spec.Records) > 0 {
-		if err := records(ctx, createdZone, spec.Records, cloudflareProvider); err != nil {
+		recordIds, err = records(ctx, createdZone, spec.Records, cloudflareProvider)
+		if err != nil {
 			return nil, errors.Wrap(err, "failed to create dns records")
 		}
 	}
@@ -93,6 +96,7 @@ func zone(
 	ctx.Export(OpZoneId, createdZone.ID())
 	ctx.Export(OpNameservers, createdZone.NameServers)
 	ctx.Export(OpStatus, createdZone.Status)
+	ctx.Export(OpRecordIds, recordIds)
 	exportDnssecOutputs(ctx, createdDnssec)
 
 	return createdZone, nil

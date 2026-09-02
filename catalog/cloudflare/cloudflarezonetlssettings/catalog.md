@@ -23,7 +23,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Cloudflare Account
 
 - **A zone on the account** — `zoneId` names the zone; reference a CloudflareDnsZone Cloud Resource or pass the zone ID from the dashboard.
-- **Advanced Certificate Manager** (may be required for Total TLS) — enabling `totalTls` can require the zone's ACM subscription.
+- **Advanced Certificate Manager** (required for Total TLS and per-hostname overrides) — without the zone's ACM subscription the API refuses these surfaces with 401 code 1450 (measured live).
+- **An ACTIVE zone for `autoOriginTlsKex`** — the automatic key-exchange setting is refused on zones still pending activation.
 - **An mTLS certificate** (only for per-certificate CA associations) — `caHostnameAssociations[].mtlsCertificateId` references a CloudflareMtlsCertificate Cloud Resource or a literal certificate ID.
 
 ## Deploy

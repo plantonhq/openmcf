@@ -17,11 +17,15 @@ locals {
     certificate_authority = try(var.spec.ssl.certificate_authority, "") != "" ? var.spec.ssl.certificate_authority : null
     cloudflare_branding   = try(var.spec.ssl.cloudflare_branding, false) ? true : null
     method                = try(var.spec.ssl.method, "") != "" ? var.spec.ssl.method : null
-    wildcard              = try(var.spec.ssl.wildcard, false) ? true : null
-    custom_certificate    = try(var.spec.ssl.custom_certificate, "") != "" ? var.spec.ssl.custom_certificate : null
-    custom_csr_id         = try(var.spec.ssl.custom_csr_id, "") != "" ? var.spec.ssl.custom_csr_id : null
-    custom_key            = try(var.spec.ssl.custom_key, "") != "" ? var.spec.ssl.custom_key : null
-    custom_cert_bundle    = length(try(var.spec.ssl.custom_cert_bundle, [])) > 0 ? var.spec.ssl.custom_cert_bundle : null
+    # wildcard is ALWAYS sent: Cloudflare echoes `false` into an unset wildcard
+    # (measured live 2026-08-29 -- a null send re-plans `false -> null` forever,
+    # the echoed-server-default boolean class). cloudflare_branding above stays
+    # only-when-true: the API omits it when unset (measured in the same lane).
+    wildcard           = try(var.spec.ssl.wildcard, false)
+    custom_certificate = try(var.spec.ssl.custom_certificate, "") != "" ? var.spec.ssl.custom_certificate : null
+    custom_csr_id      = try(var.spec.ssl.custom_csr_id, "") != "" ? var.spec.ssl.custom_csr_id : null
+    custom_key         = try(var.spec.ssl.custom_key, "") != "" ? var.spec.ssl.custom_key : null
+    custom_cert_bundle = length(try(var.spec.ssl.custom_cert_bundle, [])) > 0 ? var.spec.ssl.custom_cert_bundle : null
     settings = try(var.spec.ssl.settings, null) == null ? null : {
       ciphers         = length(try(var.spec.ssl.settings.ciphers, [])) > 0 ? var.spec.ssl.settings.ciphers : null
       early_hints     = try(var.spec.ssl.settings.early_hints, "") != "" ? var.spec.ssl.settings.early_hints : null

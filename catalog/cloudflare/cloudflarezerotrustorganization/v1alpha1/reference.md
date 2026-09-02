@@ -40,7 +40,7 @@ metadata:
   name: acme-zero-trust-org
 spec:
   account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  auth_domain: acme
+  auth_domain: acme.cloudflareaccess.com
   name: Acme Zero Trust
   session_duration: 24h
   warp_auth_session_duration: 12h
@@ -66,7 +66,7 @@ spec:
 |---|---|---|---|---|
 | `spec.accountId` | `string` |  |  |  |
 | `spec.zoneId` | `string \| valueFrom` |  |  | CloudflareDnsZone (`status.outputs.zone_id`) |
-| `spec.authDomain` | `string` |  |  |  |
+| `spec.authDomain` | `string` | yes |  |  |
 | `spec.name` | `string` |  |  |  |
 | `spec.sessionDuration` | `string` |  |  |  |
 | `spec.warpAuthSessionDuration` | `string` |  |  |  |
@@ -126,18 +126,34 @@ import -- the provider's importer is account-only.
 
 ### spec.authDomain
 
-`string`
+`string` · required
 
-The team domain users sign in through, WITHOUT the .cloudflareaccess.com
-suffix (e.g. "acme" serves acme.cloudflareaccess.com). This is the
-closest thing the organization has to an identity: the upsert mutates
-whatever organization exists, keyed only by the account or zone.
+The FULL team domain users sign in through, including the
+.cloudflareaccess.com suffix (e.g. "acme.cloudflareaccess.com" -- the
+form Cloudflare's API returns and the provider's own tests write).
+This is the closest thing the organization has to an identity: the
+upsert mutates whatever organization exists, keyed only by the account
+or zone.
+
+REQUIRED because Cloudflare requires it on EVERY write: the upsert is
+a full-body PUT, and omitting auth_domain is rejected with API error
+11004 "access.api.error.invalid_auth_domain" (live-measured). Declare
+your CURRENT team domain unless you deliberately intend to rename it
+-- a rename changes the login URL for every Access user.
+
+- rule: {"required":true}
 
 ### spec.name
 
 `string`
 
 The organization's display name, shown on the Access login page.
+
+Declare it on any account whose organization already carries a name
+(live-measured): the API echoes the existing name on every read, so a
+manifest that omits this field sees a permanent "name -> null" re-plan
+-- the same declare-it-or-accept-drift class as other echoed optional
+fields on singleton upserts.
 
 ### spec.sessionDuration
 

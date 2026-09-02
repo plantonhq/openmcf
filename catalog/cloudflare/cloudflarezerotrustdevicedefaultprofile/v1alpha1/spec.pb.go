@@ -84,11 +84,14 @@ type CloudflareZeroTrustDeviceDefaultProfileSpec struct {
 	// Whether users are BLOCKED from turning WARP off. Unset keeps
 	// Cloudflare's default (off -- users may disconnect).
 	SwitchLocked *bool `protobuf:"varint,12,opt,name=switch_locked,json=switchLocked,proto3,oneof" json:"switch_locked,omitempty"`
-	// The tunnel transport protocol: wireguard or masque. Cloudflare's API
-	// accepts the value it currently supports for the account; empty keeps
-	// the account default. Deliberately not CEL-walled -- the provider schema
-	// carries no value list at v5.23.0 and Cloudflare has grown this set
-	// before.
+	// The tunnel transport protocol: wireguard or masque. Deliberately not
+	// CEL-walled -- the provider schema carries no value list at v5.23.0 and
+	// Cloudflare has grown this set before. CAUTION: leaving this empty does
+	// NOT preserve the account's current protocol -- the provider defaults an
+	// unset value to the empty string and sends it, resetting the account to
+	// Cloudflare's default protocol (measured live 2026-08-27: an apply that
+	// omitted this field blanked an account's masque setting). Declare the
+	// protocol explicitly on any account running a non-default one.
 	TunnelProtocol string `protobuf:"bytes,13,opt,name=tunnel_protocol,json=tunnelProtocol,proto3" json:"tunnel_protocol,omitempty"`
 	// Minutes a user may access their local network (LAN) after toggling
 	// local-network access. 0 allows LAN access until the next WARP
@@ -111,7 +114,10 @@ type CloudflareZeroTrustDeviceDefaultProfileSpec struct {
 	// routing to the account's default virtual network.
 	VirtualNetworks *CloudflareZeroTrustDeviceDefaultProfileVirtualNetworks `protobuf:"bytes,19,opt,name=virtual_networks,json=virtualNetworks,proto3" json:"virtual_networks,omitempty"`
 	// DNS search suffixes appended when devices resolve short hostnames,
-	// evaluated in order. Declaring an empty list clears the account's list.
+	// evaluated in order. This list is FULLY MANAGED by this field: leaving
+	// it empty clears the account's list (unset and empty are the same
+	// declaration, and the modules always send the list -- the provider's
+	// attribute re-plans forever on an omitted send, measured at v5.23.0).
 	DnsSearchSuffixes []*CloudflareZeroTrustDeviceDefaultProfileDnsSearchSuffix `protobuf:"bytes,20,rep,name=dns_search_suffixes,json=dnsSearchSuffixes,proto3" json:"dns_search_suffixes,omitempty"`
 	// The profile's local-DNS fallback list: domain suffixes resolved by the
 	// declared resolvers instead of Gateway. FULL-REPLACEMENT semantics --
@@ -123,7 +129,11 @@ type CloudflareZeroTrustDeviceDefaultProfileSpec struct {
 	// certificate from the zone, letting origins verify traffic really came
 	// through WARP. The one zone-scoped surface on this account-scoped kind.
 	// Cloudflare offers no delete and no import for it -- unset means "not
-	// managed here", never "disabled".
+	// managed here", never "disabled". CREDENTIAL WALL (measured live
+	// 2026-08-27): the endpoint refuses ACCOUNT-OWNED API tokens on both
+	// reads and writes with 401 code 1039 "malformed actor email claim" --
+	// managing this fold needs a user-actor credential (a user-owned token
+	// or API key + email).
 	ZoneCertificates *CloudflareZeroTrustDeviceDefaultProfileZoneCertificates `protobuf:"bytes,22,opt,name=zone_certificates,json=zoneCertificates,proto3" json:"zone_certificates,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache

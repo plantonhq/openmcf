@@ -8,27 +8,32 @@ spec:
   # registers -- Cloudflare rejects duplicate zone names account-wide, so the
   # name carries the run id), runs deploy -> GET zones/{zone_id} verify ->
   # destroy -> verify-destroyed on both provisioners. The minimal scenario
-  # proves the bare zone; the records-portfolio scenario proves the folded
-  # satellites in one lane: inline records through both value paths (simple
-  # content and typed structured data), record tags and settings, zone-wide
-  # DNS settings, and DNSSEC.
+  # proves the bare zone; the records-portfolio scenario proves inline
+  # records through both value paths (simple content and typed structured
+  # data) plus a record comment, and blind-imports the zone AND every record
+  # (via the record_ids keyed output) in the round-trip.
   #
   # Scenario zoneName fields carry ${E2E_RUN_ID}, which the strict FQDN CEL
   # rejects RAW -- the fixture-integrity test (token substitution first) is
   # their validation gate, the same class as this kind's prerequisite file.
   #
-  # Watch: whether zone_dnssec activates on a PENDING (undelegated) zone is
-  # unverified offline -- the API is expected to accept it (signing state is
-  # zone-internal), but if the live lane finds otherwise the fallback is
-  # dropping dnssec from the portfolio scenario into an env-gated ACTIVE-zone
-  # arm. Deliberately not in the live scenarios: hold (semantics of a hold on
-  # a throwaway zone at destroy time are unverified) and subscription (needs
-  # Billing Write token scope; a paid rate_plan bills real money) -- both are
-  # proven offline by the kind's e2e/manifest.yaml plan; vanity_name_servers,
-  # foundation_dns, and multi_provider are plan-gated (Business+/paid add-on).
+  # Live-blocked (measured 2026-08-26; offline-plan-proven by e2e/manifest.yaml
+  # -- details in the records-portfolio scenario header): DNSSEC on a PENDING
+  # zone (400/1017; works on ACTIVE zones, so live proof needs a
+  # registrar-delegated zone created through this kind), record tags
+  # (400/9300), record settings ipv4/ipv6_only (400/9227), and the whole
+  # dns_settings singleton (non-defaults are 400/1003 entitlements; a partial
+  # block re-plans forever on terraform -- the provider echoes server
+  # defaults into unset Optional-not-Computed fields). Deliberately offline
+  # from authoring: hold, subscription (Billing Write scope; real money),
+  # vanity_name_servers, foundation_dns, multi_provider.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal + records-portfolio
+  # through the full lifecycle with the apply-idempotency gate green; the
+  # terraform blind import round-trip re-imported the bare zone (minimal) and
+  # zone + all five records (portfolio, ids from the record_ids output) with
+  # zero drift. The destroy verification also taught the harness that a
+  # deleted zone answers GET zones/{id} with 400 code 1001, not 404.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

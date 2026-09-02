@@ -33,19 +33,32 @@ func database(
 		d1Args.Jurisdiction = pulumi.String(locals.CloudflareD1Database.Spec.Jurisdiction)
 	}
 
-	// 4. Add optional read replication configuration if specified.
+	// 4. Read replication: Cloudflare always reports it on read (mode
+	// "disabled" when never configured) while the provider models the
+	// attribute as Optional-not-Computed, so an omitted spec block coalesces
+	// to the server default -- sending nothing leaves a refresh-vs-config
+	// diff that never converges (measured live 2026-08-26 on the terraform
+	// module; this engine carries the same latent class).
+	readReplicationMode := "disabled"
 	if locals.CloudflareD1Database.Spec.ReadReplication != nil {
-		d1Args.ReadReplication = &cloudflare.D1DatabaseReadReplicationArgs{
-			Mode: pulumi.String(locals.CloudflareD1Database.Spec.ReadReplication.Mode.String()),
-		}
+		readReplicationMode = locals.CloudflareD1Database.Spec.ReadReplication.Mode.String()
+	}
+	d1Args.ReadReplication = &cloudflare.D1DatabaseReadReplicationArgs{
+		Mode: pulumi.String(readReplicationMode),
 	}
 
-	// 4.  Create the resource.
+	// 5.  Create the resource. primary_location_hint is a create-time
+	// placement hint Cloudflare never returns (no_refresh + RequiresReplace
+	// upstream at v5.23.0): without the ignore, adopting an existing database
+	// restores the hint as null and a post-create region edit plans a
+	// REPLACE -- destroying the database to move a hint. Placement is decided
+	// at birth; post-create edits are deliberately inert.
 	createdD1Database, err := cloudflare.NewD1Database(
 		ctx,
 		"database",
 		d1Args,
 		pulumi.Provider(cloudflareProvider),
+		pulumi.IgnoreChanges([]string{"primaryLocationHint"}),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cloudflare d1 database")

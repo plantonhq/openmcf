@@ -32,7 +32,7 @@ spec:
   name: "Test origin routing"
   rules:
     - ref: "route-app-to-k8s"
-      expression: 'not http.request.uri.path starts_with "/docs"'
+      expression: 'not starts_with(http.request.uri.path, "/docs")'
       action: route
       description: "Route non-docs traffic to K8s"
       enabled: true
@@ -391,7 +391,12 @@ Prevents Terraform from destroying and recreating the rule when its position cha
 
 Cloudflare wirefilter expression that determines when this rule matches.
 Examples: "true" (match all), "http.request.uri.path eq \"/api\"",
-"ip.src ne 1.1.1.1", "not http.request.uri.path starts_with \"/static\"".
+"ip.src ne 1.1.1.1", "not starts_with(http.request.uri.path, \"/static\")".
+Write prefix/suffix matches in the FUNCTION form (starts_with(field,
+"value")): the bare starts_with/ends_with OPERATORS are a paid-plan
+grammar extension -- on free-plan zones the API rejects them with 400
+code 20127 "expected ComparisonOp" (measured live 2026-08-26), while the
+function form parses on every plan.
 
 - rule: {"string":{"minLen":"1"}}
 

@@ -7,6 +7,7 @@
 package cloudflareaccountapitokenv1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -30,9 +31,9 @@ type CloudflareAccountApiTokenStackOutputs struct {
 	TokenId string `protobuf:"bytes,1,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
 	// The token's secret value -- the credential. Returned by Cloudflare
 	// EXACTLY ONCE, on create: it can never be fetched again, and an imported
-	// token has no value at all. Secret-marked by the modules. If the value
-	// is lost, rotate: roll the token (or delete and recreate) to mint a new
-	// one.
+	// token has no value at all. Sensitive both here (machine-readable) and
+	// in the modules' output registration. If the value is lost, rotate:
+	// roll the token (or delete and recreate) to mint a new one.
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -86,10 +87,10 @@ var File_catalog_cloudflare_cloudflareaccountapitoken_v1alpha1_outputs_proto pro
 
 const file_catalog_cloudflare_cloudflareaccountapitoken_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/cloudflare/cloudflareaccountapitoken/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1\"X\n" +
+	"Ccatalog/cloudflare/cloudflareaccountapitoken/v1alpha1/outputs.proto\x129dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1\x1a\x1cshared/options/options.proto\"^\n" +
 	"%CloudflareAccountApiTokenStackOutputs\x12\x19\n" +
-	"\btoken_id\x18\x01 \x01(\tR\atokenId\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05valueB\xcc\x03\n" +
+	"\btoken_id\x18\x01 \x01(\tR\atokenId\x12\x1a\n" +
+	"\x05value\x18\x02 \x01(\tB\x04\xa0\xa6\x1d\x01R\x05valueB\xcc\x03\n" +
 	"=com.dev.planton.cloudflare.cloudflareaccountapitoken.v1alpha1B\fOutputsProtoP\x01Ztgithub.com/plantonhq/planton/catalog/cloudflare/cloudflareaccountapitoken/v1alpha1;cloudflareaccountapitokenv1alpha1\xa2\x02\x04DPCC\xaa\x029Dev.Planton.Cloudflare.Cloudflareaccountapitoken.V1alpha1\xca\x029Dev\\Planton\\Cloudflare\\Cloudflareaccountapitoken\\V1alpha1\xe2\x02EDev\\Planton\\Cloudflare\\Cloudflareaccountapitoken\\V1alpha1\\GPBMetadata\xea\x02=Dev::Planton::Cloudflare::Cloudflareaccountapitoken::V1alpha1b\x06proto3"
 
 var (

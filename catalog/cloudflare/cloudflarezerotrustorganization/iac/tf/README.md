@@ -23,7 +23,7 @@ The organization imports account-scoped only (`{account_id}`); a zone-scoped org
 
 | Name | Description |
 |------|-------------|
-| `auth_domain` | The team domain (without `.cloudflareaccess.com`) |
+| `auth_domain` | The full team domain (including `.cloudflareaccess.com`) |
 | `account_id` | The account the organization was applied to (empty for zone scope) |
 
 ## Provider Version

@@ -15,7 +15,12 @@ import "shared/foreignkey/v1/foreign_key.proto";
 // The optional `rules[]` narrow WHAT gets measured: include or exclude
 // traffic by host and path. Cloudflare manages rules as separate objects
 // under the site's ruleset; this kind folds them in, and the modules manage
-// one rule object per row.
+// one rule object per row. RULES REQUIRE A ZONE-LINKED SITE (measured
+// live): Cloudflare creates the ruleset -- the container rules attach to --
+// only for zone_tag-identified sites; a host-identified site has no
+// ruleset in any API response, ever, so there is nothing to attach a rule
+// to. A CEL wall enforces it here so the impossible combination fails at
+// validation, not mid-deploy.
 //
 // One provider truth this spec teaches: the provider never reads rules back
 // after writing them (its refresh is deliberately blind), so rule edits
@@ -27,6 +32,11 @@ message CloudflareWebAnalyticsSiteSpec {
     id: "spec.site_identity_exactly_one"
     message: "set exactly one of host (measure any site by hostname) or zone_tag (measure a Cloudflare zone)"
     expression: "(this.host != '') != has(this.zone_tag)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.rules_require_zone"
+    message: "rules require a zone_tag-identified site: Cloudflare only creates the ruleset rules attach to for zone-linked sites -- a host-identified site has no ruleset"
+    expression: "this.rules.size() == 0 || has(this.zone_tag)"
   };
 
   // The Cloudflare account the site belongs to.
@@ -41,7 +51,9 @@ message CloudflareWebAnalyticsSiteSpec {
 
   // The hostname to measure (e.g. www.example.com). Use for sites not on
   // Cloudflare, or when you embed the snippet yourself. Set this OR
-  // zone_tag, never both.
+  // zone_tag, never both. A host-identified site carries NO ruleset
+  // (measured live), so it cannot carry rules and its ruleset_id output is
+  // empty.
   string host = 2;
 
   // The Cloudflare zone to measure. Set this OR host, never both.
@@ -65,24 +77,31 @@ message CloudflareWebAnalyticsSiteSpec {
 
   // Include/exclude rules narrowing what gets measured. Cloudflare manages
   // each as its own object under the site's ruleset; the modules keep one
-  // object per row, in order.
+  // object per row, in order. Zone-linked sites only (see the message
+  // wall): host-identified sites have no ruleset to attach rules to.
   repeated CloudflareWebAnalyticsSiteRule rules = 7;
 }
 
 // CloudflareWebAnalyticsSiteRule includes or excludes traffic from
-// measurement by host and paths.
+// measurement by host and paths. Cloudflare's rule form requires EVERY
+// field present on the wire (measured live: omissions answer 400 code
+// 10001 per field), so the modules always send all four -- the defaults
+// below are what an unset field becomes.
 message CloudflareWebAnalyticsSiteRule {
-  // The hostname the rule applies to (e.g. shop.example.com; empty applies
-  // to every host of the site).
+  // The hostname the rule applies to (e.g. shop.example.com). Empty means
+  // every host of the site -- the API spells that "*", and the modules
+  // translate (a literally empty host is rejected by Cloudflare).
   string host = 1;
 
   // The paths the rule applies to (e.g. /checkout/*; * wildcards allowed).
   repeated string paths = 2;
 
   // Whether matching traffic is measured (true, an include rule) or
-  // dropped from measurement (false, an exclude rule).
+  // dropped from measurement (false, an exclude rule). Unset means false
+  // -- an exclude rule; the committed examples always set it explicitly.
   optional bool inclusive = 3;
 
-  // Whether the rule is currently paused (kept but not applied).
+  // Whether the rule is currently paused (kept but not applied). Unset
+  // means false (the rule is active).
   optional bool is_paused = 4;
 }

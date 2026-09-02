@@ -51,7 +51,7 @@ spec:
 | `spec.accountId` | `string` | yes |  |  |
 | `spec.name` | `string` | yes |  |  |
 | `spec.configSrc` | `enum` |  | `cloudflare` |  |
-| `spec.tunnelSecret` | `string` (sensitive) | yes |  |  |
+| `spec.tunnelSecret` | `string` (sensitive) |  |  |  |
 | `spec.ingress` | `[]CloudflareZeroTrustTunnelIngressRule` |  |  |  |
 | `spec.ingress[].hostname` | `string` |  |  |  |
 | `spec.ingress[].service` | `string` | yes |  |  |
@@ -131,13 +131,16 @@ Allowed values (use exactly as shown):
 
 ### spec.tunnelSecret
 
-`string` · required · sensitive
+`string` · sensitive
 
-Optional secret used to run a locally-managed tunnel, as a base64 string encoding at
-least 32 bytes. Omit to let Cloudflare generate one (recommended); the run token is
-always available in `status.outputs.tunnel_token` regardless.
-
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"32","pattern":"^[A-Za-z0-9+/]+={0,2}$"}}
+Optional secret used to run a locally-managed tunnel. The RAW value is a
+base64 string encoding at least 32 bytes -- but no value-content rule is
+enforced here, because this field is sensitive: consuming platforms store
+a managed-secret REFERENCE in its place (plaintext is rejected at
+create/update), and a content rule written for the raw value could never
+match the stored reference. Cloudflare validates the decoded secret at
+apply. Omit to let Cloudflare generate one (recommended); the run token
+is always available in `status.outputs.tunnel_token` regardless.
 
 ### spec.ingress
 

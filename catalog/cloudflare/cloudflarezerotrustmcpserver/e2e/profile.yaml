@@ -14,8 +14,12 @@ spec:
   # Trust organization (team name) to exist (Phase-2 account setup).
   tier: 1
   cost_class: cheap_ephemeral
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-26: unauthenticated-minimal on both engines, full
+  # lifecycle, all first-run; the blind import round-trip passed at ZERO
+  # declared tolerances. No AI Controls entitlement gate fired. The server
+  # hostname is a full URL (bare hostnames rejected 400 code 7001 "Invalid
+  # url", probe-measured) and external -- unlike the portal's, it needs no
+  # account-served zone. Deleted servers 404 honestly.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

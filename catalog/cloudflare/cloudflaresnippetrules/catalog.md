@@ -42,7 +42,7 @@ spec:
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   rules:
-    - expression: 'http.request.uri.path starts_with "/legacy"'
+    - expression: 'starts_with(http.request.uri.path, "/legacy")'
       snippetName:
         value: redirect_legacy
       description: Redirect legacy paths
@@ -66,7 +66,7 @@ spec:
       name: acme-com
       fieldPath: status.outputs.zone_id
   rules:
-    - expression: 'http.request.uri.path starts_with "/legacy"'
+    - expression: 'starts_with(http.request.uri.path, "/legacy")'
       snippetName:
         valueFrom:
           kind: CloudflareSnippet

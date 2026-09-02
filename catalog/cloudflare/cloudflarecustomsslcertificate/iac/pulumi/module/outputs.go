@@ -10,7 +10,4 @@ const (
 	// OpExpiresOn is the exported stack output containing the certificate's
 	// expiry timestamp (RFC3339).
 	OpExpiresOn = "expires_on"
-	// OpStatus is the exported stack output containing the certificate's
-	// deployment status (deployment is asynchronous).
-	OpStatus = "status"
 )

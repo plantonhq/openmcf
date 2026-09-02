@@ -160,8 +160,10 @@ func (CloudflareLoadBalancerSessionAffinity) EnumDescriptor() ([]byte, []int) {
 type CloudflareLoadBalancerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The DNS hostname to associate with this load balancer (e.g.
-	// "app.example.com"). If a DNS record with this name already exists, the load
-	// balancer takes precedence.
+	// "app.example.com"). Must be the FULLY QUALIFIED name -- Cloudflare rejects
+	// a bare label like "app" with 400 code 1002 "Invalid load balancer name:
+	// invalid hostname" (measured live). If a DNS record with this name already
+	// exists, the load balancer takes precedence.
 	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// The Cloudflare zone that owns the hostname, as a literal zone ID or a
 	// reference to a CloudflareDnsZone.
@@ -212,9 +214,13 @@ type CloudflareLoadBalancerSpec struct {
 	// Ordered list of traffic rules evaluated per request (the dashboard's
 	// "Custom Rules"). Each rule has a condition expression; when it matches, the
 	// rule either overrides this load balancer's steering for that request or
-	// answers directly with a fixed response. Note: the provider schema labels
-	// this field "BETA Field Not General Access", but load-balancing rules are a
-	// long-standing GA Cloudflare product feature in production use.
+	// answers directly with a fixed response. The rule COUNT is capped by the
+	// account's Load Balancing subscription tier -- Basic allows exactly 1 rule
+	// per load balancer, and exceeding the cap fails the write with 400 code
+	// 1002 "rule count N exceeds limit M" (measured live). Note: the provider
+	// schema labels this field "BETA Field Not General Access", but
+	// load-balancing rules are a long-standing GA Cloudflare product feature in
+	// production use.
 	Rules []*CloudflareLoadBalancerRule `protobuf:"bytes,21,rep,name=rules,proto3" json:"rules,omitempty"`
 	// Networks where this load balancer is enabled. Used with Cloudflare private
 	// networking (e.g. Magic WAN / WARP connector networks); leave empty for

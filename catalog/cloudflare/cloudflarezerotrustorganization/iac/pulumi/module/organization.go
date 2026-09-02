@@ -35,9 +35,10 @@ func organization(
 		args.ZoneId = pulumi.String(spec.ZoneId.GetValue())
 	}
 
-	if spec.AuthDomain != "" {
-		args.AuthDomain = pulumi.String(spec.AuthDomain)
-	}
+	// Always sent: Cloudflare rejects any organization write without
+	// auth_domain (API error 11004 invalid_auth_domain, live-measured) --
+	// the spec requires it.
+	args.AuthDomain = pulumi.String(spec.AuthDomain)
 	if spec.Name != "" {
 		args.Name = pulumi.String(spec.Name)
 	}

@@ -1,9 +1,16 @@
 # Generated-key CloudflareOriginCaCertificate scenario: the module mints
-# the private key and CSR (the one-click path). Hostnames belong to the
-# run-scoped pending zone, which is a SCENARIO-declared CloudflareDnsZone
-# edge -- hostnames are plain strings, not a zone FK, so the edge is
-# per-scenario, never a registry prerequisite. The FQDN composes the SAME
-# run token the zone fixture uses.
+# the private key and CSR (the one-click path). MEASURED WALL (live,
+# 2026-08-28): the Origin CA API validates hostnames against the account's
+# ACTIVE zones only -- a hostname under a PENDING (undelegated) zone
+# answers a misleading 400 code 1010 "This zone is either not part of your
+# account, or you do not have access to it", and the identical request
+# succeeds for an ACTIVE-zone hostname (probe-proven both ways, with the
+# account-owned token). A run-scoped fixture zone is always pending, so
+# this arm is env-gated on PLANTON_E2E_CLOUDFLARE_ZONE_NAME (an ACTIVE
+# zone the operator sanctions for testing) and skips honestly when unset.
+# The hostnames stay run-scoped under that zone (a subdomain plus its
+# wildcard -- the multi-hostname path), so concurrent runs cannot collide
+# and no real DNS record ever exists for them.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareOriginCaCertificate
 metadata:
@@ -16,11 +23,20 @@ metadata:
     e2e-component: cloudflareorigincacertificate
   annotations:
     planton.dev/e2e: "true"
-    planton.dev/e2e-prerequisites: CloudflareDnsZone
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_NAME
+    planton.dev/e2e-import-roundtrip-skip: >-
+      the generated-key path's tls helpers cannot restore blind:
+      tls_private_key ships NO importer at hashicorp/tls v4.3.0 ("Resource
+      Import Not Implemented", measured live 2026-08-28) and neither does
+      tls_cert_request, so the reconcile-apply mints a new key+CSR and csr
+      is ForceNew on the certificate -- the only reconcile is a re-issue,
+      which is the honest adoption; the recipe lives on the import catalog
+      row. A BYO-CSR certificate (helpers absent) imports cleanly as the
+      bare certificate_id.
   tags:
     - planton-e2e
 spec:
   hostnames:
-    - planton-e2e-${E2E_RUN_ID}.com
-    - "*.planton-e2e-${E2E_RUN_ID}.com"
+    - oca-${E2E_RUN_ID}.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}
+    - "*.oca-${E2E_RUN_ID}.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}"
   requestType: origin-rsa

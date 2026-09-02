@@ -7,6 +7,7 @@
 package cloudflarezerotrustaccessidentityproviderv1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -98,11 +99,11 @@ var File_catalog_cloudflare_cloudflarezerotrustaccessidentityprovider_v1alpha1_o
 
 const file_catalog_cloudflare_cloudflarezerotrustaccessidentityprovider_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Scatalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1/outputs.proto\x12Idev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1\"\xae\x01\n" +
+	"Scatalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1/outputs.proto\x12Idev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1\x1a\x1cshared/options/options.proto\"\xb4\x01\n" +
 	"5CloudflareZeroTrustAccessIdentityProviderStackOutputs\x120\n" +
 	"\x14identity_provider_id\x18\x01 \x01(\tR\x12identityProviderId\x12\"\n" +
-	"\rscim_base_url\x18\x02 \x01(\tR\vscimBaseUrl\x12\x1f\n" +
-	"\vscim_secret\x18\x03 \x01(\tR\n" +
+	"\rscim_base_url\x18\x02 \x01(\tR\vscimBaseUrl\x12%\n" +
+	"\vscim_secret\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\n" +
 	"scimSecretB\xbd\x04\n" +
 	"Mcom.dev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1B\fOutputsProtoP\x01Z\x94\x01github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1;cloudflarezerotrustaccessidentityproviderv1alpha1\xa2\x02\x04DPCC\xaa\x02IDev.Planton.Cloudflare.Cloudflarezerotrustaccessidentityprovider.V1alpha1\xca\x02IDev\\Planton\\Cloudflare\\Cloudflarezerotrustaccessidentityprovider\\V1alpha1\xe2\x02UDev\\Planton\\Cloudflare\\Cloudflarezerotrustaccessidentityprovider\\V1alpha1\\GPBMetadata\xea\x02MDev::Planton::Cloudflare::Cloudflarezerotrustaccessidentityprovider::V1alpha1b\x06proto3"
 

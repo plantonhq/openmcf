@@ -65,12 +65,46 @@ type cloudflareEnvelope struct {
 	} `json:"errors"`
 }
 
+// unknownObjectError reports whether a 400 body carries one of Cloudflare's
+// deleted-or-unknown-object error answers -- what several endpoints give
+// for a GET on an identifier that no longer exists, instead of a clean 404:
+//   - 7003 "could not route to that endpoint" (many collection endpoints)
+//   - 1001 "Invalid zone identifier" (zones/{zone_id} after the zone is
+//     deleted -- measured live on the zone destroy verification)
+//   - 1103 "Location ID is invalid." (gateway/locations/{id} after the
+//     location is deleted -- measured live on the DNS location destroy
+//     verification)
+//   - 1472 "Certificate not found." (accounts/{a}/mtls_certificates/{id}
+//     after the certificate is deleted -- measured live 2026-08-28 on the
+//     mTLS certificate destroy verification)
+//   - code-less "requested snippet not found" (zones/{id}/snippets/{name}
+//     after the snippet is deleted -- the snippets endpoint's errors carry
+//     a message but NO numeric code, measured live 2026-08-27 on the
+//     snippet destroy verification; matched on the exact message because
+//     there is no code to match)
+func unknownObjectError(body []byte) bool {
+	var envelope cloudflareEnvelope
+	if json.Unmarshal(body, &envelope) != nil {
+		return false
+	}
+	for _, e := range envelope.Errors {
+		if e.Code == 7003 || e.Code == 1001 || e.Code == 1103 || e.Code == 1472 {
+			return true
+		}
+		if e.Code == 0 && e.Message == "requested snippet not found" {
+			return true
+		}
+	}
+	return false
+}
+
 // ResourceExists reports whether a GET on the given path (relative to
-// /client/v4/, e.g. "zones/abc123") finds a resource. 200 means present;
-// 404 means absent; a 400 carrying Cloudflare error code 7003 ("could not
-// route to that endpoint") also means absent -- Cloudflare answers a GET on
-// a deleted or unknown object identifier that way on several endpoints
-// instead of a clean 404. Anything else is a real error.
+// /client/v4/, e.g. "zones/abc123") finds a resource. 200 means present --
+// and so does 202: the origin_tls_client_auth family answers EVERY verb
+// with 202 Accepted, including a plain GET on its settings surface
+// (measured live 2026-08-28). 404 means absent; a 400 carrying one of the
+// unknown-object error codes (see unknownObjectError) also means absent.
+// Anything else is a real error.
 func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -78,18 +112,13 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK:
+	case http.StatusOK, http.StatusAccepted:
 		return true, nil
 	case http.StatusNotFound:
 		return false, nil
 	case http.StatusBadRequest:
-		var envelope cloudflareEnvelope
-		if json.Unmarshal(body, &envelope) == nil {
-			for _, e := range envelope.Errors {
-				if e.Code == 7003 {
-					return false, nil
-				}
-			}
+		if unknownObjectError(body) {
+			return false, nil
 		}
 		return false, errors.Errorf("GET %s returned 400: %s", path, body)
 	default:
@@ -98,12 +127,14 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 }
 
 // ResourcePresent reports whether a GET finds a resource that is still
-// present after applying opts. 404 and Cloudflare's 400/7003 unknown-object
-// answer are always absent. A 200 is present unless SoftDeleted sees a
-// non-null result.deleted_at, IsDeletedFlag sees a non-zero
-// result.is_deleted, or result.status matches AbsentStatuses.
-// Parses the v4 envelope, so it must never replace ResourceExists on
-// raw-body endpoints (e.g. the KV value endpoint).
+// present after applying opts. 404 and Cloudflare's 400 unknown-object
+// answers (see unknownObjectError) are always absent. A 200 (or a 202 --
+// the origin_tls_client_auth family answers every verb with 202 Accepted,
+// measured live 2026-08-28) is present unless SoftDeleted sees a non-null
+// result.deleted_at, IsDeletedFlag sees a non-zero result.is_deleted,
+// RevokedAt sees a non-empty result.revoked_at, or result.status matches
+// AbsentStatuses. Parses the v4 envelope, so it must never replace
+// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
@@ -111,8 +142,14 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK:
-		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag {
+	case http.StatusOK, http.StatusAccepted:
+		// Fast path: no absence shape requested, any 2xx is present. EVERY
+		// EnvelopePresence field must appear in this guard -- a new probe
+		// shape missing here is silently bypassed and its family reports a
+		// false "still exists" on every destroy (shipped once with
+		// RevokedAt: the lane polled for minutes while the body it never
+		// parsed carried revoked_at the whole time).
+		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag && !opts.RevokedAt {
 			return true, nil
 		}
 		var envelope struct {
@@ -127,16 +164,22 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 				return false, nil
 			}
 		}
-		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 || opts.IsDeletedFlag {
+		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 || opts.IsDeletedFlag || opts.RevokedAt {
 			var object struct {
 				DeletedAt *string  `json:"deleted_at"`
 				Status    string   `json:"status"`
 				IsDeleted *float64 `json:"is_deleted"`
+				RevokedAt *string  `json:"revoked_at"`
 			}
 			if err := json.Unmarshal(envelope.Result, &object); err != nil {
 				return false, errors.Errorf("GET %s returned 200 with an unparseable result object: %s", path, body)
 			}
 			if opts.SoftDeleted && object.DeletedAt != nil && *object.DeletedAt != "" {
+				return false, nil
+			}
+			// Origin CA's revoke-is-not-delete: the revoked certificate keeps
+			// answering GET 200 with revoked_at set (measured live 2026-08-28).
+			if opts.RevokedAt && object.RevokedAt != nil && *object.RevokedAt != "" {
 				return false, nil
 			}
 			// The Workflows API's soft-delete variant: is_deleted is a
@@ -155,13 +198,8 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 	case http.StatusNotFound:
 		return false, nil
 	case http.StatusBadRequest:
-		var envelope cloudflareEnvelope
-		if json.Unmarshal(body, &envelope) == nil {
-			for _, e := range envelope.Errors {
-				if e.Code == 7003 {
-					return false, nil
-				}
-			}
+		if unknownObjectError(body) {
+			return false, nil
 		}
 		return false, errors.Errorf("GET %s returned 400: %s", path, body)
 	default:
@@ -177,19 +215,45 @@ func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) 
 }
 
 // VerifyConnectivity proves the token is valid and active using Cloudflare's
-// purpose-built, side-effect-free endpoint, then proves the token can see the
-// configured account. Failing fast here keeps credential problems from
+// purpose-built, side-effect-free verify endpoints, then proves the token can
+// see the configured account. Failing fast here keeps credential problems from
 // surfacing later as confusing mid-lane verification errors.
+//
+// Cloudflare issues two token forms and each has its OWN verify endpoint that
+// rejects the other form: user-owned tokens verify at user/tokens/verify,
+// account-owned tokens (the `cfat_`-prefixed kind minted under an account's
+// "API Tokens" page) verify ONLY at accounts/{account_id}/tokens/verify --
+// the user endpoint answers 401 "Invalid API Token" for them (measured
+// live 2026-08-25). Both engines accept either form as a plain bearer
+// credential, so the harness must too: try the user endpoint first, fall
+// back to the account endpoint, and fail only when both reject.
+//
+// A verified account-owned token is still NOT universal: a small class of
+// endpoints demands a USER-ACTOR credential and refuses account-owned tokens
+// on every verb with 401 code 1039 "malformed actor email claim" (first
+// measured live 2026-08-27 on zones/{zone}/devices/policy/certificates --
+// GET and PATCH alike, on active and pending zones). An upstream acceptance
+// test that blanks CLOUDFLARE_API_TOKEN is the tell for this class; a lane
+// arm that hits 1039 is credential-blocked, not broken, and its honest
+// outcome is an offline plan arm whose unblock is a user-actor credential.
 func (c *Client) VerifyConnectivity(ctx context.Context) error {
-	resp, body, err := c.get(ctx, "user/tokens/verify")
+	resp, userBody, err := c.get(ctx, "user/tokens/verify")
 	if err != nil {
 		return errors.Wrap(err, "token verification request failed")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("token verification returned %d: %s", resp.StatusCode, body)
+		resp, acctBody, acctErr := c.get(ctx, "accounts/"+c.accountID+"/tokens/verify")
+		if acctErr != nil {
+			return errors.Wrap(acctErr, "account-token verification request failed")
+		}
+		if resp.StatusCode != http.StatusOK {
+			return errors.Errorf(
+				"token verification failed on both endpoints: user/tokens/verify returned %s; accounts/%s/tokens/verify returned %d: %s",
+				userBody, c.accountID, resp.StatusCode, acctBody)
+		}
 	}
 
-	resp, body, err = c.get(ctx, "accounts/"+c.accountID)
+	resp, body, err := c.get(ctx, "accounts/"+c.accountID)
 	if err != nil {
 		return errors.Wrap(err, "account lookup request failed")
 	}

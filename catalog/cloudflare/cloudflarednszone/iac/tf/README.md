@@ -35,8 +35,11 @@ surface is identical in depth.
   case by its own name; a `data` wrapper key never appears). The flatten in
   [records.tf](./records.tf) rebuilds the provider's single union `data`
   object from whichever case is set. `ttl` 0 maps to 1 (automatic — the
-  provider requires ttl ≥ 1), and top-level `priority` is sent for MX only
-  (SRV/URI/HTTPS/SVCB carry theirs inside their structured data).
+  provider requires ttl ≥ 1). Top-level `priority` is sent for MX from the
+  record's priority field, and for SRV/URI mirrored from their structured
+  data (Cloudflare reflects it there on read; the provider schema marks it
+  required for all three — omitting the mirror re-plans forever,
+  live-measured). HTTPS/SVCB carry priority only inside their data.
 
 ## Outputs
 
@@ -46,6 +49,7 @@ surface is identical in depth.
 | `nameservers` | The Cloudflare-assigned nameservers |
 | `status` | Zone status (`pending` until the registrar delegates to Cloudflare) |
 | `dnssec_status`, `dnssec_ds`, `dnssec_digest`, `dnssec_digest_type`, `dnssec_digest_algorithm`, `dnssec_algorithm`, `dnssec_key_tag`, `dnssec_public_key`, `dnssec_flags` | DS/DNSKEY material to enter at the registrar (empty when DNSSEC is off) |
+| `record_ids` | Inline-record Cloudflare ids keyed by name-type-index (import recipes derive `{zone_id}/{dns_record_id}` from it; empty map without inline records) |
 
 ## Requirements
 

@@ -1,3 +1,7 @@
+---
+display_name: MX Email
+---
+
 # MX Record for Email
 
 Creates an MX record for email delivery. Priority is required; MX records cannot be proxied. Use for configuring mail servers (Google Workspace, Microsoft 365, custom mail) for your domain.

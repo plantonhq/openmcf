@@ -10,19 +10,24 @@ spec:
   # variants have real deletes; the other four toggles have literally empty
   # provider Deletes, so verify-destroyed asserts the settings surface still
   # answers -- never absence. Zero-orphan cleanup comes from the run-scoped
-  # zone fixture. The live scenario covers the free surface (smart tiered
-  # cache, regional tiered cache, cache variants); the PAID toggles never
-  # enter a live lane from authoring: cache_reserve bills storage while on,
-  # and argo_smart_routing bills monthly plus per-GB AND KEEPS BILLING after
-  # destroy (its Delete is a no-op) -- both are offline-plan-proven via
-  # e2e/paid-arms-plan.yaml and deferred to a budget-approved proof lane.
-  # Watch item: create==update semantics differ on tiered_cache only (POST
-  # New vs PATCH Edit) -- the idempotency re-plan is the canary. Settings
-  # apply in seconds; the live scenario costs nothing.
+  # zone fixture. THE MEASURED ENTITLEMENT MAP (live, 2026-08-27) corrected
+  # the authoring free-plan claim: smart_tiered_cache is the family's ONLY
+  # free toggle (the free-tiered-cache scenario); cache_variants is Pro+
+  # (1135 on Free, exists-on-write on Pro -- live via the env-gated
+  # pro-variants-arm scenario on the sanctioned paid zone); and
+  # regional_tiered_cache answers 1135 on Free AND Pro (the Enterprise
+  # class -- offline arm in e2e/paid-arms-plan.yaml; unblock: an
+  # Enterprise-entitled zone via the env-gated form). The PAID-billing
+  # toggles never enter a live lane: cache_reserve bills storage while on
+  # (and its surface is read-gated 1135 even on Pro), and argo_smart_routing
+  # bills monthly plus per-GB AND KEEPS BILLING after destroy (its Delete is
+  # a no-op) -- both offline-plan-proven via e2e/paid-arms-plan.yaml and
+  # deferred to a budget-approved proof lane. Watch item: create==update
+  # semantics differ on tiered_cache only (POST New vs PATCH Edit) -- the
+  # idempotency re-plan is the canary. Settings apply in seconds; the live
+  # scenarios cost nothing.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
   cost_class: cheap_ephemeral

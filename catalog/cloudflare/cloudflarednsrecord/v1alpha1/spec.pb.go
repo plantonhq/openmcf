@@ -187,8 +187,12 @@ type CloudflareDnsRecordSpec struct {
 	// for proxied records). Otherwise 30-86400 (the 30s floor applies to Enterprise
 	// zones; most zones use 60s and up). Defaults to automatic.
 	Ttl int32 `protobuf:"varint,6,opt,name=ttl,proto3" json:"ttl,omitempty"`
-	// Priority for MX records (lower is preferred). Required for MX; ignored for
-	// other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
+	// Priority for MX records (lower is preferred). Required for MX; never set it
+	// for other types (SRV/URI/HTTPS/SVCB carry their own priority inside their
+	// typed data). Cloudflare's API mirrors an SRV/URI data priority into the
+	// record's top-level priority field on its own; the IaC modules send that
+	// mirror so the deployed record never drifts -- authors declare priority in
+	// exactly one place.
 	Priority int32 `protobuf:"varint,7,opt,name=priority,proto3" json:"priority,omitempty"`
 	// Optional comment/note for the record. Has no effect on DNS responses; used
 	// to document the record's purpose.

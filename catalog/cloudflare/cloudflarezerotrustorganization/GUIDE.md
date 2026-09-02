@@ -8,7 +8,7 @@ Cloudflare creates the organization when Zero Trust is first enabled on the acco
 
 ## auth_domain is the blast radius
 
-The team domain is the URL every user signs in through and every WARP client enrolls against (`<auth_domain>.cloudflareaccess.com`). Changing it invalidates active sessions and breaks bookmarks, IdP redirect URIs, and WARP enrollment in one apply. Treat it like a production hostname: set it once, correctly, and never touch it casually.
+The team domain is the URL every user signs in through and every WARP client enrolls against (the full `*.cloudflareaccess.com` hostname -- declare it exactly as the dashboard shows it). Changing it invalidates active sessions and breaks bookmarks, IdP redirect URIs, and WARP enrollment in one apply. Treat it like a production hostname: set it once, correctly, and never touch it casually. And it is REQUIRED on every write (Cloudflare rejects an organization update without it, API error 11004, live-measured): every manifest managing this singleton declares the current team domain even when it never changes.
 
 ## Destroy reverts nothing
 
@@ -17,6 +17,8 @@ Deleting this resource is a NO-OP at Cloudflare -- the organization keeps the la
 ## Unset means unmanaged
 
 Fields you leave unset are never sent -- dashboard-set values survive. This makes partial adoption safe (manage only the login design, say), but it also means REMOVING a field from the manifest does not clear it at Cloudflare; apply the empty/default value explicitly instead.
+
+Two exceptions, both live-measured: `auth_domain` is REQUIRED on every write (Cloudflare rejects the update with error 11004 without it -- declare your current team domain even when it never changes), and `name` should be declared on any account whose organization already carries one (the API echoes the existing name on every read, so an omitted name shows a permanent `name -> null` plan diff).
 
 ## MFA and PIV pairing rules
 

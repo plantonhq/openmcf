@@ -109,8 +109,10 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `certificate_id` | The uploaded certificate's ID | `hostnameAssociations[].certificateId` on Cloudflare Authenticated Origin Pulls |
+| `zone_id` | The zone the certificate belongs to | Confirming the upload landed in the intended zone |
 | `expires_on` | Expiry timestamp (RFC3339) | Rotation scheduling and expiry alerting |
-| `status` | Deployment status (e.g. `active`, `pending_deployment`) | Gating dependents until the asynchronous deployment settles |
+
+Deployment status is deliberately not a stack output: it transitions asynchronously (`pending_deployment` to `active` seconds after create), so a point-in-time phase would flip on the first refresh and re-plan forever. Read deployment status from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

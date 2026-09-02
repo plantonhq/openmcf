@@ -87,13 +87,15 @@ These are the most important decisions when configuring the default device profi
 
 **Destroy reverts nothing, on any surface** — the profile is a settings singleton (PATCH upsert, no delete), the fallback list's destroy is a no-op, and the certificate toggle has no delete at all. Removing this resource abandons the last-applied state; devices keep behaving as configured. To actually revert, apply the values you want.
 
-**The fallback list is full-replacement — and Cloudflare pre-seeded it** — the moment `fallbackDomains` is declared, your list replaces the whole account list, including the seeded rows. Declaring one row does not add a row; it deletes everything else. Rows without `dnsServer` entries fall back to the system resolvers unless `disableAutoFallback` fails them closed.
+**The fallback list is full-replacement — and Cloudflare pre-seeded it** — the moment `fallbackDomains` is declared, your list replaces the whole account list, including the seeded rows. Declaring one row does not add a row; it deletes everything else. Rows without `dnsServer` entries fall back to the system resolvers unless `disableAutoFallback` fails them closed. `dnsSearchSuffixes` is managed the same way — the declared list is exactly what exists, and an empty declaration clears the account's list.
 
 **`switchLocked` and `allowedToLeave` are lock-in levers** — the first removes users' ability to turn WARP off, the second their ability to unenroll; together they hard-lock the fleet. Roll them out after split-tunnel and fallback routing are proven — a bad route with a locked switch is a helpdesk incident on every device at once.
 
 **Split tunnel runs in one direction** — `exclude` (everything else tunnels) and `include` (everything else bypasses) are mutually exclusive modes, not filters to combine; the spec rejects a manifest declaring both. When switching modes, the semantics of every existing entry invert. `excludeOfficeIps` adds Microsoft 365 IPs to the exclude side automatically.
 
-**The certificate toggle is zone-scoped and permanent** — `zoneCertificates` is the one zone-scoped surface on this account-scoped kind, and Cloudflare offers no delete or import for it. `enabled` is required explicitly (true or false) because turning it off IS the managed off state; removing the block leaves it however it last was.
+**The certificate toggle is zone-scoped and permanent** — `zoneCertificates` is the one zone-scoped surface on this account-scoped kind, and Cloudflare offers no delete or import for it. `enabled` is required explicitly (true or false) because turning it off IS the managed off state; removing the block leaves it however it last was. The endpoint additionally requires a user-actor credential — account-owned tokens are refused with 401 code 1039 (measured live).
+
+**A blank `tunnelProtocol` is a reset, not a no-op** — an empty value resets the account to Cloudflare's default protocol. On accounts running a non-default protocol, declare it explicitly or an apply silently flips the fleet back.
 
 **Unset fields never fight the dashboard** — every optional toggle and timer is only sent when set, so this resource can manage exactly the settings you declare and leave the rest to Cloudflare's defaults or manual configuration.
 

@@ -1,6 +1,15 @@
-# The rules arm: a site with an exclude row and an include row -- proves the
-# folded rule fan-out live (one provider object per declared row, wired to
-# the created site's ruleset) and the real delete of both layers.
+# The rules arm: a ZONE-LINKED site with an exclude row and an include row
+# -- proves the folded rule fan-out live (one provider object per declared
+# row, wired to the created site's ruleset) and the real delete of both
+# layers. Zone-linked BY NECESSITY (measured 2026-08-27): Cloudflare only
+# creates the ruleset -- the container rules attach to -- for
+# zone_tag-identified sites; a host-identified site has no ruleset in any
+# API response, so a host+rules shape can never deploy (the spec's CEL
+# wall now forbids it). Env-gated on the operator's sanctioned ACTIVE zone
+# because run-scoped fixture zones are throwaways whose zone-linked RUM
+# rulesets would churn for nothing; auto_install stays false so the shared
+# zone's edge behavior is untouched, and the site (with its ruleset and
+# rules) is created and REALLY deleted by the lane.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareWebAnalyticsSite
 metadata:
@@ -13,14 +22,29 @@ metadata:
     e2e-component: cloudflarewebanalyticssite
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID
+    # The folded rules cannot survive the blind round-trip's reconcile-apply
+    # (measured 2026-08-28): rules ship no importer, so the runner re-creates
+    # them post-import -- but Cloudflare's rule create is NOT upsert-
+    # convergent (409 code 10010 duplicateFound against the surviving
+    # originals). The site's own round-trip is proven by host-minimal; the
+    # human adoption recipe (delete existing rules first, then apply) lives
+    # on the catalog row and the GUIDE.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      the folded rules are not importable upstream AND their create rejects
+      duplicates (409 duplicateFound), so the reconcile-apply cannot take
+      ownership of surviving rule objects -- adopt via delete-rules-first,
+      documented on the catalog row; the site-only round-trip is proven by
+      the host-minimal scenario
   tags:
     - planton-e2e
 spec:
   account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
-  host: e2e-rules-${E2E_RUN_ID}.example.com
+  zone_tag:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
+  auto_install: false
   rules:
-    - host: e2e-rules-${E2E_RUN_ID}.example.com
-      paths:
+    - paths:
         - "/private/*"
       inclusive: false
     - paths:

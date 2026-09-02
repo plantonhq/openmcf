@@ -10,6 +10,16 @@ metadata:
   name: e2e-aopc-host-${E2E_RUN_ID}
   annotations:
     planton.dev/e2e-required-env: PLANTON_E2E_AOP_CLIENT_CERT_PEM,PLANTON_E2E_AOP_CLIENT_KEY_PEM
+    # private_key is write-only at the API AND RequiresReplace in the
+    # provider (v5.23.0 schema): a blind import necessarily lands without
+    # the key, the config supplies it, and the only reconcile plan is a
+    # replace -- which the round-trip oracle rightly refuses, and which
+    # ignore_changes must never paper over (rotating key material is
+    # SUPPOSED to replace the upload). Measured live 2026-08-28.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      private_key is write-only and RequiresReplace -- a blind import
+      cannot restore it and the only reconcile is a replace; the adoption
+      recipe lives on the import catalog row.
 spec:
   zone_id:
     valueFrom:

@@ -78,7 +78,7 @@ spec:
 
 ## Prerequisites
 
-- **A Cloudflare API token** with the Account Settings Write permission
+- **A Cloudflare API token** with BOTH Account Settings Write AND Account Settings Read permissions -- measured: Write alone creates sites but every read-back (including the provider's own refresh) answers 403, so deploys break mid-lifecycle without the Read half
 - For `auto_install`: a zone proxied through Cloudflare (orange-clouded)
 
 ## Destroy Semantics

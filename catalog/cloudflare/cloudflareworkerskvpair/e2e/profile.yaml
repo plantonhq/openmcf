@@ -15,8 +15,13 @@ spec:
   # "/" would break the slash-delimited terraform import ID. Objects create
   # in seconds at zero cost (Workers Free includes KV).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal through the full
+  # lifecycle over the KV-namespace fixture (its first live use) with the
+  # apply-idempotency re-plan green, plus the blind import round-trip
+  # ({account_id}/{namespace_id}/{key_name}, both ids fixture-derived) on
+  # the Terraform lane. Import restores value AND metadata; Cloudflare
+  # re-serializes the metadata JSON, declared write-normalized in the
+  # provider import catalog.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

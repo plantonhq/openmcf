@@ -64,7 +64,9 @@ func (v *settingsSingletonVerifier) VerifyExists(ctx context.Context, api API, o
 
 // VerifyAbsent asserts the settings surface still answers -- destroy is a
 // no-op for this class, so "gone" would be a false expectation. Do not "fix"
-// this into an absence check: it would fail every honest run.
+// this into an absence check: it would fail every honest run (live-validated
+// 2026-08-27 across the zone-settings, cache-settings, and zone-TLS lanes:
+// every surface answered after destroy exactly as this contract asserts).
 func (v *settingsSingletonVerifier) VerifyAbsent(ctx context.Context, api API, outputs map[string]string) error {
 	return v.assertSurfaceAnswers(ctx, api, outputs, "after destroy (settings surfaces persist -- destroy is a no-op for this class)")
 }

@@ -51,11 +51,15 @@ message CloudflareAuthenticatedOriginPullsHostnameAssociation {
   string hostname = 1 [(buf.validate.field).string.min_len = 1];
 
   // The uploaded client certificate the hostname uses (a hostname-scoped
-  // upload from CloudflareAuthenticatedOriginPullsCertificate). Leave unset
-  // to toggle the hostname using the zone-level certificate material.
+  // upload from CloudflareAuthenticatedOriginPullsCertificate). REQUIRED at
+  // the API: Cloudflare rejects an association write without a certificate
+  // id (400 code 1404 "Certificate ID required in the request", measured
+  // 2026-08-28 -- unconditionally, even when zone-level certificate
+  // material exists), so a row without one could never deploy.
   // When using value_from, defaults to CloudflareAuthenticatedOriginPullsCertificate
   // kind and status.outputs.certificate_id field path.
   dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_id = 2 [
+    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareAuthenticatedOriginPullsCertificate,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_id"
   ];

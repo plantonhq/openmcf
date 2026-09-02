@@ -2,6 +2,10 @@
 
 Operational judgment for the zone fallback origin. The README covers what each field is; this covers how the pieces interact.
 
+## The account must be enrolled in Cloudflare for SaaS first
+
+The fallback-origin surface answers 400 code 1456 "Access to configure this resource has not been granted for this zone. This feature is available with SSL for SaaS." until Cloudflare for SaaS is enabled on the zone (measured live; plan tier does not matter). Enrollment is a dashboard action on the zone (SSL/TLS → Custom Hostnames) with a payment method on file — the same gate as CloudflareCustomHostname.
+
 ## One per zone, identity is the zone
 
 There is no resource id. The API identity is the zone (`GET /zones/{zone_id}/custom_hostnames/fallback_origin`). Two manifests targeting the same zone are the same object — the second apply overwrites the first. Put exactly one of these in a SaaS zone's chart.

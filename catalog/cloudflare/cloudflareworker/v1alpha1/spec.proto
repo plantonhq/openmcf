@@ -62,6 +62,11 @@ message CloudflareWorkerSpec {
   }
 
   // The entrypoint module filename within the bundle (module-format workers).
+  // Both engines default it to "index.js" when unset (unless body_part marks
+  // service-worker syntax): an upload without a main module is treated by
+  // Cloudflare as a legacy service-worker script and ES-module code then
+  // fails deploy with "Uncaught SyntaxError: Unexpected token 'export'"
+  // (measured live).
   string main_module = 6 [(dev.planton.shared.options.recommended_default) = "index.js"];
 
   // Runtime compatibility flags (e.g. "nodejs_compat"). See the Cloudflare
@@ -542,6 +547,10 @@ message CloudflareWorkerObservabilityTraces {
   bool persist = 4;
   // How inbound traceparent/tracestate headers are handled: "authenticated"
   // (default) or "accept".
+  // Requires the account's trace-propagation feature: without it Cloudflare
+  // rejects the whole script upload with 403 code 100342 ("propagation_policy
+  // requires the trace propagation feature to be enabled") -- measured live.
+  // Leave unset unless the account carries the feature.
   string propagation_policy = 5 [(buf.validate.field).cel = {
     id: "observability_traces_propagation_policy.valid"
     message: "propagation_policy must be \"authenticated\" or \"accept\""

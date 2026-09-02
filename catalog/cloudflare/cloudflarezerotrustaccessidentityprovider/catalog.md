@@ -49,7 +49,7 @@ spec:
 planton apply -f identity-provider.yaml
 ```
 
-This creates Cloudflare's own one-time PIN provider — users see a PIN option on the Access login page, and no IdP application is required. A Stack Job tracks the provisioning in real time.
+This creates Cloudflare's own one-time PIN provider — users see a PIN option on the Access login page, and no IdP application is required. One caveat: Cloudflare allows exactly one `onetimepin` provider per account — if yours already has one, a second create is refused with 409 "a onetimepin connection already exists"; adopt the existing provider by import instead (see the GUIDE). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 

@@ -1,3 +1,7 @@
+---
+display_name: WAF Managed
+---
+
 # Managed WAF — Cloudflare + OWASP Rulesets
 
 Enable Cloudflare's managed WAF rulesets to protect against common web attacks including XSS, SQL injection, and OWASP Top 10 vulnerabilities.

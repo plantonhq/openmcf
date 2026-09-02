@@ -18,9 +18,13 @@ For Datadog, Splunk, and Opsgenie, the credential is not a "shared secret" in th
 
 Notification policies reference destinations by UUID. Delete the destination and every policy that used it simply stops delivering on that channel -- no error at Cloudflare, no plan diff in the policies, and no symptom until an alert you were counting on does not arrive. Retire the policy references first, then the destination. When several policies share one destination, that ordering matters more than it looks.
 
-## Registration does not prove delivery
+## The endpoint must be live BEFORE you register it
 
-Cloudflare accepts a URL that is unreachable, misconfigured, or simply wrong. The destination's `last_success` and `last_failure` timestamps are the only real evidence, and they only populate once an alert actually fires. After registering a destination, cause one alert deliberately (a health check you can fail, for instance) and confirm it landed -- once per channel is enough to prove the pipe.
+Cloudflare sends a test POST to the URL at registration and rejects the create with HTTP 422 unless the endpoint answers 2xx (measured live: a GET-only host answering 405 can never register). Two consequences: deploy the receiver first and the destination second -- a not-yet-deployed endpoint fails the create outright -- and if the create fails with "Webhook test request failed," the problem is on the receiving side (wrong URL, wrong secret, endpoint down), not in your manifest.
+
+## Registration still does not prove ongoing delivery
+
+Passing the registration probe proves the endpoint answered once, at create time. The destination's `last_success` and `last_failure` timestamps are the only evidence alerts keep landing, and they only populate once an alert actually fires. After registering a destination, cause one alert deliberately (a health check you can fail, for instance) and confirm it landed -- once per channel is enough to prove the pipe.
 
 ## Pairs well with
 

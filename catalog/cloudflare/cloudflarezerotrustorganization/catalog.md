@@ -42,7 +42,7 @@ metadata:
   env: prod
 spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  authDomain: acme
+  authDomain: acme.cloudflareaccess.com
   name: Acme Zero Trust
   sessionDuration: 24h
 ```
@@ -64,7 +64,7 @@ spec:
       kind: CloudflareDnsZone
       name: acme-com
       fieldPath: status.outputs.zone_id
-  authDomain: acme
+  authDomain: acme.cloudflareaccess.com
   name: Acme Zero Trust
 ```
 
@@ -74,7 +74,7 @@ The InfraPipeline resolves the dependency graph, deploys the zone first, then ap
 
 These are the most important decisions when configuring the Zero Trust organization. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**`authDomain` is the blast radius** — the team domain is the URL every user signs in through and every WARP client enrolls against (`<authDomain>.cloudflareaccess.com`). Changing it invalidates active sessions and breaks bookmarks, IdP redirect URIs, and WARP enrollment in one apply. Treat it like a production hostname: set it once, correctly, and never touch it casually.
+**`authDomain` is the blast radius** — the team domain is the URL every user signs in through and every WARP client enrolls against, declared as the FULL domain including the `.cloudflareaccess.com` suffix (the form Cloudflare's API returns). It is required on every write — the upsert is a full-body PUT and omitting it is rejected (API error 11004) — so declare your CURRENT team domain unless you deliberately intend a rename. Changing it invalidates active sessions and breaks bookmarks, IdP redirect URIs, and WARP enrollment in one apply. Treat it like a production hostname: set it once, correctly, and never touch it casually.
 
 **Destroy reverts nothing** — there is no "undo by destroy" on this singleton: the organization keeps the last-applied configuration forever. To revert a setting, apply the previous value. The folded key-rotation cadence behaves identically.
 

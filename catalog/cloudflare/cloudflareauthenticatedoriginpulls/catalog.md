@@ -86,7 +86,7 @@ These are the most important decisions when configuring Authenticated Origin Pul
 
 **Association rows default to active** — an association's `enabled` unset is sent as `true`, because Cloudflare treats a null there as "void the association" and a declared row is meant to exist. Set `enabled: false` for present-but-inactive.
 
-**Zone-level material or pinned uploads** — a row without `certificateId` toggles the hostname on the zone-level certificate; a row with one pins the hostname to an uploaded client certificate. Pin per hostname when different origins validate against different certificates.
+**Every association row pins an uploaded certificate** — `certificateId` is required on each row: Cloudflare rejects an association write without a certificate id (400 code 1404), even when zone-level certificate material exists. Zone-level material rides the zone toggle alone; hostname associations always reference a Cloudflare Authenticated Origin Pulls Certificate upload. Pin per hostname when different origins validate against different certificates.
 
 **Keep hostnames unique** — each row fans out to its own provider resource keyed by hostname; duplicate hostnames collapse in the fan-out.
 
@@ -97,7 +97,7 @@ These are the most important decisions when configuring Authenticated Origin Pul
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
-| **CloudflareAuthenticatedOriginPullsCertificate** (optional, per row) | `hostnameAssociations[].certificateId` | `status.outputs.certificate_id` |
+| **CloudflareAuthenticatedOriginPullsCertificate** (required per association row) | `hostnameAssociations[].certificateId` | `status.outputs.certificate_id` |
 
 ### What This Component Provides
 

@@ -61,6 +61,14 @@ var _ = ginkgo.Describe("CloudflareLoadBalancerMonitorSpec Custom Validation Tes
 			in.Spec.Type = CloudflareLoadBalancerMonitorType_icmp_ping
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
+
+		ginkgo.It("accepts an http monitor with only expected_body", func() {
+			in := validMonitor()
+			in.Spec.Type = CloudflareLoadBalancerMonitorType_http
+			in.Spec.ExpectedCodes = ""
+			in.Spec.ExpectedBody = "ok"
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -98,6 +106,22 @@ var _ = ginkgo.Describe("CloudflareLoadBalancerMonitorSpec Custom Validation Tes
 		ginkgo.It("rejects a header with no values", func() {
 			in := validMonitor()
 			in.Spec.Headers = []*CloudflareLoadBalancerMonitorHeader{{Name: "Host"}}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		// Cloudflare rejects http/https monitors with neither expectation set
+		// (400 code 1002, measured live) -- the spec walls it off pre-flight.
+		ginkgo.It("rejects an https monitor with neither expected_codes nor expected_body", func() {
+			in := validMonitor()
+			in.Spec.ExpectedCodes = ""
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a default-type (http) monitor with neither expectation", func() {
+			in := validMonitor()
+			in.Spec.Type = CloudflareLoadBalancerMonitorType_monitor_type_unspecified
+			in.Spec.Path = ""
+			in.Spec.ExpectedCodes = ""
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 	})

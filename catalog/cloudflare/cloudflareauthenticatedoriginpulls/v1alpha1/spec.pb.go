@@ -111,8 +111,11 @@ type CloudflareAuthenticatedOriginPullsHostnameAssociation struct {
 	// The hostname the association covers. Must belong to the zone.
 	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// The uploaded client certificate the hostname uses (a hostname-scoped
-	// upload from CloudflareAuthenticatedOriginPullsCertificate). Leave unset
-	// to toggle the hostname using the zone-level certificate material.
+	// upload from CloudflareAuthenticatedOriginPullsCertificate). REQUIRED at
+	// the API: Cloudflare rejects an association write without a certificate
+	// id (400 code 1404 "Certificate ID required in the request", measured
+	// 2026-08-28 -- unconditionally, even when zone-level certificate
+	// material exists), so a row without one could never deploy.
 	// When using value_from, defaults to CloudflareAuthenticatedOriginPullsCertificate
 	// kind and status.outputs.certificate_id field path.
 	CertificateId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=certificate_id,json=certificateId,proto3" json:"certificate_id,omitempty"`
@@ -186,10 +189,10 @@ const file_catalog_cloudflare_cloudflareauthenticatedoriginpulls_v1alpha1_spec_p
 	"\fzone_enabled\x18\x02 \x01(\bH\x00R\vzoneEnabled\x88\x01\x01\x12\xae\x01\n" +
 	"\x15hostname_associations\x18\x03 \x03(\v2y.dev.planton.cloudflare.cloudflareauthenticatedoriginpulls.v1alpha1.CloudflareAuthenticatedOriginPullsHostnameAssociationR\x14hostnameAssociations:\xbf\x01\xbaH\xbb\x01\x1a\xb8\x01\n" +
 	"\x19spec.at_least_one_surface\x12Zset zone_enabled and/or at least one hostname association -- an empty spec manages nothing\x1a?has(this.zone_enabled) || this.hostname_associations.size() > 0B\x0f\n" +
-	"\r_zone_enabled\"\x8b\x02\n" +
+	"\r_zone_enabled\"\x91\x02\n" +
 	"5CloudflareAuthenticatedOriginPullsHostnameAssociation\x12#\n" +
-	"\bhostname\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bhostname\x12\x81\x01\n" +
-	"\x0ecertificate_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xf27\x92\xd4a\x1dstatus.outputs.certificate_idR\rcertificateId\x12\x1d\n" +
+	"\bhostname\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bhostname\x12\x87\x01\n" +
+	"\x0ecertificate_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf27\x92\xd4a\x1dstatus.outputs.certificate_idR\rcertificateId\x12\x1d\n" +
 	"\aenabled\x18\x03 \x01(\bH\x00R\aenabled\x88\x01\x01B\n" +
 	"\n" +
 	"\b_enabledB\x89\x04\n" +

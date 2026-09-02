@@ -4,16 +4,20 @@ metadata:
   name: cloudflaresecretsstore
 spec:
   # Secrets Store under live E2E: account-scoped create of the vault, verify
-  # via the store GET-by-id, destroy (real delete). Watch items for the
-  # proving session: Cloudflare allows ONE store per account -- the create
-  # fails on any account that already has a store (dashboard-created, or a
-  # leaked fixture from an earlier failed lane). If the test account carries
-  # a permanent store, adopting it by import (rather than create/delete) is
-  # the honest fallback, a proof-lane call under its design authority. Every
-  # field is create-only; the idempotency re-plan must be empty.
+  # via the store GET-by-id, destroy (real delete). THE ONE-STORE-PER-ACCOUNT
+  # LIMIT IS MEASURED REAL: a second create is refused with error 1003
+  # "maximum_stores_exceeded" (live 2026-08-27). The test account carried the
+  # auto-provisioned EMPTY "default_secrets_store"; per owner approval the
+  # lane freed the slot by deleting it and recreated a store of the same name
+  # after the lanes (empty container, nothing referenced it; the recreated
+  # store has a new id -- recorded in the session changelog). Any future lane
+  # on this account inherits that pattern: verify the default store is empty,
+  # escalate, delete, restore. Every field is create-only; the idempotency
+  # re-plan measured empty.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  # LIVE-PROVEN 2026-08-27: minimal on both engines, full lifecycle, all
+  # first-run once the store slot was freed; the blind import round-trip
+  # passed with ZERO declared tolerances.
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

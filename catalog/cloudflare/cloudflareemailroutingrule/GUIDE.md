@@ -2,9 +2,9 @@
 
 Operational judgment for routing rules. The README covers what each field is; this covers how the pieces interact.
 
-## Rules need an enabled zone and verified destinations
+## Rules deploy without enablement, but only DO something on an enabled zone
 
-A rule only exists inside a zone whose Email Routing is ENABLED (`CloudflareEmailRoutingZone`) — the API rejects rules otherwise. Every `forward` destination must be a VERIFIED `CloudflareEmailRoutingAddress`: Cloudflare rejects forwarding to unverified mailboxes, and verification happens only through the emailed link, out-of-band of any deploy.
+The API accepts rule creation on a zone whose Email Routing was never enabled (measured live 2026-08-26: POST `zones/{id}/email/routing/rules` answers 200 on a fresh zone with routing status `unconfigured`). Enablement (`CloudflareEmailRoutingZone`) gates mail FLOW, not rule lifecycle: a rule on a non-enabled zone is inert configuration that starts matching the moment routing is enabled. Deploy order between the two kinds is therefore free — but a rule without an enabled zone routes nothing, so pair them in any real setup. Every `forward` destination must be a VERIFIED `CloudflareEmailRoutingAddress`: Cloudflare rejects forwarding to unverified mailboxes, and verification happens only through the emailed link, out-of-band of any deploy.
 
 ## Actions are a list, and order matters
 

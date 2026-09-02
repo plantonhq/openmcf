@@ -1,9 +1,16 @@
-# Lets-encrypt-txt CloudflareCertificatePack scenario: an advanced pack
-# covering the run-scoped pending-zone apex (the provider requires the apex
-# in hosts). The zone_id resolves from the CloudflareDnsZone prerequisite.
-# DCV sits pending -- the fixture zone is undelegated -- that is the
-# lifecycle we can prove. Hosts compose the SAME run token the zone fixture
-# uses, so they resolve to the same domain by construction.
+# Lets-encrypt-txt CloudflareCertificatePack scenario: an advanced pack with
+# TXT DCV covering the sanctioned ACTIVE test zone's apex and wildcard (the
+# provider requires the apex in hosts). ENV-GATED on the ACM-subscribed zone:
+# Advanced Certificate Manager is a PER-ZONE subscription (~$10/mo) --
+# measured live 2026-08-29 AFTER the account's ACM purchase: an advanced-pack
+# order still answers 400 code 1450 "available with the Advanced Certificate
+# Manager" on a freshly created zone, while the identical order succeeds on
+# the subscribed zone. A run-scoped fixture zone can therefore never order a
+# pack, and this arm skips honestly when the env is unset. DCV sits
+# pending_validation until the TXT records are placed -- ordering, verifying,
+# and deleting the pack is the lifecycle we prove. The lane deletes the pack
+# at destroy (delete restores the zone's pack quota), so nothing is left on
+# the shared zone.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareCertificatePack
 metadata:
@@ -16,18 +23,16 @@ metadata:
     e2e-component: cloudflarecertificatepack
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_ZONE_ID,PLANTON_E2E_CLOUDFLARE_ZONE_NAME
   tags:
     - planton-e2e
 spec:
   zone_id:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: planton-oss-e2e-cloudflarednszone-prereq
-      fieldPath: status.outputs.zone_id
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
   certificateAuthority: lets_encrypt
   type: advanced
   validationMethod: txt
   validityDays: 90
   hosts:
-    - planton-e2e-${E2E_RUN_ID}.com
-    - "*.planton-e2e-${E2E_RUN_ID}.com"
+    - ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}
+    - "*.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_NAME}"

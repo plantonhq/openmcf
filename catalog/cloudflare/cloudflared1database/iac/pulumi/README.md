@@ -68,8 +68,8 @@ The module maps the protobuf spec to Pulumi's `cloudflare.D1Database` resource:
 |------------|-----------------|-------|
 | `account_id` | `AccountId` | Required |
 | `database_name` | `Name` | Required |
-| `region` | `PrimaryLocationHint` | Optional, enum mapped to string |
-| `read_replication.mode` | `ReadReplication.Mode` | Optional, nested object |
+| `region` | `PrimaryLocationHint` | Optional, enum mapped to string; create-time only — post-create edits are ignored (`pulumi.IgnoreChanges`) because the API never returns the hint and the attribute is replace-forcing |
+| `read_replication.mode` | `ReadReplication.Mode` | Always sent — coalesces to the server default `"disabled"` when the spec omits the block (Cloudflare always reports the mode on read; omitting would drift forever) |
 
 ### Region Mapping
 

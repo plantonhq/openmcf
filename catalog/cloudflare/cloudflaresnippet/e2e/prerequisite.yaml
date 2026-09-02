@@ -6,6 +6,12 @@
 # run-ID variant (snippet names forbid hyphens; the plain token carries the
 # runner's hyphenated engine suffix). metadata.name stays stable -- it is the
 # key consumers' valueFrom references resolve against.
+#
+# The zone is the ENV-INJECTED paid test zone, not the run-scoped fixture
+# zone: Snippets are a paid-plan product ("snippets are not allowed" on any
+# free zone, measured live 2026-08-27), and fixture zones are always free.
+# Consumers gate on PLANTON_E2E_CLOUDFLARE_ZONE_ID via e2e-required-env, so
+# this fixture never installs with the token unset.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareSnippet
 metadata:
@@ -22,10 +28,7 @@ metadata:
     - planton-e2e
 spec:
   zone_id:
-    valueFrom:
-      kind: CloudflareDnsZone
-      name: planton-oss-e2e-cloudflarednszone-prereq
-      fieldPath: status.outputs.zone_id
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ZONE_ID}
   snippet_name: e2e_prereq_${E2E_RUN_ID_UNDERSCORE}
   files:
     - name: main.js

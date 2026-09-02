@@ -123,12 +123,19 @@ resource "cloudflare_zero_trust_gateway_logging" "main" {
 # PAC files: one resource per row, keyed by name so a row edit replaces only
 # its own file. slug forces replacement at the provider (it is baked into
 # the file's public URL).
+#
+# The slug is ALWAYS sent, derived deterministically from the row's name
+# when unset: an omitted slug gets a RANDOM server-generated one that the
+# refresh echoes into state, and since slug is replace-forcing, every
+# subsequent plan proposes destroying and recreating the file -- breaking
+# its public URL (live-measured at provider v5.23.0). A deterministic
+# name-derived slug keeps config and state equal forever.
 resource "cloudflare_zero_trust_gateway_pacfile" "main" {
   for_each = { for pac_file in try(var.spec.pac_files, []) : pac_file.name => pac_file }
 
   account_id  = var.spec.account_id
   name        = each.value.name
   contents    = each.value.contents
-  slug        = try(each.value.slug, "") != "" ? each.value.slug : null
+  slug        = try(each.value.slug, "") != "" ? each.value.slug : lower(replace(each.value.name, "/[^A-Za-z0-9-]/", "-"))
   description = try(each.value.description, "") != "" ? each.value.description : null
 }

@@ -19,10 +19,16 @@ embedded list is a convenience for records whose lifecycle tracks the zone.
 ```yaml
 # Offline development manifest exercising the full spec surface: zone core,
 # simple and structured inline records (typed data cases at the record level),
-# record tags/settings, zone-wide DNS settings, DNSSEC, zone hold, and the plan
-# subscription. Hold and subscription stay OUT of the live scenarios (billing
-# token scope; unverified hold semantics on a throwaway fixture zone) -- this
-# manifest is their offline tofu-plan proof.
+# record tags/settings, zone-wide DNS settings incl. SOA tuning, DNSSEC, zone
+# hold, and the plan subscription. Live-blocked surfaces stay OUT of the live
+# scenarios and this manifest is their offline tofu-plan proof: hold and
+# subscription (billing token scope; unverified hold semantics on a throwaway
+# fixture zone), plus four free-plan/pending-zone walls measured live
+# 2026-08-26 -- record tags (400 code 9300, tag quota 0), record-level
+# ipv4_only/ipv6_only settings (400 code 9227), custom SOA tuning (400 code
+# 1003), and DNSSEC on a PENDING zone (400 code 1017 "Invalid zone plan for
+# action"; the same PATCH succeeds on an ACTIVE free-plan zone, so the wall is
+# delegation state, not plan tier).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareDnsZone
 metadata:
@@ -67,6 +73,10 @@ spec:
   dnsSettings:
     flattenAllCnames: true
     zoneMode: standard
+    nsTtl: 3600
+    soa:
+      minTtl: 1800
+      ttl: 3600
   dnssec:
     enabled: true
   hold:
@@ -318,6 +328,10 @@ Time to live (TTL) in seconds. Leave 0 or set 1 for automatic; otherwise
 
 Priority for MX records (lower is preferred). Required for MX; ignored for
 other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
+Declare priority in exactly one place: for SRV/URI the modules mirror the
+data-block priority into the provider's top-level field themselves,
+because Cloudflare reflects it there on read (live-measured; omitting the
+mirror re-plans forever).
 
 - rule: priority must be between 0 and 65535
 
@@ -856,13 +870,18 @@ The target URI (e.g. "https://example.com/path").
 `[]string`
 
 Custom tags for the record. Have no effect on DNS responses; useful for
-organizing and filtering records.
+organizing and filtering records. Entitlement-gated: accounts without the
+record-tags feature have a tag quota of 0 and the record create fails
+with 400 code 9300 (measured live on a free-plan account).
 
 ### spec.records[].settings
 
 `CloudflareDnsZoneRecordSettings`
 
 Optional record-level settings controlling how proxied records are served.
+Entitlement-gated: on zones without the feature, setting ipv4_only or
+ipv6_only fails the record create with 400 code 9227 "not available to
+this zone" (measured live on a free-plan zone).
 
 ### spec.records[].settings.ipv4Only
 
@@ -920,7 +939,14 @@ Enterprise plans; leave empty to use Cloudflare's assigned name servers.
 `CloudflareDnsZoneDnsSettings`
 
 Optional zone-wide DNS settings (CNAME flattening, zone mode, SOA, etc.).
-Omit to leave Cloudflare's defaults in place.
+Omit to leave Cloudflare's defaults in place. The non-default values are
+individually entitlement-gated: on an account/zone without the matching
+feature, Cloudflare rejects the write with 400 code 1003 "not available
+to this account or zone" (measured live for SOA tuning, ns_ttl, and
+flatten_all_cnames). On the terraform engine also note the v5.23.0
+provider echoes server defaults into unset optional fields on refresh,
+so a partial dns_settings block re-plans forever -- declare every field
+the server echoes, or omit the block.
 
 ### spec.dnsSettings.flattenAllCnames
 
@@ -1075,6 +1101,10 @@ reference to another CloudflareDnsZone.
 
 Optional DNSSEC configuration. Enable to have Cloudflare sign the zone; the
 DS record material to hand to your registrar is published as stack outputs.
+DNSSEC activates only on an ACTIVE (registrar-delegated) zone: on a
+PENDING zone Cloudflare rejects the enable with 400 code 1017 "Invalid
+zone plan for action" (measured live; the same call succeeds on an
+active free-plan zone -- the wall is delegation state, not plan tier).
 
 ### spec.dnssec.enabled
 
@@ -1191,6 +1221,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareDnsZon
 | `status.outputs.dnssec_key_tag` | `string` | The DNSKEY key tag. Empty unless DNSSEC is enabled. |
 | `status.outputs.dnssec_public_key` | `string` | The DNSKEY public key. Empty unless DNSSEC is enabled. |
 | `status.outputs.dnssec_flags` | `string` | The DNSKEY flags. Empty unless DNSSEC is enabled. |
+| `status.outputs.record_ids` | `map<string, string>` | Cloudflare-assigned ids of the zone's inline DNS records, keyed by the records' name-type-index key (both engines key record instances the same way). Import recipes derive each record's {zone_id}/{dns_record_id} import ID from this map; empty when the spec declares no inline records. |
 
 ## References
 

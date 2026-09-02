@@ -14,12 +14,24 @@ spec:
   # provider's Read never parses the response body -- out-of-band rule
   # changes are invisible to refresh, so drift assertions can only catch
   # what the module itself sends; (b) destroy wipes rules created outside
-  # the manifest too -- on the run-scoped fixture zone that is exactly the
-  # zero-orphan behavior the lane wants. Rules are free-plan objects,
-  # applied in seconds.
+  # the manifest too -- the lane runs on the env-injected paid test zone
+  # (snippets are a paid product, measured 2026-08-27), so the operator
+  # must keep that zone free of snippet rules owned by anyone else;
+  # (c) MEASURED 2026-08-27: prefix matches must use the FUNCTION form
+  # starts_with(...) -- the operator form is rejected with error 20127 even
+  # on a Pro zone. Rules apply in seconds at no per-object cost on an
+  # entitled zone.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # PROVEN live 2026-08-27 on the Pro test zone: minimal on both engines
+  # through the full lifecycle; the blind round-trip consumed exactly the
+  # pre-declared write-normalized `rules` tolerance (rules is no_refresh at
+  # v5.23.0 -- import restores nothing for it; the re-assert is the
+  # idempotent full-replacement PUT). The empty-collection verify-absent
+  # (GET 200 with result: []) validated live. The expression grammar wall
+  # was measured en route: operator-form starts_with is rejected 20127 even
+  # on Pro -- every committed expression uses the function form.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

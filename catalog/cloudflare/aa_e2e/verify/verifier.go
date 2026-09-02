@@ -42,14 +42,27 @@ type EnvelopePresence struct {
 	// response carries is_deleted as a required numeric field instead of the
 	// deleted_at timestamp the SoftDeleted probe reads.
 	IsDeletedFlag bool
+	// RevokedAt: a 200 whose result.revoked_at is set counts as absent.
+	// The Origin CA variant of soft-delete: DELETE /certificates/{id} is a
+	// REVOKE, and the revoked certificate keeps answering GET 200 with the
+	// full body plus revoked_at (measured live 2026-08-28) -- neither the
+	// plain 404 probe nor SoftDeleted (deleted_at) sees the revocation.
+	RevokedAt bool
 }
 
 // API is the surface verifiers need from the harness client: an
 // existence probe plus the account scope resolved at Setup.
 type API interface {
 	// ResourceExists GETs a path relative to /client/v4/ and reports
-	// presence (200) vs absence (404, or Cloudflare's 400/7003 unknown-
-	// object answer); any other status is an error.
+	// presence (200) vs absence (404, or one of Cloudflare's 400
+	// unknown-object answers: code 7003 "could not route", code 1001
+	// "Invalid zone identifier" -- the zones/{id} answer for a deleted
+	// zone, code 1103 "Location ID is invalid" -- the
+	// gateway/locations/{id} answer for a deleted DNS location, code 1472
+	// "Certificate not found." -- the mtls_certificates/{id} answer for a
+	// deleted certificate, and the CODE-LESS "requested snippet not found"
+	// -- the snippets endpoint's deleted answer carries a message but no
+	// numeric code, all measured live); any other status is an error.
 	ResourceExists(ctx context.Context, path string) (bool, error)
 	// ResourceActive is the soft-delete-aware sibling: a 200 whose envelope
 	// carries a non-null result.deleted_at counts as ABSENT. Used only by
@@ -57,7 +70,8 @@ type API interface {
 	// routes) -- it parses the v4 envelope, so it must never replace
 	// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 	ResourceActive(ctx context.Context, path string) (bool, error)
-	// ResourcePresent is the envelope-aware probe: 404 / 400-7003 are
+	// ResourcePresent is the envelope-aware probe: 404 / the 400
+	// unknown-object codes (7003, 1001, 1103, 1472) are
 	// always absent; a 200 is absent when SoftDeleted sees deleted_at or
 	// result.status matches AbsentStatuses. Parses the v4 envelope --
 	// never use on raw-body endpoints.
@@ -115,6 +129,20 @@ type apiPathVerifier struct {
 	// is_deleted as a required numeric field (not deleted_at), so neither
 	// the plain 404 probe nor softDeleted would see the deletion.
 	isDeletedFlag bool
+	// revokedAt opts into the revoked_at-aware absence probe: a 200 whose
+	// result.revoked_at is set counts as gone. Origin CA certificates
+	// REVOKE rather than delete, and a revoked certificate keeps answering
+	// GET 200 with revoked_at set (measured live 2026-08-28).
+	revokedAt bool
+	// zonePathFormat opts a DUAL-SCOPE resource into scope-aware probing:
+	// when the deploy's outputs carry a non-empty zone_id, the probe uses
+	// this zone-rooted template (zone_id fills its first placeholder, then
+	// the declared outputKeys) instead of the account-rooted pathFormat.
+	// Cloudflare's dual-scope objects (IP access rules) live in separate
+	// per-scope collections -- an account GET cannot see a zone-scoped rule
+	// -- and the outputs contract publishes exactly one non-empty scope id
+	// per deployment precisely so consumers can derive the scope.
+	zonePathFormat string
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -173,12 +201,13 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 // probe selects the existence check: the plain status-code probe, or the
 // envelope-aware one for soft-deleting / status-enum families.
 func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
-	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray || v.isDeletedFlag {
+	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray || v.isDeletedFlag || v.revokedAt {
 		return api.ResourcePresent(ctx, path, EnvelopePresence{
 			SoftDeleted:      v.softDeleted,
 			AbsentStatuses:   v.absentStatuses,
 			EmptyResultArray: v.emptyResultArray,
 			IsDeletedFlag:    v.isDeletedFlag,
+			RevokedAt:        v.revokedAt,
 		})
 	}
 	return api.ResourceExists(ctx, path)
@@ -189,8 +218,17 @@ func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool
 // -- a blank segment would probe the wrong endpoint and report a false
 // absence.
 func (v *apiPathVerifier) buildPath(api API, outputs map[string]string) (string, error) {
+	pathFormat := v.pathFormat
+	accountScoped := v.accountScoped
 	values := make([]interface{}, 0, len(v.outputKeys)+1)
-	if v.accountScoped {
+	if v.zonePathFormat != "" && outputs["zone_id"] != "" {
+		// Dual-scope resource deployed zone-scoped: probe the zone
+		// collection (the account collection cannot see this object).
+		pathFormat = v.zonePathFormat
+		accountScoped = false
+		values = append(values, outputs["zone_id"])
+	}
+	if accountScoped {
 		if api.AccountID() == "" {
 			return "", errors.Errorf("%s is account-scoped but the harness has no account ID", v.component)
 		}
@@ -203,7 +241,7 @@ func (v *apiPathVerifier) buildPath(api API, outputs map[string]string) (string,
 		}
 		values = append(values, value)
 	}
-	return fmt.Sprintf(v.pathFormat, values...), nil
+	return fmt.Sprintf(pathFormat, values...), nil
 }
 
 // verifiers maps a component directory name to its verifier. A kind
@@ -246,9 +284,13 @@ var verifiers = map[string]Verifier{
 		accountScoped: true,
 	},
 	// Email Routing is a zone singleton: the GET returns the zone's routing
-	// settings object rather than 404ing for a zone that never enabled it, so
-	// the absent-check may need a value-aware probe (read `enabled`) once
-	// measured live -- the existence probe is the honest starting point.
+	// settings object rather than 404ing for a zone that never enabled it.
+	// MEASURED 2026-08-26 via the REST API: after a disable the GET still
+	// answers 200 with enabled=false, so when this kind's lanes unblock (its
+	// profile records the upstream provider defect deferring them), the
+	// absent-check MUST become a value-aware probe reading `enabled` -- the
+	// plain existence probe below would fail verify-absent against a
+	// perfectly clean teardown.
 	"cloudflareemailroutingzone": &apiPathVerifier{
 		component:  "cloudflareemailroutingzone",
 		pathFormat: "zones/%s/email/routing",
@@ -409,8 +451,14 @@ var verifiers = map[string]Verifier{
 		pathFormat: "zones/%s/settings",
 	},
 	"cloudflarecachesettings": &settingsSingletonVerifier{
-		component:  "cloudflarecachesettings",
-		pathFormat: "zones/%s/cache/cache_reserve",
+		component: "cloudflarecachesettings",
+		// Smart tiered cache is the family's one surface measured answering
+		// on EVERY plan (editable:true on a Free zone even before any
+		// write). The natural-looking cache_reserve surface is plan-gated
+		// even for reads -- 1135 "not available for your plan type" on Free
+		// AND Pro zones (measured 2026-08-27) -- so probing it would fail
+		// every honest verify on the free fixture zone.
+		pathFormat: "zones/%s/cache/tiered_cache_smart_topology_enable",
 	},
 	"cloudflarezonetlssettings": &settingsSingletonVerifier{
 		component:  "cloudflarezonetlssettings",
@@ -453,13 +501,18 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"sitekey"},
 		accountScoped: true,
 	},
-	// User-scoped (no accounts/ or zones/ prefix). Delete is a revoke;
-	// a post-destroy 200 is possible and recorded on the watch-list --
-	// the plain 404 probe is the honest starting point.
+	// User-scoped (no accounts/ or zones/ prefix). Delete is a REVOKE, and
+	// a revoked certificate keeps answering GET 200 with revoked_at set
+	// (measured live 2026-08-28: revoke succeeded, the immediate GET
+	// returned the full body plus revoked_at) -- the probe reads revoked_at
+	// as absence. Revocation reaches reads within seconds (measured 4-15s
+	// live 2026-08-28); the retry budget rides out that beat.
 	"cloudflareorigincacertificate": &apiPathVerifier{
-		component:  "cloudflareorigincacertificate",
-		pathFormat: "certificates/%s",
-		outputKeys: []string{"certificate_id"},
+		component:     "cloudflareorigincacertificate",
+		pathFormat:    "certificates/%s",
+		outputKeys:    []string{"certificate_id"},
+		revokedAt:     true,
+		absentRetries: 15,
 	},
 	// Access identity providers and service tokens delete for real and 404
 	// honestly on the read after (the account-scoped arm is the one the live
@@ -495,13 +548,16 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"list_id"},
 		accountScoped: true,
 	},
-	// IP Access rules delete for real and 404 honestly. Live scenarios
-	// are account-scoped (the zone arm is scenario-edged).
+	// IP Access rules delete for real and 404 honestly. The kind is
+	// DUAL-SCOPE (account is canonical, the zone arm is scenario-edged) and
+	// the two scopes are separate API collections, so the probe follows the
+	// deploy's own scope: a non-empty zone_id output selects the zone path.
 	"cloudflareipaccessrule": &apiPathVerifier{
-		component:     "cloudflareipaccessrule",
-		pathFormat:    "accounts/%s/firewall/access_rules/rules/%s",
-		outputKeys:    []string{"rule_id"},
-		accountScoped: true,
+		component:      "cloudflareipaccessrule",
+		pathFormat:     "accounts/%s/firewall/access_rules/rules/%s",
+		zonePathFormat: "zones/%s/firewall/access_rules/rules/%s",
+		outputKeys:     []string{"rule_id"},
+		accountScoped:  true,
 	},
 	// Bot Management is a zone settings singleton: destroy is a NO-OP
 	// (empty Delete body). Verify-absent asserts the surface still
@@ -553,8 +609,9 @@ var verifiers = map[string]Verifier{
 		outputKeys:     []string{"zone_id", "certificate_id"},
 		absentStatuses: []string{"deleted"},
 	},
-	// mTLS certificates are account-scoped uploads with a real delete and
-	// an honest 404.
+	// mTLS certificates are account-scoped uploads with a real delete;
+	// a deleted certificate answers 400 code 1472 "Certificate not found."
+	// (measured 2026-08-28), which the client classifies as absent.
 	"cloudflaremtlscertificate": &apiPathVerifier{
 		component:     "cloudflaremtlscertificate",
 		pathFormat:    "accounts/%s/mtls_certificates/%s",
@@ -579,9 +636,12 @@ var verifiers = map[string]Verifier{
 		outputKeys:     []string{"zone_id", "certificate_id"},
 		absentStatuses: []string{"pending_deletion", "deleted"},
 	},
-	// Workflows delete for real, but the API keeps answering GET 200 for
-	// deleted workflows with a required numeric is_deleted marker (the
-	// Workflows variant of soft-delete; neither deleted_at nor a 404).
+	// Workflows delete for real. Upstream's model documents a GET-200-with-
+	// is_deleted answer for deleted workflows, but live (2026-08-27) a
+	// deleted workflow answered an honest 404 with code 10200
+	// "workflows.api.error.workflow.not_found" -- the flag probe never
+	// fired. It stays enabled because it is a strict superset (a 404 is
+	// always absent) and upstream's modeling says the flag form exists.
 	// Identity is the workflow NAME -- the provider's Read is
 	// GET accounts/{a}/workflows/{name}.
 	"cloudflareworkflow": &apiPathVerifier{

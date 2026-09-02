@@ -13,7 +13,7 @@ output "expires_on" {
   value       = local.is_zone_scope ? cloudflare_authenticated_origin_pulls_certificate.zone[0].expires_on : cloudflare_authenticated_origin_pulls_hostname_certificate.hostname[0].expires_on
 }
 
-output "status" {
-  description = "The certificate's deployment status (deployment and deletion are asynchronous)"
-  value       = local.is_zone_scope ? cloudflare_authenticated_origin_pulls_certificate.zone[0].status : cloudflare_authenticated_origin_pulls_hostname_certificate.hostname[0].status
-}
+# status is deliberately NOT an output: deployment is asynchronous
+# (pending_deployment -> active seconds after create), so a point-in-time
+# phase flips on the first refresh after the transition and re-plans forever
+# (measured live 2026-08-28).

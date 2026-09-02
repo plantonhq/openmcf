@@ -8,8 +8,10 @@ message CloudflareDnsRecordStackOutputs {
   // The unique identifier of the created DNS record in Cloudflare.
   string record_id = 1;
 
-  // The DNS record name as stored by Cloudflare (the record's name within the
-  // zone, e.g. "www" or "@" for the apex).
+  // The DNS record name as declared in the spec (relative to the zone, e.g.
+  // "www" or "@" for the apex). Deliberately NOT the API's echo: Cloudflare
+  // normalizes names to the full FQDN on read, so echoing the refreshed value
+  // would flip this output after the first refresh.
   string record_name = 2;
 
   // The DNS record type that was created.

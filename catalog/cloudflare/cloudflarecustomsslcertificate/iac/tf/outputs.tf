@@ -13,7 +13,7 @@ output "expires_on" {
   value       = cloudflare_custom_ssl.main.expires_on
 }
 
-output "status" {
-  description = "The certificate's deployment status (deployment is asynchronous)"
-  value       = cloudflare_custom_ssl.main.status
-}
+# status is deliberately NOT an output: deployment is asynchronous (pending
+# before active), so a point-in-time phase flips on the first refresh after
+# the transition and re-plans forever (the class was measured live
+# 2026-08-28 on the sibling Authenticated Origin Pulls certificate).

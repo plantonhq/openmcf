@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareDnsRecordSpec defines a single DNS record in a Cloudflare zone.
 
 A record is either a "simple" record whose value is a presentation-format
@@ -212,8 +214,12 @@ zones; most zones use 60s and up). Defaults to automatic.
 
 `int32`
 
-Priority for MX records (lower is preferred). Required for MX; ignored for
-other types (SRV/URI/HTTPS/SVCB carry their own priority inside `data`).
+Priority for MX records (lower is preferred). Required for MX; never set it
+for other types (SRV/URI/HTTPS/SVCB carry their own priority inside their
+typed data). Cloudflare's API mirrors an SRV/URI data priority into the
+record's top-level priority field on its own; the IaC modules send that
+mirror so the deployed record never drifts -- authors declare priority in
+exactly one place.
 
 - rule: priority must be between 0 and 65535
 
@@ -806,7 +812,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareDnsRec
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.record_id` | `string` | The unique identifier of the created DNS record in Cloudflare. |
-| `status.outputs.record_name` | `string` | The DNS record name as stored by Cloudflare (the record's name within the zone, e.g. "www" or "@" for the apex). |
+| `status.outputs.record_name` | `string` | The DNS record name as declared in the spec (relative to the zone, e.g. "www" or "@" for the apex). Deliberately NOT the API's echo: Cloudflare normalizes names to the full FQDN on read, so echoing the refreshed value would flip this output after the first refresh. |
 | `status.outputs.record_type` | `string` | The DNS record type that was created. |
 | `status.outputs.proxied` | `bool` | Whether the record is proxied through Cloudflare (orange cloud). |
 | `status.outputs.zone_id` | `string` | The Cloudflare Zone ID the record lives in. A record's API identity is (zone_id, record_id), so downstream consumers -- verification tooling, imports, chart blocks composing on the record -- need the zone alongside the record's own id. |

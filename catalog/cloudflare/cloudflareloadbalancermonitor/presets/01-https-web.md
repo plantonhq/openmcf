@@ -1,3 +1,7 @@
+---
+display_name: HTTPS Web
+---
+
 # HTTPS web health check
 
 An HTTPS monitor that probes `/healthz` on each origin and expects a 2xx response,

@@ -3,24 +3,29 @@ kind: ComponentE2EProfile
 metadata:
   name: cloudflarehealthcheck
 spec:
-  # Health checks under live E2E: the harness deploys the CloudflareDnsZone
-  # prerequisite, resolves zone_id, creates the check against a
-  # documentation-range origin (the probe target never needs to answer --
-  # the object's lifecycle is what the lane proves), verifies via the zone's
-  # healthchecks API, destroys (real delete, honest 404). Watch items for
-  # the proving session: (a) THE PLAN GATE -- standalone health checks are a
-  # paid zone feature (Pro+); on a free fixture zone the create may 403/402,
-  # which is the entitlement deferral class, not a module bug (record and
-  # defer, never skip silently); (b) THE API-TOKEN AUTH-DEFECT CLASS -- 4 of
-  # the provider's own 6 healthcheck acceptance tests blank
-  # CLOUDFLARE_API_TOKEN and run on legacy key/email credentials; our
-  # harness authenticates with a token, so a 403 on create/update despite
-  # correct scopes is the expected ambush (same class as the Zero Trust
-  # doors' rotation arms). Checks are seconds-fast, no per-object cost
-  # beyond the plan.
+  # Health checks under live E2E: the lanes run on the env-injected paid
+  # test zone (PLANTON_E2E_CLOUDFLARE_ZONE_ID) and skip honestly when the
+  # token is unset. MEASURED 2026-08-27: (a) THE PLAN GATE is real --
+  # a free zone answers 400 code 1002 "health checks disabled for zone"
+  # (Pro is the floor: 10 checks; Business 50); (b) THE ADDRESS WALL --
+  # Cloudflare validates the origin is publicly routable, and TEST-NET
+  # documentation addresses are rejected with 400 code 1002 "origin address
+  # is invalid" (the origin never needs to ANSWER -- an unhealthy check is a
+  # fine check); (c) THE API-TOKEN AUTH-DEFECT CLASS the upstream tests
+  # imply (4 of 6 blank CLOUDFLARE_API_TOKEN) -- watch for a 403 despite
+  # correct scopes. Checks create in seconds, no per-object cost beyond the
+  # plan.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # PROVEN live 2026-08-27 on the Pro test zone: both scenarios on both
+  # engines through the full lifecycle, blind round-trips at ZERO
+  # tolerances. First contact measured: the plan gate fires as 400/1002
+  # "health checks disabled for zone" on free zones; TEST-NET addresses are
+  # rejected 400/1002 "origin address is invalid"; an omitted check_regions
+  # echoes the server default into an optional-not-computed attribute and
+  # drifts forever (scenarios declare it; spec field teaches it). The
+  # API-token 403 ambush never fired.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

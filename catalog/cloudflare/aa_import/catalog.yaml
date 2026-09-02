@@ -25,15 +25,16 @@ spec:
       id_format: "{zone_id}"
     - terraform_type: cloudflare_zone_dns_settings
       pulumi_type: cloudflare:index/zoneDnsSettings:ZoneDnsSettings
-      id_format: "{zone_id}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 (docs: "This
+        resource does not currently support terraform import"). The create is
+        a zone-singleton PUT, idempotent for identical values, so the
+        adopter's re-create path converges on the live settings -- the round
+        trip skips the import and proves that path instead.
       notes: >-
-        The v5.23.0 terraform provider ships NO importer for this resource
-        (docs: "This resource does not currently support terraform import";
-        the package has no ImportState). The id_format records the API
-        identity (GET /zones/{zone_id}/dns_settings). A blind round-trip must
-        expect the import step to fail for this address and instead re-assert
-        the settings from configuration -- safe, because the resource is a
-        zone-singleton PUT whose create is idempotent for identical values.
+        The API identity is the bare zone id (GET
+        /zones/{zone_id}/dns_settings); it is recorded here for the day the
+        provider ships an importer.
     - terraform_type: cloudflare_zone_dnssec
       pulumi_type: cloudflare:index/zoneDnssec:ZoneDnssec
       id_format: "{zone_id}"
@@ -50,6 +51,25 @@ spec:
     - terraform_type: cloudflare_workers_script
       pulumi_type: cloudflare:index/workersScript:WorkersScript
       id_format: "{account_id}/{script_name}"
+      # The v5.23.0 ImportState fetches only the script-content GET and
+      # unmarshals the raw body as JSON -- it restores nothing beyond the
+      # identity (account_id/script_name), and the settings Read that follows
+      # does not return main_module and reads collections back in normalized
+      # (empty-vs-null) form. A plan after a faithful import therefore shows
+      # in-place updates on exactly these attributes (measured live
+      # 2026-08-26); content, compatibility_date, and the identity stay under
+      # the round-trip oracle.
+      write_normalized_attributes:
+        - main_module
+        - bindings
+        - compatibility_flags
+        - tail_consumers
+        - etag
+        - handlers
+        - has_assets
+        - has_modules
+        - last_deployed_from
+        - modified_on
     - terraform_type: cloudflare_workers_script_subdomain
       pulumi_type: cloudflare:index/workersScriptSubdomain:WorkersScriptSubdomain
       id_format: "{account_id}/{script_name}"
@@ -66,9 +86,13 @@ spec:
     # The load balancer's documented import ID carries a literal scope prefix
     # ("{accounts|zones}/{scope_id}/{lb_id}"); the catalog kind is zone-scoped,
     # so the zones/ arm is the one recorded here.
+    # The importer parses plain "<zone_id>/<load_balancer_id>" (ImportState in
+    # the provider's load_balancer resource) -- a literal "zones/" scope prefix
+    # is REJECTED with "invalid ID" (measured live 2026-08-28; the prefix
+    # appears only in the API path, never in the import ID).
     - terraform_type: cloudflare_load_balancer
       pulumi_type: cloudflare:index/loadBalancer:LoadBalancer
-      id_format: "zones/{zone_id}/{load_balancer_id}"
+      id_format: "{zone_id}/{load_balancer_id}"
     # --- Email Routing ----------------------------------------------------------
     # Settings, the managed DNS records, and the catch-all rule are zone
     # singletons -- their import identity is the bare zone id. Rules are
@@ -107,6 +131,12 @@ spec:
     - terraform_type: cloudflare_workers_kv
       pulumi_type: cloudflare:index/workersKv:WorkersKv
       id_format: "{account_id}/{namespace_id}/{key_name}"
+      # Cloudflare re-serializes the entry's metadata JSON on read (the
+      # import restores it byte-different, semantically identical -- measured
+      # live 2026-08-26 as a whitespace-only plan), so the first
+      # post-adoption apply rewrites formatting and nothing else.
+      write_normalized_attributes:
+        - metadata
     # --- D1 ---------------------------------------------------------------------
     - terraform_type: cloudflare_d1_database
       pulumi_type: cloudflare:index/d1Database:D1Database
@@ -117,17 +147,20 @@ spec:
       id_format: "{account_id}/{queue_id}"
     - terraform_type: cloudflare_queue_consumer
       pulumi_type: cloudflare:index/queueConsumer:QueueConsumer
-      id_format: "{account_id}/{queue_id}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 (docs: "This
+        resource does not currently support terraform import"). An adopted
+        queue re-asserts its consumer from configuration on the next apply.
       notes: >-
-        The v5.23.0 terraform provider ships NO importer for this resource
-        (docs: "This resource does not currently support terraform import";
-        the package has no ImportState). The id_format records the consumer's
-        parent scope; its full API identity is
+        The consumer's API identity is
         GET /accounts/{account_id}/queues/{queue_id}/consumers/{consumer_id},
-        where consumer_id is server-assigned. A blind round-trip must expect
-        the import step to fail for this address and instead re-assert the
-        consumer from configuration -- safe, because a queue has at most one
-        consumer and re-creating it converges on the same state.
+        where consumer_id is server-assigned. The re-create path is NOT
+        convergent: the create is a plain POST and Cloudflare enforces one
+        active consumer per queue, so re-asserting against a queue whose live
+        consumer still exists is refused with 400 code 11004 "already has a
+        consumer" (measured 2026-08-26). Adopting a queue that already
+        carries a consumer means deleting that consumer first (or leaving it
+        managed outside) -- there is no import and no idempotent re-put.
     # --- R2 ---------------------------------------------------------------------
     # The bucket's import ID is strictly positional THREE segments: the
     # provider's parser rejects a two-segment ID, so a default-jurisdiction
@@ -142,70 +175,88 @@ spec:
       id_format: "{account_id}/{bucket_name}/{jurisdiction}"
     - terraform_type: cloudflare_r2_bucket_cors
       pulumi_type: cloudflare:index/r2BucketCors:R2BucketCors
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its CORS policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/cors).
-        A blind round-trip must expect the import step to fail for this
-        address and instead re-assert the CORS policy from configuration --
-        safe, because it is a bucket-singleton PUT whose create is idempotent
-        for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/cors).
     - terraform_type: cloudflare_r2_bucket_lifecycle
       pulumi_type: cloudflare:index/r2BucketLifecycle:R2BucketLifecycle
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its lifecycle policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lifecycle).
-        A blind round-trip re-asserts the lifecycle policy from configuration
-        -- a bucket-singleton PUT, idempotent for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lifecycle).
     - terraform_type: cloudflare_r2_bucket_lock
       pulumi_type: cloudflare:index/r2BucketLock:R2BucketLock
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The create is a
+        bucket-singleton PUT, idempotent for identical values, so an adopted
+        bucket re-asserts its lock policy from configuration on the next
+        apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the API
-        identity (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lock).
-        A blind round-trip re-asserts the lock policy from configuration -- a
-        bucket-singleton PUT, idempotent for identical values.
+        The API identity is the bucket
+        (GET /accounts/{account_id}/r2/buckets/{bucket_name}/lock).
     - terraform_type: cloudflare_r2_bucket_event_notification
       pulumi_type: cloudflare:index/r2BucketEventNotification:R2BucketEventNotification
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). The re-create path is
+        NOT convergent: the per-queue PUT MERGES rules instead of replacing
+        them, so re-putting an identical rule while the live config exists
+        answers 400 code 11020 "rules have invalid overlap" (measured
+        2026-08-26). Adopting a bucket that already carries a notification
+        config means deleting that config first (or leaving it managed
+        outside).
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the parent
-        scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/event_notifications/r2/{bucket_name}/configuration/queues/{queue_id}.
-        A blind round-trip re-asserts the notification rules from
-        configuration -- a per-queue PUT, idempotent for identical values.
+        The config also outlives its bucket: deleting the bucket does NOT
+        delete its notification configs, and a dangling config blocks the
+        target queue's deletion with 400 code 11017 (measured 2026-08-26) --
+        delete the notification config explicitly before retiring either
+        side.
     - terraform_type: cloudflare_r2_custom_domain
       pulumi_type: cloudflare:index/r2CustomDomain:R2CustomDomain
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState on the upstream resource at v5.23.0 ("This resource
+        does not currently support terraform import"). An adopted bucket
+        re-asserts its custom domain from configuration on the next apply.
       notes: >-
-        No importer at v5.23.0 ("This resource does not currently support
-        terraform import"; no ImportState). The id_format records the parent
-        scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/custom/{domain}.
-        A blind round-trip re-asserts the custom domain from configuration.
     - terraform_type: cloudflare_r2_managed_domain
       pulumi_type: cloudflare:index/r2ManagedDomain:R2ManagedDomain
-      id_format: "{account_id}/{bucket_name}"
+      not_importable_upstream_reason: >-
+        No ImportState at v5.23.0, and the provider's Read AND Delete for
+        this resource are EMPTY function bodies -- it never refreshes from
+        the API and cannot be destroyed through terraform (the managed
+        r2.dev domain stays in the API until manually disabled). An adopted
+        bucket re-asserts the toggle from configuration on the next apply.
       notes: >-
-        No importer at v5.23.0, and the provider's Read AND Delete for this
-        resource are EMPTY function bodies -- it never refreshes from the API
-        and cannot be destroyed through terraform (the managed r2.dev domain
-        stays in the API until manually disabled). The id_format records the
-        parent scope; the API identity is
+        The API identity is
         GET /accounts/{account_id}/r2/buckets/{bucket_name}/domains/managed.
-        A blind round-trip re-asserts the toggle from configuration.
     # --- Hyperdrive -------------------------------------------------------------
-    # The origin password is write-only (the API never returns it), so an
-    # imported config lands with an empty password in state until the
-    # configuration re-asserts it.
+    # The origin password is write-only (the API never returns it -- the
+    # provider schema's own words at v5.23.0), so an imported config lands
+    # with an empty password in state and the first post-import plan
+    # re-asserts it from configuration. The dotted tolerance below prunes
+    # exactly that leaf from the round-trip oracle; any sibling drift inside
+    # origin still fails.
     - terraform_type: cloudflare_hyperdrive_config
       pulumi_type: cloudflare:index/hyperdriveConfig:HyperdriveConfig
       id_format: "{account_id}/{hyperdrive_id}"
+      write_normalized_attributes:
+        - origin.password
     # --- Zero Trust: Access -------------------------------------------------------
     # Applications and groups are dual-scope: the documented import ID carries a
     # literal scope prefix ("{accounts|zones}/{account_id|zone_id}/{id}"); the
@@ -215,12 +266,45 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_application
       pulumi_type: cloudflare:index/zeroTrustAccessApplication:ZeroTrustAccessApplication
       id_format: "accounts/{account_id}/{application_id}"
+      # The inverse of the group/policy import gap: the app GET ECHOES these
+      # toggles as false for types that support them, so ImportState restores
+      # false where a modules-authored config deliberately omits them (they
+      # are sent only when true -- the API rejects them on incompatible app
+      # types). A blind re-import therefore plans an in-place update that
+      # "unsets" them -- a no-op against the API's real state (measured live
+      # on a self_hosted app; upstream's own import tests ignore this same
+      # set, plus service_auth_401_redirect which our arms never saw echo).
+      write_normalized_attributes:
+        - auto_redirect_to_identity
+        - enable_binding_cookie
+        - options_preflight_bypass
     - terraform_type: cloudflare_zero_trust_access_group
       pulumi_type: cloudflare:index/zeroTrustAccessGroup:ZeroTrustAccessGroup
       id_format: "accounts/{account_id}/{group_id}"
+      # The group GET omits is_default, so ImportState leaves it null while a
+      # created state keeps the configured value (the Stainless read decodes
+      # over prior state, and there is none on import). Upstream's own import
+      # tests ignore exactly this attribute (resource_test.go
+      # ImportStateVerifyIgnore: is_default at v5.23.0), and the gap was
+      # measured live: a blind re-import plans an in-place update on
+      # is_default alone. The first post-adoption apply re-asserts it -- a
+      # no-op write against the API's real state.
+      write_normalized_attributes:
+        - is_default
     - terraform_type: cloudflare_zero_trust_access_policy
       pulumi_type: cloudflare:index/zeroTrustAccessPolicy:ZeroTrustAccessPolicy
       id_format: "{account_id}/{policy_id}"
+      # Same import-restore gap class as the group's is_default: the policy
+      # GET omits these three booleans, so ImportState leaves them null while
+      # a created state keeps the configured values. Upstream's own import
+      # test ignores exactly these attributes (resource_test.go
+      # ImportStateVerifyIgnore: approval_required, isolation_required,
+      # purpose_justification_required at v5.23.0). The first post-adoption
+      # apply re-asserts them -- a no-op write against the API's real state.
+      write_normalized_attributes:
+        - approval_required
+        - isolation_required
+        - purpose_justification_required
     # Identity providers and service tokens are dual-scope like applications
     # and groups: the documented import ID carries a literal scope prefix
     # ("{accounts|zones}/{account_id|zone_id}/{id}"). Live scenarios are
@@ -230,20 +314,50 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_identity_provider
       pulumi_type: cloudflare:index/zeroTrustAccessIdentityProvider:ZeroTrustAccessIdentityProvider
       id_format: "accounts/{account_id}/{identity_provider_id}"
+      # The OAuth client secret is write-only (the provider's own import test
+      # ignores exactly config.client_secret at v5.23.0, and its Read rescues
+      # the value from prior state -- a rescue ImportState never performs), so
+      # a blind import lands with a null secret and the first post-adoption
+      # apply re-asserts it from configuration. The dotted form prunes only
+      # that leaf; any sibling drift inside config still fails the oracle.
+      write_normalized_attributes:
+        - config.client_secret
     - terraform_type: cloudflare_zero_trust_access_service_token
       pulumi_type: cloudflare:index/zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken
       id_format: "accounts/{account_id}/{service_token_id}"
+      # Two write-only attributes (measured live 2026-08-26): the
+      # previous-secret expiry is never returned by the API (every one of the
+      # provider's 11 import steps ignores it at v5.23.0), and the token GET
+      # omits client_secret_version too, so both import as null and the first
+      # post-adoption apply re-asserts them from configuration (or the
+      # schema's default version 1). That write is a no-op against the API's
+      # real state: rotation triggers only when the version INCREASES past
+      # the token's actual version, never on an equal re-assert.
+      # client_secret needs no declaration: it is an output, never
+      # configuration, so the round-trip oracle never sees it -- and it is
+      # UNRECOVERABLE after import (returned only at create/rotation).
+      write_normalized_attributes:
+        - previous_client_secret_expires_at
+        - client_secret_version
     # The organization is a singleton upsert: import adopts whatever the
     # account carries. ACCOUNT SCOPE ONLY -- the provider's importer never
     # populates zone_id, so a zone-scoped organization cannot be imported
     # (its docs page claims no import support at all; the code ships an
     # account-scoped ImportState, exercised by the provider's own tests).
-    # The provider also records an import gap on deny_unmatched_requests
-    # (the API returns false where config carried null) -- re-assert from
-    # configuration after import.
+    # deny_unmatched_requests and its exempted-zone-names sibling are
+    # write-normalized: import bypasses the provider's false/null
+    # normalization, so the raw API answers (false; an empty list) land in
+    # state where config carried null (the boolean is in the provider's own
+    # import-test ignore list -- zero_trust_organization resource_test.go,
+    # ImportStateVerifyIgnore, v5.23.0; the list measured live 2026-08-27,
+    # same direction). The first post-adoption apply re-asserts both as
+    # no-ops.
     - terraform_type: cloudflare_zero_trust_organization
       pulumi_type: cloudflare:index/zeroTrustOrganization:ZeroTrustOrganization
       id_format: "{account_id}"
+      write_normalized_attributes:
+        - deny_unmatched_requests
+        - deny_unmatched_requests_exempted_zone_names
     # The key-rotation cadence is an account singleton like the org itself.
     - terraform_type: cloudflare_zero_trust_access_key_configuration
       pulumi_type: cloudflare:index/zeroTrustAccessKeyConfiguration:ZeroTrustAccessKeyConfiguration
@@ -255,9 +369,17 @@ spec:
     # The server's auth_credentials and client_secret are write-only and
     # never round-trip; last_synced moves server-side between apply and
     # import (the provider's own test ignores it on verify).
+    # The portal's servers rows are write-normalized: the GET returns server
+    # rows in a different shape than the config writes (measured live
+    # 2026-08-26: a blind import restores rows WITHOUT server_id and with
+    # the server-echoed default_disabled), so import cannot reconstruct the
+    # configured rows. The first post-adoption apply re-asserts them -- an
+    # idempotent replace of the portal's server list.
     - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_portal
       pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpPortal:ZeroTrustAccessAiControlsMcpPortal
       id_format: "{account_id}/{portal_id}"
+      write_normalized_attributes:
+        - servers
     - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_server
       pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpServer:ZeroTrustAccessAiControlsMcpServer
       id_format: "{account_id}/{server_id}"
@@ -268,6 +390,12 @@ spec:
     - terraform_type: cloudflare_zero_trust_gateway_policy
       pulumi_type: cloudflare:index/zeroTrustGatewayPolicy:ZeroTrustGatewayPolicy
       id_format: "{account_id}/{policy_id}"
+      notes: >-
+        The importer works, but at provider v5.23.0 the post-import plan (like
+        every refreshed plan on this resource) never converges -- computed
+        attributes re-plan forever (upstream issue #7106, measured live
+        2026-08-26 on every configuration shape). Applies are no-op writes;
+        plan-gated pipelines see a permanent diff until upstream fixes it.
     - terraform_type: cloudflare_zero_trust_list
       pulumi_type: cloudflare:index/zeroTrustList:ZeroTrustList
       id_format: "{account_id}/{list_id}"
@@ -297,6 +425,11 @@ spec:
     - terraform_type: cloudflare_zero_trust_tunnel_cloudflared
       pulumi_type: cloudflare:index/zeroTrustTunnelCloudflared:ZeroTrustTunnelCloudflared
       id_format: "{account_id}/{tunnel_id}"
+      # Upstream ships NO import acceptance test for this resource at
+      # v5.23.0 -- the importer's first systematic exercise was ours, and it
+      # measured a FULL-body restore (name, config_src, computed fields; the
+      # write-only tunnel_secret stays null on both paths): a blind
+      # re-import plans a clean no-op with zero tolerances.
     - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_config
       pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredConfig:ZeroTrustTunnelCloudflaredConfig
       id_format: "{account_id}/{tunnel_id}"
@@ -322,18 +455,25 @@ spec:
       id_format: "{account_id}"
     - terraform_type: cloudflare_zero_trust_device_default_profile_certificates
       pulumi_type: cloudflare:index/zeroTrustDeviceDefaultProfileCertificates:ZeroTrustDeviceDefaultProfileCertificates
-      id_format: "{zone_id}"
-      notes: >-
+      not_importable_upstream_reason: >-
         The v5.23.0 terraform provider ships NO importer for this resource
         (the package has no ImportState, and its plan modifier warns the
-        resource "cannot be destroyed from Terraform"). The id_format
-        records the API identity (GET /zones/{zone_id}/devices/policy/
-        certificates). A blind round-trip must expect the import step to
-        fail for this address and instead re-assert the toggle from
-        configuration -- the write is an idempotent PUT.
-    # Custom profiles import by their server-assigned policy id; the
-    # provider's own import tests ignore exclude/include on verify --
-    # re-assert split-tunnel routes from configuration after import.
+        resource "cannot be destroyed from Terraform").
+      notes: >-
+        The API identity is /zones/{zone_id}/devices/policy/certificates (a
+        zone-scoped settings toggle; the provider writes it with PATCH). A
+        blind round-trip skips the import for this address and re-asserts
+        the toggle from configuration. CREDENTIAL WALL, measured live
+        2026-08-27: the endpoint refuses ACCOUNT-OWNED API tokens on both
+        reads and writes (401 code 1039 "malformed actor email claim") --
+        adopting or managing this fold needs a user-actor credential (a
+        user-owned token or API key + email), which is also why upstream's
+        own acceptance test blanks CLOUDFLARE_API_TOKEN.
+    # Custom profiles import by their server-assigned policy id. Upstream's
+    # own import tests ignore exclude/include on verify, but the live blind
+    # round-trip (2026-08-27, v5.23.0) measured BOTH surviving import at a
+    # clean no-op plan -- no tolerance is declared because none was consumed
+    # (upstream's ignore list is a hint, not a proof).
     - terraform_type: cloudflare_zero_trust_device_custom_profile
       pulumi_type: cloudflare:index/zeroTrustDeviceCustomProfile:ZeroTrustDeviceCustomProfile
       id_format: "{account_id}/{policy_id}"
@@ -382,6 +522,11 @@ spec:
     - terraform_type: cloudflare_list_item
       pulumi_type: cloudflare:index/listItem:ListItem
       id_format: "{account_id}/{list_id}/{item_id}"
+      notes: >-
+        Locating a REDIRECT item's id requires percent-encoding its
+        source_url wherever the URL is used as a lookup key -- the raw
+        value contains `/` and `:`, which collide with URL and id-segment
+        delimiters. ip/asn/hostname items match on their plain values.
     # --- Load Balancing: monitor and pool ---------------------------------------
     # Account-scoped; the zone-scoped load balancer itself is recorded above
     # under Load Balancing. Requires the Load Balancing add-on.
@@ -408,27 +553,35 @@ spec:
       notes: >-
         csr is write-only -- the API never returns it. requested_validity is
         not returned after creation. Both are ignored by the provider's own
-        import verification. Revoke is not delete: a just-revoked certificate
-        may still answer GET for a window.
+        import verification. Revoke is not delete: a revoked certificate
+        keeps answering GET 200 with revoked_at set, and the revocation
+        reaches reads asynchronously (measured 9+ seconds behind the revoke).
+        Adoption: a BYO-CSR certificate imports cleanly as the bare id; a
+        generated-key certificate's tls helpers cannot import (no upstream
+        importers), so the first apply after import mints a new key+CSR and
+        RE-ISSUES the certificate -- expect the replace, it is the honest
+        adoption.
     - terraform_type: tls_private_key
       pulumi_type: tls:index/privateKey:PrivateKey
-      id_format: "{private_key_pem}"
-      notes: >-
-        Module plumbing for CloudflareOriginCaCertificate's generated-key
-        path (hashicorp/tls). The import ID is the PEM itself, recoverable
-        from the stack's private_key output. Count is 0 when the spec
-        supplies a CSR, so this address is absent on that arm.
+      not_importable_upstream_reason: >-
+        hashicorp/tls ships NO ImportState for tls_private_key -- the
+        import command answers "Resource Import Not Implemented" (measured
+        live 2026-08-28 at v4.3.0). Module plumbing for
+        CloudflareOriginCaCertificate's generated-key path; adopting such a
+        certificate mints a NEW key+CSR on first apply and re-issues the
+        certificate (csr is ForceNew) -- the re-issue is the honest
+        adoption. Count is 0 when the spec supplies a CSR, so this address
+        is absent on that arm.
     - terraform_type: tls_cert_request
       pulumi_type: tls:index/certRequest:CertRequest
-      id_format: "{private_key_pem}"
-      notes: >-
-        The hashicorp/tls provider ships NO importer for tls_cert_request.
-        Recreating the CSR from the same key+hostnames yields a different
-        PEM, and csr is ForceNew on cloudflare_origin_ca_certificate, so a
-        generated-key blind round-trip must expect the import step to fail
-        for this address -- it is module plumbing, not a cloud identity.
-        The id_format reuses the private-key placeholder so the component
-        map does not invent a non-derivable CSR value.
+      not_importable_upstream_reason: >-
+        The hashicorp/tls provider ships NO ImportState for tls_cert_request
+        (verified in the provider source) -- it is module plumbing, not a
+        cloud identity. Recreating the CSR from the same key+hostnames
+        yields a different PEM, and csr is ForceNew on
+        cloudflare_origin_ca_certificate, so adoption of a generated-key
+        certificate re-creates this helper on first apply rather than
+        importing it.
     # --- Pages ------------------------------------------------------------------
     # The project identity is its name (not a server-assigned id). Custom
     # domains are a companion resource keyed by hostname. Secret env vars
@@ -437,12 +590,18 @@ spec:
     - terraform_type: cloudflare_pages_project
       pulumi_type: cloudflare:index/pagesProject:PagesProject
       id_format: "{account_id}/{project_name}"
+      write_normalized_attributes: [build_config, deployment_configs]
       notes: >-
         Secret environment variables in deployment_configs (secret_text
         env_vars) do not round-trip -- the API never returns the value, so
         a post-import plan shows a secret diff until configuration
-        re-asserts it. The provider also normalizes several
-        deployment_configs / build_config / domains attributes on write.
+        re-asserts it. build_config and deployment_configs are
+        Optional+Computed trees the API echoes fully populated where the
+        configuration sent null or a partial object -- the provider's own
+        import test ignores both (ImportStateVerifyIgnore in
+        internal/services/pages_project/resource_test.go at v5.23.0),
+        alongside the purely computed canonical_deployment /
+        latest_deployment / subdomain / domains / created_on.
     - terraform_type: cloudflare_pages_domain
       pulumi_type: cloudflare:index/pagesDomain:PagesDomain
       id_format: "{account_id}/{project_name}/{domain_name}"
@@ -517,15 +676,21 @@ spec:
       id_format: "{zone_id}"
     - terraform_type: cloudflare_hostname_tls_setting
       pulumi_type: cloudflare:index/hostnameTlsSetting:HostnameTlsSetting
-      id_format: "{zone_id}/{setting_id}"
-      notes: >-
-        The provider's ImportState is DEFECTIVE at v5.23.0: it parses only
-        zone_id/setting_id and never restores the Required hostname (and its
-        Read consults the zone-wide list endpoint through a single-object
-        envelope). A blind round-trip must expect the post-import plan to
-        replace the resource; re-assert the overrides from configuration
-        instead -- safe, because the per-hostname write is idempotent for
-        identical values.
+      not_importable_upstream_reason: >-
+        The provider ships an ImportState but it is DEFECTIVE at v5.23.0: it
+        parses only "{zone_id}/{setting_id}" and never restores the Required
+        hostname (and its Read consults the zone-wide list endpoint through a
+        single-object envelope), so every post-import plan destroys and
+        recreates the override -- no configuration can dodge a defective
+        import read (the crashing-snippet-importer class). Adopt by
+        re-asserting the override from configuration instead: the
+        per-(setting, hostname) write is an idempotent upsert for identical
+        values, so a plain apply adopts the live override without churn.
+        Upstream v5.24.0 fixed ImportState (it parses
+        "{zone_id}/{setting_id}/{hostname}") but broke Read differently --
+        it GETs a per-hostname path Cloudflare answers with 405 (measured
+        live 2026-08-29) -- so this row stays not-importable until a
+        release ships a working Read AND the canonical pin bumps.
     - terraform_type: cloudflare_certificate_authorities_hostname_associations
       pulumi_type: cloudflare:index/certificateAuthoritiesHostnameAssociations:CertificateAuthoritiesHostnameAssociations
       id_format: "{zone_id}/{mtls_certificate_id}"
@@ -544,22 +709,40 @@ spec:
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
         certificate and private_key are write-only (never returned by the
-        API) -- the round-trip re-asserts them from configuration. status is
-        asynchronous (pending before active) and never round-trips cleanly.
+        API) AND RequiresReplace (v5.23.0 schema) -- a blind import lands
+        without them, the config supplies them, and the only reconcile plan
+        is a REPLACE, so the automated round-trip is scenario-skipped
+        (rotating certificate material is SUPPOSED to replace the upload;
+        ignore_changes must never paper over it). Adopt an existing upload
+        by importing, then accepting the one replace on the next apply --
+        Cloudflare serves the previous certificate until the replacement
+        deploys. Deployment status is asynchronous (pending before active).
     - terraform_type: cloudflare_mtls_certificate
       pulumi_type: cloudflare:index/mtlsCertificate:MtlsCertificate
       id_format: "{account_id}/{certificate_id}"
       notes: >-
         private_key is write-only (never returned by the API); CA uploads
         carry no key at all. Every argument is create-only, so a post-import
-        value change plans a replace, never an update.
+        value change plans a replace, never an update. Cloudflare
+        canonicalizes the stored PEM to end with exactly one trailing newline
+        and echoes that form on every read (measured 2026-08-28), and the
+        store is content-addressed (uploading identical content returns the
+        existing certificate id) -- the modules canonicalize certificates the
+        same way before sending, so imports round-trip at zero tolerance;
+        hand-written configs adopting an import must carry the trailing
+        newline or face a never-converging update.
     - terraform_type: cloudflare_authenticated_origin_pulls
       pulumi_type: cloudflare:index/authenticatedOriginPulls:AuthenticatedOriginPulls
       id_format: "{zone_id}/{hostname}"
+      write_normalized_attributes:
+        - config
       notes: >-
-        The config list never survives import (no_refresh) even though it is
-        Required -- re-assert the association row from configuration; the
-        write is idempotent for identical values.
+        The config list never survives import (no_refresh at v5.23.0) even
+        though it is Required -- import restores nothing for it and the
+        post-import plan re-asserts the configured row (declared above; the
+        round-trip oracle keys on the machine field, measured live
+        2026-08-28). Safe, because the write is an idempotent upsert for
+        identical values.
     - terraform_type: cloudflare_authenticated_origin_pulls_settings
       pulumi_type: cloudflare:index/authenticatedOriginPullsSettings:AuthenticatedOriginPullsSettings
       id_format: "{zone_id}"
@@ -567,38 +750,75 @@ spec:
       pulumi_type: cloudflare:index/authenticatedOriginPullsCertificate:AuthenticatedOriginPullsCertificate
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
-        certificate and private_key are write-only -- the round-trip
-        re-asserts them from configuration. Deletion is asynchronous
-        (pending_deletion/deleted statuses answer 200 before the record
-        goes).
+        certificate and private_key are write-only, and this ZONE-scoped
+        surface ships an EMPTY provider Update whose private_key does not
+        force replacement (measured defect at v5.23.0) -- a post-import
+        re-assert of the key silently no-ops, so never adopt this surface
+        expecting the write to converge; replace the whole upload instead
+        (key and certificate always rotate together). Deletion is
+        asynchronous (pending_deletion/deleted statuses answer 200 before
+        the record goes).
     - terraform_type: cloudflare_authenticated_origin_pulls_hostname_certificate
       pulumi_type: cloudflare:index/authenticatedOriginPullsHostnameCertificate:AuthenticatedOriginPullsHostnameCertificate
       id_format: "{zone_id}/{certificate_id}"
       notes: >-
-        certificate and private_key are write-only -- the round-trip
-        re-asserts them from configuration. Deletion is asynchronous
-        (pending_deletion/deleted statuses answer 200 before the record
-        goes).
+        certificate and private_key are write-only AND RequiresReplace
+        (v5.23.0 schema) -- a blind import lands without them, the config
+        supplies them, and the only reconcile plan is a REPLACE, so the
+        automated round-trip is scenario-skipped (rotating key material is
+        SUPPOSED to replace the upload; ignore_changes must never paper over
+        it, and key and certificate must always rotate together -- the
+        zone-scoped surface silently ignores key-only changes). Adopt an
+        existing upload by importing, then accepting the one replace on the
+        next apply. Deletion is asynchronous (pending_deletion/deleted
+        statuses answer 200 before the record goes).
     # --- Zone security ------------------------------------------------------------
     # Access rules are dual-scope: the documented import ID carries a literal
     # "accounts/" or "zones/" prefix. Live scenarios are account-scoped.
     - terraform_type: cloudflare_access_rule
       pulumi_type: cloudflare:index/accessRule:AccessRule
       id_format: "accounts/{account_id}/{rule_id}"
+      notes: >-
+        The upstream importer parses one dual-format ID --
+        "<{accounts|zones}/{account_id|zone_id}>/<rule_id>" (resource.go
+        ImportState at v5.23.0) -- so a ZONE-scoped rule imports as
+        "zones/<zone_id>/<rule_id>". The recorded format is the account form
+        because the catalog carries one format per type and no blind
+        derivation can discriminate scope per deployment; zone-scoped
+        adopters substitute the zones/ prefix and the rule's zone id
+        (both on the rule's stack outputs).
     - terraform_type: cloudflare_bot_management
       pulumi_type: cloudflare:index/botManagement:BotManagement
       id_format: "{zone_id}"
     - terraform_type: cloudflare_snippet
       pulumi_type: cloudflare:index/snippet:Snippet
-      id_format: "{zone_id}/{snippet_name}"
+      not_importable_upstream_reason: >-
+        The upstream importer CRASHES the provider at v5.23.0 (unchanged
+        through v5.24.0 and master, checked 2026-08-27): ImportState seeds
+        only zone_id/snippet_name, and the Read path then dereferences
+        data.Metadata -- a pointer tagged no_refresh that only a create
+        populates -- so every imported snippet's first refresh panics with
+        "Plugin did not respond" (measured live; the panic is
+        internal/services/snippet/resource.go setting Metadata.MainModule).
+        Adoption needs no import anyway: the create call is an UPSERT by
+        snippet name, so applying the manifest adopts and overwrites the
+        live snippet in place -- the round-trip proves exactly that
+        re-create path.
+      notes: >-
+        The documented import ID is {zone_id}/{snippet_name}; recorded here
+        for the day the upstream importer stops crashing.
     - terraform_type: cloudflare_snippet_rules
       pulumi_type: cloudflare:index/snippetRules:SnippetRules
       id_format: "{zone_id}"
+      write_normalized_attributes:
+        - rules
       notes: >-
-        Import populates only zone_id. The provider's Read discards the
-        response body (rules carry a no_refresh tag), so a blind
-        round-trip must re-assert the rule list from configuration --
-        safe, because the write is a full-replacement PUT.
+        Import populates only zone_id. rules is no_refresh at v5.23.0
+        (snippet_rules/model.go) -- the provider's Read discards the
+        response body, so import restores nothing for it and the
+        post-import plan re-asserts the configured list (declared above;
+        the round-trip oracle keys on the machine field). Safe, because
+        the write is a full-replacement PUT.
     # --- Health -------------------------------------------------------------------
     - terraform_type: cloudflare_healthcheck
       pulumi_type: cloudflare:index/healthcheck:Healthcheck
@@ -621,11 +841,19 @@ spec:
     - terraform_type: cloudflare_workflow
       pulumi_type: cloudflare:index/workflow:Workflow
       id_format: "{account_id}/{workflow_name}"
+      write_normalized_attributes:
+        - limits
       notes: >-
-        Identity is the workflow NAME, not a UUID. The API answers GET for
-        deleted workflows with a numeric is_deleted marker instead of a 404,
-        and create is a PUT -- importing an existing name and re-applying is
-        always an adopt, never a conflict.
+        Identity is the workflow NAME, not a UUID. Create is a PUT --
+        importing an existing name and re-applying is always an adopt,
+        never a conflict. (Upstream models a GET-200-with-is_deleted answer
+        for deleted workflows; live 2026-08-27 a deleted workflow answered
+        an honest 404 code 10200 instead.) limits is no_refresh at v5.23.0
+        (workflow/model.go) so import restores nothing for it (live-measured
+        2026-08-27: the post-import plan re-asserts a configured limits) --
+        the re-apply is the same-body upsert PUT, a no-op against the cloud.
+        default_retention is the same no_refresh class but stays undeclared
+        until an arm measures it (unused tolerances are never declared).
     - terraform_type: cloudflare_secrets_store
       pulumi_type: cloudflare:index/secretsStore:SecretsStore
       id_format: "{account_id}/{store_id}"
@@ -637,23 +865,39 @@ spec:
     - terraform_type: cloudflare_secrets_store_secret
       pulumi_type: cloudflare:index/secretsStoreSecret:SecretsStoreSecret
       id_format: "{account_id}/{store_id}/{secret_id}"
+      write_normalized_attributes:
+        - value
       notes: >-
-        value is write-only (never returned by the API) -- the round-trip
-        lands with an empty value and must re-assert it from configuration.
+        value is write-only (never returned by the API; upstream's own
+        import test ignores it -- secrets_store_secret/resource_test.go at
+        v5.23.0 lists value, modified, status) -- the round-trip lands with
+        an empty value and the post-import re-assert from configuration is
+        the tolerated write. modified/status are computed (the oracle prunes
+        them) and stay undeclared.
     # --- AI ---------------------------------------------------------------------
     - terraform_type: cloudflare_ai_gateway
       pulumi_type: cloudflare:index/aiGateway:AiGateway
       id_format: "{account_id}/{gateway_id}"
       notes: >-
         The gateway id is the user-chosen URL slug (the resource's own id
-        argument), not a server-generated UUID.
+        argument), not a server-generated UUID. ADOPTER WARNING (measured
+        2026-08-27 at v5.23.0, identical at v5.24.0): the API never returns
+        guardrails/spend_limits/otel and the provider models
+        otel/spend_limits computed, so EVERY imported (or created) gateway
+        re-plans an in-place no-op update forever on Terraform -- the kind
+        is deferred on this defect; evidence on its e2e profile.
     - terraform_type: cloudflare_ai_gateway_dynamic_routing
       pulumi_type: cloudflare:index/aiGatewayDynamicRouting:AiGatewayDynamicRouting
       id_format: "{account_id}/{gateway_id}/{route_id}"
       notes: >-
         The elements list forces replacement on any change, so a post-import
         graph edit plans a replace, never an update -- renaming the route is
-        the only in-place change.
+        the only in-place change. ADOPTER WARNING (measured 2026-08-27 at
+        v5.23.0, identical at v5.24.0): the provider's Read cannot restore
+        elements (the API returns the graph only under version.data), so an
+        imported route holds a null graph and EVERY subsequent apply
+        destroys and recreates the route -- do not adopt routes into
+        Terraform until an upstream release fixes the Read.
     # --- Logs -------------------------------------------------------------------
     # Logpush jobs are dual-scope: the import id carries the scope
     # discriminator, so an account job imports as
@@ -667,7 +911,12 @@ spec:
         be re-asserted from configuration after import. kind cannot be changed
         on an existing job -- Cloudflare rejects the update with HTTP 400 even
         though the provider plans it in place -- and a legacy job may read
-        back kind "instant-logs", which the provider normalizes to "".
+        back kind "instant-logs", which the provider normalizes to "". The
+        scope discriminator makes this id blind-underivable (no resolver arm
+        can pick accounts vs zones from a manifest), so the human recipe is
+        the import path: an account job imports as
+        accounts/<account_id>/<job_id>, a zone job as
+        zones/<zone_id>/<job_id>, both ids in the where_to_find entries.
     - terraform_type: cloudflare_logpush_ownership_challenge
       pulumi_type: cloudflare:index/logpushOwnershipChallenge:LogpushOwnershipChallenge
       not_importable_upstream_reason: >-
@@ -696,18 +945,34 @@ spec:
     - terraform_type: cloudflare_web_analytics_site
       pulumi_type: cloudflare:index/webAnalyticsSite:WebAnalyticsSite
       id_format: "{account_id}/{site_tag}"
+      # enabled/host/lite are no_refresh at v5.23.0 (web_analytics_site/
+      # model.go tags all four; the importer hand-backfills only zone_tag
+      # from the computed ruleset) -- a blind import restores none of them,
+      # so the first post-import plan re-asserts whichever the configuration
+      # sets. That update is the documented adoption shape, not a wrong
+      # import.
+      write_normalized_attributes:
+        - enabled
+        - host
+        - lite
       notes: >-
         The import id uses the site TAG (the resource's real key; its id
         attribute is a copy). Four attributes -- enabled, host, lite, zone_tag
         -- are never read back from the API, so an imported site carries them
         only from configuration; the provider hand-backfills zone_tag from the
-        computed ruleset during import.
+        computed ruleset during import, and the first post-import apply
+        re-asserts the other three from configuration (an idempotent write).
     - terraform_type: cloudflare_web_analytics_rule
       pulumi_type: cloudflare:index/webAnalyticsRule:WebAnalyticsRule
       not_importable_upstream_reason: >-
         The provider ships no ImportState, and its Read is an empty stub, so
-        rules are write-only from IaC's perspective -- an adopted site
-        re-asserts its declared rules on the next apply.
+        rules are write-only from IaC's perspective. The re-assert path has a
+        measured wall: the rule create REJECTS duplicates (409 code 10010
+        duplicateFound against surviving rule objects), so adopting a site
+        whose ruleset already carries rules requires deleting the existing
+        rules first (dashboard -> Web Analytics -> the site's rules, or
+        DELETE /accounts/{account_id}/rum/v2/{ruleset_id}/rule/{rule_id}),
+        after which the first apply re-creates exactly the declared rows.
     # --- Accounts, IAM & organization ------------------------------------------
     - terraform_type: cloudflare_account_token
       pulumi_type: cloudflare:index/accountToken:AccountToken

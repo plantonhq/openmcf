@@ -35,24 +35,33 @@ func customHostname(
 		args.Ssl = buildSsl(spec.Ssl)
 	}
 
+	// ssl.certificateAuthority cannot converge when unset: Cloudflare assigns a
+	// CA server-side AT RANDOM (measured live 2026-08-29: ssl_com then google on
+	// consecutive creates), writing one is Enterprise-gated (400 code 1459,
+	// probe-measured), and the provider ships no state-preserving plan modifier
+	// on the attribute -- refresh-inclusive plans on ssl-bearing configs would
+	// propose an update forever. The upstream provider's own acceptance tests
+	// ignore_changes this exact attribute; we mirror that recipe here (scoped to
+	// the one attribute, same as the Terraform module's lifecycle block).
+	// Trade-off, documented on the spec field: an in-place change of
+	// certificate_authority after create is NOT applied by this module.
 	created, err := cloudflare.NewCustomHostname(
 		ctx,
 		"custom-hostname",
 		args,
 		pulumi.Provider(cloudflareProvider),
+		pulumi.IgnoreChanges([]string{"ssl.certificateAuthority"}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to create cloudflare custom hostname")
 	}
 
 	ctx.Export(OpCustomHostnameId, created.ID())
-	ctx.Export(OpStatus, created.Status)
 	ctx.Export(OpOwnershipVerificationName, created.OwnershipVerification.Name())
 	ctx.Export(OpOwnershipVerificationType, created.OwnershipVerification.Type())
 	ctx.Export(OpOwnershipVerificationValue, created.OwnershipVerification.Value())
 	ctx.Export(OpOwnershipVerificationHttpUrl, created.OwnershipVerificationHttp.HttpUrl())
 	ctx.Export(OpOwnershipVerificationHttpBody, created.OwnershipVerificationHttp.HttpBody())
-	ctx.Export(OpVerificationErrors, created.VerificationErrors)
 	ctx.Export(OpCreatedAt, created.CreatedAt)
 	ctx.Export(OpZoneId, created.ZoneId)
 
@@ -87,9 +96,11 @@ func buildSsl(s *cloudflarecustomhostnamev1alpha1.CloudflareCustomHostnameSsl) *
 	if s.Method != "" {
 		args.Method = pulumi.StringPtr(s.Method)
 	}
-	if s.Wildcard {
-		args.Wildcard = pulumi.BoolPtr(true)
-	}
+	// wildcard is ALWAYS sent: Cloudflare echoes `false` into an unset wildcard
+	// (measured live 2026-08-29 -- a null send drifts `false -> null` on every
+	// refresh, the echoed-server-default boolean class; same fix as the
+	// Terraform module's locals).
+	args.Wildcard = pulumi.BoolPtr(s.Wildcard)
 	if s.CustomCertificate != "" {
 		args.CustomCertificate = pulumi.StringPtr(s.CustomCertificate)
 	}

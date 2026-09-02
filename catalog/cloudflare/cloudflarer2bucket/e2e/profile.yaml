@@ -24,8 +24,18 @@ spec:
   # and the event-notification arm rides the Queues entitlement (see the
   # queue kind's profile). Objects create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran minimal + data-governance +
+  # event-notification through the full lifecycle with the apply-idempotency
+  # re-plan green; blind import round-trips passed on minimal and
+  # data-governance -- the three-segment {account_id}/{bucket_name}/
+  # {jurisdiction} ID composed with the literal "default" fallback, and the
+  # cors/lifecycle/lock re-creates converged as idempotent PUTs. First
+  # contact taught two walls: notification rule filters echo "" for unset
+  # (both engines now send the empty strings), and the notification config
+  # is NOT re-creatable while live (PUT merges rules; 400/11020) nor deleted
+  # with its bucket (a dangling config blocks queue deletion with 11017) --
+  # the event-notification scenario carries the reason-carrying
+  # import-roundtrip-skip and the GUIDE teaches both lifecycle walls.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

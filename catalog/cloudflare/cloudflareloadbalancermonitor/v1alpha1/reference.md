@@ -107,7 +107,9 @@ http/https monitors.
 `string`
 
 The expected HTTP response code or range that marks an origin healthy
-(e.g. "200", "2xx", "200-299"). Only valid for http/https monitors.
+(e.g. "200", "2xx", "200-299"). Only valid for http/https monitors — and
+for those types Cloudflare REQUIRES this or expected_body (the API answers
+400 code 1002 when both are empty; measured live).
 
 - default: `2xx`
 
@@ -116,7 +118,8 @@ The expected HTTP response code or range that marks an origin healthy
 `string`
 
 A case-insensitive substring that must appear in the response body for the
-origin to be considered healthy. Only valid for http/https monitors.
+origin to be considered healthy. Only valid for http/https monitors; either
+this or expected_codes must be set for those types (Cloudflare 400/1002).
 
 ### spec.method
 
@@ -231,6 +234,7 @@ http/https monitors.
 ## Validation Rules
 
 - `monitor.port_required_for_l4`: a port is required for tcp, udp_icmp, and smtp monitors
+- `monitor.http_expectation_required`: expected_codes or expected_body is required for http and https monitors
 
 ## Outputs
 

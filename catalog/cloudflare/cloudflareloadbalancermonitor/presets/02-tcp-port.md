@@ -1,3 +1,7 @@
+---
+display_name: TCP Port
+---
+
 # TCP port health check
 
 A TCP monitor that checks whether a port accepts connections — suitable for

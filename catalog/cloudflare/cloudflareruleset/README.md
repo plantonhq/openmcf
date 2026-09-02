@@ -55,9 +55,9 @@ spec:
     - expression: >-
         not (
           http.request.uri.path eq "/" or
-          http.request.uri.path starts_with "/docs" or
-          http.request.uri.path starts_with "/features" or
-          http.request.uri.path starts_with "/_site"
+          starts_with(http.request.uri.path, "/docs") or
+          starts_with(http.request.uri.path, "/features") or
+          starts_with(http.request.uri.path, "/_site")
         )
       action: route
       description: "Route non-marketing paths to K8s origin"
@@ -114,7 +114,7 @@ spec:
   phase: http_request_cache_settings
   name: "Cache static assets aggressively"
   rules:
-    - expression: 'http.request.uri.path starts_with "/assets"'
+    - expression: 'starts_with(http.request.uri.path, "/assets")'
       action: set_cache_settings
       description: "Cache assets for 24 hours at edge"
       actionParameters:
@@ -213,9 +213,9 @@ Rules use Cloudflare's wirefilter expression language. Common fields:
 - `cf.threat_score` — Cloudflare threat score (0-100)
 - `http.request.method` — HTTP method
 
-Operators: `eq`, `ne`, `starts_with`, `ends_with`, `contains`, `in`, `not`, `and`, `or`
+Operators: `eq`, `ne`, `contains`, `in`, `not`, `and`, `or`. For prefix/suffix matching, prefer the FUNCTION form `starts_with(field, "value")` / `ends_with(field, "value")` — the bare `starts_with`/`ends_with` OPERATORS are rejected by the filter parser on free-plan zones (measured: 400 code 20127 "expected ComparisonOp"), while the function form parses on every plan.
 
-Example: `not (http.request.uri.path starts_with "/static" or http.request.uri.path eq "/")`
+Example: `not (starts_with(http.request.uri.path, "/static") or http.request.uri.path eq "/")`
 
 ## Best Practices
 

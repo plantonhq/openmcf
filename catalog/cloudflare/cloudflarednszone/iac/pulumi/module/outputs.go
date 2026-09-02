@@ -25,4 +25,8 @@ const (
 	OpDnssecPublicKey = "dnssec_public_key"
 	// OpDnssecFlags is the exported DNSKEY flags.
 	OpDnssecFlags = "dnssec_flags"
+	// OpRecordIds is the exported map of inline-record Cloudflare ids, keyed
+	// by the records' name-type-index key (the same key the tofu module uses
+	// for for_each) -- import recipes derive per-record import IDs from it.
+	OpRecordIds = "record_ids"
 )

@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Cloudflare Account
 
 - **A zone** for `zoneId` — typically a CloudflareDnsZone whose `zone_id` output this resource references.
-- **The right zone plan for gated fields** — `fightMode` is free; the `sbfm*` fields need Pro/Business (`sbfmLikelyAutomated` needs Business+); `autoUpdateModel`, `suppressSessionScore`, `enableJs`, and `bmCookieEnabled` need Enterprise Bot Management. Setting a field the plan does not include fails at the API, and non-entitled zones omit those fields from responses, which surfaces as perpetual refresh drift.
+- **The right zone plan for gated fields** — `fightMode` is free; the `sbfm*` fields need Pro/Business (`sbfmLikelyAutomated` needs Business+); `autoUpdateModel`, `suppressSessionScore`, and `bmCookieEnabled` need Enterprise Bot Management. `enableJs` is writable on every plan — and required on-or-with `fightMode` when the zone's JavaScript detections are off (Cloudflare rejects Fight Mode alone with a 400 otherwise). Setting a field the plan does not include fails at the API, and non-entitled zones omit those fields from responses, which surfaces as perpetual refresh drift.
 
 ## Deploy
 
@@ -41,13 +41,14 @@ spec:
   zoneId:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   fightMode: true
+  enableJs: true
 ```
 
 ```shell
 planton apply -f bot-management.yaml
 ```
 
-This turns on Bot Fight Mode and touches nothing else — every other Bot Management field stays exactly as the zone had it. A Stack Job tracks the provisioning in real time.
+This turns on Bot Fight Mode and touches nothing else — every other Bot Management field stays exactly as the zone had it. The `enableJs: true` pair is required when enabling Fight Mode on a zone whose JavaScript detections are off — Cloudflare rejects Fight Mode alone with "cannot enable Fight_Mode while EnableJS is disabled". A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 

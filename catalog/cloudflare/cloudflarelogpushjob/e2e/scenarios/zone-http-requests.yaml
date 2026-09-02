@@ -18,6 +18,17 @@ metadata:
     planton.dev/e2e: "true"
     planton.dev/e2e-prerequisites: "CloudflareDnsZone"
     planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_LOGPUSH_R2_DESTINATION
+    # The catalog records the dual-scope import id ({scope_prefix}/{scope_id}/
+    # {job_id}) and no resolver arm can discriminate scope from a manifest
+    # blind: scope_prefix has no derivation, and scope_id would need to read
+    # zone_id THROUGH a value-or-reference. The import recipe is documented on
+    # the catalog row for human adopters; the runner aborts on underivable
+    # required placeholders, so this arm records the skip with its reason.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      dual-scope resource: the import id's scope_prefix/scope_id cannot derive
+      blind (no scope-discriminating resolver arm exists; zone_id is a
+      value-or-reference) -- the import forms for both scopes are documented
+      on the catalog row for human adopters
 spec:
   zone_id:
     valueFrom:

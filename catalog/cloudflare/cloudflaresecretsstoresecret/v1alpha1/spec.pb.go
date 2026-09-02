@@ -53,7 +53,9 @@ type CloudflareSecretsStoreSecretSpec struct {
 	// the provider models the list as ordered, so any other order in
 	// configuration shows as permanent plan drift (a defect documented in the
 	// provider's own tests). This spec therefore requires the canonical
-	// alphabetical order up front, killing the drift class at the source.
+	// alphabetical order up front, killing the drift class at the source
+	// (live-confirmed 2026-08-27: the refresh-inclusive re-plan is clean
+	// under the CEL-ordered list).
 	Scopes []string `protobuf:"bytes,5,rep,name=scopes,proto3" json:"scopes,omitempty"`
 	// A free-form note about the secret (shown in the dashboard).
 	Comment       string `protobuf:"bytes,6,opt,name=comment,proto3" json:"comment,omitempty"`

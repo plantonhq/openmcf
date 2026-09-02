@@ -5,18 +5,18 @@ metadata:
 spec:
   # Custom device profiles under live E2E: plain CRUD objects (real create,
   # update, delete -- deleting a profile returns its devices to the default
-  # profile), so lanes are self-cleaning. Watch items for the proving
-  # session: (1) precedence is account-unique in practice -- both scenarios
-  # derive run-scoped precedence values so concurrent lanes cannot collide;
-  # (2) the folded per-profile fallback list rides the profile (its own
-  # destroy is a no-op, but deleting the profile retires the rows), so
-  # zero-orphan cleanup is the profile delete itself; (3) the fallback
-  # companion's upstream tests blank CLOUDFLARE_API_TOKEN (the API-token
-  # defect class): a 403 on that write under our token credential is the
-  # expected ambush, and a recorded deferral is the honest outcome.
+  # profile), so lanes are self-cleaning. PROVEN live 2026-08-27 (session
+  # 031): both scenarios on both engines, all phases first-run, blind import
+  # round-trips (profile + folded fallback list) at ZERO tolerances --
+  # upstream's import tests ignore exclude/include on verify, but the live
+  # round-trip measured both surviving import cleanly, so no tolerance is
+  # declared. The fallback companion's upstream tests blank
+  # CLOUDFLARE_API_TOKEN (the API-token defect class), but the account-owned
+  # token credential never 403'd -- the ambush stayed stale here too.
+  # Standing watch item: precedence is FIXED per scenario (8500/8600), so
+  # two concurrent runs of the SAME scenario collide (the tunnel-route
+  # fixed-CIDR class); the one-live-lane-process rule covers it.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

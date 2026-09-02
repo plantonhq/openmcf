@@ -1,6 +1,10 @@
 # CloudflareWaitingRoom guide
 
-The judgment this guide protects you from: the 200 floors are Cloudflare's, Advanced fields fail at apply on a plan without the add-on, and `bypass_rules` is the room's entire rule list -- destroy empties it, including rules you did not create.
+The judgment this guide protects you from: Waiting Room itself needs a Business+ zone, the 200 floors are Cloudflare's, Advanced fields fail at apply on a plan without the add-on, and `bypass_rules` is the room's entire rule list -- destroy empties it, including rules you did not create.
+
+## Waiting Room is a Business+ product
+
+Creating ANY room on a Free or Pro zone fails with 400 code 1034 "Zone not entitled to this functionality" (measured live 2026-08-27). One basic room is included on Business and Enterprise zones; `bypass_rules` (Waiting Room rules) and scheduled events additionally need the Enterprise ADVANCED add-on per Cloudflare's plan matrix. Check the zone's plan before authoring a room -- the wall is Cloudflare's and fires at apply.
 
 ## Floors of 200, session 1–30
 
@@ -12,7 +16,7 @@ The judgment this guide protects you from: the 200 floors are Cloudflare's, Adva
 
 These need the Waiting Rooms Advanced add-on: `additional_routes`, `custom_page_html`, `disable_session_renewal`, `json_response_enabled`, a non-default `queueing_method`, `turnstile_action: infinite_queue`, and any `turnstile_mode` other than `off`. The entitlement wall is Cloudflare's. Setting one of these on a plan without the add-on fails the apply.
 
-The free-plan-safe shape is host + path + 200/200 + `fifo` + default Turnstile. That is the preset and the e2e live arm. Advanced fields live in `e2e/advanced-plan.yaml` for offline plan only.
+The Business-plan-safe shape is host + path + 200/200 + `fifo` + default Turnstile, with NO bypass rules (rules are the Enterprise advanced add-on). That is the preset's baseline. Advanced fields live in `e2e/advanced-plan.yaml` for offline plan only.
 
 ## bypass_rules is the WHOLE table
 

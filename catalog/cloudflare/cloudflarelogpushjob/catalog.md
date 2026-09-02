@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **A Logpush entitlement** -- most datasets are gated by plan or product subscription (notably the Enterprise Logpush surface); the gate is Cloudflare's and surfaces at create time.
+- **A Logpush entitlement** -- most datasets are gated by plan or product subscription (notably the Enterprise Logpush surface); the gate is Cloudflare's and surfaces at create time. Measured: below Enterprise the create fails with 403 code 1004 "exceeded max jobs allowed" even on a zone with zero jobs -- the plan's job quota is zero, not a real quota overrun.
 - **A destination you control** with write credentials -- the credentials ride inside `destinationConf` as one opaque URI. Same-account R2 buckets skip the ownership handshake entirely; every other destination must prove ownership via `ownershipChallenge`.
 - **The matching scope** -- zone datasets (`http_requests`, `firewall_events`, `dns_logs`, `nel_reports`, `spectrum_events`, `page_shield_events`, `zaraz_events`) need `zoneId`; everything else needs `accountId`. A mismatch fails at the Cloudflare API.
 

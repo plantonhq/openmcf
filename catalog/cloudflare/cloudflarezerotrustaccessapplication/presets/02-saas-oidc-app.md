@@ -1,3 +1,7 @@
+---
+display_name: SaaS OIDC App
+---
+
 # SaaS application (OIDC)
 
 Federate a SaaS application into Cloudflare Access over OIDC. Cloudflare acts as the

@@ -1,0 +1,3 @@
+# Zone with path exclusions
+
+The measure-the-storefront-only shape: a zone-identified site running the lite beacon, with admin and checkout paths excluded from measurement and everything else included. Zone-identified because rules require it -- Cloudflare only creates the ruleset that rules attach to for zone-linked sites; a hostname-identified site has no ruleset at all, so it cannot carry rules (the spec enforces this). Order is positional -- the exclusion sits ahead of the catch-all. Remember the rules are write-only at the provider: once this manifest owns them, dashboard edits to the rule set will be overwritten on the next apply.

@@ -43,6 +43,15 @@ type CloudflareZeroTrustDnsLocationSpec struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// When true, this location is the account's default: traffic from
 	// unregistered sources is attributed to it.
+	//
+	// Two Cloudflare walls, both live-measured: the FIRST location created on
+	// an account is auto-promoted to default even when this field is unset;
+	// and the current default can neither be deleted (API error 1217) nor
+	// demoted in place (error 1216) -- the only way to move the default is
+	// setting client_default true on ANOTHER location. Consequence: an
+	// account's first DNS location is effectively permanent until a
+	// replacement default exists, and destroying a resource that holds the
+	// default FAILS until the default is transferred.
 	ClientDefault *bool `protobuf:"varint,3,opt,name=client_default,json=clientDefault,proto3,oneof" json:"client_default,omitempty"`
 	// When true, the location's resolver honors EDNS Client Subnet, letting
 	// upstream resolvers see the querying network for better geo-answers.
@@ -241,7 +250,11 @@ type CloudflareZeroTrustDnsLocationDohEndpoint struct {
 	// anonymous resolvers pointed at the subdomain).
 	RequireToken *bool `protobuf:"varint,2,opt,name=require_token,json=requireToken,proto3,oneof" json:"require_token,omitempty"`
 	// The source networks allowed to query this endpoint, as IPs or CIDRs.
-	// Empty allows any source.
+	// Empty allows any source -- but note that at Terraform provider
+	// v5.23.0/v5.24.0 a DECLARED endpoint with an empty network list re-plans
+	// a cosmetic in-place update forever (Cloudflare drops empty lists on
+	// read; live-measured): declare real networks for a drift-free plan, or
+	// accept the no-op diff.
 	Networks      []*CloudflareZeroTrustDnsLocationNetwork `protobuf:"bytes,3,rep,name=networks,proto3" json:"networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -305,7 +318,11 @@ type CloudflareZeroTrustDnsLocationNetworkEndpoint struct {
 	// Whether the endpoint accepts queries.
 	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// The source networks allowed to query this endpoint, as IPs or CIDRs.
-	// Empty allows any source.
+	// Empty allows any source -- but note that at Terraform provider
+	// v5.23.0/v5.24.0 a DECLARED endpoint with an empty network list re-plans
+	// a cosmetic in-place update forever (Cloudflare drops empty lists on
+	// read; live-measured): declare real networks for a drift-free plan, or
+	// accept the no-op diff.
 	Networks      []*CloudflareZeroTrustDnsLocationNetwork `protobuf:"bytes,2,rep,name=networks,proto3" json:"networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

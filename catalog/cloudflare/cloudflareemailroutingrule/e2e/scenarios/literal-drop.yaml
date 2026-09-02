@@ -2,8 +2,10 @@
 # address and drop the message -- the action type that needs no verified
 # destination address or deployed Email Worker, so it can run live. The
 # matcher value is a mailbox on the run-scoped fixture zone's domain (never
-# registered, mail goes nowhere). Email Routing is enabled on the zone by the
-# CloudflareEmailRoutingZone prerequisite in the kind's registry chain.
+# registered, mail goes nowhere). The zone's Email Routing is deliberately
+# NOT enabled here: the API accepts rules on a non-enabled zone (measured
+# live 2026-08-26), so the lane proves the rule lifecycle without riding the
+# CloudflareEmailRoutingZone kind.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareEmailRoutingRule
 metadata:

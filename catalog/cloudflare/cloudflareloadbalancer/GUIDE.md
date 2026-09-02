@@ -27,6 +27,14 @@ Every field inside `rules[].overrides` is optional. Unset means "inherit the loa
 
 A `fixedResponse` rule answers at the edge and always terminates evaluation. Leave `priority` unset everywhere and let list order decide, or set it everywhere -- mixing the two makes ordering hard to reason about.
 
+## The rule count is a plan limit
+
+How many rules one load balancer may carry is set by the account's Load Balancing subscription tier: Basic ($5/mo) allows exactly ONE rule, and the write fails with `400` code `1002` "rule count N exceeds limit M" the moment the list exceeds the tier's cap (measured live on Basic). Design rule sets against the tier you actually pay for -- splitting behavior across multiple load balancers is the workaround when the cap binds.
+
+## The hostname is the full DNS name
+
+`hostname` must be fully qualified (`app.example.com`), not a bare label (`app`) -- Cloudflare rejects labels with `400` code `1002` "Invalid load balancer name: invalid hostname" (measured live). The name should sit inside the zone `zoneId` points at.
+
 ## TTL only applies gray-cloud
 
 `ttl` (and its rule override) is the DNS TTL for NON-proxied load balancers. On a proxied (orange-cloud) load balancer Cloudflare answers with its own edge IPs and the field is rejected by the API.

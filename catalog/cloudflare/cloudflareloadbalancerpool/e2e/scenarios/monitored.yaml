@@ -1,8 +1,12 @@
-# Monitored CloudflareLoadBalancerPool scenario: one TEST-NET origin plus
-# the optional monitor FK, resolved from a SCENARIO-declared
+# Monitored CloudflareLoadBalancerPool scenario: one globally-routable origin
+# plus the optional monitor FK, resolved from a SCENARIO-declared
 # CloudflareLoadBalancerMonitor prerequisite (a pool does not require a
-# monitor, so the edge is per-scenario, never registry). Requires the Load
-# Balancing add-on.
+# monitor, so the edge is per-scenario, never registry). The origin is
+# Cloudflare's own resolver address: once a monitor is attached, Cloudflare
+# rejects non-routable origins with 400 code 1002 "Origin address is invalid
+# or is not globally routable and has health monitoring enabled" (measured
+# live 2026-08-28) -- TEST-NET is legal ONLY on unmonitored pools. Requires
+# the Load Balancing add-on.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancerPool
 metadata:
@@ -24,7 +28,7 @@ spec:
   origins:
     - name: origin-1
       address:
-        value: 192.0.2.21
+        value: 1.1.1.1
   monitor:
     valueFrom:
       kind: CloudflareLoadBalancerMonitor

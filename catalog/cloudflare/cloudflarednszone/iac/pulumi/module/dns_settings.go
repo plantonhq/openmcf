@@ -9,6 +9,13 @@ import (
 
 // dnsSettings applies zone-wide DNS settings. Unset numeric/string fields are
 // left nil so Cloudflare's defaults remain in effect.
+// Upstream modeling defect at provider v5.23.0 (live-measured on the
+// terraform engine; the same provider sits underneath this SDK): the
+// provider echoes server defaults (ns_ttl 86400, the SOA timer block,
+// nameservers.type) into state on refresh while marking those attributes
+// Optional and NOT Computed, so any config that leaves them unset drifts on
+// every refresh. Pulumi previews do not refresh, which hides rather than
+// solves it -- a drift-free config declares every field the server echoes.
 func dnsSettings(
 	ctx *pulumi.Context,
 	resourceName string,

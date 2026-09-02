@@ -14,8 +14,13 @@ message CloudflareCustomSslCertificateStackOutputs {
   // When the certificate expires (RFC3339).
   string expires_on = 3;
 
-  // The certificate's deployment status (for example active or pending).
-  // Deployment is asynchronous -- a fresh upload may report a pending state
-  // before turning active.
-  string status = 4;
+  // Field 4 (status) was removed: deployment is asynchronous (a fresh
+  // upload reports a pending state before turning active), so a
+  // point-in-time phase can never be a stable stack output -- it flips on
+  // the first refresh after the transition and re-plans forever (the class
+  // was measured live 2026-08-28 on the sibling Authenticated Origin Pulls
+  // certificate). Read deployment status from the Cloudflare API or
+  // dashboard instead.
+  reserved 4;
+  reserved "status";
 }

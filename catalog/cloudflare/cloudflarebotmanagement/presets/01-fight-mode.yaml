@@ -6,3 +6,6 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your zone id
   fight_mode: true
+  # Cloudflare refuses to enable Fight Mode while the zone's JavaScript
+  # detections are off -- declare the pair when enabling from scratch.
+  enable_js: true

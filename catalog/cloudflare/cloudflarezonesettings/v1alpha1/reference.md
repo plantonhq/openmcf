@@ -35,6 +35,10 @@ surfaces that as an apply error rather than silently skipping.
 ## Example
 
 ```yaml
+# Offline shape proof across every value class. NOTE: ciphers stays here as
+# the list value class's shape proof, but it is NOT free-plan-deployable --
+# writing it requires the zone's Advanced Certificate Manager subscription
+# (400 code 1023 measured live, 2026-08-27), so the live scenarios omit it.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZoneSettings
 metadata:
@@ -459,6 +463,10 @@ TLS cipher allowlist for this zone's HTTPS termination, in BoringSSL format
 (for example ECDHE-ECDSA-AES128-GCM-SHA256). An empty list is "not managed";
 to reset the zone to Cloudflare defaults, apply the API's documented reset
 (an empty value) manually -- the module never sends an empty list.
+ENTITLEMENT-GATED WRITE: the zone must carry an Advanced Certificate
+Manager subscription or the API rejects the write with 400 code 1023
+(measured at v5.23.0) -- even though the settings API reports the id
+editable=true on every plan.
 
 ### spec.cnameFlattening
 

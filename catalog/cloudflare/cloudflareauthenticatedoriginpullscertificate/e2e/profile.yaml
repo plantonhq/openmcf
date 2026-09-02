@@ -17,10 +17,19 @@ spec:
   # private_key does not force replacement -- a key-only rotation silently
   # no-ops (measured provider defect at v5.23.0; the GUIDE teaches
   # rotate-cert-and-key-together); (c) the private key never returns from
-  # the API -- the blind import round-trip re-asserts it from configuration.
+  # the API AND is RequiresReplace on the hostname surface, so a blind
+  # import's only reconcile is a replace -- the round-trip is
+  # scenario-skipped with the reason (measured live 2026-08-28; the
+  # adoption recipe lives on the import catalog row). Deployment status is
+  # asynchronous and deliberately NOT a stack output (it flips
+  # pending_deployment -> active on the first refresh and would re-plan
+  # forever -- measured live 2026-08-28).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines through the full lifecycle on the
+  # real account (hostname-upload with a leaf client certificate). The
+  # round-trip is scenario-skipped with the recorded reason: private_key is
+  # write-only AND RequiresReplace, so a blind import's only reconcile is a
+  # replace (the adoption recipe lives on the import catalog row).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

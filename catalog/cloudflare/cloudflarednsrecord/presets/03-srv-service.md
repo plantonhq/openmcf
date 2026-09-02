@@ -1,8 +1,12 @@
+---
+display_name: SRV Service
+---
+
 # SRV Record for a Service
 
 Creates an SRV record that advertises the host and port of a service (SIP, XMPP,
 Minecraft, etc.). SRV records are structured: their priority, weight, port, and
-target are supplied through the `data.srv` block rather than a flat content string.
+target are supplied through the top-level `srv` block rather than a flat content string.
 
 ## When to Use
 
@@ -11,10 +15,10 @@ target are supplied through the `data.srv` block rather than a flat content stri
 
 ## Key Configuration Choices
 
-- **type SRV** (`type: SRV`) -- Service locator record; uses the `data.srv` block.
+- **type SRV** (`type: SRV`) -- Service locator record; uses the `srv` block.
 - **name** (`name: _sip._tcp`) -- The `_service._proto` label the record answers for.
-- **data.srv.priority / weight** -- Lower priority is preferred; weight distributes load among equal priorities.
-- **data.srv.port / target** -- The TCP/UDP port and hostname of the machine providing the service.
+- **srv.priority / weight** -- Lower priority is preferred; weight distributes load among equal priorities.
+- **srv.port / target** -- The TCP/UDP port and hostname of the machine providing the service.
 
 ## Placeholders to Replace
 
@@ -25,4 +29,4 @@ target are supplied through the `data.srv` block rather than a flat content stri
 
 ## Related Presets
 
-- **04-caa-certificate-authority** -- Another structured record type using a `data` block
+- **04-caa-certificate-authority** -- Another structured record type using a typed data block

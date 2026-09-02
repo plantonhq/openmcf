@@ -231,17 +231,18 @@ func bucket(
 	for i, en := range spec.GetEventNotifications() {
 		rules := cloudflare.R2BucketEventNotificationRuleArray{}
 		for _, r := range en.GetRules() {
+			// Cloudflare serializes the FULL rule object on read -- an unset
+			// filter comes back as "" (measured live 2026-08-26 on the
+			// terraform module: a rule created without suffix refreshed to
+			// suffix = "" and the omit-when-empty mapping drifted forever;
+			// this engine carried the same latent class). Always send the
+			// strings: "" and absent mean the same thing to the API and the
+			// state then matches the echo.
 			ruleArgs := cloudflare.R2BucketEventNotificationRuleArgs{
-				Actions: toStringArray(r.GetActions()),
-			}
-			if r.GetDescription() != "" {
-				ruleArgs.Description = pulumi.String(r.GetDescription())
-			}
-			if r.GetPrefix() != "" {
-				ruleArgs.Prefix = pulumi.String(r.GetPrefix())
-			}
-			if r.GetSuffix() != "" {
-				ruleArgs.Suffix = pulumi.String(r.GetSuffix())
+				Actions:     toStringArray(r.GetActions()),
+				Description: pulumi.String(r.GetDescription()),
+				Prefix:      pulumi.String(r.GetPrefix()),
+				Suffix:      pulumi.String(r.GetSuffix()),
 			}
 			rules = append(rules, ruleArgs)
 		}

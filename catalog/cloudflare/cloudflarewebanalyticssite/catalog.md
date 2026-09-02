@@ -70,7 +70,7 @@ The InfraPipeline resolves the dependency graph, deploys the zone first, then pr
 
 These are the most important decisions when configuring a Web Analytics site. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Host or zone, never both** — `host` measures any site by hostname and you embed the snippet yourself; `zoneTag` measures a Cloudflare zone and unlocks `autoInstall`, which puts the beacon on every proxied page with no code change. The spec enforces exactly one. Choose `zoneTag` when the site is proxied through Cloudflare — the zero-code path is the whole point.
+**Host or zone, never both** — `host` measures any site by hostname and you embed the snippet yourself; `zoneTag` measures a Cloudflare zone and unlocks `autoInstall`, which puts the beacon on every proxied page with no code change. The spec enforces exactly one. Choose `zoneTag` when the site is proxied through Cloudflare — the zero-code path is the whole point. Measurement rules are zone-identified-site territory: a host-identified site has no ruleset to attach rules to, and validation enforces it.
 
 **Rules are write-only at the provider** — the provider never reads rules back after writing them, so rule edits made in the Cloudflare dashboard are invisible to IaC (no drift appears in any plan) until the next apply quietly overwrites them with the declared rows. Pick one owner for the rule set: if it is this manifest, dashboard edits are temporary by definition.
 
@@ -99,7 +99,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `site_tag` | The Cloudflare-assigned site tag — the site's identity in every RUM API path | RUM API queries, import recipes |
 | `site_token` | The beacon's measurement token (secret-marked) | Manual beacon embeds that build their own script tag |
 | `snippet` | The ready-to-embed script tag, carrying the token (secret-marked) | Pasting into page templates for hostname-identified sites |
-| `ruleset_id` | The parent object the include/exclude rules live under | Rule management via the RUM API |
+| `ruleset_id` | The parent object the include/exclude rules live under (empty for host-identified sites — they have no ruleset) | Rule management via the RUM API |
 
 The token ships inside public pages once deployed, so it is not a secret the way an API key is — the secret marking keeps it out of plan logs and CI output.
 

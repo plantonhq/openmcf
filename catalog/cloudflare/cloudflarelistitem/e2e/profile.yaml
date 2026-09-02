@@ -14,8 +14,12 @@ spec:
   # not live: a redirect item (the import ID would need URL-encoding of the
   # source_url). Free; objects create in seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-28: both engines ran ip-entry through the full
+  # lifecycle over the CloudflareList registry fixture (deploy -> REST-API
+  # verify -> destroy -> verify-absent) with the apply-idempotency re-plan
+  # green, plus the blind three-segment import round-trip at zero tolerances
+  # -- all first-run. The async bulk-delete race the retry guard exists for
+  # never fired; fixture teardown was clean.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

@@ -50,7 +50,7 @@ Every other field is optional, and unset means not managed. Rather than tabling 
 
 **Numeric settings (6 settings)** -- `browser_cache_ttl`, `challenge_ttl`, `edge_cache_ttl`, `max_upload`, `origin_h2_max_streams`, `proxy_read_timeout`. Cloudflare validates each against a fixed accepted value set (for example browser cache TTL accepts 0 and specific durations from 30 seconds to one year).
 
-**Object settings** -- `security_header` (HSTS: enabled, include_subdomains, max_age, nosniff, preload), `nel` (network error logging), `aegis` (dedicated egress IPs, requires an Aegis entitlement), `automatic_platform_optimization` (APO for WordPress; the API requires every field of this object on writes), and the list-valued `ciphers` (BoringSSL-format TLS cipher allowlist).
+**Object settings** -- `security_header` (HSTS: enabled, include_subdomains, max_age, nosniff, preload), `nel` (network error logging), `aegis` (dedicated egress IPs, requires an Aegis entitlement), `automatic_platform_optimization` (APO for WordPress; the API requires every field of this object on writes), and the list-valued `ciphers` (BoringSSL-format TLS cipher allowlist; writing it requires the zone's Advanced Certificate Manager subscription -- the API rejects it with code 1023 otherwise).
 
 **Companion surfaces** -- `managed_request_headers` and `managed_response_headers` (Cloudflare-defined transform toggles by id), `url_normalization` (scope + type), `origin_cloud_regions` (origin_ip + vendor + region, keyed by IP), and `waiting_room_crawler_bypass` (the zone-wide boolean; per-room configuration lives on the waiting room itself).
 

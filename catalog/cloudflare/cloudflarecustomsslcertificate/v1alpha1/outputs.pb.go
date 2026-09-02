@@ -30,11 +30,7 @@ type CloudflareCustomSslCertificateStackOutputs struct {
 	// The zone the certificate belongs to.
 	ZoneId string `protobuf:"bytes,2,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	// When the certificate expires (RFC3339).
-	ExpiresOn string `protobuf:"bytes,3,opt,name=expires_on,json=expiresOn,proto3" json:"expires_on,omitempty"`
-	// The certificate's deployment status (for example active or pending).
-	// Deployment is asynchronous -- a fresh upload may report a pending state
-	// before turning active.
-	Status        string `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	ExpiresOn     string `protobuf:"bytes,3,opt,name=expires_on,json=expiresOn,proto3" json:"expires_on,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,24 +86,16 @@ func (x *CloudflareCustomSslCertificateStackOutputs) GetExpiresOn() string {
 	return ""
 }
 
-func (x *CloudflareCustomSslCertificateStackOutputs) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
 var File_catalog_cloudflare_cloudflarecustomsslcertificate_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarecustomsslcertificate_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hcatalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1/outputs.proto\x12>dev.planton.cloudflare.cloudflarecustomsslcertificate.v1alpha1\"\xa3\x01\n" +
+	"Hcatalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1/outputs.proto\x12>dev.planton.cloudflare.cloudflarecustomsslcertificate.v1alpha1\"\x99\x01\n" +
 	"*CloudflareCustomSslCertificateStackOutputs\x12%\n" +
 	"\x0ecertificate_id\x18\x01 \x01(\tR\rcertificateId\x12\x17\n" +
 	"\azone_id\x18\x02 \x01(\tR\x06zoneId\x12\x1d\n" +
 	"\n" +
-	"expires_on\x18\x03 \x01(\tR\texpiresOn\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06statusB\xef\x03\n" +
+	"expires_on\x18\x03 \x01(\tR\texpiresOnJ\x04\b\x04\x10\x05R\x06statusB\xef\x03\n" +
 	"Bcom.dev.planton.cloudflare.cloudflarecustomsslcertificate.v1alpha1B\fOutputsProtoP\x01Z~github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomsslcertificate/v1alpha1;cloudflarecustomsslcertificatev1alpha1\xa2\x02\x04DPCC\xaa\x02>Dev.Planton.Cloudflare.Cloudflarecustomsslcertificate.V1alpha1\xca\x02>Dev\\Planton\\Cloudflare\\Cloudflarecustomsslcertificate\\V1alpha1\xe2\x02JDev\\Planton\\Cloudflare\\Cloudflarecustomsslcertificate\\V1alpha1\\GPBMetadata\xea\x02BDev::Planton::Cloudflare::Cloudflarecustomsslcertificate::V1alpha1b\x06proto3"
 
 var (

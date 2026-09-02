@@ -3,20 +3,24 @@ kind: ComponentE2EProfile
 metadata:
   name: cloudflarecertificatepack
 spec:
-  # An advanced certificate pack under live E2E: the harness installs the
-  # CloudflareDnsZone prerequisite first (the kind's registry prerequisite),
-  # then deploy -> GET zones/{zone_id}/ssl/certificate_packs/{id} verify ->
-  # destroy -> verify-destroyed on both provisioners. The live scenario
-  # orders a Let's Encrypt pack with TXT DCV covering the run-scoped pending
-  # zone's apex; DCV will sit pending (the fixture zone is undelegated) --
-  # that is the lifecycle we can prove. Destroy is delete-and-recreate (the
-  # provider has no Update); the verifier treats GET 200 with status
-  # pending_deletion/deleted as gone. Entitlement gate: Advanced Certificate
-  # Manager is a paid per-zone add-on. Objects create in seconds.
+  # An advanced certificate pack under live E2E: deploy -> GET
+  # zones/{zone_id}/ssl/certificate_packs/{id} verify -> destroy ->
+  # verify-destroyed on both provisioners. The live scenario orders a Let's
+  # Encrypt pack with TXT DCV on the sanctioned ACM-subscribed ACTIVE zone
+  # (env-gated; skips honestly when unset); DCV sits pending_validation
+  # until TXT records are placed -- order, verify, delete is the lifecycle
+  # we prove. MEASURED ENTITLEMENT (live, 2026-08-29): Advanced Certificate
+  # Manager is a PER-ZONE ~$10/mo subscription -- after the account's ACM
+  # purchase, an advanced-pack order on a freshly created zone still answers
+  # 400 code 1450 while the identical order succeeds on the subscribed zone,
+  # so the run-scoped fixture zone can never carry this arm. Caution from a
+  # prior session: READ gates on ACM surfaces relax independently (a GET may
+  # answer 200 without ACM) -- only an ORDER attempt proves the entitlement.
+  # Destroy is delete-and-recreate (the provider has no Update); the
+  # verifier treats GET 200 with status pending_deletion/deleted as gone.
+  # Objects create in seconds.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15
   cost_class: cheap_ephemeral

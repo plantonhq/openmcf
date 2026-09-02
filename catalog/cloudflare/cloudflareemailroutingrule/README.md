@@ -3,7 +3,9 @@
 Declare a single Email Routing rule for a zone: match incoming mail and drop it,
 forward it to verified destinations, and/or hand it to an Email Worker — one rule
 carries a LIST of actions, so it can forward AND process in the same match.
-Requires Email Routing to be enabled on the zone (`CloudflareEmailRoutingZone`).
+The API accepts rules on any zone, but they only take effect once the zone's
+Email Routing is enabled (`CloudflareEmailRoutingZone`) — pair the two in any
+real setup.
 
 ## When to use
 

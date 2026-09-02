@@ -27,8 +27,13 @@ spec:
         `GET /accounts/<account_id>/r2/buckets` on the Cloudflare v4 API (the
         name field).
     - name: jurisdiction
+      # Ordered derivations: an empty spec field falls through to the literal
+      # "default" -- the provider's parser demands all three segments, so a
+      # default-jurisdiction bucket (the spec's unset case) must still render
+      # a third segment.
       derivations:
         - from_spec_field: jurisdiction
+        - literal: "default"
       where_to_find: >-
         The spec's jurisdiction field ("default", "eu", or "fedramp"). When
         the spec leaves it empty, use the literal "default" -- the import ID

@@ -1,3 +1,7 @@
+---
+display_name: Public CDN
+---
+
 # Public R2 Bucket with Custom Domain
 
 Creates a public R2 bucket served via a custom domain (e.g., media.example.com). Combines public access with a branded CDN URL. Requires a Cloudflare DNS zone for the domain.

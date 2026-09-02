@@ -4,19 +4,49 @@ metadata:
   name: cloudflareaigateway
 spec:
   # AI Gateway under live E2E: account-scoped create (free tier), verify via
-  # the gateway GET, destroy (real delete). Watch items for the proving
-  # session: (a) the provider ships ZERO acceptance tests for this resource
-  # and its dynamic routing -- these lanes are their first real-world proof
-  # anywhere, so treat any drift or API surprise as reportable; (b) the
-  # routing scenario exercises the folded per-route object -- its elements
-  # list is create-only (any edit replaces the route), and the provider's
-  # Update response decode is broken upstream (a rename leaves computed
-  # fields stale until refresh); (c) spend-limit rules carry explicit ids by
-  # spec law (the provider default is a leaked example value that collapses
-  # rules).
+  # the gateway GET, destroy (real delete). Live scenarios are minimal (the
+  # five required scalars) and tuned (every CONVERGENT optional: retries,
+  # log management, gateway authentication, rate-limit technique). The
+  # write-only-at-the-API surfaces -- guardrails, spend_limits, otel, and
+  # dynamic_routes -- are offline-plan-proven at e2e/routing-plan.yaml,
+  # whose header records the measured walls (no read returns them; route
+  # elements come back only under version.data; model nodes REQUIRE
+  # outputs.fallback + properties.timeout + properties.retries, 400/7001).
+  # Both modules always-send authentication/logpush/zdr and the
+  # log-management pair (Cloudflare echoes false/100000/DELETE_OLDEST for
+  # unset -- the omitted-send drift class, live-measured 2026-08-27).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Blocked by an upstream provider defect, measured live 2026-08-27 on the
+    real account: the gateway's otel and spend_limits attributes are
+    computed-optional in the provider model while the API is WRITE-ONLY for
+    them (neither the create response nor any GET returns them -- probed by
+    direct POST/GET; the provider still refreshes them), so EVERY
+    refresh-inclusive Terraform plan re-marks both "(known after apply)"
+    and proposes an in-place update forever -- including configurations
+    that never set either field (both live scenarios failed the idempotency
+    gate on exactly this signature after every config-carried echo class
+    was fixed module-side). Module remedies measured non-fixing:
+    lifecycle ignore_changes cannot suppress the provider-planned unknown
+    (re-measured here after the gateway-policy #7106 precedent), and an
+    always-send is worse (the refresh nulls state, so a set value re-plans
+    a REAL update forever -- measured on the original routing scenario's
+    spend_limits). The sibling dynamic-routing resource is broken harder:
+    its GET returns the graph only under version.data, a path the
+    provider's Read never consults, so elements refresh-null and their
+    RequiresReplace turns every apply into a destroy-and-recreate of the
+    route (measured live; the route's public endpoint identity survives
+    but the route object is rebuilt every apply). v5.24.0 and provider
+    main verified untouched for both resources (the only ai_gateway change
+    adds an unrelated log_classification field; neither resource has ANY
+    upstream acceptance test). All four PULUMI lanes passed every phase
+    2026-08-27 (previews do not refresh, so the defect cannot fire there),
+    but the kind stays deferred rather than half-claimed. Unblock: a
+    provider release whose gateway model returns or no_refreshes
+    otel/spend_limits and whose routing Read restores elements (plus the
+    pulumi-cloudflare bridge); then run both lanes unchanged -- scenarios,
+    verifier, and import map are ready, and the blind import round-trips
+    should ride the first green Terraform lane.
   timeout_minutes: 10
+  cost_class: cheap_ephemeral

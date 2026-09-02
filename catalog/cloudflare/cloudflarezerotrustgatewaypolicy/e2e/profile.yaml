@@ -22,9 +22,28 @@ spec:
   # Wirefilter expressions are API-reformatted; the idempotency re-plan is the
   # drift canary.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: deferred
+  deferred_reason: >-
+    Blocked by an upstream provider defect, measured live 2026-08-26 on the
+    real account: the resource's Computed attributes ship no
+    UseStateForUnknown plan modifiers (terraform-provider-cloudflare issue
+    #7106), so a refresh-inclusive plan NEVER converges -- every
+    configuration shape re-plans an in-place update forever (measured:
+    rule_settings absent, rule_settings {}, and both live scenarios'
+    populated shapes; the visible driver is
+    rule_settings.ignore_cname_category_matches, which the Gateway API
+    accepts but never echoes -- probed via direct POST/PUT/GET on dns and
+    http rules, sparse echoes on all). Module-side remedies measured
+    non-fixing: an explicit-false send is accepted-and-dropped, and
+    lifecycle ignore_changes cannot suppress a provider-planned unknown.
+    v5.24.0 verified identical at source (zero commits touched the resource
+    between tags, none on provider main either). Both PULUMI lanes passed
+    all phases 2026-08-26 (previews do not refresh, so the defect cannot
+    fire there), but the kind stays deferred rather than half-claimed.
+    Unblock: a provider release fixing #7106 (state-preserving plan
+    modifiers on gateway policy), plus its pulumi-cloudflare bridge; then
+    run both lanes unchanged -- scenarios, verifier, and import map are
+    ready, and the import round-trip should ride the first green Terraform
+    lane.
   timeout_minutes: 10
   cost_class: cheap_ephemeral

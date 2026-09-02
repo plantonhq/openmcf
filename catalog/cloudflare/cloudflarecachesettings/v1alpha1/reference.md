@@ -118,7 +118,10 @@ off explicitly before retiring to stop the storage charges).
 
 Regional Tiered Cache: add a regional tier between lower tiers and the
 upper tier, cutting long-haul trips for cache misses in distant regions.
-No delete at Cloudflare -- destroy abandons the last-applied value.
+ENTERPRISE-GATED: zones below Enterprise answer 1135 "not available for
+your plan type" on every read and write (measured on Free and Pro zones
+at v5.23.0) -- manage this only on an Enterprise-entitled zone. No delete
+at Cloudflare -- destroy abandons the last-applied value.
 
 ### spec.argoSmartRouting
 
@@ -135,8 +138,10 @@ THE FEATURE ON AND KEEPS BILLING. Apply false first when retiring it.
 
 Cache variants: which additional Accept-header content types Cloudflare may
 serve for cached image extensions (for example serving image/webp variants
-of .jpg URLs when Polish/WebP is active). Real delete at Cloudflare:
-destroying the resource resets variants to defaults.
+of .jpg URLs when Polish/WebP is active). PLAN-GATED at Free: a Free zone
+answers 1135 "not available for your plan type" (measured at v5.23.0);
+Pro and above accept it. Real delete at Cloudflare: destroying the
+resource resets variants to defaults.
 
 ### spec.cacheVariants.avif
 

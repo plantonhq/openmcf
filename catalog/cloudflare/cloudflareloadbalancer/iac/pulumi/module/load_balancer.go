@@ -41,19 +41,36 @@ func load_balancer(
 	if spec.Ttl > 0 {
 		args.Ttl = pulumi.Float64Ptr(spec.Ttl)
 	}
+	// session_affinity may be omitted when "none": the provider's schema
+	// default IS "none" and the API echoes it, so the omission stays
+	// convergent (measured live). steering_policy is DIFFERENT: the provider
+	// defaults it to "" while the API canonicalizes and stores "off"/"geo",
+	// so an omitted value re-plans after a blind import (measured live
+	// 2026-08-28). ALWAYS send the canonical value, mirroring the API's
+	// documented "" mapping: geo when any geo-pool map is set, otherwise off.
 	if spec.SessionAffinity != cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerSessionAffinity_none {
 		args.SessionAffinity = pulumi.StringPtr(spec.SessionAffinity.String())
 	}
-	if spec.SteeringPolicy != cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerSteeringPolicy_off {
-		args.SteeringPolicy = pulumi.StringPtr(spec.SteeringPolicy.String())
+	steeringPolicy := spec.SteeringPolicy.String()
+	if spec.SteeringPolicy == cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerSteeringPolicy_off {
+		if len(spec.RegionPools) > 0 || len(spec.CountryPools) > 0 || len(spec.PopPools) > 0 {
+			steeringPolicy = "geo"
+		} else {
+			steeringPolicy = "off"
+		}
 	}
+	args.SteeringPolicy = pulumi.StringPtr(steeringPolicy)
 	if spec.SessionAffinityTtl > 0 {
 		args.SessionAffinityTtl = pulumi.Float64Ptr(spec.SessionAffinityTtl)
 	}
 
 	if saa := spec.SessionAffinityAttributes; saa != nil {
-		saaArgs := &cloudflare.LoadBalancerSessionAffinityAttributesArgs{
-			RequireAllHeaders: pulumi.BoolPtr(saa.RequireAllHeaders),
+		// require_all_headers is sent ONLY when true: the API never echoes a
+		// false back (GET returns null), so an always-sent false re-plans on
+		// every refresh-inclusive plan forever (measured live 2026-08-28).
+		saaArgs := &cloudflare.LoadBalancerSessionAffinityAttributesArgs{}
+		if saa.RequireAllHeaders {
+			saaArgs.RequireAllHeaders = pulumi.BoolPtr(true)
 		}
 		if saa.DrainDuration > 0 {
 			saaArgs.DrainDuration = pulumi.Float64Ptr(saa.DrainDuration)
@@ -145,9 +162,12 @@ func load_balancer(
 // load balancer's setting, while an explicit value -- INCLUDING "none"/"off"/0
 // -- overrides it. The spec carries presence on priority, session_affinity,
 // and steering_policy (proto optional), so those are sent exactly when set.
-// terminates/disabled are sent only when true: false is the provider default,
-// and a fixed_response rule is auto-marked terminating server-side, so an
-// explicit false would fight the API's answer.
+// disabled is sent only when true (false is the provider default). terminates
+// is sent as TRUE whenever the rule carries a fixed_response: Cloudflare
+// auto-marks fixed-response rules terminating and echoes terminates=true on
+// every read, so a null send re-plans the rules list after a blind import
+// (measured live 2026-08-28); an explicit false is never sent -- it would
+// fight the same echo.
 func ruleArray(rules []*cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerRule) cloudflare.LoadBalancerRuleArray {
 	out := cloudflare.LoadBalancerRuleArray{}
 	for _, r := range rules {
@@ -164,7 +184,7 @@ func ruleArray(rules []*cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerRul
 		if r.Disabled {
 			ruleArgs.Disabled = pulumi.BoolPtr(true)
 		}
-		if r.Terminates {
+		if r.Terminates || r.FixedResponse != nil {
 			ruleArgs.Terminates = pulumi.BoolPtr(true)
 		}
 		if fr := r.FixedResponse; fr != nil {
@@ -247,8 +267,11 @@ func ruleOverridesArgs(o *cloudflareloadbalancerv1alpha1.CloudflareLoadBalancerR
 		args.SessionAffinity = pulumi.StringPtr(o.SessionAffinity.String())
 	}
 	if saa := o.SessionAffinityAttributes; saa != nil {
-		saaArgs := &cloudflare.LoadBalancerRuleOverridesSessionAffinityAttributesArgs{
-			RequireAllHeaders: pulumi.BoolPtr(saa.RequireAllHeaders),
+		// Same only-when-true send as the top-level attributes: the API never
+		// echoes a false require_all_headers back (measured live).
+		saaArgs := &cloudflare.LoadBalancerRuleOverridesSessionAffinityAttributesArgs{}
+		if saa.RequireAllHeaders {
+			saaArgs.RequireAllHeaders = pulumi.BoolPtr(true)
 		}
 		if saa.DrainDuration > 0 {
 			saaArgs.DrainDuration = pulumi.Float64Ptr(saa.DrainDuration)

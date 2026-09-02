@@ -48,9 +48,18 @@ func dnsRecord(
 		recordArgs.Data = data
 	}
 
-	// Priority is only used for MX records.
-	if spec.Type == cloudflarednsrecordv1alpha1.CloudflareDnsRecordSpec_MX {
+	// The provider schema marks top-level priority "Required for MX, SRV and
+	// URI records". MX carries it in spec.priority; SRV/URI carry it inside
+	// their structured data, and Cloudflare mirrors that value into the
+	// top-level field on its own -- omitting it here drifts on refresh
+	// (live-measured on the Terraform engine; same provider underneath).
+	switch {
+	case spec.Type == cloudflarednsrecordv1alpha1.CloudflareDnsRecordSpec_MX:
 		recordArgs.Priority = pulumi.Float64(float64(spec.Priority))
+	case spec.GetSrv() != nil:
+		recordArgs.Priority = pulumi.Float64(float64(spec.GetSrv().Priority))
+	case spec.GetUri() != nil:
+		recordArgs.Priority = pulumi.Float64(float64(spec.GetUri().Priority))
 	}
 
 	if spec.Comment != "" {
@@ -88,9 +97,13 @@ func dnsRecord(
 		return nil, errors.Wrap(err, "failed to create cloudflare dns record")
 	}
 
-	// Export required outputs.
+	// Export required outputs. record_name is deliberately the DECLARED name:
+	// Cloudflare normalizes names to the full FQDN on read, so exporting the
+	// resource attribute flips the output after the first refresh (the
+	// Terraform engine's apply-idempotency re-plan measured this live; both
+	// engines keep the declared-value contract for parity).
 	ctx.Export(OpRecordId, createdRecord.ID())
-	ctx.Export(OpRecordName, createdRecord.Name)
+	ctx.Export(OpRecordName, pulumi.String(spec.Name))
 	ctx.Export(OpRecordType, pulumi.String(recordType))
 	ctx.Export(OpProxied, createdRecord.Proxied)
 	ctx.Export(OpZoneId, createdRecord.ZoneId)

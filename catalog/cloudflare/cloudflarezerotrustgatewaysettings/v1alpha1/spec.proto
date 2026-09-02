@@ -311,8 +311,12 @@ message CloudflareZeroTrustGatewayPacFile {
 
   // The URL-friendly slug the file is served under. IMMUTABLE: the slug is
   // baked into the file's public URL, so changing it replaces the file
-  // (clients configured with the old URL break). Omit to let Cloudflare
-  // derive it from the name.
+  // (clients configured with the old URL break). When omitted, the modules
+  // derive a deterministic slug from the file's name (lowercased,
+  // non-alphanumerics become hyphens) -- NOT the server's choice, because a
+  // server-generated slug is RANDOM and, being replace-forcing, would make
+  // every subsequent plan propose recreating the file and breaking its URL
+  // (live-measured at provider v5.23.0).
   string slug = 3;
 
   // A free-form description of the file.

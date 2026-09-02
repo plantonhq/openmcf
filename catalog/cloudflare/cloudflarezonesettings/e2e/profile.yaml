@@ -14,20 +14,24 @@ spec:
   # throwaway zone. Scenario ordering is the revert discipline (the
   # defaults-posture scenario sorts LAST and returns the shared surface to
   # Cloudflare defaults before the lane ends). Scenarios stick to
-  # free-plan-safe setting ids (always_use_https, min_tls_version,
-  # browser_cache_ttl, security_header, security_level, ciphers); plan-gated
+  # free-plan-WRITABLE setting ids (always_use_https, min_tls_version,
+  # browser_cache_ttl, security_header, security_level); plan-gated
   # ids (advanced_ddos, orange_to_orange, image_resizing, polish, aegis,
   # automatic_platform_optimization) answer editable=false on the free plan
-  # and stay out of live lanes as recorded deferrals. Watch items for the
-  # proving session: (a) create==update is a PATCH -- the idempotency re-plan
-  # may see normalized/computed echoes on some ids; (b) value-level
-  # assertion (did the setting actually flip?) needs per-scenario
-  # expectations the harness does not carry -- proof-lane design authority
-  # decides whether to add a value-aware probe. Settings apply in seconds at
-  # zero cost.
+  # and stay out of live lanes as recorded deferrals. MEASURED (live,
+  # 2026-08-27): ciphers reads editable=true on Free but its WRITE is
+  # entitlement-gated on Advanced Certificate Manager (400 code 1023) --
+  # editable describes the settings class, not product entitlement; the
+  # list value class is shape-proven offline (e2e/manifest.yaml), and a
+  # live ciphers arm needs an ACM-subscribed zone via the env-gated form.
+  # Also measured live: create==update PATCH echoes are a non-issue (the
+  # idempotency re-plan came back CLEAN on all five managed ids), and the
+  # five-setting blind import round-trip converges at zero tolerances via
+  # the from_address_key derivation. Value-level assertion (did the setting
+  # actually flip?) remains surface-level by design -- per-scenario value
+  # expectations are a seam the harness does not carry. Settings apply in
+  # seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

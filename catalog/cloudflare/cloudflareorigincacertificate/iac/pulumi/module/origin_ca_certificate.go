@@ -1,6 +1,8 @@
 package module
 
 import (
+	"sort"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-cloudflare/sdk/v6/go/cloudflare"
 	"github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
@@ -29,8 +31,18 @@ func originCaCertificate(
 		requestedValidity = 5475
 	}
 
-	hostnames := make(pulumi.StringArray, 0, len(spec.Hostnames))
-	for _, h := range spec.Hostnames {
+	// Cloudflare stores the certificate's hostnames LEXICOGRAPHICALLY SORTED
+	// ("*.sub.zone" sorts before "sub.zone" -- measured live 2026-08-28 by
+	// creating with a scrambled order and reading back). hostnames is a
+	// replace-forcing attribute the provider refreshes, so sending them in
+	// any other order makes every refresh-inclusive plan propose a
+	// destructive replace forever. Sorting here keeps plans converged
+	// regardless of the order the manifest lists them in (mirrors the
+	// Terraform module's sort()).
+	sortedHostnames := append([]string(nil), spec.Hostnames...)
+	sort.Strings(sortedHostnames)
+	hostnames := make(pulumi.StringArray, 0, len(sortedHostnames))
+	for _, h := range sortedHostnames {
 		hostnames = append(hostnames, pulumi.String(h))
 	}
 

@@ -55,7 +55,8 @@ Custom certificates are a Business/Enterprise zone feature. Cloudflare enforces 
 | `certificate_id` | The uploaded certificate's ID |
 | `zone_id` | The zone the certificate belongs to |
 | `expires_on` | When the certificate expires (RFC3339) |
-| `status` | Deployment status (deployment is asynchronous -- pending before active) |
+
+Deployment status is deliberately not a stack output: deployment is asynchronous (pending before active), so a point-in-time phase would flip on the first refresh and re-plan forever. Read it from the Cloudflare API or dashboard.
 
 ## Example Manifest
 

@@ -1,3 +1,7 @@
+---
+display_name: MFA Hardening
+---
+
 # MFA hardening
 
 The security-first shape: MFA required for every application by default (security keys or TOTP), unmatched requests denied, the dashboard locked read-only so IaC is the only write path, and the Access service key rotating every 30 days.

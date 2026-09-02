@@ -1,3 +1,7 @@
+---
+display_name: HTTP Origin
+---
+
 # HTTP origin probe
 
 A standalone HTTP health check against `example.com/health`. No load balancer is involved -- this kind watches an origin. Health checks are a paid zone feature (Pro+); a free zone is rejected at the API.

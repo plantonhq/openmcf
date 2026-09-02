@@ -19,8 +19,14 @@ spec:
   # PENDING (undelegated) zone accepts ruleset creation is unverified
   # offline. Objects create in seconds at zero cost.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # Proven live 2026-08-26: both engines ran custom-firewall through the full
+  # lifecycle (deploy -> REST-API verify -> destroy -> verify-absent) with
+  # the apply-idempotency re-plan green, plus the blind import round-trip
+  # (zones/{zone_id}/{ruleset_id}) on the Terraform lane. Rulesets confirmed
+  # to deploy on a PENDING (undelegated) zone. The lane also measured the
+  # free-plan expression-grammar wall: operator-form starts_with is rejected
+  # (400 code 20127), function-form starts_with() deploys -- the scenario
+  # and every committed example use the function form.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

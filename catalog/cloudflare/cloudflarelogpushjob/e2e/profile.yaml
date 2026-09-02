@@ -5,19 +5,35 @@ metadata:
 spec:
   # Logpush jobs under live E2E: plain CRUD objects (real create, update,
   # delete), dual-scope -- the live arm is zone-scoped (http_requests to an
-  # R2 destination). Watch items for the proving session: (1) Logpush is
-  # historically Enterprise-gated for most datasets -- if the test account's
-  # plan refuses the create, a recorded entitlement deferral is the honest
-  # outcome; (2) the live arm assumes a SAME-ACCOUNT R2 destination skips
-  # the ownership challenge -- verify, and if a challenge is demanded the
-  # lane needs the generate_ownership_challenge arm plus the manual token
-  # fetch; (3) `kind` is rejected on update (HTTP 400) despite planning
-  # in-place -- never mutate it in a lane (destination_conf, by contrast,
-  # updates fine per the provider's own tests); (4) the R2 destination
-  # URI embeds credentials and enters only via env reference.
+  # R2 destination).
+  #
+  # DEFERRED entitlement-blocked (measured 2026-08-27): job creation for
+  # the http_requests dataset answers 403 code 1004 "creating a new job
+  # (for http_requests dataset) is not allowed: exceeded max jobs allowed"
+  # on zones with ZERO jobs -- the quota-clothed form of the Enterprise
+  # gate (a plan without Logpush entitlement has a job quota of zero).
+  # Measured identically on a Free fixture zone AND the Pro test zone, so
+  # no plan below Enterprise unblocks it. What IS measured working under
+  # the account token: the dataset fields read, the jobs list read, and
+  # POST /logpush/validate/destination answering valid:true for the
+  # r2://...?account-id&access-key-id&secret-access-key destination
+  # (the same-account R2 destination needs NO ownership challenge,
+  # documentation-confirmed and validation-proven).
+  #
+  # UNBLOCK: an Enterprise zone (or Enterprise account with Logpush
+  # entitlement) reachable via the env-gated ACTIVE-zone form
+  # (PLANTON_E2E_CLOUDFLARE_ZONE_ID) plus the existing
+  # PLANTON_E2E_CLOUDFLARE_LOGPUSH_R2_DESTINATION -- both lanes then run
+  # unchanged. The offline e2e/manifest.yaml remains the shape proof
+  # (account scope + ownership-challenge fold included).
+  #
+  # Standing watch items for the unblocking session: (1) `kind` is
+  # rejected on update (HTTP 400) despite planning in-place -- never
+  # mutate it in a lane (destination_conf updates fine per the provider's
+  # own tests); (2) the R2 destination URI embeds credentials and enters
+  # only via env reference; (3) the blind import round-trip is
+  # scenario-skipped (dual-scope id underivable -- reason on the
+  # scenario annotation, human recipe on the catalog row).
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes pass.
-  status: pending_proof
+  status: deferred
   timeout_minutes: 10

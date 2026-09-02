@@ -1,6 +1,6 @@
 # Cloudflare Waiting Room
 
-Deploys a Cloudflare waiting room: a virtual queue in front of a host and path that admits visitors at a controlled rate and parks the overflow on a queue page. The room's bypass rules ride along in the same manifest and replace the room's entire rule list on every apply. Fields that need the Waiting Rooms Advanced add-on fail at the Cloudflare API on plans without it — the free-plan-safe shape is host, path, thresholds at the 200 floor, fifo admission, and default Turnstile.
+Deploys a Cloudflare waiting room: a virtual queue in front of a host and path that admits visitors at a controlled rate and parks the overflow on a queue page. Waiting Room is a Business+ product — a Free or Pro zone rejects every room with "Zone not entitled" (code 1034, measured live). The room's bypass rules ride along in the same manifest and replace the room's entire rule list on every apply; the rules themselves need the Waiting Rooms Advanced add-on, as do scheduled events — add-on fields fail at the Cloudflare API on plans without it. The add-on-free shape is host, path, thresholds at the 200 floor, fifo admission, and default Turnstile.
 
 ## What Gets Created
 

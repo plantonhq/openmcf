@@ -43,8 +43,8 @@ locals {
 
   dc_built = {
     for env, c in local.dc_in : env => c == null ? null : {
-      compatibility_date                   = c.compatibility_date != "" ? c.compatibility_date : null
-      compatibility_flags                  = length(c.compatibility_flags) > 0 ? c.compatibility_flags : null
+      compatibility_date  = c.compatibility_date != "" ? c.compatibility_date : null
+      compatibility_flags = length(c.compatibility_flags) > 0 ? c.compatibility_flags : null
       # fail_open / always_use_latest_compatibility_date are omitted when false so
       # an unconfigured environment keeps the server default — Cloudflare rejects a
       # project whose fail_open differs between preview and production.

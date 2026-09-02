@@ -3,10 +3,10 @@ output "custom_hostname_id" {
   value       = cloudflare_custom_hostname.main.id
 }
 
-output "status" {
-  description = "The activation status"
-  value       = cloudflare_custom_hostname.main.status
-}
+# No status output: hostname activation is asynchronous (pending ->
+# pending_validation -> active), and a point-in-time phase is never a stable
+# stack output -- it flips on the first refresh after the transition and
+# re-plans forever. Read activation status from the Cloudflare API instead.
 
 output "ownership_verification_name" {
   description = "The DNS record name for ownership verification"
@@ -33,10 +33,11 @@ output "ownership_verification_http_body" {
   value       = try(cloudflare_custom_hostname.main.ownership_verification_http.http_body, "")
 }
 
-output "verification_errors" {
-  description = "Any verification errors reported by Cloudflare"
-  value       = try(cloudflare_custom_hostname.main.verification_errors, [])
-}
+# No verification_errors output: the server populates the list
+# asynchronously after apply ("zone is not active yet" measured appearing
+# seconds post-create) and clears it on activation -- a transient diagnostic
+# is never a stable stack output (output-only changes fail idempotent
+# re-plans). Read it from the Cloudflare API instead.
 
 output "created_at" {
   description = "RFC3339 timestamp of when the custom hostname was created"

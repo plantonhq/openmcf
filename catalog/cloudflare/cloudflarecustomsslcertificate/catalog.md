@@ -113,8 +113,10 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `certificate_id` | The uploaded certificate's ID (changes on every rotation) | Referencing the upload in TLS tooling and audits |
+| `zone_id` | The zone the certificate belongs to | Confirming the upload landed in the intended zone |
 | `expires_on` | Expiry timestamp (RFC3339) | Rotation scheduling and expiry alerting — the renewal is yours |
-| `status` | Deployment status (asynchronous — pending before active) | Gating cutover steps until the certificate is actually served |
+
+Deployment status is deliberately not a stack output: deployment is asynchronous (pending before active), so a point-in-time phase would flip on the first refresh and re-plan forever. Read deployment status from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

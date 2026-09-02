@@ -29,8 +29,10 @@ locals {
   # Merge base, org, and environment labels
   final_labels = merge(local.base_labels, local.org_label, local.env_label)
 
-  # The tfvars converter emits an unset enum as its zero-value name; treat the
-  # region sentinel (and empty) as "no hint" so the provider chooses a default.
+  # The tfvars converter OMITS unset enums entirely (EmitUnpopulated: false),
+  # so an unset region simply never appears in tfvars; the try() covers the
+  # omission and the sentinel-name guard below is defensive only -- the
+  # converter never emits zero-value enum names.
   region = try(var.spec.region, "")
   primary_location_hint = (
     local.region != "" && local.region != "cloudflare_d1_region_unspecified"

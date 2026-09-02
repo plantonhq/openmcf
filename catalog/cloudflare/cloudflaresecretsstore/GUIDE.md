@@ -4,7 +4,7 @@ The judgment this guide protects you from: the store is a one-per-account single
 
 ## One per account: create once, adopt otherwise
 
-Cloudflare allows a single Secrets Store per account. A create against an account that already has one (dashboard-created, or another team's) fails at the API. The correct move is adopt-by-import (`{account_id}/{store_id}`), never a second create. In an organization, decide early WHICH manifest owns the store -- everything else references it.
+Cloudflare allows a single Secrets Store per account. A create against an account that already has one (dashboard-created, or another team's) fails at the API with error 1003 `maximum_stores_exceeded` (live-measured). The correct move is adopt-by-import (`{account_id}/{store_id}`), never a second create. In an organization, decide early WHICH manifest owns the store -- everything else references it. One more trap: Cloudflare may have auto-provisioned an EMPTY `default_secrets_store` on your account long before you ever used the product -- that placeholder occupies the only slot, so your first managed create can fail on an account that "never used" Secrets Store. If it is genuinely empty, deleting it frees the slot; otherwise adopt it.
 
 ## Renaming is destruction
 

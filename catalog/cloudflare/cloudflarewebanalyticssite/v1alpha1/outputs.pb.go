@@ -7,6 +7,7 @@
 package cloudflarewebanalyticssitev1alpha1
 
 import (
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -29,11 +30,12 @@ type CloudflareWebAnalyticsSiteStackOutputs struct {
 	// path).
 	SiteTag string `protobuf:"bytes,1,opt,name=site_tag,json=siteTag,proto3" json:"site_tag,omitempty"`
 	// The site's measurement token, embedded by the JavaScript beacon.
-	// Treated as a credential in these outputs (marked secret by the modules)
-	// even though it ships inside public pages once deployed.
+	// Sensitive both here (machine-readable) and in the modules' output
+	// registration -- hygiene, not a control: the token ships inside public
+	// pages once deployed.
 	SiteToken string `protobuf:"bytes,2,opt,name=site_token,json=siteToken,proto3" json:"site_token,omitempty"`
 	// The ready-to-embed JavaScript snippet (carries the site token).
-	// Secret-marked by the modules for the same reason as site_token.
+	// Sensitive for the same reason as site_token.
 	Snippet string `protobuf:"bytes,3,opt,name=snippet,proto3" json:"snippet,omitempty"`
 	// The site's ruleset ID -- the parent object Cloudflare stores the
 	// include/exclude rules under.
@@ -104,12 +106,12 @@ var File_catalog_cloudflare_cloudflarewebanalyticssite_v1alpha1_outputs_proto pr
 
 const file_catalog_cloudflare_cloudflarewebanalyticssite_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/outputs.proto\x12:dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1\"\x9b\x01\n" +
+	"Dcatalog/cloudflare/cloudflarewebanalyticssite/v1alpha1/outputs.proto\x12:dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1\x1a\x1cshared/options/options.proto\"\xa7\x01\n" +
 	"&CloudflareWebAnalyticsSiteStackOutputs\x12\x19\n" +
-	"\bsite_tag\x18\x01 \x01(\tR\asiteTag\x12\x1d\n" +
+	"\bsite_tag\x18\x01 \x01(\tR\asiteTag\x12#\n" +
 	"\n" +
-	"site_token\x18\x02 \x01(\tR\tsiteToken\x12\x18\n" +
-	"\asnippet\x18\x03 \x01(\tR\asnippet\x12\x1d\n" +
+	"site_token\x18\x02 \x01(\tB\x04\xa0\xa6\x1d\x01R\tsiteToken\x12\x1e\n" +
+	"\asnippet\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\asnippet\x12\x1d\n" +
 	"\n" +
 	"ruleset_id\x18\x04 \x01(\tR\trulesetIdB\xd3\x03\n" +
 	">com.dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1B\fOutputsProtoP\x01Zvgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarewebanalyticssite/v1alpha1;cloudflarewebanalyticssitev1alpha1\xa2\x02\x04DPCC\xaa\x02:Dev.Planton.Cloudflare.Cloudflarewebanalyticssite.V1alpha1\xca\x02:Dev\\Planton\\Cloudflare\\Cloudflarewebanalyticssite\\V1alpha1\xe2\x02FDev\\Planton\\Cloudflare\\Cloudflarewebanalyticssite\\V1alpha1\\GPBMetadata\xea\x02>Dev::Planton::Cloudflare::Cloudflarewebanalyticssite::V1alpha1b\x06proto3"

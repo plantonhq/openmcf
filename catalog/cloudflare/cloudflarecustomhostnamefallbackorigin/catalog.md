@@ -78,7 +78,7 @@ These are the most important decisions when configuring a fallback origin. Explo
 
 **Origin (`origin`)** -- the default backend hostname, editable in place. It must be a record within the SaaS zone that points at the real backend; this component will not create that record for you. A literal hostname or a reference to a backend endpoint output.
 
-**Create equals update, and it is asynchronous** -- the write path is a PUT, so re-applying an identical spec is idempotent. But status passes through `pending_deployment` before `active` -- read `status` (and `errors`) before assuming custom-hostname traffic flows.
+**Create equals update, and it is asynchronous** -- the write path is a PUT, so re-applying an identical spec is idempotent. But status passes through `pending_deployment` before `active` -- read the deployment status (and errors) from the Cloudflare API or dashboard before assuming custom-hostname traffic flows.
 
 ## Outputs and Dependencies
 
@@ -96,9 +96,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `status` | The deployment status (`pending_deployment`, `active`) | Gating custom-hostname onboarding on `active` |
-| `errors` | Any errors reported while deploying the origin | Diagnosing an origin stuck outside `active` |
+| `created_at` | RFC3339 creation timestamp | Auditing |
+| `updated_at` | RFC3339 last-updated timestamp | Auditing |
 | `zone_id` | The zone this singleton belongs to | The only API handle the fallback origin has -- verification and import tooling consume it |
+
+Deployment status and the deployment-errors list are deliberately not outputs — both transition asynchronously server-side; read them from the Cloudflare API or dashboard.
 
 ## Common Patterns
 

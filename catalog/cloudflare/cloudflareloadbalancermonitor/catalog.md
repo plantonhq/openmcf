@@ -64,7 +64,7 @@ These are the most important decisions when configuring a monitor. Explore the f
 
 **Protocol (`type`)** -- determines what a check measures and which fields matter. `http`/`https` validate the application response (path, status codes, body, headers) and catch "up but broken" origins. `tcp`, `udp_icmp`, and `smtp` confirm a port accepts connections and require `port > 0` -- a tcp monitor with no port fails validation, while the HTTP knobs are ignored. `icmp_ping` checks raw reachability only. Prefer an application-layer check whenever clients use HTTP(S).
 
-**Expected codes (`expectedCodes`)** -- for HTTP(S), the response code or range (`200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body.
+**Expected codes (`expectedCodes`)** -- for HTTP(S), the response code or range (`200`, `2xx`, `200-299`) that marks an origin healthy. The endpoint must signal health through its HTTP status, not just the body. Cloudflare requires `expectedCodes` or `expectedBody` on every http/https monitor -- creation fails with a 400 (code 1002) when both are empty.
 
 **Timing and thresholds** -- `interval`, `timeout`, `retries`, `consecutiveUp`, and `consecutiveDown` trade failover speed for stability; effective detection time is roughly interval × consecutive-down. Zero means "Cloudflare's default" (60s / 5s / 2): the module omits zeroed fields so the server default applies. After an import, the API reports those defaults as numbers, so a post-import plan may show a diff on `port` or the `consecutive*` fields even though nothing operationally changed.
 

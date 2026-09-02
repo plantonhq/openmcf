@@ -118,6 +118,10 @@ type CloudflareZoneSettingsSpec struct {
 	// (for example ECDHE-ECDSA-AES128-GCM-SHA256). An empty list is "not managed";
 	// to reset the zone to Cloudflare defaults, apply the API's documented reset
 	// (an empty value) manually -- the module never sends an empty list.
+	// ENTITLEMENT-GATED WRITE: the zone must carry an Advanced Certificate
+	// Manager subscription or the API rejects the write with 400 code 1023
+	// (measured at v5.23.0) -- even though the settings API reports the id
+	// editable=true on every plan.
 	Ciphers []string `protobuf:"bytes,22,rep,name=ciphers,proto3" json:"ciphers,omitempty"`
 	// CNAME flattening behavior at the zone apex and beyond: flatten_at_root
 	// flattens only the root record, flatten_all flattens every CNAME.

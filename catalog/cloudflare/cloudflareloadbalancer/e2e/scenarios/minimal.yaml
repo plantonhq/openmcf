@@ -1,8 +1,11 @@
 # Minimal CloudflareLoadBalancer scenario: static failover (steering off) over
 # one prerequisite pool, gray-clouded, in the prerequisite zone. The zone_id
 # and pool references resolve from the prerequisites' outputs (the kind's
-# registry prerequisites). The hostname is relative to the fixture zone, whose
-# name is already run-scoped -- no run-scoping needed here.
+# registry prerequisites). The hostname is FULLY QUALIFIED, composed from the
+# fixture zone's run-scoped name with the same run token: Cloudflare rejects a
+# bare label with 400 code 1002 "Invalid load balancer name: invalid hostname"
+# (measured live 2026-08-28) -- the API wants the complete DNS name, exactly
+# as the spec models it.
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareLoadBalancer
 metadata:
@@ -18,7 +21,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  hostname: e2e-lb-minimal
+  hostname: e2e-lb-minimal.planton-e2e-${E2E_RUN_ID}.com
   zoneId:
     valueFrom:
       kind: CloudflareDnsZone

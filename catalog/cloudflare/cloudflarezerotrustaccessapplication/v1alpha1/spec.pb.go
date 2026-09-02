@@ -672,7 +672,10 @@ type CloudflareZeroTrustAccessApplicationSpec struct {
 	Type CloudflareZeroTrustAccessApplicationType `protobuf:"varint,4,opt,name=type,proto3,enum=dev.planton.cloudflare.cloudflarezerotrustaccessapplication.v1alpha1.CloudflareZeroTrustAccessApplicationType" json:"type,omitempty"`
 	// The primary fully-qualified domain protected by this application (e.g.
 	// "app.example.com"). Required for self_hosted/ssh/vnc/rdp; ignored for types
-	// that don't front a single hostname.
+	// that don't front a single hostname. The hostname must sit on a zone this
+	// account owns AND that zone must be ACTIVE (registrar-delegated): Cloudflare
+	// rejects the create with "access.api.error.invalid_request: domain does not
+	// belong to zone" while the zone is still pending (measured live).
 	Domain string `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
 	// The policies that govern this application, in evaluation order. Each entry
 	// references a standalone CloudflareZeroTrustAccessPolicy by ID; precedence

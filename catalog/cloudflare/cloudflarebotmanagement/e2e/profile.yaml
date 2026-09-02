@@ -20,8 +20,15 @@ spec:
   # from responses entirely, the class behind the provider's own recorded
   # refresh-drift issue -- never set them live on the free fixture zone.
   tier: 1
-  # Authored to the full offline bar; awaiting the first live proof session
-  # (no Cloudflare account exists yet). The proving session flips this to
-  # green after both engine lanes and the blind import round-trip pass.
-  status: pending_proof
+  # PROVEN live 2026-08-27: both scenarios on both engines through the full
+  # lifecycle; the bare-zone-id blind import round-trip passed at zero
+  # tolerances; the settings-singleton verify-absent (surface still answers)
+  # validated on a pending zone. First contact measured the FIGHT-MODE PAIR
+  # RULE: Cloudflare refuses fight_mode while the zone's JS detections are
+  # off (400 code 10400) -- the fight-mode scenario declares enable_js: true
+  # alongside, and the pair rule is taught on the spec fields and GUIDE.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

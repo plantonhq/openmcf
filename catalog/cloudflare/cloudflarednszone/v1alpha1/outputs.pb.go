@@ -49,7 +49,12 @@ type CloudflareDnsZoneStackOutputs struct {
 	// The DNSKEY public key. Empty unless DNSSEC is enabled.
 	DnssecPublicKey string `protobuf:"bytes,11,opt,name=dnssec_public_key,json=dnssecPublicKey,proto3" json:"dnssec_public_key,omitempty"`
 	// The DNSKEY flags. Empty unless DNSSEC is enabled.
-	DnssecFlags   string `protobuf:"bytes,12,opt,name=dnssec_flags,json=dnssecFlags,proto3" json:"dnssec_flags,omitempty"`
+	DnssecFlags string `protobuf:"bytes,12,opt,name=dnssec_flags,json=dnssecFlags,proto3" json:"dnssec_flags,omitempty"`
+	// Cloudflare-assigned ids of the zone's inline DNS records, keyed by the
+	// records' name-type-index key (both engines key record instances the same
+	// way). Import recipes derive each record's {zone_id}/{dns_record_id}
+	// import ID from this map; empty when the spec declares no inline records.
+	RecordIds     map[string]string `protobuf:"bytes,13,rep,name=record_ids,json=recordIds,proto3" json:"record_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -168,11 +173,18 @@ func (x *CloudflareDnsZoneStackOutputs) GetDnssecFlags() string {
 	return ""
 }
 
+func (x *CloudflareDnsZoneStackOutputs) GetRecordIds() map[string]string {
+	if x != nil {
+		return x.RecordIds
+	}
+	return nil
+}
+
 var File_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	";catalog/cloudflare/cloudflarednszone/v1alpha1/outputs.proto\x121dev.planton.cloudflare.cloudflarednszone.v1alpha1\"\xdf\x03\n" +
+	";catalog/cloudflare/cloudflarednszone/v1alpha1/outputs.proto\x121dev.planton.cloudflare.cloudflarednszone.v1alpha1\"\x9d\x05\n" +
 	"\x1dCloudflareDnsZoneStackOutputs\x12\x17\n" +
 	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12 \n" +
 	"\vnameservers\x18\x02 \x03(\tR\vnameservers\x12\x16\n" +
@@ -186,7 +198,12 @@ const file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDesc =
 	"\x0ednssec_key_tag\x18\n" +
 	" \x01(\tR\fdnssecKeyTag\x12*\n" +
 	"\x11dnssec_public_key\x18\v \x01(\tR\x0fdnssecPublicKey\x12!\n" +
-	"\fdnssec_flags\x18\f \x01(\tR\vdnssecFlagsB\x94\x03\n" +
+	"\fdnssec_flags\x18\f \x01(\tR\vdnssecFlags\x12~\n" +
+	"\n" +
+	"record_ids\x18\r \x03(\v2_.dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneStackOutputs.RecordIdsEntryR\trecordIds\x1a<\n" +
+	"\x0eRecordIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x94\x03\n" +
 	"5com.dev.planton.cloudflare.cloudflarednszone.v1alpha1B\fOutputsProtoP\x01Zdgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarednszone/v1alpha1;cloudflarednszonev1alpha1\xa2\x02\x04DPCC\xaa\x021Dev.Planton.Cloudflare.Cloudflarednszone.V1alpha1\xca\x021Dev\\Planton\\Cloudflare\\Cloudflarednszone\\V1alpha1\xe2\x02=Dev\\Planton\\Cloudflare\\Cloudflarednszone\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Cloudflare::Cloudflarednszone::V1alpha1b\x06proto3"
 
 var (
@@ -201,16 +218,18 @@ func file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDescGZI
 	return file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_goTypes = []any{
 	(*CloudflareDnsZoneStackOutputs)(nil), // 0: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneStackOutputs
+	nil,                                   // 1: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneStackOutputs.RecordIdsEntry
 }
 var file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneStackOutputs.record_ids:type_name -> dev.planton.cloudflare.cloudflarednszone.v1alpha1.CloudflareDnsZoneStackOutputs.RecordIdsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_init() }
@@ -224,7 +243,7 @@ func file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDesc), len(file_catalog_cloudflare_cloudflarednszone_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -4,7 +4,11 @@ Operational judgment for D1 databases. The README covers what each field is; thi
 
 ## Placement is fixed at creation
 
-Both the region hint and the jurisdiction are creation-time decisions: changing either replaces the database, which destroys its data. Pick placement before the database holds anything real, and treat a placement change in a plan as the destructive event it is.
+Both the region hint and the jurisdiction are creation-time decisions. They fail differently when edited later, and both protect your data (live-verified 2026-08-26). Editing `region` does nothing: Cloudflare never returns the hint, so both engines deliberately ignore post-create changes — the alternative was a plan that destroys the database (data included) to move a hint. Editing `jurisdiction` still plans a REPLACE, which destroys the data — treat it as the destructive event it is. Either way: pick placement before the database holds anything real; changing it for real means creating a new database and migrating.
+
+## Adopting an existing database
+
+Import works by `{account_id}/{database_id}` and lands cleanly — including `read_replication`, which Cloudflare reports even when never configured. The one field an import cannot restore is the region hint (never returned by the API); it stays unmanaged after adoption, which is harmless because it is inert post-create anyway.
 
 ## Region and jurisdiction are two answers to one question
 

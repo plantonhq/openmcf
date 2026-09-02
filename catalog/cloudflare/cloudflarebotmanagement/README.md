@@ -77,6 +77,10 @@ spec:
   zone_id:
     value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   fight_mode: true
+  # Required alongside fight_mode when the zone's JS detections are off --
+  # Cloudflare rejects Fight Mode on its own with "cannot enable Fight_Mode
+  # while EnableJS is disabled".
+  enable_js: true
 ```
 
 ## Destroy Semantics

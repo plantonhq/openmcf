@@ -1,0 +1,16 @@
+# Offline-plan arm: Cloudflare's built-in email-PIN login -- the one provider
+# type that needs NO config (the module sends the empty config object the API
+# expects). Offline because one-time PIN is an ACCOUNT SINGLETON: Cloudflare
+# refuses a second onetimepin provider with 409 "access.api.error.conflict: a
+# onetimepin connection already exists" (measured live 2026-08-26 on both
+# engines), and the shared test account permanently carries its production
+# OTP provider. Any account already using OTP hits the same wall -- adopt the
+# existing provider by import instead of creating a second one.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: test-idp-onetimepin
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: email-pin
+  type: onetimepin

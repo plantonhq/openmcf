@@ -55,92 +55,93 @@ variable "spec" {
     # (Optional) Restrict the record to Cloudflare internal (private) routing.
     private_routing = optional(bool, false)
 
-    # (Optional) Structured data for non-simple record types. Exactly one case
-    # is set; locals.tf flattens it into the provider's single data object.
-    data = optional(object({
-      caa = optional(object({
-        flags = optional(number)
-        tag   = optional(string)
-        value = optional(string)
-      }))
-      cert = optional(object({
-        type        = optional(number)
-        key_tag     = optional(number)
-        algorithm   = optional(number)
-        certificate = optional(string)
-      }))
-      dnskey = optional(object({
-        flags      = optional(number)
-        protocol   = optional(number)
-        algorithm  = optional(number)
-        public_key = optional(string)
-      }))
-      ds = optional(object({
-        key_tag     = optional(number)
-        algorithm   = optional(number)
-        digest_type = optional(number)
-        digest      = optional(string)
-      }))
-      https = optional(object({
-        priority = optional(number)
-        target   = optional(string)
-        value    = optional(string)
-      }))
-      loc = optional(object({
-        lat_direction  = optional(string)
-        lat_degrees    = optional(number)
-        lat_minutes    = optional(number)
-        lat_seconds    = optional(number)
-        long_direction = optional(string)
-        long_degrees   = optional(number)
-        long_minutes   = optional(number)
-        long_seconds   = optional(number)
-        altitude       = optional(number)
-        size           = optional(number)
-        precision_horz = optional(number)
-        precision_vert = optional(number)
-      }))
-      naptr = optional(object({
-        order       = optional(number)
-        preference  = optional(number)
-        flags       = optional(string)
-        service     = optional(string)
-        regex       = optional(string)
-        replacement = optional(string)
-      }))
-      smimea = optional(object({
-        usage         = optional(number)
-        selector      = optional(number)
-        matching_type = optional(number)
-        certificate   = optional(string)
-      }))
-      srv = optional(object({
-        priority = optional(number)
-        weight   = optional(number)
-        port     = optional(number)
-        target   = optional(string)
-      }))
-      sshfp = optional(object({
-        algorithm   = optional(number)
-        type        = optional(number)
-        fingerprint = optional(string)
-      }))
-      svcb = optional(object({
-        priority = optional(number)
-        target   = optional(string)
-        value    = optional(string)
-      }))
-      tlsa = optional(object({
-        usage         = optional(number)
-        selector      = optional(number)
-        matching_type = optional(number)
-        certificate   = optional(string)
-      }))
-      uri = optional(object({
-        priority = optional(number)
-        weight   = optional(number)
-        target   = optional(string)
-      }))
+    # Structured data for non-simple record types. The proto models these as a
+    # oneof named `data`, and the tfvars converter emits the ACTIVE CASE as a
+    # top-level spec attribute (srv = {...}, caa = {...}); a `data` wrapper key
+    # never appears in tfvars. At most one case is set; locals.tf flattens it
+    # into the provider's single data object.
+    caa = optional(object({
+      flags = optional(number)
+      tag   = optional(string)
+      value = optional(string)
+    }))
+    cert = optional(object({
+      type        = optional(number)
+      key_tag     = optional(number)
+      algorithm   = optional(number)
+      certificate = optional(string)
+    }))
+    dnskey = optional(object({
+      flags      = optional(number)
+      protocol   = optional(number)
+      algorithm  = optional(number)
+      public_key = optional(string)
+    }))
+    ds = optional(object({
+      key_tag     = optional(number)
+      algorithm   = optional(number)
+      digest_type = optional(number)
+      digest      = optional(string)
+    }))
+    https = optional(object({
+      priority = optional(number)
+      target   = optional(string)
+      value    = optional(string)
+    }))
+    loc = optional(object({
+      lat_direction  = optional(string)
+      lat_degrees    = optional(number)
+      lat_minutes    = optional(number)
+      lat_seconds    = optional(number)
+      long_direction = optional(string)
+      long_degrees   = optional(number)
+      long_minutes   = optional(number)
+      long_seconds   = optional(number)
+      altitude       = optional(number)
+      size           = optional(number)
+      precision_horz = optional(number)
+      precision_vert = optional(number)
+    }))
+    naptr = optional(object({
+      order       = optional(number)
+      preference  = optional(number)
+      flags       = optional(string)
+      service     = optional(string)
+      regex       = optional(string)
+      replacement = optional(string)
+    }))
+    smimea = optional(object({
+      usage         = optional(number)
+      selector      = optional(number)
+      matching_type = optional(number)
+      certificate   = optional(string)
+    }))
+    srv = optional(object({
+      priority = optional(number)
+      weight   = optional(number)
+      port     = optional(number)
+      target   = optional(string)
+    }))
+    sshfp = optional(object({
+      algorithm   = optional(number)
+      type        = optional(number)
+      fingerprint = optional(string)
+    }))
+    svcb = optional(object({
+      priority = optional(number)
+      target   = optional(string)
+      value    = optional(string)
+    }))
+    tlsa = optional(object({
+      usage         = optional(number)
+      selector      = optional(number)
+      matching_type = optional(number)
+      certificate   = optional(string)
+    }))
+    uri = optional(object({
+      priority = optional(number)
+      weight   = optional(number)
+      target   = optional(string)
     }))
   })
 }

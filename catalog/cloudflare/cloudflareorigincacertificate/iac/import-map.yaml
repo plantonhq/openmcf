@@ -22,6 +22,9 @@ spec:
         - from_stack_output: private_key
       where_to_find: >-
         The prior deploy's `private_key` stack output (populated only when
-        the module generated the key). Empty when the spec supplied a CSR
-        -- in that case the tls helpers are absent (count = 0) and this
-        placeholder is unused. The PEM is never shown in the dashboard.
+        the module generated the key). Recorded for reference only: the
+        tls helpers ship NO importer upstream ("Resource Import Not
+        Implemented", measured live 2026-08-28), so adoption re-creates
+        them and re-issues the certificate. Empty when the spec supplied a
+        CSR -- the helpers are absent (count = 0) on that arm. The PEM is
+        never shown in the dashboard.

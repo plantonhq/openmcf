@@ -1,7 +1,8 @@
-# The revert: turn fight_mode back off. Because Bot Management destroy is a
-# NO-OP at Cloudflare, running this scenario AFTER fight-mode is what returns
-# the zone to its default posture -- the ordering IS the revert discipline
-# (and the run-scoped fixture zone's destroy is the backstop).
+# The revert: turn fight_mode (and its required JS-detections pair) back off.
+# Because Bot Management destroy is a NO-OP at Cloudflare, running this
+# scenario AFTER fight-mode is what returns the zone to its default posture --
+# the ordering IS the revert discipline (and the run-scoped fixture zone's
+# destroy is the backstop).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareBotManagement
 metadata:
@@ -13,3 +14,4 @@ spec:
       name: planton-oss-e2e-cloudflarednszone-prereq
       fieldPath: status.outputs.zone_id
   fight_mode: false
+  enable_js: false

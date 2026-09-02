@@ -1,6 +1,6 @@
 # Cloudflare Waiting Room Event
 
-Deploys a scheduled event on a Cloudflare waiting room: a time window (a product launch, a ticket on-sale) during which the event's override values temporarily replace the room's own settings, with an optional prequeue that gathers early arrivals before the doors open. Every override is null-means-inherit — an unset field leaves the room's value in charge for the window. Events live on their own cadence, created and deleted per launch while the room persists, which is why they are their own kind rather than a field of the room.
+Deploys a scheduled event on a Cloudflare waiting room: a time window (a product launch, a ticket on-sale) during which the event's override values temporarily replace the room's own settings, with an optional prequeue that gathers early arrivals before the doors open. Scheduled events are a Waiting Rooms Advanced add-on feature per Cloudflare's plan matrix (the room itself is Business+). Every override is null-means-inherit — an unset field leaves the room's value in charge for the window. Events live on their own cadence, created and deleted per launch while the room persists, which is why they are their own kind rather than a field of the room.
 
 ## What Gets Created
 

@@ -68,8 +68,9 @@ var _ = ginkgo.Describe("CloudflareAuthenticatedOriginPullsSpec Custom Validatio
 						CertificateId: certRef(),
 					},
 					{
-						Hostname: "api.example.com",
-						Enabled:  proto.Bool(false),
+						Hostname:      "api.example.com",
+						CertificateId: certRef(),
+						Enabled:       proto.Bool(false),
 					},
 				},
 			})
@@ -91,6 +92,16 @@ var _ = ginkgo.Describe("CloudflareAuthenticatedOriginPullsSpec Custom Validatio
 				ZoneId: zoneRef(),
 				HostnameAssociations: []*CloudflareAuthenticatedOriginPullsHostnameAssociation{
 					{CertificateId: certRef()},
+				},
+			})
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an association without a certificate -- Cloudflare requires the id on every association write (400 code 1404, measured live)", func() {
+			input := validAop(&CloudflareAuthenticatedOriginPullsSpec{
+				ZoneId: zoneRef(),
+				HostnameAssociations: []*CloudflareAuthenticatedOriginPullsHostnameAssociation{
+					{Hostname: "app.example.com"},
 				},
 			})
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())

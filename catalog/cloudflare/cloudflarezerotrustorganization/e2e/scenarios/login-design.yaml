@@ -1,9 +1,14 @@
 # Login-design scenario: proves the singleton upsert with SAFE cosmetic
-# fields plus the folded key-rotation cadence -- deliberately NO auth_domain
-# (changing the team domain would break every Access login on the account)
-# and no MFA policy mutation. The proof lane captures the organization's
-# prior values before this runs and restores them afterward (no-op destroy
-# reverts nothing).
+# fields plus the folded key-rotation cadence -- no MFA policy mutation.
+# The proof lane captures the organization's prior values before this runs
+# and restores them afterward (no-op destroy reverts nothing).
+#
+# auth_domain is REQUIRED on every organization write (API error 11004
+# invalid_auth_domain when omitted, live-measured), so the scenario sends
+# the account's CURRENT team domain UNCHANGED via
+# PLANTON_E2E_CLOUDFLARE_TEAM_DOMAIN (a same-value write; renaming the team
+# domain would break every Access login on the account, so the value must
+# be the real one -- hence env-gated with an honest skip when unset).
 apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustOrganization
 metadata:
@@ -16,10 +21,16 @@ metadata:
     e2e-component: cloudflarezerotrustorganization
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_TEAM_DOMAIN
   tags:
     - planton-e2e
 spec:
   account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  auth_domain: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_TEAM_DOMAIN}
+  # name declared deliberately: the API echoes the org's existing display
+  # name on read, so an omitted name re-plans "name -> null" forever
+  # (live-measured). The restore step puts the captured original back.
+  name: Planton E2E ${E2E_RUN_ID}
   session_duration: 24h
   login_design:
     background_color: "#0f172a"
