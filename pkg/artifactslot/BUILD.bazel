@@ -1,0 +1,29 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "artifactslot",
+    srcs = ["artifactslot.go"],
+    importpath = "github.com/plantonhq/planton/pkg/artifactslot",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//shared/options",
+        "@com_github_pkg_errors//:errors",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "artifactslot_test",
+    srcs = ["artifactslot_test.go"],
+    embed = [":artifactslot"],
+    deps = [
+        "//catalog/aws/awsecstaskdefinition/v1alpha1",
+        "//catalog/gcp/gcpcloudrun/v1alpha1",
+        "//catalog/kubernetes",
+        "//catalog/kubernetes/kubernetesdeployment/v1alpha1",
+        "//shared/options",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)

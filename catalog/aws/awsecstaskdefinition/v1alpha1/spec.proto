@@ -40,8 +40,13 @@ message AwsEcsTaskDefinitionSpec {
   // add sidecars (a log router, an OpenTelemetry collector, a proxy) as
   // additional entries and order their startup with depends_on. At least
   // one container must be essential -- when an essential container exits,
-  // the whole task stops.
-  repeated AwsEcsTaskDefinitionContainer containers = 2 [(buf.validate.field).repeated.min_items = 1];
+  // the whole task stops. Deployment pipelines inject the built image into
+  // containers whose image is left BLANK (the image-slot contract);
+  // authored images are untouched.
+  repeated AwsEcsTaskDefinitionContainer containers = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.options.artifact_image_slot) = "image"
+  ];
 
   // Launch types the task definition validates against: "FARGATE",
   // "EC2", "EXTERNAL" (ECS Anywhere), and/or "MANAGED_INSTANCES" (ECS

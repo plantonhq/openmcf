@@ -189,6 +189,8 @@ type GcpCloudRunSpec struct {
 	// sidecars (log collectors, auth proxies, service meshes) that share the
 	// instance's network namespace (localhost) and volumes. Exactly one
 	// container may expose a port. Use depends_on for startup ordering.
+	// Deployment pipelines inject the built image into containers whose image
+	// is left BLANK (the image-slot contract); authored images are untouched.
 	Containers []*GcpCloudRunContainer `protobuf:"bytes,6,rep,name=containers,proto3" json:"containers,omitempty"`
 	// Named volumes instances can mount: Cloud SQL sockets, Secret Manager
 	// material, in-memory or disk scratch space, GCS buckets (FUSE), and NFS
@@ -3021,16 +3023,16 @@ var File_catalog_gcp_gcpcloudrun_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudrun_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/gcp/gcpcloudrun/v1alpha1/spec.proto\x12$dev.planton.gcp.gcpcloudrun.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe4!\n" +
+	"+catalog/gcp/gcpcloudrun/v1alpha1/spec.proto\x12$dev.planton.gcp.gcpcloudrun.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xed!\n" +
 	"\x0fGcpCloudRunSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12@\n" +
 	"\x06region\x18\x02 \x01(\tB(\xbaH%\xc8\x01\x01r 2\x1e^([a-z]+-[a-z]+[0-9]+|global)$R\x06region\x12K\n" +
 	"\fservice_name\x18\x03 \x01(\tB(\xbaH%\xd8\x01\x01r \x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12-\n" +
 	"\vdescription\x18\x04 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\x80\x04R\vdescription\x12Y\n" +
-	"\x06labels\x18\x05 \x03(\v2A.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunSpec.LabelsEntryR\x06labels\x12d\n" +
+	"\x06labels\x18\x05 \x03(\v2A.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunSpec.LabelsEntryR\x06labels\x12m\n" +
 	"\n" +
-	"containers\x18\x06 \x03(\v2:.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"containers\x18\x06 \x03(\v2:.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunContainerB\x11\xbaH\x05\x92\x01\x02\b\x01\xba\xa6\x1d\x05imageR\n" +
 	"containers\x12Q\n" +
 	"\avolumes\x18\a \x03(\v27.dev.planton.gcp.gcpcloudrun.v1alpha1.GcpCloudRunVolumeR\avolumes\x12z\n" +
 	"\x0fservice_account\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eserviceAccount\x12Z\n" +

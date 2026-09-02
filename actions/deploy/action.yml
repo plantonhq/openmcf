@@ -36,9 +36,11 @@ inputs:
     required: true
   image:
     description: >-
-      Connected mode: container image reference to deploy (host/path:tag or
-      @digest). Offline, the tree's authored values are the truth — inject
-      the image your job built with the `set` input instead.
+      Container image reference to deploy (host/path:tag or @digest) — both
+      modes. Connected, the backend injects it per the service's declared
+      deploy targets. Offline, the CLI injects it into the tree's annotated
+      image slots (blank container images receive it; authored images are
+      untouched); the `set` input remains the field-exact escape hatch.
     required: false
   audience:
     description: >-
@@ -139,9 +141,6 @@ runs:
           MODE="offline"
           if [ -n "${IN_SERVICE}" ]; then
             problem "offline mode deploys the checked-out working tree, so 'service' selects nothing — remove:  service: ${IN_SERVICE}  (or add 'org' and 'audience' to deploy through your Planton backend)"
-          fi
-          if [ -n "${IN_IMAGE}" ]; then
-            problem "offline mode takes the image from the tree's own values — remove 'image' and inject it instead with:  set: <kind>/<name>:<fieldPath>=${IN_IMAGE}"
           fi
           if [ "${IN_REGISTER}" = "true" ]; then
             problem "'register' applies the service manifest to a Planton backend, and offline mode has none — remove:  register: true"
@@ -269,6 +268,7 @@ runs:
         # the worst failure mode this step can have.
         PLANTON_BACKEND: none
         IN_ENVIRONMENT: ${{ inputs.environment }}
+        IN_IMAGE: ${{ inputs.image }}
         IN_SET: ${{ inputs.set }}
       run: |
         set -uo pipefail
@@ -276,15 +276,18 @@ runs:
         # log group always closes and the verdict lands OUTSIDE it — a failed
         # run's summary shows the one sentence that matters, and the full
         # preflight report and engine output stay one click away.
-        SET_FLAGS=()
+        EXTRA_FLAGS=()
+        if [ -n "${IN_IMAGE}" ]; then
+          EXTRA_FLAGS+=(--image "${IN_IMAGE}")
+        fi
         while IFS= read -r line; do
           if [ -z "${line//[[:space:]]/}" ]; then continue ; fi
-          SET_FLAGS+=(--set "${line}")
+          EXTRA_FLAGS+=(--set "${line}")
         done <<< "${IN_SET}"
         echo "::group::planton service deploy --env ${IN_ENVIRONMENT} (offline)"
         rc=0
         planton service deploy --env "${IN_ENVIRONMENT}" --auto-approve \
-          ${SET_FLAGS[@]+"${SET_FLAGS[@]}"} || rc=$?
+          ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"} || rc=$?
         echo "::endgroup::"
         case "${rc}" in
           0) echo "offline deploy succeeded — every resource in the tree is live in '${IN_ENVIRONMENT}'" ;;

@@ -124,6 +124,22 @@ var file_shared_options_options_proto_extTypes = []protoimpl.ExtensionInfo{
 		Filename:      "shared/options/options.proto",
 	},
 	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*string)(nil),
+		Field:         60007,
+		Name:          "dev.planton.shared.options.artifact_image_slot",
+		Tag:           "bytes,60007,opt,name=artifact_image_slot",
+		Filename:      "shared/options/options.proto",
+	},
+	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*bool)(nil),
+		Field:         60008,
+		Name:          "dev.planton.shared.options.artifact_version_slot",
+		Tag:           "varint,60008,opt,name=artifact_version_slot",
+		Filename:      "shared/options/options.proto",
+	},
+	{
 		ExtendedType:  (*descriptorpb.EnumValueOptions)(nil),
 		ExtensionType: (*string)(nil),
 		Field:         60050,
@@ -177,12 +193,48 @@ var (
 	//
 	// optional string diagram_label = 60006;
 	E_DiagramLabel = &file_shared_options_options_proto_extTypes[5]
+	// Marks a workload kind's IMAGE SLOT: the field where a deployment pipeline
+	// injects the container image it built. Authored on the CONTAINER-CARRYING
+	// field of the spec (never on a leaf inside a shared container message,
+	// where sidecars would inherit it), with the value naming the dotted
+	// subpath from each element to the image, e.g. "image" on a repeated
+	// container list, or "app.image" on a singular container group whose `app`
+	// is the one injectable container.
+	//
+	// The injection SEMANTICS derive from the annotated field's own shape and
+	// are implemented once per consumer stack, never per kind:
+	//   - a REPEATED annotated field is blank-fill: elements whose image is
+	//     empty receive the built reference; explicitly authored images
+	//     (sidecars) are untouched — leaving the image blank IS the authoring
+	//     contract, so there is no placeholder grammar to typo;
+	//   - a SINGULAR annotated field is unconditional: the subpath's image is
+	//     set outright (the kind models one injectable container);
+	//   - a subpath resolving to a repo+tag MESSAGE receives the reference
+	//     SPLIT (host/path:tag and host/path@digest both parse); a subpath
+	//     resolving to a string receives it whole.
+	//
+	// Consumers: the offline deploy lane's injection walks these annotations
+	// from descriptors; hosted control planes keep authored per-kind injectors
+	// and hold them to these annotations with an agreement test — the two can
+	// never drift silently. Annotate a kind ONLY when every consumer stack
+	// injects it; an annotation without a hosted injector fails that gate.
+	//
+	// optional string artifact_image_slot = 60007;
+	E_ArtifactImageSlot = &file_shared_options_options_proto_extTypes[6]
+	// Marks a workload kind's VERSION SLOT: a spec field deployment pipelines
+	// stamp from the git branch (folded into the field's own grammar), part of
+	// the kind's deploy-target contract beside artifact_image_slot. Stamping
+	// is skipped when no branch rides the deploy — the field's authored or
+	// defaulted value stands.
+	//
+	// optional bool artifact_version_slot = 60008;
+	E_ArtifactVersionSlot = &file_shared_options_options_proto_extTypes[7]
 )
 
 // Extension fields to descriptorpb.EnumValueOptions.
 var (
 	// optional string display_label = 60050;
-	E_DisplayLabel = &file_shared_options_options_proto_extTypes[6]
+	E_DisplayLabel = &file_shared_options_options_proto_extTypes[8]
 )
 
 var File_shared_options_options_proto protoreflect.FileDescriptor
@@ -198,7 +250,9 @@ const file_shared_options_options_proto_rawDesc = "" +
 	"\x17recommended_default_map\x12\x1d.google.protobuf.FieldOptions\x18\xe3\xd4\x03 \x03(\v2(.dev.planton.shared.options.KeyValuePairR\x15recommendedDefaultMap:=\n" +
 	"\tsensitive\x12\x1d.google.protobuf.FieldOptions\x18\xe4\xd4\x03 \x01(\bR\tsensitive:W\n" +
 	"\x17sensitive_exempt_reason\x12\x1d.google.protobuf.FieldOptions\x18\xe5\xd4\x03 \x01(\tR\x15sensitiveExemptReason:D\n" +
-	"\rdiagram_label\x12\x1d.google.protobuf.FieldOptions\x18\xe6\xd4\x03 \x01(\tR\fdiagramLabel:H\n" +
+	"\rdiagram_label\x12\x1d.google.protobuf.FieldOptions\x18\xe6\xd4\x03 \x01(\tR\fdiagramLabel:O\n" +
+	"\x13artifact_image_slot\x12\x1d.google.protobuf.FieldOptions\x18\xe7\xd4\x03 \x01(\tR\x11artifactImageSlot:S\n" +
+	"\x15artifact_version_slot\x12\x1d.google.protobuf.FieldOptions\x18\xe8\xd4\x03 \x01(\bR\x13artifactVersionSlot:H\n" +
 	"\rdisplay_label\x12!.google.protobuf.EnumValueOptions\x18\x92\xd5\x03 \x01(\tR\fdisplayLabelB\xe7\x01\n" +
 	"\x1ecom.dev.planton.shared.optionsB\fOptionsProtoP\x01Z+github.com/plantonhq/planton/shared/options\xa2\x02\x04DPSO\xaa\x02\x1aDev.Planton.Shared.Options\xca\x02\x1aDev\\Planton\\Shared\\Options\xe2\x02&Dev\\Planton\\Shared\\Options\\GPBMetadata\xea\x02\x1dDev::Planton::Shared::Optionsb\x06proto3"
 
@@ -221,19 +275,21 @@ var file_shared_options_options_proto_goTypes = []any{
 	(*descriptorpb.EnumValueOptions)(nil), // 2: google.protobuf.EnumValueOptions
 }
 var file_shared_options_options_proto_depIdxs = []int32{
-	1, // 0: dev.planton.shared.options.default:extendee -> google.protobuf.FieldOptions
-	1, // 1: dev.planton.shared.options.recommended_default:extendee -> google.protobuf.FieldOptions
-	1, // 2: dev.planton.shared.options.recommended_default_map:extendee -> google.protobuf.FieldOptions
-	1, // 3: dev.planton.shared.options.sensitive:extendee -> google.protobuf.FieldOptions
-	1, // 4: dev.planton.shared.options.sensitive_exempt_reason:extendee -> google.protobuf.FieldOptions
-	1, // 5: dev.planton.shared.options.diagram_label:extendee -> google.protobuf.FieldOptions
-	2, // 6: dev.planton.shared.options.display_label:extendee -> google.protobuf.EnumValueOptions
-	0, // 7: dev.planton.shared.options.recommended_default_map:type_name -> dev.planton.shared.options.KeyValuePair
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	7, // [7:8] is the sub-list for extension type_name
-	0, // [0:7] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1,  // 0: dev.planton.shared.options.default:extendee -> google.protobuf.FieldOptions
+	1,  // 1: dev.planton.shared.options.recommended_default:extendee -> google.protobuf.FieldOptions
+	1,  // 2: dev.planton.shared.options.recommended_default_map:extendee -> google.protobuf.FieldOptions
+	1,  // 3: dev.planton.shared.options.sensitive:extendee -> google.protobuf.FieldOptions
+	1,  // 4: dev.planton.shared.options.sensitive_exempt_reason:extendee -> google.protobuf.FieldOptions
+	1,  // 5: dev.planton.shared.options.diagram_label:extendee -> google.protobuf.FieldOptions
+	1,  // 6: dev.planton.shared.options.artifact_image_slot:extendee -> google.protobuf.FieldOptions
+	1,  // 7: dev.planton.shared.options.artifact_version_slot:extendee -> google.protobuf.FieldOptions
+	2,  // 8: dev.planton.shared.options.display_label:extendee -> google.protobuf.EnumValueOptions
+	0,  // 9: dev.planton.shared.options.recommended_default_map:type_name -> dev.planton.shared.options.KeyValuePair
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	9,  // [9:10] is the sub-list for extension type_name
+	0,  // [0:9] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_shared_options_options_proto_init() }
@@ -248,7 +304,7 @@ func file_shared_options_options_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shared_options_options_proto_rawDesc), len(file_shared_options_options_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
-			NumExtensions: 7,
+			NumExtensions: 9,
 			NumServices:   0,
 		},
 		GoTypes:           file_shared_options_options_proto_goTypes,

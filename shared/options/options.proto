@@ -45,6 +45,40 @@ extend google.protobuf.FieldOptions {
   // inadequate. Keep labels short (2-4 words), lowercase, human: they are read on
   // a diagram at a glance, not in a form.
   string diagram_label = 60006;
+
+  // Marks a workload kind's IMAGE SLOT: the field where a deployment pipeline
+  // injects the container image it built. Authored on the CONTAINER-CARRYING
+  // field of the spec (never on a leaf inside a shared container message,
+  // where sidecars would inherit it), with the value naming the dotted
+  // subpath from each element to the image, e.g. "image" on a repeated
+  // container list, or "app.image" on a singular container group whose `app`
+  // is the one injectable container.
+  //
+  // The injection SEMANTICS derive from the annotated field's own shape and
+  // are implemented once per consumer stack, never per kind:
+  //   - a REPEATED annotated field is blank-fill: elements whose image is
+  //     empty receive the built reference; explicitly authored images
+  //     (sidecars) are untouched — leaving the image blank IS the authoring
+  //     contract, so there is no placeholder grammar to typo;
+  //   - a SINGULAR annotated field is unconditional: the subpath's image is
+  //     set outright (the kind models one injectable container);
+  //   - a subpath resolving to a repo+tag MESSAGE receives the reference
+  //     SPLIT (host/path:tag and host/path@digest both parse); a subpath
+  //     resolving to a string receives it whole.
+  //
+  // Consumers: the offline deploy lane's injection walks these annotations
+  // from descriptors; hosted control planes keep authored per-kind injectors
+  // and hold them to these annotations with an agreement test — the two can
+  // never drift silently. Annotate a kind ONLY when every consumer stack
+  // injects it; an annotation without a hosted injector fails that gate.
+  string artifact_image_slot = 60007;
+
+  // Marks a workload kind's VERSION SLOT: a spec field deployment pipelines
+  // stamp from the git branch (folded into the field's own grammar), part of
+  // the kind's deploy-target contract beside artifact_image_slot. Stamping
+  // is skipped when no branch rides the deploy — the field's authored or
+  // defaulted value stands.
+  bool artifact_version_slot = 60008;
 }
 
 extend google.protobuf.EnumValueOptions {

@@ -62,7 +62,9 @@ type KubernetesDeploymentSpec struct {
 	Version *string `protobuf:"bytes,3,opt,name=version,proto3,oneof" json:"version,omitempty"`
 	// *
 	// The containers of every replica: one main application container and any sidecars.
-	// All containers share the pod's network namespace and volumes.
+	// All containers share the pod's network namespace and volumes. Deployment
+	// pipelines inject the built image at `app.image` (the image-slot contract);
+	// sidecars are never injected.
 	Container *KubernetesDeploymentContainer `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
 	// *
 	// Pod-level configuration shared by all replicas: identity (ServiceAccount
@@ -571,13 +573,13 @@ var File_catalog_kubernetes_kubernetesdeployment_v1alpha1_spec_proto protoreflec
 
 const file_catalog_kubernetes_kubernetesdeployment_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	";catalog/kubernetes/kubernetesdeployment/v1alpha1/spec.proto\x124dev.planton.kubernetes.kubernetesdeployment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a+catalog/kubernetes/workload_container.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8f\x06\n" +
+	";catalog/kubernetes/kubernetesdeployment/v1alpha1/spec.proto\x124dev.planton.kubernetes.kubernetesdeployment.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a+catalog/kubernetes/workload_container.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa1\x06\n" +
 	"\x18KubernetesDeploymentSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xa1\x02\n" +
-	"\aversion\x18\x03 \x01(\tB\x81\x02\xbaH\xf5\x01\xba\x01\xed\x01\n" +
-	"\x13spec.version.format\x12|Version must contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen (e.g. \"main\", \"review-42\")\x1aXthis == '' || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')r\x02\x18\x1e\x8a\xa6\x1d\x04mainH\x00R\aversion\x88\x01\x01\x12y\n" +
-	"\tcontainer\x18\x04 \x01(\v2S.dev.planton.kubernetes.kubernetesdeployment.v1alpha1.KubernetesDeploymentContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x125\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xa5\x02\n" +
+	"\aversion\x18\x03 \x01(\tB\x85\x02\xbaH\xf5\x01\xba\x01\xed\x01\n" +
+	"\x13spec.version.format\x12|Version must contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen (e.g. \"main\", \"review-42\")\x1aXthis == '' || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')r\x02\x18\x1e\x8a\xa6\x1d\x04main\xc0\xa6\x1d\x01H\x00R\aversion\x88\x01\x01\x12\x86\x01\n" +
+	"\tcontainer\x18\x04 \x01(\v2S.dev.planton.kubernetes.kubernetesdeployment.v1alpha1.KubernetesDeploymentContainerB\x13\xbaH\x03\xc8\x01\x01\xba\xa6\x1d\tapp.imageR\tcontainer\x125\n" +
 	"\x03pod\x18\x05 \x01(\v2#.dev.planton.kubernetes.WorkloadPodR\x03pod\x12z\n" +
 	"\favailability\x18\x06 \x01(\v2V.dev.planton.kubernetes.kubernetesdeployment.v1alpha1.KubernetesDeploymentAvailabilityR\favailabilityB\n" +
 	"\n" +

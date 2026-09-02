@@ -58,7 +58,9 @@ type AwsEcsTaskDefinitionSpec struct {
 	// add sidecars (a log router, an OpenTelemetry collector, a proxy) as
 	// additional entries and order their startup with depends_on. At least
 	// one container must be essential -- when an essential container exits,
-	// the whole task stops.
+	// the whole task stops. Deployment pipelines inject the built image into
+	// containers whose image is left BLANK (the image-slot contract);
+	// authored images are untouched.
 	Containers []*AwsEcsTaskDefinitionContainer `protobuf:"bytes,2,rep,name=containers,proto3" json:"containers,omitempty"`
 	// Launch types the task definition validates against: "FARGATE",
 	// "EC2", "EXTERNAL" (ECS Anywhere), and/or "MANAGED_INSTANCES" (ECS
@@ -1775,11 +1777,11 @@ var File_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto protoreflect.FileD
 
 const file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awsecstaskdefinition/v1alpha1/spec.proto\x12-dev.planton.aws.awsecstaskdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfc\x1f\n" +
+	"4catalog/aws/awsecstaskdefinition/v1alpha1/spec.proto\x12-dev.planton.aws.awsecstaskdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x85 \n" +
 	"\x18AwsEcsTaskDefinitionSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12v\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x7f\n" +
 	"\n" +
-	"containers\x18\x02 \x03(\v2L.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"containers\x18\x02 \x03(\v2L.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerB\x11\xbaH\x05\x92\x01\x02\b\x01\xba\xa6\x1d\x05imageR\n" +
 	"containers\x12r\n" +
 	"\x18requires_compatibilities\x18\x03 \x03(\tB7\xbaH4\x92\x011\x18\x01\"-r+R\aFARGATER\x03EC2R\bEXTERNALR\x11MANAGED_INSTANCESR\x17requiresCompatibilities\x12\x10\n" +
 	"\x03cpu\x18\x04 \x01(\x05R\x03cpu\x12\x16\n" +

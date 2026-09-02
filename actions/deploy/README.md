@@ -13,8 +13,8 @@ The same action serves a repo through its whole journey — start offline with n
 
 | Direction | Change in the `with:` block |
 |---|---|
-| **Offline → connected** | Add `org`, `audience`, `service`, and `image`. Remove `set` (the backend injects the image) and drop the `PLANTON_BACKEND_*` state env — the backend holds state. |
-| **Connected → offline** | Remove `org`, `audience`, `service`, and `image`. Add `set` to inject your image, and give the job a remote state backend (`PLANTON_BACKEND_*` env or manifest annotations). |
+| **Offline → connected** | Add `org`, `audience`, and `service`. Drop the `PLANTON_BACKEND_*` state env — the backend holds state. `image` stays exactly as it is. |
+| **Connected → offline** | Remove `org`, `audience`, and `service`, and give the job a remote state backend (`PLANTON_BACKEND_*` env or manifest annotations). `image` stays exactly as it is. |
 
 Everything else — the checkout, the image build, the provider OIDC auth your job already does — stays exactly as it is.
 
@@ -50,8 +50,7 @@ jobs:
           PLANTON_BACKEND_BUCKET: my-project-tofu-state
         with:
           environment: prod
-          set: |
-            CloudRunService/storefront:spec.container.image=ghcr.io/acme/storefront@${{ steps.build.outputs.digest }}
+          image: ghcr.io/acme/storefront@${{ steps.build.outputs.digest }}
 ```
 
 The job's log shows one preflight report — schema, references, state backend reachability, credential validity, module availability, all checked before anything is handed to an IaC engine — then the resources deploy in the order their own references require, and the job's exit code tells the truth: refused at preflight (nothing ran) and a mid-deploy failure (re-run continues as no-ops) are distinct.
@@ -107,11 +106,11 @@ There is no API key to create, rotate, or leak — in either mode. Each connecte
 | `org` | connected | yes | | Planton organization slug. Setting `org` AND `audience` selects connected mode. |
 | `audience` | connected | yes | | The OIDC token audience — exactly the value your binding declares. |
 | `service` | connected | yes | | Service slug or id to deploy. |
-| `image` | connected | yes | | Container image reference (`host/path:tag` or `@digest`). Offline, inject the image with `set` instead. |
+| `image` | both | connected: yes | | Container image reference (`host/path:tag` or `@digest`). Connected, the backend injects it per the service's declared targets. Offline, the CLI injects it into the tree's annotated image slots — blank container images receive it, authored images (sidecars) are untouched. |
 | `register` | connected | no | `false` | Apply the service manifest before deploying. The manifest's declared repository is **proven** against this workflow's token, never trusted as typed. |
 | `service-file` | connected | no | `service.yaml` | Manifest path, used with `register: true`. |
 | `follow` | connected | no | `true` | Wait for the run and fail the job honestly (see below). Set `false` to fire-and-forget. Offline deploys run inside this job and are always followed. |
-| `set` | offline | no | | Node-addressed field overrides, one per line: `<kind>/<name>:<fieldPath>=<value>`. A tree holds many documents, so the override names its document — the classic use is injecting the image this job just built. |
+| `set` | offline | no | | Node-addressed field overrides, one per line: `<kind>/<name>:<fieldPath>=<value>`. A tree holds many documents, so the override names its document — the field-exact escape hatch when `image` alone is not enough. |
 | `working-directory` | offline | no | `.` | Directory holding the service's kustomize declaration. |
 | `cli-version` | both | no | `latest` | Planton CLI version to install. The download is checksum-verified before it is ever executed. |
 
@@ -123,7 +122,7 @@ There is no API key to create, rotate, or leak — in either mode. Each connecte
 
 ## What makes the job red
 
-**Both modes fail loudly at the inputs**: a half-state (`org` without `audience`, an `image` in offline mode, a missing `service` in connected mode) fails before any network call, naming the exact line to add or remove — all problems at once, never one at a time.
+**Both modes fail loudly at the inputs**: a half-state (`org` without `audience`, a `service` in offline mode, a missing `image` in connected mode) fails before any network call, naming the exact line to add or remove — all problems at once, never one at a time.
 
 **Offline**, the exit code is a contract:
 

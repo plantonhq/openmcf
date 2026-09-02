@@ -94,7 +94,12 @@ message GcpCloudRunSpec {
   // sidecars (log collectors, auth proxies, service meshes) that share the
   // instance's network namespace (localhost) and volumes. Exactly one
   // container may expose a port. Use depends_on for startup ordering.
-  repeated GcpCloudRunContainer containers = 6 [(buf.validate.field).repeated.min_items = 1];
+  // Deployment pipelines inject the built image into containers whose image
+  // is left BLANK (the image-slot contract); authored images are untouched.
+  repeated GcpCloudRunContainer containers = 6 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.options.artifact_image_slot) = "image"
+  ];
 
   // Named volumes instances can mount: Cloud SQL sockets, Secret Manager
   // material, in-memory or disk scratch space, GCS buckets (FUSE), and NFS
