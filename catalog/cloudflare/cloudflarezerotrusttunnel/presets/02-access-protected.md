@@ -19,6 +19,6 @@ request, wired to an Access application you manage.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<zero-trust-org>` | Your Zero Trust organization (team) name |
 | `<access-app-name>` | Name of the CloudflareZeroTrustAccessApplication protecting this hostname |

@@ -17,6 +17,6 @@ its own virtual network, so the two never collide.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<tenant-a-tunnel>` | Tunnel serving tenant A's network |
 | `<tenant-a-vnet>` | Virtual network isolating tenant A's CIDR |

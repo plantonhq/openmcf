@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("CloudflareR2BucketSpec Custom Validation Tests", func()
 		ginkgo.Context("jurisdiction and storage_class", func() {
 
 			ginkgo.It("should accept each valid jurisdiction value", func() {
-				for _, j := range []string{"", "default", "eu", "fedramp"} {
+				for _, j := range []string{"", "default", "eu", "fedramp", "us"} {
 					input := newBucket("test-jurisdiction", &CloudflareR2BucketSpec{
 						BucketName:   "test-bucket",
 						AccountId:    testAccountID,

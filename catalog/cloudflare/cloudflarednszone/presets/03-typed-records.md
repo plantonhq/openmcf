@@ -23,8 +23,8 @@ structured records through their typed blocks (`srv`, `caa`).
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<your-domain.com>` | Fully qualified domain for the zone | Your registered domain |
-| `<cloudflare-account-id>` | Cloudflare account ID | Cloudflare Dashboard → Overview → Account ID (right sidebar) |
+| `replaceme.example.com` | Fully qualified domain for the zone | Your registered domain |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Cloudflare account ID | Cloudflare Dashboard → Overview → Account ID (right sidebar) |
 | `<web-server-ipv4>` | Origin IPv4 for the proxied web record | Your origin infrastructure |
 | `<mail-host.your-domain.com>` | Mail exchanger hostname | Your mail provider's setup docs |
 | `<mail-provider.com>` | SPF include domain | Your mail provider's SPF docs |

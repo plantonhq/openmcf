@@ -232,11 +232,14 @@ at this custom domain. Leave empty to use Cloudflare's default cipher suite.
 
 Data-residency jurisdiction for the bucket, fixed at creation and part of
 the bucket's identity. One of "default" (standard global storage), "eu"
-(European Union residency), or "fedramp" (US FedRAMP). Leave empty for
-"default". Every bucket-scoped sub-resource is created in this jurisdiction.
+(European Union residency), "fedramp" (US FedRAMP), or "us" (United States
+residency). Leave empty for "default". Every bucket-scoped sub-resource is
+created in this jurisdiction. (Worker and Pages R2 BINDINGS accept a
+different value set -- "eu", "fedramp", "fedramp-high" -- each surface
+mirrors its own provider vocabulary deliberately.)
 
 - default: `default`
-- rule: jurisdiction must be one of "default", "eu", "fedramp"
+- rule: jurisdiction must be one of "default", "eu", "fedramp", "us"
 
 ### spec.storageClass
 

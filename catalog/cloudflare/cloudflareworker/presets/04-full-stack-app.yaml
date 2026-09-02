@@ -3,7 +3,7 @@ kind: CloudflareWorker
 metadata:
   name: full-stack-app
 spec:
-  accountId: <cloudflare-account-id>
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   workerName: full-stack-app
   # Full-stack app: a script handles dynamic routes (API), static assets serve
   # everything else. The assets binding lets the script read assets in code.

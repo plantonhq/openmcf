@@ -18,5 +18,5 @@ Creates a Cloudflare D1 serverless SQLite database with optional region and read
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<cloudflare-account-id>` | Cloudflare account ID | Dashboard → Overview → Account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Cloudflare account ID | Dashboard → Overview → Account ID |
 | `<database-name>` | Unique name for the D1 database | Choose a descriptive name (e.g., app-cache, user-sessions) |

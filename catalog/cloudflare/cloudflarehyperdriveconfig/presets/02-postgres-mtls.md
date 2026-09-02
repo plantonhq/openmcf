@@ -27,7 +27,7 @@ verifying both the CA and the server hostname.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<database-name>` | Name of the origin database |
 | `<database-user>` | Database user Hyperdrive authenticates as |
 | `<database-host>` | Hostname/IP of the origin database |

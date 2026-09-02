@@ -20,8 +20,8 @@ A private bucket that manages its own data over time: it tiers objects to Infreq
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<bucket-name>` | Unique bucket name | Choose DNS-safe name (e.g., app-logs-prod) |
-| `<cloudflare-account-id>` | Cloudflare account ID | Dashboard → Overview → Account ID |
+| `replace-with-your-bucket-name` | Unique bucket name | Choose DNS-safe name (e.g., app-logs-prod) |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Cloudflare account ID | Dashboard → Overview → Account ID |
 
 ## Related Presets
 

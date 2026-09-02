@@ -4,7 +4,7 @@ metadata:
   name: engineering-team
 spec:
   # The Cloudflare account that owns this reusable group.
-  accountId: "REPLACE_WITH_ACCOUNT_ID"
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   name: engineering-team
   # Anyone with a corporate email at one of these domains is in the group...
   include:

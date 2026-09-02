@@ -54,6 +54,7 @@ CloudflareD1DatabaseSpec configuration:
 |--------|------|-------------|
 | `database_id` | string | The unique identifier of the created D1 database |
 | `database_name` | string | The name of the database (same as input) |
+| `version` | string | The D1 engine version Cloudflare reports (server-assigned) |
 | `connection_string` | string | Connection string (currently empty - D1 uses Worker bindings) |
 
 ## Usage

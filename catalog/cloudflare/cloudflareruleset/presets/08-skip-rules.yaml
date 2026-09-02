@@ -16,7 +16,11 @@ spec:
       enabled: true
       action_parameters:
         rules:
-          "<target-ruleset-id>":
+          # Key: the ruleset containing the rules to skip (32-char hex; this is
+          # Cloudflare's managed WAF ruleset id -- replace with your target).
+          "efb7b8c949ac4650a09736fc376e9aee":
             values:
-              - "<rule-id-to-skip>"
-              - "<second-rule-id-to-skip>"
+              # Replace with the rule ids to skip inside that ruleset (32-char hex,
+              # from the ruleset's own rules list). Remove the second if not needed.
+              - "5de7edfa648c4d6891dc3e7f84534ffa"
+              - "75a0060762034a6cb663fd51a02344cb"

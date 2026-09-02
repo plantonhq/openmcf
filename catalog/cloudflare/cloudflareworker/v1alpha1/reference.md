@@ -442,7 +442,9 @@ The R2 bucket name, or a reference to a CloudflareR2Bucket resource.
 `string`
 
 Optional data-residency jurisdiction of the bucket. One of "eu", "fedramp",
-or "fedramp-high"; leave empty for the default jurisdiction.
+or "fedramp-high"; leave empty for the default jurisdiction. (This binding
+vocabulary is the provider's own and deliberately differs from the R2
+BUCKET kind's jurisdiction set -- "default", "eu", "fedramp", "us".)
 
 - rule: jurisdiction must be one of "eu", "fedramp", "fedramp-high"
 

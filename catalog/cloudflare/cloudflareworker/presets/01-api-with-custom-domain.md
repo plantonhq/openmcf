@@ -28,7 +28,7 @@ D1 by reference, exposed on a managed custom domain, with observability on.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<build-artifacts-bucket>` | R2 bucket holding the built worker bundle |
 | `<path/to/worker-bundle.js>` | Object key of the bundle in that bucket |
 | `<managed-secret-reference>` | Managed-secret reference for API_KEY |

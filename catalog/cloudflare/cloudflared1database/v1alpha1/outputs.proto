@@ -10,4 +10,8 @@ message CloudflareD1DatabaseStackOutputs {
 
   // The name of the database (same as the input name).
   string database_name = 2;
+
+  // The D1 engine version Cloudflare reports for the database (server-assigned,
+  // e.g. "production"). Informational; not used for wiring.
+  string version = 3;
 }

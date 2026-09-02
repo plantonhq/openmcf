@@ -47,8 +47,8 @@ your account.
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<your-domain.com>` | Fully qualified domain for the zone | Your registered domain |
-| `<cloudflare-account-id>` | Cloudflare account ID | Cloudflare Dashboard → Overview → Account ID (right sidebar) |
+| `replaceme.example.com` | Fully qualified domain for the zone | Your registered domain |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Cloudflare account ID | Cloudflare Dashboard → Overview → Account ID (right sidebar) |
 
 ## Note
 

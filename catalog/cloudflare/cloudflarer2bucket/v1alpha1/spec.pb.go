@@ -279,8 +279,11 @@ type CloudflareR2BucketSpec struct {
 	CustomDomains []*CloudflareR2BucketCustomDomainConfig `protobuf:"bytes,5,rep,name=custom_domains,json=customDomains,proto3" json:"custom_domains,omitempty"`
 	// Data-residency jurisdiction for the bucket, fixed at creation and part of
 	// the bucket's identity. One of "default" (standard global storage), "eu"
-	// (European Union residency), or "fedramp" (US FedRAMP). Leave empty for
-	// "default". Every bucket-scoped sub-resource is created in this jurisdiction.
+	// (European Union residency), "fedramp" (US FedRAMP), or "us" (United States
+	// residency). Leave empty for "default". Every bucket-scoped sub-resource is
+	// created in this jurisdiction. (Worker and Pages R2 BINDINGS accept a
+	// different value set -- "eu", "fedramp", "fedramp-high" -- each surface
+	// mirrors its own provider vocabulary deliberately.)
 	Jurisdiction string `protobuf:"bytes,6,opt,name=jurisdiction,proto3" json:"jurisdiction,omitempty"`
 	// Default storage class for newly uploaded objects. `Standard` suits
 	// frequently accessed data; `InfrequentAccess` lowers storage cost for
@@ -1395,7 +1398,7 @@ var File_catalog_cloudflare_cloudflarer2bucket_v1alpha1_spec_proto protoreflect.
 
 const file_catalog_cloudflare_cloudflarer2bucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9catalog/cloudflare/cloudflarer2bucket/v1alpha1/spec.proto\x122dev.planton.cloudflare.cloudflarer2bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda\t\n" +
+	"9catalog/cloudflare/cloudflarer2bucket/v1alpha1/spec.proto\x122dev.planton.cloudflare.cloudflarer2bucket.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe6\t\n" +
 	"\x16CloudflareR2BucketSpec\x12N\n" +
 	"\vbucket_name\x18\x01 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x03\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\n" +
 	"bucketName\x12=\n" +
@@ -1403,9 +1406,9 @@ const file_catalog_cloudflare_cloudflarer2bucket_v1alpha1_spec_proto_rawDesc = "
 	"account_id\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x162\x11^[0-9a-fA-F]{32}$\x98\x01 R\taccountId\x12n\n" +
 	"\blocation\x18\x03 \x01(\x0e2H.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2LocationB\b\x92\xa6\x1d\x04autoR\blocation\x12#\n" +
 	"\rpublic_access\x18\x04 \x01(\bR\fpublicAccess\x12\x89\x01\n" +
-	"\x0ecustom_domains\x18\x05 \x03(\v2X.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2BucketCustomDomainConfigB\b\xbaH\x05\x92\x01\x02\x102R\rcustomDomains\x12\xb8\x01\n" +
-	"\fjurisdiction\x18\x06 \x01(\tB\x93\x01\xbaH\x84\x01\xba\x01\x80\x01\n" +
-	"\x12jurisdiction.valid\x126jurisdiction must be one of \"default\", \"eu\", \"fedramp\"\x1a2this == '' || this in ['default', 'eu', 'fedramp']\x92\xa6\x1d\adefaultR\fjurisdiction\x12\x7f\n" +
+	"\x0ecustom_domains\x18\x05 \x03(\v2X.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2BucketCustomDomainConfigB\b\xbaH\x05\x92\x01\x02\x102R\rcustomDomains\x12\xc4\x01\n" +
+	"\fjurisdiction\x18\x06 \x01(\tB\x9f\x01\xbaH\x90\x01\xba\x01\x8c\x01\n" +
+	"\x12jurisdiction.valid\x12<jurisdiction must be one of \"default\", \"eu\", \"fedramp\", \"us\"\x1a8this == '' || this in ['default', 'eu', 'fedramp', 'us']\x92\xa6\x1d\adefaultR\fjurisdiction\x12\x7f\n" +
 	"\rstorage_class\x18\a \x01(\x0e2L.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2StorageClassB\f\x92\xa6\x1d\bStandardR\fstorageClass\x12d\n" +
 	"\x04cors\x18\b \x01(\v2P.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2BucketCorsConfigR\x04cors\x12s\n" +
 	"\tlifecycle\x18\t \x01(\v2U.dev.planton.cloudflare.cloudflarer2bucket.v1alpha1.CloudflareR2BucketLifecycleConfigR\tlifecycle\x12d\n" +

@@ -21,9 +21,9 @@ matches.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | Account that owns the monitor and pools |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Account that owns the monitor and pools |
 | `<cloudflare-zone-id>` | Zone containing the hostname |
-| `<www-subdomain>.<your-domain.com>` | Load balancer hostname |
+| `<www-subdomain>.replaceme.example.com` | Load balancer hostname |
 | `<us-east-origin-ip-or-hostname>` / `<eu-west-origin-ip-or-hostname>` | Regional origin addresses |
 
 ## Related Presets

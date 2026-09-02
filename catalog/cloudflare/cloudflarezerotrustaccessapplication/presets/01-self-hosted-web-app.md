@@ -19,7 +19,7 @@ with a referenced Access policy and a 24-hour session.
 
 | Placeholder | Description |
 |---|---|
-| `REPLACE_WITH_ACCOUNT_ID` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 
 ## Composition
 

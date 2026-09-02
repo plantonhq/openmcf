@@ -23,11 +23,11 @@ Creates a public R2 bucket served via a custom domain (e.g., media.example.com).
 
 | Placeholder | Description | Where to Find |
 |-------------|-------------|---------------|
-| `<bucket-name>` | Unique bucket name | Choose DNS-safe name (e.g., media-cdn) |
-| `<cloudflare-account-id>` | Cloudflare account ID | Dashboard → Overview → Account ID |
+| `replace-with-your-bucket-name` | Unique bucket name | Choose DNS-safe name (e.g., media-cdn) |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Cloudflare account ID | Dashboard → Overview → Account ID |
 | `<cloudflare-zone-id>` | Zone ID for your domain | CloudflareDnsZone status.outputs.zone_id |
 | `<cdn-subdomain>` | Subdomain for the bucket | e.g., media, cdn, static |
-| `<your-domain.com>` | Your domain | Domain in the Cloudflare zone |
+| `replaceme.example.com` | Your domain | Domain in the Cloudflare zone |
 
 ## Related Presets
 

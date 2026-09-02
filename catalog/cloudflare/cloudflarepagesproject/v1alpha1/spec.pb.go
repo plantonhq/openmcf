@@ -1009,7 +1009,9 @@ type CloudflarePagesR2Binding struct {
 	// The R2 bucket name, or a reference to a CloudflareR2Bucket resource.
 	BucketName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
 	// Optional data-residency jurisdiction of the bucket ("eu", "fedramp",
-	// "fedramp-high"); leave empty for the default jurisdiction.
+	// "fedramp-high"); leave empty for the default jurisdiction. (This binding
+	// vocabulary is the provider's own and deliberately differs from the R2
+	// BUCKET kind's jurisdiction set -- "default", "eu", "fedramp", "us".)
 	Jurisdiction  string `protobuf:"bytes,3,opt,name=jurisdiction,proto3" json:"jurisdiction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -5226,8 +5226,9 @@ func TestStackOutputsConformance(t *testing.T) {
 			rawOutputs: map[string]interface{}{
 				"database_id":   "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
 				"database_name": "app-prod-db",
+				"version":       "production",
 			},
-			mustPopulate: []string{"database_id", "database_name"},
+			mustPopulate: []string{"database_id", "database_name", "version"},
 		},
 		{
 			// CloudflareKvNamespace: both engines emit the namespace id and the
@@ -5547,54 +5548,55 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"certificate_id", "certificate"},
 		},
 		{
-			// CloudflareCertificatePack: both engines emit the pack id, status,
-			// primary certificate id, and the zone the pack was ordered in
-			// (a pack's API identity is zone_id + certificate_pack_id).
+			// CloudflareCertificatePack: both engines emit the pack id and the
+			// zone the pack was ordered in (a pack's API identity is
+			// zone_id + certificate_pack_id). The pack's issuance status and
+			// primary certificate id are server-driven async values that move
+			// without a config change, so they are not stack outputs.
 			name: "CloudflareCertificatePack",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCertificatePack,
 			rawOutputs: map[string]interface{}{
 				"certificate_pack_id": "3822ff90e3534420ac41fc7e4a1f4b07",
-				"status":              "active",
-				"primary_certificate": "caa875a3-b2f0-4f7e-9a1e-0d2b4c6e8f10",
 				"zone_id":             "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"certificate_pack_id", "status", "zone_id"},
+			mustPopulate: []string{"certificate_pack_id", "zone_id"},
 		},
 		{
-			// CloudflareCustomHostname: both engines emit the hostname id, status,
+			// CloudflareCustomHostname: both engines emit the hostname id,
 			// the ownership-verification records, the creation timestamp, and
 			// the zone the hostname was onboarded onto (API identity is
-			// zone_id + custom_hostname_id).
+			// zone_id + custom_hostname_id). Validation status and the
+			// server-appended verification errors are async values that move
+			// without a config change, so they are not stack outputs.
 			name: "CloudflareCustomHostname",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostname,
 			rawOutputs: map[string]interface{}{
 				"custom_hostname_id":               "0d89c70f8d4f4b1aa1b5d2e3f4a5b6c7",
-				"status":                           "pending",
 				"ownership_verification_name":      "_cf-custom-hostname.support.acme.com",
 				"ownership_verification_type":      "txt",
 				"ownership_verification_value":     "1f2e3d4c5b6a7988",
 				"ownership_verification_http_url":  "http://support.acme.com/.well-known/cf-custom-hostname-challenge/0d89",
 				"ownership_verification_http_body": "1f2e3d4c5b6a7988",
-				"verification_errors":              []interface{}{},
 				"created_at":                       "2026-06-25T00:00:00Z",
 				"zone_id":                          "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"custom_hostname_id", "status", "zone_id"},
+			mustPopulate: []string{"custom_hostname_id", "zone_id"},
 		},
 		{
-			// CloudflareCustomHostnameFallbackOrigin: both engines emit status,
-			// timestamps, and the zone this singleton belongs to (the fallback
+			// CloudflareCustomHostnameFallbackOrigin: both engines emit
+			// timestamps and the zone this singleton belongs to (the fallback
 			// origin has no resource id; its API identity IS the zone).
+			// Deployment status and the server-appended errors list are async
+			// values that move without a config change, so they are not stack
+			// outputs.
 			name: "CloudflareCustomHostnameFallbackOrigin",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin,
 			rawOutputs: map[string]interface{}{
-				"status":     "active",
 				"created_at": "2026-06-25T00:00:00Z",
 				"updated_at": "2026-06-25T00:00:00Z",
-				"errors":     []interface{}{},
 				"zone_id":    "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"status", "zone_id"},
+			mustPopulate: []string{"created_at", "zone_id"},
 		},
 		{
 			// CloudflareZoneSettings: a zone singleton with no resource id of its

@@ -10,3 +10,8 @@ output "database_name" {
   value       = cloudflare_d1_database.main.name
 }
 
+output "version" {
+  description = "The D1 engine version Cloudflare reports for the database (server-assigned)"
+  value       = cloudflare_d1_database.main.version
+}
+

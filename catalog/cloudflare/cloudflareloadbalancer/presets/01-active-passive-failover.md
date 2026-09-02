@@ -22,9 +22,9 @@ protection and CDN.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | Account that owns the monitor and pool |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Account that owns the monitor and pool |
 | `<cloudflare-zone-id>` | Zone containing the hostname |
-| `<app-subdomain>.<your-domain.com>` | Load balancer hostname |
+| `<app-subdomain>.replaceme.example.com` | Load balancer hostname |
 | `192.0.2.1`, `192.0.2.2` | Primary and secondary origin addresses |
 
 ## Related Presets

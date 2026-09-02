@@ -79,7 +79,7 @@ This creates an R2 bucket in Western Europe with private access (authentication 
   - The hint is only honored when the bucket is first created and is best-effort.
 
 - **`jurisdiction`** (string): Data-residency jurisdiction - Default: `default`
-  - One of `default` (standard global), `eu` (European Union), `fedramp` (US FedRAMP)
+  - One of `default` (standard global), `eu` (European Union), `fedramp` (US FedRAMP), `us` (United States)
   - Fixed at creation; applied to the bucket and every bucket-scoped sub-resource
 
 - **`storageClass`** (enum): Default storage class for new objects - Default: `Standard`

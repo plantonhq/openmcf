@@ -3,7 +3,7 @@ kind: CloudflareLoadBalancerMonitor
 metadata:
   name: rules-https
 spec:
-  accountId: <cloudflare-account-id>
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   type: https
   path: /healthz
   expectedCodes: "2xx"
@@ -13,7 +13,7 @@ kind: CloudflareLoadBalancerPool
 metadata:
   name: web-pool
 spec:
-  accountId: <cloudflare-account-id>
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   name: web-pool
   origins:
     - name: web-1
@@ -30,7 +30,7 @@ kind: CloudflareLoadBalancerPool
 metadata:
   name: api-pool
 spec:
-  accountId: <cloudflare-account-id>
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   name: api-pool
   origins:
     - name: api-1
@@ -62,6 +62,11 @@ spec:
       fieldPath: status.outputs.pool_id
   proxied: true
   sessionAffinity: cookie
+  # PLAN REQUIREMENT: this preset carries TWO rules. The entry-level (Basic)
+  # Load Balancing subscription allows exactly ONE custom rule per load
+  # balancer -- the API rejects the second with "rule count 2 exceeds limit 1"
+  # (400, code 1002). Deploy as-is on a plan with a higher rule limit, or
+  # remove one rule on Basic.
   rules:
     # Route API traffic to its own pool and drop the session cookie there --
     # stateless endpoints do not need affinity.

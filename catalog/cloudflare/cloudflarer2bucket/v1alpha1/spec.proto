@@ -86,14 +86,17 @@ message CloudflareR2BucketSpec {
 
   // Data-residency jurisdiction for the bucket, fixed at creation and part of
   // the bucket's identity. One of "default" (standard global storage), "eu"
-  // (European Union residency), or "fedramp" (US FedRAMP). Leave empty for
-  // "default". Every bucket-scoped sub-resource is created in this jurisdiction.
+  // (European Union residency), "fedramp" (US FedRAMP), or "us" (United States
+  // residency). Leave empty for "default". Every bucket-scoped sub-resource is
+  // created in this jurisdiction. (Worker and Pages R2 BINDINGS accept a
+  // different value set -- "eu", "fedramp", "fedramp-high" -- each surface
+  // mirrors its own provider vocabulary deliberately.)
   string jurisdiction = 6 [
     (dev.planton.shared.options.recommended_default) = "default",
     (buf.validate.field).cel = {
       id: "jurisdiction.valid"
-      message: "jurisdiction must be one of \"default\", \"eu\", \"fedramp\""
-      expression: "this == '' || this in ['default', 'eu', 'fedramp']"
+      message: "jurisdiction must be one of \"default\", \"eu\", \"fedramp\", \"us\""
+      expression: "this == '' || this in ['default', 'eu', 'fedramp', 'us']"
     }
   ];
 

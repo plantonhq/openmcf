@@ -80,7 +80,7 @@ These are the most important decisions when configuring an R2 bucket. Explore th
 
 **Location hint** -- The `location` field influences where Cloudflare initially places bucket data. Use `auto` (default) to let Cloudflare choose, or hint a region (`wnam`, `enam`, `weur`, `eeur`, `apac`, `oc`) to keep data near your users. The hint is honored only at creation and is best-effort, not a residency guarantee -- for a guarantee, use `jurisdiction`.
 
-**Jurisdiction** -- `default`, `eu`, or `fedramp`. This is a one-way door: the jurisdiction is fixed at creation and is part of the bucket's identity, and every bucket-scoped sub-resource is created inside it. Changing it means a new bucket and a data migration.
+**Jurisdiction** -- `default`, `eu`, `fedramp`, or `us`. This is a one-way door: the jurisdiction is fixed at creation and is part of the bucket's identity, and every bucket-scoped sub-resource is created inside it. Changing it means a new bucket and a data migration.
 
 **Public access** -- Leave `publicAccess: false` (default) to restrict access to Workers, API tokens, and the Cloudflare dashboard. Setting it `true` enables the managed `r2.dev` URL, which is rate-limited and intended for development -- custom domains are the production-grade public path.
 

@@ -1018,7 +1018,9 @@ Deployment pipelines set this from the git branch (deploy-target contract).
 `KubernetesDeploymentContainer` · required
 
 The containers of every replica: one main application container and any sidecars.
-All containers share the pod's network namespace and volumes.
+All containers share the pod's network namespace and volumes. Deployment
+pipelines inject the built image at `app.image` (the image-slot contract);
+sidecars are never injected.
 
 - rule: {"required":true}
 

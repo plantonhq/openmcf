@@ -20,7 +20,7 @@ policy, for use with a load balancer's `proximity` or `geo` steering.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<origin-address>` | Origin IP or hostname in this region |
 
 ## Wiring into geo steering

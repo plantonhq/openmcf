@@ -5,4 +5,7 @@ const (
 	OpDatabaseId = "database_id"
 	// OpDatabaseName is the exported stack output containing the database name.
 	OpDatabaseName = "database_name"
+	// OpVersion is the exported stack output containing the server-assigned D1
+	// engine version.
+	OpVersion = "version"
 )

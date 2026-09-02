@@ -28,7 +28,10 @@ type CloudflareD1DatabaseStackOutputs struct {
 	// references this value.
 	DatabaseId string `protobuf:"bytes,1,opt,name=database_id,json=databaseId,proto3" json:"database_id,omitempty"`
 	// The name of the database (same as the input name).
-	DatabaseName  string `protobuf:"bytes,2,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	DatabaseName string `protobuf:"bytes,2,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
+	// The D1 engine version Cloudflare reports for the database (server-assigned,
+	// e.g. "production"). Informational; not used for wiring.
+	Version       string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -77,15 +80,23 @@ func (x *CloudflareD1DatabaseStackOutputs) GetDatabaseName() string {
 	return ""
 }
 
+func (x *CloudflareD1DatabaseStackOutputs) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflared1database_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflared1database_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	">catalog/cloudflare/cloudflared1database/v1alpha1/outputs.proto\x124dev.planton.cloudflare.cloudflared1database.v1alpha1\"h\n" +
+	">catalog/cloudflare/cloudflared1database/v1alpha1/outputs.proto\x124dev.planton.cloudflare.cloudflared1database.v1alpha1\"\x82\x01\n" +
 	" CloudflareD1DatabaseStackOutputs\x12\x1f\n" +
 	"\vdatabase_id\x18\x01 \x01(\tR\n" +
 	"databaseId\x12#\n" +
-	"\rdatabase_name\x18\x02 \x01(\tR\fdatabaseNameB\xa9\x03\n" +
+	"\rdatabase_name\x18\x02 \x01(\tR\fdatabaseName\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversionB\xa9\x03\n" +
 	"8com.dev.planton.cloudflare.cloudflared1database.v1alpha1B\fOutputsProtoP\x01Zjgithub.com/plantonhq/planton/catalog/cloudflare/cloudflared1database/v1alpha1;cloudflared1databasev1alpha1\xa2\x02\x04DPCC\xaa\x024Dev.Planton.Cloudflare.Cloudflared1database.V1alpha1\xca\x024Dev\\Planton\\Cloudflare\\Cloudflared1database\\V1alpha1\xe2\x02@Dev\\Planton\\Cloudflare\\Cloudflared1database\\V1alpha1\\GPBMetadata\xea\x028Dev::Planton::Cloudflare::Cloudflared1database::V1alpha1b\x06proto3"
 
 var (

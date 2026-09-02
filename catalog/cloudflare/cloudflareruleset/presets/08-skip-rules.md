@@ -18,6 +18,6 @@ Surgically exempt a path from individual rules inside another ruleset (typically
 | Placeholder | Description |
 |---|---|
 | `<cloudflare-zone-id>` | The zone the skip ruleset lives in |
-| `<target-ruleset-id>` | The ruleset containing the rules to skip (32-char hex) |
-| `<rule-id-to-skip>` | A rule ID inside the target ruleset (32-char hex) |
-| `<second-rule-id-to-skip>` | Another rule ID to skip (remove if only one) |
+| `efb7b8c949ac4650a09736fc376e9aee` | The ruleset containing the rules to skip (32-char hex; the shipped value is Cloudflare's managed WAF ruleset id — replace with your target) |
+| `5de7edfa648c4d6891dc3e7f84534ffa` | A rule ID inside the target ruleset (32-char hex, from the ruleset's own rules list) |
+| `75a0060762034a6cb663fd51a02344cb` | Another rule ID to skip (remove if only one) |

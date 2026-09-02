@@ -21,7 +21,7 @@ load balancer's `default_pools`.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<origin-1-address>` / `<origin-2-address>` | Origin IPs or hostnames |
 
 ## Attaching it to a load balancer

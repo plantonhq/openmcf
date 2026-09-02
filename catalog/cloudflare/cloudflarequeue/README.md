@@ -44,7 +44,7 @@ spec:
 | `queueName` | yes | The queue name |
 | `settings.deliveryDelay` | no | Seconds to delay delivery of all messages (0–86400) |
 | `settings.deliveryPaused` | no | Pause delivery to the consumer |
-| `settings.messageRetentionPeriod` | no | Retention seconds (60–86400; 0 = default) |
+| `settings.messageRetentionPeriod` | no | Retention seconds (60–1209600, i.e. up to 14 days; 0 = Cloudflare default of 4 days; Workers Free caps retention at 24h) |
 | `consumer.type` | yes* | `worker` (push) or `http_pull` |
 | `consumer.scriptName` | worker only | Consuming Worker (literal name or `CloudflareWorker` ref) |
 | `consumer.deadLetterQueue` | no | Dead-letter queue name (literal or `CloudflareQueue` ref) |
@@ -52,7 +52,7 @@ spec:
 | `consumer.settings.maxConcurrency` | worker only | Max concurrent invocations (1–250; 0 = autoscale) |
 | `consumer.settings.maxRetries` | no | Max retries (0–100) |
 | `consumer.settings.maxWaitTimeMs` | worker only | Batch fill wait in ms (0–60000) |
-| `consumer.settings.retryDelay` | no | Re-delivery delay in seconds (0–42300) |
+| `consumer.settings.retryDelay` | no | Re-delivery delay in seconds (0–86400) |
 | `consumer.settings.visibilityTimeoutMs` | http_pull only | Lease window in ms (0–43200000) |
 
 \* `consumer` itself is optional; when present, `type` is required.

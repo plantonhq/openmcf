@@ -297,10 +297,14 @@ func indexCell(text string) string {
 
 // loadValidatedExample reads the component's base test manifest
 // (e2e/manifest.yaml at the component root -- the same manifest the E2E
-// framework deploys) and admits it as the page's example only after it
-// round-trips into the typed message and passes protovalidate. An empty
-// string with nil error means no manifest exists (graceful degradation); an
-// error means the manifest exists and is broken.
+// framework deploys) and admits it as the page's example only after every
+// document round-trips into its typed message and passes protovalidate. A
+// manifest may legitimately hold several documents (a kind deployed with its
+// prerequisites), so documents are split and validated individually -- the
+// single-manifest refusal belongs to one-resource-per-run commands, not to
+// catalog tooling. At least one document must declare the page's own kind.
+// An empty string with nil error means no manifest exists (graceful
+// degradation); an error means the manifest exists and is broken.
 func loadValidatedExample(res explain.Resource, componentDir string) (string, error) {
 	path := filepath.Join(componentDir, "e2e", "manifest.yaml")
 	raw, err := os.ReadFile(path)
@@ -310,15 +314,25 @@ func loadValidatedExample(res explain.Resource, componentDir string) (string, er
 	if err != nil {
 		return "", errors.Wrapf(err, "read %s", path)
 	}
-	loaded, err := manifest.LoadManifestBytes(raw, path)
+	docs, err := manifest.SplitDocuments(raw)
 	if err != nil {
-		return "", errors.Wrapf(err, "load %s", path)
+		return "", errors.Wrapf(err, "split %s", path)
 	}
-	if got := loaded.ProtoReflect().Descriptor().FullName(); got != res.Message.FullName() {
-		return "", errors.Errorf("%s declares kind %s, expected %s", path, got, res.Message.FullName())
+	kindPresent := false
+	for i, doc := range docs {
+		loaded, err := manifest.LoadManifestBytes(doc, path)
+		if err != nil {
+			return "", errors.Wrapf(err, "load %s document %d", path, i+1)
+		}
+		if loaded.ProtoReflect().Descriptor().FullName() == res.Message.FullName() {
+			kindPresent = true
+		}
+		if err := manifest.ValidateLoaded(loaded); err != nil {
+			return "", errors.Wrapf(err, "validate %s document %d", path, i+1)
+		}
 	}
-	if err := manifest.ValidateLoaded(loaded); err != nil {
-		return "", errors.Wrapf(err, "validate %s", path)
+	if !kindPresent {
+		return "", errors.Errorf("%s declares no document of kind %s", path, res.Message.FullName())
 	}
 	return string(raw), nil
 }

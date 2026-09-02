@@ -149,23 +149,24 @@ that has progressed.
 	// GA parity baseline plus any schema whose provider this catalog's
 	// modules actually pin (a beta admission returns its schema to the
 	// table through the pin, automatically). Unrelated providers' artifacts
-	// never appear here.
+	// never appear here. The baseline renders FIRST and every other pinned
+	// schema is labeled for what it is -- a schema consulted only because
+	// this catalog's modules pin that provider (helper data sources, or an
+	// admitted secondary channel) -- so no reader mistakes a helper pin for
+	// the yardstick parity is declared against.
 	b.WriteString("## Measurement baseline\n\n")
 	b.WriteString("| | |\n|---|---|\n")
+	fmt.Fprintf(&b, "| Provider schema (parity baseline) | `%s@%s` |\n", acc.GASchema, rep.SchemaVersions[acc.GASchema])
 	schemaNames := make([]string, 0, len(rep.SchemaVersions))
 	for name := range rep.SchemaVersions {
-		if name != acc.GASchema && len(rep.PinDistribution[name]) == 0 {
+		if name == acc.GASchema || len(rep.PinDistribution[name]) == 0 {
 			continue
 		}
 		schemaNames = append(schemaNames, name)
 	}
 	sort.Strings(schemaNames)
 	for _, name := range schemaNames {
-		label := "Provider schema"
-		if name == acc.GASchema {
-			label = "Provider schema (parity baseline)"
-		}
-		fmt.Fprintf(&b, "| %s | `%s@%s` |\n", label, name, rep.SchemaVersions[name])
+		fmt.Fprintf(&b, "| Supporting schema (pinned by this catalog's modules) | `%s@%s` |\n", name, rep.SchemaVersions[name])
 	}
 	fmt.Fprintf(&b, "| Kinds in the catalog | %d |\n", rep.Kinds)
 	fmt.Fprintf(&b, "| Distinct provider resources consumed | %d |\n", rep.DistinctResources)

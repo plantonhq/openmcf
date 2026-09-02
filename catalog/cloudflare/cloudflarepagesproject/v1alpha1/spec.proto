@@ -321,7 +321,9 @@ message CloudflarePagesR2Binding {
   ];
 
   // Optional data-residency jurisdiction of the bucket ("eu", "fedramp",
-  // "fedramp-high"); leave empty for the default jurisdiction.
+  // "fedramp-high"); leave empty for the default jurisdiction. (This binding
+  // vocabulary is the provider's own and deliberately differs from the R2
+  // BUCKET kind's jurisdiction set -- "default", "eu", "fedramp", "us".)
   string jurisdiction = 3 [(buf.validate.field).cel = {
     id: "r2_binding_jurisdiction.valid"
     message: "jurisdiction must be one of \"eu\", \"fedramp\", \"fedramp-high\""

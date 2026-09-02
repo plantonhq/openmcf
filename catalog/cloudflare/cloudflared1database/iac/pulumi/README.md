@@ -56,9 +56,9 @@ The module exports the following stack outputs:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `database-id` | string | The unique identifier of the created D1 database |
-| `database-name` | string | The name of the database (same as input) |
-| `connection-string` | string | Connection string (currently empty - D1 uses Worker bindings) |
+| `database_id` | string | The unique identifier of the created D1 database |
+| `database_name` | string | The name of the database (same as input) |
+| `version` | string | The D1 engine version Cloudflare reports (server-assigned) |
 
 ## Resource Mapping
 

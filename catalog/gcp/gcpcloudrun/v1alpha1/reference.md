@@ -356,6 +356,8 @@ container conventionally serves requests; additional containers are
 sidecars (log collectors, auth proxies, service meshes) that share the
 instance's network namespace (localhost) and volumes. Exactly one
 container may expose a port. Use depends_on for startup ordering.
+Deployment pipelines inject the built image into containers whose image
+is left BLANK (the image-slot contract); authored images are untouched.
 
 - rule: {"repeated":{"minItems":"1"}}
 

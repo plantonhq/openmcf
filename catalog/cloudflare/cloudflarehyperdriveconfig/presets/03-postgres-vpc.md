@@ -26,7 +26,7 @@ a Workers VPC Service, rather than dialing a publicly reachable host.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | 32-character Cloudflare account ID |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID |
 | `<database-name>` | Name of the origin database |
 | `<database-user>` | Database user Hyperdrive authenticates as |
 | `<private-database-host>` | Host of the origin database as reachable within the VPC |

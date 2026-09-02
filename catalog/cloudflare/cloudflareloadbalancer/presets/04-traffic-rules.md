@@ -5,6 +5,12 @@ dedicated API pool with session affinity switched off, and `/maintenance`
 answers directly at the edge with a 503 page -- no origin involved. Everything
 else uses the web pool with cookie affinity.
 
+> **Plan requirement**: rule count is a subscription-tier limit. The
+> entry-level (Basic) Load Balancing subscription allows exactly ONE custom
+> rule per load balancer, so this two-rule preset is rejected there with
+> `rule count 2 exceeds limit 1` (400, code 1002). Use a plan with a higher
+> rule limit, or keep just one of the two rules on Basic.
+
 ## When to Use
 
 - Per-path routing (API vs web) on a single hostname
@@ -27,9 +33,9 @@ else uses the web pool with cookie affinity.
 
 | Placeholder | Description |
 |---|---|
-| `<cloudflare-account-id>` | Account that owns the monitor and pools |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | Account that owns the monitor and pools |
 | `<cloudflare-zone-id>` | Zone containing the hostname |
-| `<app-subdomain>.<your-domain.com>` | Load balancer hostname |
+| `<app-subdomain>.replaceme.example.com` | Load balancer hostname |
 | `192.0.2.1`, `192.0.2.2` | Web and API origin addresses |
 
 ## Related Presets

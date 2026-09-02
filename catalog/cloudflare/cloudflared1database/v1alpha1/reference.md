@@ -131,6 +131,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareD1Data
 |---|---|---|
 | `status.outputs.database_id` | `string` | The unique identifier of the created D1 database. A Worker's `d1` binding references this value. |
 | `status.outputs.database_name` | `string` | The name of the database (same as the input name). |
+| `status.outputs.version` | `string` | The D1 engine version Cloudflare reports for the database (server-assigned, e.g. "production"). Informational; not used for wiring. |
 
 ## Referenced By
 

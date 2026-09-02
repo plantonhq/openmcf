@@ -187,7 +187,9 @@ The containers the task runs. Most tasks run one application container;
 add sidecars (a log router, an OpenTelemetry collector, a proxy) as
 additional entries and order their startup with depends_on. At least
 one container must be essential -- when an essential container exits,
-the whole task stops.
+the whole task stops. Deployment pipelines inject the built image into
+containers whose image is left BLANK (the image-slot contract);
+authored images are untouched.
 
 - rule: {"repeated":{"minItems":"1"}}
 - rule: memory_reservation (the soft reservation) must not exceed memory (the hard limit)

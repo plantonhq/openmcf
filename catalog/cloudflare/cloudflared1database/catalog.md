@@ -77,6 +77,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `database_id` | The unique identifier (UUID) of the created D1 database | A Worker's `d1` binding references this value; Wrangler migrations target it |
 | `database_name` | The database name as confirmed by Cloudflare | Wrangler CLI commands and application configuration that address the database by name |
+| `version` | The D1 engine version Cloudflare reports (server-assigned) | Informational; not used for wiring |
 
 ## Common Patterns
 

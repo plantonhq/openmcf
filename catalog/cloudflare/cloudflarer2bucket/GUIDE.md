@@ -8,7 +8,7 @@ R2 refuses to delete a bucket holding objects, and the provider does no draining
 
 ## Jurisdiction is identity, not configuration
 
-The jurisdiction ("default", "eu", "fedramp") is fixed at creation and joins the import ID as a mandatory third segment — a default-jurisdiction bucket imports with the literal `default`. Every bucket-scoped companion (CORS, lifecycle, lock, notifications, domains) is created inside the same jurisdiction automatically.
+The jurisdiction ("default", "eu", "fedramp", "us") is fixed at creation and joins the import ID as a mandatory third segment — a default-jurisdiction bucket imports with the literal `default`. Every bucket-scoped companion (CORS, lifecycle, lock, notifications, domains) is created inside the same jurisdiction automatically.
 
 ## The location hint only counts once
 

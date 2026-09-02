@@ -27,8 +27,8 @@ that has progressed.
 
 | | |
 |---|---|
-| Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
+| Supporting schema (pinned by this catalog's modules) | `aws@6.58.0` |
 | Kinds in the catalog | 66 |
 | Distinct provider resources consumed | 113 |
 | Spec fields authored across all kinds | 2092 |
@@ -62,76 +62,76 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**66 of 66 kinds are at total accounting; 0 proven live.**
+**66 of 66 kinds are at total accounting; 58 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| CloudflareAccountApiToken | 7 | 5 | 2 | 0 | 0 | ✅ | — |
+| CloudflareAccountApiToken | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareAiGateway | 27 | 15 | 12 | 0 | 0 | ✅ | — |
-| CloudflareAuthenticatedOriginPulls | 4 | 2 | 2 | 0 | 0 | ✅ | — |
-| CloudflareAuthenticatedOriginPullsCertificate | 6 | 6 | 0 | 0 | 0 | ✅ | — |
-| CloudflareBotManagement | 16 | 16 | 0 | 0 | 0 | ✅ | — |
-| CloudflareCacheSettings | 12 | 6 | 6 | 0 | 0 | ✅ | — |
-| CloudflareCertificatePack | 7 | 7 | 0 | 0 | 0 | ✅ | — |
-| CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | — |
-| CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | — |
+| CloudflareAuthenticatedOriginPulls | 4 | 2 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareAuthenticatedOriginPullsCertificate | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareBotManagement | 16 | 16 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareCacheSettings | 12 | 6 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareCertificatePack | 7 | 7 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareCustomSslCertificate | 9 | 8 | 1 | 0 | 0 | ✅ | — |
-| CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | — |
-| CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| CloudflareDnsZone | 38 | 21 | 12 | 5 | 0 | ✅ | — |
-| CloudflareEmailRoutingAddress | 3 | 3 | 0 | 0 | 0 | ✅ | — |
-| CloudflareEmailRoutingRule | 8 | 4 | 2 | 2 | 0 | ✅ | — |
+| CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareDnsZone | 38 | 21 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareEmailRoutingAddress | 3 | 3 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareEmailRoutingRule | 8 | 4 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareEmailRoutingZone | 10 | 3 | 4 | 3 | 0 | ✅ | — |
-| CloudflareHealthcheck | 14 | 11 | 2 | 1 | 0 | ✅ | — |
+| CloudflareHealthcheck | 14 | 11 | 2 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareHyperdriveConfig | 6 | 3 | 3 | 0 | 0 | ✅ | — |
-| CloudflareIpAccessRule | 5 | 4 | 1 | 0 | 0 | ✅ | — |
-| CloudflareKvNamespace | 2 | 1 | 1 | 0 | 0 | ✅ | — |
-| CloudflareList | 5 | 4 | 0 | 1 | 0 | ✅ | — |
-| CloudflareListItem | 7 | 5 | 2 | 0 | 0 | ✅ | — |
-| CloudflareLoadBalancer | 20 | 11 | 9 | 0 | 0 | ✅ | — |
-| CloudflareLoadBalancerMonitor | 17 | 16 | 1 | 0 | 0 | ✅ | — |
-| CloudflareLoadBalancerPool | 15 | 9 | 4 | 2 | 0 | ✅ | — |
+| CloudflareIpAccessRule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareKvNamespace | 2 | 1 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareList | 5 | 4 | 0 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareListItem | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareLoadBalancer | 20 | 11 | 9 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareLoadBalancerMonitor | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareLoadBalancerPool | 15 | 9 | 4 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareLogpushJob | 16 | 12 | 4 | 0 | 0 | ✅ | — |
-| CloudflareMtlsCertificate | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| CloudflareNotificationPolicy | 8 | 6 | 2 | 0 | 0 | ✅ | — |
-| CloudflareNotificationWebhook | 4 | 4 | 0 | 0 | 0 | ✅ | — |
-| CloudflareOriginCaCertificate | 4 | 4 | 0 | 0 | 0 | ✅ | — |
-| CloudflarePagesProject | 9 | 4 | 5 | 0 | 0 | ✅ | — |
-| CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
-| CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
-| CloudflareRuleset | 7 | 5 | 2 | 0 | 0 | ✅ | — |
-| CloudflareSecretsStore | 2 | 2 | 0 | 0 | 0 | ✅ | — |
-| CloudflareSecretsStoreSecret | 6 | 6 | 0 | 0 | 0 | ✅ | — |
-| CloudflareSnippet | 4 | 2 | 2 | 0 | 0 | ✅ | — |
-| CloudflareSnippetRules | 2 | 1 | 1 | 0 | 0 | ✅ | — |
-| CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
+| CloudflareMtlsCertificate | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareNotificationPolicy | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareNotificationWebhook | 4 | 4 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareOriginCaCertificate | 4 | 4 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflarePagesProject | 9 | 4 | 5 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareRuleset | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareSecretsStore | 2 | 2 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareSecretsStoreSecret | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareSnippet | 4 | 2 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareSnippetRules | 2 | 1 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareWaitingRoom | 25 | 21 | 3 | 1 | 0 | ✅ | — |
 | CloudflareWaitingRoomEvent | 17 | 17 | 0 | 0 | 0 | ✅ | — |
-| CloudflareWebAnalyticsSite | 12 | 6 | 5 | 1 | 0 | ✅ | — |
-| CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | — |
-| CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| CloudflareWorkflow | 7 | 4 | 3 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessIdentityProvider | 8 | 6 | 2 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessInfrastructureTarget | 3 | 2 | 1 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessPolicy | 14 | 8 | 6 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessServiceToken | 6 | 6 | 0 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustDeviceCustomProfile | 29 | 21 | 6 | 2 | 0 | ✅ | — |
-| CloudflareZeroTrustDeviceDefaultProfile | 25 | 16 | 8 | 1 | 0 | ✅ | — |
-| CloudflareZeroTrustDevicePostureRule | 8 | 6 | 2 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustDnsLocation | 8 | 5 | 3 | 0 | 0 | ✅ | — |
+| CloudflareWebAnalyticsSite | 12 | 6 | 5 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareWorkflow | 7 | 4 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessIdentityProvider | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessInfrastructureTarget | 3 | 2 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessPolicy | 14 | 8 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustAccessServiceToken | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustDeviceCustomProfile | 29 | 21 | 6 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustDeviceDefaultProfile | 25 | 16 | 8 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustDevicePostureRule | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustDnsLocation | 8 | 5 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | CloudflareZeroTrustGatewayPolicy | 13 | 9 | 4 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustGatewaySettings | 10 | 3 | 7 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustList | 5 | 4 | 1 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustMcpPortal | 7 | 6 | 1 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustMcpServer | 11 | 9 | 2 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustOrganization | 21 | 16 | 4 | 1 | 0 | ✅ | — |
-| CloudflareZeroTrustTunnel | 8 | 5 | 2 | 1 | 0 | ✅ | — |
-| CloudflareZeroTrustTunnelRoute | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustTunnelVirtualNetwork | 4 | 4 | 0 | 0 | 0 | ✅ | — |
-| CloudflareZoneSettings | 16 | 5 | 9 | 2 | 0 | ✅ | — |
-| CloudflareZoneTlsSettings | 16 | 6 | 9 | 1 | 0 | ✅ | — |
+| CloudflareZeroTrustGatewaySettings | 10 | 3 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustList | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustMcpPortal | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustMcpServer | 11 | 9 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustOrganization | 21 | 16 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustTunnel | 8 | 5 | 2 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustTunnelRoute | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZeroTrustTunnelVirtualNetwork | 4 | 4 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZoneSettings | 16 | 5 | 9 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| CloudflareZoneTlsSettings | 16 | 6 | 9 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition
 

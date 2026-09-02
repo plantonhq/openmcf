@@ -68,6 +68,7 @@ func database(
 	// is no connection string to export (none exists on the v5 resource).
 	ctx.Export(OpDatabaseId, createdD1Database.ID())
 	ctx.Export(OpDatabaseName, createdD1Database.Name)
+	ctx.Export(OpVersion, createdD1Database.Version)
 
 	return createdD1Database, nil
 }

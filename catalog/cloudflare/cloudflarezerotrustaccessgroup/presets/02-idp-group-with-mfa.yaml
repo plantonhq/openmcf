@@ -3,14 +3,15 @@ kind: CloudflareZeroTrustAccessGroup
 metadata:
   name: platform-admins
 spec:
-  accountId: "REPLACE_WITH_ACCOUNT_ID"
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
   name: platform-admins
   # Members of a specific Okta group, federated through a configured identity
   # provider, who additionally satisfy a hardware-key MFA login method.
   include:
     - okta:
         name: platform-admins
-        identityProviderId: "REPLACE_WITH_IDP_ID"
+        identityProviderId:
+          value: "<okta-identity-provider-id>" # the Cloudflare identity-provider id for your Okta connection
   require:
     - authMethod:
         authMethod: hwk

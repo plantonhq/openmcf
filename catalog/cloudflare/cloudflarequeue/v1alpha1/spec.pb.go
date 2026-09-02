@@ -171,8 +171,9 @@ type CloudflareQueueSettings struct {
 	// Pause delivery to the consumer. Producers can still enqueue while paused.
 	DeliveryPaused bool `protobuf:"varint,2,opt,name=delivery_paused,json=deliveryPaused,proto3" json:"delivery_paused,omitempty"`
 	// Seconds an unconsumed message is retained before it is dropped. Leave 0 to use
-	// Cloudflare's default; otherwise it must be between 60 seconds and 1 day. (The
-	// v5 API rejects values above 86400; revisit if Cloudflare raises the ceiling.)
+	// Cloudflare's default (345600 = 4 days); otherwise it must be between 60 seconds
+	// and 1209600 (14 days). Workers Free caps retention at 86400 (24h) -- a plan
+	// limit the API enforces at write time, not a shape rule.
 	MessageRetentionPeriod int64 `protobuf:"varint,3,opt,name=message_retention_period,json=messageRetentionPeriod,proto3" json:"message_retention_period,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
@@ -321,7 +322,8 @@ type CloudflareQueueConsumerSettings struct {
 	// only). Leave 0 for the default; the maximum is 60000 (60s).
 	MaxWaitTimeMs int64 `protobuf:"varint,4,opt,name=max_wait_time_ms,json=maxWaitTimeMs,proto3" json:"max_wait_time_ms,omitempty"`
 	// Seconds to delay re-delivery of a message after a failed attempt. Leave 0 for no
-	// additional delay; the maximum is 42300 seconds.
+	// additional delay; the maximum is 86400 (24h), the same ceiling Cloudflare applies
+	// to every send-or-retry delay.
 	RetryDelay int64 `protobuf:"varint,5,opt,name=retry_delay,json=retryDelay,proto3" json:"retry_delay,omitempty"`
 	// Milliseconds a pulled message is leased exclusively before it becomes available
 	// again (http_pull consumers only). Leave 0 for the default (30s); the maximum is
@@ -414,13 +416,13 @@ const file_catalog_cloudflare_cloudflarequeue_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"queue_name\x18\x02 \x01(\tB(\xbaH%\xc8\x01\x01r \x10\x01\x18?2\x1a^[a-zA-Z0-9][a-zA-Z0-9-]*$R\tqueueName\x12d\n" +
 	"\bsettings\x18\x03 \x01(\v2H.dev.planton.cloudflare.cloudflarequeue.v1alpha1.CloudflareQueueSettingsR\bsettings\x12d\n" +
-	"\bconsumer\x18\x04 \x01(\v2H.dev.planton.cloudflare.cloudflarequeue.v1alpha1.CloudflareQueueConsumerR\bconsumer\"\xe5\x03\n" +
+	"\bconsumer\x18\x04 \x01(\v2H.dev.planton.cloudflare.cloudflarequeue.v1alpha1.CloudflareQueueConsumerR\bconsumer\"\xeb\x03\n" +
 	"\x17CloudflareQueueSettings\x12\xa9\x01\n" +
 	"\x0edelivery_delay\x18\x01 \x01(\x03B\x81\x01\xbaH~\xba\x01{\n" +
 	"#settings_delivery_delay.valid_range\x128delivery_delay must be between 0 and 86400 seconds (24h)\x1a\x1athis >= 0 && this <= 86400R\rdeliveryDelay\x12'\n" +
-	"\x0fdelivery_paused\x18\x02 \x01(\bR\x0edeliveryPaused\x12\xf4\x01\n" +
-	"\x18message_retention_period\x18\x03 \x01(\x03B\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
-	"-settings_message_retention_period.valid_range\x12Tmessage_retention_period must be 0 (default) or between 60 and 86400 seconds (1 day)\x1a*this == 0 || (this >= 60 && this <= 86400)R\x16messageRetentionPeriod\"\xd0\a\n" +
+	"\x0fdelivery_paused\x18\x02 \x01(\bR\x0edeliveryPaused\x12\xfa\x01\n" +
+	"\x18message_retention_period\x18\x03 \x01(\x03B\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +
+	"-settings_message_retention_period.valid_range\x12Xmessage_retention_period must be 0 (default) or between 60 and 1209600 seconds (14 days)\x1a,this == 0 || (this >= 60 && this <= 1209600)R\x16messageRetentionPeriod\"\xd0\a\n" +
 	"\x17CloudflareQueueConsumer\x12\xd3\x01\n" +
 	"\x04type\x18\x01 \x01(\x0e2U.dev.planton.cloudflare.cloudflarequeue.v1alpha1.CloudflareQueueConsumer.ConsumerTypeBh\xbaHe\xba\x01Z\n" +
 	"\x1dconsumer_type.not_unspecified\x12.consumer type must be one of worker, http_pull\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x04type\x12x\n" +
@@ -434,7 +436,7 @@ const file_catalog_cloudflare_cloudflarequeue_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06worker\x10\x01\x12\r\n" +
 	"\thttp_pull\x10\x02:\xa7\x02\xbaH\xa3\x02\x1a\x8e\x01\n" +
 	"-consumer.script_name_required_for_worker_type\x124script_name is required when consumer type is worker\x1a'this.type != 1 || has(this.script_name)\x1a\x8f\x01\n" +
-	")consumer.script_name_only_for_worker_type\x128script_name may only be set when consumer type is worker\x1a(this.type == 1 || !has(this.script_name)\"\xd2\b\n" +
+	")consumer.script_name_only_for_worker_type\x128script_name may only be set when consumer type is worker\x1a(this.type == 1 || !has(this.script_name)\"\xda\b\n" +
 	"\x1fCloudflareQueueConsumerSettings\x12\xb0\x01\n" +
 	"\n" +
 	"batch_size\x18\x01 \x01(\x03B\x90\x01\xbaH\x8c\x01\xba\x01\x88\x01\n" +
@@ -445,9 +447,9 @@ const file_catalog_cloudflare_cloudflarequeue_v1alpha1_spec_proto_rawDesc = "" +
 	")consumer_settings_max_retries.valid_range\x12%max_retries must be between 0 and 100\x1a\x18this >= 0 && this <= 100R\n" +
 	"maxRetries\x12\xaa\x01\n" +
 	"\x10max_wait_time_ms\x18\x04 \x01(\x03B\x80\x01\xbaH}\xba\x01z\n" +
-	".consumer_settings_max_wait_time_ms.valid_range\x12,max_wait_time_ms must be between 0 and 60000\x1a\x1athis >= 0 && this <= 60000R\rmaxWaitTimeMs\x12\x9f\x01\n" +
-	"\vretry_delay\x18\x05 \x01(\x03B~\xbaH{\xba\x01x\n" +
-	")consumer_settings_retry_delay.valid_range\x12/retry_delay must be between 0 and 42300 seconds\x1a\x1athis >= 0 && this <= 42300R\n" +
+	".consumer_settings_max_wait_time_ms.valid_range\x12,max_wait_time_ms must be between 0 and 60000\x1a\x1athis >= 0 && this <= 60000R\rmaxWaitTimeMs\x12\xa7\x01\n" +
+	"\vretry_delay\x18\x05 \x01(\x03B\x85\x01\xbaH\x81\x01\xba\x01~\n" +
+	")consumer_settings_retry_delay.valid_range\x125retry_delay must be between 0 and 86400 seconds (24h)\x1a\x1athis >= 0 && this <= 86400R\n" +
 	"retryDelay\x12\xcd\x01\n" +
 	"\x15visibility_timeout_ms\x18\x06 \x01(\x03B\x98\x01\xbaH\x94\x01\xba\x01\x90\x01\n" +
 	"3consumer_settings_visibility_timeout_ms.valid_range\x12:visibility_timeout_ms must be between 0 and 43200000 (12h)\x1a\x1dthis >= 0 && this <= 43200000R\x13visibilityTimeoutMsB\x83\x03\n" +

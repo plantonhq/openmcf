@@ -110,10 +110,11 @@ Pause delivery to the consumer. Producers can still enqueue while paused.
 `int64`
 
 Seconds an unconsumed message is retained before it is dropped. Leave 0 to use
-Cloudflare's default; otherwise it must be between 60 seconds and 1 day. (The
-v5 API rejects values above 86400; revisit if Cloudflare raises the ceiling.)
+Cloudflare's default (345600 = 4 days); otherwise it must be between 60 seconds
+and 1209600 (14 days). Workers Free caps retention at 86400 (24h) -- a plan
+limit the API enforces at write time, not a shape rule.
 
-- rule: message_retention_period must be 0 (default) or between 60 and 86400 seconds (1 day)
+- rule: message_retention_period must be 0 (default) or between 60 and 1209600 seconds (14 days)
 
 ### spec.consumer
 
@@ -212,9 +213,10 @@ only). Leave 0 for the default; the maximum is 60000 (60s).
 `int64`
 
 Seconds to delay re-delivery of a message after a failed attempt. Leave 0 for no
-additional delay; the maximum is 42300 seconds.
+additional delay; the maximum is 86400 (24h), the same ceiling Cloudflare applies
+to every send-or-retry delay.
 
-- rule: retry_delay must be between 0 and 42300 seconds
+- rule: retry_delay must be between 0 and 86400 seconds (24h)
 
 ### spec.consumer.settings.visibilityTimeoutMs
 

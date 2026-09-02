@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("CloudflareQueueSpec Validation", func() {
 			q.Spec.Settings = &CloudflareQueueSettings{
 				DeliveryDelay:          60,
 				DeliveryPaused:         true,
-				MessageRetentionPeriod: 86400,
+				MessageRetentionPeriod: 1209600, // the 14-day ceiling
 			}
 			gomega.Expect(protovalidate.Validate(q)).To(gomega.BeNil())
 		})
@@ -101,6 +101,22 @@ var _ = ginkgo.Describe("CloudflareQueueSpec Validation", func() {
 		ginkgo.It("rejects a message_retention_period below the minimum", func() {
 			q := validQueue()
 			q.Spec.Settings = &CloudflareQueueSettings{MessageRetentionPeriod: 30}
+			gomega.Expect(protovalidate.Validate(q)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a message_retention_period above 14 days", func() {
+			q := validQueue()
+			q.Spec.Settings = &CloudflareQueueSettings{MessageRetentionPeriod: 1209601}
+			gomega.Expect(protovalidate.Validate(q)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a retry_delay above 24 hours", func() {
+			q := validQueue()
+			q.Spec.Consumer = &CloudflareQueueConsumer{
+				Type:       CloudflareQueueConsumer_worker,
+				ScriptName: value("orders-consumer"),
+				Settings:   &CloudflareQueueConsumerSettings{RetryDelay: 86401},
+			}
 			gomega.Expect(protovalidate.Validate(q)).ToNot(gomega.BeNil())
 		})
 

@@ -21,5 +21,5 @@ identity provider) and additionally requires a hardware-key authentication metho
 
 | Placeholder | Description |
 |---|---|
-| `REPLACE_WITH_ACCOUNT_ID` | 32-character Cloudflare account ID |
-| `REPLACE_WITH_IDP_ID` | The Cloudflare identity-provider ID for the Okta connection |
+| `0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d` | 32-character Cloudflare account ID (replace with yours) |
+| `<okta-identity-provider-id>` | The Cloudflare identity-provider ID for the Okta connection (a value-or-reference field: set `value`, or reference a `CloudflareZeroTrustAccessIdentityProvider`) |
