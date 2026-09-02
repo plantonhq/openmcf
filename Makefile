@@ -232,7 +232,12 @@ buf-breaking:
 	bash tools/ci/proto/buf_breaking_channel_gate.sh
 
 .PHONY: bazel-mod-tidy
+# go mod tidy first: `bazel mod tidy` only exposes the modules go.mod marks
+# DIRECT, so a new import of a module still tagged `// indirect` passes
+# every earlier step and fails analysis at //:planton with "no repository
+# visible as @org_golang_x_...". Tidying go.mod here makes that impossible.
 bazel-mod-tidy:
+	go mod tidy
 	${BAZEL} mod tidy
 
 .PHONY: gazelle

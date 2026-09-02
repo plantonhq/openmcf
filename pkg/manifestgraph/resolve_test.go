@@ -3,8 +3,8 @@ package manifestgraph
 import (
 	"testing"
 
-	auth0connectionv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0connection/v1alpha1"
 	testk8sv1alpha1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcekubernetes/v1alpha1"
+	auth0connectionv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0connection/v1alpha1"
 	"github.com/plantonhq/planton/shared"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"

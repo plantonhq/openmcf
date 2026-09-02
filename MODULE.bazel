@@ -171,6 +171,7 @@ use_repo(
     "org_golang_google_protobuf",
     "org_golang_x_oauth2",
     "org_golang_x_term",
+    "org_golang_x_text",
     "org_golang_x_tools",
     "sh_helm_helm_v3",
 )
