@@ -181,7 +181,9 @@ planton service rerun-pipeline <pipeline-id>
 
 ### GitHub Integration
 
-Pipeline status does not currently appear on the GitHub commit or pull request page. A pipeline's progress, its deployment outcomes, and a pull request's preview URL reach you through the web console, the CLI (`planton service pipelines`, `planton service previews`), and the platform's agent tools.
+The integration reads richly in one direction today: if your repository runs its own GitHub Actions workflows, those runs are mirrored into Planton automatically — they render beside Planton-managed pipeline runs in one chronology (`planton service runs`, the service's Runs tab in the console), each with its jobs, steps, GitHub's own status words, and job logs on view, no setup beyond connecting the repository.
+
+In the other direction, pipeline status does not currently appear on the GitHub commit or pull request page. A pipeline's progress, its deployment outcomes, and a pull request's preview URL reach you through the web console, the CLI (`planton service pipelines`, `planton service previews`), and the platform's agent tools.
 
 ## Related Documentation
 
