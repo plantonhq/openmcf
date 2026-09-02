@@ -52,7 +52,7 @@ The deploy renders manifests from the service's CURRENT inline deploy declaratio
 
 ## The GitHub Action
 
-`plantonhq/planton/actions/deploy` wraps the whole story — install the CLI (checksum-verified), mint the job's OIDC token, federate, optionally register, deploy, and wait honestly. The job needs `permissions: id-token: write`, and the `audience` input must be exactly the binding's audience. `register: true` applies the service manifest first (its repository proven by the same token). See the action's own README for the full input table.
+`plantonhq/planton/actions/deploy` wraps the whole story — install the CLI (checksum-verified), mint the job's OIDC token, federate, optionally register, deploy, and wait honestly. The job needs `permissions: id-token: write`, and the `audience` input must be exactly the binding's audience. `register: true` applies the service manifest first (its repository proven by the same token). See the action's own README for the full input table. The same action also runs fully backendless: with `org` and `audience` absent it deploys the repository's own kustomize declaration through the open-source engine — offline mode, covered by the action's README.
 
 ## Proven repository identity
 

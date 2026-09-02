@@ -1,8 +1,62 @@
 # Planton Deploy Action
 
-Deploy to Planton from GitHub Actions with **zero stored secrets**. The action exchanges the workflow's own OIDC token for a short-lived Planton credential, optionally registers the service from its manifest, deploys your container image into one environment, and fails the job unless the deployment verifiably succeeded.
+Deploy from GitHub Actions through Planton — in either of two modes, inferred from the inputs, with **zero stored Planton secrets** in both:
 
-## Quick start
+- **Offline** — no Planton backend anywhere. The action renders the checked-out repository's own kustomize declaration and deploys it to **your** cloud through the open-source engine, in dependency order, behind a preflight report that verifies everything verifiable before the first IaC handoff. Your runner authenticates to your cloud with the provider's own official OIDC action — keyless end to end.
+- **Connected** — deploy through your Planton backend. The action exchanges the workflow's own OIDC token for a short-lived Planton credential, optionally registers the service from its manifest, deploys your container image into one environment, and fails the job unless the deployment verifiably succeeded.
+
+Set `org` and `audience` and you are connected; leave both out and you are offline. Any half-state fails immediately with the exact line to add or remove.
+
+## Switching modes is a few lines, both directions
+
+The same action serves a repo through its whole journey — start offline with nothing but a cloud account, connect to a backend later (or the reverse) without changing anything else about the workflow:
+
+| Direction | Change in the `with:` block |
+|---|---|
+| **Offline → connected** | Add `org`, `audience`, `service`, and `image`. Remove `set` (the backend injects the image) and drop the `PLANTON_BACKEND_*` state env — the backend holds state. |
+| **Connected → offline** | Remove `org`, `audience`, `service`, and `image`. Add `set` to inject your image, and give the job a remote state backend (`PLANTON_BACKEND_*` env or manifest annotations). |
+
+Everything else — the checkout, the image build, the provider OIDC auth your job already does — stays exactly as it is.
+
+## Quick start — offline (no Planton backend)
+
+The repository carries its own deployment declaration (a `_kustomize/` tree with one overlay per environment). The job authenticates to the cloud with the provider's official OIDC action, and state lives in your own bucket — nothing here stores a long-lived key:
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # lets the provider's auth action mint an OIDC token
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Your cloud, your trust rule: the provider's own official OIDC action.
+      # (aws-actions/configure-aws-credentials and azure/login work the same way.)
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/000000/locations/global/workloadIdentityPools/github/providers/github
+          service_account: deployer@my-project.iam.gserviceaccount.com
+
+      # ... build and push your image ...
+
+      - uses: plantonhq/planton/actions/deploy@main
+        env:
+          # CI runners are ephemeral — state must outlive them. Point the
+          # engine at your own bucket (or carry these as annotations in the
+          # manifests themselves).
+          PLANTON_BACKEND_TYPE: gcs
+          PLANTON_BACKEND_BUCKET: my-project-tofu-state
+        with:
+          environment: prod
+          set: |
+            CloudRunService/storefront:spec.container.image=ghcr.io/acme/storefront@${{ steps.build.outputs.digest }}
+```
+
+The job's log shows one preflight report — schema, references, state backend reachability, credential validity, module availability, all checked before anything is handed to an IaC engine — then the resources deploy in the order their own references require, and the job's exit code tells the truth: refused at preflight (nothing ran) and a mid-deploy failure (re-run continues as no-ops) are distinct.
+
+## Quick start — connected (through your Planton backend)
 
 ```yaml
 jobs:
@@ -25,7 +79,7 @@ jobs:
           audience: https://acme.example/planton   # must match your binding's audience
 ```
 
-## One-time setup (keyless trust)
+### One-time setup for connected mode (keyless trust)
 
 The keyless exchange works because your organization registered a **workload identity binding** — the trust rule "workflows from this repository may act as this service account". Someone with manage-access on the organization sets it up once:
 
@@ -43,31 +97,41 @@ spec:
     repository: acme/checkout-api      # matched exactly against the token's own claim
 ```
 
-There is no API key to create, rotate, or leak. Each workflow run proves itself with GitHub's own token; the exchanged credential expires in minutes and can act only on the service this repository's token names.
+There is no API key to create, rotate, or leak — in either mode. Each connected workflow run proves itself with GitHub's own token; the exchanged credential expires in minutes and can act only on the service this repository's token names. Offline mode never talks to Planton at all: the only credentials in play are the ones your provider's own OIDC action minted for the job.
 
 ## Inputs
 
-| Input | Required | Default | Description |
-|---|---|---|---|
-| `org` | yes | | Planton organization slug. |
-| `service` | yes | | Service slug or id to deploy. |
-| `environment` | yes | | Environment to deploy into (must be among the service's declared deploy environments). |
-| `image` | yes | | Container image reference (`host/path:tag` or `@digest`). |
-| `audience` | yes | | The OIDC token audience — exactly the value your binding declares. |
-| `register` | no | `false` | Apply the service manifest before deploying. The manifest's declared repository is **proven** against this workflow's token, never trusted as typed. |
-| `service-file` | no | `service.yaml` | Manifest path, used with `register: true`. |
-| `follow` | no | `true` | Wait for the run and fail the job honestly (see below). Set `false` to fire-and-forget. |
-| `cli-version` | no | `latest` | Planton CLI version to install. |
+| Input | Mode | Required | Default | Description |
+|---|---|---|---|---|
+| `environment` | both | yes | | Environment to deploy into. Connected: must be among the service's declared deploy environments. Offline: names the overlay of the working tree's kustomize declaration to render. |
+| `org` | connected | yes | | Planton organization slug. Setting `org` AND `audience` selects connected mode. |
+| `audience` | connected | yes | | The OIDC token audience — exactly the value your binding declares. |
+| `service` | connected | yes | | Service slug or id to deploy. |
+| `image` | connected | yes | | Container image reference (`host/path:tag` or `@digest`). Offline, inject the image with `set` instead. |
+| `register` | connected | no | `false` | Apply the service manifest before deploying. The manifest's declared repository is **proven** against this workflow's token, never trusted as typed. |
+| `service-file` | connected | no | `service.yaml` | Manifest path, used with `register: true`. |
+| `follow` | connected | no | `true` | Wait for the run and fail the job honestly (see below). Set `false` to fire-and-forget. Offline deploys run inside this job and are always followed. |
+| `set` | offline | no | | Node-addressed field overrides, one per line: `<kind>/<name>:<fieldPath>=<value>`. A tree holds many documents, so the override names its document — the classic use is injecting the image this job just built. |
+| `working-directory` | offline | no | `.` | Directory holding the service's kustomize declaration. |
+| `cli-version` | both | no | `latest` | Planton CLI version to install. The download is checksum-verified before it is ever executed. |
 
 ## Outputs
 
 | Output | Description |
 |---|---|
-| `run-id` | The delivery run this deploy started (`svcpipe_...`). |
+| `run-id` | The delivery run a connected deploy started (`svcpipe_...`). Empty in offline mode — the deploy runs inside this job and has no backend run to point at. |
 
 ## What makes the job red
 
-With `follow: true` (the default), green means something:
+**Both modes fail loudly at the inputs**: a half-state (`org` without `audience`, an `image` in offline mode, a missing `service` in connected mode) fails before any network call, naming the exact line to add or remove — all problems at once, never one at a time.
+
+**Offline**, the exit code is a contract:
+
+- **Refused at preflight** — the report names every problem (schema, unresolvable references, unreachable state backend, invalid credentials, missing modules) and its fix. Nothing was handed to an IaC engine; nothing changed anywhere.
+- **A resource failed to deploy** — the engine's own error is in the log, verbatim. Completed resources are safe in state: re-running the job re-applies them as no-ops and continues from the failure.
+- **Green** means every resource in the tree is live.
+
+**Connected**, with `follow: true` (the default), green means something:
 
 - The **run failed** (a resource failed to apply) → the job fails with the failed resources named.
 - The run succeeded but **rollout verification reported `failed`** — Planton watched the workload on your own cloud and it demonstrably never came online (crash loops, unreachable endpoints) → the job fails with each failed check and the provider's own diagnostic words.
@@ -75,7 +139,9 @@ With `follow: true` (the default), green means something:
 
 ## Behavior worth knowing
 
-- **Protected environments**: a deploy into a protected environment pauses at that environment's approval gate, and the deployer can never be the approver. With `follow: true` the job waits for the approval — bound your job with `timeout-minutes` if that wait should not be open-ended.
-- **Inline deploy configuration only**: the deploy verb renders manifests from the service's inline deploy declaration. A service using the kustomize path refuses with the working alternatives named (the git-push lane deploys it fully; promote moves an existing deployment).
-- **Provenance rides along**: the action passes the workflow's commit and branch, so the run header and history read honestly for an image Planton never built.
+- **Offline needs remote state on CI runners**: runners are ephemeral, so point the engine at your own bucket — `PLANTON_BACKEND_TYPE` + `PLANTON_BACKEND_BUCKET` (+ `PLANTON_BACKEND_REGION`/`PLANTON_BACKEND_ENDPOINT` where the backend needs them) as job env, or the equivalent annotations in the manifests themselves. The preflight report states where state lives and probes that it is reachable with the credentials in hand.
+- **Offline cloud auth is the provider's business, deliberately**: use `aws-actions/configure-aws-credentials`, `google-github-actions/auth`, or `azure/login` before this action — the world already trusts them — and the preflight verifies the ambient result honestly.
+- **Protected environments (connected)**: a deploy into a protected environment pauses at that environment's approval gate, and the deployer can never be the approver. With `follow: true` the job waits for the approval — bound your job with `timeout-minutes` if that wait should not be open-ended.
+- **Connected deploys render from the service's inline deploy declaration**: a service using the kustomize path refuses with the working alternatives named (the git-push lane deploys it fully; promote moves an existing deployment) — or deploy that tree offline, where the kustomize declaration is exactly what renders.
+- **Provenance rides along (connected)**: the action passes the workflow's commit and branch, so the run header and history read honestly for an image Planton never built.
 - **Runners**: Linux and macOS runners, x64 and arm64. The CLI download is checksum-verified against the release's published checksums before it is ever executed.
