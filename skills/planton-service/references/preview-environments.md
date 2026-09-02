@@ -165,6 +165,8 @@ Ask without a pull request number to list a service's live previews; ask with on
 
 **The agent journey this enables**: an agent that authored a pull request verifies its own preview before asking for review — push, poll `list_service_previews` with the PR number until the phase settles, confirm `rollout_status` is `verified`, then hand reviewers the working URL (paste it into the PR description). No baseline platform gives the authoring agent this loop.
 
+**The pull request page tells the same story by itself.** A "Preview" check on the PR's head commit carries the composed answer — in progress while building or deploying, success with the live address when the preview is up, failure with the run's own reason, neutral with the refusal when a preview could not be born — and a GitHub Deployment named by the preview's slug puts the native "View deployment" button beside it. When the preview tears down (close or expiry), its GitHub deployment goes `inactive`. Nothing posts PR comments, ever. A PR page showing neither surface on an opted-in service usually means the GitHub App installation lacks the 'Checks'/'Deployments' write permissions.
+
 `list_environments` and `get_environment` (CLI: the environment read commands) still show previews beside durable environments; the `spec.preview` block is the tell — base environment, service, pull request number, expiry. The block is server-managed: create, update, and apply refuse it, so no manifest can disguise a durable environment as a preview or convert one. Previews never appear in promotion order — promotion walks are derived from each service's own declared environments.
 
 ## A preview has exactly one writer: its pull request

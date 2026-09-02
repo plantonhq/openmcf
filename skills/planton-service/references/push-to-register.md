@@ -18,6 +18,8 @@ A repository connected to a Planton org registers and maintains its own Service 
 
 ## Reading the manifest-sync status
 
+Every push outcome ALSO lands on the commit itself: each candidate `service.yaml` gets its own GitHub check named by the file path — green when the record matches the file, a red X carrying the exact error otherwise, with the error pinned as an annotation on its line in the diff when the parser names one. The commit check is the ONLY surface for a file so broken it names no service (not even parseable YAML — there is no record to stamp), so when someone says "my push did nothing", the commit page answers even when `manifestSync` cannot. A commit page with no check on a pushed manifest usually means the GitHub App installation lacks the 'Checks: Read and write' permission.
+
 Every push outcome lands on the service record's `status.manifestSync` (visible via `planton service get`):
 
 - `lastApplied` — the last push that landed: commit, file, time. "Landed" includes CONVERGED: a manifest matching the record exactly writes nothing (redeliveries and no-op pushes never churn history) but still stamps success.
