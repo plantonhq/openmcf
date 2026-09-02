@@ -386,9 +386,8 @@ shared state and needs the user's explicit go-ahead:
   and `type: bool` values are written BARE; quote strings that could parse
   as numbers (`"1.31"`) -- see `references/infra.chart-format.md`.
 - **Composition is additive -- never delete or rename a file unless the
-  user explicitly asks.** A deletion pauses the entire session for a human
-  approval; keep-files (`.gitkeep`) are invisible to everything -- leave
-  them alone. A restructure needing deletions is announced up front.
+  user explicitly asks.** A deletion pauses the session for a human approval;
+  keep-files (`.gitkeep`) are invisible to everything -- leave them alone.
 - **Exit 2 means stop, not edit.** No template edit ever fixed an unreachable control plane.
 - **Params are snake_case, referenced as `values.<name>`, each with a
   `description`** -- the user's documentation.
@@ -475,6 +474,7 @@ memory what a reference answers precisely.
 | `references/service.offline-deploy.md` | Deploying services with NO Planton backend: offline-clean kustomize authoring, the offline deploy verb and its exit codes, the GitHub Action's offline mode, the gh-driven CI/CD setup journey, verify-before-ready |
 | `references/service.reading-a-run.md` | Reading one run and reporting it in the user's words: build vs delivery shapes, status vocabulary, per-task errors, gates, mirrored external CI runs |
 | `references/service.managed-pipelines.md` | What a Planton-managed build runs: the platform tracks, the catalog tasks a repository pipeline reuses by plain name, the param contract and bindable workspaces, the `platform-content` pin, the compile verdicts, the images a build cluster pulls |
+| `references/service.pipeline-authoring.md` | Writing or changing a service's own pipeline: the files, Tasks beside the pipeline, name resolution, the param contract and the optional trigger facts with `when`, the validate loop, every compile verdict's fix, and what to edit when asked for a step, a release-only step, or a shared task |
 | `references/service.delivery-verbs.md` | Deploying an image built anywhere, promoting between environments, rolling back, tag releases, feature-branch deploys, explaining a refused delivery |
 | `references/service.urls-and-rollout-verification.md` | Where a deployed service answers: URLs on the deployment record, reading the rollout verdict accurately |
 | `references/service.serving-domains.md` | A service on the customer's own domain: the environment's serving-domain declaration, the hostname label, fill-blank injection, the `domain_serving` check |

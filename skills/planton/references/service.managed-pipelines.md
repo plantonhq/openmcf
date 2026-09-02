@@ -5,7 +5,7 @@ description: What a service built by Planton-managed Tekton actually runs — th
 
 # Planton-Managed Builds — The Platform Tracks, the Task Catalog, and the Pin
 
-Every Planton-managed build is compiled at dispatch into one self-contained Tekton run: the pipeline's task references resolved inline, the platform's parameter contract verified, hazards rewritten, and the compiled definition stamped on the run record before anything executes. How to READ that stamp on a run (`spec.resolved_pipeline`: the exact YAML, its source, its pin) and why a rerun cannot drift is `references/service.reading-a-run.md`. This reference is about the CONTENT: what the platform's own pipelines are, what a repository pipeline may reuse from them, and what the contract demands.
+Every Planton-managed build is compiled at dispatch into one self-contained Tekton run: the pipeline's task references resolved inline, the platform's parameter contract verified, hazards rewritten, and the compiled definition stamped on the run record before anything executes. How to READ that stamp on a run (`spec.resolved_pipeline`: the exact YAML, its source, its pin) and why a rerun cannot drift is `references/service.reading-a-run.md`. This reference is about the CONTENT: what the platform's own pipelines are, what a repository pipeline may reuse from them, and what the contract demands. Writing or changing a repository pipeline — the files, tasks beside it, the trigger facts, every verdict's fix — is `references/service.pipeline-authoring.md`.
 
 ## Where the content lives
 
@@ -23,7 +23,7 @@ A service's `spec.build` selects a track by its builder:
 - `build.buildpacks` → the **buildpacks** track: clone, build and push the image with a Cloud Native Buildpacks builder (language detected from the source), render the kustomize overlays.
 - `build.tektonPipeline` → no platform track: the service's own pipeline (from its repository at the built commit, or an organization-published record) compiles through the same compiler with the same contract.
 
-The catalog also carries a `cloudflare-worker` track (bundle a Worker with Wrangler, upload the bundle to R2, render overlays); today no `spec.build` builder selects it, so do not offer it as a build option.
+There is no platform track for Cloudflare Worker scripts; a Worker service builds through its own repository pipeline (`references/service.pipeline-authoring.md`).
 
 ## The task catalog — reuse by plain name
 
@@ -50,7 +50,7 @@ Plus the service's own `build.tektonPipeline.params` (free-form, cannot shadow t
 
 ## Workspaces the platform binds
 
-A pipeline may require only workspaces the platform dispatch knows how to bind: `source` (the clone), `dockerconfig` (registry credentials), and `r2-credentials` (the R2 upload mount). Any other REQUIRED pipeline-level workspace is `unbindable_workspace` — rename it, mark it optional, or drop it. Secrets are always runtime references (secret names, workspace mounts); an env var whose value looks like a literal secret is `literal_secret_env`.
+A pipeline may require exactly one pipeline-level workspace: `source` (the clone). Any other REQUIRED pipeline-level workspace is `unbindable_workspace` — mark it optional or drop it (task-level optional workspaces such as the catalog tasks' `dockerconfig` are fine). Secrets are always runtime references (secret names, workspace mounts); an env var whose value looks like a literal secret is `literal_secret_env`.
 
 ## Validate before you push
 

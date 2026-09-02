@@ -23,11 +23,10 @@ Every container image referenced here is pinned as `tag@sha256:digest`: the tag 
 
 ## Tracks
 
-A track is one pipeline file; its stem is the track name a service's build selects.
+A track is one pipeline file; its stem is the track name a service's build selects. Every track declares exactly the workspaces the platform binds (`source`) and the platform's param contract; a track nobody can select does not live here.
 
 - `dockerfile.yaml` — clone, build and push the image with BuildKit from the service's Dockerfile, render the kustomize overlays for the deploy stage.
 - `buildpacks.yaml` — clone, build and push the image with Cloud Native Buildpacks (language auto-detected), render the kustomize overlays.
-- `cloudflare-worker.yaml` — clone, bundle a Cloudflare Worker with Wrangler, upload the bundle to R2, render the kustomize overlays.
 
 ## Tasks
 

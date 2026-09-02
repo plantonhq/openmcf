@@ -46,11 +46,15 @@ A Dockerfile gives you full control over the build process. Place a Dockerfile i
 By default, the platform looks for a `Dockerfile` in the project root directory. You can specify a custom path (relative to the project root) if your Dockerfile lives elsewhere — for example, `docker/Dockerfile.prod` for teams that maintain multiple Dockerfile variants.
 
 ```yaml
-pipeline_configuration:
-  pipeline_provider: platform
-  image_build_method: dockerfile
-  dockerfile_path: "docker/Dockerfile.prod"
+spec:
+  build:
+    dockerfile:
+      dockerfilePath: docker/Dockerfile.prod
+    registry: my-registry
+    imageRepositoryPath: acme/storefront
 ```
+
+Buildpacks is the same shape with `buildpacks: {}` in place of the `dockerfile` block. Both select one of the platform's release-pinned build tracks, compiled at dispatch and stamped on every run.
 
 **When to use Dockerfile**: Custom native dependencies, multi-stage builds, ML/AI workloads with CUDA or specific library versions, specific base image requirements, or any scenario where you need precise control over the build environment.
 
@@ -72,11 +76,7 @@ The final image is pushed to the container registry configured on the Service. T
 
 ## Cloudflare Worker Builds
 
-When producing a Cloudflare Worker script, the build process differs from container image builds:
-
-- No build method selection — Worker scripts are built using the project's package manager (npm/yarn).
-- Built scripts are stored in a Cloudflare R2 bucket rather than a container registry.
-- For monorepos using yarn workspaces, you can set the package manager directory to the workspace root (e.g., `.`) while the project root points to the worker subdirectory. This ensures `yarn install` runs at the repository root where workspace definitions live.
+There is no platform track for Cloudflare Worker scripts today. A Worker service builds through its own repository pipeline (`spec.build.tektonPipeline`) — bundle with Wrangler, upload the bundle where your deployment reads it — and deploys through the Cloudflare Worker deployment target like any other service. See [Self-Managed Pipelines](/docs/ci-cd/self-managed-pipelines).
 
 ## Configuring Build Methods
 
@@ -106,7 +106,7 @@ planton service kustomize build
 
 ## Self-Managed Pipelines
 
-When using a self-managed pipeline provider, the build method settings are ignored — you control the build process entirely through your Tekton pipeline YAML. The platform executes your pipeline and handles deployment orchestration.
+A service whose `spec.build` selects `tektonPipeline` instead of `dockerfile` or `buildpacks` builds with your own Tekton pipeline from the repository — the platform compiles it at dispatch and handles deployment orchestration exactly as for the platform tracks.
 
 See [Self-Managed Pipelines](/docs/ci-cd/self-managed-pipelines) for details on writing custom build pipelines.
 

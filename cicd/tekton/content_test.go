@@ -33,7 +33,7 @@ func TestContent_versionNamesExactlyOneContentState(t *testing.T) {
 }
 
 func TestContent_tracksAndTasksArePresent(t *testing.T) {
-	wantTracks := []string{"buildpacks", "cloudflare-worker", "dockerfile"}
+	wantTracks := []string{"buildpacks", "dockerfile"}
 	if got := Tracks(); !reflect.DeepEqual(got, wantTracks) {
 		t.Fatalf("expected exactly the service build tracks %v, got %v", wantTracks, got)
 	}
@@ -82,14 +82,11 @@ func TestImages_matchTheRecordedSet(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		"amazon/aws-cli:latest@sha256:310813a7eae8fd88da1cc9c37970e3500b0ff3984479e1012f0a6fd44e453f63",
-		"bitnami/kubectl:latest@sha256:c62a62db80e777acdee87f76bc6f06a95239ad2ff210bf78f585e39e33da98e2",
 		"bitnamilegacy/kubectl:latest@sha256:cd354d5b25562b195b277125439c23e4046902d7f1abc0dc3c75aad04d298c17",
 		"docker.io/library/bash:5.1.4@sha256:b208215a4655538be652b2769d82e576bc4d0a2bb132144c060efc5be8c3f5d6",
 		"ghcr.io/tektoncd-catalog/git-clone:v1.1.0@sha256:b7fe6c370322586feb555c807f3fae7ca5d62c20ebbcca987114e69366151957",
 		"ghcr.io/tektoncd/github.com/tektoncd/pipeline/cmd/git-init:v0.45.0@sha256:8ab0f58d8381b0b71f5b2bae1f63522989d739e3154d8cab1bacfa0ef5317214",
 		"moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9",
-		"node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293",
 		"paketobuildpacks/builder-jammy-base:latest@sha256:f93da4e8abc73ab3555793d3a992b724ba7d0baafffeddb1219cf5c433fcf3b2",
 	}
 	if !reflect.DeepEqual(images, want) {

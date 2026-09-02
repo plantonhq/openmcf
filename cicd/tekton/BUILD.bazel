@@ -8,7 +8,6 @@ go_library(
     ],
     embedsrcs = [
         "pipelines/buildpacks.yaml",
-        "pipelines/cloudflare-worker.yaml",
         "pipelines/dockerfile.yaml",
         "tasks/buildkit.yaml",
         "tasks/buildpacks.yaml",
