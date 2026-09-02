@@ -11,7 +11,7 @@ Every service's per-environment deployment configuration lives in ONE place on t
 
 Read the service (`get_service`) and look at `spec.deploy`:
 
-- **`kustomize` present** — the repository's kustomize tree maintains the environments section, and the platform's sync is its ONLY writer. Each entry carries `sync` provenance: which branch, which commit, when. **A direct write to this section does not error — it is silently preserved-over**: apply succeeds and the stored entries stand exactly as they were. Never edit a git-maintained service's environments through apply; the honest answer is "this service's configuration lives in its repository — edit the kustomize tree" (see `references/kustomize-authoring.md`, including taking authorship back with eject).
+- **`kustomize` present** — the repository's kustomize tree maintains the environments section, and the platform's sync is its ONLY writer. Each entry carries `sync` provenance: which branch, which commit, when. **A direct write to this section does not error — it is silently preserved-over**: apply succeeds and the stored entries stand exactly as they were. Never edit a git-maintained service's environments through apply; the honest answer is "this service's configuration lives in its repository — edit the kustomize tree" (see `references/service.kustomize-authoring.md`, including taking authorship back with eject).
 - **`kustomize` absent** — the section is platform-authored: the console, an agent, or a direct apply writes it. This is the posture the rest of this file is about.
 
 Everything else on the deploy block stays caller-authored on EVERY service, git-maintained included: `disable_deployments` (the pause switch), `hostname` (the serving label), and `branch_deployments` (branch-to-environment mappings).
@@ -34,7 +34,7 @@ On a platform-authored service the Configuration tab edits ANY declared resource
 The loop is `get_service` → edit the JSON → `apply_service` with the whole record. Two disciplines make it safe:
 
 1. **Fetch fresh, edit only what you mean.** Apply sends the whole record, so start from a fresh get (never a stale copy) and touch only the fields the person asked about. A manifest is a declaration other hands may have authored — probes, autoscaling, secret variables, wired `valueFrom` references. Changing the memory limit means changing the memory limit, not regenerating the manifest.
-2. **Nothing deploys when you save.** Configuration changes take effect on the next deployment to the environment — the next push, or a promote into it. Say this every time: a person who saves and sees nothing change will otherwise read success as failure. (A rollback does NOT pick up new configuration — it re-applies a captured pair; see `references/delivery-verbs.md`.)
+2. **Nothing deploys when you save.** Configuration changes take effect on the next deployment to the environment — the next push, or a promote into it. Say this every time: a person who saves and sees nothing change will otherwise read success as failure. (A rollback does NOT pick up new configuration — it re-applies a captured pair; see `references/service.delivery-verbs.md`.)
 
 Refusals arrive as the server's own sentences and always name the real fix — a serving-hostname collision names both services and the environment; a branch mapped twice names the branch. Relay them verbatim.
 
@@ -42,7 +42,7 @@ Refusals arrive as the server's own sentences and always name the real fix — a
 
 **Adding** an environment is adding one entry to `deploy.environments` — the slug plus its manifests. Copying an existing environment's resources and re-stamping `metadata.env` (and the `{service}-{env}` name convention, when the source followed it) is the faithful path for any resource shape. Nothing deploys at add time; the next push (or a promote into the new environment) performs the first deployment. Adding an entry can newly collide on the serving hostname — the refusal names it.
 
-**Removing** an entry stops FUTURE deploys to that environment. State the no-teardown fact plainly: **anything already running there keeps running** — removing configuration never destroys resources. Tearing down deployed resources is the service delete cascade's job (`references/delete-cascade.md`), not a configuration edit's.
+**Removing** an entry stops FUTURE deploys to that environment. State the no-teardown fact plainly: **anything already running there keeps running** — removing configuration never destroys resources. Tearing down deployed resources is the service delete cascade's job (`references/service.delete-cascade.md`), not a configuration edit's.
 
 ## The deployments on/off switch
 

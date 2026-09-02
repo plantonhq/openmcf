@@ -112,7 +112,7 @@ immediately; follow the pipeline output and narrate what happens — which
 resource is deploying, what failed and why, in the user's vocabulary. The
 org and environment ride your CLI context (`--org`/`-e` when they don't).
 A working copy of a deployed project keeps its own rules
-(`references/deployed-projects.md`) — there the save verb is the deploy.
+(`references/infra.deployed-projects.md`) — there the save verb is the deploy.
 
 ## When it doesn't work — every failure has a way forward
 

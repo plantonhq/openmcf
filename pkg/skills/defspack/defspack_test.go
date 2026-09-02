@@ -113,6 +113,58 @@ func TestValidateCatchesBrokenTrees(t *testing.T) {
 			},
 			wantErr: "file is empty",
 		},
+		{
+			name: "description exceeds the spec's character cap",
+			mutate: func(files map[string]string) {
+				files["skills/demo/SKILL.md"] = strings.Replace(
+					files["skills/demo/SKILL.md"],
+					"description: A demo skill.",
+					"description: "+strings.Repeat("wordy ", 200), 1)
+			},
+			wantErr: "the Agent Skills spec caps it at 1024",
+		},
+		{
+			name: "frontmatter carries a key outside the spec's field set",
+			mutate: func(files map[string]string) {
+				files["skills/demo/SKILL.md"] = strings.Replace(
+					files["skills/demo/SKILL.md"],
+					"name: demo\n",
+					"name: demo\nowner: someone\n", 1)
+			},
+			wantErr: "outside the Agent Skills spec's field set",
+		},
+		{
+			name: "SKILL.md body exceeds the line ceiling",
+			mutate: func(files map[string]string) {
+				files["skills/demo/SKILL.md"] += strings.Repeat("filler line\n", 501)
+			},
+			wantErr: "the spec's ceiling is 500",
+		},
+		{
+			name: "a directory under references is refused, never silently dropped",
+			mutate: func(files map[string]string) {
+				files["skills/demo/references/nested/deep.md"] = "invisible to packaging\n"
+			},
+			wantErr: "references are FLAT files",
+		},
+		{
+			name: "reference filename breaks the grammar",
+			mutate: func(files map[string]string) {
+				files["skills/demo/references/Bad_Name.md"] = "content\n"
+				files["skills/demo/SKILL.md"] = strings.Replace(
+					files["skills/demo/SKILL.md"],
+					"Read `references/topic.md` first.",
+					"Read `references/topic.md` and `references/Bad_Name.md` first.", 1)
+			},
+			wantErr: "breaks the reference-name grammar",
+		},
+		{
+			name: "skill directory slug breaks the spec's name grammar",
+			mutate: func(files map[string]string) {
+				files["skills/Demo-Two/SKILL.md"] = "---\nname: Demo-Two\ndescription: Bad name.\n---\n\n# Bad\n"
+			},
+			wantErr: "breaks the Agent Skills spec's grammar",
+		},
 	}
 
 	for _, tc := range cases {

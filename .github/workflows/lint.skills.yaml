@@ -1,15 +1,29 @@
 # =============================================================================
-# Skills / Agent Definitions Structure Guard
+# Skills / Agent Definitions Structure + Specification Guard
 # =============================================================================
 # Fails the PR when the skills/ or agents/ definition trees violate the
-# structure contract documented in skills/README.md:
+# contract documented in skills/README.md. Two rule families:
 #
-#   - SKILL.md frontmatter name must equal the directory slug (the serving
-#     engine derives the skill's identity from it).
+# Agent Skills specification conformance (agentskills.io is the binding
+# standard; drift fails here instead of accumulating):
+#   - name: lowercase alphanumerics and single hyphens, <=64 chars, equal
+#     to the directory slug (the serving engine derives identity from it).
+#   - description: non-empty and <=1024 chars -- the surface every agent
+#     loads at startup.
+#   - frontmatter carries only the spec's field set (custom properties
+#     belong under its `metadata` map).
+#   - SKILL.md body <=500 lines -- it loads whole on activation; detail
+#     belongs in references, which load on demand.
+#
+# House structure contract:
 #   - Reference integrity is bidirectional: every references/<file>.md that
 #     SKILL.md cites must exist and be non-empty, and every file present
 #     under references/ must be cited. An empty or orphaned reference is
 #     content an agent would silently load blank at runtime.
+#   - References are FLAT files named by the dot taxonomy
+#     (<domain>.<topic>.md); a DIRECTORY under references/ is refused --
+#     packaging and the citation check both operate on the flat list, so a
+#     nested file would ship in no release while appearing to exist in git.
 #   - Every agents/<slug>/ carries a non-empty instructions.md, and
 #     skills/compat.yaml declares a valid compatibility floor.
 #

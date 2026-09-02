@@ -81,7 +81,7 @@ planton infra project checkout <id-or-name> --output-dir <dir>  # a deployed pro
 Both default the directory to `./<slug>` when the flag is omitted; in your
 workspace, always pass `--output-dir <subfolder>` so the checkout lands as
 its own top-level subfolder, never at the workspace root. A project checkout
-follows `references/deployed-projects.md` from the moment it lands (the
+follows `references/infra.deployed-projects.md` from the moment it lands (the
 folder carries the hidden binding); re-running it against the same folder
 refreshes the managed files from server truth and leaves yours alone. Only
 chart-sourced projects can be checked out — a git-sourced project's files

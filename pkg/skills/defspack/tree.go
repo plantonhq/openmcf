@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,10 +29,21 @@ type Skill struct {
 	Dir             string
 	FrontmatterName string
 	Description     string
+	// FrontmatterKeys lists every top-level key the frontmatter carries,
+	// so validation can hold the metadata surface to the Agent Skills
+	// specification's field set.
+	FrontmatterKeys []string
 	SkillMD         []byte
 	// ReferenceFiles maps a references/-relative name (e.g. "chart-format.md")
 	// to its content, for every file present on disk.
 	ReferenceFiles map[string][]byte
+	// ReferenceDirs lists directories found under references/. The contract
+	// is FLAT files: a directory's contents are invisible to packaging AND
+	// to the bidirectional-citation check (which runs over ReferenceFiles),
+	// so a directory here is content an author believes exists and no agent
+	// will ever receive. Recorded so Validate refuses it loudly instead of
+	// the loader dropping it silently.
+	ReferenceDirs []string
 	// CitedReferences lists the references/<name>.md tokens SKILL.md cites,
 	// deduplicated and sorted.
 	CitedReferences []string
@@ -74,6 +86,49 @@ type CompatFloor struct {
 var citationPattern = regexp.MustCompile(`references/([A-Za-z0-9._-]+\.md)`)
 
 var semverPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+
+// The Agent Skills specification (agentskills.io) is this tree's binding
+// standard: skills authored here must load correctly in any conforming
+// runtime, and the spec's sizing guidance exists because the always-loaded
+// surfaces (name + description at startup, the SKILL.md body on activation)
+// are paid for on every conversation. The limits below are the spec's own
+// numbers; the ones the spec states as guidance (the 500-line body) are
+// adopted here as law so drift fails a pull request instead of accumulating.
+const (
+	// maxSkillNameChars is the spec's ceiling for the frontmatter name.
+	maxSkillNameChars = 64
+	// maxDescriptionChars is the spec's ceiling for the description -- the
+	// one surface every agent loads at startup for every skill.
+	maxDescriptionChars = 1024
+	// maxSkillMDLines adopts the spec's "keep your main SKILL.md under 500
+	// lines" guidance as an enforced ceiling: detail belongs in references,
+	// which load on demand.
+	maxSkillMDLines = 500
+)
+
+// skillNamePattern is the spec's name grammar: lowercase alphanumerics and
+// single hyphens, never leading, trailing, or consecutive.
+var skillNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// referenceNamePattern is the house grammar for reference filenames:
+// lowercase alphanumeric segments (hyphens within a segment) separated by
+// dots, ending in .md. Dots organize a large skill's references by domain
+// (e.g. service.offline-deploy.md beside infra.chart-format.md) while the
+// directory stays flat per the spec's own keep-references-one-level-deep
+// guidance; a small skill's single-segment names are equally valid.
+var referenceNamePattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*(\.[a-z0-9]+(-[a-z0-9]+)*)*\.md$`)
+
+// specFrontmatterFields is the Agent Skills specification's complete
+// frontmatter field set. Anything else belongs under the spec's own
+// `metadata` map, so conforming runtimes never meet unknown top-level keys.
+var specFrontmatterFields = map[string]bool{
+	"name":          true,
+	"description":   true,
+	"license":       true,
+	"compatibility": true,
+	"metadata":      true,
+	"allowed-tools": true,
+}
 
 // LoadTree reads skills/, agents/, and skills/compat.yaml under root.
 // Loading is shape-tolerant (missing pieces surface in Validate, not here)
@@ -162,7 +217,7 @@ func loadSkill(dir, slug string) (*Skill, error) {
 		return nil, fmt.Errorf("reading SKILL.md for %s: %w", slug, err)
 	}
 	skill.SkillMD = skillMD
-	skill.FrontmatterName, skill.Description = parseFrontmatter(skillMD)
+	skill.FrontmatterName, skill.Description, skill.FrontmatterKeys = parseFrontmatter(skillMD)
 
 	cited := map[string]bool{}
 	for _, match := range citationPattern.FindAllStringSubmatch(string(skillMD), -1) {
@@ -180,6 +235,9 @@ func loadSkill(dir, slug string) (*Skill, error) {
 	}
 	for _, ref := range refEntries {
 		if ref.IsDir() {
+			// Recorded, never loaded: Validate refuses directories here
+			// (see Skill.ReferenceDirs for why silence would be worse).
+			skill.ReferenceDirs = append(skill.ReferenceDirs, ref.Name())
 			continue
 		}
 		content, err := os.ReadFile(filepath.Join(refsDir, ref.Name()))
@@ -188,6 +246,7 @@ func loadSkill(dir, slug string) (*Skill, error) {
 		}
 		skill.ReferenceFiles[ref.Name()] = content
 	}
+	sort.Strings(skill.ReferenceDirs)
 
 	return skill, nil
 }
@@ -236,27 +295,35 @@ func validatePack(skill Skill, report func(format string, args ...any)) {
 	}
 }
 
-// parseFrontmatter extracts name and description from SKILL.md's leading
-// YAML frontmatter block. Absent or malformed frontmatter yields empty
-// values, which Validate reports with a precise message.
-func parseFrontmatter(skillMD []byte) (name, description string) {
+// parseFrontmatter extracts the name, description, and the full top-level
+// key set from SKILL.md's leading YAML frontmatter block. Absent or
+// malformed frontmatter yields empty values, which Validate reports with a
+// precise message.
+func parseFrontmatter(skillMD []byte) (name, description string, keys []string) {
 	text := string(skillMD)
 	if !strings.HasPrefix(text, "---\n") {
-		return "", ""
+		return "", "", nil
 	}
 	rest := text[len("---\n"):]
 	end := strings.Index(rest, "\n---")
 	if end < 0 {
-		return "", ""
+		return "", "", nil
 	}
 	var fm struct {
 		Name        string `yaml:"name"`
 		Description string `yaml:"description"`
 	}
 	if err := yaml.Unmarshal([]byte(rest[:end]), &fm); err != nil {
-		return "", ""
+		return "", "", nil
 	}
-	return fm.Name, fm.Description
+	var raw map[string]any
+	if err := yaml.Unmarshal([]byte(rest[:end]), &raw); err == nil {
+		for key := range raw {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+	}
+	return fm.Name, fm.Description, keys
 }
 
 // Validate enforces the structure contract documented in skills/README.md.
@@ -284,8 +351,29 @@ func Validate(tree *Tree) []error {
 			// different slug than its directory advertises.
 			report("skills/%s: frontmatter name %q must equal the directory slug", skill.Slug, skill.FrontmatterName)
 		}
+		if !skillNamePattern.MatchString(skill.Slug) || len(skill.Slug) > maxSkillNameChars {
+			report("skills/%s: the name breaks the Agent Skills spec's grammar -- lowercase alphanumerics and single hyphens, at most %d characters", skill.Slug, maxSkillNameChars)
+		}
 		if skill.Description == "" {
 			report("skills/%s: SKILL.md frontmatter is missing a description", skill.Slug)
+		} else if runeCount := len([]rune(skill.Description)); runeCount > maxDescriptionChars {
+			report("skills/%s: the description is %d characters -- the Agent Skills spec caps it at %d, and it is loaded for every agent at startup; move capability detail into the body or references", skill.Slug, runeCount, maxDescriptionChars)
+		}
+		for _, key := range skill.FrontmatterKeys {
+			if !specFrontmatterFields[key] {
+				report("skills/%s: frontmatter key %q is outside the Agent Skills spec's field set -- custom properties belong under the spec's `metadata` map", skill.Slug, key)
+			}
+		}
+		if lines := bytes.Count(skill.SkillMD, []byte("\n")); lines > maxSkillMDLines {
+			report("skills/%s: SKILL.md is %d lines -- the spec's ceiling is %d; the body loads whole on every activation, so move detail into references (they load on demand)", skill.Slug, lines, maxSkillMDLines)
+		}
+		for _, dir := range skill.ReferenceDirs {
+			report("skills/%s: references/%s/ is a directory -- references are FLAT files (dot-separated names organize domains, e.g. service.offline-deploy.md); a directory's contents are silently invisible to packaging and to this very gate, so nothing inside it would ever reach an agent", skill.Slug, dir)
+		}
+		for name := range skill.ReferenceFiles {
+			if !referenceNamePattern.MatchString(name) {
+				report("skills/%s: references/%s breaks the reference-name grammar -- lowercase alphanumeric segments (hyphens within a segment) separated by dots, ending in .md", skill.Slug, name)
+			}
 		}
 
 		for _, cited := range skill.CitedReferences {
