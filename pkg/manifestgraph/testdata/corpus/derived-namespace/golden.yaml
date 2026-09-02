@@ -1,0 +1,4 @@
+order:
+    - TestCloudResourceKubernetes/workload@dev
+derived:
+    - KubernetesNamespace/apps@dev

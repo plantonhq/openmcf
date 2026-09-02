@@ -1,0 +1,51 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "manifestgraph",
+    srcs = [
+        "doc.go",
+        "findings.go",
+        "graph.go",
+        "order.go",
+        "refuse.go",
+        "resolve.go",
+        "rules.go",
+        "set.go",
+        "slug.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/manifestgraph",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/crkreflect",
+        "//pkg/refcheck",
+        "//pkg/reflection/metadatareflect",
+        "//shared",
+        "//shared/cloudresourcekind",
+        "//shared/foreignkey/v1:foreignkey",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_x_text//unicode/norm",
+    ],
+)
+
+go_test(
+    name = "manifestgraph_test",
+    srcs = [
+        "corpus_test.go",
+        "order_test.go",
+        "resolve_test.go",
+        "slug_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":manifestgraph"],
+    deps = [
+        "//catalog/_test/testcloudresourcekubernetes/v1alpha1",
+        "//catalog/auth0/auth0connection/v1alpha1",
+        "//internal/manifest",
+        "//shared",
+        "//shared/cloudresourcekind",
+        "//shared/foreignkey/v1:foreignkey",
+        "@com_github_stretchr_testify//assert",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)

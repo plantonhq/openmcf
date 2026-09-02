@@ -1,0 +1,14 @@
+apiVersion: _test.planton.dev/v1alpha1
+kind: TestCloudResourceKubernetes
+metadata:
+  name: consumer
+  env: dev
+spec:
+  namespace:
+    value: apps
+  refMap:
+    primary:
+      valueFrom:
+        kind: TestCloudResourceGeneric
+        name: producer
+        fieldPath: status.outputs.id

@@ -1,0 +1,8 @@
+apiVersion: _test.planton.dev/v1alpha1
+kind: TestCloudResourceKubernetes
+metadata:
+  name: workload
+  env: dev
+spec:
+  namespace:
+    value: apps

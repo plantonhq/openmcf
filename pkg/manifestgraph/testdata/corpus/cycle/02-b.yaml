@@ -1,0 +1,13 @@
+apiVersion: _test.planton.dev/v1alpha2
+kind: TestCloudResourceGeneric
+metadata:
+  name: node-b
+  env: dev
+spec:
+  requiredRef:
+    value: literal
+  optionalRef:
+    valueFrom:
+      kind: TestCloudResourceGeneric
+      name: node-a
+      fieldPath: status.outputs.id
